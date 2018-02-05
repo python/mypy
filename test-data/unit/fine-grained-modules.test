@@ -485,8 +485,6 @@ def g() -> None: pass
 ==
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
--- TODO: Remove redundant error message
-main:1: error: Cannot find module named 'b'
 main:2: error: Cannot find module named 'b'
 
 [case testDeleteTwoFilesNoErrors]
@@ -528,8 +526,6 @@ a.py:3: error: Too many arguments for "g"
 ==
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
--- TODO: Remove redundant error message
-main:1: error: Cannot find module named 'b'
 main:2: error: Cannot find module named 'b'
 
 [case testAddFileWhichImportsLibModule]
