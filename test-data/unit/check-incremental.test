@@ -3528,3 +3528,14 @@ main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
 main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
 
 [builtins fixtures/list.pyi]
+
+[case testDeletedDepLineNumber]
+# The import is not on line 1 and that data should be preserved
+import a
+[file a.py]
+[delete a.py.2]
+[out1]
+
+[out2]
+main:2: error: Cannot find module named 'a'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)

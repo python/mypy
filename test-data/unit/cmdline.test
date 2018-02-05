@@ -441,6 +441,14 @@ ignore_missing_imports = True
 [out]
 main.py:2: error: Revealed type is 'Any'
 
+[case testConfigNoErrorForUnknownXFlagInSubsection]
+# cmd: mypy -c pass
+[file mypy.ini]
+[[mypy]
+[[mypy-foo]
+x_bad = 0
+[out]
+
 [case testDotInFilenameOKScript]
 # cmd: mypy a.b.py c.d.pyi
 [file a.b.py]

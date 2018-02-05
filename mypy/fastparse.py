@@ -960,8 +960,12 @@ class ASTConverter(ast3.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     @with_line
-    def visit_List(self, n: ast3.List) -> ListExpr:
-        return ListExpr([self.visit(e) for e in n.elts])
+    def visit_List(self, n: ast3.List) -> Union[ListExpr, TupleExpr]:
+        expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
+        if isinstance(n.ctx, ast3.Store):
+            # [x, y] = z and (x, y) = z means exactly the same thing
+            return TupleExpr(expr_list)
+        return ListExpr(expr_list)
 
     # Tuple(expr* elts, expr_context ctx)
     @with_line
@@ -1155,6 +1159,7 @@ class TypeConverter(ast3.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
+        assert isinstance(n.ctx, ast3.Load)
         return self.translate_argument_list(n.elts)
 
 

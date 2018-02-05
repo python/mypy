@@ -156,7 +156,7 @@ class Expression(Node):
 
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
-#                'TupleExpr', 'ListExpr']; see #1783.
+#                'TupleExpr']; see #1783.
 Lvalue = Expression
 
 
@@ -1526,7 +1526,9 @@ class DictExpr(Expression):
 
 
 class TupleExpr(Expression):
-    """Tuple literal expression (..., ...)"""
+    """Tuple literal expression (..., ...)
+
+    Also lvalue sequences (..., ...) and [..., ...]"""
 
     items = None  # type: List[Expression]
 

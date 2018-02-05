@@ -114,6 +114,8 @@ test cases (test-data/unit/fine-grained*.test).
 Major todo items:
 
 - Fully support multiple type checking passes
+- Use mypy.fscache to access file system
+- Don't use load_graph() and update the import graph incrementally
 """
 
 import os.path
@@ -223,7 +225,7 @@ class FineGrainedBuildManager:
             messages, remaining, (next_id, next_path), blocker = result
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
-            changed_modules = dedupe_modules(changed_modules + remaining)
+            changed_modules = dedupe_modules(remaining + changed_modules)
             if blocker:
                 self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
@@ -278,11 +280,10 @@ class FineGrainedBuildManager:
                         if not trigger.endswith('__>')]
             print('triggered:', sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
-        update_dependencies({module: tree}, self.deps, graph, self.options)
+        collect_dependencies({module: tree}, self.deps, graph)
         propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
                                              {module},
-                                             self.previous_targets_with_errors,
-                                             graph)
+                                             self.previous_targets_with_errors)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
@@ -318,7 +319,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
                          options: Options) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     deps = {}  # type: Dict[str, Set[str]]
-    update_dependencies(manager.modules, deps, graph, options)
+    collect_dependencies(manager.modules, deps, graph)
     return deps
 
 
@@ -406,7 +407,10 @@ def update_single_isolated(module: str,
         remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
         for id, _ in remaining_modules:
-            del manager.modules[id]
+            if id in old_modules:
+                manager.modules[id] = old_modules[id]
+            else:
+                del manager.modules[id]
             del graph[id]
         if DEBUG:
             print('--> %r (newly imported)' % module)
@@ -558,6 +562,7 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                 # There is no corresponding JSON so create partial "memory-only" metadata.
                 assert state.path
                 dep_prios = state.dependency_priorities()
+                dep_lines = state.dependency_lines()
                 meta = memory_only_cache_meta(
                     id,
                     state.path,
@@ -565,6 +570,7 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                     state.suppressed,
                     list(state.child_modules),
                     dep_prios,
+                    dep_lines,
                     state.source_hash,
                     state.ignore_all,
                     manager)
@@ -580,6 +586,7 @@ def memory_only_cache_meta(id: str,
                            suppressed: List[str],
                            child_modules: List[str],
                            dep_prios: List[int],
+                           dep_lines: List[int],
                            source_hash: str,
                            ignore_all: bool,
                            manager: BuildManager) -> CacheMeta:
@@ -599,6 +606,7 @@ def memory_only_cache_meta(id: str,
             'child_modules': child_modules,
             'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
+            'dep_lines': dep_lines,
             'interface_hash': '',
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
@@ -640,24 +648,14 @@ def find_import_line(node: MypyFile, target: str) -> Optional[int]:
     return None
 
 
-def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
-                        deps: Dict[str, Set[str]],
-                        graph: Dict[str, State],
-                        options: Options) -> None:
+def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
+                         deps: Dict[str, Set[str]],
+                         graph: Dict[str, State]) -> None:
     for id, node in new_modules.items():
         if node is None:
             continue
-        if '/typeshed/' in node.path or node.path.startswith('typeshed/'):
-            # We don't track changes to typeshed -- the assumption is that they are only changed
-            # as part of mypy updates, which will invalidate everything anyway.
-            #
-            # TODO: Not a reliable test, as we could have a package named typeshed.
-            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
-            continue
-        module_deps = get_dependencies(target=node,
-                                       type_map=graph[id].type_map(),
-                                       python_version=options.python_version)
-        for trigger, targets in module_deps.items():
+        graph[id].compute_fine_grained_deps()
+        for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
@@ -713,8 +711,7 @@ def propagate_changes_using_dependencies(
         deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
-        targets_with_errors: Set[str],
-        modules: Iterable[str]) -> None:
+        targets_with_errors: Set[str]) -> None:
     # TODO: Multiple type checking passes
     num_iter = 0
 
@@ -729,7 +726,7 @@ def propagate_changes_using_dependencies(
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
-            id = module_prefix(modules, target)
+            id = module_prefix(manager.modules, target)
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
@@ -809,20 +806,12 @@ def reprocess_nodes(manager: BuildManager,
     old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
 
-    def key(node: DeferredNode) -> str:
-        fullname = node.node.fullname()
-        if fullname is None:
-            if isinstance(node.node, FuncDef):
-                info = node.node.info
-            elif isinstance(node.node, OverloadedFuncDef):
-                info = node.node.items[0].info
-            else:
-                assert False, "'None' fullname for %s instance" % type(node.node)
-            assert info is not None
-            fullname = '%s.%s' % (info.fullname(), node.node.name())
-        return fullname
+    def key(node: DeferredNode) -> int:
+        # Unlike modules which are sorted by name within SCC,
+        # nodes within the same module are sorted by line number, because
+        # this is how they are processed in normal mode.
+        return node.node.line
 
-    # Sort nodes by full name so that the order of processing is deterministic.
     nodes = sorted(nodeset, key=key)
 
     # TODO: ignore_all argument to set_file_ignored_lines

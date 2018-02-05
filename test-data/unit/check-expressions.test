@@ -1584,7 +1584,7 @@ d() # E: "Dict[str, int]" not callable
 d2 = dict(it, x='') # E: Cannot infer type argument 2 of "dict"
 d2() # E: "Dict[Any, Any]" not callable
 
-d3 = dict(it, x='') # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "str"; expected "int"
+d3 = dict(it, x='') # type: Dict[str, int] # E: Argument "x" to "dict" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndKeywordArg2]
