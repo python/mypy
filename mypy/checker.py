@@ -1254,6 +1254,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
 
+            for decorator in defn.decorators:
+                # Currently this only checks that the decorator itself is well typed.
+                # TODO: Check that applying the decorator to the class would do the right thing.
+                self.expr_checker.accept(decorator)
+
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
         variances of type variables.

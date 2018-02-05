@@ -4115,7 +4115,7 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Invalid base class
 class C2(C1, six.with_metaclass(M)): pass  # E: Invalid base class
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported
+@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported  # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]"
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
 @six.add_metaclass(M)  # E: Multiple metaclass definitions
@@ -4223,3 +4223,12 @@ class C(Any):
         reveal_type(self.bar().__name__) # E: Revealed type is 'builtins.str'
 [builtins fixtures/type.pyi]
 [out]
+
+[case testClassDecoratorIsTypeChecked]
+from typing import Callable
+def decorate(x: int) -> Callable[[type], type]:  # N: "decorate" defined here
+    ...
+
+@decorate(y=17)  # E: Unexpected keyword argument "y" for "decorate"
+class A:
+    pass
