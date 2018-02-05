@@ -3466,3 +3466,65 @@ tmp/main.py:2: error: Expression has type "Any"
 
 [out2]
 tmp/main.py:2: error: Expression has type "Any"
+
+[case testAttrsIncrementalSubclassingCached]
+from a import A
+import attr
+@attr.s
+class B(A):
+    pass
+reveal_type(B)
+[file a.py]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib()
+
+[out1]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+[out2]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[builtins fixtures/list.pyi]
+
+[case testAttrsIncrementalSubclassingCachedConverter]
+from a import A
+import attr
+@attr.s
+class B(A):
+    pass
+reveal_type(B)
+[file a.py]
+def converter(s:int) -> str:
+    return 'hello'
+
+import attr
+@attr.s
+class A:
+    x: str = attr.ib(converter=converter)
+
+[out1]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+[out2]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+[builtins fixtures/list.pyi]
+
+[case testAttrsIncrementalSubclassingCachedType]
+from a import A
+import attr
+@attr.s
+class B(A):
+    pass
+reveal_type(B)
+[file a.py]
+import attr
+@attr.s
+class A:
+    x = attr.ib(type=int)
+
+[out1]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+[out2]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[builtins fixtures/list.pyi]

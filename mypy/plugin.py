@@ -2,12 +2,12 @@
 
 from abc import abstractmethod
 from functools import partial
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
 import mypy.attrs_plugin
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
-    TypeInfo
+    TypeInfo, SymbolTableNode
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
@@ -87,6 +87,10 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def class_type(self, info: TypeInfo) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         raise NotImplementedError
 
 
@@ -260,10 +264,6 @@ class ChainedPlugin(Plugin):
 class DefaultPlugin(Plugin):
     """Type checker plugin that is enabled by default."""
 
-    def __init__(self, options: Options) -> None:
-        super().__init__(options)
-        self._attr_classes = {}  # type: Dict[TypeInfo, List[mypy.attrs_plugin.Attribute]]
-
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         if fullname == 'contextlib.contextmanager':
@@ -289,14 +289,10 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         if fullname in mypy.attrs_plugin.attr_class_makers:
-            return partial(
-                mypy.attrs_plugin.attr_class_maker_callback,
-                self._attr_classes
-            )
+            return mypy.attrs_plugin.attr_class_maker_callback
         elif fullname in mypy.attrs_plugin.attr_dataclass_makers:
             return partial(
                 mypy.attrs_plugin.attr_class_maker_callback,
-                self._attr_classes,
                 auto_attribs_default=True
             )
         return None

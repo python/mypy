@@ -8,7 +8,7 @@ from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
     is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
-    PassStmt, SymbolTableNode, MDEF
+    PassStmt, SymbolTableNode, MDEF, JsonDict
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
@@ -36,30 +36,63 @@ attr_attrib_makers = {
 class Attribute:
     """The value of an attr.ib() call."""
 
-    def __init__(self, name: str, type: Optional[Type],
-                 has_default: bool, init: bool,
+    def __init__(self, name: str, init_type: Optional[Type],
+                 has_default: bool, init: bool, converter_name: Optional[str],
                  context: Context) -> None:
         self.name = name
-        self.type = type
+        self.init_type = init_type
         self.has_default = has_default
         self.init = init
+        self.converter_name = converter_name
         self.context = context
 
     def argument(self) -> Argument:
         """Return this attribute as an argument to __init__."""
         # Convert type not set to Any.
-        _type = self.type or AnyType(TypeOfAny.unannotated)
+        init_type = self.init_type or AnyType(TypeOfAny.unannotated)
         # Attrs removes leading underscores when creating the __init__ arguments.
-        return Argument(Var(self.name.lstrip("_"), _type), _type,
+        return Argument(Var(self.name.lstrip("_"), init_type), init_type,
                         None,
                         ARG_OPT if self.has_default else ARG_POS)
 
+    def serialize(self) -> JsonDict:
+        """Serialize this object so it can be saved and restored."""
+        return {
+            'name': self.name,
+            'has_default': self.has_default,
+            'init': self.init,
+            'converter_name': self.converter_name,
+            'context_line': self.context.line,
+            'context_column': self.context.column,
+        }
 
-def attr_class_maker_callback(
-        attr_classes: Dict[TypeInfo, List[Attribute]],
-        ctx: 'mypy.plugin.ClassDefContext',
-        auto_attribs_default: bool = False
-) -> None:
+    @classmethod
+    def deserialize(cls, ctx: 'mypy.plugin.ClassDefContext',
+                    info: TypeInfo, data: JsonDict) -> 'Attribute':
+        """Return the Attribute that was serialized."""
+        attrib = info.get(data['name'])
+        assert attrib is not None
+        init_type = attrib.type
+        if data['converter_name']:
+            # When a converter is set the init_type was overriden.
+            converter = ctx.api.lookup_fully_qualified(data['converter_name'])
+            if (converter
+                    and converter.type
+                    and isinstance(converter.type, CallableType)
+                    and converter.type.arg_types):
+                init_type = converter.type.arg_types[0]
+        return Attribute(
+            data['name'],
+            init_type,
+            data['has_default'],
+            data['init'],
+            data['converter_name'],
+            Context(line=data['context_line'], column=data['context_column'])
+        )
+
+
+def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
+                              auto_attribs_default: bool = False) -> None:
     """Add necessary dunder methods to classes decorated with attr.s.
 
     attrs is a package that lets you define classes without writing dull boilerplate code.
@@ -153,18 +186,18 @@ def attr_class_maker_callback(
 
     # Traverse the MRO and collect attributes from the parents.
     for super_info in info.mro[1:-1]:
-        if super_info in attr_classes:
-            for a in attr_classes[super_info]:
+        if 'attrs' in super_info.metadata:
+            for data in super_info.metadata['attrs']['attributes']:
                 # Only add an attribute if it hasn't been defined before.  This
                 # allows for overwriting attribute definitions by subclassing.
-                if a.name not in taken_attr_names:
+                if data['name'] not in taken_attr_names:
+                    a = Attribute.deserialize(ctx, super_info, data)
                     super_attrs.append(a)
                     taken_attr_names.add(a.name)
 
     attributes = super_attrs + list(own_attrs.values())
     # Save the attributes so that subclasses can reuse them.
-    # TODO: This doesn't work with incremental mode if the parent class is in a different file.
-    attr_classes[info] = attributes
+    info.metadata['attrs'] = {'attributes': [attr.serialize() for attr in attributes]}
 
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
@@ -193,7 +226,7 @@ def _attribute_from_auto_attrib(lhs: NameExpr,
     """Return an Attribute for a new type assignment."""
     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
     has_rhs = not isinstance(rvalue, TempNode)
-    return Attribute(lhs.name, stmt.type, has_rhs, True, stmt)
+    return Attribute(lhs.name, stmt.type, has_rhs, True, None, stmt)
 
 
 def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
@@ -212,7 +245,8 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         ctx.api.fail("Too many names for one attribute", stmt)
         return None
 
-    typ = stmt.type
+    # This is the type that belongs in the __init__ method for this attrib.
+    init_type = stmt.type
 
     # Read all the arguments from the call.
     init = _get_bool_argument(ctx, rvalue, 'init', True)
@@ -221,16 +255,16 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
 
     # If the type isn't set through annotation but is passed through `type=` use that.
     type_arg = _get_argument(rvalue, 'type')
-    if type_arg and not typ:
+    if type_arg and not init_type:
         try:
             un_type = expr_to_unanalyzed_type(type_arg)
         except TypeTranslationError:
             ctx.api.fail('Invalid argument to type', type_arg)
         else:
-            typ = ctx.api.anal_type(un_type)
-            if typ and isinstance(lhs.node, Var) and not lhs.node.type:
+            init_type = ctx.api.anal_type(un_type)
+            if init_type and isinstance(lhs.node, Var) and not lhs.node.type:
                 # If there is no annotation, add one.
-                lhs.node.type = typ
+                lhs.node.type = init_type
                 lhs.is_inferred_def = False
 
     # If the attrib has a converter function take the type of the first argument as the init type.
@@ -242,16 +276,12 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert
-    if (converter
-            and isinstance(converter, RefExpr)
-            and converter.node
-            and isinstance(converter.node, FuncBase)
-            and converter.node.type
-            and isinstance(converter.node.type, CallableType)
-            and converter.node.type.arg_types):
-        typ = converter.node.type.arg_types[0]
+    converter_name, converter_first_arg_type = get_converter_name_and_type(converter)
+    if converter_first_arg_type:
+        # When there is a converter set, use the first arg as the type for the init.
+        init_type = converter_first_arg_type
 
-    if ctx.api.options.disallow_untyped_defs and not typ:
+    if ctx.api.options.disallow_untyped_defs and not init_type:
         # This is a compromise.  If you don't have a type here then the
         # __init__ will be untyped. But since the __init__ is added it's
         # pointing at the decorator. So instead we also show the error in the
@@ -259,7 +289,21 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
         assert lhs.node is not None
         ctx.api.msg.need_annotation_for_var(lhs.node, stmt)
 
-    return Attribute(lhs.name, typ, attr_has_default, init, stmt)
+    return Attribute(lhs.name, init_type, attr_has_default, init, converter_name, stmt)
+
+
+def get_converter_name_and_type(converter: Optional[Expression]
+                                ) -> Tuple[Optional[str], Optional[Type]]:
+    """Extract the name of the converter and the type of the first argument."""
+    if (converter
+            and isinstance(converter, RefExpr)
+            and converter.node
+            and isinstance(converter.node, FuncBase)
+            and converter.node.type
+            and isinstance(converter.node.type, CallableType)
+            and converter.node.type.arg_types):
+        return converter.node.fullname(), converter.node.type.arg_types[0]
+    return None, None
 
 
 def _parse_assignments(
