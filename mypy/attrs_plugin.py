@@ -1,6 +1,6 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 from collections import OrderedDict
-from typing import Optional, Dict, List, cast, Tuple
+from typing import Optional, Dict, List, cast, Tuple, Iterable
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -106,7 +106,9 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     """
     info = ctx.cls.info
 
-    # auto_attribs means we also generate Attributes from annotated variables.
+    init = _get_decorator_bool_argument(ctx, 'init', True)
+    frozen = _get_decorator_bool_argument(ctx, 'frozen', False)
+    cmp = _get_decorator_bool_argument(ctx, 'cmp', True)
     auto_attribs = _get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
 
     if ctx.api.options.python_version[0] < 3:
@@ -114,78 +116,42 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
             return
         if not info.defn.base_type_exprs:
-            # Note: This does not catch subclassing old-style classes.
+            # Note: This will not catch subclassing old-style classes.
             ctx.api.fail("attrs only works with new-style classes", info.defn)
             return
 
-    # First, walk the body looking for attribute definitions.
-    # They will look like this:
-    #     x = attr.ib()
-    #     x = y = attr.ib()
-    #     x, y = attr.ib(), attr.ib()
-    # or if auto_attribs is enabled also like this:
-    #     x: type
-    #     x: type = default_value
+    attributes = _analyze_class(ctx, auto_attribs)
+
+    adder = MethodAdder(info, ctx.api.named_type('__builtins__.function'))
+    if init:
+        _add_init(ctx, attributes, adder)
+    if cmp:
+        _add_cmp(ctx, adder)
+    if frozen:
+        _make_frozen(ctx, attributes)
+
+
+def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> List[Attribute]:
+    """Analyze the class body of an attr maker, its parents, and return the Attributes found."""
     own_attrs = OrderedDict()  # type: OrderedDict[str, Attribute]
+    # Walk the body looking for assignments and decorators.
     for stmt in ctx.cls.defs.body:
         if isinstance(stmt, AssignmentStmt):
-            for lvalue in stmt.lvalues:
-                lvalues, rvalues = _parse_assignments(lvalue, stmt)
-
-                if len(lvalues) != len(rvalues):
-                    # This means we have some assignment that isn't 1 to 1.
-                    # It can't be an attrib.
-                    continue
-
-                for lhs, rvalue in zip(lvalues, rvalues):
-                    # Check if the right hand side is a call to an attribute maker.
-                    if (isinstance(rvalue, CallExpr)
-                            and isinstance(rvalue.callee, RefExpr)
-                            and rvalue.callee.fullname in attr_attrib_makers):
-                        attr = _attribute_from_attrib_maker(ctx, auto_attribs, lhs,
-                                                            rvalue, stmt)
-                        if attr:
-                            # When attrs are defined twice in the same body we want to use
-                            # the 2nd definition in the 2nd location. So remove it from the
-                            # OrderedDict.  auto_attribs doesn't work that way.
-                            if not auto_attribs and attr.name in own_attrs:
-                                del own_attrs[attr.name]
-                            own_attrs[attr.name] = attr
-                    elif auto_attribs and stmt.type and stmt.new_syntax and not is_class_var(lhs):
-                        attr_auto = _attribute_from_auto_attrib(lhs, rvalue, stmt)
-                        own_attrs[attr_auto.name] = attr_auto
-
+            for attr in _attributes_from_assignment(ctx, stmt, auto_attribs):
+                # When attrs are defined twice in the same body we want to use the 2nd definition
+                # in the 2nd location. So remove it from the OrderedDict.
+                # Unless it's auto_attribs in which case we want the 2nd definition in the
+                # 1st location.
+                if not auto_attribs and attr.name in own_attrs:
+                    del own_attrs[attr.name]
+                own_attrs[attr.name] = attr
         elif isinstance(stmt, Decorator):
-            # Look for attr specific decorators.  ('x.default' and 'x.validator')
-            remove_me = []
-            for func_decorator in stmt.decorators:
-                if (isinstance(func_decorator, MemberExpr)
-                        and isinstance(func_decorator.expr, NameExpr)
-                        and func_decorator.expr.name in own_attrs):
-
-                    if func_decorator.name == 'default':
-                        # This decorator lets you set a default after the fact.
-                        own_attrs[func_decorator.expr.name].has_default = True
-
-                    if func_decorator.name in ('default', 'validator'):
-                        # These are decorators on the attrib object that only exist during
-                        # class creation time.  In order to not trigger a type error later we
-                        # just remove them.  This might leave us with a Decorator with no
-                        # decorators (Emperor's new clothes?)
-                        # TODO: It would be nice to type-check these rather than remove them.
-                        #       default should be Callable[[], T]
-                        #       validator should be Callable[[Any, 'Attribute', T], Any]
-                        #       where T is the type of the attribute.
-                        remove_me.append(func_decorator)
-
-            for dec in remove_me:
-                stmt.decorators.remove(dec)
-
-    taken_attr_names = set(own_attrs)
-    super_attrs = []
+            _cleanup_decorator(stmt, own_attrs)
 
     # Traverse the MRO and collect attributes from the parents.
-    for super_info in info.mro[1:-1]:
+    taken_attr_names = set(own_attrs)
+    super_attrs = []
+    for super_info in ctx.cls.info.mro[1:-1]:
         if 'attrs' in super_info.metadata:
             for data in super_info.metadata['attrs']['attributes']:
                 # Only add an attribute if it hasn't been defined before.  This
@@ -194,30 +160,83 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                     a = Attribute.deserialize(ctx, super_info, data)
                     super_attrs.append(a)
                     taken_attr_names.add(a.name)
-
     attributes = super_attrs + list(own_attrs.values())
+
     # Save the attributes so that subclasses can reuse them.
-    info.metadata['attrs'] = {'attributes': [attr.serialize() for attr in attributes]}
+    ctx.cls.info.metadata['attrs'] = {'attributes': [attr.serialize() for attr in attributes]}
 
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
     last_default = False
     for attribute in attributes:
-        if not attribute.has_default and last_default:
+        if attribute.init and not attribute.has_default and last_default:
             ctx.api.fail(
                 "Non-default attributes not allowed after default attributes.",
                 attribute.context)
         last_default = attribute.has_default
 
-    adder = MethodAdder(info, ctx.api.named_type('__builtins__.function'))
-    if _get_decorator_bool_argument(ctx, 'init', True):
-        _add_init(ctx, attributes, adder)
+    return attributes
 
-    if _get_decorator_bool_argument(ctx, 'frozen', False):
-        _make_frozen(ctx, attributes)
 
-    if _get_decorator_bool_argument(ctx, 'cmp', True):
-        _make_cmp(ctx, adder)
+def _attributes_from_assignment(ctx: 'mypy.plugin.ClassDefContext',
+                                stmt: AssignmentStmt, auto_attribs: bool) -> Iterable[Attribute]:
+    """Return Attribute objects that are created by this assignment.
+
+    The assignments can look like this:
+        x = attr.ib()
+        x = y = attr.ib()
+        x, y = attr.ib(), attr.ib()
+    or if auto_attribs is enabled also like this:
+        x: type
+        x: type = default_value
+    """
+    for lvalue in stmt.lvalues:
+        lvalues, rvalues = _parse_assignments(lvalue, stmt)
+
+        if len(lvalues) != len(rvalues):
+            # This means we have some assignment that isn't 1 to 1.
+            # It can't be an attrib.
+            continue
+
+        for lhs, rvalue in zip(lvalues, rvalues):
+            # Check if the right hand side is a call to an attribute maker.
+            if (isinstance(rvalue, CallExpr)
+                    and isinstance(rvalue.callee, RefExpr)
+                    and rvalue.callee.fullname in attr_attrib_makers):
+                attr = _attribute_from_attrib_maker(ctx, auto_attribs, lhs, rvalue, stmt)
+                if attr:
+                    yield attr
+            elif auto_attribs and stmt.type and stmt.new_syntax and not is_class_var(lhs):
+                yield _attribute_from_auto_attrib(lhs, rvalue, stmt)
+
+
+def _cleanup_decorator(stmt: Decorator, attr_map: Dict[str, Attribute]) -> None:
+    """Handle decorators in class bodies.
+
+    `x.default` will set a default value on x
+    `x.validator` and `x.default` will get removed to avoid throwing a type error.
+    """
+    remove_me = []
+    for func_decorator in stmt.decorators:
+        if (isinstance(func_decorator, MemberExpr)
+                and isinstance(func_decorator.expr, NameExpr)
+                and func_decorator.expr.name in attr_map):
+
+            if func_decorator.name == 'default':
+                attr_map[func_decorator.expr.name].has_default = True
+
+            if func_decorator.name in ('default', 'validator'):
+                # These are decorators on the attrib object that only exist during
+                # class creation time.  In order to not trigger a type error later we
+                # just remove them.  This might leave us with a Decorator with no
+                # decorators (Emperor's new clothes?)
+                # TODO: It would be nice to type-check these rather than remove them.
+                #       default should be Callable[[], T]
+                #       validator should be Callable[[Any, 'Attribute', T], Any]
+                #       where T is the type of the attribute.
+                remove_me.append(func_decorator)
+    for dec in remove_me:
+        stmt.decorators.remove(dec)
 
 
 def _attribute_from_auto_attrib(lhs: NameExpr,
@@ -323,7 +342,7 @@ def _parse_assignments(
     return lvalues, rvalues
 
 
-def _make_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
+def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     """Generate all the cmp methods for this class."""
     # For __ne__ and __eq__ the type is:
     #     def __ne__(self, other: object) -> bool
