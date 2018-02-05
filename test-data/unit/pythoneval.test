@@ -1463,20 +1463,19 @@ _testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builti
 from enum import Enum
 class E(Enum):
     A = 'a'
-l = [e for e in E]
-reveal_type(l[0])
+(reveal_type(e) for e in E)
 for e in E:
     reveal_type(e)
 [out]
-_testEnumIteration.py:5: error: Revealed type is '_testEnumIteration.E*'
-_testEnumIteration.py:7: error: Revealed type is '_testEnumIteration.E*'
+_testEnumIteration.py:4: error: Revealed type is '_testEnumIteration.E*'
+_testEnumIteration.py:6: error: Revealed type is '_testEnumIteration.E*'
 
 [case testEnumIterable]
 from enum import Enum
 from typing import Iterable
 class E(Enum):
-    a = 'a'
-def f(ie:Iterable[E]):
+    A = 'a'
+def f(ie: Iterable[E]):
     pass
 f(E)
 
@@ -1484,7 +1483,7 @@ f(E)
 from enum import IntEnum
 from typing import Iterable
 class N(IntEnum):
-    x = 1
+    X = 1
 def f(ni: Iterable[N]):
     pass
 def g(ii: Iterable[int]):
@@ -1496,7 +1495,7 @@ g(N)
 from enum import Enum
 from typing import Iterable
 class E(str, Enum):
-    a = 'foo'
+    A = 'foo'
 def f(ei: Iterable[E]):
     pass
 def g(si: Iterable[str]):
