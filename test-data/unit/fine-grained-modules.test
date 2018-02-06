@@ -245,7 +245,6 @@ from p import q
 main:1: error: Cannot find module named 'p.q'
 -- TODO: The following messages are different compared to non-incremental mode
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:1: error: Module 'p' has no attribute 'q'
 ==
 
 [case testDeletionOfSubmoduleTriggersImportFrom2]

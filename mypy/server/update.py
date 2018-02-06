@@ -378,7 +378,7 @@ def update_single_isolated(module: str,
     sources = get_sources(previous_modules, [(module, path)])
     invalidate_stale_cache_entries(manager.saved_cache, [(module, path)])
 
-    manager.missing_modules = set()
+    manager.missing_modules.clear()
     try:
         graph = load_graph(sources, manager)
     except CompileError as err:
@@ -497,7 +497,8 @@ def delete_module(module_id: str,
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     assert module_id not in graph
     new_graph = graph.copy()
-    del manager.modules[module_id]
+    if module_id in manager.modules:
+        del manager.modules[module_id]
     if module_id in manager.saved_cache:
         del manager.saved_cache[module_id]
     components = module_id.split('.')
