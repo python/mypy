@@ -40,7 +40,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound, type_object_type
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
@@ -1254,10 +1254,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
 
-            for decorator in defn.decorators:
-                # Currently this only checks that the decorator itself is well typed.
-                # TODO: Check that applying the decorator to the class would do the right thing.
-                self.expr_checker.accept(decorator)
+            if defn.decorators:
+                sig = type_object_type(defn.info, self.named_type)
+                # Decorators are applied in reverse order.
+                for decorator in reversed(defn.decorators):
+                    if (isinstance(decorator, CallExpr)
+                            and isinstance(decorator.analyzed, PromoteExpr)):
+                        continue
+
+                    dec = self.expr_checker.accept(decorator)
+                    temp = self.temp_node(sig)
+                    fullname = None
+                    if isinstance(decorator, RefExpr):
+                        fullname = decorator.fullname
+
+                    sig, t2 = self.expr_checker.check_call(dec, [temp],
+                                                           [nodes.ARG_POS], defn,
+                                                           callable_name=fullname)
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared

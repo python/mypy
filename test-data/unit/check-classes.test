@@ -4236,8 +4236,15 @@ def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
 @decorate(22, 25)  # E: Too many arguments for "decorate"
 @decorate_forward_ref()
 @decorate(11)
-class A:
-    pass
+class A: pass
+
+@decorate  # E: Argument 1 to "decorate" has incompatible type "Type[A2]"; expected "int"
+class A2: pass
+
+[case testClassDecoratorIncorrect]
+def not_a_class_decorator(x: int) -> int: ...
+@not_a_class_decorator(7)  # E: "int" not callable
+class A3: pass
 
 not_a_function = 17
 @not_a_function()  # E: "int" not callable
@@ -4249,5 +4256,3 @@ class C: pass
 
 @undefined         # E: Name 'undefined' is not defined
 class D: pass
-
-
