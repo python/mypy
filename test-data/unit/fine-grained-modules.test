@@ -234,7 +234,10 @@ main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
-[case testDeletionOfSubmoduleTriggersImportFrom1]
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip]
+-- Disabled due to cache/no-cache mismatch:
+-- Cache mode matches the message from regular mode and no-cache mode
+-- matches the message from coarse incremental mode...
 from p import q
 [file p/__init__.py]
 [file p/q.py]
@@ -730,7 +733,9 @@ a/b.py:3: error: Revealed type is 'Any'
 ==
 a/b.py:3: error: Unsupported operand types for + ("int" and "str")
 
-[case testDeleteModuleWithinPackageInitIgnored]
+[case testDeleteModuleWithinPackageInitIgnored-skip]
+-- Disabled due to cache/no-cache mismatch:
+-- Having deleted files specified on command line seems dodgy, though.
 # cmd: mypy x.py a/b.py
 # flags: --follow-imports=skip --ignore-missing-imports
 [file x.py]

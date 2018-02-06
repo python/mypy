@@ -43,15 +43,30 @@ class FineGrainedSuite(DataSuite):
     optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        self.run_case_inner(testcase, cache=False)
+
+        # Reset the test case and run it again with caching on
+        testcase.teardown()
+        testcase.setup()
+        self.run_case_inner(testcase, cache=True)
+
+    def run_case_inner(self, testcase: DataDrivenTestCase, cache: bool) -> None:
+        # TODO: In caching mode we currently don't well support
+        # starting from cached states with errors in them.
+        if cache and testcase.output and testcase.output[0] != '==': return
+
         main_src = '\n'.join(testcase.input)
         sources_override = self.parse_sources(main_src)
-        messages, manager, graph = self.build(main_src, testcase, sources_override)
-
+        print("Testing with cache: ", cache)
+        messages, manager, graph = self.build(main_src, testcase, sources_override,
+                                              build_cache=cache, enable_cache=cache)
         a = []
         if messages:
             a.extend(normalize_messages(messages))
 
-        fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        fine_grained_manager = None
+        if not cache:
+            fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
         steps = testcase.find_steps()
         all_triggered = []
@@ -70,6 +85,15 @@ class FineGrainedSuite(DataSuite):
                 modules = [(module, path)
                            for module, path in sources_override
                            if any(m == module for m, _ in modules)]
+
+            # If this is the second iteration and we are using a
+            # cache, now we need to set it up
+            if fine_grained_manager is None:
+                messages, manager, graph = self.build(main_src, testcase, sources_override,
+                                                      build_cache=False, enable_cache=cache)
+                manager.options.cache_dir = os.devnull  # XXX: HACK
+                fine_grained_manager = FineGrainedBuildManager(manager, graph)
+
             new_messages = fine_grained_manager.update(modules)
             all_triggered.append(fine_grained_manager.triggered)
             new_messages = normalize_messages(new_messages)
@@ -80,10 +104,11 @@ class FineGrainedSuite(DataSuite):
         # Normalize paths in test output (for Windows).
         a = [line.replace('\\', '/') for line in a]
 
+        modestr = "in cache mode " if cache else ""
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            'Invalid output {}({}, line {})'.format(
+                modestr, testcase.file, testcase.line))
 
         if testcase.triggered:
             assert_string_arrays_equal(
@@ -95,14 +120,18 @@ class FineGrainedSuite(DataSuite):
     def build(self,
               source: str,
               testcase: DataDrivenTestCase,
-              sources_override: Optional[List[Tuple[str, str]]]) -> Tuple[List[str],
-                                                                          BuildManager,
-                                                                          Graph]:
+              sources_override: Optional[List[Tuple[str, str]]],
+              build_cache: bool,
+              enable_cache: bool) -> Tuple[List[str], BuildManager, Graph]:
         # This handles things like '# flags: --foo'.
         options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.fine_grained_incremental = not build_cache
+        options.use_fine_grained_cache = enable_cache and not build_cache
+        options.cache_fine_grained = enable_cache
+
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w') as f:
             f.write(source)
