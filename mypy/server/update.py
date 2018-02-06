@@ -170,6 +170,10 @@ class FineGrainedBuildManager:
         self.blocking_error = None  # type: Optional[Tuple[str, str]]
         # Module that we haven't processed yet but that are known to be stale.
         self.stale = []  # type: List[Tuple[str, str]]
+        # Disable the cache so that load_graph doesn't try going back to disk
+        # for the cache. This is kind of a hack and it might be better to have
+        # this directly reflected in load_graph's interface.
+        self.options.cache_dir = os.devnull
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
         self.type_maps = extract_type_maps(graph)
@@ -319,9 +323,7 @@ def mark_all_meta_as_memory_only(graph: Dict[str, State],
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
                          options: Options) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
-    if not options.use_fine_grained_cache:
-        for state in graph.values():
-            state.compute_fine_grained_deps()
+    # Deps for each module were computed during build() or loaded from the cache.
     deps = {}  # type: Dict[str, Set[str]]
     collect_dependencies(manager.modules, deps, graph)
     return deps
@@ -717,6 +719,11 @@ def propagate_changes_using_dependencies(
         triggered: Set[str],
         up_to_date_modules: Set[str],
         targets_with_errors: Set[str]) -> List[Tuple[str, str]]:
+    """Transitively rechecks targets based on triggers and the dependency map.
+
+    Returns a list (module id, path) tuples representing modules that contain
+    a target that needs to be reprocessed but that has not been parsed yet."""
+
     # TODO: Multiple type checking passes
     num_iter = 0
     remaining_modules = []
@@ -743,10 +750,10 @@ def propagate_changes_using_dependencies(
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            # TODO: Is there a better way to detect that the file isn't loaded?
-            if not manager.modules[id].defs:
-                # We haven't actually loaded this file! Add it to the
-                # queue of files that need to be processed fully.
+            if manager.modules[id].is_cache_skeleton:
+                # We have only loaded the cache for this file, not the actual file,
+                # so we can't access the nodes to reprocess.
+                # Add it to the queue of files that need to be processed fully.
                 remaining_modules.append((id, manager.modules[id].path))
             else:
                 triggered |= reprocess_nodes(manager, graph, id, nodes, deps)

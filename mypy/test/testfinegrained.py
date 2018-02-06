@@ -91,7 +91,6 @@ class FineGrainedSuite(DataSuite):
             if fine_grained_manager is None:
                 messages, manager, graph = self.build(main_src, testcase, sources_override,
                                                       build_cache=False, enable_cache=cache)
-                manager.options.cache_dir = os.devnull  # XXX: HACK
                 fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
             new_messages = fine_grained_manager.update(modules)

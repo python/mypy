@@ -99,6 +99,7 @@ class ASTMergeSuite(DataSuite):
     def build(self, source: str) -> Tuple[List[str], Optional[BuildManager], Dict[str, State]]:
         options = Options()
         options.incremental = True
+        options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
         main_path = os.path.join(test_temp_dir, 'main')

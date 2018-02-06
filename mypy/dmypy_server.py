@@ -265,7 +265,6 @@ class Server:
         messages = result.errors
         manager = result.manager
         graph = result.graph
-        manager.options.cache_dir = os.devnull  # XXX: HACK
         self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
         self.fine_grained_initialized = True
         self.previous_sources = sources

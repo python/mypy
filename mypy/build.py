@@ -1132,6 +1132,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
 
+    # When we are using a fine-grained cache, we want our initial
+    # build() to load all of the cache information and then do a
+    # fine-grained incremental update to catch anything that has
+    # changed since the cache was generated. We *don't* want to do a
+    # coarse-grained incremental rebuild, so we accept the cache
+    # metadata even if it doesn't match the source file.
     if manager.options.use_fine_grained_cache:
         manager.log('Using potentially stale metadata for {}'.format(id))
         return meta
@@ -2389,7 +2395,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             process_stale_scc(graph, scc, manager)
 
     # If we are running in fine-grained incremental mode with caching,
-    # we need to always process fresh SCCs.
+    # we always process fresh SCCs so that we have all of the symbol
+    # tables and fine-grained dependencies available.
     if manager.options.use_fine_grained_cache:
         for prev_scc in fresh_scc_queue:
             process_fresh_scc(graph, prev_scc, manager)
@@ -2581,7 +2588,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
             graph[id].transitive_error = True
     for id in stale:
         graph[id].finish_passes()
-        if manager.options.cache_fine_grained:
+        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
             graph[id].compute_fine_grained_deps()
         graph[id].generate_unused_ignore_notes()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
