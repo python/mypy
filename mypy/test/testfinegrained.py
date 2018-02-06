@@ -30,6 +30,7 @@ from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
+import pytest  # type: ignore  # no pytest in typeshed
 
 
 class FineGrainedSuite(DataSuite):
@@ -41,31 +42,40 @@ class FineGrainedSuite(DataSuite):
     ]
     base_path = test_temp_dir
     optional_out = True
+    # Whether to use the fine-grained cache in the testing. This is overridden
+    # by a trivial subclass to produce a suite that uses the cache.
+    use_cache = False
+
+    # Decide whether to skip the test. This could have been structured
+    # as a filter() classmethod also, but we want the tests reported
+    # as skipped, not just elided.
+    def should_skip(self, testcase: DataDrivenTestCase) -> bool:
+        if self.use_cache:
+            if testcase.name.endswith("-skip-cache"): return True
+            # TODO: In caching mode we currently don't well support
+            # starting from cached states with errors in them.
+            if testcase.output and testcase.output[0] != '==': return True
+        else:
+            if testcase.name.endswith("-skip-nocache"): return True
+
+        return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        self.run_case_inner(testcase, cache=False)
-
-        # Reset the test case and run it again with caching on
-        testcase.teardown()
-        testcase.setup()
-        self.run_case_inner(testcase, cache=True)
-
-    def run_case_inner(self, testcase: DataDrivenTestCase, cache: bool) -> None:
-        # TODO: In caching mode we currently don't well support
-        # starting from cached states with errors in them.
-        if cache and testcase.output and testcase.output[0] != '==': return
+        if self.should_skip(testcase):
+            pytest.skip()
+            return
 
         main_src = '\n'.join(testcase.input)
         sources_override = self.parse_sources(main_src)
-        print("Testing with cache: ", cache)
         messages, manager, graph = self.build(main_src, testcase, sources_override,
-                                              build_cache=cache, enable_cache=cache)
+                                              build_cache=self.use_cache,
+                                              enable_cache=self.use_cache)
         a = []
         if messages:
             a.extend(normalize_messages(messages))
 
         fine_grained_manager = None
-        if not cache:
+        if not self.use_cache:
             fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
         steps = testcase.find_steps()
@@ -90,7 +100,7 @@ class FineGrainedSuite(DataSuite):
             # cache, now we need to set it up
             if fine_grained_manager is None:
                 messages, manager, graph = self.build(main_src, testcase, sources_override,
-                                                      build_cache=False, enable_cache=cache)
+                                                      build_cache=False, enable_cache=True)
                 fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
             new_messages = fine_grained_manager.update(modules)
@@ -103,11 +113,10 @@ class FineGrainedSuite(DataSuite):
         # Normalize paths in test output (for Windows).
         a = [line.replace('\\', '/') for line in a]
 
-        modestr = "in cache mode " if cache else ""
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output {}({}, line {})'.format(
-                modestr, testcase.file, testcase.line))
+            'Invalid output ({}, line {})'.format(
+                testcase.file, testcase.line))
 
         if testcase.triggered:
             assert_string_arrays_equal(

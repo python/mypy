@@ -286,8 +286,8 @@ main:5: error: Module has no attribute "B"
 ==
 main:5: error: Module has no attribute "B"
 
-[case testContinueToReportErrorAtTopLevel-skip]
--- Disabled due to cache/no-cache mismatch:
+[case testContinueToReportErrorAtTopLevel-skip-cache]
+-- Different cache/no-cache tests because:
 -- Error message ordering differs
 import n
 import m
@@ -308,6 +308,31 @@ class A:
 ==
 main:3: error: "A" has no attribute "f"
 n.py:2: error: "A" has no attribute "g"
+==
+n.py:2: error: "A" has no attribute "g"
+
+[case testContinueToReportErrorAtTopLevel-skip-nocache]
+-- Different cache/no-cache tests because:
+-- Error message ordering differs
+import n
+import m
+m.A().f()
+[file n.py]
+import m
+m.A().g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+n.py:2: error: "A" has no attribute "g"
+main:3: error: "A" has no attribute "f"
 ==
 n.py:2: error: "A" has no attribute "g"
 
