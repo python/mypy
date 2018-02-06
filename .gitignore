@@ -14,7 +14,6 @@ docs/build/
 .cache
 .runtest_log.json
 dmypy.json
-.pytest_cache/
 
 # Packages
 *.egg
