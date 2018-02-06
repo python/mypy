@@ -4226,22 +4226,28 @@ class C(Any):
 [out]
 
 [case testClassDecoratorIsTypeChecked]
-from typing import Callable
+from typing import Callable, Type
 def decorate(x: int) -> Callable[[type], type]:  # N: "decorate" defined here
     ...
-def decorate_forward_ref() -> Callable[['A'], 'A']:
+def decorate_forward_ref() -> Callable[[Type[A]], Type[A]]:
     ...
-not_a_function = 17
-class B: pass
-b = B()
-
 @decorate(y=17)    # E: Unexpected keyword argument "y" for "decorate"
 @decorate()        # E: Too few arguments for "decorate"
 @decorate(22, 25)  # E: Too many arguments for "decorate"
-@not_a_function()  # E: "int" not callable
-@b.nothing         # E: "B" has no attribute "nothing"
-@undefined         # E: Name 'undefined' is not defined
-@decorate(5)
 @decorate_forward_ref()
+@decorate(11)
 class A:
     pass
+
+not_a_function = 17
+@not_a_function()  # E: "int" not callable
+class B: pass
+
+b = object()
+@b.nothing         # E: "object" has no attribute "nothing"
+class C: pass
+
+@undefined         # E: Name 'undefined' is not defined
+class D: pass
+
+
