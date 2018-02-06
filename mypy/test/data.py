@@ -2,6 +2,7 @@
 
 import os.path
 import os
+import tempfile
 import posixpath
 import re
 from os import remove, rmdir
@@ -11,7 +12,6 @@ from abc import abstractmethod
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
-from mypy.myunit import BaseTestCase
 from mypy.test.config import test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -192,7 +192,7 @@ def parse_test_cases(
     return out
 
 
-class DataDrivenTestCase(BaseTestCase):
+class DataDrivenTestCase:
     """Holds parsed data and handles directory setup and teardown for MypyDataCase."""
 
     # TODO: rename to ParsedTestCase or merge with MypyDataCase (yet avoid multiple inheritance)
@@ -229,7 +229,9 @@ class DataDrivenTestCase(BaseTestCase):
                  native_sep: bool = False,
                  triggered: Optional[List[str]] = None,
                  ) -> None:
-        super().__init__(name)
+        self.name = name
+        self.old_cwd = None  # type: Optional[str]
+        self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
         self.input = input
         self.output = output
         self.output2 = output2
@@ -245,7 +247,10 @@ class DataDrivenTestCase(BaseTestCase):
         self.triggered = triggered or []
 
     def setup(self) -> None:
-        super().setup()
+        self.old_cwd = os.getcwd()
+        self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
+        os.chdir(self.tmpdir.name)
+        os.mkdir('tmp')
         encountered_files = set()
         self.clean_up = []
         for paths in self.deleted_paths.values():
@@ -321,7 +326,15 @@ class DataDrivenTestCase(BaseTestCase):
                     if path.startswith(test_temp_dir + '/') and os.path.isdir(path):
                         shutil.rmtree(path)
                     raise
-        super().teardown()
+        assert self.old_cwd is not None and self.tmpdir is not None, \
+            "test was not properly set up"
+        os.chdir(self.old_cwd)
+        try:
+            self.tmpdir.cleanup()
+        except OSError:
+            pass
+        self.old_cwd = None
+        self.tmpdir = None
 
     def find_steps(self) -> List[List[FileOperation]]:
         """Return a list of descriptions of file operations for each incremental step.
@@ -614,8 +627,10 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
     def runtest(self) -> None:
         if self.skip:
             pytest.skip()
-        update_data = self.config.getoption('--update-data', False)
-        self.parent.obj(update_data=update_data).run_case(self.case)
+        suite = self.parent.obj()
+        suite.update_data = self.config.getoption('--update-data', False)
+        suite.setup()
+        suite.run_case(self.case)
 
     def setup(self) -> None:
         self.case.setup()
@@ -643,12 +658,16 @@ class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
 class DataSuite:
     # option fields - class variables
     files = None  # type: List[str]
-    base_path = '.'  # type: str
-    optional_out = False  # type: bool
-    native_sep = False  # type: bool
+    base_path = '.'
+    optional_out = False
+    native_sep = False
 
-    def __init__(self, *, update_data: bool) -> None:
-        self.update_data = update_data
+    # Assigned from MypyDataCase.runtest
+    update_data = False
+
+    def setup(self) -> None:
+        """Setup fixtures (ad-hoc)"""
+        pass
 
     @abstractmethod
     def run_case(self, testcase: DataDrivenTestCase) -> None:

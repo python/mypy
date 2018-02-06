@@ -1,4 +1,4 @@
-from mypy.myunit import Suite, assert_true
+from mypy.test.helpers import Suite, assert_true, skip
 from mypy.nodes import CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
@@ -6,7 +6,7 @@ from mypy.types import Type
 
 
 class SubtypingSuite(Suite):
-    def setup(self) -> None:
+    def setUp(self) -> None:
         self.fx = TypeFixture(INVARIANT)
         self.fx_contra = TypeFixture(CONTRAVARIANT)
         self.fx_co = TypeFixture(COVARIANT)
@@ -67,10 +67,9 @@ class SubtypingSuite(Suite):
         self.assert_equivalent(self.fx.f, self.fx.f)
         self.assert_not_subtype(self.fx.a, self.fx.f)
 
+    @skip
     def test_generic_interface_subtyping(self) -> None:
         # TODO make this work
-        self.skip()
-
         fx2 = InterfaceTypeFixture()
 
         self.assert_subtype(fx2.m1, fx2.gfa)
