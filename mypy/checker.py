@@ -59,6 +59,7 @@ from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
+from mypy.sharedparse import BINARY_MAGIC_METHODS
 
 from mypy import experiments
 
@@ -2179,8 +2180,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
-                    if (self.options.warn_return_any and not self.current_node_deferred and
-                            not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)):
+                    if (self.options.warn_return_any
+                        and not self.current_node_deferred
+                        and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
+                        and not (defn.name() in BINARY_MAGIC_METHODS and
+                                 is_literal_not_implemented(s.expr))):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
 
@@ -3230,6 +3234,10 @@ def remove_optional(typ: Type) -> Type:
         return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
     else:
         return typ
+
+
+def is_literal_not_implemented(n: Expression) -> bool:
+    return isinstance(n, NameExpr) and n.fullname == 'builtins.NotImplemented'
 
 
 def builtin_item_type(tp: Type) -> Optional[Type]:
