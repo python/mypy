@@ -4115,7 +4115,8 @@ def f() -> type: return M
 class C1(six.with_metaclass(M), object): pass  # E: Invalid base class
 class C2(C1, six.with_metaclass(M)): pass  # E: Invalid base class
 class C3(six.with_metaclass(A)): pass  # E: Metaclasses not inheriting from 'type' are not supported
-@six.add_metaclass(A)  # E: Metaclasses not inheriting from 'type' are not supported  # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]"
+@six.add_metaclass(A)  # E: Argument 1 to "add_metaclass" has incompatible type "Type[A]"; expected "Type[type]" \
+                       # E: Metaclasses not inheriting from 'type' are not supported
 class D3(A): pass
 class C4(six.with_metaclass(M), metaclass=M): pass  # E: Multiple metaclass definitions
 @six.add_metaclass(M)  # E: Multiple metaclass definitions
@@ -4228,7 +4229,19 @@ class C(Any):
 from typing import Callable
 def decorate(x: int) -> Callable[[type], type]:  # N: "decorate" defined here
     ...
+def decorate_forward_ref() -> Callable[['A'], 'A']:
+    ...
+not_a_function = 17
+class B: pass
+b = B()
 
-@decorate(y=17)  # E: Unexpected keyword argument "y" for "decorate"
+@decorate(y=17)    # E: Unexpected keyword argument "y" for "decorate"
+@decorate()        # E: Too few arguments for "decorate"
+@decorate(22, 25)  # E: Too many arguments for "decorate"
+@not_a_function()  # E: "int" not callable
+@b.nothing         # E: "B" has no attribute "nothing"
+@undefined         # E: Name 'undefined' is not defined
+@decorate(5)
+@decorate_forward_ref()
 class A:
     pass
