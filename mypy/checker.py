@@ -2180,10 +2180,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
-                    if (self.options.warn_return_any and not self.current_node_deferred and
-                            not is_proper_subtype(AnyType(TypeOfAny.special_form),
-                                                  return_type) and
-                            not (defn.name() in BINARY_MAGIC_METHODS and
+                    if (self.options.warn_return_any
+                        and not self.current_node_deferred
+                        and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
+                        and not (defn.name() in BINARY_MAGIC_METHODS and
                                  is_literal_not_implemented(s.expr))):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
