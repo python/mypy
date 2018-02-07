@@ -506,10 +506,6 @@ def process_options(args: List[str],
             parser.error("Can only find occurrences of class members.")
         if len(experiments.find_occurrences) != 2:
             parser.error("Can only find occurrences of non-nested class members.")
-    if options.fine_grained_incremental:
-        # Fine-grained incremental doesn't support general partial types
-        # (details in https://github.com/python/mypy/issues/4492)
-        options.local_partial_types = True
 
     # Set reports.
     for flag, val in vars(special_opts).items():
