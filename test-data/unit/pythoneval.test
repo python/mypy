@@ -1459,11 +1459,8 @@ _testNoCrashOnGenericUnionUnpacking.py:11: error: Revealed type is 'Union[builti
 _testNoCrashOnGenericUnionUnpacking.py:15: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
 _testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
 
-[case testEnumIteration]
+[case testEnumIterationAndPreciseElementType]
 # Regression test for #2305
-# Tests that:
-# - Mypy allows iteration over enum classes in comprehensions and for-loops
-# - The inferred element type in such iteration contexts is the enum type
 from enum import Enum
 class E(Enum):
     A = 'a'
@@ -1471,8 +1468,8 @@ class E(Enum):
 for e in E:
     reveal_type(e)
 [out]
-_testEnumIteration.py:8: error: Revealed type is '_testEnumIteration.E*'
-_testEnumIteration.py:10: error: Revealed type is '_testEnumIteration.E*'
+_testEnumIterationAndPreciseElementType.py:5: error: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
+_testEnumIterationAndPreciseElementType.py:7: error: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
 
 [case testEnumIterable]
 from enum import Enum
