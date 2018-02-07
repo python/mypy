@@ -119,6 +119,7 @@ class DmypySuite(DataSuite):
             server_options = []  # type: List[str]
             if 'fine-grained' in testcase.file:
                 server_options.append('--experimental')
+                options.fine_grained_incremental = True
             self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
             self.server.options = options
 

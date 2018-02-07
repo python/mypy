@@ -36,6 +36,9 @@ class FileSystemWatcher:
     def paths(self) -> AbstractSet[str]:
         return self._paths
 
+    def set_file_data(self, path: str, data: FileData) -> None:
+        self._file_data[path] = data
+
     def add_watched_paths(self, paths: Iterable[str]) -> None:
         for path in paths:
             if path not in self._paths:
