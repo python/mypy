@@ -4250,6 +4250,9 @@ not_a_function = 17
 @not_a_function()  # E: "int" not callable
 class B: pass
 
+@not_a_function    # E: "int" not callable
+class B2: pass
+
 b = object()
 @b.nothing         # E: "object" has no attribute "nothing"
 class C: pass

@@ -1260,6 +1260,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 for decorator in reversed(defn.decorators):
                     if (isinstance(decorator, CallExpr)
                             and isinstance(decorator.analyzed, PromoteExpr)):
+                        # _promote is a special type checking related construct.
                         continue
 
                     dec = self.expr_checker.accept(decorator)
@@ -1268,9 +1269,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if isinstance(decorator, RefExpr):
                         fullname = decorator.fullname
 
-                    sig, t2 = self.expr_checker.check_call(dec, [temp],
-                                                           [nodes.ARG_POS], defn,
-                                                           callable_name=fullname)
+                    # TODO: Figure out how to have clearer error messages.
+                    # (e.g. "class decorator must be a function that accepts a type."
+                    sig, _ = self.expr_checker.check_call(dec, [temp],
+                                                          [nodes.ARG_POS], defn,
+                                                          callable_name=fullname)
+                # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
+                # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
