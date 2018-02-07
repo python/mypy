@@ -51,12 +51,15 @@ class FineGrainedSuite(DataSuite):
     # as skipped, not just elided.
     def should_skip(self, testcase: DataDrivenTestCase) -> bool:
         if self.use_cache:
-            if testcase.name.endswith("-skip-cache"): return True
+            if testcase.name.endswith("-skip-cache"):
+                return True
             # TODO: In caching mode we currently don't well support
             # starting from cached states with errors in them.
-            if testcase.output and testcase.output[0] != '==': return True
+            if testcase.output and testcase.output[0] != '==':
+                return True
         else:
-            if testcase.name.endswith("-skip-nocache"): return True
+            if testcase.name.endswith("-skip-nocache"):
+                return True
 
         return False
 
