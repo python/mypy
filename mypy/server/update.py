@@ -143,10 +143,6 @@ from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger
 
 
-# If True, print out debug logging output.
-DEBUG = False
-
-
 MAX_ITER = 1000
 
 
@@ -205,25 +201,23 @@ class FineGrainedBuildManager:
         self.triggered = []
         changed_modules = dedupe_modules(changed_modules + self.stale)
         initial_set = {id for id, _ in changed_modules}
-        if DEBUG:
-            print('==== update %s ====' % ', '.join(repr(id)
-                                                    for id, _ in changed_modules))
-            if self.previous_targets_with_errors:
-                print('previous targets with errors: %s' %
-                      sorted(self.previous_targets_with_errors))
+        self.manager.log('fine-grained: ==== update %s ====' % ', '.join(
+            repr(id) for id, _ in changed_modules))
+        if self.previous_targets_with_errors and self.options.verbosity >= 1:
+            self.manager.log('fine-grained: previous targets with errors: %s' %
+                             sorted(self.previous_targets_with_errors))
 
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
             # module that still has blocking errors.
-            if DEBUG:
-                print('existing blocker: %s' % self.blocking_error[0])
+            self.manager.log('fine-grained: existing blocker: %s' % self.blocking_error[0])
             changed_modules = dedupe_modules([self.blocking_error] + changed_modules)
             self.blocking_error = None
 
         while changed_modules:
             next_id, next_path = changed_modules.pop(0)
             if next_id not in self.previous_modules and next_id not in initial_set:
-                print('skip %r (module not in import graph)' % next_id)
+                self.manager.log('fine-grained: skip %r (module not in import graph)' % next_id)
                 continue
             result = self.update_single(next_id, next_path)
             messages, remaining, (next_id, next_path), blocker = result
@@ -254,8 +248,7 @@ class FineGrainedBuildManager:
             - Module which was actually processed as (id, path) tuple
             - Whether there was a blocking error in the module
         """
-        if DEBUG:
-            print('--- update single %r ---' % module)
+        self.manager.log('fine-grained: --- update single %r ---' % module)
 
         # TODO: If new module brings in other modules, we parse some files multiple times.
         manager = self.manager
@@ -279,10 +272,10 @@ class FineGrainedBuildManager:
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
-        if DEBUG:
+        if self.options.verbosity >= 1:
             filtered = [trigger for trigger in triggered
                         if not trigger.endswith('__>')]
-            print('triggered:', sorted(filtered))
+            self.manager.log('fine-grained: triggered: %r' % sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         collect_dependencies({module: tree}, self.deps, graph)
         remaining += propagate_changes_using_dependencies(
@@ -373,8 +366,8 @@ def update_single_isolated(module: str,
     """
     if module in manager.modules:
         assert_equivalent_paths(path, manager.modules[module].path)
-    elif DEBUG:
-        print('new module %r' % module)
+    else:
+        manager.log('fine-grained: new module %r' % module)
 
     old_modules = dict(manager.modules)
     sources = get_sources(previous_modules, [(module, path)])
@@ -418,8 +411,7 @@ def update_single_isolated(module: str,
             else:
                 del manager.modules[id]
             del graph[id]
-        if DEBUG:
-            print('--> %r (newly imported)' % module)
+        manager.log('fine-grained: --> %r (newly imported)' % module)
     else:
         remaining_modules = []
 
@@ -493,8 +485,7 @@ def assert_equivalent_paths(path1: str, path2: str) -> None:
 def delete_module(module_id: str,
                   graph: Dict[str, State],
                   manager: BuildManager) -> Dict[str, State]:
-    if DEBUG:
-        print('delete module %r' % module_id)
+    manager.log('fine-grained: delete module %r' % module_id)
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     assert module_id not in graph
@@ -735,7 +726,8 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
+        todo = find_targets_recursive(manager, triggered, deps,
+                                      manager.modules, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
@@ -743,8 +735,7 @@ def propagate_changes_using_dependencies(
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
-                if DEBUG:
-                    print('process', target)
+                manager.log('fine-grained: process: %s' % target)
                 todo[id].update(lookup_target(manager.modules, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
@@ -762,13 +753,14 @@ def propagate_changes_using_dependencies(
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
         targets_with_errors = set()
-        if DEBUG:
-            print('triggered:', list(triggered))
+        if manager.options.verbosity >= 1:
+            manager.log('fine-grained: triggered: %r' % list(triggered))
 
     return remaining_modules
 
 
 def find_targets_recursive(
+        manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
         modules: Dict[str, MypyFile],
@@ -801,8 +793,7 @@ def find_targets_recursive(
                     continue
                 if module_id not in result:
                     result[module_id] = set()
-                if DEBUG:
-                    print('process', target)
+                manager.log('fine-grained: process %s' % target)
                 deferred = lookup_target(modules, target)
                 result[module_id].update(deferred)
 
@@ -819,8 +810,8 @@ def reprocess_nodes(manager: BuildManager,
     Return fired triggers.
     """
     if module_id not in manager.saved_cache or module_id not in graph:
-        if DEBUG:
-            print('%s not in saved cache or graph (blocking errors or deleted?)' % module_id)
+        manager.log('fine-grained: %s not in saved cache or graph (blocking errors or deleted?)' %
+                    module_id)
         return set()
 
     file_node = manager.modules[module_id]
