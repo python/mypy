@@ -179,6 +179,12 @@ class FineGrainedBuildManager:
         self.type_maps = extract_type_maps(graph)
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
+        # Turn on DEBUG spew if any verbosity is enabled.
+        # TODO: The debug spew should be done through manager.log or similar
+        # and ideally be separately controllable.
+        if self.options.verbosity > 0:
+            global DEBUG
+            DEBUG = True
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
