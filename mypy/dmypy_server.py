@@ -107,7 +107,9 @@ class Server:
         if self.fine_grained:
             options.incremental = True
             options.show_traceback = True
-            if not options.use_fine_grained_cache:
+            if options.use_fine_grained_cache:
+                options.cache_fine_grained = True  # set this so that cache options match
+            else:
                 options.cache_dir = os.devnull
 
     def serve(self) -> None:
