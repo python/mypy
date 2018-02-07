@@ -700,7 +700,7 @@ for x in t: pass  # E: Need type annotation for 'x'
 
 [case testForLoopOverNoneValuedTuple]
 import typing
-for x in None, None: pass  # E: Need type annotation for 'x'
+for x in None, None: pass
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverTupleAndSubtyping]

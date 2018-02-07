@@ -3105,15 +3105,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         partial_types, _ = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if (is_function
+                if ((not self.options.local_partial_types or is_function)
                         and isinstance(var.type, PartialType)
                         and var.type.type is None):
-                    # None partial type within function: assume variable is intended to have
-                    # type None, without requiring an annotation.
-                    #
-                    # Rationale: Assignments within nested functions can complete a partial type,
-                    #     so we likely have complete type information, unlike contexts outside
-                    #     a function.
+                    # Partial types spanning multiple scopes are fine if all of the partial
+                    # initializers are within a function, since only the topmost function is
+                    # a separate target in fine-grained incremental mode.
                     var.type = NoneTyp()
                 else:
                     if var not in self.partial_reported:
@@ -3135,17 +3132,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return None
 
     def find_partial_types2(self, var: Var) -> Tuple[bool, Optional[Dict[Var, Context]]]:
-        # Look for partial types in all scopes within the outermost function. Don't
-        # look beyond the outermost function to allow local reasoning (important for
-        # fine-grained incremental mode).
         partial_types = self.partial_types
-        for i, t in enumerate(partial_types):
-            if t.is_function:
-                partial_types = partial_types[i:]
-                break
-        else:
-            # Not within a function -- only look at the innermost scope.
-            partial_types = partial_types[-1:]
+        if self.options.local_partial_types:
+            # Look for partial types in all scopes within the outermost function. Don't
+            # look beyond the outermost function to allow local reasoning (important for
+            # fine-grained incremental mode).
+            for i, t in enumerate(partial_types):
+                if t.is_function:
+                    partial_types = partial_types[i:]
+                    break
+            else:
+                # Not within a function -- only look at the innermost scope.
+                partial_types = partial_types[-1:]
         for scope in reversed(partial_types):
             if var in scope.map:
                 return True, scope.map

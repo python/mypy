@@ -911,8 +911,6 @@ main:5: error: Incompatible types in assignment (expression has type "B", variab
 main:6: error: Incompatible types in assignment (expression has type "C", variable has type "A")
 main:10: error: Need more than 2 values to unpack (3 expected)
 main:12: error: '__main__.B' object is not iterable
-main:14: error: Need type annotation for 'xxx'
-main:14: error: Need type annotation for 'yyy'
 
 [case testInferenceOfFor3]
 
@@ -1405,13 +1403,13 @@ b[{}] = 1
 [out]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethod]
-map = {}  # E: Need type annotation for 'map'
+map = {}
 def add() -> None:
     map[1] = 2
 [builtins fixtures/dict.pyi]
 
 [case testInferDictInitializedToEmptyAndUpdatedFromMethodUnannotated]
-map = {}  # E: Need type annotation for 'map'
+map = {}
 def add():
     map[1] = 2
 [builtins fixtures/dict.pyi]
@@ -1512,7 +1510,7 @@ x = 1
 [out]
 
 [case testPartiallyInitializedVariableDoesNotEscapeScope2]
-x = None  # E: Need type annotation for 'x'
+x = None
 def f() -> None:
     x = None
     x = 1
@@ -1539,14 +1537,14 @@ main:6: error: Incompatible types in assignment (expression has type "int", vari
 main:7: error: "None" not callable
 
 [case testGlobalInitializedToNoneSetFromFunction]
-a = None  # E: Need type annotation for 'a'
+a = None
 def f():
     global a
     a = 42
 [out]
 
 [case testGlobalInitializedToNoneSetFromMethod]
-a = None  # E: Need type annotation for 'a'
+a = None
 class C:
     def m(self):
         global a
@@ -1792,6 +1790,7 @@ main:3: error: "int" not callable
 -- Tests for special cases of unification
 -- --------------------------------------
 
+
 [case testUnificationRedundantUnion]
 from typing import Union
 a = None  # type: Union[int, str]
@@ -1925,7 +1924,7 @@ T = TypeVar('T', bound=str)
 
 def f() -> Tuple[T]:
     ...
-x = None  # E: Need type annotation for 'x'
+x = None
 (x,) = f()
 [out]
 
@@ -2004,36 +2003,176 @@ if bool():
 [builtins fixtures/list.pyi]
 [out]
 
----
 
-[case testXXX-skip]
+-- --local-partial-types
+-- ---------------------
+
+
+[case testLocalPartialTypesWithGlobalInitializedToNone]
+# flags: --local-partial-types
+x = None # E: Need type annotation for 'x'
+
+def f() -> None:
+    global x
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "None")
+
+[case testLocalPartialTypesWithGlobalInitializedToNone2]
+# flags: --local-partial-types
+x = None # E: Need type annotation for 'x'
+
+def f():
+    global x
+    x = 1
+
+reveal_type(x) # E: Revealed type is 'builtins.None'
+
+[case testLocalPartialTypesWithGlobalInitializedToNone3]
+# flags: --local-partial-types
+x = None
+
+def f() -> None:
+    global x
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+x = ''
+reveal_type(x) # E: Revealed type is 'builtins.str'
+
+[case testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional]
+# flags: --local-partial-types --strict-optional
+x = None
+
+def f() -> None:
+    global x
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[str]")
+
+x = ''
+def g() -> None:
+    reveal_type(x) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+
+[case testLocalPartialTypesWithGlobalInitializedToNone4]
+# flags: --local-partial-types
+a = None
+
+def f() -> None:
+    reveal_type(a)  # E: Revealed type is 'builtins.str'
+
+# TODO: This should probably be 'builtins.str', since there could be a
+#     call causes a non-None value to be assigned
+reveal_type(a)  # E: Revealed type is 'builtins.None'
+a = ''
+reveal_type(a)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithClassAttributeInitializedToNone]
+# flags: --local-partial-types
 class A:
-    x = {}
+    x = None # E: Need type annotation for 'x'
+
     def f(self) -> None:
-        #global x
+        self.x = 1
+
+[case testLocalPartialTypesWithClassAttributeInitializedToEmptyDict]
+# flags: --local-partial-types
+class A:
+    x = {}  # E: Need type annotation for 'x'
+
+    def f(self) -> None:
         self.x[0] = ''
-reveal_type(A.x)
+
+reveal_type(A().x)  # E: Revealed type is 'Any'
+reveal_type(A.x)  # E: Revealed type is 'Any'
 [builtins fixtures/dict.pyi]
 
-[case testYYY-skip]
+[case testLocalPartialTypesWithGlobalInitializedToEmptyList]
+# flags: --local-partial-types
 a = []
 
 def f() -> None:
     a[0]
-    reveal_type(a)
+    reveal_type(a)  # E: Revealed type is 'builtins.list[builtins.int]'
 
 a.append(1)
+reveal_type(a) # E: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
-[out]
-x
 
-[case testZZZ-skip]
-a = None
+[case testLocalPartialTypesWithGlobalInitializedToEmptyList2]
+# flags: --local-partial-types
+a = [] # E: Need type annotation for 'a'
 
 def f() -> None:
-    reveal_type(a)
-reveal_type(a)
-a = ''
+    a.append(1)
+    reveal_type(a)  # E: Revealed type is 'Any'
+
+reveal_type(a) # E: Revealed type is 'Any'
 [builtins fixtures/list.pyi]
-[out]
-x
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyList3]
+# flags: --local-partial-types
+a = [] # E: Need type annotation for 'a'
+
+def f():
+    a.append(1)
+
+reveal_type(a) # E: Revealed type is 'Any'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyDict]
+# flags: --local-partial-types
+a = {}
+
+def f() -> None:
+    a[0]
+    reveal_type(a)  # E: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+
+a[0] = ''
+reveal_type(a) # E: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyDict2]
+# flags: --local-partial-types
+a = {} # E: Need type annotation for 'a'
+
+def f() -> None:
+    a[0] = ''
+    reveal_type(a)  # E: Revealed type is 'Any'
+
+reveal_type(a) # E: Revealed type is 'Any'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyDict3]
+# flags: --local-partial-types
+a = {} # E: Need type annotation for 'a'
+
+def f():
+    a[0] = ''
+
+reveal_type(a) # E: Revealed type is 'Any'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithNestedFunction]
+# flags: --local-partial-types
+def f() -> None:
+    a = {}
+    def g() -> None:
+        a[0] = ''
+    reveal_type(a) # E: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithNestedFunction2]
+# flags: --local-partial-types
+def f() -> None:
+    a = []
+    def g() -> None:
+        a.append(1)
+    reveal_type(a) # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithNestedFunction3]
+# flags: --local-partial-types
+def f() -> None:
+    a = None
+    def g() -> None:
+        nonlocal a
+        a = ''
+    reveal_type(a) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]

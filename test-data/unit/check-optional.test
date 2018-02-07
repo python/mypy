@@ -1,9 +1,8 @@
 -- Tests for strict Optional behavior
 
 [case testImplicitNoneType]
-def f() -> None:
-    x = None
-    x()  # E: "None" not callable
+x = None
+x()  # E: "None" not callable
 
 [case testImplicitNoneTypeInNestedFunction]
 def f() -> None:
@@ -312,7 +311,7 @@ def f() -> Generator[None, None, None]:
 [out]
 
 [case testNoneAndStringIsNone]
-a = None  # type: None
+a = None
 b = "foo"
 reveal_type(a and b)  # E: Revealed type is 'builtins.None'
 
@@ -566,7 +565,7 @@ x is not None and x + '42'  # E: Unsupported operand types for + ("int" and "str
 [case testInvalidBooleanBranchIgnored]
 from typing import Optional
 
-x = None  # type: None
+x = None
 x is not None and x + 42
 [builtins fixtures/isinstance.pyi]
 
