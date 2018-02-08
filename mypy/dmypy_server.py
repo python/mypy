@@ -281,7 +281,7 @@ class Server:
             for meta, mypyfile, type_map in manager.saved_cache.values():
                 if meta.mtime is None: continue
                 self.fswatcher.set_file_data(
-                    meta.path,
+                    mypyfile.path,
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
             # Run an update
