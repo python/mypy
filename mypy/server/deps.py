@@ -92,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, DepNode,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -146,7 +146,7 @@ class DependencyVisitor(TraverserVisitor):
     def __init__(self,
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int],
-                 alias_deps: 'DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]') -> None:
+                 alias_deps: 'DefaultDict[DepNode, Set[str]]') -> None:
         self.scope = Scope()
         self.type_map = type_map
         self.python2 = python_version[0] == 2
@@ -287,11 +287,9 @@ class DependencyVisitor(TraverserVisitor):
             assert isinstance(lvalue, NameExpr)
             attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
                                                    lvalue.name))
-            self.add_type_dependencies(rvalue.analyzed.type,
-                                       attr_trigger)
-            for tvar in rvalue.analyzed.tvars:
-                self.add_dependency(make_trigger(tvar), target=attr_trigger)
-            self.add_dependency(attr_trigger)
+            self.add_type_dependencies(rvalue.analyzed.type, attr_trigger)
+            for dep in self.alias_deps[o]:
+                self.add_dependency(make_trigger(dep), target=attr_trigger)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
@@ -534,7 +532,7 @@ class DependencyVisitor(TraverserVisitor):
 
     # Helpers
 
-    def add_type_alias_deps(self, o: Union[MypyFile, FuncItem, ClassDef]) -> None:
+    def add_type_alias_deps(self, o: DepNode) -> None:
         """Add dependencies from type aliases to the current target."""
         if o in self.alias_deps:
             for alias in self.alias_deps[o]:

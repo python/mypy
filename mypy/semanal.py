@@ -1693,7 +1693,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         return typ
 
     def add_type_alias_deps(self, aliases_used: Set[str],
-                       node_override: Optional[ClassDef] = None) -> None:
+                       node_override: Optional[Union[ClassDef, AssertStmt]] = None) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.
@@ -1815,8 +1815,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         typ = None  # type: Optional[Type]
         if res:
             typ, depends_on = res
-            alias_tvars = [name for (name, _) in
+            alias_tvars = [name for (name, node) in
                            typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
+            qualified_tvars = [node.fullname() for (name, node) in
+                           typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
+            depends_on.update(qualified_tvars)
         else:
             alias_tvars = []
             depends_on = set()
@@ -1860,6 +1863,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # of alias to what it depends on.
             node.alias_depends_on.add(lvalue.fullname)
         self.add_type_alias_deps(depends_on)
+        self.add_type_alias_deps(depends_on, node_override=s)
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):

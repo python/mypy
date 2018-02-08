@@ -18,7 +18,7 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef
+    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef, DepNode
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -64,7 +64,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         # This variable tracks the current scope node: a module, a class definition,
         # or a function. It is used to, e.g., correctly determine target of a fine-grained
         # dependency.
-        self.cur_node = file_node  # type: Union[MypyFile, FuncItem, ClassDef]
+        self.cur_node = file_node  # type: DepNode
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.accept(file_node)

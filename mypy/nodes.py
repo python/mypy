@@ -187,6 +187,9 @@ class SymbolNode(Node):
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
+DepNode = Union['MypyFile', 'FuncItem', 'ClassDef', 'AssignmentStmt']
+
+
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
@@ -199,7 +202,7 @@ class MypyFile(SymbolNode):
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
     # Type alias dependencies as mapping from node to set of alias full names
-    alias_deps = None  # type: DefaultDict[Union[MypyFile, FuncItem, ClassDef], Set[str]]
+    alias_deps = None  # type: DefaultDict[DepNodde, Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
     names = None  # type: SymbolTable
@@ -2341,6 +2344,9 @@ class SymbolTableNode:
     # Is this node refers to other node via node aliasing?
     # (This is currently used for simple aliases like `A = int` instead of .type_override)
     is_aliasing = False  # type: bool
+    # This includes full names of aliases used in this alias, and full names of
+    # type variables used to define it, if it is generic.
+    # TODO: refactor to move type variables together with alias_tvars (currently unqualified).
     alias_depends_on = None  # type: Set[str]
 
     def __init__(self,

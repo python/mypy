@@ -238,12 +238,12 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m, m.f
+<m.A> -> m.f
 <mod.D> -> <m.A>, <m.f>, m, m.f
 <mod.I> -> <m.A>, <m.f>, m, m.f
 <mod.S> -> <m.A>, <m.f>, m, m.f
 
-[case testAliasDepsGenericClass-skip]
+[case testAliasDepsGenericClass]
 from mod import I, D, S, T
 A = D[S, T]
 class C:
@@ -357,7 +357,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.B>, m
 <m.B> -> m
 <m.x> -> m
 <mod.D> -> <m.A>, <m.B>, <m.x>, m
@@ -378,8 +378,8 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m, m.f
-<m.B> -> m, m.f
+<m.A> -> <m.B>, m, m.f
+<m.B> -> m.f
 <mod.D> -> <m.A>, <m.B>, <m.f>, m, m.f
 <mod.I> -> <m.A>, <m.B>, <m.f>, m, m.f
 <mod.S> -> <m.A>, <m.B>, <m.f>, m, m.f
@@ -398,7 +398,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.B>, m
 <m.B> -> m
 <m.C> -> m.C
 <mod.D> -> <m.A>, <m.B>, <m.C.x>, m
