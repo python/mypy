@@ -3126,28 +3126,39 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         var.type = AnyType(TypeOfAny.from_error)
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
-        in_scope, partial_types = self.find_partial_types2(var)
+        """Look for partial type scope containing variable that is in scope."""
+        in_scope, partial_types = self.find_partial_types_in_all_scopes(var)
         if in_scope:
             return partial_types
         return None
 
-    def find_partial_types2(self, var: Var) -> Tuple[bool, Optional[Dict[Var, Context]]]:
-        partial_types = self.partial_types
+    def find_partial_types_in_all_scopes(self, var: Var) -> Tuple[bool,
+                                                                  Optional[Dict[Var, Context]]]:
+        """Look for partial type scope containing variable.
+
+        Return tuple (is the scope active, scope).
+        """
+        active = self.partial_types
+        inactive = []  # type: List[PartialTypeScope]
         if self.options.local_partial_types:
-            # Look for partial types in all scopes within the outermost function. Don't
-            # look beyond the outermost function to allow local reasoning (important for
-            # fine-grained incremental mode).
-            for i, t in enumerate(partial_types):
+            # All scopes within the outermost function are active. Scopes out of
+            # the outermost function are inactive to allow local reasoning (important
+            # for fine-grained incremental mode).
+            for i, t in enumerate(self.partial_types):
                 if t.is_function:
-                    partial_types = partial_types[i:]
+                    active = self.partial_types[i:]
+                    inactive = self.partial_types[:i]
                     break
             else:
-                # Not within a function -- only look at the innermost scope.
-                partial_types = partial_types[-1:]
-        for scope in reversed(partial_types):
+                # Not within a function -- only the innermost scope is in scope.
+                active = self.partial_types[-1:]
+                inactive = self.partial_types[:-1]
+        # First look within in-scope partial types.
+        for scope in reversed(active):
             if var in scope.map:
                 return True, scope.map
-        for scope in reversed(self.partial_types):
+        # Then for out-of-scope partial types.
+        for scope in reversed(inactive):
             if var in scope.map:
                 return False, scope.map
         return False, None

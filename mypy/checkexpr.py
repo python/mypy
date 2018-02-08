@@ -136,7 +136,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
-                in_scope, partial_types = self.chk.find_partial_types2(node)
+                in_scope, partial_types = self.chk.find_partial_types_in_all_scopes(node)
                 if result.type is None and in_scope:
                     # 'None' partial type. It has a well-defined type. In an lvalue context
                     # we want to preserve the knowledge of it being a partial type.
