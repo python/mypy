@@ -2177,7 +2177,7 @@ def f() -> None:
     reveal_type(a) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 
-[case testLocalPartialTypesWithInheritance-skip]
+[case testLocalPartialTypesWithInheritance]
 # flags: --local-partial-types
 from typing import Optional
 
@@ -2185,9 +2185,29 @@ class A:
     x: Optional[str]
 
 class B(A):
-    x = None  # Generates an invalid request for a type annotation
+    x = None
 
 reveal_type(B.x) # E: Revealed type is 'builtins.None'
+
+[case testLocalPartialTypesWithInheritance2]
+# flags: --local-partial-types --strict-optional
+class A:
+    x: str
+
+class B(A):
+    x = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "str")
+
+[case testLocalPartialTypesWithAnyBaseClass]
+# flags: --local-partial-types --strict-optional
+from typing import Any
+
+A: Any
+
+class B(A):
+    x = None
+
+class C(B):
+    y = None
 
 [case testLocalPartialTypesWithInheritance2-skip]
 # flags: --local-partial-types

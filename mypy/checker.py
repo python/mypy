@@ -3105,12 +3105,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         partial_types, _ = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                if ((not self.options.local_partial_types or is_function)
+                # Partial types spanning multiple scopes are fine if all of the partial
+                # initializers are within a function, since only the topmost function is
+                # a separate target in fine-grained incremental mode.
+                allow_none = (not self.options.local_partial_types
+                              or is_function
+                              or (is_class and self.is_defined_in_base_class(var)))
+                if (allow_none
                         and isinstance(var.type, PartialType)
                         and var.type.type is None):
-                    # Partial types spanning multiple scopes are fine if all of the partial
-                    # initializers are within a function, since only the topmost function is
-                    # a separate target in fine-grained incremental mode.
                     var.type = NoneTyp()
                 else:
                     if var not in self.partial_reported:
@@ -3124,6 +3127,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         var.type = NoneTyp()
                     else:
                         var.type = AnyType(TypeOfAny.from_error)
+
+    def is_defined_in_base_class(self, var: Var) -> bool:
+        if var.info is not None:
+            for base in var.info.mro[1:]:
+                if base.get(var.name()) is not None:
+                    return True
+            if var.info.fallback_to_any:
+                return True
+        return False
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
         """Look for partial type scope containing variable that is in scope."""
