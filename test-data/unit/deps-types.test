@@ -243,7 +243,7 @@ class S: pass
 <mod.I> -> <m.A>, <m.f>, m, m.f
 <mod.S> -> <m.A>, <m.f>, m, m.f
 
-[case testAliasDepsGenericClass]
+[case testAliasDepsGenericClass-skip]
 from mod import I, D, S, T
 A = D[S, T]
 class C:
@@ -404,3 +404,71 @@ class S: pass
 <mod.D> -> <m.A>, <m.B>, <m.C.x>, m
 <mod.I> -> <m.A>, <m.B>, <m.C.x>, m
 <mod.S> -> <m.A>, <m.B>, <m.C.x>, m
+
+[case testAliasDepsCast]
+from typing import cast
+from mod import I
+A = I
+def fun() -> None:
+    x = cast(A, 42)
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m, m.fun
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, m, m.fun
+
+[case testAliasDepsRuntime]
+from mod import I, S, D
+A = I
+x = D[S, A]()
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m
+<m.x> -> m
+<mod.D.__init__> -> m
+<mod.D> -> <m.x>, m
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.x>, m
+<mod.S> -> <m.x>, m
+
+[case testAliasDepsNamedTuple]
+from typing import NamedTuple
+from mod import I
+A = I
+class P(NamedTuple):
+    x: A
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m
+<m.P> -> m.P
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.P.x>, <m.P>, m, m.P
+
+[case testAliasDepsTypedDict]
+from mypy_extensions import TypedDict
+from mod import I
+A = I
+class P(TypedDict):
+    x: A
+[file mod.py]
+class I: pass
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m
+<m.P> -> m.P
+<mod.I.__init__> -> m
+<mod.I> -> <m.A>, <m.P>, m, m.P
+<mypy_extensions.TypedDict> -> m

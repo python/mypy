@@ -1894,7 +1894,7 @@ x: a.A = {str(): int()}
 ==
 b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
-[case testAliasFineGenericFunc]
+[case testAliasFineGenericFunc-skip]
 import b
 [file a.py]
 from typing import Dict
@@ -1906,12 +1906,11 @@ A = Dict[str, str]
 import a
 def f(x: a.A):
     pass
-reveal_type(f)
+f({str(): int()})
 [builtins fixtures/dict.pyi]
 [out]
-b.py:4: error: Revealed type is 'def (x: builtins.dict[builtins.str, builtins.int]) -> Any'
 ==
-b.py:4: error: Revealed type is 'def (x: builtins.dict[builtins.str, builtins.str]) -> Any'
+b.py:4: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
 [case testAliasFineForwardMod]
 import b
@@ -2015,3 +2014,94 @@ def f(x: aa.B):
 [out]
 ==
 b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineNonGenericToGeneric]
+import b
+[file a.py]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, int]
+[file a.py.2]
+A = str
+[file b.py]
+import a
+def f(x: a.A[str]):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: "str" expects no type arguments, but 1 given
+
+[case testAliasFineGenericToNonGeneric]
+import b
+[file a.py]
+A = str
+[file a.py.2]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, int]
+[file b.py]
+import a
+def f(x: a.A):
+    pass
+reveal_type(f)
+[builtins fixtures/dict.pyi]
+[out]
+b.py:4: error: Revealed type is 'def (x: builtins.str) -> Any'
+==
+b.py:4: error: Revealed type is 'def (x: builtins.dict[Any, builtins.int]) -> Any'
+
+[case testAliasFineChangedNumberOfTypeVars]
+import b
+[file a.py]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, int]
+[file a.py.2]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+A = Dict[T, S]
+[file b.py]
+import a
+def f(x: a.A[str]):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: Bad number of arguments for type alias, expected: 2, given: 1
+
+[case testAliasFineComponentDeleted-skip]
+import b
+[file a.py]
+class B: pass
+[file a.py.2]
+x = 1
+[file b.py]
+import a
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, a.B]
+def f(x: A[int]):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:4: error: Name 'a.B' is not defined
+
+[case testAliasFineTargetDeleted]
+import c
+[file a.py]
+A = int
+[file b.py]
+import a
+B = a.A
+[file b.py.2]
+x = 1
+[file c.py]
+import b
+def f(x: b.B):
+    pass
+[out]
+==
+c.py:2: error: Name 'b.B' is not defined
