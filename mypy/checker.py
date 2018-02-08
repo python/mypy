@@ -1468,7 +1468,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                          lvalue_type.item.type.is_protocol)):
                     self.msg.concrete_only_assign(lvalue_type, rvalue)
                     return
-                if rvalue_type and infer_lvalue_type:
+                if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
