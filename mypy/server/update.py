@@ -685,7 +685,10 @@ def calculate_active_triggers(manager: BuildManager,
             names.add(id)
         else:
             snapshot2 = snapshot_symbol_table(id, new.names)
-        names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
+        diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
+        names |= diff
+        if diff:
+            names.add(id)
     return {make_trigger(name) for name in names}
 
 
