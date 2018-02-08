@@ -1693,7 +1693,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         return typ
 
     def add_type_alias_deps(self, aliases_used: Set[str],
-                       node_override: Optional[Union[ClassDef, AssertStmt]] = None) -> None:
+                       node_override: Optional[Union[ClassDef, AssignmentStmt]] = None) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.

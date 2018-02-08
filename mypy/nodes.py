@@ -202,7 +202,7 @@ class MypyFile(SymbolNode):
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
     # Type alias dependencies as mapping from node to set of alias full names
-    alias_deps = None  # type: DefaultDict[DepNodde, Set[str]]
+    alias_deps = None  # type: DefaultDict[DepNode, Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
     names = None  # type: SymbolTable
