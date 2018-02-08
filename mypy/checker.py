@@ -3096,7 +3096,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             is_class: bool = False) -> Iterator[None]:
         """Enter a new scope for collecting partial types.
 
-        Also report errors for variables which still have partial
+        Also report errors for (some) variables which still have partial
         types, i.e. we couldn't infer a complete type.
         """
         self.partial_types.append(PartialTypeScope({}, is_function))
@@ -3105,9 +3105,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         partial_types, _ = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
-                # Partial types spanning multiple scopes are fine if all of the partial
-                # initializers are within a function, since only the topmost function is
-                # a separate target in fine-grained incremental mode.
+                # If we require local partial types, there are a few exceptions where
+                # we fall back to inferring just "None" as the type from a None initaliazer:
+                #
+                # 1. If all happens within a single function this is acceptable, since only
+                #    the topmost function is a separate target in fine-grained incremental mode.
+                #    We primarily want to avoid "splitting" partial types across targets.
+                #
+                # 2. A None initializer in the class body if the attribute is defined in a base
+                #    class is fine, since the attribute is already defined and it's currently okay
+                #    to vary the type of an attribute covariantly. The None type will still be
+                #    checked for compatibility with base classes elsewhere. Without this exception
+                #    mypy could require an annotation for an attribute that already has been
+                #    declared in a base class, which would be bad.
                 allow_none = (not self.options.local_partial_types
                               or is_function
                               or (is_class and self.is_defined_in_base_class(var)))
@@ -3133,7 +3143,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def find_partial_types(self, var: Var) -> Optional[Dict[Var, Context]]:
-        """Look for partial type scope containing variable that is in scope."""
+        """Look for an active partial type scope containing variable.
+
+        A scope is active if assignments in the current context can refine a partial
+        type originally defined in the scope. This is affected by the local_partial_types
+        configuration option.
+        """
         in_scope, partial_types = self.find_partial_types_in_all_scopes(var)
         if in_scope:
             return partial_types

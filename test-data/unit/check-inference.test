@@ -2057,7 +2057,7 @@ def f() -> None:
     reveal_type(a)  # E: Revealed type is 'builtins.str'
 
 # TODO: This should probably be 'builtins.str', since there could be a
-#     call causes a non-None value to be assigned
+#     call that causes a non-None value to be assigned
 reveal_type(a)  # E: Revealed type is 'builtins.None'
 a = ''
 reveal_type(a)  # E: Revealed type is 'builtins.str'

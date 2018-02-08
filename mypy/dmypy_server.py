@@ -111,7 +111,6 @@ class Server:
                 options.cache_fine_grained = True  # set this so that cache options match
             else:
                 options.cache_dir = os.devnull
-            options.cache_dir = os.devnull
             # Fine-grained incremental doesn't support general partial types
             # (details in https://github.com/python/mypy/issues/4492)
             options.local_partial_types = True
