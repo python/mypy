@@ -537,6 +537,10 @@ class DependencyVisitor(TraverserVisitor):
         if o in self.alias_deps:
             for alias in self.alias_deps[o]:
                 self.add_dependency(make_trigger(alias))
+                if isinstance(o, FuncItem):
+                    self.add_dependency(make_trigger(alias), make_trigger(o.fullname()))
+                elif isinstance(o, ClassDef):
+                    self.add_dependency(make_trigger(alias), make_trigger(o.fullname))
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
         """Add dependency from trigger to a target.

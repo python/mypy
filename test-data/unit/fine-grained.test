@@ -1894,7 +1894,7 @@ x: a.A = {str(): int()}
 ==
 b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
-[case testAliasFineGenericFunc-skip]
+[case testAliasFineGenericFunc]
 import b
 [file a.py]
 from typing import Dict
