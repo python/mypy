@@ -38,8 +38,8 @@ def f(x: int) -> None: pass
 ==
 a.py:2: error: Incompatible return value type (got "int", expected "str")
 ==
-a.py:2: error: Incompatible return value type (got "int", expected "str")
 b.py:2: error: Too many arguments for "f"
+a.py:2: error: Incompatible return value type (got "int", expected "str")
 ==
 
 [case testAddFileFixesError]
