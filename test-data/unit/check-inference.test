@@ -2239,3 +2239,21 @@ class A:
         self.x = f(p)
         f(z for z in p)
 [builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesAccessPartialNoneAttribute]
+# flags: --local-partial-types
+class C:
+    a = None  # E: Need type annotation for 'a'
+
+    def f(self, x) -> None:
+        # TODO: It would be better for the type to be Any here
+        C.a.y  # E: "None" has no attribute "y"
+
+[case testLocalPartialTypesAccessPartialNoneAttribute]
+# flags: --local-partial-types
+class C:
+    a = None  # E: Need type annotation for 'a'
+
+    def f(self, x) -> None:
+        # TODO: It would be better for the type to be Any here
+        self.a.y  # E: "None" has no attribute "y"
