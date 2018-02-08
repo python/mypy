@@ -2016,6 +2016,9 @@ def f() -> None:
     global x
     x = 1
 
+# TODO: "Any" could be a better type here to avoid multiple error messages
+reveal_type(x) # E: Revealed type is 'builtins.None'
+
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types
 x = None # E: Need type annotation for 'x'
@@ -2024,6 +2027,7 @@ def f():
     global x
     x = 1
 
+# TODO: "Any" could be a better type here to avoid multiple error messages
 reveal_type(x) # E: Revealed type is 'builtins.None'
 
 [case testLocalPartialTypesWithGlobalInitializedToNone3]
