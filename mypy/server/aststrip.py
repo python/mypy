@@ -217,6 +217,9 @@ class NodeStripVisitor(TraverserVisitor):
         return any(info.get(node.name) is not None for info in self.type.mro[1:])
 
     def strip_ref_expr(self, node: RefExpr) -> None:
+        if node.fullname and (node.fullname.startswith('typing') or
+            node.fullname.startswith('builtins')):
+            return
         node.kind = None
         node.node = None
         node.fullname = None
