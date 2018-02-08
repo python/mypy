@@ -2014,7 +2014,7 @@ x = None # E: Need type annotation for 'x'
 
 def f() -> None:
     global x
-    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "None")
+    x = 1
 
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types

@@ -197,7 +197,5 @@ y = 0
 y = ''
 [out1]
 tmp/a.py:3: error: Need type annotation for 'x'
-tmp/a.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "None")
 [out2]
 tmp/a.py:3: error: Need type annotation for 'x'
-tmp/a.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "None")

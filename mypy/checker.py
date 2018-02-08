@@ -3119,14 +3119,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if var not in self.partial_reported:
                         self.msg.need_annotation_for_var(var, context)
                         self.partial_reported.add(var)
-                    if isinstance(var.type, PartialType) and var.type.type is None:
-                        # None partial type outside function: assume variable is intended to have
-                        # type None, but require an annotation since None is likely just a default
-                        # and there is likely another assignment in a function that won't affect
-                        # the partial type.
-                        var.type = NoneTyp()
-                    else:
-                        var.type = AnyType(TypeOfAny.from_error)
+                    # Give the variable an 'Any' type to avoid generating multiple errors
+                    # from a single missing annotation.
+                    var.type = AnyType(TypeOfAny.from_error)
 
     def is_defined_in_base_class(self, var: Var) -> bool:
         if var.info is not None:
