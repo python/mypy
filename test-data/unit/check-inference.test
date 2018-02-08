@@ -2176,3 +2176,32 @@ def f() -> None:
         a = ''
     reveal_type(a) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithInheritance-skip]
+# flags: --local-partial-types
+from typing import Optional
+
+class A:
+    x: Optional[str]
+
+class B(A):
+    x = None  # Generates an invalid request for a type annotation
+
+reveal_type(B.x) # E: Revealed type is 'builtins.None'
+
+[case testLocalPartialTypesWithInheritance2-skip]
+# flags: --local-partial-types
+# This is failing because of https://github.com/python/mypy/issues/4552
+from typing import Optional
+
+class X: pass
+class Y(X): pass
+
+class A:
+    x: Optional[X]
+
+class B(A):
+    x = None
+    x = Y()
+
+reveal_type(B.x) # E: revealed type is 'Union[__main__.Y, builtins.None]'
