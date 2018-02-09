@@ -2125,3 +2125,18 @@ def f(x: b.B):
 [out]
 ==
 c.py:2: error: Name 'b.B' is not defined
+
+[case testAliasFineClassInFunction]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+def f() -> None:
+    class C:
+        x: a.A = int()
+[out]
+==
+b.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")

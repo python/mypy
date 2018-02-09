@@ -2344,9 +2344,7 @@ class SymbolTableNode:
     # Is this node refers to other node via node aliasing?
     # (This is currently used for simple aliases like `A = int` instead of .type_override)
     is_aliasing = False  # type: bool
-    # This includes full names of aliases used in this alias, and full names of
-    # type variables used to define it, if it is generic.
-    # TODO: refactor to move type variables together with alias_tvars (currently unqualified).
+    # This includes full names of aliases used in this alias.
     alias_depends_on = None  # type: Set[str]
 
     def __init__(self,

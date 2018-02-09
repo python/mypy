@@ -1696,11 +1696,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.add_type_alias_deps(a.aliases_used)
         return typ
 
-    def add_type_alias_deps(self, aliases_used: Set[str], target: Optional[str] = None) -> None:
+    def add_type_alias_deps(self, aliases_used: Iterable[str], target: Optional[str] = None) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.
-        If `node_override` is None, then the target node used will be the current scope.
+        If `target` is None, then the target node used will be the current scope.
         """
         if not aliases_used:
             # A basic optimization to avoid adding targets with no dependencies to
@@ -1788,8 +1788,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                                                               Set[str], List[str]]:
         """Check if 'rvalue' represents a valid type allowed for aliasing
         (e.g. not a type variable). If yes, return the corresponding type, a list of
-        qualified type variable names for generic aliases, and a set of names the alias depends on.
-        An schematic example for the latter:
+        qualified type variable names for generic aliases, a set of names the alias depends on,
+        and a list of type variables if the alias is generic.
+        An schematic example for the dependencies:
             A = int
             B = str
             analyze_alias(Dict[A, B])[2] == {'__main__.A', '__main__.B'}
