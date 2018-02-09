@@ -40,7 +40,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound, type_object_type
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
@@ -1254,6 +1254,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not defn.has_incompatible_baseclass:
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
+
+            if defn.decorators:
+                sig = type_object_type(defn.info, self.named_type)
+                # Decorators are applied in reverse order.
+                for decorator in reversed(defn.decorators):
+                    if (isinstance(decorator, CallExpr)
+                            and isinstance(decorator.analyzed, PromoteExpr)):
+                        # _promote is a special type checking related construct.
+                        continue
+
+                    dec = self.expr_checker.accept(decorator)
+                    temp = self.temp_node(sig)
+                    fullname = None
+                    if isinstance(decorator, RefExpr):
+                        fullname = decorator.fullname
+
+                    # TODO: Figure out how to have clearer error messages.
+                    # (e.g. "class decorator must be a function that accepts a type."
+                    sig, _ = self.expr_checker.check_call(dec, [temp],
+                                                          [nodes.ARG_POS], defn,
+                                                          callable_name=fullname)
+                # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
+                # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
