@@ -234,7 +234,10 @@ main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
-[case testDeletionOfSubmoduleTriggersImportFrom1]
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-cache]
+-- Different cache/no-cache tests because:
+-- Cache mode matches the message from regular mode and no-cache mode
+-- matches the message from coarse incremental mode...
 from p import q
 [file p/__init__.py]
 [file p/q.py]
@@ -245,8 +248,22 @@ from p import q
 main:1: error: Cannot find module named 'p.q'
 -- TODO: The following messages are different compared to non-incremental mode
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache]
+-- Different cache/no-cache tests because:
+-- Cache mode matches the message from regular mode and no-cache mode
+-- matches the message from coarse incremental mode...
+from p import q
+[file p/__init__.py]
+[file p/q.py]
+[delete p/q.py.2]
+[file p/q.py.3]
+[out]
+==
 main:1: error: Module 'p' has no attribute 'q'
 ==
+
 
 [case testDeletionOfSubmoduleTriggersImportFrom2]
 from p.q import f
@@ -485,8 +502,6 @@ def g() -> None: pass
 ==
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
--- TODO: Remove redundant error message
-main:1: error: Cannot find module named 'b'
 main:2: error: Cannot find module named 'b'
 
 [case testDeleteTwoFilesNoErrors]
@@ -528,8 +543,6 @@ a.py:3: error: Too many arguments for "g"
 ==
 main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
--- TODO: Remove redundant error message
-main:1: error: Cannot find module named 'b'
 main:2: error: Cannot find module named 'b'
 
 [case testAddFileWhichImportsLibModule]
@@ -735,7 +748,9 @@ a/b.py:3: error: Revealed type is 'Any'
 ==
 a/b.py:3: error: Unsupported operand types for + ("int" and "str")
 
-[case testDeleteModuleWithinPackageInitIgnored]
+[case testDeleteModuleWithinPackageInitIgnored-skip-cache]
+-- Disabled in cache mode because incorrect behavior:
+-- Having deleted files specified on command line seems dodgy, though.
 # cmd: mypy x.py a/b.py
 # flags: --follow-imports=skip --ignore-missing-imports
 [file x.py]

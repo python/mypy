@@ -40,7 +40,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound, type_object_type
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
@@ -59,6 +59,7 @@ from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
+from mypy.sharedparse import BINARY_MAGIC_METHODS
 
 from mypy import experiments
 
@@ -1254,6 +1255,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
 
+            if defn.decorators:
+                sig = type_object_type(defn.info, self.named_type)
+                # Decorators are applied in reverse order.
+                for decorator in reversed(defn.decorators):
+                    if (isinstance(decorator, CallExpr)
+                            and isinstance(decorator.analyzed, PromoteExpr)):
+                        # _promote is a special type checking related construct.
+                        continue
+
+                    dec = self.expr_checker.accept(decorator)
+                    temp = self.temp_node(sig)
+                    fullname = None
+                    if isinstance(decorator, RefExpr):
+                        fullname = decorator.fullname
+
+                    # TODO: Figure out how to have clearer error messages.
+                    # (e.g. "class decorator must be a function that accepts a type."
+                    sig, _ = self.expr_checker.check_call(dec, [temp],
+                                                          [nodes.ARG_POS], defn,
+                                                          callable_name=fullname)
+                # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
+                # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
+
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
         variances of type variables.
@@ -2179,8 +2203,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
-                    if (self.options.warn_return_any and not self.current_node_deferred and
-                            not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)):
+                    if (self.options.warn_return_any
+                        and not self.current_node_deferred
+                        and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
+                        and not (defn.name() in BINARY_MAGIC_METHODS and
+                                 is_literal_not_implemented(s.expr))):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
 
@@ -3230,6 +3257,10 @@ def remove_optional(typ: Type) -> Type:
         return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
     else:
         return typ
+
+
+def is_literal_not_implemented(n: Expression) -> bool:
+    return isinstance(n, NameExpr) and n.fullname == 'builtins.NotImplemented'
 
 
 def builtin_item_type(tp: Type) -> Optional[Type]:

@@ -174,7 +174,10 @@ def h() -> None:
 ==
 a.py:1: error: Module 'b' has no attribute 'C'
 
-[case testReferenceToTypeThroughCycleAndReplaceWithFunction]
+[case testReferenceToTypeThroughCycleAndReplaceWithFunction-skip-cache]
+-- Different cache/no-cache tests because:
+-- Cache mode has a "need type annotation" message (like coarse incremental does)
+
 import a
 
 [file a.py]
@@ -204,6 +207,41 @@ def h() -> None:
 [out]
 ==
 a.py:3: error: Invalid type "b.C"
+
+[case testReferenceToTypeThroughCycleAndReplaceWithFunction-skip-nocache]
+-- Different cache/no-cache tests because:
+-- Cache mode has a "need type annotation" message (like coarse incremental does)
+
+import a
+
+[file a.py]
+from b import C
+
+def f() -> C: pass
+
+[file b.py]
+import a
+
+class C:
+    def g(self) -> None: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[file b.py.2]
+import a
+
+def C() -> int: pass
+
+def h() -> None:
+    c = a.f()
+    c.g()
+
+[out]
+==
+a.py:3: error: Invalid type "b.C"
+b.py:6: error: Need type annotation for 'c'
 
 -- TODO: More import cycle:
 --

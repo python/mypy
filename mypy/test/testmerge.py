@@ -45,8 +45,8 @@ class ASTMergeSuite(DataSuite):
     base_path = test_temp_dir
     optional_out = True
 
-    def __init__(self, *, update_data: bool) -> None:
-        super().__init__(update_data=update_data)
+    def setup(self) -> None:
+        super().setup()
         self.str_conv = StrConv(show_ids=True)
         assert self.str_conv.id_mapper is not None
         self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
@@ -99,6 +99,7 @@ class ASTMergeSuite(DataSuite):
     def build(self, source: str) -> Tuple[List[str], Optional[BuildManager], Dict[str, State]]:
         options = Options()
         options.incremental = True
+        options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
         main_path = os.path.join(test_temp_dir, 'main')

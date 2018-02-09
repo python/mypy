@@ -143,10 +143,6 @@ from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger
 
 
-# If True, print out debug logging output.
-DEBUG = False
-
-
 MAX_ITER = 1000
 
 
@@ -170,6 +166,10 @@ class FineGrainedBuildManager:
         self.blocking_error = None  # type: Optional[Tuple[str, str]]
         # Module that we haven't processed yet but that are known to be stale.
         self.stale = []  # type: List[Tuple[str, str]]
+        # Disable the cache so that load_graph doesn't try going back to disk
+        # for the cache. This is kind of a hack and it might be better to have
+        # this directly reflected in load_graph's interface.
+        self.options.cache_dir = os.devnull
         mark_all_meta_as_memory_only(graph, manager)
         manager.saved_cache = preserve_full_cache(graph, manager)
         self.type_maps = extract_type_maps(graph)
@@ -201,25 +201,23 @@ class FineGrainedBuildManager:
         self.triggered = []
         changed_modules = dedupe_modules(changed_modules + self.stale)
         initial_set = {id for id, _ in changed_modules}
-        if DEBUG:
-            print('==== update %s ====' % ', '.join(repr(id)
-                                                    for id, _ in changed_modules))
-            if self.previous_targets_with_errors:
-                print('previous targets with errors: %s' %
-                      sorted(self.previous_targets_with_errors))
+        self.manager.log('fine-grained: ==== update %s ====' % ', '.join(
+            repr(id) for id, _ in changed_modules))
+        if self.previous_targets_with_errors and self.options.verbosity >= 1:
+            self.manager.log('fine-grained: previous targets with errors: %s' %
+                             sorted(self.previous_targets_with_errors))
 
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
             # module that still has blocking errors.
-            if DEBUG:
-                print('existing blocker: %s' % self.blocking_error[0])
+            self.manager.log('fine-grained: existing blocker: %s' % self.blocking_error[0])
             changed_modules = dedupe_modules([self.blocking_error] + changed_modules)
             self.blocking_error = None
 
         while changed_modules:
             next_id, next_path = changed_modules.pop(0)
             if next_id not in self.previous_modules and next_id not in initial_set:
-                print('skip %r (module not in import graph)' % next_id)
+                self.manager.log('fine-grained: skip %r (module not in import graph)' % next_id)
                 continue
             result = self.update_single(next_id, next_path)
             messages, remaining, (next_id, next_path), blocker = result
@@ -250,8 +248,7 @@ class FineGrainedBuildManager:
             - Module which was actually processed as (id, path) tuple
             - Whether there was a blocking error in the module
         """
-        if DEBUG:
-            print('--- update single %r ---' % module)
+        self.manager.log('fine-grained: --- update single %r ---' % module)
 
         # TODO: If new module brings in other modules, we parse some files multiple times.
         manager = self.manager
@@ -275,15 +272,16 @@ class FineGrainedBuildManager:
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
-        if DEBUG:
+        if self.options.verbosity >= 1:
             filtered = [trigger for trigger in triggered
                         if not trigger.endswith('__>')]
-            print('triggered:', sorted(filtered))
+            self.manager.log('fine-grained: triggered: %r' % sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
-        update_dependencies({module: tree}, self.deps, graph, self.options)
-        propagate_changes_using_dependencies(manager, graph, self.deps, triggered,
-                                             {module},
-                                             self.previous_targets_with_errors)
+        collect_dependencies({module: tree}, self.deps, graph)
+        remaining += propagate_changes_using_dependencies(
+            manager, graph, self.deps, triggered,
+            {module},
+            self.previous_targets_with_errors)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
@@ -318,8 +316,9 @@ def mark_all_meta_as_memory_only(graph: Dict[str, State],
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
                          options: Options) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
+    # Deps for each module were computed during build() or loaded from the cache.
     deps = {}  # type: Dict[str, Set[str]]
-    update_dependencies(manager.modules, deps, graph, options)
+    collect_dependencies(manager.modules, deps, graph)
     return deps
 
 
@@ -367,14 +366,14 @@ def update_single_isolated(module: str,
     """
     if module in manager.modules:
         assert_equivalent_paths(path, manager.modules[module].path)
-    elif DEBUG:
-        print('new module %r' % module)
+    else:
+        manager.log('fine-grained: new module %r' % module)
 
     old_modules = dict(manager.modules)
     sources = get_sources(previous_modules, [(module, path)])
     invalidate_stale_cache_entries(manager.saved_cache, [(module, path)])
 
-    manager.missing_modules = set()
+    manager.missing_modules.clear()
     try:
         graph = load_graph(sources, manager)
     except CompileError as err:
@@ -412,8 +411,7 @@ def update_single_isolated(module: str,
             else:
                 del manager.modules[id]
             del graph[id]
-        if DEBUG:
-            print('--> %r (newly imported)' % module)
+        manager.log('fine-grained: --> %r (newly imported)' % module)
     else:
         remaining_modules = []
 
@@ -441,6 +439,7 @@ def update_single_isolated(module: str,
     # Perform type checking.
     state.type_check_first_pass()
     state.type_check_second_pass()
+    state.compute_fine_grained_deps()
     state.finish_passes()
     # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
@@ -486,13 +485,13 @@ def assert_equivalent_paths(path1: str, path2: str) -> None:
 def delete_module(module_id: str,
                   graph: Dict[str, State],
                   manager: BuildManager) -> Dict[str, State]:
-    if DEBUG:
-        print('delete module %r' % module_id)
+    manager.log('fine-grained: delete module %r' % module_id)
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     assert module_id not in graph
     new_graph = graph.copy()
-    del manager.modules[module_id]
+    if module_id in manager.modules:
+        del manager.modules[module_id]
     if module_id in manager.saved_cache:
         del manager.saved_cache[module_id]
     components = module_id.split('.')
@@ -562,6 +561,7 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                 # There is no corresponding JSON so create partial "memory-only" metadata.
                 assert state.path
                 dep_prios = state.dependency_priorities()
+                dep_lines = state.dependency_lines()
                 meta = memory_only_cache_meta(
                     id,
                     state.path,
@@ -569,6 +569,7 @@ def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
                     state.suppressed,
                     list(state.child_modules),
                     dep_prios,
+                    dep_lines,
                     state.source_hash,
                     state.ignore_all,
                     manager)
@@ -584,6 +585,7 @@ def memory_only_cache_meta(id: str,
                            suppressed: List[str],
                            child_modules: List[str],
                            dep_prios: List[int],
+                           dep_lines: List[int],
                            source_hash: str,
                            ignore_all: bool,
                            manager: BuildManager) -> CacheMeta:
@@ -603,6 +605,7 @@ def memory_only_cache_meta(id: str,
             'child_modules': child_modules,
             'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
+            'dep_lines': dep_lines,
             'interface_hash': '',
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
@@ -644,24 +647,13 @@ def find_import_line(node: MypyFile, target: str) -> Optional[int]:
     return None
 
 
-def update_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
-                        deps: Dict[str, Set[str]],
-                        graph: Dict[str, State],
-                        options: Options) -> None:
+def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
+                         deps: Dict[str, Set[str]],
+                         graph: Dict[str, State]) -> None:
     for id, node in new_modules.items():
         if node is None:
             continue
-        if '/typeshed/' in node.path or node.path.startswith('typeshed/'):
-            # We don't track changes to typeshed -- the assumption is that they are only changed
-            # as part of mypy updates, which will invalidate everything anyway.
-            #
-            # TODO: Not a reliable test, as we could have a package named typeshed.
-            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
-            continue
-        module_deps = get_dependencies(target=node,
-                                       type_map=graph[id].type_map(),
-                                       python_version=options.python_version)
-        for trigger, targets in module_deps.items():
+        for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
@@ -720,9 +712,15 @@ def propagate_changes_using_dependencies(
         deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
-        targets_with_errors: Set[str]) -> None:
+        targets_with_errors: Set[str]) -> List[Tuple[str, str]]:
+    """Transitively rechecks targets based on triggers and the dependency map.
+
+    Returns a list (module id, path) tuples representing modules that contain
+    a target that needs to be reprocessed but that has not been parsed yet."""
+
     # TODO: Multiple type checking passes
     num_iter = 0
+    remaining_modules = []
 
     # Propagate changes until nothing visible has changed during the last
     # iteration.
@@ -731,7 +729,8 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo = find_targets_recursive(triggered, deps, manager.modules, up_to_date_modules)
+        todo = find_targets_recursive(manager, triggered, deps,
+                                      manager.modules, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
@@ -739,24 +738,32 @@ def propagate_changes_using_dependencies(
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
-                if DEBUG:
-                    print('process', target)
+                manager.log('fine-grained: process: %s' % target)
                 todo[id].update(lookup_target(manager.modules, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
+            if manager.modules[id].is_cache_skeleton:
+                # We have only loaded the cache for this file, not the actual file,
+                # so we can't access the nodes to reprocess.
+                # Add it to the queue of files that need to be processed fully.
+                remaining_modules.append((id, manager.modules[id].path))
+            else:
+                triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
         # Changes elsewhere may require us to reprocess modules that were
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
         targets_with_errors = set()
-        if DEBUG:
-            print('triggered:', list(triggered))
+        if manager.options.verbosity >= 1:
+            manager.log('fine-grained: triggered: %r' % list(triggered))
+
+    return remaining_modules
 
 
 def find_targets_recursive(
+        manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
         modules: Dict[str, MypyFile],
@@ -789,8 +796,7 @@ def find_targets_recursive(
                     continue
                 if module_id not in result:
                     result[module_id] = set()
-                if DEBUG:
-                    print('process', target)
+                manager.log('fine-grained: process %s' % target)
                 deferred = lookup_target(modules, target)
                 result[module_id].update(deferred)
 
@@ -807,8 +813,8 @@ def reprocess_nodes(manager: BuildManager,
     Return fired triggers.
     """
     if module_id not in manager.saved_cache or module_id not in graph:
-        if DEBUG:
-            print('%s not in saved cache or graph (blocking errors or deleted?)' % module_id)
+        manager.log('fine-grained: %s not in saved cache or graph (blocking errors or deleted?)' %
+                    module_id)
         return set()
 
     file_node = manager.modules[module_id]
@@ -1005,4 +1011,6 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
 
 
 def extract_type_maps(graph: Graph) -> Dict[str, Dict[Expression, Type]]:
-    return {id: state.type_map() for id, state in graph.items()}
+    # This is used to export information used only by the testmerge harness.
+    return {id: state.type_map() for id, state in graph.items()
+            if state.tree}

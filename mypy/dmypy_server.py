@@ -24,7 +24,7 @@ import mypy.server.update
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
-from mypy.fswatcher import FileSystemWatcher
+from mypy.fswatcher import FileSystemWatcher, FileData
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -86,13 +86,11 @@ class Server:
     def __init__(self, flags: List[str]) -> None:
         """Initialize the server with the desired mypy flags."""
         self.saved_cache = {}  # type: mypy.build.SavedCache
-        if '--experimental' in flags:
-            self.fine_grained = True
-            self.fine_grained_initialized = False
-            flags.remove('--experimental')
-        else:
-            self.fine_grained = False
-        sources, options = mypy.main.process_options(['-i'] + flags, False)
+        self.fine_grained_initialized = False
+        sources, options = mypy.main.process_options(['-i'] + flags,
+                                                     require_targets=False,
+                                                     server_options=True)
+        self.fine_grained = options.fine_grained_incremental
         if sources:
             sys.exit("dmypy: start/restart does not accept sources")
         if options.report_dirs:
@@ -101,13 +99,18 @@ class Server:
             sys.exit("dmypy: start/restart should not disable incremental mode")
         if options.quick_and_dirty:
             sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
+        if options.use_fine_grained_cache and not options.fine_grained_incremental:
+            sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
         self.options = options
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
         if self.fine_grained:
             options.incremental = True
             options.show_traceback = True
-            options.cache_dir = os.devnull
+            if options.use_fine_grained_cache:
+                options.cache_fine_grained = True  # set this so that cache options match
+            else:
+                options.cache_dir = os.devnull
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
@@ -265,11 +268,29 @@ class Server:
         manager = result.manager
         graph = result.graph
         self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
-        status = 1 if messages else 0
-        self.previous_messages = messages[:]
         self.fine_grained_initialized = True
         self.previous_sources = sources
         self.fscache.flush()
+
+        # If we are using the fine-grained cache, build hasn't actually done
+        # the typechecking on the updated files yet.
+        # Run a fine-grained update starting from the cached data
+        if self.options.use_fine_grained_cache:
+            # Pull times and hashes out of the saved_cache and stick them into
+            # the fswatcher, so we pick up the changes.
+            for meta, mypyfile, type_map in manager.saved_cache.values():
+                if meta.mtime is None: continue
+                self.fswatcher.set_file_data(
+                    mypyfile.path,
+                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
+
+            # Run an update
+            changed = self.find_changed(sources)
+            if changed:
+                messages = self.fine_grained_manager.update(changed)
+
+        status = 1 if messages else 0
+        self.previous_messages = messages[:]
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:

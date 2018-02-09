@@ -42,7 +42,8 @@ class Options:
         "disallow_untyped_decorators",
     }
 
-    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
+    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
+                                {"quick_and_dirty", "platform", "cache_fine_grained"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
@@ -141,6 +142,9 @@ class Options:
         self.debug_cache = False
         self.quick_and_dirty = False
         self.skip_version_check = False
+        self.fine_grained_incremental = False
+        self.cache_fine_grained = False
+        self.use_fine_grained_cache = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]

@@ -286,7 +286,9 @@ main:5: error: Module has no attribute "B"
 ==
 main:5: error: Module has no attribute "B"
 
-[case testContinueToReportErrorAtTopLevel]
+[case testContinueToReportErrorAtTopLevel-skip-cache]
+-- Different cache/no-cache tests because:
+-- Error message ordering differs
 import n
 import m
 m.A().f()
@@ -306,6 +308,31 @@ class A:
 ==
 main:3: error: "A" has no attribute "f"
 n.py:2: error: "A" has no attribute "g"
+==
+n.py:2: error: "A" has no attribute "g"
+
+[case testContinueToReportErrorAtTopLevel-skip-nocache]
+-- Different cache/no-cache tests because:
+-- Error message ordering differs
+import n
+import m
+m.A().f()
+[file n.py]
+import m
+m.A().g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+n.py:2: error: "A" has no attribute "g"
+main:3: error: "A" has no attribute "f"
 ==
 n.py:2: error: "A" has no attribute "g"
 
@@ -1081,9 +1108,8 @@ def f() -> Iterator[None]:
 [out]
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
-a.py:1: error: Cannot find module named 'b'
-a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:3: error: Cannot find module named 'b'
+a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
@@ -1129,9 +1155,8 @@ def g() -> None:
 [out]
 a.py:11: error: Too many arguments for "h"
 ==
-a.py:1: error: Cannot find module named 'b'
-a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:10: error: Cannot find module named 'b'
+a.py:10: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 a.py:11: error: Too many arguments for "h"
 ==
@@ -1164,9 +1189,8 @@ def f(x: List[int]) -> Iterator[None]:
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:1: error: Cannot find module named 'b'
-a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:3: error: Cannot find module named 'b'
+a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 ==
 
@@ -1223,10 +1247,8 @@ def g() -> None: pass
 [delete n.py.2]
 [out]
 ==
-main:1: error: Cannot find module named 'm'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:1: error: Cannot find module named 'n'
 main:2: error: Cannot find module named 'm'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:9: error: Cannot find module named 'n'
 
 [case testOverloadSpecialCase]
@@ -1253,10 +1275,8 @@ def g() -> None: pass
 [builtins fixtures/ops.pyi]
 [out]
 ==
-main:1: error: Cannot find module named 'm'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:1: error: Cannot find module named 'n'
 main:2: error: Cannot find module named 'm'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:14: error: Cannot find module named 'n'
 
 [case testRefreshGenericClass]
