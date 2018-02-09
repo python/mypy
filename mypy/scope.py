@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from mypy.nodes import TypeInfo, FuncItem
 
+
 class Scope:
     """Track which target we are processing at any given time."""
 

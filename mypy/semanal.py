@@ -1696,7 +1696,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.add_type_alias_deps(a.aliases_used)
         return typ
 
-    def add_type_alias_deps(self, aliases_used: Iterable[str], target: Optional[str] = None) -> None:
+    def add_type_alias_deps(self, aliases_used: Iterable[str],
+                            target: Optional[str] = None) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.
@@ -1849,7 +1850,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # annotations (see the second rule).
             return
         rvalue = s.rvalue
-        res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue, warn_bound_tvar=True)
+        res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue,
+                                                                           warn_bound_tvar=True)
         if not res:
             return
         node = self.lookup(lvalue.name, lvalue)
