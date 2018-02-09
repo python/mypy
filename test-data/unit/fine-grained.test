@@ -1330,7 +1330,7 @@ class A:
 
     def g(self): pass
 [triggered]
-2: <a.A.f>, <a.A.z>, <a>
+2: <a.A.f>, <a.A.z>
 [out]
 ==
 

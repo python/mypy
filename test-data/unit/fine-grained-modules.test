@@ -23,8 +23,7 @@ a.f(1)
 ==
 b.py:2: error: Too many arguments for "f"
 
-[case testAddFileWithErrors-skip]
-# TODO: fix the order of error message to be the same with and without cache
+[case testAddFileWithErrors]
 import b
 [file b.py]
 [file a.py.2]

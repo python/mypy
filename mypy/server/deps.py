@@ -287,6 +287,8 @@ class DependencyVisitor(TraverserVisitor):
             assert isinstance(lvalue, NameExpr)
             attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
                                                    lvalue.name))
+            # We need to re-process the target where alias is defined to "refresh" the alias.
+            self.add_type_dependencies(rvalue.analyzed.type)
             self.add_type_dependencies(rvalue.analyzed.type, attr_trigger)
             for dep in self.alias_deps[o]:
                 self.add_dependency(make_trigger(dep), target=attr_trigger)

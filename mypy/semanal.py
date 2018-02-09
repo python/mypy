@@ -1815,10 +1815,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         typ = None  # type: Optional[Type]
         if res:
             typ, depends_on = res
-            alias_tvars = [name for (name, node) in
-                           typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
-            qualified_tvars = [node.fullname() for (name, node) in
-                           typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))]
+            found_type_vars = typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
+            alias_tvars = [name for (name, node) in found_type_vars]
+            qualified_tvars = [node.fullname() for (name, node) in found_type_vars]
             depends_on.update(qualified_tvars)
         else:
             alias_tvars = []

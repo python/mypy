@@ -65,9 +65,10 @@ def analyze_type_alias(node: Expression,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True,
                        warn_bound_tvar: bool = False) -> Optional[Tuple[Type, Set[str]]]:
-    """If `node` is valid as a type alias rvalue, return the resulting type and a set of
-    full names of type aliases it depends on (directly or indirectly).
+    """Analyze r.h.s. of a (potential) type alias definition.
 
+    If `node` is valid as a type alias rvalue, return the resulting type and a set of
+    full names of type aliases it depends on (directly or indirectly).
     Return None otherwise. 'node' must have been semantically analyzed.
     """
     # Quickly return None if the expression doesn't look like a type. Note
