@@ -111,7 +111,7 @@ from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
 n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "int"
-n = N(1, b=2)   # E: Argument 2 to "N" has incompatible type "int"; expected "str"
+n = N(1, b=2)   # E: Argument "b" to "N" has incompatible type "int"; expected "str"
 N(1, 'x')
 N(b='x', a=1)
 
@@ -279,7 +279,7 @@ X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
 reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
-x._replace(y=5)  # E: Argument 1 to "_replace" of "X" has incompatible type "int"; expected "str"
+x._replace(y=5)  # E: Argument "y" to "_replace" of "X" has incompatible type "int"; expected "str"
 
 [case testNamedTupleMake]
 from typing import NamedTuple

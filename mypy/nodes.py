@@ -156,7 +156,7 @@ class Expression(Node):
 
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
-#                'TupleExpr', 'ListExpr']; see #1783.
+#                'TupleExpr']; see #1783.
 Lvalue = Expression
 
 
@@ -203,6 +203,8 @@ class MypyFile(SymbolNode):
     ignored_lines = None  # type: Set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
+    # Is this loaded from the cache and thus missing the actual body of the file?
+    is_cache_skeleton = False
 
     def __init__(self,
                  defs: List[Statement],
@@ -249,6 +251,7 @@ class MypyFile(SymbolNode):
         tree.names = SymbolTable.deserialize(data['names'])
         tree.is_stub = data['is_stub']
         tree.path = data['path']
+        tree.is_cache_skeleton = True
         return tree
 
 
@@ -1526,7 +1529,9 @@ class DictExpr(Expression):
 
 
 class TupleExpr(Expression):
-    """Tuple literal expression (..., ...)"""
+    """Tuple literal expression (..., ...)
+
+    Also lvalue sequences (..., ...) and [..., ...]"""
 
     items = None  # type: List[Expression]
 
