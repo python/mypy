@@ -18,7 +18,7 @@ from mypy.nodes import (
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
     TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef, ImportFrom,
-    UNBOUND_IMPORTED
+    MemberExpr, UNBOUND_IMPORTED, MODULE_REF
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -284,6 +284,24 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 expr.kind = n.kind
                 expr.node = n.node
                 expr.fullname = n.fullname
+
+    def visit_member_expr(self, expr: MemberExpr) -> None:
+        # Fixup remaining UNBOUND_IMPORTED from import cycles
+        base = expr.expr
+        base.accept(self)
+        if isinstance(base, RefExpr) and base.kind == MODULE_REF:
+            if expr.kind == UNBOUND_IMPORTED:
+                module_id = expr.expr.name
+                module = self.modules.get(module_id)
+                node = module and module.names.get(expr.name)
+                if node:
+                    expr.kind = node.kind
+                    expr.node = node.node
+                    expr.fullname = node.fullname
+            elif expr.kind is None:
+                self.sem.bind_module_attribute_reference(expr)
+        super().visit_member_expr(expr)
+
 
     # Helpers
 

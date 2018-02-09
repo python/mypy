@@ -1474,12 +1474,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             node = module.names.get(id) if module else None
             missing = False
             is_same_module = import_id == self.cur_mod_id
-            is_unbound = node and node.kind == UNBOUND_IMPORTED
             possible_module_id = import_id + '.' + id
 
             # If the module does not contain a symbol with the name 'id',
             # try checking if it's a module instead.
-            if not node or is_unbound:
+            if not node or node.kind == UNBOUND_IMPORTED:
                 mod = self.modules.get(possible_module_id)
                 if mod is not None:
                     node = SymbolTableNode(MODULE_REF, mod)
@@ -1505,7 +1504,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     self.add_symbol(name, symbol, imp)
                     return
 
-            if node and not node.module_hidden and not (is_unbound and is_same_module):
+            # If we found the node being imported, and it's not in a hidden
+            # module, nor a recursive self-import (which should be an import
+            # error), go ahead and update our local symbol table.
+            if node and not node.module_hidden and not (
+                    node.kind == UNBOUND_IMPORTED and is_same_module):
                 node = self.normalize_type_alias(node, imp)
                 if not node:
                     return
@@ -3334,51 +3337,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         base.accept(self)
         # Bind references to module attributes.
         if isinstance(base, RefExpr) and base.kind == MODULE_REF:
-            # This branch handles the case foo.bar where foo is a module.
-            # In this case base.node is the module's MypyFile and we look up
-            # bar in its namespace.  This must be done for all types of bar.
-            file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
-            # TODO: Should we actually use this? Not sure if this makes a difference.
-            # if file.fullname() == self.cur_mod_id:
-            #     names = self.globals
-            # else:
-            #     names = file.names
-            n = file.names.get(expr.name, None) if file is not None else None
-            if n and not n.module_hidden:
-                n = self.normalize_type_alias(n, expr)
-                if not n:
-                    return
-                n = self.rebind_symbol_table_node(n)
-                if n:
-                    # TODO: What if None?
-                    expr.kind = n.kind
-                    expr.fullname = n.fullname
-                    expr.node = n.node
-            elif file is not None and file.is_stub and '__getattr__' in file.names:
-                # If there is a module-level __getattr__, then any attribute on the module is valid
-                # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                if isinstance(getattr_defn.node, FuncDef):
-                    if isinstance(getattr_defn.node.type, CallableType):
-                        typ = getattr_defn.node.type.ret_type
-                    else:
-                        typ = AnyType(TypeOfAny.special_form)
-                    expr.kind = MDEF
-                    expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
-                    expr.node = Var(expr.name, type=typ)
-            else:
-                # We only catch some errors here; the rest will be
-                # caught during type checking.
-                #
-                # This way we can report a larger number of errors in
-                # one type checker run. If we reported errors here,
-                # the build would terminate after semantic analysis
-                # and we wouldn't be able to report any type errors.
-                full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
-                mod_name = " '%s'" % file.fullname() if file is not None else ''
-                if full_name in obsolete_name_mapping:
-                    self.fail("Module%s has no attribute %r (it's now called %r)" % (
-                        mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
+            self.bind_module_attribute_reference(expr)
         elif isinstance(base, RefExpr):
             # This branch handles the case C.bar (or cls.bar or self.bar inside
             # a classmethod/method), where C is a class and bar is a type
@@ -3407,6 +3366,55 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     expr.kind = n.kind
                     expr.fullname = n.fullname
                     expr.node = n.node
+
+    def bind_module_attribute_reference(self, expr: MemberExpr) -> None:
+        base = expr.expr
+        # This method handles the case foo.bar where foo is a module.
+        # In this case base.node is the module's MypyFile and we look up
+        # bar in its namespace.  This must be done for all types of bar.
+        file = cast(Optional[MypyFile], base.node)  # can't use isinstance due to issue #2999
+        # TODO: Should we actually use this? Not sure if this makes a difference.
+        # if file.fullname() == self.cur_mod_id:
+        #     names = self.globals
+        # else:
+        #     names = file.names
+        n = file.names.get(expr.name, None) if file is not None else None
+        if n and not n.module_hidden:
+            n = self.normalize_type_alias(n, expr)
+            if not n:
+                return
+            n = self.rebind_symbol_table_node(n)
+            if n:
+                # TODO: What if None?
+                expr.kind = n.kind
+                expr.fullname = n.fullname
+                expr.node = n.node
+        elif file is not None and file.is_stub and '__getattr__' in file.names:
+            # If there is a module-level __getattr__, then any attribute on the module is valid
+            # per PEP 484.
+            getattr_defn = file.names['__getattr__']
+            if isinstance(getattr_defn.node, FuncDef):
+                if isinstance(getattr_defn.node.type, CallableType):
+                    typ = getattr_defn.node.type.ret_type
+                else:
+                    typ = AnyType(TypeOfAny.special_form)
+                expr.kind = MDEF
+                expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
+                expr.node = Var(expr.name, type=typ)
+        else:
+            # We only catch some errors here; the rest will be
+            # caught during type checking.
+            #
+            # This way we can report a larger number of errors in
+            # one type checker run. If we reported errors here,
+            # the build would terminate after semantic analysis
+            # and we wouldn't be able to report any type errors.
+            full_name = '%s.%s' % (file.fullname() if file is not None else None, expr.name)
+            mod_name = " '%s'" % file.fullname() if file is not None else ''
+            if full_name in obsolete_name_mapping:
+                self.fail("Module%s has no attribute %r (it's now called %r)" % (
+                    mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
+
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)
