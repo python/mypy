@@ -537,7 +537,7 @@ class DependencyVisitor(TraverserVisitor):
 
     # Helpers
 
-    def add_type_alias_deps(self, target: str, add_trigger: bool = False):
+    def add_type_alias_deps(self, target: str, add_trigger: bool = False) -> None:
         if target in self.alias_deps:
             for alias in self.alias_deps[target]:
                 self.add_dependency(make_trigger(alias))
