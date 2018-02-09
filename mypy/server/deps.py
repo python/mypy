@@ -189,12 +189,13 @@ class DependencyVisitor(TraverserVisitor):
             else:
                 signature = o.type
             for trigger in get_type_triggers(signature):
+                # TODO: avoid adding both `mod.func` and `<mod.func>` here and below for aliases
                 self.add_dependency(trigger)
                 self.add_dependency(trigger, target=make_trigger(target))
         if o.info:
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
-        self.add_type_alias_deps(self.scope.current_full_target())
+        self.add_type_alias_deps(self.scope.current_full_target(), add_trigger=True)
         super().visit_func_def(o)
         self.scope.leave()
 
@@ -291,8 +292,9 @@ class DependencyVisitor(TraverserVisitor):
             # We need to re-process the target where alias is defined to "refresh" the alias.
             self.add_type_dependencies(rvalue.analyzed.type)
             self.add_type_dependencies(rvalue.analyzed.type, attr_trigger)
-            for dep in self.alias_deps[o]:
-                self.add_dependency(make_trigger(dep), target=attr_trigger)
+            if attr_trigger in self.alias_deps:
+                for dep in self.alias_deps[attr_trigger]:
+                    self.add_dependency(make_trigger(dep), target=attr_trigger)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
@@ -535,10 +537,12 @@ class DependencyVisitor(TraverserVisitor):
 
     # Helpers
 
-    def add_type_alias_deps(self, target):
+    def add_type_alias_deps(self, target: str, add_trigger: bool = False):
         if target in self.alias_deps:
             for alias in self.alias_deps[target]:
                 self.add_dependency(make_trigger(alias))
+                if add_trigger:
+                    self.add_dependency(make_trigger(alias), make_trigger(target))
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
         """Add dependency from trigger to a target.

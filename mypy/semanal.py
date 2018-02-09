@@ -1079,7 +1079,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
         for base_expr in defn.base_type_exprs:
             try:
-                base = self.expr_to_analyzed_type(base_expr, source_classdef=defn)
+                base = self.expr_to_analyzed_type(base_expr)
             except TypeTranslationError:
                 self.fail('Invalid base class', base_expr)
                 info.fallback_to_any = True
@@ -1191,11 +1191,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             return
         defn.metaclass = metas.pop()
 
-    def expr_to_analyzed_type(self, expr: Expression, *,
-                              source_classdef: Optional[ClassDef] = None) -> Type:
-        # If this function is called to analyze a base in class definition, then
-        # the corresponding ClassDef, should ber passed in `source_classdef`.
-        # This is used to determine correct target for a fine-grained dependency.
+    def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
             expr.accept(self)
             info = self.check_namedtuple(expr)
@@ -1207,7 +1203,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             fallback = Instance(info, [])
             return TupleType(info.tuple_type.items, fallback=fallback)
         typ = expr_to_unanalyzed_type(expr)
-        return self.anal_type(typ, source_classdef=source_classdef)
+        return self.anal_type(typ)
 
     def verify_base_classes(self, defn: ClassDef) -> bool:
         info = defn.info
@@ -1691,8 +1687,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
                   aliasing: bool = False,
-                  third_pass: bool = False,
-                  source_classdef: Optional[ClassDef] = None) -> Type:
+                  third_pass: bool = False) -> Type:
         a = self.type_analyzer(tvar_scope=tvar_scope,
                                aliasing=aliasing,
                                allow_tuple_literal=allow_tuple_literal,
@@ -1701,7 +1696,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.add_type_alias_deps(a.aliases_used)
         return typ
 
-    def add_type_alias_deps(self, aliases_used: Set[str]) -> None:
+    def add_type_alias_deps(self, aliases_used: Set[str], target: Optional[str] = None) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.
@@ -1711,7 +1706,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # A basic optimization to avoid adding targets with no dependencies to
             # the `alias_deps` dict.
             return
-        self.cur_mod_node.alias_deps[self.scope.current_full_target()].update(aliases_used)
+        if target is None:
+            target = self.scope.current_full_target()
+        self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
@@ -1787,7 +1784,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         return Instance(fb_info, [])
 
     def analyze_alias(self, rvalue: Expression,
-                      warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str], Set[str]]:
+                      warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str],
+                                                              Set[str], List[str]]:
         """Check if 'rvalue' represents a valid type allowed for aliasing
         (e.g. not a type variable). If yes, return the corresponding type, a list of
         qualified type variable names for generic aliases, and a set of names the alias depends on.
@@ -1817,11 +1815,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             found_type_vars = typ.accept(TypeVariableQuery(self.lookup_qualified, self.tvar_scope))
             alias_tvars = [name for (name, node) in found_type_vars]
             qualified_tvars = [node.fullname() for (name, node) in found_type_vars]
-            depends_on.update(qualified_tvars)
         else:
             alias_tvars = []
             depends_on = set()
-        return typ, alias_tvars, depends_on
+            qualified_tvars = []
+        return typ, alias_tvars, depends_on, qualified_tvars
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed.
@@ -1850,7 +1848,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # annotations (see the second rule).
             return
         rvalue = s.rvalue
-        res, alias_tvars, depends_on = self.analyze_alias(rvalue, warn_bound_tvar=True)
+        res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue, warn_bound_tvar=True)
         if not res:
             return
         node = self.lookup(lvalue.name, lvalue)
@@ -1861,6 +1859,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # of alias to what it depends on.
             node.alias_depends_on.add(lvalue.fullname)
         self.add_type_alias_deps(depends_on)
+        self.add_type_alias_deps(qualified_tvars, target='<%s>' % lvalue.fullname)
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):
@@ -3487,7 +3486,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
             # Special form -- subscripting a generic type alias.
             # Perform the type substitution and create a new alias.
-            res, alias_tvars, depends_on = self.analyze_alias(expr)
+            res, alias_tvars, depends_on, _ = self.analyze_alias(expr)
             assert res is not None, "Failed analyzing already defined alias"
             expr.analyzed = TypeAliasExpr(res, alias_tvars, fallback=self.alias_fallback(res),
                                           in_runtime=True)
