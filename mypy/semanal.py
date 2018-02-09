@@ -85,6 +85,7 @@ from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
 from mypy.util import get_prefix, correct_relative_import
 from mypy.semanal_shared import PRIORITY_FALLBACKS
+from mypy.scope import Scope
 
 
 T = TypeVar('T')
@@ -255,6 +256,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
+        self.scope = Scope()
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
@@ -287,8 +289,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     v.is_ready = True
 
             defs = file_node.defs
+            self.scope.enter_file(file_node.fullname())
             for d in defs:
                 self.accept(d)
+            self.scope.leave()
 
             if self.cur_mod_id == 'builtins':
                 remove_imported_names_from_symtable(self.globals, 'builtins')
@@ -305,11 +309,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
+        self.scope.enter_file(self.cur_mod_id)
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
             self.recurse_into_functions = True
             self.accept(node)
+        self.scope.leave()
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
@@ -591,6 +597,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
+        self.scope.enter_function(defn)
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
@@ -599,8 +606,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
                 defn.type = analyzer.visit_callable_type(defn.type, nested=False)
-                if analyzer.aliases_used:
-                    self.cur_mod_node.alias_deps[defn].update(analyzer.aliases_used)
+                self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
@@ -637,6 +643,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
             self.leave()
             self.function_stack.pop()
+            self.scope.leave()
 
     def check_classvar_in_signature(self, typ: Type) -> None:
         if isinstance(typ, Overloaded):
@@ -664,10 +671,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
+        self.scope.enter_class(defn.info)
         with self.analyze_class_body(defn) as should_continue:
             if should_continue:
                 # Analyze class body.
                 defn.defs.accept(self)
+            self.scope.leave()
 
     @contextmanager
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
@@ -1689,11 +1698,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                                allow_tuple_literal=allow_tuple_literal,
                                third_pass=third_pass)
         typ = t.accept(a)
-        self.add_type_alias_deps(a.aliases_used, source_classdef)
+        self.add_type_alias_deps(a.aliases_used)
         return typ
 
-    def add_type_alias_deps(self, aliases_used: Set[str],
-                       node_override: Optional[Union[ClassDef, AssignmentStmt]] = None) -> None:
+    def add_type_alias_deps(self, aliases_used: Set[str]) -> None:
         """Add full names of type aliases on which the current node depends.
 
         This is used by fine-grained incremental mode to re-check the corresponding nodes.
@@ -1703,16 +1711,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # A basic optimization to avoid adding targets with no dependencies to
             # the `alias_deps` dict.
             return
-        if node_override:
-            self.cur_mod_node.alias_deps[node_override].update(aliases_used)
-            return
-        if self.is_class_scope():
-            assert self.type is not None, "Type not set at class scope"
-            self.cur_mod_node.alias_deps[self.type.defn].update(aliases_used)
-        elif self.is_func_scope():
-            self.cur_mod_node.alias_deps[self.function_stack[-1]].update(aliases_used)
-        else:
-            self.cur_mod_node.alias_deps[self.cur_mod_node].update(aliases_used)
+        self.cur_mod_node.alias_deps[self.scope.current_full_target()].update(aliases_used)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         for lval in s.lvalues:
@@ -1862,7 +1861,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # of alias to what it depends on.
             node.alias_depends_on.add(lvalue.fullname)
         self.add_type_alias_deps(depends_on)
-        self.add_type_alias_deps(depends_on, node_override=s)
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):

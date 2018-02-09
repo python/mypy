@@ -187,9 +187,6 @@ class SymbolNode(Node):
         raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
-DepNode = Union['MypyFile', 'FuncItem', 'ClassDef', 'AssignmentStmt']
-
-
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
@@ -201,8 +198,8 @@ class MypyFile(SymbolNode):
     path = ''
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
-    # Type alias dependencies as mapping from node to set of alias full names
-    alias_deps = None  # type: DefaultDict[DepNode, Set[str]]
+    # Type alias dependencies as mapping from target to set of alias full names
+    alias_deps = None  # type: DefaultDict[str, Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
     names = None  # type: SymbolTable
