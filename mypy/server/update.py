@@ -1011,4 +1011,4 @@ def extract_type_maps(graph: Graph) -> Dict[str, Dict[Expression, Type]]:
 
 
 def is_verbose(manager: BuildManager) -> bool:
-    return manager.options.verbosity > 1 or DEBUG_FINE_GRAINED
+    return manager.options.verbosity >= 1 or DEBUG_FINE_GRAINED
