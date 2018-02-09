@@ -10,3 +10,4 @@ import mypy.test.testfinegrained
 
 class FineGrainedCacheSuite(mypy.test.testfinegrained.FineGrainedSuite):
     use_cache = True
+    test_name_suffix = '_cached'
