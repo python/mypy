@@ -308,7 +308,7 @@ class Server:
         t2 = time.time()
         self.fine_grained_manager.manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
-                t1-t0, t2-t1))
+                t1 - t0, t2 - t1))
         status = 1 if messages else 0
         self.previous_messages = messages[:]
         self.previous_sources = sources
