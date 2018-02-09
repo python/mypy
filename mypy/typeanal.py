@@ -176,6 +176,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.third_pass = third_pass
         # Names of type aliases encountered while analysing a type will be collected here.
         # (This also recursively includes the names of aliases they depend on.)
+        # TODO: adding the sub-dependencies shouldn't be necessary since the logic
+        # of fine-grained should propagate triggered dependencies.
         self.aliases_used = set()  # type: Set[str]
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
