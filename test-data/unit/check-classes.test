@@ -1751,6 +1751,16 @@ class Fraction(Real):
 [out]
 main:5: error: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
 
+[case testUnsafeOverlappingTuple]
+from typing import Tuple
+
+class Real(Tuple[int, int]):
+    def __add__(self, other): return 1
+class Fraction(Real):
+    def __radd__(self, other: Real) -> Real: return other  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
+
+[builtins fixtures/tuple.pyi]
+
 [case testOverlappingNormalAndInplaceOperatorMethod]
 import typing
 class A:
