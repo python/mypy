@@ -55,6 +55,13 @@ from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 
 
+# Switch to True to produce debug output related to fine-grained incremental
+# mode only that is useful during development. This produces only a subset of
+# output compared to --verbose output. We use a global flag to enable this so
+# that it's easy to enable this when running tests.
+DEBUG_FINE_GRAINED = False
+
+
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 
@@ -730,6 +737,17 @@ class BuildManager:
         if self.options.verbosity >= 1:
             if message:
                 print('LOG: ', *message, file=sys.stderr)
+            else:
+                print(file=sys.stderr)
+            sys.stderr.flush()
+
+    def log_fine_grained(self, *message: str) -> None:
+        if self.options.verbosity >= 1:
+            self.log('fine-grained:', *message)
+        elif DEBUG_FINE_GRAINED:
+            # Output log in a simplified format that is quick to browse.
+            if message:
+                print(*message, file=sys.stderr)
             else:
                 print(file=sys.stderr)
             sys.stderr.flush()
