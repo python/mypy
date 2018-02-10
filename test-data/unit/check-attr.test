@@ -151,7 +151,7 @@ class D:
 [case testAttrsNotBooleans]
 import attr
 x = True
-@attr.s(cmp=1)  # E: "cmp" argument must be True or False.
+@attr.s(cmp=x)  # E: "cmp" argument must be True or False.
 class A:
     a = attr.ib(init=x)  # E: "init" argument must be True or False.
 [builtins fixtures/bool.pyi]
