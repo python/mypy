@@ -1,0 +1,183 @@
+[case testCleanFineGrainedIncremental]
+# cmd: mypy -m a b
+[file b.py]
+import a
+x = a.f()
+
+[file a.py]
+def f() -> int:
+    return 1
+
+[file a.py.2]
+def f() -> str:
+    return ''
+[out1]
+[out2]
+
+[case testErrorFineGrainedIncremental]
+# cmd: mypy -m a b
+[file b.py]
+import a
+x = a.f()
+x = 1
+
+[file a.py]
+def f() -> int:
+    return 1
+
+[file a.py.2]
+def f() -> str:
+    return ''
+[out1]
+[out2]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAddFileFineGrainedIncremental]
+# cmd: mypy -m a
+# cmd2: mypy -m a b
+[file a.py]
+import b
+b.f(1)
+[file b.py.2]
+def f(x: str) -> None: pass
+[out1]
+tmp/a.py:1: error: Cannot find module named 'b'
+tmp/a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out2]
+tmp/a.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testDeleteFileFineGrainedIncremental]
+# cmd: mypy -m a b
+# cmd2: mypy -m a
+[file a.py]
+import b
+b.f(1)
+[file b.py]
+def f(x: str) -> None: pass
+[delete b.py.2]
+[out1]
+tmp/a.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+[out2]
+tmp/a.py:1: error: Cannot find module named 'b'
+tmp/a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testInitialErrorFineGrainedIncremental]
+# cmd: mypy -m a b
+[file b.py]
+import a
+x = a.f()
+x = ''
+
+[file a.py]
+def f() -> int:
+    return 1
+
+[file a.py.2]
+def f() -> str:
+    return ''
+[out1]
+tmp/b.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+[out2]
+
+[case testInitialBlockerFineGrainedIncremental]
+# cmd: mypy -m a b
+[file a.py]
+1 1
+[file b.py]
+def f() -> int:
+    return ''
+[file a.py.2]
+x = 1
+[file b.py.3]
+def f() -> int:
+    return 0
+[out1]
+tmp/a.py:1: error: invalid syntax
+[out2]
+tmp/b.py:2: error: Incompatible return value type (got "str", expected "int")
+[out3]
+
+[case testNoOpUpdateFineGrainedIncremental1]
+# cmd: mypy -m a
+[file a.py]
+1()
+[file b.py.2]
+# Note: this file is not part of the build
+[file a.py.3]
+x = 1
+[out1]
+tmp/a.py:1: error: "int" not callable
+[out2]
+tmp/a.py:1: error: "int" not callable
+[out3]
+
+[case testNoOpUpdateFineGrainedIncremental2]
+# cmd: mypy -m a
+[file a.py]
+1()
+[file a.py.2]
+1()
+[file a.py.3]
+x = 1
+[file a.py.4]
+x = 1
+[out1]
+tmp/a.py:1: error: "int" not callable
+[out2]
+tmp/a.py:1: error: "int" not callable
+[out3]
+[out4]
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental1]
+# cmd: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+[file a.py]
+[file a.py.2]
+1()
+[out1]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+[out2]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental2]
+# cmd: mypy -m a
+# cmd2: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file a.py.2]
+1()
+[out1]
+[out2]
+tmp/a.py:1: error: "int" not callable
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental3]
+# cmd: mypy -m a
+# cmd2: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out1]
+[out2]
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental4]
+# cmd: mypy -m a nonexistent
+# NOTE: 'nonexistent' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out1]
+[out2]
+
+[case testNonExistentFileOnCommandLineFineGrainedIncremental5]
+# cmd: mypy -m a nonexistent_stub
+# NOTE: 'nonexistent_stub' is a magic module name understood by mypy.test.testdmypy
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent_stub.pyi]
+[delete nonexistent_stub.pyi.2]
+[out1]
+[out2]

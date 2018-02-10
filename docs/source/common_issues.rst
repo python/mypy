@@ -472,3 +472,27 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
+
+
+.. _silencing-linters:
+
+Silencing linters
+-----------------
+
+In some cases, linters will complain about unused imports or code. In
+these cases, you can silence them with a comment after type comments, or on
+the same line as the import:
+
+.. code-block:: python
+
+   # to silence complaints about unused imports
+   from typing import List  # noqa
+   a = None  # type: List[int]
+
+
+To silence the linter on the same line as a type comment
+put the linter comment *after* the type comment:
+
+.. code-block:: python
+
+    a = some_complex_thing()  # type: ignore  # noqa

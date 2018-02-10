@@ -366,7 +366,7 @@ def freeze_type_vars(member_type: Type) -> None:
 
 
 def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,
-                                  context: Context) -> Type:
+                                  node: SymbolNode) -> Type:
     if typ.type is None:
         # 'None' partial type. It has a well-defined type -- 'None'.
         # In an lvalue context we want to preserver the knowledge of
@@ -375,7 +375,7 @@ def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: Messag
             return NoneTyp()
         return typ
     else:
-        msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+        msg.need_annotation_for_var(node, node)
         return AnyType(TypeOfAny.from_error)
 
 

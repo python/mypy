@@ -9,12 +9,11 @@ import re
 import subprocess
 import sys
 
-from typing import Tuple, List, Dict, Set
+from typing import List
 
-from mypy.myunit import Suite, SkipTestCaseException, AssertionFailure
-from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.config import test_temp_dir
 from mypy.test.data import fix_cobertura_filename
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 from mypy.version import __version__, base_version
 
@@ -28,24 +27,17 @@ cmdline_files = [
 ]
 
 
-class PythonEvaluationSuite(DataSuite):
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in cmdline_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_python_evaluation,
-                                  base_path=test_temp_dir,
-                                  optional_out=True,
-                                  native_sep=True)
-        return c
+class PythonCmdlineSuite(DataSuite):
+    files = cmdline_files
+    base_path = test_temp_dir
+    optional_out = True
+    native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_python_evaluation(testcase)
+        test_python_cmdline(testcase)
 
 
-def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     assert testcase.old_cwd is not None, "test was not properly set up"
     # Write the program to a file.
     program = '_program.py'
@@ -65,13 +57,14 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+    result = process.wait()
     # Remove temp file.
     os.remove(program_path)
     # Compare actual output to expected.
     if testcase.output_files:
         for path, expected_content in testcase.output_files:
             if not os.path.exists(path):
-                raise AssertionFailure(
+                raise AssertionError(
                     'Expected file {} was not produced by test case'.format(path))
             with open(path, 'r') as output_file:
                 actual_output_content = output_file.read().splitlines()
@@ -85,6 +78,9 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
                                            path))
     else:
         out = normalize_error_messages(out)
+        obvious_result = 1 if out else 0
+        if obvious_result != result:
+            out.append('== Return code: {}'.format(result))
         assert_string_arrays_equal(testcase.output, out,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))

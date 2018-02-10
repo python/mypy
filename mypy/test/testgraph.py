@@ -2,14 +2,13 @@
 
 from typing import AbstractSet, Dict, Set, List
 
-from mypy.myunit import Suite, assert_equal
+from mypy.test.helpers import assert_equal, Suite
 from mypy.build import BuildManager, State, BuildSourceSet
 from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
 from mypy.version import __version__
 from mypy.options import Options
 from mypy.report import Reports
 from mypy.plugin import Plugin
-from mypy import defaults
 from mypy.errors import Errors
 
 
@@ -49,6 +48,7 @@ class GraphSuite(Suite):
             version_id=__version__,
             plugin=Plugin(options),
             errors=errors,
+            flush_errors=lambda msgs, serious: None,
         )
         return manager
 

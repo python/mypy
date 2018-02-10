@@ -1,0 +1,810 @@
+-- Test cases for fine-grained incremental mode related to modules
+--
+-- Covers adding and deleting modules, changes to multiple modules, and
+-- changes to import graph.
+--
+-- The comments in fine-grained.test explain how these tests work.
+
+
+-- Add file
+-- --------
+
+
+[case testAddFile]
+import b
+[file b.py]
+[file a.py.2]
+def f() -> None: pass
+[file b.py.3]
+import a
+a.f(1)
+[out]
+==
+==
+b.py:2: error: Too many arguments for "f"
+
+[case testAddFileWithErrors]
+import b
+[file b.py]
+[file a.py.2]
+def f() -> str:
+    return 1
+[file b.py.3]
+import a
+a.f(1)
+[file a.py.4]
+def f(x: int) -> None: pass
+[out]
+==
+a.py:2: error: Incompatible return value type (got "int", expected "str")
+==
+b.py:2: error: Too many arguments for "f"
+a.py:2: error: Incompatible return value type (got "int", expected "str")
+==
+
+[case testAddFileFixesError]
+import b
+[file b.py]
+[file b.py.2]
+from a import f
+f()
+[file a.py.3]
+def f() -> None: pass
+[out]
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+
+[case testAddFileFixesAndGeneratesError]
+import b
+[file b.py]
+[file b.py.2]
+from a import f
+[file b.py.3]
+from a import f
+f(1)
+[file a.py.4]
+def f() -> None: pass
+[out]
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+b.py:2: error: Too many arguments for "f"
+
+[case testAddFilePreservesError1]
+import b
+[file b.py]
+[file b.py.2]
+from a import f
+f(1)
+[file x.py.3]
+# unrelated change
+[out]
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testAddFilePreservesError2]
+import b
+[file b.py]
+f()
+[file a.py.2]
+[out]
+b.py:1: error: Name 'f' is not defined
+==
+b.py:1: error: Name 'f' is not defined
+
+[case testImportLineNumber1]
+import b
+[file b.py]
+[file b.py.2]
+x = 1
+import a
+[out]
+==
+b.py:2: error: Cannot find module named 'a'
+b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testImportLineNumber2]
+import b
+[file b.py]
+[file b.py.2]
+x = 1
+import a
+from c import f
+[file x.py.3]
+[out]
+==
+b.py:2: error: Cannot find module named 'a'
+b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+b.py:3: error: Cannot find module named 'c'
+==
+b.py:2: error: Cannot find module named 'a'
+b.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+b.py:3: error: Cannot find module named 'c'
+
+[case testAddPackage1]
+import p.a
+p.a.f(1)
+[file p/__init__.py.2]
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[out]
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddPackage2]
+import p
+p.f(1)
+[file p/__init__.py.2]
+from p.a import f
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[out]
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddPackage3]
+import p.a
+p.a.f(1)
+[file p/__init__.py.2]
+[file p/a.py.3]
+def f(x: str) -> None: pass
+[out]
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Module has no attribute "a"
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+[builtins fixtures/module.pyi]
+
+[case testAddPackage4-skip]
+# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+import p.a
+p.a.f(1)
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[file p/__init__.py.3]
+[out]
+TODO
+
+
+-- Delete file
+-- -----------
+
+
+[case testDeleteBasic]
+import a
+[file a.py]
+import b
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+[delete b.py.3]
+[out]
+==
+==
+
+[case testDeletionTriggersImportFrom]
+import a
+[file a.py]
+from b import f
+
+def g() -> None:
+    f()
+[file b.py]
+def f() -> None: pass
+[delete b.py.2]
+[file b.py.3]
+def f(x: int) -> None: pass
+[out]
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:4: error: Too few arguments for "f"
+
+[case testDeletionTriggersImport]
+import a
+[file a.py]
+def f() -> None: pass
+[delete a.py.2]
+[file a.py.3]
+def f() -> None: pass
+[out]
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-cache]
+-- Different cache/no-cache tests because:
+-- Cache mode matches the message from regular mode and no-cache mode
+-- matches the message from coarse incremental mode...
+from p import q
+[file p/__init__.py]
+[file p/q.py]
+[delete p/q.py.2]
+[file p/q.py.3]
+[out]
+==
+main:1: error: Cannot find module named 'p.q'
+-- TODO: The following messages are different compared to non-incremental mode
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache]
+-- Different cache/no-cache tests because:
+-- Cache mode matches the message from regular mode and no-cache mode
+-- matches the message from coarse incremental mode...
+from p import q
+[file p/__init__.py]
+[file p/q.py]
+[delete p/q.py.2]
+[file p/q.py.3]
+[out]
+==
+main:1: error: Module 'p' has no attribute 'q'
+==
+
+
+[case testDeletionOfSubmoduleTriggersImportFrom2]
+from p.q import f
+f()
+[file p/__init__.py]
+[file p/q.py]
+def f() -> None: pass
+[delete p/q.py.2]
+[file p/q.py.3]
+def f(x: int) -> None: pass
+[out]
+==
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:2: error: Too few arguments for "f"
+
+[case testDeletionOfSubmoduleTriggersImport]
+import p.q
+[file p/__init__.py]
+[file p/q.py]
+def f() -> None: pass
+[delete p/q.py.2]
+[file p/q.py.3]
+def f(x: int) -> None: pass
+[out]
+==
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+
+[case testDeleteModuleWithError]
+import a
+[file a.py]
+def f() -> int:
+    return 1
+[file a.py.2]
+def f() -> str:
+    return 1
+[delete a.py.3]
+def f() -> str:
+    return 1
+[out]
+==
+a.py:2: error: Incompatible return value type (got "int", expected "str")
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testDeleteModuleWithErrorInsidePackage]
+import a.b
+[file a/__init__.py]
+[file a/b.py]
+def f() -> int:
+    return ''
+[delete a/b.py.2]
+def f() -> str:
+    return 1
+[out]
+a/b.py:2: error: Incompatible return value type (got "str", expected "int")
+==
+main:1: error: Cannot find module named 'a.b'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testModifyTwoFilesNoError1]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+import b
+b.f(1)
+[file b.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+
+[case testModifyTwoFilesNoError2]
+import a
+[file a.py]
+from b import g
+def f() -> None: pass
+[file b.py]
+import a
+def g() -> None: pass
+a.f()
+[file a.py.2]
+from b import g
+def f(x: int) -> None: pass
+[file b.py.2]
+import a
+def g() -> None: pass
+a.f(1)
+[out]
+==
+
+[case testModifyTwoFilesErrorsElsewhere]
+import a
+import b
+a.f()
+b.g(1)
+[file a.py]
+def f() -> None: pass
+[file b.py]
+def g(x: int) -> None: pass
+[file a.py.2]
+def f(x: int) -> None: pass
+[file b.py.2]
+def g() -> None: pass
+[out]
+==
+main:3: error: Too few arguments for "f"
+main:4: error: Too many arguments for "g"
+
+[case testModifyTwoFilesErrorsInBoth]
+import a
+[file a.py]
+import b
+def f() -> None: pass
+b.g(1)
+[file b.py]
+import a
+def g(x: int) -> None: pass
+a.f()
+[file a.py.2]
+import b
+def f(x: int) -> None: pass
+b.g(1)
+[file b.py.2]
+import a
+def g() -> None: pass
+a.f()
+[out]
+==
+b.py:3: error: Too few arguments for "f"
+a.py:3: error: Too many arguments for "g"
+
+[case testModifyTwoFilesFixErrorsInBoth]
+import a
+[file a.py]
+import b
+def f(x: int) -> None: pass
+b.g(1)
+[file b.py]
+import a
+def g() -> None: pass
+a.f()
+[file a.py.2]
+import b
+def f() -> None: pass
+b.g(1)
+[file b.py.2]
+import a
+def g(x: int) -> None: pass
+a.f()
+[out]
+b.py:3: error: Too few arguments for "f"
+a.py:3: error: Too many arguments for "g"
+==
+
+[case testAddTwoFilesNoError]
+import a
+[file a.py]
+import b
+import c
+b.f()
+c.g()
+[file b.py.2]
+import c
+def f() -> None: pass
+c.g()
+[file c.py.2]
+import b
+def g() -> None: pass
+b.f()
+[out]
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+a.py:2: error: Cannot find module named 'c'
+==
+
+[case testAddTwoFilesErrorsInBoth]
+import a
+[file a.py]
+import b
+import c
+b.f()
+c.g()
+[file b.py.2]
+import c
+def f() -> None: pass
+c.g(1)
+[file c.py.2]
+import b
+def g() -> None: pass
+b.f(1)
+[out]
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+a.py:2: error: Cannot find module named 'c'
+==
+c.py:3: error: Too many arguments for "f"
+b.py:3: error: Too many arguments for "g"
+
+[case testAddTwoFilesErrorsElsewhere]
+import a
+import b
+a.f(1)
+b.g(1)
+[file a.py.2]
+def f() -> None: pass
+[file b.py.2]
+def g() -> None: pass
+[out]
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Cannot find module named 'b'
+==
+main:3: error: Too many arguments for "f"
+main:4: error: Too many arguments for "g"
+
+[case testDeleteTwoFilesErrorsElsewhere]
+import a
+import b
+a.f()
+b.g()
+[file a.py]
+def f() -> None: pass
+[file b.py]
+def g() -> None: pass
+[delete a.py.2]
+[delete b.py.2]
+[out]
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Cannot find module named 'b'
+
+[case testDeleteTwoFilesNoErrors]
+import a
+[file a.py]
+import b
+import c
+b.f()
+c.g()
+[file b.py]
+def f() -> None: pass
+[file c.py]
+def g() -> None: pass
+[file a.py.2]
+[delete b.py.3]
+[delete c.py.3]
+[out]
+==
+==
+
+[case testDeleteTwoFilesFixErrors]
+import a
+import b
+a.f()
+b.g()
+[file a.py]
+import b
+def f() -> None: pass
+b.g(1)
+[file b.py]
+import a
+def g() -> None: pass
+a.f(1)
+[delete a.py.2]
+[delete b.py.2]
+[out]
+b.py:3: error: Too many arguments for "f"
+a.py:3: error: Too many arguments for "g"
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Cannot find module named 'b'
+
+[case testAddFileWhichImportsLibModule]
+import a
+a.x = 0
+[file a.py.2]
+import sys
+x = sys.platform
+[out]
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAddFileWhichImportsLibModuleWithErrors]
+import a
+a.x = 0
+[file a.py.2]
+import broken
+x = broken.x
+z
+[out]
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:3: error: Name 'z' is not defined
+<ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name 'y' is not defined
+
+[case testRenameModule]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+import c
+c.f()
+[file c.py.2]
+def f() -> None: pass
+[file a.py.3]
+import c
+c.f(1)
+[out]
+==
+==
+a.py:2: error: Too many arguments for "f"
+
+[case testDeleteFileWithinPackage]
+import a
+[file a.py]
+import m.x
+m.x.g(1)
+[file m/__init__.py]
+[file m/x.py]
+def g() -> None: pass
+[delete m/x.py.2]
+[builtins fixtures/module.pyi]
+[out]
+a.py:2: error: Too many arguments for "g"
+==
+a.py:1: error: Cannot find module named 'm.x'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+a.py:2: error: Module has no attribute "x"
+
+[case testDeletePackage1]
+import p.a
+p.a.f(1)
+[file p/__init__.py]
+[file p/a.py]
+def f(x: str) -> None: pass
+[delete p/__init__.py.2]
+[delete p/a.py.2]
+def f(x: str) -> None: pass
+[out]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+
+[case testDeletePackage2]
+import p
+p.f(1)
+[file p/__init__.py]
+from p.a import f
+[file p/a.py]
+def f(x: str) -> None: pass
+[delete p/__init__.py.2]
+[delete p/a.py.2]
+[out]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+
+[case testDeletePackage3]
+import p.a
+p.a.f(1)
+[file p/__init__.py]
+[file p/a.py]
+def f(x: str) -> None: pass
+[delete p/a.py.2]
+[delete p/__init__.py.3]
+[builtins fixtures/module.pyi]
+[out]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Module has no attribute "a"
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+
+[case testDeletePackage4-skip]
+# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+import p.a
+p.a.f(1)
+[file p/a.py]
+def f(x: str) -> None: pass
+[file p/__init__.py]
+[delete p/__init__.py.2]
+[delete p/a.py.3]
+[out]
+TODO
+
+-- TODO:
+-- - add one file which imports another new file, blocking error in new file
+-- - arbitrary blocking errors
+-- - order of processing makes a difference
+-- - mix of modify, add and delete in one iteration
+
+
+-- Controlling imports using command line options
+-- ----------------------------------------------
+
+
+[case testIgnoreMissingImports]
+# flags: --ignore-missing-imports
+import a
+[file a.py]
+import b
+import c
+[file c.py]
+[delete c.py.2]
+[file b.py.3]
+import d
+1 + ''
+[out]
+==
+==
+b.py:2: error: Unsupported operand types for + ("int" and "str")
+
+[case testSkipImports]
+# cmd: mypy main a.py
+# flags: --follow-imports=skip --ignore-missing-imports
+import a
+[file a.py]
+import b
+[file b.py]
+1 + ''
+class A: pass
+[file a.py.2]
+import b
+reveal_type(b)
+reveal_type(b.A)
+[file a.py.3]
+import b
+reveal_type(b)
+reveal_type(b.A)
+[file b.py.3]
+1 + ''
+class A: pass
+[out]
+==
+a.py:2: error: Revealed type is 'Any'
+a.py:3: error: Revealed type is 'Any'
+==
+a.py:2: error: Revealed type is 'Any'
+a.py:3: error: Revealed type is 'Any'
+
+[case testSkipImportsWithinPackage]
+# cmd: mypy a/b.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file a/__init__.py]
+1 + ''
+[file a/b.py]
+import a.c
+[file a/b.py.2]
+import a.c
+import x
+reveal_type(a.c)
+[file a/b.py.3]
+import a.c
+import x
+1 + ''
+[out]
+==
+a/b.py:3: error: Revealed type is 'Any'
+==
+a/b.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testDeleteModuleWithinPackageInitIgnored-skip-cache]
+-- Disabled in cache mode because incorrect behavior:
+-- Having deleted files specified on command line seems dodgy, though.
+# cmd: mypy x.py a/b.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file x.py]
+import a.b
+[file a/__init__.py]
+[file a/b.py]
+x = 1
+[delete a/b.py.2]
+[out]
+==
+
+[case testAddImport]
+import what.b
+[file aaa/__init__.py]
+[file aaa/z.py]
+def foo(x: int) -> None:
+    pass
+[file aaa/z.py.2]
+import config
+def foo() -> None:
+    pass
+[file what/__init__.py]
+[file what/b.py]
+import config
+import aaa.z
+def main() -> None:
+    aaa.z.foo(5)
+[file what/b.py.2]
+import aaa.z
+def main() -> None:
+    aaa.z.foo()
+[file config.py]
+[out]
+==
+
+[case testAddImport2]
+import what.b
+[file aaa/__init__.py]
+[file aaa/z.py]
+def foo(x: int) -> None:
+    pass
+[file aaa/z.py.2]
+def foo() -> None:
+    pass
+[file what/__init__.py]
+[file what/b.py]
+import aaa.z
+def main() -> None:
+    aaa.z.foo(5)
+[file what/b.py.2]
+import config
+import aaa.z
+def main() -> None:
+    aaa.z.foo()
+[file config.py]
+[out]
+==

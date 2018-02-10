@@ -1,6 +1,8 @@
 -- Test cases for generating fine-grained dependencies for expressions.
 --
 -- The dependencies are used for fined-grained incremental checking.
+--
+-- See the comment at the top of deps.test for more documentation.
 
 [case testListExpr]
 def f() -> int: pass

@@ -135,3 +135,24 @@ class IdMapper:
             self.id_map[o] = self.next_id
             self.next_id += 1
         return self.id_map[o]
+
+
+def get_prefix(fullname: str) -> str:
+    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
+    return fullname.rsplit('.', 1)[0]
+
+
+def correct_relative_import(cur_mod_id: str,
+                            relative: int,
+                            target: str,
+                            is_cur_package_init_file: bool) -> Tuple[str, bool]:
+    if relative == 0:
+        return target, True
+    parts = cur_mod_id.split(".")
+    rel = relative
+    if is_cur_package_init_file:
+        rel -= 1
+    ok = len(parts) >= rel
+    if rel != 0:
+        cur_mod_id = ".".join(parts[:-rel])
+    return cur_mod_id + (("." + target) if target else ""), ok

@@ -79,8 +79,9 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment'
 
 def parse(source: Union[str, bytes],
           fnam: str,
+          module: Optional[str],
           errors: Optional[Errors] = None,
-          options: Options = Options()) -> MypyFile:
+          options: Optional[Options] = None) -> MypyFile:
     """Parse a source file, without doing any semantic analysis.
 
     Return the parse tree. If errors is not provided, raise ParseError
@@ -90,7 +91,9 @@ def parse(source: Union[str, bytes],
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file(fnam, None)
+    if options is None:
+        options = Options()
+    errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
         assert options.python_version[0] < 3 and not is_stub_file
@@ -103,7 +106,7 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg)
+        errors.report(e.lineno, e.offset, e.msg, blocker=True)
         tree = MypyFile([], [], False, set())
 
     if raise_on_error and errors.is_errors():
@@ -150,7 +153,7 @@ class ASTConverter(ast27.NodeTransformer):
         self.errors = errors
 
     def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg)
+        self.errors.report(line, column, msg, blocker=True)
 
     def generic_visit(self, node: ast27.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -647,8 +650,8 @@ class ASTConverter(ast27.NodeTransformer):
     def visit_ImportFrom(self, n: ast27.ImportFrom) -> ImportBase:
         assert n.level is not None
         if len(n.names) == 1 and n.names[0].name == '*':
-            assert n.module is not None
-            i = ImportAll(n.module, n.level)  # type: ImportBase
+            mod = n.module if n.module is not None else ''
+            i = ImportAll(mod, n.level)  # type: ImportBase
         else:
             i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
                            n.level,
@@ -909,8 +912,12 @@ class ASTConverter(ast27.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     @with_line
-    def visit_List(self, n: ast27.List) -> ListExpr:
-        return ListExpr([self.visit(e) for e in n.elts])
+    def visit_List(self, n: ast27.List) -> Union[ListExpr, TupleExpr]:
+        expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
+        if isinstance(n.ctx, ast27.Store):
+            # [x, y] = z and (x, y) = z means exactly the same thing
+            return TupleExpr(expr_list)
+        return ListExpr(expr_list)
 
     # Tuple(expr* elts, expr_context ctx)
     @with_line

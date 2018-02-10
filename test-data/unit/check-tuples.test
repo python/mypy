@@ -225,13 +225,75 @@ from typing import Tuple
 t1 = None # type: Tuple[A, B]
 t2 = None # type: Tuple[A, B, A]
 a, b = None, None # type: (A, B)
+(a1, b1) = None, None # type: Tuple[A, B]
+
+reveal_type(a1)  # E: Revealed type is '__main__.A'
+reveal_type(b1)  # E: Revealed type is '__main__.B'
 
 a, a = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 b, b = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a, b, b = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 a, b = t1
-a, b, a = t2
+a, b, a1 = t2
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.pyi]
+
+[case testMultipleAssignmentWithSquareBracketTuples]
+from typing import Tuple
+
+def avoid_confusing_test_parser() -> None:
+    t1 = None # type: Tuple[A, B]
+    t2 = None # type: Tuple[A, B, A]
+    [a, b] = None, None # type: (A, B)
+    [a1, b1] = None, None # type: Tuple[A, B]
+
+    reveal_type(a)  # E: Revealed type is '__main__.A'
+    reveal_type(b)  # E: Revealed type is '__main__.B'
+    reveal_type(a1)  # E: Revealed type is '__main__.A'
+    reveal_type(b1)  # E: Revealed type is '__main__.B'
+
+    [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+    [a, b] = t1
+    [a, b, a1] = t2
+
+    [a2, b2] = t1
+    reveal_type(a2)  # E: Revealed type is '__main__.A'
+    reveal_type(b2)  # E: Revealed type is '__main__.B'
+
+class A: pass
+class B: pass
+[builtins fixtures/tuple.pyi]
+
+[case testMultipleAssignmentWithSquareBracketTuplesPython2]
+# flags: --python-version 2.7
+from typing import Tuple
+
+def avoid_confusing_test_parser():
+    # type: () -> None
+    t1 = None # type: Tuple[A, B]
+    t2 = None # type: Tuple[A, B, A]
+    [a, b] = None, None # type: Tuple[A, B]
+    [a1, b1] = None, None # type: Tuple[A, B]
+
+    reveal_type(a1)  # E: Revealed type is '__main__.A'
+    reveal_type(b1)  # E: Revealed type is '__main__.B'
+
+    [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+    [a, b] = t1
+    [a, b, a1] = t2
+
+    [a2, b2] = t1
+    reveal_type(a2)  # E: Revealed type is '__main__.A'
+    reveal_type(b2)  # E: Revealed type is '__main__.B'
 
 class A: pass
 class B: pass
@@ -380,8 +442,8 @@ d, e = f, g, h = 1, 1 # E: Need more than 2 values to unpack (3 expected)
 [case testAssignmentToStarMissingAnnotation]
 from typing import List
 t = 1, 2
-a, b, *c = 1, 2  # E: Need type annotation for variable
-aa, bb, *cc = t  # E: Need type annotation for variable
+a, b, *c = 1, 2  # E: Need type annotation for 'c'
+aa, bb, *cc = t  # E: Need type annotation for 'cc'
 [builtins fixtures/list.pyi]
 
 [case testAssignmentToStarAnnotation]
@@ -633,7 +695,7 @@ for x in t:
 [case testForLoopOverEmptyTuple]
 import typing
 t = ()
-for x in t: pass  # E: Need type annotation for variable
+for x in t: pass  # E: Need type annotation for 'x'
 [builtins fixtures/for.pyi]
 
 [case testForLoopOverNoneValuedTuple]
@@ -891,7 +953,7 @@ a = (1, [])  # E: Incompatible types in assignment (expression has type "Tuple[i
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithoutContext]
-a = (1, [])  # E: Need type annotation for variable
+a = (1, [])  # E: Need type annotation for 'a'
 [builtins fixtures/tuple.pyi]
 
 [case testTupleWithUnionContext]
@@ -967,3 +1029,16 @@ t: Type[C]
 t.g()  # E: "Type[C]" has no attribute "g"
 t.f()
 [builtins fixtures/classmethod.pyi]
+
+[case testTypeTupleCall]
+from typing import Tuple
+
+def foo(o: CallableTuple) -> int:
+    reveal_type(o)  # E: Revealed type is 'Tuple[builtins.str, builtins.int, fallback=__main__.CallableTuple]'
+    return o(1, 2)
+
+class CallableTuple(Tuple[str, int]):
+    def __call__(self, n: int, m: int) -> int:
+        return n
+
+[builtins fixtures/tuple.pyi]

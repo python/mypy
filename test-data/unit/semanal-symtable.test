@@ -64,3 +64,37 @@ m:
   SymbolTable(
     x : Gdef/TypeInfo (m.x)
     y : Gdef/Var (m.y))
+
+[case testFailingImports]
+from sys import non_existing1  # type: ignore
+from xyz import non_existing2  # type: ignore
+if int():
+    from sys import non_existing3  # type: ignore
+import non_existing4  # type: ignore
+[out]
+__main__:
+  SymbolTable(
+    non_existing1 : Gdef/Var (__main__.non_existing1) : Any
+    non_existing2 : Gdef/Var (__main__.non_existing2) : Any
+    non_existing3 : Gdef/Var (__main__.non_existing3) : Any
+    non_existing4 : Gdef/Var (__main__.non_existing4) : Any)
+sys:
+  SymbolTable(
+    platform : Gdef/Var (sys.platform)
+    version_info : Gdef/Var (sys.version_info))
+
+[case testDecorator]
+from typing import Callable
+
+def dec(f: Callable[[], None]) -> Callable[[], None]:
+    return f
+
+@dec
+def g() -> None:
+    pass
+[out]
+__main__:
+  SymbolTable(
+    Callable : Gdef/Var (typing.Callable)
+    dec : Gdef/FuncDef (__main__.dec) : def (f: def ()) -> def ()
+    g : Gdef/Decorator (__main__.g) : def ())

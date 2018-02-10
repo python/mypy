@@ -4,52 +4,58 @@ import os
 import re
 import shutil
 import sys
-import time
-import typed_ast
 
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build
 from mypy import defaults
 from mypy.main import process_options
-from mypy.myunit import AssertionFailure
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite, has_stable_flags, is_incremental
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     retry_on_error, testcase_pyversion, update_testcase_output,
 )
-from mypy.errors import CompileError
 from mypy.options import Options
 
-from mypy import experiments
 from mypy import dmypy
+from mypy import dmypy_server
 
 # List of files that contain test case descriptions.
-files = [
-    'check-enum.test',
-    'check-incremental.test',
-    'check-newtype.test',
-]
+if sys.platform != 'win32':
+    dmypy_files = [
+        'check-enum.test',
+        'check-incremental.test',
+        'check-newtype.test',
+        'check-dmypy-fine-grained.test',
+    ]
+else:
+    dmypy_files = []  # type: List[str]
 
 
-class TypeCheckSuite(DataSuite):
+# By default we complain about missing files. This is a special module prefix
+# for which we allow non-existence. This is used for testing missing files.
+NON_EXISTENT_PREFIX = 'nonexistent'
+
+# If this suffix is used together with NON_EXISTENT_PREFIX, the non-existent
+# file is a .pyi file. Since the file doesn't exist, we can't automatically
+# figure out the extension.
+STUB_SUFFIX = '_stub'
+
+
+class DmypySuite(DataSuite):
+    files = dmypy_files
+    base_path = test_temp_dir
+    optional_out = True
 
     @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        if sys.platform == 'win32':
-            return []  # Nothing here works on Windows.
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            tc = parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-            c += [case for case in tc
-                  if cls.has_stable_flags(case) and cls.is_incremental(case)]
-        return c
+    def filter(cls, testcase: DataDrivenTestCase) -> bool:
+        return has_stable_flags(testcase) and is_incremental(testcase)
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        assert self.is_incremental(testcase), "Testcase is not incremental"
-        assert self.has_stable_flags(testcase), "Testcase has varying flags"
+        assert has_stable_flags(testcase), "Testcase has varying flags"
+        assert is_incremental(testcase), "Testcase is not incremental"
+
         # All tests run once with a cold cache, then at least once
         # with a warm cache and maybe changed files.  Expected output
         # is specified separately for each run.
@@ -63,22 +69,9 @@ class TypeCheckSuite(DataSuite):
                     raise ValueError(
                         'Output file {} exists though test case only has {} runs'.format(
                             file, num_steps))
-        self.server = None  # type: Optional[dmypy.Server]
+        self.server = None  # type: Optional[dmypy_server.Server]
         for step in range(1, num_steps + 1):
             self.run_case_once(testcase, step)
-
-    @classmethod
-    def is_incremental(cls, testcase: DataDrivenTestCase) -> bool:
-        return 'incremental' in testcase.name.lower() or 'incremental' in testcase.file
-
-    @classmethod
-    def has_stable_flags(cls, testcase: DataDrivenTestCase) -> bool:
-        if any(re.match(r'# flags[2-9]:', line) for line in testcase.input):
-            return False
-        for filename, contents in testcase.files:
-            if os.path.basename(filename).startswith('mypy.ini.'):
-                return False
-        return True
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR
@@ -89,16 +82,8 @@ class TypeCheckSuite(DataSuite):
         assert incremental_step >= 1
         build.find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
-        module_data = self.parse_module(original_program_text, incremental_step)
 
-        if incremental_step == 1:
-            # In run 1, copy program text to program file.
-            for module_name, program_path, program_text in module_data:
-                if module_name == '__main__':
-                    with open(program_path, 'w') as f:
-                        f.write(program_text)
-                    break
-        elif incremental_step > 1:
+        if incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
             for dn, dirs, files in os.walk(os.curdir):
                 for file in files:
@@ -118,10 +103,24 @@ class TypeCheckSuite(DataSuite):
                 # Use retries to work around potential flakiness on Windows (AppVeyor).
                 retry_on_error(lambda: os.remove(path))
 
+        module_data = self.parse_module(original_program_text, incremental_step)
+
+        if incremental_step == 1:
+            # In run 1, copy program text to program file.
+            for module_name, program_path, program_text in module_data:
+                if module_name == '__main__' and program_text is not None:
+                    with open(program_path, 'w') as f:
+                        f.write(program_text)
+                    break
+
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
         if incremental_step == 1:
-            self.server = dmypy.Server([])  # TODO: Fix ugly API
+            server_options = []  # type: List[str]
+            if 'fine-grained' in testcase.file:
+                server_options.append('--experimental')
+                options.fine_grained_incremental = True
+            self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
             self.server.options = options
 
         assert self.server is not None  # Set in step 1 and survives into next steps
@@ -177,7 +176,7 @@ class TypeCheckSuite(DataSuite):
                     ', '.join(expected_normalized),
                     name))
 
-    def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
+    def verify_cache(self, module_data: List[Tuple[str, str, Optional[str]]], a: List[str],
                      manager: build.BuildManager) -> None:
         # There should be valid cache metadata for each module except
         # those in error_paths; for those there should not be.
@@ -196,8 +195,8 @@ class TypeCheckSuite(DataSuite):
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
         if not missing_paths.issubset(error_paths):
-            raise AssertionFailure("cache data discrepancy %s != %s" %
-                                   (missing_paths, error_paths))
+            raise AssertionError("cache data discrepancy %s != %s" %
+                                 (missing_paths, error_paths))
 
     def find_error_paths(self, a: List[str]) -> Set[str]:
         hits = set()
@@ -239,7 +238,7 @@ class TypeCheckSuite(DataSuite):
 
     def parse_module(self,
                      program_text: str,
-                     incremental_step: int) -> List[Tuple[str, str, str]]:
+                     incremental_step: int) -> List[Tuple[str, str, Optional[str]]]:
         """Return the module and program names for a test case.
 
         Normally, the unit tests will parse the default ('__main__')
@@ -268,13 +267,23 @@ class TypeCheckSuite(DataSuite):
             # module. Look up the module and give it as the thing to
             # analyze.
             module_names = m.group(1)
-            out = []
+            out = []  # type: List[Tuple[str, str, Optional[str]]]
             for module_name in module_names.split(' '):
                 path = build.find_module(module_name, [test_temp_dir])
-                assert path is not None, "Can't find ad hoc case file"
-                with open(path) as f:
-                    program_text = f.read()
-                out.append((module_name, path, program_text))
+                if path is None and module_name.startswith(NON_EXISTENT_PREFIX):
+                    # This is a special name for a file that we don't want to exist.
+                    assert '.' not in module_name  # TODO: Packages not supported here
+                    if module_name.endswith(STUB_SUFFIX):
+                        fnam = '{}.pyi'.format(module_name)
+                    else:
+                        fnam = '{}.py'.format(module_name)
+                    path = os.path.join(test_temp_dir, fnam)
+                    out.append((module_name, path, None))
+                else:
+                    assert path is not None, "Can't find ad hoc case file for %r" % module_name
+                    with open(path) as f:
+                        program_text = f.read()
+                    out.append((module_name, path, program_text))
             return out
         else:
             return [('__main__', 'main', program_text)]

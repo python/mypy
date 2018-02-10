@@ -14,8 +14,14 @@ x = None # type: a + b  # E: invalid type comment or annotation
 -- This happens in both parsers.
 [case testFastParseFunctionAnnotationSyntaxError]
 
-def f():  # E: syntax error in type comment
+def f():  # E: syntax error in type comment # N: Suggestion: wrap argument types in parentheses
   # type: None -> None
+  pass
+
+[case testFastParseFunctionAnnotationSyntaxErrorSpaces]
+
+def f():  # E: syntax error in type comment # N: Suggestion: wrap argument types in parentheses
+  # type:             None -> None
   pass
 
 [case testFastParseInvalidFunctionAnnotation]
@@ -235,6 +241,30 @@ def f(a):
     pass
 [out]
 main:3: error: invalid type comment or annotation
+main:3: note: Suggestion: use Tuple[...] instead of Tuple(...)
+
+[case testFasterParseTypeErrorList_python2]
+
+from typing import List
+def f(a):
+    # type: (List(int)) -> int
+    pass
+[out]
+main:3: error: invalid type comment or annotation
+main:3: note: Suggestion: use List[...] instead of List(...)
+
+[case testFasterParseTypeErrorCustom]
+
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Foo(Generic[T]):
+  pass
+
+def f(a: Foo(int)) -> int:
+    pass
+[out]
+main:7: error: invalid type comment or annotation
+main:7: note: Suggestion: use Foo[...] instead of Foo(...)
 
 [case testFastParseMatMul]
 
@@ -364,3 +394,44 @@ def m(x, ((x, y), z)):  # E: Duplicate argument 'x' in function definition
   pass
 
 lambda x, (y, x): None  # E: Duplicate argument 'x' in function definition
+
+[case testNoCrashOnImportFromStar]
+from pack import *
+[file pack/__init__.py]
+from . import *
+
+[case testNoCrashOnImportFromStarNested]
+import blamodule
+[file blamodule/__init__.py]
+from . import command
+from . import backends
+
+[file blamodule/backends/__init__.py]
+from .Bla import Bla
+reveal_type(Bla().method())  # E: Revealed type is 'builtins.str'
+
+[file blamodule/backends/Bla.py]
+from .. import *
+
+class Bla:
+    def method(self) -> str:
+        return command.call()
+
+[file blamodule/command.py]
+def call() -> str: pass
+
+[case testNoCrashOnImportFromStarPython2]
+# flags: --py2
+from . import * # E: No parent module -- cannot perform relative import
+
+[case testSpuriousTrailingComma_python2]
+from typing import Optional
+
+def update_state(tid,                # type: int
+                 vid,                # type: int
+                 update_ts=None,     # type: Optional[float],
+                 ):         # type: (...) -> str
+    pass
+[out]
+main:3: error: Invalid tuple literal type
+main:3: note: Suggestion: Is there a spurious trailing comma?

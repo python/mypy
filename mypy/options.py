@@ -34,6 +34,7 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "warn_return_any",
+        "warn_unused_ignores",
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
@@ -41,10 +42,14 @@ class Options:
         "disallow_untyped_decorators",
     }
 
-    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
+    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
+                                {"quick_and_dirty", "platform", "cache_fine_grained"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
+        # Cache for clone_for_module()
+        self.clone_cache = {}  # type: Dict[str, Options]
+
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version = defaults.PYTHON3_VERSION
@@ -137,6 +142,9 @@ class Options:
         self.debug_cache = False
         self.quick_and_dirty = False
         self.skip_version_check = False
+        self.fine_grained_incremental = False
+        self.cache_fine_grained = False
+        self.use_fine_grained_cache = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]
@@ -174,9 +182,19 @@ class Options:
         return not self == other
 
     def __repr__(self) -> str:
-        return 'Options({})'.format(pprint.pformat(self.__dict__))
+        d = dict(self.__dict__)
+        del d['clone_cache']
+        return 'Options({})'.format(pprint.pformat(d))
 
     def clone_for_module(self, module: str) -> 'Options':
+        """Create an Options object that incorporates per-module options.
+
+        NOTE: Once this method is called all Options objects should be
+        considered read-only, else the caching might be incorrect.
+        """
+        res = self.clone_cache.get(module)
+        if res is not None:
+            return res
         updates = {}
         for pattern in self.per_module_options:
             if self.module_matches_pattern(module, pattern):
@@ -184,10 +202,12 @@ class Options:
                     del self.unused_configs[pattern]
                 updates.update(self.per_module_options[pattern])
         if not updates:
+            self.clone_cache[module] = self
             return self
         new_options = Options()
         new_options.__dict__.update(self.__dict__)
         new_options.__dict__.update(updates)
+        self.clone_cache[module] = new_options
         return new_options
 
     def module_matches_pattern(self, module: str, pattern: Pattern[str]) -> bool:

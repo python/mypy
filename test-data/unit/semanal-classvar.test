@@ -133,10 +133,10 @@ x = None  # type: Tuple[ClassVar, int]
 main:2: error: Invalid type: ClassVar nested inside other type
 
 [case testMultipleLvaluesWithList]
-from typing import ClassVar, List
+from typing import ClassVar, Tuple
 class A:
-    [x, y] = None, None  # type: List[ClassVar]
-[builtins fixtures/list.pyi]
+    [x, y] = None, None  # type: Tuple[ClassVar, ClassVar]
+[builtins fixtures/tuple.pyi]
 [out]
 main:3: error: Invalid type: ClassVar nested inside other type
 

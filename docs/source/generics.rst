@@ -112,21 +112,27 @@ non-generic. For example:
 
 .. code-block:: python
 
-   from typing import Generic, TypeVar, Iterable
+   from typing import Generic, TypeVar, Mapping, Iterator, Dict
 
-   T = TypeVar('T')
+   KT = TypeVar('KT')
+   VT = TypeVar('VT')
 
-   class Stream(Iterable[T]):  # This is a generic subclass of Iterable
-       def __iter__(self) -> Iterator[T]:
+   class MyMap(Mapping[KT, VT]]):  # This is a generic subclass of Mapping
+       def __getitem__(self, k: KT) -> VT:
+           ...  # Implementations omitted
+       def __iter__(self) -> Iterator[KT]:
+           ...
+       def __len__(self) -> int:
            ...
 
-   input: Stream[int]  # Okay
+   items: MyMap[str, int]  # Okay
 
-   class Codes(Iterable[int]):  # This is a non-generic subclass of Iterable
-       def __iter__(self) -> Iterator[int]:
-           ...
+   class StrDict(Dict[str, str]):  # This is a non-generic subclass of Dict
+       def __str__(self) -> str:
+           return 'StrDict({})'.format(super().__str__())
 
-   output: Codes[int]  # Error! Codes is not generic
+   data: StrDict[int, int]  # Error! StrDict is not generic
+   data2: StrDict  # OK
 
    class Receiver(Generic[T]):
        def accept(self, value: T) -> None:
@@ -137,15 +143,15 @@ non-generic. For example:
 
 .. note::
 
-    You have to add an explicit ``Iterable`` (or ``Iterator``) base class
-    if you want mypy to consider a user-defined class as iterable (and
-    ``Sequence`` for sequences, etc.). This is because mypy doesn't support
-    *structural subtyping* and just having an ``__iter__`` method defined is
-    not sufficient to make mypy treat a class as iterable.
+    You have to add an explicit ``Mapping`` base class
+    if you want mypy to consider a user-defined class as a mapping (and
+    ``Sequence`` for sequences, etc.). This is because mypy doesn't use
+    *structural subtyping* for these ABCs, unlike simpler protocols
+    like ``Iterable``, which use :ref:`structural subtyping <protocol-types>`.
 
 ``Generic[...]`` can be omitted from bases if there are
-other base classes that include type variables, such as ``Iterable[T]`` in
-the above example. If you include ``Generic[...]`` in bases, then
+other base classes that include type variables, such as ``Mapping[KT, VT]``
+in the above example. If you include ``Generic[...]`` in bases, then
 it should list all type variables present in other bases (or more,
 if needed). The order of type variables is defined by the following
 rules:
@@ -301,7 +307,7 @@ Variance of generic types
 
 There are three main kinds of generic types with respect to subtype
 relations between them: invariant, covariant, and contravariant.
-Assuming that we have a pair of types types ``A`` and ``B`` and ``B`` is
+Assuming that we have a pair of types ``A`` and ``B``, and ``B`` is
 a subtype of ``A``, these are defined as follows:
 
 * A generic class ``MyCovGen[T, ...]`` is called covariant in type variable
@@ -549,7 +555,9 @@ problem. This is also the reason for the ``cast()`` call in the
 Generic protocols
 *****************
 
-Mypy supports generic protocols (see also :ref:`protocol-types`). Generic
+Mypy supports generic protocols (see also :ref:`protocol-types`). Several
+:ref:`predefined protocols <predefined_protocols>` are generic, such as
+``Iterable[T]``, and you can define additional generic protocols. Generic
 protocols mostly follow the normal rules for generic classes. Example:
 
 .. code-block:: python

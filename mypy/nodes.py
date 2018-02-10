@@ -156,7 +156,7 @@ class Expression(Node):
 
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
-#                'TupleExpr', 'ListExpr']; see #1783.
+#                'TupleExpr']; see #1783.
 Lvalue = Expression
 
 
@@ -203,6 +203,8 @@ class MypyFile(SymbolNode):
     ignored_lines = None  # type: Set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
+    # Is this loaded from the cache and thus missing the actual body of the file?
+    is_cache_skeleton = False
 
     def __init__(self,
                  defs: List[Statement],
@@ -249,6 +251,7 @@ class MypyFile(SymbolNode):
         tree.names = SymbolTable.deserialize(data['names'])
         tree.is_stub = data['is_stub']
         tree.path = data['path']
+        tree.is_cache_skeleton = True
         return tree
 
 
@@ -324,6 +327,7 @@ class FuncBase(Node):
     # Original, not semantically analyzed type (used for reprocessing)
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # If method, reference to TypeInfo
+    # TODO: The type should be Optional[TypeInfo]
     info = None  # type: TypeInfo
     is_property = False
     _fullname = None  # type: str       # Name with module prefix
@@ -475,7 +479,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     is_conditional = False             # Defined conditionally (within block)?
     is_abstract = False
     is_property = False
-    original_def = None  # type: Union[None, FuncDef, Var]  # Original conditional definition
+    # Original conditional definition
+    original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
     FLAGS = FuncItem.FLAGS + [
         'is_decorated', 'is_conditional', 'is_abstract', 'is_property'
@@ -543,6 +548,7 @@ class Decorator(SymbolNode, Statement):
 
     func = None  # type: FuncDef                # Decorated function
     decorators = None  # type: List[Expression] # Decorators (may be empty)
+    # TODO: This is mostly used for the type; consider replacing with a 'type' attribute
     var = None  # type: Var                     # Represents the decorated function obj
     is_overload = False
 
@@ -562,6 +568,10 @@ class Decorator(SymbolNode, Statement):
     @property
     def info(self) -> 'TypeInfo':
         return self.func.info
+
+    @property
+    def type(self) -> 'Optional[mypy.types.Type]':
+        return self.var.type
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_decorator(self)
@@ -591,6 +601,7 @@ class Var(SymbolNode):
 
     _name = None      # type: str   # Name without module prefix
     _fullname = None  # type: str   # Name with module prefix
+    # TODO: The following should be Optional[TypeInfo]
     info = None  # type: TypeInfo   # Defining class (for member variables)
     type = None  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
     # Is this the first argument to an ordinary method (usually "self")?
@@ -610,7 +621,7 @@ class Var(SymbolNode):
     is_suppressed_import = False
 
     FLAGS = [
-        'is_self', 'is_ready', 'is_initialized_in_class', 'is_staticmethod',
+        'is_self', 'is_initialized_in_class', 'is_staticmethod',
         'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
         'is_classvar', 'is_abstract_var'
     ]
@@ -664,6 +675,8 @@ class ClassDef(Statement):
     type_vars = None  # type: List[mypy.types.TypeVarDef]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs = None  # type: List[Expression]
+    # Special base classes like Generic[...] get moved here during semantic analysis
+    removed_base_type_exprs = None  # type: List[Expression]
     info = None  # type: TypeInfo  # Related TypeInfo
     metaclass = None  # type: Optional[Expression]
     decorators = None  # type: List[Expression]
@@ -682,6 +695,7 @@ class ClassDef(Statement):
         self.defs = defs
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
+        self.removed_base_type_exprs = []
         self.metaclass = metaclass
         self.decorators = []
         self.keywords = OrderedDict(keywords or [])
@@ -738,9 +752,11 @@ class NonlocalDecl(Statement):
 
 class Block(Statement):
     body = None  # type: List[Statement]
-    # True if we can determine that this block is not executed. For example,
-    # this applies to blocks that are protected by something like "if PY3:"
-    # when using Python 2.
+    # True if we can determine that this block is not executed during semantic
+    # analysis. For example, this applies to blocks that are protected by
+    # something like "if PY3:" when using Python 2. However, some code is
+    # only considered unreachable during type checking and this is not true
+    # in those cases.
     is_unreachable = False
 
     def __init__(self, body: List[Statement]) -> None:
@@ -1124,11 +1140,13 @@ class RefExpr(Expression):
     node = None  # type: Optional[SymbolNode]  # Var, FuncDef or TypeInfo that describes this
     fullname = None  # type: Optional[str]  # Fully qualified name (or name if not global)
 
+    # Does this define a new name?
+    is_new_def = False
     # Does this define a new name with inferred type?
     #
     # For members, after semantic analysis, this does not take base
     # classes into consideration at all; the type checker deals with these.
-    is_def = False
+    is_inferred_def = False
 
 
 class NameExpr(RefExpr):
@@ -1152,7 +1170,8 @@ class NameExpr(RefExpr):
                 'kind': self.kind,
                 'node': None if self.node is None else self.node.serialize(),
                 'fullname': self.fullname,
-                'is_def': self.is_def,
+                'is_new_def': self.is_new_def,
+                'is_inferred_def': self.is_inferred_def,
                 'name': self.name,
                 }
 
@@ -1163,7 +1182,8 @@ class NameExpr(RefExpr):
         ret.kind = data['kind']
         ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
         ret.fullname = data['fullname']
-        ret.is_def = data['is_def']
+        ret.is_new_def = data['is_new_def']
+        ret.is_inferred_def = data['is_inferred_def']
         return ret
 
 
@@ -1453,7 +1473,7 @@ class SuperExpr(Expression):
     """Expression super().name"""
 
     name = ''
-    info = None  # type: TypeInfo  # Type that contains this super expression
+    info = None  # type: Optional[TypeInfo]  # Type that contains this super expression
     call = None  # type: CallExpr  # The expression super(...)
 
     def __init__(self, name: str, call: CallExpr) -> None:
@@ -1479,6 +1499,9 @@ class LambdaExpr(FuncItem, Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_lambda_expr(self)
+
+    def is_dynamic(self) -> bool:
+        return False
 
 
 class ListExpr(Expression):
@@ -1506,7 +1529,9 @@ class DictExpr(Expression):
 
 
 class TupleExpr(Expression):
-    """Tuple literal expression (..., ...)"""
+    """Tuple literal expression (..., ...)
+
+    Also lvalue sequences (..., ...) and [..., ...]"""
 
     items = None  # type: List[Expression]
 
@@ -2073,6 +2098,8 @@ class TypeInfo(SymbolNode):
         assert mro, "Could not produce a MRO at all for %s" % (self,)
         self.mro = mro
         self.is_enum = self._calculate_is_enum()
+        # The property of falling back to Any is inherited.
+        self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass
@@ -2314,11 +2341,11 @@ class SymbolTableNode:
         self.kind = kind
         self.node = node
         self.type_override = typ
-        self.module_hidden = module_hidden
         self.module_public = module_public
         self.normalized = normalized
         self.alias_tvars = alias_tvars
         self.implicit = implicit
+        self.module_hidden = module_hidden
 
     @property
     def fullname(self) -> Optional[str]:
@@ -2340,6 +2367,18 @@ class SymbolTableNode:
             return node.var.type
         else:
             return None
+
+    def copy(self) -> 'SymbolTableNode':
+        new = SymbolTableNode(self.kind,
+                              self.node,
+                              self.type_override,
+                              self.module_public,
+                              self.normalized,
+                              self.alias_tvars,
+                              self.implicit,
+                              self.module_hidden)
+        new.cross_ref = self.cross_ref
+        return new
 
     def __str__(self) -> str:
         s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
@@ -2430,6 +2469,10 @@ class SymbolTable(Dict[str, SymbolTableNode]):
         a.insert(0, 'SymbolTable(')
         a[-1] += ')'
         return '\n'.join(a)
+
+    def copy(self) -> 'SymbolTable':
+        return SymbolTable((key, node.copy())
+                           for key, node in self.items())
 
     def serialize(self, fullname: str) -> JsonDict:
         data = {'.class': 'SymbolTable'}  # type: JsonDict

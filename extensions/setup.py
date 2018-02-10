@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-version = '0.3.0'
+version = '0.4.0-dev'
 description = 'Experimental type system extensions for programs checked with the mypy typechecker.'
 long_description = '''
 Mypy Extensions
@@ -40,4 +40,7 @@ setup(
     platforms=['POSIX'],
     py_modules=['mypy_extensions'],
     classifiers=classifiers,
+    install_requires=[
+        'typing >= 3.5.3; python_version < "3.5"',
+    ],
 )

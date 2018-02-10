@@ -64,7 +64,7 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line_map = {}  # type: Dict[int, int]
 
-        self.type_of_any_counter = Counter()  # type: typing.Counter[TypeOfAny.TypeOfAny]
+        self.type_of_any_counter = Counter()  # type: typing.Counter[TypeOfAny]
         self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
         self.output = []  # type: List[str]
@@ -123,12 +123,10 @@ class StatisticsVisitor(TraverserVisitor):
             for lvalue in o.lvalues:
                 if isinstance(lvalue, nodes.TupleExpr):
                     items = lvalue.items
-                elif isinstance(lvalue, nodes.ListExpr):
-                    items = lvalue.items
                 else:
                     items = [lvalue]
                 for item in items:
-                    if isinstance(item, RefExpr) and item.is_def:
+                    if isinstance(item, RefExpr) and item.is_inferred_def:
                         if self.typemap is not None:
                             self.type(self.typemap.get(item))
         super().visit_assignment_stmt(o)

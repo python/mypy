@@ -10,7 +10,8 @@ information.
 import os
 import re
 import shutil
-from typing import List, Tuple, Dict
+
+from typing import List, Tuple, Dict, Optional, Set
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, Graph
@@ -22,48 +23,92 @@ from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
 from mypy.strconv import StrConv, indent
 from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.data import (
+    parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
+)
+from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
-
-
-files = [
-    'fine-grained.test'
-]
+import pytest  # type: ignore  # no pytest in typeshed
 
 
 class FineGrainedSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = [
+        'fine-grained.test',
+        'fine-grained-cycles.test',
+        'fine-grained-blockers.test',
+        'fine-grained-modules.test',
+    ]
+    base_path = test_temp_dir
+    optional_out = True
+    # Whether to use the fine-grained cache in the testing. This is overridden
+    # by a trivial subclass to produce a suite that uses the cache.
+    use_cache = False
+
+    # Decide whether to skip the test. This could have been structured
+    # as a filter() classmethod also, but we want the tests reported
+    # as skipped, not just elided.
+    def should_skip(self, testcase: DataDrivenTestCase) -> bool:
+        if self.use_cache:
+            if testcase.name.endswith("-skip-cache"):
+                return True
+            # TODO: In caching mode we currently don't well support
+            # starting from cached states with errors in them.
+            if testcase.output and testcase.output[0] != '==':
+                return True
+        else:
+            if testcase.name.endswith("-skip-nocache"):
+                return True
+
+        return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        main_src = '\n'.join(testcase.input)
-        messages, manager, graph = self.build(main_src)
+        if self.should_skip(testcase):
+            pytest.skip()
+            return
 
+        main_src = '\n'.join(testcase.input)
+        sources_override = self.parse_sources(main_src)
+        messages, manager, graph = self.build(main_src, testcase, sources_override,
+                                              build_cache=self.use_cache,
+                                              enable_cache=self.use_cache)
         a = []
         if messages:
-            a.extend(messages)
+            a.extend(normalize_messages(messages))
 
-        fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        fine_grained_manager = None
+        if not self.use_cache:
+            fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
-        steps = find_steps()
-        for changed_paths in steps:
+        steps = testcase.find_steps()
+        all_triggered = []
+        for operations in steps:
             modules = []
-            for module, path in changed_paths:
-                new_path = re.sub(r'\.[0-9]+$', '', path)
-                shutil.copy(path, new_path)
-                modules.append(module)
+            for op in operations:
+                if isinstance(op, UpdateFile):
+                    # Modify/create file
+                    shutil.copy(op.source_path, op.target_path)
+                    modules.append((op.module, op.target_path))
+                else:
+                    # Delete file
+                    os.remove(op.path)
+                    modules.append((op.module, op.path))
+            if sources_override is not None:
+                modules = [(module, path)
+                           for module, path in sources_override
+                           if any(m == module for m, _ in modules)]
+
+            # If this is the second iteration and we are using a
+            # cache, now we need to set it up
+            if fine_grained_manager is None:
+                messages, manager, graph = self.build(main_src, testcase, sources_override,
+                                                      build_cache=False, enable_cache=True)
+                fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
             new_messages = fine_grained_manager.update(modules)
-            new_messages = [re.sub('^tmp' + re.escape(os.sep), '', message)
-                            for message in new_messages]
+            all_triggered.append(fine_grained_manager.triggered)
+            new_messages = normalize_messages(new_messages)
 
             a.append('==')
             a.extend(new_messages)
@@ -73,16 +118,41 @@ class FineGrainedSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            'Invalid output ({}, line {})'.format(
+                testcase.file, testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], BuildManager, Graph]:
-        options = Options()
+        if testcase.triggered:
+            assert_string_arrays_equal(
+                testcase.triggered,
+                self.format_triggered(all_triggered),
+                'Invalid active triggers ({}, line {})'.format(testcase.file,
+                                                               testcase.line))
+
+    def build(self,
+              source: str,
+              testcase: DataDrivenTestCase,
+              sources_override: Optional[List[Tuple[str, str]]],
+              build_cache: bool,
+              enable_cache: bool) -> Tuple[List[str], BuildManager, Graph]:
+        # This handles things like '# flags: --foo'.
+        options = parse_options(source, testcase, incremental_step=1)
+        options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
-        options.cache_dir = os.devnull
+        options.fine_grained_incremental = not build_cache
+        options.use_fine_grained_cache = enable_cache and not build_cache
+        options.cache_fine_grained = enable_cache
+
+        main_path = os.path.join(test_temp_dir, 'main')
+        with open(main_path, 'w') as f:
+            f.write(source)
+        if sources_override is not None:
+            sources = [BuildSource(path, module, None)
+                       for module, path in sources_override]
+        else:
+            sources = [BuildSource(main_path, None, None)]
         try:
-            result = build.build(sources=[BuildSource('main', None, source)],
+            result = build.build(sources=sources,
                                  options=options,
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
@@ -91,27 +161,37 @@ class FineGrainedSuite(DataSuite):
             return e.messages, None, None
         return result.errors, result.manager, result.graph
 
+    def format_triggered(self, triggered: List[List[str]]) -> List[str]:
+        result = []
+        for n, triggers in enumerate(triggered):
+            filtered = [trigger for trigger in triggers
+                        if not trigger.endswith('__>')]
+            filtered = sorted(filtered)
+            result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
+        return result
 
-def find_steps() -> List[List[Tuple[str, str]]]:
-    """Return a list of build step representations.
+    def parse_sources(self, program_text: str) -> Optional[List[Tuple[str, str]]]:
+        """Return target (module, path) tuples for a test case, if not using the defaults.
 
-    Each build step is a list of (module id, path) tuples, and each
-    path is of form 'dir/mod.py.2' (where 2 is the step number).
-    """
-    steps = {}  # type: Dict[int, List[Tuple[str, str]]]
-    for dn, dirs, files in os.walk(test_temp_dir):
-        dnparts = dn.split(os.sep)
-        assert dnparts[0] == test_temp_dir
-        del dnparts[0]
-        for filename in files:
-            m = re.match(r'.*\.([0-9]+)$', filename)
-            if m:
-                num = int(m.group(1))
-                assert num >= 2
-                name = re.sub(r'\.py.*', '', filename)
-                module = '.'.join(dnparts + [name])
-                module = re.sub(r'\.__init__$', '', module)
-                path = os.path.join(dn, filename)
-                steps.setdefault(num, []).append((module, path))
-    max_step = max(steps)
-    return [steps[num] for num in range(2, max_step + 1)]
+        These are defined through a comment like '# cmd: main a.py' in the test case
+        description.
+        """
+        # TODO: Support defining separately for each incremental step.
+        m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
+        if m:
+            # The test case wants to use a non-default set of files.
+            paths = m.group(1).strip().split()
+            result = []
+            for path in paths:
+                path = os.path.join(test_temp_dir, path)
+                module = module_from_path(path)
+                if module == 'main':
+                    module = '__main__'
+                result.append((module, path))
+            return result
+        return None
+
+
+def normalize_messages(messages: List[str]) -> List[str]:
+    return [re.sub('^tmp' + re.escape(os.sep), '', message)
+            for message in messages]

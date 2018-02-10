@@ -836,7 +836,7 @@ MypyFile:1(
       ExpressionStmt:4(
         IntExpr(1))))
   ForStmt:5(
-    ListExpr:5(
+    TupleExpr:5(
       NameExpr(x)
       TupleExpr:5(
         NameExpr(y)
