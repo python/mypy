@@ -144,6 +144,7 @@ class Options:
         self.skip_version_check = False
         self.fine_grained_incremental = False
         self.cache_fine_grained = False
+        self.use_fine_grained_cache = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]

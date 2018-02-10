@@ -164,7 +164,6 @@ def add_basic(driver: Driver) -> None:
         driver.add_mypy('file setup.py', 'setup.py')
     driver.add_mypy('file runtests.py', 'runtests.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
-    driver.add_mypy('legacy myunit script', 'scripts/myunit')
     # needs typed_ast installed:
     driver.add_mypy('fast-parse', '--fast-parse', 'test-data/samples/hello.py')
 
@@ -209,12 +208,23 @@ PYTEST_FILES = test_path(
     'testdeps',
     'testdiff',
     'testfinegrained',
+    'testfinegrainedcache',
     'testmerge',
     'testtransform',
     'testtypegen',
     'testparse',
     'testsemanal',
     'testerrorstream',
+    # non-data-driven:
+    'testgraph',
+    'testinfer',
+    'testmoduleinfo',
+    'teststubgen',
+    'testargs',
+    'testreports',
+    'testsolve',
+    'testsubtypes',
+    'testtypes',
 )
 
 SLOW_FILES = test_path(
@@ -223,32 +233,13 @@ SLOW_FILES = test_path(
     'teststubgen',
 )
 
-MYUNIT_FILES = test_path(
-    'teststubgen',
-    'testargs',
-    'testgraph',
-    'testinfer',
-    'testmoduleinfo',
-    'testreports',
-    'testsolve',
-    'testsubtypes',
-    'testtypes',
-)
-
 for f in find_files('mypy', prefix='test', suffix='.py'):
-    assert f in PYTEST_FILES + SLOW_FILES + MYUNIT_FILES, f
+    assert f in PYTEST_FILES + SLOW_FILES, f
 
 
 def add_pytest(driver: Driver) -> None:
     driver.add_pytest([('unit-test', name) for name in PYTEST_FILES] +
                       [('integration', name) for name in SLOW_FILES])
-
-
-def add_myunit(driver: Driver) -> None:
-    for f in MYUNIT_FILES:
-        mod = file_to_module(f)
-        driver.add_python_mod('myunit unit-test %s' % mod, 'mypy.myunit', '-m', mod,
-                              *driver.arglist, coverage=True)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -311,7 +302,6 @@ def usage(status: int) -> None:
     print('  --ff                   run all tests but run the last failures first')
     print('  -q, --quiet            decrease driver verbosity')
     print('  -jN                    run N tasks at once (default: one per CPU)')
-    print('  -a, --argument ARG     pass an argument to myunit tasks')
     print('  -p, --pytest_arg ARG   pass an argument to pytest tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
     print('  -l, --list             list included tasks (after filtering) and exit')
@@ -428,7 +418,6 @@ def main() -> None:
     add_pytest(driver)
     add_basic(driver)
     add_selftypecheck(driver)
-    add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
     add_stdlibsamples(driver)

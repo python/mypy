@@ -36,6 +36,9 @@ class FileSystemWatcher:
     def paths(self) -> AbstractSet[str]:
         return self._paths
 
+    def set_file_data(self, path: str, data: FileData) -> None:
+        self._file_data[path] = data
+
     def add_watched_paths(self, paths: Iterable[str]) -> None:
         for path in paths:
             if path not in self._paths:
@@ -76,8 +79,8 @@ class FileSystemWatcher:
                     # Only look for changes if size or mtime has changed as an
                     # optimization, since calculating md5 is expensive.
                     new_md5 = self.fs.md5(path)
+                    self._update(path)
                     if st.st_size != old.st_size or new_md5 != old.md5:
                         # Changed file.
                         changed.add(path)
-                        self._update(path)
         return changed

@@ -2,7 +2,7 @@
 
 from typing import List, Optional, Tuple, Union
 
-from mypy.myunit import Suite, assert_equal, assert_true
+from mypy.test.helpers import Suite, assert_equal
 from mypy.checkexpr import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED
 from mypy.types import AnyType, TupleType, Type, TypeOfAny
