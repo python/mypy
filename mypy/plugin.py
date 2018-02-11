@@ -4,7 +4,7 @@ from abc import abstractmethod
 from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
-import mypy.attrs_plugin
+import mypy.plugins.attrs
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
     TypeInfo, SymbolTableNode
@@ -288,11 +288,11 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
-        if fullname in mypy.attrs_plugin.attr_class_makers:
-            return mypy.attrs_plugin.attr_class_maker_callback
-        elif fullname in mypy.attrs_plugin.attr_dataclass_makers:
+        if fullname in mypy.plugins.attrs.attr_class_makers:
+            return mypy.plugins.attrs.attr_class_maker_callback
+        elif fullname in mypy.plugins.attrs.attr_dataclass_makers:
             return partial(
-                mypy.attrs_plugin.attr_class_maker_callback,
+                mypy.plugins.attrs.attr_class_maker_callback,
                 auto_attribs_default=True
             )
         return None
