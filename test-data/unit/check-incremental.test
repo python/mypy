@@ -3480,6 +3480,299 @@ def foo() -> Optional[int]: return 0
 [out2]
 main:3: error: Unsupported operand types for + ("int" and "Optional[int]")
 
+[case testAttrsIncrementalSubclassingCached]
+from a import A
+import attr
+@attr.s(auto_attribs=True)
+class B(A):
+    e: str = 'e'
+a = B(5, [5], 'foo')
+a.a = 6
+a._b = [2]
+a.c = 'yo'
+a._d = 22
+a.e = 'hi'
+
+[file a.py]
+import attr
+import attr
+from typing import List, ClassVar
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+    _b: List[int]
+    c: str = '18'
+    _d: int = attr.ib(validator=None, default=18)
+    E = 7
+    F: ClassVar[int] = 22
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+
+[case testAttrsIncrementalSubclassingCachedConverter]
+from a import A
+import attr
+@attr.s
+class B(A):
+    pass
+reveal_type(B)
+
+[file a.py]
+def converter(s:int) -> str:
+    return 'hello'
+
+import attr
+@attr.s
+class A:
+    x: str = attr.ib(converter=converter)
+
+[builtins fixtures/list.pyi]
+[out1]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[out2]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testAttrsIncrementalSubclassingCachedType]
+from a import A
+import attr
+@attr.s
+class B(A):
+    pass
+reveal_type(B)
+
+[file a.py]
+import attr
+@attr.s
+class A:
+    x = attr.ib(type=int)
+
+[builtins fixtures/list.pyi]
+[out1]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+[out2]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testAttrsIncrementalArguments]
+from a import Frozen, NoInit, NoCmp
+f = Frozen(5)
+f.x = 6
+
+g = NoInit()
+
+Frozen(1) < Frozen(2)
+Frozen(1) <= Frozen(2)
+Frozen(1) > Frozen(2)
+Frozen(1) >= Frozen(2)
+
+NoCmp(1) < NoCmp(2)
+NoCmp(1) <= NoCmp(2)
+NoCmp(1) > NoCmp(2)
+NoCmp(1) >= NoCmp(2)
+
+[file a.py]
+import attr
+@attr.s(frozen=True)
+class Frozen:
+    x: int = attr.ib()
+@attr.s(init=False)
+class NoInit:
+    x: int = attr.ib()
+@attr.s(cmp=False)
+class NoCmp:
+    x: int = attr.ib()
+
+[builtins fixtures/list.pyi]
+[rechecked]
+[stale]
+[out1]
+main:3: error: Property "x" defined in "Frozen" is read-only
+main:12: error: Unsupported left operand type for < ("NoCmp")
+main:13: error: Unsupported left operand type for <= ("NoCmp")
+main:14: error: Unsupported left operand type for > ("NoCmp")
+main:15: error: Unsupported left operand type for >= ("NoCmp")
+
+[out2]
+main:3: error: Property "x" defined in "Frozen" is read-only
+main:12: error: Unsupported left operand type for < ("NoCmp")
+main:13: error: Unsupported left operand type for <= ("NoCmp")
+main:14: error: Unsupported left operand type for > ("NoCmp")
+main:15: error: Unsupported left operand type for >= ("NoCmp")
+
+[case testAttrsIncrementalDunder]
+from a import A
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> a.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+reveal_type(A.__ne__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+
+A(1) < A(2)
+A(1) <= A(2)
+A(1) > A(2)
+A(1) >= A(2)
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported operand types for < ("A" and "int")
+A(1) <= 1  # E: Unsupported operand types for <= ("A" and "int")
+A(1) > 1  # E: Unsupported operand types for > ("A" and "int")
+A(1) >= 1  # E: Unsupported operand types for >= ("A" and "int")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported operand types for > ("A" and "int")
+1 <= A(1)  # E: Unsupported operand types for >= ("A" and "int")
+1 > A(1)  # E: Unsupported operand types for < ("A" and "int")
+1 >= A(1)  # E: Unsupported operand types for <= ("A" and "int")
+1 == A(1)
+1 != A(1)
+
+[file a.py]
+from attr import attrib, attrs
+@attrs(auto_attribs=True)
+class A:
+    a: int
+
+[builtins fixtures/attr.pyi]
+[rechecked]
+[stale]
+[out2]
+main:2: error: Revealed type is 'def (a: builtins.int) -> a.A'
+main:3: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+main:4: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+main:5: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:6: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:7: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:8: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:17: error: Unsupported operand types for < ("A" and "int")
+main:18: error: Unsupported operand types for <= ("A" and "int")
+main:19: error: Unsupported operand types for > ("A" and "int")
+main:20: error: Unsupported operand types for >= ("A" and "int")
+main:24: error: Unsupported operand types for > ("A" and "int")
+main:25: error: Unsupported operand types for >= ("A" and "int")
+main:26: error: Unsupported operand types for < ("A" and "int")
+main:27: error: Unsupported operand types for <= ("A" and "int")
+
+[case testAttrsIncrementalSubclassModified]
+from b import B
+B(5, 'foo')
+
+[file a.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    x: int
+
+[file b.py]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: str
+
+[file b.py.2]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: int
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+[rechecked b]
+
+[case testAttrsIncrementalSubclassModifiedErrorFirst]
+from b import B
+B(5, 'foo')
+[file a.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    x: int
+
+[file b.py]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: int
+
+[file b.py.2]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: str
+
+[builtins fixtures/list.pyi]
+[out1]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+
+[out2]
+[rechecked b]
+
+[case testAttrsIncrementalThreeFiles]
+from c import C
+C(5, 'foo', True)
+
+[file a.py]
+import attr
+@attr.s
+class A:
+    a: int = attr.ib()
+
+[file b.py]
+import attr
+@attr.s
+class B:
+    b: str = attr.ib()
+
+[file c.py]
+from a import A
+from b import B
+import attr
+@attr.s
+class C(A, B):
+    c: bool = attr.ib()
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+
+[case testAttrsIncrementalThreeRuns]
+from a import A
+A(5)
+
+[file a.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+
+[file a.py.2]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: str
+
+[file a.py.3]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int = 6
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+[out3]
+
 [case testDeletedDepLineNumber]
 # The import is not on line 1 and that data should be preserved
 import a
