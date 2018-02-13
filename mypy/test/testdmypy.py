@@ -47,6 +47,7 @@ class DmypySuite(DataSuite):
     files = dmypy_files
     base_path = test_temp_dir
     optional_out = True
+    test_name_suffix = '_dmypy'
 
     @classmethod
     def filter(cls, testcase: DataDrivenTestCase) -> bool:

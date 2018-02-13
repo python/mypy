@@ -3467,6 +3467,19 @@ tmp/main.py:2: error: Expression has type "Any"
 [out2]
 tmp/main.py:2: error: Expression has type "Any"
 
+[case testIncrementalStrictOptional]
+# flags: --strict-optional
+import a
+1 + a.foo()
+[file a.py]
+def foo() -> int: return 0
+[file a.py.2]
+from typing import Optional
+def foo() -> Optional[int]: return 0
+[out1]
+[out2]
+main:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+
 [case testDeletedDepLineNumber]
 # The import is not on line 1 and that data should be preserved
 import a
