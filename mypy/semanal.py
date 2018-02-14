@@ -3337,7 +3337,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         base.accept(self)
         # Bind references to module attributes.
         if isinstance(base, RefExpr) and base.kind == MODULE_REF:
-            self.bind_module_attribute_reference(expr)
+            self.bind_module_attribute_reference(base, expr)
         elif isinstance(base, RefExpr):
             # This branch handles the case C.bar (or cls.bar or self.bar inside
             # a classmethod/method), where C is a class and bar is a type
@@ -3367,8 +3367,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     expr.fullname = n.fullname
                     expr.node = n.node
 
-    def bind_module_attribute_reference(self, expr: MemberExpr) -> None:
-        base = expr.expr
+    def bind_module_attribute_reference(self, base: RefExpr, expr: MemberExpr) -> None:
         # This method handles the case foo.bar where foo is a module.
         # In this case base.node is the module's MypyFile and we look up
         # bar in its namespace.  This must be done for all types of bar.
@@ -3414,7 +3413,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             if full_name in obsolete_name_mapping:
                 self.fail("Module%s has no attribute %r (it's now called %r)" % (
                     mod_name, expr.name, obsolete_name_mapping[full_name]), expr)
-
 
     def visit_op_expr(self, expr: OpExpr) -> None:
         expr.left.accept(self)

@@ -290,8 +290,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         base = expr.expr
         base.accept(self)
         if isinstance(base, RefExpr) and base.kind == MODULE_REF:
-            if expr.kind == UNBOUND_IMPORTED:
-                module_id = expr.expr.name
+            if isinstance(base, NameExpr) and expr.kind == UNBOUND_IMPORTED:
+                module_id = base.name
                 module = self.modules.get(module_id)
                 node = module and module.names.get(expr.name)
                 if node:
@@ -299,9 +299,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                     expr.node = node.node
                     expr.fullname = node.fullname
             elif expr.kind is None:
-                self.sem.bind_module_attribute_reference(expr)
+                self.sem.bind_module_attribute_reference(base, expr)
         super().visit_member_expr(expr)
-
 
     # Helpers
 
