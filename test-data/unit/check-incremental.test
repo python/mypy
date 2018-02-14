@@ -3783,3 +3783,76 @@ import a
 [out2]
 main:2: error: Cannot find module named 'a'
 main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIncrementalInheritanceAddAnnotation]
+# flags: --strict-optional
+import a
+[file a.py]
+import b
+def foo() -> None:
+    1 + b.Bar().get()
+[file b.py]
+from c import Baz
+class Bar(Baz): pass
+
+[file c.py]
+class Baz:
+    def get(self):
+        return 1
+[file c.py.2]
+from typing import Optional
+class Baz:
+    def get(self) -> Optional[int]:
+        return 1
+[out]
+[out2]
+tmp/a.py:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+
+
+[case testIncrementalLotsOfInheritance]
+import a
+[file a.py]
+from b import B
+from d import D
+def take(d: D) -> None: pass
+def foo() -> None:
+    take(B())
+[file b.py]
+from c import C
+class B(C): pass
+
+[file c.py]
+from d import D
+class C(D): pass
+
+[file c.py.2]
+from d import D
+class C: pass
+
+[file d.py]
+class D: pass
+[out]
+[out2]
+tmp/a.py:5: error: Argument 1 to "take" has incompatible type "B"; expected "D"
+
+[case testIncrementalInheritanceProperty]
+import a
+[file a.py]
+import b
+def foo() -> None:
+    1 + b.Bar().x
+[file b.py]
+from c import Baz
+class Bar(Baz): pass
+
+[file c.py]
+class Baz:
+    def __init__(self):
+        self.x = 12  # type: int
+[file c.py.2]
+class Baz:
+    def __init__(self):
+        self.x = 'lol'  # type: str
+[out]
+[out2]
+tmp/a.py:3: error: Unsupported operand types for + ("int" and "str")
