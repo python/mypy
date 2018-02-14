@@ -1458,3 +1458,48 @@ _testNoCrashOnGenericUnionUnpacking.py:10: error: Revealed type is 'Union[builti
 _testNoCrashOnGenericUnionUnpacking.py:11: error: Revealed type is 'Union[builtins.str, builtins.int]'
 _testNoCrashOnGenericUnionUnpacking.py:15: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
 _testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
+
+[case testEnumIterationAndPreciseElementType]
+# Regression test for #2305
+from enum import Enum
+class E(Enum):
+    A = 'a'
+(reveal_type(e) for e in E)
+for e in E:
+    reveal_type(e)
+[out]
+_testEnumIterationAndPreciseElementType.py:5: error: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
+_testEnumIterationAndPreciseElementType.py:7: error: Revealed type is '_testEnumIterationAndPreciseElementType.E*'
+
+[case testEnumIterable]
+from enum import Enum
+from typing import Iterable
+class E(Enum):
+    A = 'a'
+def f(ie: Iterable[E]):
+    pass
+f(E)
+
+[case testIntEnumIterable]
+from enum import IntEnum
+from typing import Iterable
+class N(IntEnum):
+    X = 1
+def f(ni: Iterable[N]):
+    pass
+def g(ii: Iterable[int]):
+    pass
+f(N)
+g(N)
+
+[case testDerivedEnumIterable]
+from enum import Enum
+from typing import Iterable
+class E(str, Enum):
+    A = 'foo'
+def f(ei: Iterable[E]):
+    pass
+def g(si: Iterable[str]):
+    pass
+f(E)
+g(E)

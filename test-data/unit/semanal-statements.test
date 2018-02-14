@@ -342,7 +342,7 @@ MypyFile:1(
       NameExpr(y [__main__.y]))
     IntExpr(1))
   AssignmentStmt:6(
-    ListExpr:6(
+    TupleExpr:6(
       NameExpr(x [__main__.x])
       NameExpr(y [__main__.y]))
     IntExpr(1))
@@ -407,7 +407,7 @@ MypyFile:1(
     NameExpr(x* [__main__.x])
     IntExpr(1))
   AssignmentStmt:2(
-    ListExpr:2(
+    TupleExpr:2(
       NameExpr(y* [__main__.y]))
     IntExpr(2)))
 
@@ -468,14 +468,14 @@ MypyFile:1(
   AssignmentStmt:2(
     TupleExpr:2(
       NameExpr(y* [__main__.y])
-      ListExpr:2(
+      TupleExpr:2(
         NameExpr(x [__main__.x])
         NameExpr(z* [__main__.z])))
     IntExpr(1))
   AssignmentStmt:3(
-    ListExpr:3(
+    TupleExpr:3(
       NameExpr(p* [__main__.p])
-      ListExpr:3(
+      TupleExpr:3(
         NameExpr(x [__main__.x])
         NameExpr(r* [__main__.r])))
     IntExpr(1)))

@@ -560,7 +560,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarExpr)
-                self.tvar_scope.bind(var.name, var_expr)
+                self.tvar_scope.bind_new(var.name, var_expr)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
@@ -570,7 +570,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname()):
                 self.fail("Type variable '{}' is bound by an outer class".format(name), defn)
-            self.tvar_scope.bind(name, tvar)
+            self.tvar_scope.bind_new(name, tvar)
             binding = self.tvar_scope.get_binding(tvar.fullname())
             assert binding is not None
             defs.append(binding)

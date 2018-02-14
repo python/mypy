@@ -274,6 +274,7 @@ N = NamedTuple('N', [('x', int), ('y', int)])
 M = NamedTuple('M', [('x', int), ('y', str)])
 [out]
 __main__.A
+__main__.N
 __main__.N.__init__
 __main__.N._asdict
 __main__.N._make
@@ -549,3 +550,71 @@ class B:
 [builtins fixtures/property.pyi]
 [out]
 __main__.B.x
+
+[case testFunctionalEnum]
+from enum import Enum
+A = Enum('A', 'x')
+B = Enum('B', 'x')
+[file next.py]
+from enum import Enum
+A = Enum('A', 'x')
+B = Enum('B', 'y')
+[out]
+__main__.B.x
+__main__.B.y
+
+[case testTypedDict]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': str})
+p = Point(dict(x=42, y='lurr'))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict2]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: str
+p = Point(dict(x=42, y='lurr'))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict3]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int})
+p = Point(dict(x=42))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict4]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int}, total=False)
+p = Point(dict(x=42, y=1337))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p

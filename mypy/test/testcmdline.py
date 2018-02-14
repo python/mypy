@@ -11,7 +11,6 @@ import sys
 
 from typing import List
 
-from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -58,13 +57,14 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+    result = process.wait()
     # Remove temp file.
     os.remove(program_path)
     # Compare actual output to expected.
     if testcase.output_files:
         for path, expected_content in testcase.output_files:
             if not os.path.exists(path):
-                raise AssertionFailure(
+                raise AssertionError(
                     'Expected file {} was not produced by test case'.format(path))
             with open(path, 'r') as output_file:
                 actual_output_content = output_file.read().splitlines()
@@ -78,6 +78,9 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
                                            path))
     else:
         out = normalize_error_messages(out)
+        obvious_result = 1 if out else 0
+        if obvious_result != result:
+            out.append('== Return code: {}'.format(result))
         assert_string_arrays_equal(testcase.output, out,
                                    'Invalid output ({}, line {})'.format(
                                        testcase.file, testcase.line))

@@ -53,6 +53,14 @@ from mypy.types import Type
 from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
+from mypy.server.deps import get_dependencies
+
+
+# Switch to True to produce debug output related to fine-grained incremental
+# mode only that is useful during development. This produces only a subset of
+# output compared to --verbose output. We use a global flag to enable this so
+# that it's easy to enable this when running tests.
+DEBUG_FINE_GRAINED = False
 
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
@@ -81,7 +89,7 @@ class BuildResult:
         self.graph = graph
         self.files = manager.modules
         self.types = manager.all_types  # Non-empty for tests only or if dumping deps
-        self.errors = manager.errors.messages()
+        self.errors = []  # type: List[str]  # Filled in by build if desired
 
 
 class BuildSource:
@@ -134,6 +142,7 @@ def build(sources: List[BuildSource],
           alt_lib_path: Optional[str] = None,
           bin_dir: Optional[str] = None,
           saved_cache: Optional[SavedCache] = None,
+          flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -143,6 +152,11 @@ def build(sources: List[BuildSource],
     Return BuildResult if successful or only non-blocking errors were found;
     otherwise raise CompileError.
 
+    If a flush_errors callback is provided, all error messages will be
+    passed to it and the errors and messages fields of BuildResult and
+    CompileError (respectively) will be empty. Otherwise those fields will
+    report any error messages.
+
     Args:
       sources: list of sources to build
       options: build options
@@ -151,7 +165,40 @@ def build(sources: List[BuildSource],
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
       saved_cache: optional dict with saved cache state for dmypy (read-write!)
+      flush_errors: optional function to flush errors after a file is processed
+
     """
+    # If we were not given a flush_errors, we use one that will populate those
+    # fields for callers that want the traditional API.
+    messages = []
+
+    def default_flush_errors(new_messages: List[str], is_serious: bool) -> None:
+        messages.extend(new_messages)
+
+    flush_errors = flush_errors or default_flush_errors
+
+    try:
+        result = _build(sources, options, alt_lib_path, bin_dir, saved_cache, flush_errors)
+        result.errors = messages
+        return result
+    except CompileError as e:
+        # CompileErrors raised from an errors object carry all of the
+        # messages that have not been reported out by error streaming.
+        # Patch it up to contain either none or all none of the messages,
+        # depending on whether we are flushing errors.
+        serious = not e.use_stdout
+        flush_errors(e.messages, serious)
+        e.messages = messages
+        raise
+
+
+def _build(sources: List[BuildSource],
+           options: Options,
+           alt_lib_path: Optional[str],
+           bin_dir: Optional[str],
+           saved_cache: Optional[SavedCache],
+           flush_errors: Callable[[List[str], bool], None],
+           ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
 
@@ -213,7 +260,8 @@ def build(sources: List[BuildSource],
                            version_id=__version__,
                            plugin=plugin,
                            errors=errors,
-                           saved_cache=saved_cache)
+                           saved_cache=saved_cache,
+                           flush_errors=flush_errors)
 
     try:
         graph = dispatch(sources, manager)
@@ -353,6 +401,7 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
                         ('dep_prios', List[int]),
+                        ('dep_lines', List[int]),
                         ('interface_hash', str),  # hash representing the public interface
                         ('version_id', str),  # mypy version for cache invalidation
                         ('ignore_all', bool),  # if errors were ignored
@@ -378,6 +427,7 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
         meta.get('child_modules', []),
         meta.get('options'),
         meta.get('dep_prios', []),
+        meta.get('dep_lines', []),
         meta.get('interface_hash', ''),
         meta.get('version_id', sentinel),
         meta.get('ignore_all', True),
@@ -519,6 +569,7 @@ class BuildManager:
       version_id:      The current mypy version (based on commit id when possible)
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
+      flush_errors:    A function for processing errors after each SCC
       saved_cache:     Dict with saved cache state for dmypy and fine-grained incremental mode
                        (read-write!)
       stats:           Dict with various instrumentation numbers
@@ -533,6 +584,7 @@ class BuildManager:
                  version_id: str,
                  plugin: Plugin,
                  errors: Errors,
+                 flush_errors: Callable[[List[str], bool], None],
                  saved_cache: Optional[SavedCache] = None,
                  ) -> None:
         self.start_time = time.time()
@@ -556,6 +608,7 @@ class BuildManager:
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
+        self.flush_errors = flush_errors
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
 
@@ -685,6 +738,17 @@ class BuildManager:
         if self.options.verbosity >= 1:
             if message:
                 print('LOG: ', *message, file=sys.stderr)
+            else:
+                print(file=sys.stderr)
+            sys.stderr.flush()
+
+    def log_fine_grained(self, *message: str) -> None:
+        if self.options.verbosity >= 1:
+            self.log('fine-grained:', *message)
+        elif DEBUG_FINE_GRAINED:
+            # Output log in a simplified format that is quick to browse.
+            if message:
+                print(*message, file=sys.stderr)
             else:
                 print(file=sys.stderr)
             sys.stderr.flush()
@@ -1075,7 +1139,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # Ignore cache if generated by an older mypy version.
     if ((m.version_id != manager.version_id and not manager.options.skip_version_check)
             or m.options is None
-            or len(m.dependencies) != len(m.dep_prios)):
+            or len(m.dependencies) != len(m.dep_prios)
+            or len(m.dependencies) != len(m.dep_lines)):
         manager.log('Metadata abandoned for {}: new attributes are missing'.format(id))
         return None
 
@@ -1163,6 +1228,17 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     if not stat.S_ISREG(st.st_mode):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
+
+    # When we are using a fine-grained cache, we want our initial
+    # build() to load all of the cache information and then do a
+    # fine-grained incremental update to catch anything that has
+    # changed since the cache was generated. We *don't* want to do a
+    # coarse-grained incremental rebuild, so we accept the cache
+    # metadata even if it doesn't match the source file.
+    if manager.options.use_fine_grained_cache:
+        manager.log('Using potentially stale metadata for {}'.format(id))
+        return meta
+
     size = st.st_size
     if size != meta.size:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
@@ -1192,6 +1268,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'options': (manager.options.clone_for_module(id)
                             .select_options_affecting_cache()),
                 'dep_prios': meta.dep_prios,
+                'dep_lines': meta.dep_lines,
                 'interface_hash': meta.interface_hash,
                 'version_id': manager.version_id,
                 'ignore_all': meta.ignore_all,
@@ -1219,8 +1296,9 @@ def compute_hash(text: str) -> str:
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
+                serialized_fine_grained_deps: Dict[str, List[str]],
                 dependencies: List[str], suppressed: List[str],
-                child_modules: List[str], dep_prios: List[int],
+                child_modules: List[str], dep_prios: List[int], dep_lines: List[int],
                 old_interface_hash: str, source_hash: str,
                 ignore_all: bool, manager: BuildManager) -> Tuple[str, Optional[CacheMeta]]:
     """Write cache files for a module.
@@ -1237,6 +1315,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
       suppressed: module IDs which were suppressed as dependencies
       child_modules: module IDs which are this package's direct submodules
       dep_prios: priorities (parallel array to dependencies)
+      dep_lines: import line locations (parallel array to dependencies)
       old_interface_hash: the hash from the previous version of the data cache file
       source_hash: the hash of the source code
       ignore_all: the ignore_all flag for this module
@@ -1257,7 +1336,9 @@ def write_cache(id: str, path: str, tree: MypyFile,
     assert os.path.dirname(meta_json) == parent
 
     # Serialize data and analyze interface
-    data = tree.serialize()
+    data = {'tree': tree.serialize(),
+            'fine_grained_deps': serialized_fine_grained_deps,
+            }
     if manager.options.debug_cache:
         data_str = json.dumps(data, indent=2, sort_keys=True)
     else:
@@ -1318,6 +1399,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'child_modules': child_modules,
             'options': options.select_options_affecting_cache(),
             'dep_prios': dep_prios,
+            'dep_lines': dep_lines,
             'interface_hash': interface_hash,
             'version_id': manager.version_id,
             'ignore_all': ignore_all,
@@ -1522,7 +1604,7 @@ class State:
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
     is_from_saved_cache = False  # True if the tree came from the in-memory cache
-    dependencies = None  # type: List[str]
+    dependencies = None  # type: List[str]  # Modules directly imported by the module
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
 
@@ -1559,6 +1641,8 @@ class State:
     # Whether the module has an error or any of its dependencies have one.
     transitive_error = False
 
+    fine_grained_deps = None  # type: Dict[str, Set[str]]
+
     # Type checker used for checking this file.  Use type_checker() for
     # access and to construct this on demand.
     _type_checker = None  # type: Optional[TypeChecker]
@@ -1587,6 +1671,7 @@ class State:
         self.id = id or '__main__'
         self.options = manager.options.clone_for_module(self.id)
         self._type_checker = None
+        self.fine_grained_deps = {}
         if not path and source is None:
             assert id is not None
             file_id = id
@@ -1669,8 +1754,10 @@ class State:
             assert len(self.meta.dependencies) == len(self.meta.dep_prios)
             self.priorities = {id: pri
                                for id, pri in zip(self.meta.dependencies, self.meta.dep_prios)}
+            assert len(self.meta.dependencies) == len(self.meta.dep_lines)
+            self.dep_line_map = {id: line
+                                 for id, line in zip(self.meta.dependencies, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
-            self.dep_line_map = {}
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
@@ -1777,7 +1864,9 @@ class State:
         with open(self.meta.data_json) as f:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
-        self.tree = MypyFile.deserialize(data)
+        self.tree = MypyFile.deserialize(data['tree'])
+        self.fine_grained_deps = {k: set(v) for k, v in data['fine_grained_deps'].items()}
+
         self.manager.modules[self.id] = self.tree
         self.manager.add_stats(fresh_trees=1)
 
@@ -2020,6 +2109,19 @@ class State:
             elif dep not in self.suppressed and dep in self.manager.missing_modules:
                 self.suppressed.append(dep)
 
+    def compute_fine_grained_deps(self) -> None:
+        assert self.tree is not None
+        if '/typeshed/' in self.xpath or self.xpath.startswith('typeshed/'):
+            # We don't track changes to typeshed -- the assumption is that they are only changed
+            # as part of mypy updates, which will invalidate everything anyway.
+            #
+            # TODO: Not a reliable test, as we could have a package named typeshed.
+            # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
+            return
+        self.fine_grained_deps = get_dependencies(target=self.tree,
+                                                  type_map=self.type_map(),
+                                                  python_version=self.options.python_version)
+
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
         valid_refs = set(self.dependencies + self.suppressed + self.ancestors)
@@ -2044,10 +2146,12 @@ class State:
             self.mark_interface_stale(on_errors=True)
             return
         dep_prios = self.dependency_priorities()
+        dep_lines = self.dependency_lines()
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
+            {k: list(v) for k, v in self.fine_grained_deps.items()},
             list(self.dependencies), list(self.suppressed), list(self.child_modules),
-            dep_prios, self.interface_hash, self.source_hash, self.ignore_all,
+            dep_prios, dep_lines, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
         if new_interface_hash == self.interface_hash:
             self.manager.log("Cached module {} has same interface".format(self.id))
@@ -2058,6 +2162,13 @@ class State:
 
     def dependency_priorities(self) -> List[int]:
         return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
+
+    def dependency_lines(self) -> List[int]:
+        return [self.dep_line_map.get(dep, 1) for dep in self.dependencies]
+
+    def generate_unused_ignore_notes(self) -> None:
+        if self.options.warn_unused_ignores:
+            self.manager.errors.generate_unused_ignore_notes(self.xpath)
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
@@ -2085,9 +2196,6 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         dump_graph(graph)
         return graph
     process_graph(graph, manager)
-    if manager.options.warn_unused_ignores:
-        # TODO: This could also be a per-module option.
-        manager.errors.generate_unused_ignore_notes()
     updated = preserve_cache(graph)
     set_updated = set(updated)
     manager.saved_cache.clear()
@@ -2390,6 +2498,14 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)
 
+    # If we are running in fine-grained incremental mode with caching,
+    # we always process fresh SCCs so that we have all of the symbol
+    # tables and fine-grained dependencies available.
+    if manager.options.use_fine_grained_cache:
+        for prev_scc in fresh_scc_queue:
+            process_fresh_scc(graph, prev_scc, manager)
+        fresh_scc_queue = []
+
     sccs_left = len(fresh_scc_queue)
     nodes_left = sum(len(scc) for scc in fresh_scc_queue)
     manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
@@ -2576,6 +2692,10 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
             graph[id].transitive_error = True
     for id in stale:
         graph[id].finish_passes()
+        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
+            graph[id].compute_fine_grained_deps()
+        graph[id].generate_unused_ignore_notes()
+        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 

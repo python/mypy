@@ -30,6 +30,7 @@ from mypy.test.helpers import assert_string_arrays_equal, parse_options
 from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type
+import pytest  # type: ignore  # no pytest in typeshed
 
 
 class FineGrainedSuite(DataSuite):
@@ -41,17 +42,44 @@ class FineGrainedSuite(DataSuite):
     ]
     base_path = test_temp_dir
     optional_out = True
+    # Whether to use the fine-grained cache in the testing. This is overridden
+    # by a trivial subclass to produce a suite that uses the cache.
+    use_cache = False
+
+    # Decide whether to skip the test. This could have been structured
+    # as a filter() classmethod also, but we want the tests reported
+    # as skipped, not just elided.
+    def should_skip(self, testcase: DataDrivenTestCase) -> bool:
+        if self.use_cache:
+            if testcase.name.endswith("-skip-cache"):
+                return True
+            # TODO: In caching mode we currently don't well support
+            # starting from cached states with errors in them.
+            if testcase.output and testcase.output[0] != '==':
+                return True
+        else:
+            if testcase.name.endswith("-skip-nocache"):
+                return True
+
+        return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if self.should_skip(testcase):
+            pytest.skip()
+            return
+
         main_src = '\n'.join(testcase.input)
         sources_override = self.parse_sources(main_src)
-        messages, manager, graph = self.build(main_src, testcase, sources_override)
-
+        messages, manager, graph = self.build(main_src, testcase, sources_override,
+                                              build_cache=self.use_cache,
+                                              enable_cache=self.use_cache)
         a = []
         if messages:
             a.extend(normalize_messages(messages))
 
-        fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        fine_grained_manager = None
+        if not self.use_cache:
+            fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
         steps = testcase.find_steps()
         all_triggered = []
@@ -70,6 +98,14 @@ class FineGrainedSuite(DataSuite):
                 modules = [(module, path)
                            for module, path in sources_override
                            if any(m == module for m, _ in modules)]
+
+            # If this is the second iteration and we are using a
+            # cache, now we need to set it up
+            if fine_grained_manager is None:
+                messages, manager, graph = self.build(main_src, testcase, sources_override,
+                                                      build_cache=False, enable_cache=True)
+                fine_grained_manager = FineGrainedBuildManager(manager, graph)
+
             new_messages = fine_grained_manager.update(modules)
             all_triggered.append(fine_grained_manager.triggered)
             new_messages = normalize_messages(new_messages)
@@ -82,8 +118,8 @@ class FineGrainedSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            'Invalid output ({}, line {})'.format(
+                testcase.file, testcase.line))
 
         if testcase.triggered:
             assert_string_arrays_equal(
@@ -95,14 +131,18 @@ class FineGrainedSuite(DataSuite):
     def build(self,
               source: str,
               testcase: DataDrivenTestCase,
-              sources_override: Optional[List[Tuple[str, str]]]) -> Tuple[List[str],
-                                                                          BuildManager,
-                                                                          Graph]:
+              sources_override: Optional[List[Tuple[str, str]]],
+              build_cache: bool,
+              enable_cache: bool) -> Tuple[List[str], BuildManager, Graph]:
         # This handles things like '# flags: --foo'.
         options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.fine_grained_incremental = not build_cache
+        options.use_fine_grained_cache = enable_cache and not build_cache
+        options.cache_fine_grained = enable_cache
+
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w') as f:
             f.write(source)
@@ -111,7 +151,6 @@ class FineGrainedSuite(DataSuite):
                        for module, path in sources_override]
         else:
             sources = [BuildSource(main_path, None, None)]
-        print(sources)
         try:
             result = build.build(sources=sources,
                                  options=options,
@@ -138,7 +177,7 @@ class FineGrainedSuite(DataSuite):
         description.
         """
         # TODO: Support defining separately for each incremental step.
-        m = re.search('# cmd: mypy ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
+        m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
         if m:
             # The test case wants to use a non-default set of files.
             paths = m.group(1).strip().split()

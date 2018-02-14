@@ -83,7 +83,7 @@ from mypy.options import Options
 from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
-from mypy.util import get_prefix
+from mypy.util import get_prefix, correct_relative_import
 from mypy.semanal_shared import PRIORITY_FALLBACKS
 
 
@@ -201,8 +201,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     type = None  # type: Optional[TypeInfo]
     # Stack of outer classes (the second tuple item contains tvars).
     type_stack = None  # type: List[Optional[TypeInfo]]
-    # Type variables that are bound by the directly enclosing class
-    bound_tvars = None  # type: List[SymbolTableNode]
     # Type variables bound by the current scope, be it class or function
     tvar_scope = None  # type: TypeVarScope
     # Per-module options
@@ -332,9 +330,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
+        self.tvar_scope = TypeVarScope()
         if active_type:
             self.enter_class(active_type.defn.info)
-            # TODO: Bind class type vars
+            for tvar in active_type.defn.type_vars:
+                self.tvar_scope.bind_existing(tvar)
 
         yield
 
@@ -909,7 +909,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             del defn.base_type_exprs[i]
         tvar_defs = []  # type: List[TypeVarDef]
         for name, tvar_expr in declared_tvars:
-            tvar_defs.append(self.tvar_scope.bind(name, tvar_expr))
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            tvar_defs.append(tvar_def)
         defn.type_vars = tvar_defs
 
     def analyze_typevar_declaration(self, t: Type) -> Optional[TypeVarList]:
@@ -1324,6 +1325,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     fields, types, required_keys = self.check_typeddict_classdef(defn)
                     info = self.build_typeddict_typeinfo(defn.name, fields, types, required_keys)
                     defn.info.replaced = info
+                    defn.info = info
                     node.node = info
                     defn.analyzed = TypedDictExpr(info)
                     defn.analyzed.line = defn.line
@@ -1359,6 +1361,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 required_keys.update(new_required_keys)
                 info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys)
                 defn.info.replaced = info
+                defn.info = info
                 node.node = info
                 defn.analyzed = TypedDictExpr(info)
                 defn.analyzed.line = defn.line
@@ -1582,21 +1585,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     SUGGESTED_TEST_FIXTURES[fullname]), ctx)
 
     def correct_relative_import(self, node: Union[ImportFrom, ImportAll]) -> str:
-        if node.relative == 0:
-            return node.id
-
-        parts = self.cur_mod_id.split(".")
-        cur_mod_id = self.cur_mod_id
-
-        rel = node.relative
-        if self.cur_mod_node.is_package_init_file():
-            rel -= 1
-        if len(parts) < rel:
+        import_id, ok = correct_relative_import(self.cur_mod_id, node.relative, node.id,
+                                                self.cur_mod_node.is_package_init_file())
+        if not ok:
             self.fail("Relative import climbs too many namespaces", node)
-        if rel != 0:
-            cur_mod_id = ".".join(parts[:-rel])
-
-        return cur_mod_id + (("." + node.id) if node.id else "")
+        return import_id
 
     def visit_import_all(self, i: ImportAll) -> None:
         i_id = self.correct_relative_import(i)
@@ -1694,7 +1687,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.check_classvar(s)
         s.rvalue.accept(self)
         if s.type:
-            allow_tuple_literal = isinstance(s.lvalues[-1], (TupleExpr, ListExpr))
+            allow_tuple_literal = isinstance(s.lvalues[-1], TupleExpr)
             s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
             if (self.type and self.type.is_protocol and isinstance(lval, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
@@ -1931,8 +1924,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 self.fail('Unexpected type declaration', lval)
             if not add_global:
                 lval.accept(self)
-        elif (isinstance(lval, TupleExpr) or
-              isinstance(lval, ListExpr)):
+        elif isinstance(lval, TupleExpr):
             items = lval.items
             if len(items) == 0 and isinstance(lval, TupleExpr):
                 self.fail("can't assign to ()", lval)
@@ -1945,7 +1937,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         else:
             self.fail('Invalid assignment target', lval)
 
-    def analyze_tuple_or_list_lvalue(self, lval: Union[ListExpr, TupleExpr],
+    def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
                                      add_global: bool = False,
                                      explicit_type: bool = False) -> None:
         """Analyze an lvalue or assignment target that is a list or tuple."""
@@ -2133,6 +2125,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
         init_func.info = info
+        init_func._fullname = self.qualified_name(name) + '.__init__'
         info.names['__init__'] = SymbolTableNode(MDEF, init_func)
 
         return info
@@ -2726,7 +2719,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
 
-    def process_module_assignment(self, lvals: List[Expression], rval: Expression,
+    def process_module_assignment(self, lvals: List[Lvalue], rval: Expression,
                                   ctx: AssignmentStmt) -> None:
         """Propagate module references across assignments.
 
@@ -2737,14 +2730,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         y].
 
         """
-        if all(isinstance(v, (TupleExpr, ListExpr)) for v in lvals + [rval]):
+        if (isinstance(rval, (TupleExpr, ListExpr))
+                and all(isinstance(v, TupleExpr) for v in lvals)):
             # rval and all lvals are either list or tuple, so we are dealing
             # with unpacking assignment like `x, y = a, b`. Mypy didn't
-            # understand our all(isinstance(...)), so cast them as
-            # Union[TupleExpr, ListExpr] so mypy knows it is safe to access
-            # their .items attribute.
-            seq_lvals = cast(List[Union[TupleExpr, ListExpr]], lvals)
-            seq_rval = cast(Union[TupleExpr, ListExpr], rval)
+            # understand our all(isinstance(...)), so cast them as TupleExpr
+            # so mypy knows it is safe to access their .items attribute.
+            seq_lvals = cast(List[TupleExpr], lvals)
             # given an assignment like:
             #     (x, y) = (m, n) = (a, b)
             # we now have:
@@ -2762,7 +2754,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # If the rval and all lvals are not all of the same length, zip will just ignore
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
-            elementwise_assignments = zip(seq_rval.items, *[v.items for v in seq_lvals])
+            elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
             for rv, *lvs in elementwise_assignments:
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, RefExpr):
@@ -2853,6 +2845,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             var = Var(item)
             var.info = info
             var.is_property = True
+            var._fullname = '{}.{}'.format(self.qualified_name(name), item)
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
 
@@ -3023,7 +3016,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         if s.index_type:
             if self.is_classvar(s.index_type):
                 self.fail_invalid_classvar(s.index)
-            allow_tuple_literal = isinstance(s.index, (TupleExpr, ListExpr))
+            allow_tuple_literal = isinstance(s.index, TupleExpr)
             s.index_type = self.anal_type(s.index_type, allow_tuple_literal=allow_tuple_literal)
             self.store_declared_types(s.index, s.index_type)
 
@@ -3100,7 +3093,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     t = types.pop(0)
                     if self.is_classvar(t):
                         self.fail_invalid_classvar(n)
-                    allow_tuple_literal = isinstance(n, (TupleExpr, ListExpr))
+                    allow_tuple_literal = isinstance(n, TupleExpr)
                     t = self.anal_type(t, allow_tuple_literal=allow_tuple_literal)
                     new_types.append(t)
                     self.store_declared_types(n, t)

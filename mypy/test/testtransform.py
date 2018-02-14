@@ -63,7 +63,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
-                t = TestTransformVisitor()
+                t = TypeAssertTransformVisitor()
                 f = t.mypyfile(f)
                 a += str(f).split('\n')
     except CompileError as e:
@@ -75,7 +75,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                                                                 testcase.line))
 
 
-class TestTransformVisitor(TransformVisitor):
+class TypeAssertTransformVisitor(TransformVisitor):
     def type(self, type: Type) -> Type:
         assert type is not None
         return type

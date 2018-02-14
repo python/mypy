@@ -1562,7 +1562,7 @@ d5 = dict(a=1, b='') # type: Dict[str, Any]
 
 [case testDictWithoutKeywordArgs]
 from typing import Dict
-d = dict() # E: Need type annotation for variable
+d = dict() # E: Need type annotation for 'd'
 d2 = dict() # type: Dict[int, str]
 dict(undefined) # E: Name 'undefined' is not defined
 [builtins fixtures/dict.pyi]
@@ -1584,7 +1584,7 @@ d() # E: "Dict[str, int]" not callable
 d2 = dict(it, x='') # E: Cannot infer type argument 2 of "dict"
 d2() # E: "Dict[Any, Any]" not callable
 
-d3 = dict(it, x='') # type: Dict[str, int] # E: Argument 2 to "dict" has incompatible type "str"; expected "int"
+d3 = dict(it, x='') # type: Dict[str, int] # E: Argument "x" to "dict" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testDictFromIterableAndKeywordArg2]
@@ -1787,3 +1787,8 @@ reveal_type(a.__pow__(2)) # E: Revealed type is 'builtins.int'
 reveal_type(a.__pow__(a)) # E: Revealed type is 'Any'
 a.__pow__() # E: Too few arguments for "__pow__" of "int"
 [builtins fixtures/ops.pyi]
+
+[case testTypeAnnotationNeededMultipleAssignment]
+x, y = [], [] # E: Need type annotation for 'x' \
+            # E: Need type annotation for 'y'
+[builtins fixtures/list.pyi]

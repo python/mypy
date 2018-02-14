@@ -8,7 +8,6 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
 from mypy.build import BuildSource, find_module_clear_caches
-from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
@@ -75,6 +74,7 @@ typecheck_files = [
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
     'check-default-plugin.test',
+    'check-attr.test',
 ]
 
 
@@ -87,32 +87,24 @@ class TypeCheckSuite(DataSuite):
         incremental = ('incremental' in testcase.name.lower()
                        or 'incremental' in testcase.file
                        or 'serialize' in testcase.file)
-        optional = 'optional' in testcase.file
-        old_strict_optional = experiments.STRICT_OPTIONAL
-        try:
-            if incremental:
-                # Incremental tests are run once with a cold cache, once with a warm cache.
-                # Expect success on first run, errors from testcase.output (if any) on second run.
-                # We briefly sleep to make sure file timestamps are distinct.
-                self.clear_cache()
-                num_steps = max([2] + list(testcase.output2.keys()))
-                # Check that there are no file changes beyond the last run (they would be ignored).
-                for dn, dirs, files in os.walk(os.curdir):
-                    for file in files:
-                        m = re.search(r'\.([2-9])$', file)
-                        if m and int(m.group(1)) > num_steps:
-                            raise ValueError(
-                                'Output file {} exists though test case only has {} runs'.format(
-                                    file, num_steps))
-                for step in range(1, num_steps + 1):
-                    self.run_case_once(testcase, step)
-            elif optional:
-                experiments.STRICT_OPTIONAL = True
-                self.run_case_once(testcase)
-            else:
-                self.run_case_once(testcase)
-        finally:
-            experiments.STRICT_OPTIONAL = old_strict_optional
+        if incremental:
+            # Incremental tests are run once with a cold cache, once with a warm cache.
+            # Expect success on first run, errors from testcase.output (if any) on second run.
+            # We briefly sleep to make sure file timestamps are distinct.
+            self.clear_cache()
+            num_steps = max([2] + list(testcase.output2.keys()))
+            # Check that there are no file changes beyond the last run (they would be ignored).
+            for dn, dirs, files in os.walk(os.curdir):
+                for file in files:
+                    m = re.search(r'\.([2-9])$', file)
+                    if m and int(m.group(1)) > num_steps:
+                        raise ValueError(
+                            'Output file {} exists though test case only has {} runs'.format(
+                                file, num_steps))
+            for step in range(1, num_steps + 1):
+                self.run_case_once(testcase, step)
+        else:
+            self.run_case_once(testcase)
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR
@@ -169,6 +161,7 @@ class TypeCheckSuite(DataSuite):
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(BuildSource(program_path, module_name,
                                        None if incremental_step else program_text))
+
         res = None
         try:
             res = build.build(sources=sources,
@@ -245,8 +238,8 @@ class TypeCheckSuite(DataSuite):
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
         if not missing_paths.issubset(error_paths):
-            raise AssertionFailure("cache data discrepancy %s != %s" %
-                                   (missing_paths, error_paths))
+            raise AssertionError("cache data discrepancy %s != %s" %
+                                 (missing_paths, error_paths))
 
     def find_error_paths(self, a: List[str]) -> Set[str]:
         hits = set()

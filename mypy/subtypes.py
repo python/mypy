@@ -289,13 +289,46 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
             return False
         elif isinstance(right, Overloaded):
-            # TODO: this may be too restrictive
-            if len(left.items()) != len(right.items()):
-                return False
-            for i in range(len(left.items())):
-                if not is_subtype(left.items()[i], right.items()[i], self.check_type_parameter,
-                                  ignore_pos_arg_names=self.ignore_pos_arg_names):
+            # Ensure each overload in the right side (the supertype) is accounted for.
+            previous_match_left_index = -1
+            matched_overloads = set()
+            possible_invalid_overloads = set()
+
+            for right_index, right_item in enumerate(right.items()):
+                found_match = False
+
+                for left_index, left_item in enumerate(left.items()):
+                    subtype_match = is_subtype(left_item, right_item, self.check_type_parameter,
+                                               ignore_pos_arg_names=self.ignore_pos_arg_names)
+
+                    # Order matters: we need to make sure that the index of
+                    # this item is at least the index of the previous one.
+                    if subtype_match and previous_match_left_index <= left_index:
+                        if not found_match:
+                            # Update the index of the previous match.
+                            previous_match_left_index = left_index
+                            found_match = True
+                            matched_overloads.add(left_item)
+                            possible_invalid_overloads.discard(left_item)
+                    else:
+                        # If this one overlaps with the supertype in any way, but it wasn't
+                        # an exact match, then it's a potential error.
+                        if (is_callable_subtype(left_item, right_item, ignore_return=True,
+                                            ignore_pos_arg_names=self.ignore_pos_arg_names) or
+                                is_callable_subtype(right_item, left_item, ignore_return=True,
+                                                ignore_pos_arg_names=self.ignore_pos_arg_names)):
+                            # If this is an overload that's already been matched, there's no
+                            # problem.
+                            if left_item not in matched_overloads:
+                                possible_invalid_overloads.add(left_item)
+
+                if not found_match:
                     return False
+
+            if possible_invalid_overloads:
+                # There were potentially invalid overloads that were never matched to the
+                # supertype.
+                return False
             return True
         elif isinstance(right, UnboundType):
             return True

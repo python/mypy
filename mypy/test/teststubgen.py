@@ -9,8 +9,7 @@ from types import ModuleType
 
 from typing import List, Tuple
 
-from mypy.myunit import Suite, assert_equal
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
 from mypy.stubgen import generate_stub, generate_stub_for_module, parse_options, Options

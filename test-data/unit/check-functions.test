@@ -1391,7 +1391,7 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for variable
+f = [] # E: Need type annotation for 'f'
 if object():
     def f(): pass # E: Incompatible redefinition
 f()
@@ -1717,7 +1717,7 @@ def a(f: Callable[[NamedArg(int, 'x')], int]):
     f(2) # E: Too many positional arguments
     f() # E: Missing named argument "x"
     f(y=3) # E: Unexpected keyword argument "y"
-    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallableWithKeywordOnlyOptionalArg]
@@ -1729,7 +1729,7 @@ def a(f: Callable[[DefaultNamedArg(int, 'x')], int]):
     f(2) # E: Too many positional arguments
     f()
     f(y=3) # E: Unexpected keyword argument "y"
-    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallableWithKwargs]
@@ -1742,7 +1742,7 @@ def a(f: Callable[[KwArg(int)], int]):
     f()
     f(y=3)
     f(x=4, y=3, z=10)
-    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 
@@ -2200,7 +2200,7 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for variable
+bad = make_list()  # E: Need type annotation for 'bad'
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]

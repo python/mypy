@@ -1,12 +1,17 @@
 """Plugin system for extending mypy."""
 
-from collections import OrderedDict
 from abc import abstractmethod
+from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
 
-from mypy.nodes import Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef
+import mypy.plugins.attrs
+from mypy.nodes import (
+    Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
+    TypeInfo, SymbolTableNode
+)
+from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
-    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, FunctionLike, TypeVarType,
+    Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
     AnyType, TypeList, UnboundType, TypeOfAny
 )
 from mypy.messages import MessageBuilder
@@ -56,6 +61,9 @@ class CheckerPluginInterface:
 class SemanticAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
+    options = None  # type: Options
+    msg = None  # type: MessageBuilder
+
     @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
@@ -67,6 +75,22 @@ class SemanticAnalyzerPluginInterface:
     @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def anal_type(self, t: Type, *,
+                  tvar_scope: Optional[TypeVarScope] = None,
+                  allow_tuple_literal: bool = False,
+                  aliasing: bool = False,
+                  third_pass: bool = False) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def class_type(self, info: TypeInfo) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         raise NotImplementedError
 
 
@@ -260,6 +284,17 @@ class DefaultPlugin(Plugin):
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
+        return None
+
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        if fullname in mypy.plugins.attrs.attr_class_makers:
+            return mypy.plugins.attrs.attr_class_maker_callback
+        elif fullname in mypy.plugins.attrs.attr_dataclass_makers:
+            return partial(
+                mypy.plugins.attrs.attr_class_maker_callback,
+                auto_attribs_default=True
+            )
         return None
 
 

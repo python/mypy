@@ -156,7 +156,7 @@ class Expression(Node):
 
 # TODO:
 # Lvalue = Union['NameExpr', 'MemberExpr', 'IndexExpr', 'SuperExpr', 'StarExpr'
-#                'TupleExpr', 'ListExpr']; see #1783.
+#                'TupleExpr']; see #1783.
 Lvalue = Expression
 
 
@@ -203,6 +203,8 @@ class MypyFile(SymbolNode):
     ignored_lines = None  # type: Set[int]
     # Is this file represented by a stub file (.pyi)?
     is_stub = False
+    # Is this loaded from the cache and thus missing the actual body of the file?
+    is_cache_skeleton = False
 
     def __init__(self,
                  defs: List[Statement],
@@ -249,6 +251,7 @@ class MypyFile(SymbolNode):
         tree.names = SymbolTable.deserialize(data['names'])
         tree.is_stub = data['is_stub']
         tree.path = data['path']
+        tree.is_cache_skeleton = True
         return tree
 
 
@@ -324,6 +327,7 @@ class FuncBase(Node):
     # Original, not semantically analyzed type (used for reprocessing)
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # If method, reference to TypeInfo
+    # TODO: The type should be Optional[TypeInfo]
     info = None  # type: TypeInfo
     is_property = False
     _fullname = None  # type: str       # Name with module prefix
@@ -597,6 +601,7 @@ class Var(SymbolNode):
 
     _name = None      # type: str   # Name without module prefix
     _fullname = None  # type: str   # Name with module prefix
+    # TODO: The following should be Optional[TypeInfo]
     info = None  # type: TypeInfo   # Defining class (for member variables)
     type = None  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
     # Is this the first argument to an ordinary method (usually "self")?
@@ -747,9 +752,11 @@ class NonlocalDecl(Statement):
 
 class Block(Statement):
     body = None  # type: List[Statement]
-    # True if we can determine that this block is not executed. For example,
-    # this applies to blocks that are protected by something like "if PY3:"
-    # when using Python 2.
+    # True if we can determine that this block is not executed during semantic
+    # analysis. For example, this applies to blocks that are protected by
+    # something like "if PY3:" when using Python 2. However, some code is
+    # only considered unreachable during type checking and this is not true
+    # in those cases.
     is_unreachable = False
 
     def __init__(self, body: List[Statement]) -> None:
@@ -1466,7 +1473,7 @@ class SuperExpr(Expression):
     """Expression super().name"""
 
     name = ''
-    info = None  # type: TypeInfo  # Type that contains this super expression
+    info = None  # type: Optional[TypeInfo]  # Type that contains this super expression
     call = None  # type: CallExpr  # The expression super(...)
 
     def __init__(self, name: str, call: CallExpr) -> None:
@@ -1522,7 +1529,9 @@ class DictExpr(Expression):
 
 
 class TupleExpr(Expression):
-    """Tuple literal expression (..., ...)"""
+    """Tuple literal expression (..., ...)
+
+    Also lvalue sequences (..., ...) and [..., ...]"""
 
     items = None  # type: List[Expression]
 
@@ -1984,6 +1993,10 @@ class TypeInfo(SymbolNode):
     # needed during the semantic passes.)
     replaced = None  # type: TypeInfo
 
+    # This is a dictionary that will be serialized and un-serialized as is.
+    # It is useful for plugins to add their data to save in the cache.
+    metadata = None  # type: Dict[str, JsonDict]
+
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'
@@ -2007,6 +2020,7 @@ class TypeInfo(SymbolNode):
         self._cache = set()
         self._cache_proper = set()
         self.add_type_vars()
+        self.metadata = {}
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
@@ -2209,6 +2223,7 @@ class TypeInfo(SymbolNode):
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
                 'flags': get_flags(self, TypeInfo.FLAGS),
+                'metadata': self.metadata,
                 }
         return data
 
@@ -2235,6 +2250,7 @@ class TypeInfo(SymbolNode):
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
                             else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
+        ti.metadata = data['metadata']
         set_flags(ti, data['flags'])
         return ti
 
@@ -2603,3 +2619,10 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
             fail("Duplicate argument '{}' in {}".format(name, description), node)
             break
         seen_names.add(name)
+
+
+def is_class_var(expr: NameExpr) -> bool:
+    """Return whether the expression is ClassVar[...]"""
+    if isinstance(expr.node, Var):
+        return expr.node.is_classvar
+    return False

@@ -34,6 +34,7 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "warn_return_any",
+        "warn_unused_ignores",
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
@@ -41,7 +42,8 @@ class Options:
         "disallow_untyped_decorators",
     }
 
-    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
+    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
+                                {"quick_and_dirty", "platform", "cache_fine_grained"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
@@ -141,6 +143,9 @@ class Options:
         self.debug_cache = False
         self.quick_and_dirty = False
         self.skip_version_check = False
+        self.fine_grained_incremental = False
+        self.cache_fine_grained = False
+        self.use_fine_grained_cache = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]
@@ -178,7 +183,9 @@ class Options:
         return not self == other
 
     def __repr__(self) -> str:
-        return 'Options({})'.format(pprint.pformat(self.__dict__))
+        d = dict(self.__dict__)
+        del d['clone_cache']
+        return 'Options({})'.format(pprint.pformat(d))
 
     def clone_for_module(self, module: str) -> 'Options':
         """Create an Options object that incorporates per-module options.

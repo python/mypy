@@ -40,7 +40,7 @@ from mypy.types import (
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound
+from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound, type_object_type
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
@@ -59,13 +59,14 @@ from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.meet import is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
+from mypy.sharedparse import BINARY_MAGIC_METHODS
 
 from mypy import experiments
 
 
 T = TypeVar('T')
 
-LAST_PASS = 1  # Pass numbers start at 0
+DEFAULT_LAST_PASS = 1  # Pass numbers start at 0
 
 
 # A node which is postponed to be processed during the next pass.
@@ -146,6 +147,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     deferred_nodes = None  # type: List[DeferredNode]
     # Type checking pass number (0 = first pass)
     pass_num = 0
+    # Last pass number to take
+    last_pass = DEFAULT_LAST_PASS
     # Have we deferred the current function? If yes, don't infer additional
     # types during this pass within the function.
     current_node_deferred = False
@@ -296,7 +299,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_non_lambda_function()
-        if self.pass_num < LAST_PASS and isinstance(node, FuncDef):
+        if self.pass_num < self.last_pass and isinstance(node, FuncDef):
             # Don't report an error yet. Just defer. Note that we don't defer
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it
@@ -1252,6 +1255,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Otherwise we've already found errors; more errors are not useful
                 self.check_multiple_inheritance(typ)
 
+            if defn.decorators:
+                sig = type_object_type(defn.info, self.named_type)
+                # Decorators are applied in reverse order.
+                for decorator in reversed(defn.decorators):
+                    if (isinstance(decorator, CallExpr)
+                            and isinstance(decorator.analyzed, PromoteExpr)):
+                        # _promote is a special type checking related construct.
+                        continue
+
+                    dec = self.expr_checker.accept(decorator)
+                    temp = self.temp_node(sig)
+                    fullname = None
+                    if isinstance(decorator, RefExpr):
+                        fullname = decorator.fullname
+
+                    # TODO: Figure out how to have clearer error messages.
+                    # (e.g. "class decorator must be a function that accepts a type."
+                    sig, _ = self.expr_checker.check_call(dec, [temp],
+                                                          [nodes.ARG_POS], defn,
+                                                          callable_name=fullname)
+                # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
+                # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
+
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
         variances of type variables.
@@ -1938,13 +1964,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # partial type which will be made more specific later. A partial type
             # gets generated in assignment like 'x = []' where item type is not known.
             if not self.infer_partial_type(name, lvalue, init_type):
-                self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                self.msg.need_annotation_for_var(name, context)
                 self.set_inference_error_fallback_type(name, lvalue, init_type, context)
         elif (isinstance(lvalue, MemberExpr) and self.inferred_attribute_types is not None
               and lvalue.def_var and lvalue.def_var in self.inferred_attribute_types
               and not is_same_type(self.inferred_attribute_types[lvalue.def_var], init_type)):
             # Multiple, inconsistent types inferred for an attribute.
-            self.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+            self.msg.need_annotation_for_var(name, context)
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
@@ -2177,8 +2203,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(typ, AnyType):
                     # (Unless you asked to be warned in that case, and the
                     # function is not declared to return Any)
-                    if (self.options.warn_return_any and not self.current_node_deferred and
-                            not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)):
+                    if (self.options.warn_return_any
+                        and not self.current_node_deferred
+                        and not is_proper_subtype(AnyType(TypeOfAny.special_form), return_type)
+                        and not (defn.name() in BINARY_MAGIC_METHODS and
+                                 is_literal_not_implemented(s.expr))):
                         self.msg.incorrectly_returning_any(return_type, s)
                     return
 
@@ -2673,6 +2702,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # Build up a fake FuncDef so we can populate the symbol table.
         func_def = FuncDef('__call__', [], Block([]), callable_type)
+        func_def._fullname = cdef.fullname + '.__call__'
         func_def.info = info
         info.names['__call__'] = SymbolTableNode(MDEF, func_def, callable_type)
 
@@ -3098,7 +3128,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     var.type = NoneTyp()
                 else:
                     if var not in self.partial_reported:
-                        self.msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+                        self.msg.need_annotation_for_var(var, context)
                         self.partial_reported.add(var)
                     var.type = AnyType(TypeOfAny.from_error)
 
@@ -3227,6 +3257,10 @@ def remove_optional(typ: Type) -> Type:
         return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
     else:
         return typ
+
+
+def is_literal_not_implemented(n: Expression) -> bool:
+    return isinstance(n, NameExpr) and n.fullname == 'builtins.NotImplemented'
 
 
 def builtin_item_type(tp: Type) -> Optional[Type]:

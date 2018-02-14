@@ -8,7 +8,7 @@ import re
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Callable
 
 from mypy import build
 from mypy import defaults
@@ -61,12 +61,25 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if args is None:
         args = sys.argv[1:]
     sources, options = process_options(args)
+
+    messages = []
+
+    def flush_errors(new_messages: List[str], serious: bool) -> None:
+        messages.extend(new_messages)
+        f = sys.stderr if serious else sys.stdout
+        try:
+            for msg in new_messages:
+                f.write(msg + '\n')
+            f.flush()
+        except BrokenPipeError:
+            sys.exit(2)
+
     serious = False
+    blockers = False
     try:
-        res = type_check_only(sources, bin_dir, options)
-        a = res.errors
+        type_check_only(sources, bin_dir, options, flush_errors)
     except CompileError as e:
-        a = e.messages
+        blockers = True
         if not e.use_stdout:
             serious = True
     if options.warn_unused_configs and options.unused_configs:
@@ -76,15 +89,10 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
-    if a:
-        f = sys.stderr if serious else sys.stdout
-        try:
-            for m in a:
-                f.write(m + '\n')
-        except BrokenPipeError:
-            pass
-        sys.exit(1)
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+    if messages:
+        code = 2 if blockers else 1
+        sys.exit(code)
 
 
 def find_bin_directory(script_path: str) -> str:
@@ -112,11 +120,13 @@ def readlinkabs(link: str) -> str:
 
 
 def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options) -> BuildResult:
+                    options: Options,
+                    flush_errors: Optional[Callable[[List[str], bool], None]]) -> BuildResult:
     # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
-                       options=options)
+                       options=options,
+                       flush_errors=flush_errors)
 
 
 FOOTER = """environment variables:
@@ -196,7 +206,8 @@ def invert_flag_name(flag: str) -> str:
 
 
 def process_options(args: List[str],
-                    require_targets: bool = True
+                    require_targets: bool = True,
+                    server_options: bool = False,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments."""
 
@@ -312,6 +323,8 @@ def process_options(args: List[str],
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
+    parser.add_argument('--cache-fine-grained', action='store_true',
+                        help="include fine-grained dependency information in the cache")
     parser.add_argument('--skip-version-check', action='store_true',
                         help="allow using cache written by older mypy version")
     add_invertible_flag('--strict-optional', default=False, strict_flag=True,
@@ -382,6 +395,11 @@ def process_options(args: List[str],
     parser.add_argument('--no-fast-parser', action='store_true',
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
+    if server_options:
+        parser.add_argument('--experimental', action='store_true', dest='fine_grained_incremental',
+                            help="enable fine-grained incremental mode")
+        parser.add_argument('--use-fine-grained-cache', action='store_true',
+                            help="use the cache in fine-grained incremental mode")
 
     report_group = parser.add_argument_group(
         title='report generation',
@@ -479,8 +497,6 @@ def process_options(args: List[str],
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
         options.strict_optional = True
-    if options.strict_optional:
-        experiments.STRICT_OPTIONAL = True
     if special_opts.find_occurrences:
         experiments.find_occurrences = special_opts.find_occurrences.split('.')
         assert experiments.find_occurrences is not None
@@ -748,6 +764,8 @@ def parse_section(prefix: str, template: Options,
                         print("%s: Unrecognized report type: %s" % (prefix, orig_key),
                               file=sys.stderr)
                     continue
+                if key.startswith('x_'):
+                    continue  # Don't complain about `x_blah` flags
                 print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
                       file=sys.stderr)
                 continue
