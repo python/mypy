@@ -320,11 +320,11 @@ class DataDrivenTestCase:
                     # a bug in a test case -- we shouldn't leave
                     # garbage lying around. By nuking the directory,
                     # the next test run hopefully passes.
-                    path = error.filename
+                    error_path = error.filename
                     # Be defensive -- only call rmtree if we're sure we aren't removing anything
                     # valuable.
-                    if path.startswith(test_temp_dir + '/') and os.path.isdir(path):
-                        shutil.rmtree(path)
+                    if error_path.startswith(test_temp_dir + '/') and os.path.isdir(error_path):
+                        shutil.rmtree(error_path)
                     raise
         assert self.old_cwd is not None and self.tmpdir is not None, \
             "test was not properly set up"
