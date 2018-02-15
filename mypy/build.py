@@ -886,8 +886,8 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
         # Use subprocess to get the package directory of given Python
         # executable
         check = check_output([python, '-V'], stderr=STDOUT).decode('UTF-8')
-        if not check.startswith('Python'):
-            return package_dirs
+        assert check.startswith('Python'), \
+            "Mypy could not use the Python executable: {}".format(python)
         # If we have a working python executable, query information from it
         output = call_python(python, USER_SITE_PACKAGES)
         for line in output.splitlines():
@@ -952,7 +952,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 path = os.path.join(pkg_dir, dir_chain)
                 dirs.append(path)
 
-            find_module_dir_cache[dir_chain] = dirs
+        find_module_dir_cache[dir_chain] = dirs
         candidate_base_dirs = find_module_dir_cache[dir_chain]
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
