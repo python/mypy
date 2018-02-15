@@ -16,25 +16,25 @@ structure as follows:
 
 .. code-block:: text
 
-setup.py
-package_a/
-    __init__.py
-    lib.py
-    py.typed
+    setup.py
+    package_a/
+        __init__.py
+        lib.py
+        py.typed
 
-the setup.py might look like:
+    the setup.py might look like:
 
-.. code-block:: python
+    .. code-block:: python
 
-from distutils.core import setup
+    from distutils.core import setup
 
-setup(
-    name="SuperPackageA",
-    author="Me",
-    version="0.1",
-    package_data={"package_a": ["py.typed"]},
-    packages=["package_a"]
-)
+    setup(
+        name="SuperPackageA",
+        author="Me",
+        version="0.1",
+        package_data={"package_a": ["py.typed"]},
+        packages=["package_a"]
+    )
 
 If the package is entirely made up of stub (``*.pyi``) files, the package
 should have a suffix of ``-stubs``. For example, if we had stubs for
@@ -42,24 +42,24 @@ should have a suffix of ``-stubs``. For example, if we had stubs for
 
 .. code-block:: text
 
-setup.py
-package_b-stubs/
-    __init__.pyi
-    lib.pyi
+    setup.py
+    package_b-stubs/
+        __init__.pyi
+        lib.pyi
 
-the setup.py might look like:
+    the setup.py might look like:
 
-.. code-block:: python
+    .. code-block:: python
 
-from distutils.core import setup
+    from distutils.core import setup
 
-setup(
-    name="SuperPackageB",
-    author="Me",
-    version="0.1",
-    package_data={"package_b-stubs": ["__init__.pyi", "lib.pyi"]},
-    packages=["package_b-stubs"]
-)
+    setup(
+        name="SuperPackageB",
+        author="Me",
+        version="0.1",
+        package_data={"package_b-stubs": ["__init__.pyi", "lib.pyi"]},
+        packages=["package_b-stubs"]
+    )
 
 Using PEP 561 compatible packages with mypy
 *******************************************
