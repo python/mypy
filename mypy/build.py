@@ -684,7 +684,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(id, self.lib_path, self.options.python) is not None
+        return find_module(id, self.lib_path, self.options.python_executable) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -797,7 +797,7 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
-# Cache find_module: (id, lib_path) -> result.
+# Cache find_module: (id) -> result.
 find_module_cache = {}  # type: Dict[str, Optional[str]]
 
 # Cache some repeated work within distinct find_module calls: finding which
@@ -866,9 +866,9 @@ def is_file(path: str) -> bool:
 
 
 USER_SITE_PACKAGES = \
-    '"import site;print(site.getusersitepackages());print(*site.getsitepackages(), sep=\'\\n\')"'
+    '"import site; print(site.getusersitepackages()); print(*site.getsitepackages(), sep=\'\\n\')"'
 VIRTUALENV_SITE_PACKAGES = \
-    '"from distutils.sysconfig import get_python_lib;print(get_python_lib())"'
+    '"from distutils.sysconfig import get_python_lib; print(get_python_lib())"'
 
 
 def call_python(python: str, command: str) -> str:
@@ -876,9 +876,9 @@ def call_python(python: str, command: str) -> str:
 
 
 def get_package_dirs(python: Optional[str]) -> List[str]:
-    """Find package directories for given python (default to Python running
-    mypy)."""
-    global package_dirs_cache
+    """Find package directories for given python
+
+     This defaults to the Python running mypy."""
     if package_dirs_cache:
         return package_dirs_cache
     package_dirs = []  # type: List[str]
@@ -906,7 +906,7 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
             package_dirs = site.getsitepackages() + [user_dir]
         except AttributeError:
             package_dirs = [get_python_lib()]
-    package_dirs_cache = package_dirs
+    package_dirs_cache[:] = package_dirs
     return package_dirs
 
 
@@ -939,7 +939,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
 
         # Third-party stub/typed packages
         for pkg_dir in package_dirs:
-            stub_name = components[0] + '_stubs'
+            stub_name = components[0] + '-stubs'
             typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_typed_file = os.path.join(pkg_dir, stub_name, 'py.typed')
             if os.path.isfile(stub_typed_file):
@@ -1685,14 +1685,14 @@ class State:
                 # difference and just assume 'builtins' everywhere,
                 # which simplifies code.
                 file_id = '__builtin__'
-            path = find_module(file_id, manager.lib_path, manager.options.python)
+            path = find_module(file_id, manager.lib_path, manager.options.python_executable)
             if path:
+                # Installed package modules should be silenced. They are all under absolute
+                # paths.
                 if os.path.isabs(path):
+                    # Silence errors from module if it is in a package directory
                     for dir in package_dirs_cache:
-                        # if dir is /foo and path is /foo/bar, the next character after
-                        # the prefix is /
-                        dir_len = len(dir)
-                        if path[dir_len:dir_len + 1] == os.sep:
+                        if path.startswith(dir + os.sep):
                             self.ignore_all = True
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze

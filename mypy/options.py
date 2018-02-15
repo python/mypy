@@ -53,7 +53,7 @@ class Options:
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version = defaults.PYTHON3_VERSION
-        self.python = None  # type: Optional[str]
+        self.python_executable = None  # type: Optional[str]
         self.platform = sys.platform
         self.custom_typing_module = None  # type: Optional[str]
         self.custom_typeshed_dir = None  # type: Optional[str]

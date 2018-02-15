@@ -256,7 +256,7 @@ def process_options(args: List[str],
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y')
-    parser.add_argument('--python', action='store',
+    parser.add_argument('--python-executable', action='store',
                         help="Python executable whose installed packages will be"
                              " used in typechecking.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
@@ -527,7 +527,8 @@ def process_options(args: List[str],
                  .format(special_opts.package))
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(special_opts.package, lib_path, options.python)
+        targets = build.find_modules_recursive(special_opts.package, lib_path,
+                                               options.python_executable)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
         return targets, options

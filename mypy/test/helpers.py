@@ -341,8 +341,8 @@ def split_lines(*streams: bytes) -> List[str]:
     ]
 
 
-def run(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
-        timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
+def run_command(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
+                timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
     """A poor man's subprocess.run() for 3.4 compatibility."""
     process = subprocess.Popen(
         cmdline,

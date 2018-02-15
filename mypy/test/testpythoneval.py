@@ -20,7 +20,7 @@ from typing import List
 
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, run
+from mypy.test.helpers import assert_string_arrays_equal, run_command
 from mypy.util import try_find_python2_interpreter
 from mypy import api
 
@@ -78,7 +78,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
             output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.
-        returncode, interp_out = run([interpreter, program])
+        returncode, interp_out = run_command([interpreter, program])
         output.extend(interp_out)
     # Remove temp file.
     os.remove(program_path)
