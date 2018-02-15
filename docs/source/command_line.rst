@@ -8,30 +8,34 @@ summary of command line flags can always be printed using the ``-h``
 flag (or its long form ``--help``)::
 
   $ mypy -h
-  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
-              [--ignore-missing-imports]
-              [--follow-imports {normal,silent,skip,error}]
-              [--disallow-any-{unimported,expr,decorated,explicit,generics}]
-              [--disallow-untyped-calls] [--disallow-untyped-defs]
-              [--check-untyped-defs] [--disallow-subclassing-any]
-              [--warn-incomplete-stub] [--warn-redundant-casts]
-              [--no-warn-no-return] [--warn-return-any] [--warn-unused-ignores]
-              [--show-error-context] [--no-implicit-optional] [-i]
-              [--quick-and-dirty] [--cache-dir DIR] [--skip-version-check]
-              [--strict-optional]
-              [--strict-optional-whitelist [GLOB [GLOB ...]]]
-              [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
-              [--inferstats] [--custom-typing MODULE]
-              [--custom-typeshed-dir DIR] [--scripts-are-modules]
-              [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--strict]
-              [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
-              [--cobertura-xml-report DIR] [--html-report DIR]
-              [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR]
-              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
-              [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
-              [files [files ...]]
+  usage: mypy [-h] [-v] [-V] [--python-version x.y]
+            [--python-executable PYTHON_EXECUTABLE] [--platform PLATFORM] [-2]
+            [--ignore-missing-imports]
+            [--follow-imports {normal,silent,skip,error}]
+            [--disallow-any-unimported] [--disallow-any-expr]
+            [--disallow-any-decorated] [--disallow-any-explicit]
+            [--disallow-any-generics] [--disallow-untyped-calls]
+            [--disallow-untyped-defs] [--disallow-incomplete-defs]
+            [--check-untyped-defs] [--disallow-subclassing-any]
+            [--warn-incomplete-stub] [--disallow-untyped-decorators]
+            [--warn-redundant-casts] [--no-warn-no-return] [--warn-return-any]
+            [--warn-unused-ignores] [--warn-unused-configs]
+            [--show-error-context] [--no-implicit-optional] [-i]
+            [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
+            [--skip-version-check] [--strict-optional]
+            [--strict-optional-whitelist [GLOB [GLOB ...]]]
+            [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
+            [--inferstats] [--custom-typing MODULE]
+            [--custom-typeshed-dir DIR] [--scripts-are-modules]
+            [--config-file CONFIG_FILE] [--show-column-numbers]
+            [--find-occurrences CLASS.MEMBER] [--strict]
+            [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
+            [--cobertura-xml-report DIR] [--html-report DIR]
+            [--linecount-report DIR] [--linecoverage-report DIR]
+            [--memory-xml-report DIR] [--txt-report DIR] [--xml-report DIR]
+            [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
+            [-c PROGRAM_TEXT] [-p PACKAGE]
+            [files [files ...]]
 
   (etc., too long to show everything here)
 
@@ -365,6 +369,12 @@ Here are some more useful flags:
   may miss problems caused by a change in a dependency.  Quick mode
   updates the cache, but regular incremental mode ignores cache files
   written by quick mode.
+
+- ``--python-executable EXECUTABLE`` will have mypy collect type information
+  from PEP 561 compliant packages installed with the given Python executable.
+  By default, mypy will use PEP 561 compliant packages installed for the Python
+  executable running mypy. See :ref:`installed_packages` for more on making
+  PEP 561 compliant packages.
 
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
