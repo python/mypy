@@ -70,4 +70,4 @@ mypy and used for type checking.
 
 If you use mypy to type check a Python other than the version running mypy, you
 can use the ``--python-executable`` flag to point to the executable, and mypy
-will pick up the site/dist-packages for the Python executable pointed to.
+will find packages installed for that python executable.
