@@ -886,10 +886,6 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
     if python:
         # Use subprocess to get the package directory of given Python
         # executable
-        check = subprocess.check_output([python, '-V'], stderr=subprocess.STDOUT).decode('UTF-8')
-        assert check.startswith('Python'), \
-            "Mypy could not use the Python executable: {}".format(python)
-        # If we have a working python executable, query information from it
         try:
             output = call_python(python, USER_SITE_PACKAGES)
             for line in output.splitlines():

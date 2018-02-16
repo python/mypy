@@ -5,6 +5,7 @@ import configparser
 import fnmatch
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -515,6 +516,15 @@ def process_options(args: List[str],
     # Let quick_and_dirty imply incremental.
     if options.quick_and_dirty:
         options.incremental = True
+
+    if options.python_executable:
+        check = subprocess.check_output([options.python_executable, '-V'],
+                                        stderr=subprocess.STDOUT).decode('UTF-8')
+        assert check.startswith('Python'), \
+            "Mypy could not use the Python executable: {}".format(options.python_executable)
+        ver = re.fullmatch(r'Python (\d)\.(\d)\.\d\s*', check)
+        if ver:
+            options.python_version = (int(v) for v in ver.groups())
 
     # Set target.
     if special_opts.modules:
