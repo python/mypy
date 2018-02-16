@@ -40,18 +40,6 @@ class TestPackages(TestCase):
             self.fail('\n'.join(lines))
         try:
             yield
-        except AssertionError as e:
-            package_dirs = get_package_dirs(python)
-            possible_paths = [os.path.join(dir, pkg) for dir in package_dirs]
-            checked_paths = {path: os.path.exists(path) for path in possible_paths}
-            raise AssertionError("Failed to typecheck with installed package {}.\n"
-                                 "Package paths exist?:\n{}\n"
-                                 "Installed user?: {}\n"
-                                 "User-site?: {}\n"
-                                 "Error traceback:\n{}\n".format(pkg, checked_paths,
-                                                                 '--user' in install_cmd,
-                                                                 site.getusersitepackages(), e)
-                                 ).with_traceback(sys.exc_info()[2])
         finally:
             run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
 
