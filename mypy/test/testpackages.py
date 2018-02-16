@@ -23,12 +23,11 @@ class TestPackages(TestCase):
     @contextmanager
     def install_package(self, pkg: str,
                         python: str = sys.executable) -> Generator[None, None, None]:
-        """Context manager to install a package from test-data/packages/pkg/.
-        Uninstalls the package afterward."""
+        """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
         install_cmd = [python, '-m', 'pip', 'install', '.']
         # if we aren't in a virtualenv, install in the user package directory so we don't need sudo
-        if not hasattr(sys, 'real_prefix') or python != sys.executable:
+        if not hasattr(sys, 'real_prefix'):
             install_cmd.append('--user')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
@@ -39,11 +38,13 @@ class TestPackages(TestCase):
             run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
 
     def test_get_package_dirs(self) -> None:
+        """Check that get_package_dirs works."""
         dirs = get_package_dirs(sys.executable)
         assert dirs
 
     def test_typed_package(self) -> None:
-        """Tests checking information based on installed packages.
+        """Tests type checking based on installed packages.
+
         This test CANNOT be split up, concurrency means that simultaneously
         installing/uninstalling will break tests"""
         with open('simple.py', 'w') as f:
