@@ -26,7 +26,8 @@ class TestPackages(TestCase):
         """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
         install_cmd = [python, '-m', 'pip', 'install', '.']
-        # if we aren't in a virtualenv, install in the user package directory so we don't need sudo
+        # if we aren't in a virtualenv, install in the
+        # user package directory so we don't need sudo
         if not hasattr(sys, 'real_prefix') or python != sys.executable:
             install_cmd.append('--user')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
@@ -39,8 +40,10 @@ class TestPackages(TestCase):
             possible_paths = [os.path.join(dir, pkg) for dir in package_dirs]
             checked_paths = {path: os.path.exists(path) for path in possible_paths}
             raise AssertionError("Failed to typecheck with installed package {}.\n"
-                                 "Package paths checked:\n{}\n"
-                                 "Error traceback:\n{}\n".format(pkg, checked_paths, e)
+                                 "Package paths exist?:\n{}\n"
+                                 "Installed user?: {}\n"
+                                 "Error traceback:\n{}\n".format(pkg, checked_paths,
+                                                                 '--user' in install_cmd, e)
                                  ).with_traceback(sys.exc_info()[2])
         finally:
             run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
