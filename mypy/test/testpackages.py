@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import os
+import site
 import sys
 from typing import Generator
 from unittest import TestCase, main
@@ -42,8 +43,10 @@ class TestPackages(TestCase):
             raise AssertionError("Failed to typecheck with installed package {}.\n"
                                  "Package paths exist?:\n{}\n"
                                  "Installed user?: {}\n"
+                                 "User-site?: {}\n"
                                  "Error traceback:\n{}\n".format(pkg, checked_paths,
-                                                                 '--user' in install_cmd, e)
+                                                                 '--user' in install_cmd,
+                                                                 site.getusersitepackages, e)
                                  ).with_traceback(sys.exc_info()[2])
         finally:
             run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
