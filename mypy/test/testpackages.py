@@ -27,7 +27,7 @@ class TestPackages(TestCase):
         working_dir = os.path.join(package_path, pkg)
         install_cmd = [python, '-m', 'pip', 'install', '.']
         # if we aren't in a virtualenv, install in the user package directory so we don't need sudo
-        if not hasattr(sys, 'real_prefix'):
+        if not hasattr(sys, 'real_prefix') or python != sys.executable:
             install_cmd.append('--user')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
