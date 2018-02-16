@@ -22,9 +22,9 @@ structure as follows:
         lib.py
         py.typed
 
-    the setup.py might look like:
+the setup.py might look like:
 
-    .. code-block:: python
+.. code-block:: python
 
     from distutils.core import setup
 
