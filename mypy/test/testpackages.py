@@ -8,6 +8,7 @@ import mypy.api
 from mypy.build import get_package_dirs
 from mypy.test.config import package_path
 from mypy.test.helpers import run_command
+from mypy.util import try_find_python2_interpreter
 
 
 SIMPLE_PROGRAM = """
@@ -20,21 +21,25 @@ reveal_type(a)
 class TestPackages(TestCase):
 
     @contextmanager
-    def install_package(self, pkg: str) -> Generator[None, None, None]:
+    def install_package(self, pkg: str,
+                        python: str = sys.executable) -> Generator[None, None, None]:
         """Context manager to install a package from test-data/packages/pkg/.
         Uninstalls the package afterward."""
         working_dir = os.path.join(package_path, pkg)
-        returncode, lines = run_command([sys.executable, '-m', 'pip', 'install', '.'],
-                                        cwd=working_dir)
+        install_cmd = [python, '-m', 'pip', 'install', '.']
+        # if we aren't in a virtualenv, install in the user package directory so we don't need sudo
+        if not hasattr(sys, 'real_prefix') or python != sys.executable:
+            install_cmd.append('--user')
+        returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
             self.fail('\n'.join(lines))
         try:
             yield
         finally:
-            run_command([sys.executable, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
+            run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
 
     def test_get_package_dirs(self) -> None:
-        dirs = get_package_dirs(None)
+        dirs = get_package_dirs(sys.executable)
         assert dirs
 
     def test_typed_package(self) -> None:
@@ -50,6 +55,33 @@ class TestPackages(TestCase):
                 out == "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
             assert returncode == 1
             assert err == ''
+
+        python2 = try_find_python2_interpreter()
+        if python2:
+            with self.install_package('typedpkg-stubs', python2):
+                out, err, returncode = mypy.api.run(
+                    ['--python-executable={}'.format(python2), 'simple.py'])
+                assert \
+                    out == "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                assert returncode == 1
+                assert err == ''
+            with self.install_package('typedpkg', python2):
+                out, err, returncode = mypy.api.run(
+                    ['--python-executable={}'.format(python2), 'simple.py'])
+                assert out == "simple.py:4: error: Revealed type is " \
+                              "'builtins.tuple[builtins.str]'\n"
+                assert returncode == 1
+                assert err == ''
+
+            with self.install_package('typedpkg', python2):
+                with self.install_package('typedpkg-stubs', python2):
+                    out, err, returncode = mypy.api.run(
+                        ['--python-executable={}'.format(python2), 'simple.py'])
+                    assert \
+                        out == "simple.py:4: error: Revealed type is " \
+                               "'builtins.list[builtins.str]'\n"
+                    assert returncode == 1
+                    assert err == ''
 
         with self.install_package('typedpkg'):
             out, err, returncode = mypy.api.run(['simple.py'])

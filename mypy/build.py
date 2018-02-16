@@ -21,7 +21,7 @@ import os.path
 import re
 import site
 import stat
-from subprocess import check_output, STDOUT
+import subprocess
 import sys
 import time
 from os.path import dirname, basename
@@ -819,8 +819,8 @@ find_module_is_file_cache = {}  # type: Dict[str, bool]
 # Cache for isdir(join(head, tail))
 find_module_isdir_cache = {}  # type: Dict[Tuple[str, str], bool]
 
-# Cache packages for Python executable
-package_dirs_cache = []  # type: List[str]
+# Cache packages for each Python executable
+package_dirs_cache = {}  # type: Dict[str, List[str]]
 
 
 def find_module_clear_caches() -> None:
@@ -866,34 +866,36 @@ def is_file(path: str) -> bool:
 
 
 USER_SITE_PACKAGES = \
-    '"import site; print(site.getusersitepackages()); print(*site.getsitepackages(), sep=\'\\n\')"'
+    'from __future__ import print_function; import site; print(site.getusersitepackages());' \
+    'print(*site.getsitepackages(), sep="\\n")'
 VIRTUALENV_SITE_PACKAGES = \
-    '"from distutils.sysconfig import get_python_lib; print(get_python_lib())"'
+    'from distutils.sysconfig import get_python_lib; print(get_python_lib())'
 
 
 def call_python(python: str, command: str) -> str:
-    return check_output([python, '-c', command]).decode(sys.stdout.encoding)
+    return subprocess.check_output([python, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
 
 
-def get_package_dirs(python: Optional[str]) -> List[str]:
+def get_package_dirs(python: str) -> List[str]:
     """Find package directories for given python
 
      This defaults to the Python running mypy."""
-    if package_dirs_cache:
-        return package_dirs_cache
+    if package_dirs_cache.get(python, None):
+        return package_dirs_cache[python]
     package_dirs = []  # type: List[str]
     if python:
         # Use subprocess to get the package directory of given Python
         # executable
-        check = check_output([python, '-V'], stderr=STDOUT).decode('UTF-8')
+        check = subprocess.check_output([python, '-V'], stderr=subprocess.STDOUT).decode('UTF-8')
         assert check.startswith('Python'), \
             "Mypy could not use the Python executable: {}".format(python)
         # If we have a working python executable, query information from it
-        output = call_python(python, USER_SITE_PACKAGES)
-        for line in output.splitlines():
-            if os.path.isdir(line):
-                package_dirs.append(line)
-        if not package_dirs:
+        try:
+            output = call_python(python, USER_SITE_PACKAGES)
+            for line in output.splitlines():
+                if os.path.isdir(line):
+                    package_dirs.append(line)
+        except subprocess.CalledProcessError:
             # if no paths are found, we fall back on sysconfig
             output = call_python(python, VIRTUALENV_SITE_PACKAGES)
             for line in output.splitlines():
@@ -906,7 +908,7 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
             package_dirs = site.getsitepackages() + [user_dir]
         except AttributeError:
             package_dirs = [get_python_lib()]
-    package_dirs_cache[:] = package_dirs
+    package_dirs_cache[python] = package_dirs
     return package_dirs
 
 
@@ -914,6 +916,8 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 python: Optional[str] = None) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
+    if not python:
+        python = sys.executable
     package_dirs = get_package_dirs(python)
     if python:
         assert package_dirs, "Could not find package directories for Python '{}'".format(python)
@@ -1693,7 +1697,8 @@ class State:
                 # paths. When 3.4 is dropped, this should just use os.path.commonpath.
                 if os.path.isabs(path):
                     # Silence errors from module if it is in a package directory
-                    for dir in package_dirs_cache:
+                    python = manager.options.python_executable or sys.executable
+                    for dir in package_dirs_cache.get(python, []):
                         if path.startswith(dir + os.sep):
                             self.ignore_all = True
                 # For non-stubs, look at options.follow_imports:
