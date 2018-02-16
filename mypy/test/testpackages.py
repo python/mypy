@@ -21,11 +21,6 @@ reveal_type(a)
 
 class TestPackages(TestCase):
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        if os.path.isfile('simple.py'):
-            os.remove('simple.py')
-
     @contextmanager
     def install_package(self, pkg: str,
                         python: str = sys.executable) -> Generator[None, None, None]:
