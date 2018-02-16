@@ -21,7 +21,7 @@ reveal_type(a)
 
 class TestPackages(TestCase):
 
-    def tearDown(self) -> None:
+    def tearDownClass(cls) -> None:
         if os.path.isfile('simple.py'):
             os.remove('simple.py')
 
@@ -55,8 +55,8 @@ class TestPackages(TestCase):
                        expected_returncode: int = 1) -> None:
         """Helper to run mypy and check the output."""
         out, err, returncode = mypy.api.run(cmd_line)
-        assert out == expected_out
-        assert err == expected_err
+        assert out == expected_out, err
+        assert err == expected_err, out
         assert expected_returncode == returncode
 
     def test_typed_package(self) -> None:
