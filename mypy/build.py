@@ -876,7 +876,7 @@ def call_python(python: str, command: str) -> str:
     return subprocess.check_output([python, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
 
 
-def get_package_dirs(python: str) -> List[str]:
+def get_package_dirs(python: Optional[str]) -> List[str]:
     """Find package directories for given python
 
      This defaults to the Python running mypy."""
@@ -916,8 +916,6 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 python: Optional[str] = None) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-    if not python:
-        python = sys.executable
     package_dirs = get_package_dirs(python)
     if python:
         assert package_dirs, "Could not find package directories for Python '{}'".format(python)
@@ -1697,7 +1695,7 @@ class State:
                 # paths. When 3.4 is dropped, this should just use os.path.commonpath.
                 if os.path.isabs(path):
                     # Silence errors from module if it is in a package directory
-                    python = manager.options.python_executable or sys.executable
+                    python = manager.options.python_executable or None
                     for dir in package_dirs_cache.get(python, []):
                         if path.startswith(dir + os.sep):
                             self.ignore_all = True
