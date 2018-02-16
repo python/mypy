@@ -34,6 +34,10 @@ class TestPackages(TestCase):
             self.fail('\n'.join(lines))
         try:
             yield
+        except AssertionError as e:
+            raise AssertionError("Failed to typecheck with installed package {}.\n"
+                                 "Package directories checked:\n{}"
+                                 "Error:\n{}".format(pkg, get_package_dirs(python), e))
         finally:
             run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
 
