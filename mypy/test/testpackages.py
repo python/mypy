@@ -21,7 +21,7 @@ reveal_type(a)
 
 class TestPackages(TestCase):
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         if os.path.isfile('simple.py'):
             os.remove('simple.py')
 

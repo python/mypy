@@ -820,7 +820,7 @@ find_module_is_file_cache = {}  # type: Dict[str, bool]
 find_module_isdir_cache = {}  # type: Dict[Tuple[str, str], bool]
 
 # Cache packages for each Python executable
-package_dirs_cache = {}  # type: Dict[str, List[str]]
+package_dirs_cache = {}  # type: Dict[Optional[str], List[str]]
 
 
 def find_module_clear_caches() -> None:
