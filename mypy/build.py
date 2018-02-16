@@ -880,7 +880,7 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
     """Find package directories for given python
 
      This defaults to the Python running mypy."""
-    if package_dirs_cache.get(python, None):
+    if package_dirs_cache.get(python, None) is not None:
         return package_dirs_cache[python]
     package_dirs = []  # type: List[str]
     if python:

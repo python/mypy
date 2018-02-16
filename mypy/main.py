@@ -524,7 +524,8 @@ def process_options(args: List[str],
             "Mypy could not use the Python executable: {}".format(options.python_executable)
         ver = re.fullmatch(r'Python (\d)\.(\d)\.\d\s*', check)
         if ver:
-            options.python_version = (int(v) for v in ver.groups())
+            python_ver = int(ver.group(1)), int(ver.group(2))
+            options.python_version = python_ver
 
     # Set target.
     if special_opts.modules:
