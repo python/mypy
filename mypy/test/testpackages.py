@@ -46,7 +46,7 @@ class TestPackages(TestCase):
                                  "User-site?: {}\n"
                                  "Error traceback:\n{}\n".format(pkg, checked_paths,
                                                                  '--user' in install_cmd,
-                                                                 site.getusersitepackages, e)
+                                                                 site.getusersitepackages(), e)
                                  ).with_traceback(sys.exc_info()[2])
         finally:
             run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
