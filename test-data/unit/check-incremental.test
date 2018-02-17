@@ -3745,6 +3745,28 @@ class C(A, B):
 [out1]
 [out2]
 
+[case testAttrsIncrementalConverterInSubmodule]
+# This test is currently broken (type of x should not be Any). But at least it doesn't crash.
+from a.a import A
+reveal_type(A)
+[file a/__init__.py]
+[file a/a.py]
+from typing import Optional
+def converter(s:Optional[int]) -> int:
+    ...
+
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(converter=converter)
+
+[builtins fixtures/list.pyi]
+[out1]
+main:3: error: Revealed type is 'def (x: Any) -> a.a.A'
+[out2]
+main:3: error: Revealed type is 'def (x: Any) -> a.a.A'
+
+
 [case testAttrsIncrementalThreeRuns]
 from a import A
 A(5)

@@ -93,6 +93,10 @@ class SemanticAnalyzerPluginInterface:
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         raise NotImplementedError
 
+    @abstractmethod
+    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
 
 # A context for a function hook that infers the return type of a function with
 # a special signature.
