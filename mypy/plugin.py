@@ -2,12 +2,12 @@
 
 from abc import abstractmethod
 from functools import partial
-from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar
+from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 
 import mypy.plugins.attrs
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
-    TypeInfo, SymbolTableNode
+    TypeInfo, SymbolTableNode, MypyFile
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
@@ -61,6 +61,7 @@ class CheckerPluginInterface:
 class SemanticAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
+    modules = None  # type: Dict[str, MypyFile]
     options = None  # type: Options
     msg = None  # type: MessageBuilder
 
@@ -95,6 +96,11 @@ class SemanticAnalyzerPluginInterface:
 
     @abstractmethod
     def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def lookup_qualified(self, name: str, ctx: Context,
+                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         raise NotImplementedError
 
 
