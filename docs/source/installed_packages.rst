@@ -47,9 +47,9 @@ should have a suffix of ``-stubs``. For example, if we had stubs for
         __init__.pyi
         lib.pyi
 
-    the setup.py might look like:
+the setup.py might look like:
 
-    .. code-block:: python
+.. code-block:: python
 
     from distutils.core import setup
 
@@ -73,4 +73,4 @@ can use the ``--python-executable`` flag to point to the executable, and mypy
 will find packages installed for that python executable.
 
 Note that mypy does not support some more dynamic import features, such as zip
-imports and advanced custom import hooks.
+imports, namespace packages, and advanced custom import hooks.
