@@ -21,7 +21,7 @@ flag (or its long form ``--help``)::
               [--warn-redundant-casts] [--no-warn-no-return] [--warn-return-any]
               [--warn-unused-ignores] [--warn-unused-configs]
               [--show-error-context] [--no-implicit-optional] [-i]
-              [--quick-and-dirty] [--cache-dir DIR]
+              [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
               [--skip-version-check] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
