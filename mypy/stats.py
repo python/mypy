@@ -123,8 +123,6 @@ class StatisticsVisitor(TraverserVisitor):
             for lvalue in o.lvalues:
                 if isinstance(lvalue, nodes.TupleExpr):
                     items = lvalue.items
-                elif isinstance(lvalue, nodes.ListExpr):
-                    items = lvalue.items
                 else:
                     items = [lvalue]
                 for item in items:

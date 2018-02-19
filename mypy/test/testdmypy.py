@@ -10,7 +10,6 @@ from typing import Dict, List, Optional, Set, Tuple
 from mypy import build
 from mypy import defaults
 from mypy.main import process_options
-from mypy.myunit import AssertionFailure
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, has_stable_flags, is_incremental
 from mypy.test.helpers import (
@@ -44,10 +43,11 @@ NON_EXISTENT_PREFIX = 'nonexistent'
 STUB_SUFFIX = '_stub'
 
 
-class TypeCheckSuite(DataSuite):
+class DmypySuite(DataSuite):
     files = dmypy_files
     base_path = test_temp_dir
     optional_out = True
+    test_name_suffix = '_dmypy'
 
     @classmethod
     def filter(cls, testcase: DataDrivenTestCase) -> bool:
@@ -120,6 +120,7 @@ class TypeCheckSuite(DataSuite):
             server_options = []  # type: List[str]
             if 'fine-grained' in testcase.file:
                 server_options.append('--experimental')
+                options.fine_grained_incremental = True
             self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
             self.server.options = options
 
@@ -195,8 +196,8 @@ class TypeCheckSuite(DataSuite):
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
         if not missing_paths.issubset(error_paths):
-            raise AssertionFailure("cache data discrepancy %s != %s" %
-                                   (missing_paths, error_paths))
+            raise AssertionError("cache data discrepancy %s != %s" %
+                                 (missing_paths, error_paths))
 
     def find_error_paths(self, a: List[str]) -> Set[str]:
         hits = set()

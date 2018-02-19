@@ -25,7 +25,8 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
+    CallExpr
 )
 
 
@@ -634,8 +635,17 @@ class MessageBuilder:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
                 arg_type_str = '**' + arg_type_str
+
+            # For function calls with keyword arguments, display the argument name rather than the
+            # number.
+            arg_label = str(n)
+            if isinstance(context, CallExpr):
+                arg_name = context.arg_names[n - 1]
+                if arg_name is not None:
+                    arg_label = '"{}"'.format(arg_name)
+
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                n, target, self.quote_type_string(arg_type_str),
+                arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)

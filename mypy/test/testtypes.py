@@ -2,9 +2,7 @@
 
 from typing import List, Tuple
 
-from mypy.myunit import (
-    Suite, assert_equal, assert_true, assert_false, assert_type
-)
+from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, assert_type, skip
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
@@ -19,8 +17,7 @@ from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
 
 
 class TypesSuite(Suite):
-    def __init__(self) -> None:
-        super().__init__()
+    def setUp(self) -> None:
         self.x = UnboundType('X')  # Helpers
         self.y = UnboundType('Y')
         self.fx = TypeFixture()
@@ -93,7 +90,7 @@ class TypesSuite(Suite):
 
 
 class TypeOpsSuite(Suite):
-    def setup(self) -> None:
+    def setUp(self) -> None:
         self.fx = TypeFixture(INVARIANT)
         self.fx_co = TypeFixture(COVARIANT)
         self.fx_contra = TypeFixture(CONTRAVARIANT)
@@ -358,7 +355,7 @@ class TypeOpsSuite(Suite):
 
 
 class JoinSuite(Suite):
-    def setup(self) -> None:
+    def setUp(self) -> None:
         self.fx = TypeFixture()
 
     def test_trivial_cases(self) -> None:
@@ -529,31 +526,29 @@ class JoinSuite(Suite):
         self.assert_join(ov(c(fx.a, fx.a), c(fx.b, fx.b)), c(any, fx.b), c(any, fx.b))
         self.assert_join(ov(c(fx.a, fx.a), c(any, fx.b)), c(fx.b, fx.b), c(any, fx.b))
 
+    @skip
     def test_join_interface_types(self) -> None:
-        self.skip()  # FIX
         self.assert_join(self.fx.f, self.fx.f, self.fx.f)
         self.assert_join(self.fx.f, self.fx.f2, self.fx.o)
         self.assert_join(self.fx.f, self.fx.f3, self.fx.f)
 
+    @skip
     def test_join_interface_and_class_types(self) -> None:
-        self.skip()  # FIX
-
         self.assert_join(self.fx.o, self.fx.f, self.fx.o)
         self.assert_join(self.fx.a, self.fx.f, self.fx.o)
 
         self.assert_join(self.fx.e, self.fx.f, self.fx.f)
 
+    @skip
     def test_join_class_types_with_interface_result(self) -> None:
-        self.skip()  # FIX
         # Unique result
         self.assert_join(self.fx.e, self.fx.e2, self.fx.f)
 
         # Ambiguous result
         self.assert_join(self.fx.e2, self.fx.e3, self.fx.anyt)
 
+    @skip
     def test_generic_interfaces(self) -> None:
-        self.skip()  # FIX
-
         fx = InterfaceTypeFixture()
 
         self.assert_join(fx.gfa, fx.gfa, fx.gfa)
@@ -628,7 +623,7 @@ class JoinSuite(Suite):
 
 
 class MeetSuite(Suite):
-    def setup(self) -> None:
+    def setUp(self) -> None:
         self.fx = TypeFixture()
 
     def test_trivial_cases(self) -> None:
@@ -761,10 +756,8 @@ class MeetSuite(Suite):
         self.assert_meet(self.fx.e, self.fx.e2, self.fx.nonet)
         self.assert_meet(self.fx.e2, self.fx.e3, self.fx.nonet)
 
+    @skip
     def test_meet_with_generic_interfaces(self) -> None:
-        # TODO fix
-        self.skip()
-
         fx = InterfaceTypeFixture()
         self.assert_meet(fx.gfa, fx.m1, fx.m1)
         self.assert_meet(fx.gfa, fx.gfa, fx.gfa)

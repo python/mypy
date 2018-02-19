@@ -143,6 +143,21 @@ def f() -> int: return g()
 [out]
 main:4: warning: Returning Any from function declared to return "int"
 
+[case testReturnAnyForNotImplementedInBinaryMagicMethods]
+# flags: --warn-return-any
+class A:
+    def __eq__(self, other: object) -> bool: return NotImplemented
+[builtins fixtures/notimplemented.pyi]
+[out]
+
+[case testReturnAnyForNotImplementedInNormalMethods]
+# flags: --warn-return-any
+class A:
+    def some(self) -> bool: return NotImplemented
+[builtins fixtures/notimplemented.pyi]
+[out]
+main:3: warning: Returning Any from function declared to return "bool"
+
 [case testReturnAnyFromTypedFunctionWithSpecificFormatting]
 # flags: --warn-return-any
 from typing import Any, Tuple

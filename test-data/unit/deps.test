@@ -337,6 +337,8 @@ def f(x: object) -> None:
         x.g()
 [builtins fixtures/isinstancelist.pyi]
 [out]
+-- The dependency on the ctor is basically spurious but not a problem
+<m.A.__init__> -> m.f
 <m.A.g> -> m.f
 <m.A> -> m.A, m.f
 
@@ -353,6 +355,8 @@ def f(x: A) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
+-- The dependency on the ctor is basically spurious but not a problem
+<m.B.__init__> -> m.f
 <m.B> -> m.B, m.f
 
 [case testAttributeWithClassType1]
@@ -548,3 +552,47 @@ x = 1
 <pkg.a> -> pkg.mod
 <pkg.mod> -> pkg
 <pkg> -> m
+
+[case testTypedDict]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+def foo(x: Point) -> int:
+    return x['x'] + x['y']
+[builtins fixtures/dict.pyi]
+[out]
+<m.Point> -> <m.foo>, <m.p>, m, m.foo
+<m.p> -> m
+<mypy_extensions.TypedDict> -> m
+
+[case testTypedDict2]
+from mypy_extensions import TypedDict
+class A: pass
+Point = TypedDict('Point', {'x': int, 'y': A})
+p = Point(dict(x=42, y=A()))
+def foo(x: Point) -> int:
+    return x['x']
+[builtins fixtures/dict.pyi]
+[out]
+<m.A.__init__> -> m
+<m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.foo
+<m.Point> -> <m.foo>, <m.p>, m, m.foo
+<m.p> -> m
+<mypy_extensions.TypedDict> -> m
+
+[case testTypedDict3]
+from mypy_extensions import TypedDict
+class A: pass
+class Point(TypedDict):
+    x: int
+    y: A
+p = Point(dict(x=42, y=A()))
+def foo(x: Point) -> int:
+    return x['x']
+[builtins fixtures/dict.pyi]
+[out]
+<m.A.__init__> -> m
+<m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.foo
+<m.Point> -> <m.foo>, <m.p>, m, m.Point, m.foo
+<m.p> -> m
+<mypy_extensions.TypedDict> -> m
