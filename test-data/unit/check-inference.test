@@ -1786,6 +1786,31 @@ y = 0
 tmp/m.py:2: error: "int" not callable
 main:3: error: "int" not callable
 
+[case testForwardReferenceToDecoratedClassMethod]
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+def dec() -> Callable[[T], T]: pass
+
+A.g  # E: Cannot determine type of 'g'
+
+class A:
+    @classmethod
+    def f(cls) -> None:
+        reveal_type(cls.g)  # E: Revealed type is 'def (x: builtins.str)'
+
+    @classmethod
+    @dec()
+    def g(cls, x: str) -> None:
+        pass
+
+    @classmethod
+    def h(cls) -> None:
+        reveal_type(cls.g)  # E: Revealed type is 'def (x: builtins.str)'
+
+reveal_type(A.g)  # E: Revealed type is 'def (x: builtins.str)'
+[builtins fixtures/classmethod.pyi]
+
 
 -- Tests for special cases of unification
 -- --------------------------------------
