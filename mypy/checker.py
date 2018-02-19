@@ -107,9 +107,11 @@ TypeRange = NamedTuple(
         ('is_upper_bound', bool),  # False => precise type
     ])
 
-# Keeps track of partial types in a single scope
-PartialTypeScope = NamedTuple('PartialTypeMap', [('map', Dict[Var, Context]),
-                                                 ('is_function', bool)])
+# Keeps track of partial types in a single scope. In fine-grained incremental
+# mode partial types initially defined at the top level cannot be completed in
+# a function, and we use the 'is_function' attribute to enforce this.
+PartialTypeScope = NamedTuple('PartialTypeScope', [('map', Dict[Var, Context]),
+                                                   ('is_function', bool)])
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
