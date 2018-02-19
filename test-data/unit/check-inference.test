@@ -1807,6 +1807,8 @@ class A:
     @classmethod
     def h(cls) -> None:
         reveal_type(cls.g)  # E: Revealed type is 'def (x: builtins.str)'
+
+reveal_type(A.g)  # E: Revealed type is 'def (x: builtins.str)'
 [builtins fixtures/classmethod.pyi]
 
 

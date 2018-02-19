@@ -472,7 +472,7 @@ def analyze_class_attribute_access(itype: Instance,
             return node.node.type
         else:
             not_ready_callback(name, context)
-            return AnyType(TypeOfAny.special_form)
+            return AnyType(TypeOfAny.from_error)
     else:
         return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
