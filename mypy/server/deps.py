@@ -176,7 +176,7 @@ class DependencyVisitor(TraverserVisitor):
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
         self.is_package_init_file = o.is_package_init_file()
-        self.add_type_alias_deps(self.scope.current_full_target())
+        self.add_type_alias_deps(self.scope.current_target())
         super().visit_mypy_file(o)
         self.scope.leave()
 
@@ -195,7 +195,8 @@ class DependencyVisitor(TraverserVisitor):
         if o.info:
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
-        self.add_type_alias_deps(self.scope.current_full_target(), add_trigger=True)
+        # TODO: avoid adding both `mod.func` and `<mod.func>` here and above for normal types
+        self.add_type_alias_deps(self.scope.current_target(), trigger_recursively=True)
         super().visit_func_def(o)
         self.scope.leave()
 
@@ -283,16 +284,19 @@ class DependencyVisitor(TraverserVisitor):
             assert info.typeddict_type is not None
             prefix = '%s.%s' % (self.scope.current_full_target(), info.name())
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
-        elif isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
+        elif o.is_alias_def:
             assert len(o.lvalues) == 1
             lvalue = o.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
-                                                   lvalue.name))
-            # We need to re-process the target where alias is defined to "refresh" the alias.
-            self.add_type_dependencies(rvalue.analyzed.type)
-            self.add_type_dependencies(rvalue.analyzed.type, attr_trigger)
+            # TODO: Do we need `self.process_global_ref_expr(lvalue)` to get deps from .__init__?
+            # I think no, if an alias is used at runtime corresponding deps will be generated
+            if lvalue.fullname:
+                attr_trigger = make_trigger(lvalue.fullname)
+            if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
+                self.add_type_dependencies(rvalue.analyzed.type, attr_trigger)
             if attr_trigger in self.alias_deps:
+                # Alias that depends on other alias, like A = Dict[int, B]
+                # We need to add <B> -> <A>
                 for dep in self.alias_deps[attr_trigger]:
                     self.add_dependency(make_trigger(dep), target=attr_trigger)
         else:
@@ -537,11 +541,13 @@ class DependencyVisitor(TraverserVisitor):
 
     # Helpers
 
-    def add_type_alias_deps(self, target: str, add_trigger: bool = False) -> None:
+    def add_type_alias_deps(self, target: str, trigger_recursively: bool = False) -> None:
+        # Type aliases are special, because some of the dependencies are calculated
+        # in semanal.py, before they are expanded.
         if target in self.alias_deps:
             for alias in self.alias_deps[target]:
                 self.add_dependency(make_trigger(alias))
-                if add_trigger:
+                if trigger_recursively:
                     self.add_dependency(make_trigger(alias), make_trigger(target))
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:

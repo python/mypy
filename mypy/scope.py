@@ -1,6 +1,6 @@
 """Track current scope to easily calculate the corresponding fine-grained target.
 
-This is currently only used by mypy.semanal and mypy.server.deps.
+TODO: Use everywhere where we track targets, including in mypy.errors.
 """
 
 from typing import List, Optional

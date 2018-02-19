@@ -804,6 +804,8 @@ class AssignmentStmt(Statement):
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax = False  # type: bool
+    # Does this assignment define a type alias?
+    is_alias_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
@@ -2344,8 +2346,7 @@ class SymbolTableNode:
     # Is this node refers to other node via node aliasing?
     # (This is currently used for simple aliases like `A = int` instead of .type_override)
     is_aliasing = False  # type: bool
-    # This includes full names of aliases used in this alias.
-    alias_depends_on = None  # type: Set[str]
+    alias_name = None  # type: Optional[str]
 
     def __init__(self,
                  kind: int,
@@ -2364,7 +2365,6 @@ class SymbolTableNode:
         self.alias_tvars = alias_tvars
         self.implicit = implicit
         self.module_hidden = module_hidden
-        self.alias_depends_on = set()
 
     @property
     def fullname(self) -> Optional[str]:

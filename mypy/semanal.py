@@ -1787,8 +1787,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
     def analyze_alias(self, rvalue: Expression,
                       warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str],
                                                               Set[str], List[str]]:
-        """Check if 'rvalue' represents a valid type allowed for aliasing
-        (e.g. not a type variable). If yes, return the corresponding type, a list of
+        """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
+
+        If yes, return the corresponding type, a list of
         qualified type variable names for generic aliases, a set of names the alias depends on,
         and a list of type variables if the alias is generic.
         An schematic example for the dependencies:
@@ -1825,6 +1826,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> None:
         """Check if assignment creates a type alias and set it up as needed.
+
         For simple aliases like L = List we use a simpler mechanism, just copying TypeInfo.
         For subscripted (including generic) aliases the resulting types are stored
         in rvalue.analyzed.
@@ -1854,15 +1856,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                                                                            warn_bound_tvar=True)
         if not res:
             return
+        s.is_alias_def = True
         node = self.lookup(lvalue.name, lvalue)
         assert node is not None
-        node.alias_depends_on = depends_on.copy()
         if lvalue.fullname is not None:
-            # To avoid extra attributes on SymbolTableNode we add the fullname
-            # of alias to what it depends on.
-            node.alias_depends_on.add(lvalue.fullname)
-        self.add_type_alias_deps(depends_on)
+            node.alias_name = lvalue.fullname
+            self.add_type_alias_deps({lvalue.fullname})
+        self.add_type_alias_deps(depends_on, target='<%s>' % lvalue.fullname)
         self.add_type_alias_deps(qualified_tvars, target='<%s>' % lvalue.fullname)
+        # The above are only direct deps on other aliases.
+        # For subscripted aliases, type deps from expansion are added in deps.py
+        # (because the type is stored)
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
             if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):
@@ -1881,6 +1885,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             node.node = res.type
             node.is_aliasing = True
             if isinstance(rvalue, RefExpr):
+                # For non-subscripted aliases we add type deps right here
+                # (because the node is stored, not type)
+                # TODO: currently subscripted and unsubscripted aliases are processed differently
+                # This leads to duplication of most of the logic with small variations.
+                # Fix this.
+                self.add_type_alias_deps({node.node.fullname()}, target='<%s>' % lvalue.fullname)
                 sym = self.lookup_type_node(rvalue)
                 if sym:
                     node.normalized = sym.normalized

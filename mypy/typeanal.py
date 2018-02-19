@@ -176,9 +176,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.warn_bound_tvar = warn_bound_tvar
         self.third_pass = third_pass
         # Names of type aliases encountered while analysing a type will be collected here.
-        # (This also recursively includes the names of aliases they depend on.)
-        # TODO: adding the sub-dependencies shouldn't be necessary since the logic
-        # of fine-grained should propagate triggered dependencies.
         self.aliases_used = set()  # type: Set[str]
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
@@ -268,7 +265,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
-                self.aliases_used.update(sym.alias_depends_on)
+                if sym.alias_name is not None:
+                    self.aliases_used.add(sym.alias_name)
                 override = sym.type_override
                 all_vars = sym.alias_tvars
                 assert override is not None
@@ -318,7 +316,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return t
             info = sym.node  # type: TypeInfo
             if sym.is_aliasing:
-                self.aliases_used.update(sym.alias_depends_on)
+                if sym.alias_name is not None:
+                    self.aliases_used.add(sym.alias_name)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
                 return TupleType(self.anal_array(t.args), fallback, t.line)

@@ -163,7 +163,6 @@ class I: pass
 [out]
 <m.A> -> m
 <m.x> -> m
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.x>, m
 
 [case testAliasDepsNormalFunc]
@@ -175,7 +174,6 @@ def f(x: A) -> None:
 class I: pass
 [out]
 <m.A> -> <m.f>, m, m.f
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.f>, m, m.f
 
 [case testAliasDepsNormalClass]
@@ -238,7 +236,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> <m.f>, m.f
+<m.A> -> <m.f>, m, m.f
 <mod.D> -> <m.A>, <m.f>, m, m.f
 <mod.I> -> <m.A>, <m.f>, m, m.f
 <mod.S> -> <m.A>, <m.f>, m, m.f
@@ -273,7 +271,6 @@ class I: pass
 [out]
 <m.A> -> m
 <m.x> -> m
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.x>, m
 
 [case testAliasDepsForwardFunc]
@@ -285,7 +282,6 @@ A = I
 class I: pass
 [out]
 <m.A> -> <m.f>, m, m.f
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.f>, m, m.f
 
 [case testAliasDepsForwardClass]
@@ -298,7 +294,6 @@ class I: pass
 [out]
 <m.A> -> m
 <m.C> -> m.C
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.C.x>, m
 
 [case testAliasDepsChainedMod]
@@ -309,10 +304,9 @@ x: B
 [file mod.py]
 class I: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.B>, m
 <m.B> -> m
 <m.x> -> m
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.B>, <m.x>, m
 
 [case testAliasDepsChainedFunc]
@@ -324,9 +318,8 @@ def f(x: B) -> None:
 [file mod.py]
 class I: pass
 [out]
-<m.A> -> <m.f>, m, m.f
+<m.A> -> <m.B>, m
 <m.B> -> <m.f>, m, m.f
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.B>, <m.f>, m, m.f
 
 [case testAliasDepsChainedClass]
@@ -338,10 +331,10 @@ class C(B):
 [file mod.py]
 class I: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.B>, m
 <m.B> -> m
 <m.C> -> m.C
-<mod.I.__init__> -> <m.C.__init__>, m
+<mod.I.__init__> -> <m.C.__init__>
 <mod.I> -> <m.A>, <m.B>, m, m.C
 
 [case testAliasDepsNestedMod]
@@ -357,7 +350,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.B>, m
 <m.B> -> m
 <m.x> -> m
 <mod.D> -> <m.A>, <m.B>, <m.x>, m
@@ -378,8 +371,8 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> <m.f>, m, m.f
-<m.B> -> <m.f>, m.f
+<m.A> -> <m.B>, m
+<m.B> -> <m.f>, m, m.f
 <mod.D> -> <m.A>, <m.B>, <m.f>, m, m.f
 <mod.I> -> <m.A>, <m.B>, <m.f>, m, m.f
 <mod.S> -> <m.A>, <m.B>, <m.f>, m, m.f
@@ -398,7 +391,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> m
+<m.A> -> <m.B>, m
 <m.B> -> m
 <m.C> -> m.C
 <mod.D> -> <m.A>, <m.B>, <m.C.x>, m
@@ -420,7 +413,6 @@ class I: pass
 class S: pass
 [out]
 <m.A> -> <m.fun>, m, m.fun
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, m, m.fun
 
 [case testAliasDepsRuntime]
@@ -439,7 +431,6 @@ class S: pass
 <m.x> -> m
 <mod.D.__init__> -> m
 <mod.D> -> <m.x>, m
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.x>, m
 <mod.S> -> <m.x>, m
 
@@ -454,7 +445,6 @@ class I: pass
 [out]
 <m.A> -> m
 <m.P> -> m.P
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.P.x>, <m.P>, m, m.P
 
 [case testAliasDepsTypedDict]
@@ -469,7 +459,6 @@ class I: pass
 [out]
 <m.A> -> m
 <m.P> -> m.P
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.P>, m, m.P
 <mypy_extensions.TypedDict> -> m
 
@@ -484,5 +473,4 @@ class I: pass
 [out]
 <m.A> -> <m.f>, m, m.f
 <m.f> -> m.f
-<mod.I.__init__> -> m
 <mod.I> -> <m.A>, <m.f.x>, m, m.f
