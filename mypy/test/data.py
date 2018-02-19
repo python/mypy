@@ -598,7 +598,21 @@ class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
                                          optional_out=suite.optional_out,
                                          native_sep=suite.native_sep):
                 if suite.filter(case):
+                    case.name = add_test_name_suffix(case.name, suite.test_name_suffix)
                     yield MypyDataCase(case.name, self, case)
+
+
+def add_test_name_suffix(name: str, suffix: str) -> str:
+    # Find magic suffix of form "-foobar" (used for things like "-skip").
+    m = re.search(r'-[-A-Za-z0-9]+$', name)
+    if m:
+        # Insert suite-specific test name suffix before the magic suffix
+        # which must be the last thing in the test case name since we
+        # are using endswith() checks.
+        magic_suffix = m.group(0)
+        return name[:-len(magic_suffix)] + suffix + magic_suffix
+    else:
+        return name + suffix
 
 
 def is_incremental(testcase: DataDrivenTestCase) -> bool:
@@ -661,6 +675,9 @@ class DataSuite:
     base_path = '.'
     optional_out = False
     native_sep = False
+    # Name suffix automatically added to each test case in the suite (can be
+    # used to distinguish test cases in suites that share data files)
+    test_name_suffix = ''
 
     # Assigned from MypyDataCase.runtest
     update_data = False

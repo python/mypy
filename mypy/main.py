@@ -497,8 +497,6 @@ def process_options(args: List[str],
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
         options.strict_optional = True
-    if options.strict_optional:
-        experiments.STRICT_OPTIONAL = True
     if special_opts.find_occurrences:
         experiments.find_occurrences = special_opts.find_occurrences.split('.')
         assert experiments.find_occurrences is not None
