@@ -797,7 +797,7 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
-# Cache find_module: (id) -> result.
+# Cache find_module: id -> result.
 find_module_cache = {}  # type: Dict[str, Optional[str]]
 
 # Cache some repeated work within distinct find_module calls: finding which
@@ -876,14 +876,22 @@ def call_python(python: str, command: str) -> str:
     return subprocess.check_output([python, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
 
 
-def get_package_dirs(python: Optional[str]) -> List[str]:
+def get_package_dirs(python: str) -> List[str]:
     """Find package directories for given python
 
-     This defaults to the Python running mypy."""
-    if package_dirs_cache.get(python, None) is not None:
+     This defaults to the Python running mypy.
+     """
+    if python in package_dirs_cache:
         return package_dirs_cache[python]
     package_dirs = []  # type: List[str]
-    if python:
+    if python == sys.executable:
+        # Use running Python's package dirs
+        try:
+            user_dir = site.getusersitepackages()
+            package_dirs = site.getsitepackages() + [user_dir]
+        except AttributeError:
+            package_dirs = [get_python_lib()]
+    else:
         # Use subprocess to get the package directory of given Python
         # executable
         try:
@@ -897,13 +905,6 @@ def get_package_dirs(python: Optional[str]) -> List[str]:
             for line in output.splitlines():
                 if os.path.isdir(line):
                     package_dirs.append(line)
-    else:
-        # Use running Python's package dirs
-        try:
-            user_dir = site.getusersitepackages()
-            package_dirs = site.getsitepackages() + [user_dir]
-        except AttributeError:
-            package_dirs = [get_python_lib()]
     package_dirs_cache[python] = package_dirs
     return package_dirs
 
@@ -912,6 +913,8 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 python: Optional[str] = None) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
+    if not python:
+        python = sys.executable
     package_dirs = get_package_dirs(python)
     if python:
         assert package_dirs, "Could not find package directories for Python '{}'".format(python)
