@@ -1708,7 +1708,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # the `alias_deps` dict.
             return
         if target is None:
-            target = self.scope.current_full_target()
+            target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

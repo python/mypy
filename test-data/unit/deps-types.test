@@ -539,14 +539,3 @@ class I: pass
 <m.A> -> <m.f>, m.f
 <m.f> -> m.f
 <mod.I> -> <m.f.x>, m, m.f
-
-[case testAliasDepsChainedFuncTricky]
-import aa
-def f(x: aa.B):
-    x = int()
-[file a.py]
-A = int
-[file aa.py]
-import a
-B = a.A
-[out]

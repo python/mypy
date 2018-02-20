@@ -222,7 +222,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(o.info.typeddict_type, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         super().visit_class_def(o)
-        self.add_type_alias_deps(self.scope.current_full_target())
+        self.add_type_alias_deps(self.scope.current_target())
         self.is_class = old_is_class
         info = o.info
         for name, node in info.names.items():

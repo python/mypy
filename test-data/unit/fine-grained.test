@@ -1958,7 +1958,7 @@ A = str
 ==
 b.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testAliasFineChainedFunc-skip-nocache]
+[case testAliasFineChainedFunc]
 # This and next don't work without <A> -> <B> intermediate deps
 import b
 [file a.py]
@@ -1976,7 +1976,7 @@ def f(x: aa.B):
 ==
 b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testAliasFineChainedClass-skip-nocache]
+[case testAliasFineChainedClass]
 import b
 [file a.py]
 A = int
