@@ -442,6 +442,26 @@ class S: pass
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
 
+[case testAliasDepsNestedFuncDirect]
+from mod import I, S, D
+A = D[S, I]
+E = D
+def f(x: E[S, A]) -> None:
+    pass
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m.f
+<m.E> -> m.f
+<mod.D> -> <m.f>, m, m.f
+<mod.I> -> <m.f>, m, m.f
+<mod.S> -> <m.f>, m, m.f
+
 [case testAliasDepsNestedClass]
 from mod import I, S, D
 A = D[S, I]
