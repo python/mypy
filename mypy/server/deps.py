@@ -189,14 +189,12 @@ class DependencyVisitor(TraverserVisitor):
             else:
                 signature = o.type
             for trigger in get_type_triggers(signature):
-                # TODO: avoid adding both `mod.func` and `<mod.func>` here and below for aliases
                 self.add_dependency(trigger)
                 self.add_dependency(trigger, target=make_trigger(target))
         if o.info:
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
-        # TODO: avoid adding both `mod.func` and `<mod.func>` here and above for normal types
-        self.add_type_alias_deps(self.scope.current_target(), trigger_recursively=True)
+        self.add_type_alias_deps(self.scope.current_target())
         super().visit_func_def(o)
         self.scope.leave()
 
@@ -534,14 +532,12 @@ class DependencyVisitor(TraverserVisitor):
 
     # Helpers
 
-    def add_type_alias_deps(self, target: str, trigger_recursively: bool = False) -> None:
+    def add_type_alias_deps(self, target: str) -> None:
         # Type aliases are special, because some of the dependencies are calculated
         # in semanal.py, before they are expanded.
         if target in self.alias_deps:
             for alias in self.alias_deps[target]:
                 self.add_dependency(make_trigger(alias))
-                if trigger_recursively:
-                    self.add_dependency(make_trigger(alias), make_trigger(target))
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
         """Add dependency from trigger to a target.

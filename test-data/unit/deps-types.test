@@ -187,7 +187,7 @@ def f(x: A) -> None:
 [file mod.py]
 class I: pass
 [out]
-<m.A> -> <m.f>, m.f
+<m.A> -> m.f
 <mod.I> -> <m.f>, m, m.f
 
 [case testAliasDepsNormalFuncExtended]
@@ -200,7 +200,7 @@ A = I
 [file mod.py]
 class I: pass
 [out]
-<a.A> -> <m.f>, m.f
+<a.A> -> m.f
 <a> -> m
 <mod.I> -> <m.f>, m.f
 
@@ -264,7 +264,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> <m.f>, m.f
+<m.A> -> m.f
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
@@ -284,7 +284,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<a.A> -> <m.f>, m.f
+<a.A> -> m.f
 <a> -> m
 <mod.D> -> <m.f>, m.f
 <mod.I> -> <m.f>, m.f
@@ -330,7 +330,7 @@ A = I
 [file mod.py]
 class I: pass
 [out]
-<m.A> -> <m.f>, m.f
+<m.A> -> m.f
 <mod.I> -> <m.f>, m, m.f
 
 [case testAliasDepsForwardClass]
@@ -368,7 +368,7 @@ def f(x: B) -> None:
 class I: pass
 [out]
 <m.A> -> m
-<m.B> -> <m.f>, m.f
+<m.B> -> m.f
 <mod.I> -> <m.f>, m, m.f
 
 [case testAliasDepsChainedFuncExtended]
@@ -382,7 +382,7 @@ A = I
 [file mod.py]
 class I: pass
 [out]
-<m.B> -> <m.f>, m.f
+<m.B> -> m.f
 <a.A> -> m
 <a> -> m
 <mod.I> -> <m.f>, m, m.f
@@ -437,7 +437,7 @@ class I: pass
 class S: pass
 [out]
 <m.A> -> m
-<m.B> -> <m.f>, m.f
+<m.B> -> m.f
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
@@ -477,7 +477,7 @@ class D(Generic[T, U]): pass
 class I: pass
 class S: pass
 [out]
-<m.A> -> <m.fun>, m.fun
+<m.A> -> m.fun
 <mod.I> -> m, m.fun
 
 [case testAliasDepsRuntime]
@@ -536,6 +536,6 @@ def f() -> None:
 [file mod.py]
 class I: pass
 [out]
-<m.A> -> <m.f>, m.f
+<m.A> -> m.f
 <m.f> -> m.f
 <mod.I> -> <m.f.x>, m, m.f
