@@ -290,15 +290,8 @@ class DependencyVisitor(TraverserVisitor):
             assert isinstance(lvalue, NameExpr)
             # TODO: Do we need `self.process_global_ref_expr(lvalue)` to get deps from .__init__?
             # I think no, if an alias is used at runtime corresponding deps will be generated
-            if lvalue.fullname:
-                attr_trigger = make_trigger(lvalue.fullname)
             if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
-                self.add_type_dependencies(rvalue.analyzed.type, attr_trigger)
-            if attr_trigger in self.alias_deps:
-                # Alias that depends on other alias, like A = Dict[int, B]
-                # We need to add <B> -> <A>
-                for dep in self.alias_deps[attr_trigger]:
-                    self.add_dependency(make_trigger(dep), target=attr_trigger)
+                self.add_type_dependencies(rvalue.analyzed.type)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)

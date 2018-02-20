@@ -366,7 +366,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             self.check_for_omitted_generics(type)
             self.generate_type_patches(node, indicator, warn)
             if analyzer.aliases_used:
-                target = self.scope.current_full_target()
+                target = self.scope.current_target()
                 self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
 
     def analyze_types(self, types: List[Type], node: Node) -> None:
@@ -377,7 +377,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
             if analyzer.aliases_used:
-                target = self.scope.current_full_target()
+                target = self.scope.current_target()
                 self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
         self.generate_type_patches(node, indicator, warn=False)
 

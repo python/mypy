@@ -1861,9 +1861,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         assert node is not None
         if lvalue.fullname is not None:
             node.alias_name = lvalue.fullname
-            self.add_type_alias_deps({lvalue.fullname})
-        self.add_type_alias_deps(depends_on, target='<%s>' % lvalue.fullname)
-        self.add_type_alias_deps(qualified_tvars, target='<%s>' % lvalue.fullname)
+        self.add_type_alias_deps(depends_on)
+        self.add_type_alias_deps(qualified_tvars)
         # The above are only direct deps on other aliases.
         # For subscripted aliases, type deps from expansion are added in deps.py
         # (because the type is stored)
@@ -1890,7 +1889,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 # TODO: currently subscripted and unsubscripted aliases are processed differently
                 # This leads to duplication of most of the logic with small variations.
                 # Fix this.
-                self.add_type_alias_deps({node.node.fullname()}, target='<%s>' % lvalue.fullname)
+                self.add_type_alias_deps({node.node.fullname()})
                 sym = self.lookup_type_node(rvalue)
                 if sym:
                     node.normalized = sym.normalized
