@@ -1687,14 +1687,6 @@ class State:
                 file_id = '__builtin__'
             path = find_module(file_id, manager.lib_path, manager.options.python_executable)
             if path:
-                # Installed package modules should be silenced. They are all under absolute
-                # paths. When 3.4 is dropped, this should just use os.path.commonpath.
-                if os.path.isabs(path):
-                    # Silence errors from module if it is in a package directory
-                    python = manager.options.python_executable or None
-                    for dir in package_dirs_cache.get(python, []):
-                        if path.startswith(dir + os.sep):
-                            self.ignore_all = True
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze
                 # - silent -> analyze but silence errors
