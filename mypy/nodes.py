@@ -2002,6 +2002,10 @@ class TypeInfo(SymbolNode):
     # needed during the semantic passes.)
     replaced = None  # type: TypeInfo
 
+    # This is a dictionary that will be serialized and un-serialized as is.
+    # It is useful for plugins to add their data to save in the cache.
+    metadata = None  # type: Dict[str, JsonDict]
+
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'
@@ -2025,6 +2029,7 @@ class TypeInfo(SymbolNode):
         self._cache = set()
         self._cache_proper = set()
         self.add_type_vars()
+        self.metadata = {}
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
@@ -2227,6 +2232,7 @@ class TypeInfo(SymbolNode):
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
                 'flags': get_flags(self, TypeInfo.FLAGS),
+                'metadata': self.metadata,
                 }
         return data
 
@@ -2253,6 +2259,7 @@ class TypeInfo(SymbolNode):
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
                             else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
+        ti.metadata = data['metadata']
         set_flags(ti, data['flags'])
         return ti
 
@@ -2625,3 +2632,10 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
             fail("Duplicate argument '{}' in {}".format(name, description), node)
             break
         seen_names.add(name)
+
+
+def is_class_var(expr: NameExpr) -> bool:
+    """Return whether the expression is ClassVar[...]"""
+    if isinstance(expr.node, Var):
+        return expr.node.is_classvar
+    return False

@@ -2141,3 +2141,68 @@ def f() -> None:
 [out]
 ==
 b.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testNonePartialType]
+import a
+a.y
+
+x = None
+
+def f() -> None:
+    global x
+    x = 1
+[file a.py]
+y = 0
+[file a.py.2]
+y = ''
+[out]
+main:4: error: Need type annotation for 'x'
+==
+main:4: error: Need type annotation for 'x'
+
+[case testNonePartialType2]
+import a
+a.y
+
+x = None
+
+def f():
+    global x
+    x = 1
+[file a.py]
+y = 0
+[file a.py.2]
+y = ''
+[out]
+main:4: error: Need type annotation for 'x'
+==
+main:4: error: Need type annotation for 'x'
+
+[case testNonePartialType3]
+import a
+[file a.py]
+[file a.py.2]
+y = None
+def f() -> None:
+    global y
+    y = ''
+[out]
+==
+a.py:1: error: Need type annotation for 'y'
+
+[case testNonePartialType4]
+import a
+[file a.py]
+y = None
+def f() -> None:
+    global y
+    y = ''
+[file a.py.2]
+from typing import Optional
+y: Optional[str] = None
+def f() -> None:
+    global y
+    y = ''
+[out]
+a.py:1: error: Need type annotation for 'y'
+==

@@ -142,6 +142,7 @@ class FineGrainedSuite(DataSuite):
         options.fine_grained_incremental = not build_cache
         options.use_fine_grained_cache = enable_cache and not build_cache
         options.cache_fine_grained = enable_cache
+        options.local_partial_types = True
 
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w') as f:

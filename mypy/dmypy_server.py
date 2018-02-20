@@ -111,6 +111,9 @@ class Server:
                 options.cache_fine_grained = True  # set this so that cache options match
             else:
                 options.cache_dir = os.devnull
+            # Fine-grained incremental doesn't support general partial types
+            # (details in https://github.com/python/mypy/issues/4492)
+            options.local_partial_types = True
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
@@ -180,7 +183,7 @@ class Server:
         """Stop daemon."""
         return {}
 
-    last_sources = None
+    last_sources = None  # type: List[mypy.build.BuildSource]
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
@@ -251,8 +254,9 @@ class Server:
         self.fscache = FileSystemCache(self.options.python_version)
         self.fswatcher = FileSystemWatcher(self.fscache)
         self.update_sources(sources)
-        # Stores the initial state of sources as a side effect.
-        self.fswatcher.find_changed()
+        if not self.options.use_fine_grained_cache:
+            # Stores the initial state of sources as a side effect.
+            self.fswatcher.find_changed()
         try:
             # TODO: alt_lib_path
             result = mypy.build.build(sources=sources,
@@ -288,19 +292,26 @@ class Server:
             changed = self.find_changed(sources)
             if changed:
                 messages = self.fine_grained_manager.update(changed)
+            self.fscache.flush()
 
         status = 1 if messages else 0
         self.previous_messages = messages[:]
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        t0 = time.time()
         self.update_sources(sources)
         changed = self.find_changed(sources)
+        t1 = time.time()
         if not changed:
             # Nothing changed -- just produce the same result as before.
             messages = self.previous_messages
         else:
             messages = self.fine_grained_manager.update(changed)
+        t2 = time.time()
+        self.fine_grained_manager.manager.log(
+            "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
+                t1 - t0, t2 - t1))
         status = 1 if messages else 0
         self.previous_messages = messages[:]
         self.previous_sources = sources
