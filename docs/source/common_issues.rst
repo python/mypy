@@ -51,6 +51,11 @@ flagged as an error.
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
+- **The function returns ``None`` value but it was annotated as having a return
+  type of other types.** By default, ``None`` value is considered compatible
+  with everything. See :ref:`optional` for details and an experimental mode
+  which allows mypy to check ``None`` values precisely.
+
 - **One of the values involved has type ``Any``.** Extending the above
   example, if we were to leave out the annotation for ``a``, we'd get
   no error:
