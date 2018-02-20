@@ -3272,6 +3272,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'builtins.dict'):
             expr.analyzed = self.translate_dict_call(expr)
+        elif refers_to_fullname(expr.callee, 'builtins.divmod'):
+            if not self.check_fixed_args(expr, 2, 'divmod'):
+                return
+            expr.analyzed = OpExpr('divmod', expr.args[0], expr.args[1])
+            expr.analyzed.line = expr.line
+            expr.analyzed.accept(self)
         else:
             # Normal call expression.
             for a in expr.args:

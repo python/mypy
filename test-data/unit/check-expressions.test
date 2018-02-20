@@ -705,6 +705,51 @@ tmp/m.py:7: error: Invalid index type "int" for "A"; expected type "str"
 tmp/m.py:8: error: Invalid index type "int" for "A"; expected type "str"
 
 
+[case testDivmod]
+from typing import Tuple, Union, SupportsInt
+_Decimal = Union[Decimal, int]
+class Decimal(SupportsInt):
+    def __init__(self, int) -> None: ...
+    def __divmod__(self, other: _Decimal) -> Tuple[Decimal, Decimal]: ...
+    def __rdivmod__(self, other: _Decimal) -> Tuple[Decimal, Decimal]: ...
+
+i = 8
+f = 8.0
+d = Decimal(8)
+
+reveal_type(divmod(i, i))  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(divmod(f, i))  # E: Revealed type is 'Tuple[builtins.float, builtins.float]'
+reveal_type(divmod(d, i))  # E: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+
+reveal_type(divmod(i, f))  # E: Revealed type is 'Tuple[builtins.float, builtins.float]'
+reveal_type(divmod(f, f))  # E: Revealed type is 'Tuple[builtins.float, builtins.float]'
+divmod(d, f)  # E: Unsupported operand types for divmod ("Decimal" and "float")
+
+reveal_type(divmod(i, d))  # E: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+divmod(f, d)  # E: Unsupported operand types for divmod ("float" and "Decimal")
+reveal_type(divmod(d, d))  # E: Revealed type is 'Tuple[__main__.Decimal, __main__.Decimal]'
+
+# Now some bad calls
+divmod()  # E: 'divmod' expects 2 arguments \
+          # E: Too few arguments for "divmod"
+divmod(7)  # E: 'divmod' expects 2 arguments \
+           # E: Too few arguments for "divmod"
+divmod(7, 8, 9)  # E: 'divmod' expects 2 arguments \
+                 # E: Too many arguments for "divmod"
+divmod(_x=7, _y=9)  # E: 'divmod' must be called with 2 positional arguments
+
+divmod('foo', 'foo')  # E: Unsupported left operand type for divmod ("str")
+divmod(i, 'foo')  # E: Unsupported operand types for divmod ("int" and "str")
+divmod(f, 'foo')  # E: Unsupported operand types for divmod ("float" and "str")
+divmod(d, 'foo')  # E: Unsupported operand types for divmod ("Decimal" and "str")
+
+divmod('foo', i)  # E: Unsupported operand types for divmod ("str" and "int")
+divmod('foo', f)  # E: Unsupported operand types for divmod ("str" and "float")
+divmod('foo', d)  # E: Unsupported operand types for divmod ("str" and "Decimal")
+
+[builtins fixtures/divmod.pyi]
+
+
 -- Unary operators
 -- ---------------
 
