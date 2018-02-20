@@ -2036,7 +2036,7 @@ def f(x: aa.B):
 ==
 b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
-[case testAliasDepsNestedFuncDirect]
+[case testAliasFineNestedFuncDirect]
 import b
 [file a.py]
 from typing import Dict
@@ -2054,6 +2054,8 @@ def f(x: aa.E[str, aa.a.A]):
     x = {'first': {str(): int()}}
 [builtins fixtures/dict.pyi]
 [out]
+==
+b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
 
 [case testAliasFineNonGenericToGeneric]
 import b
