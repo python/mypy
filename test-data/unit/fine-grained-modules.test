@@ -1,7 +1,7 @@
 -- Test cases for fine-grained incremental mode related to modules
 --
--- Covers adding and deleting modules, changes to multiple modules, and
--- changes to import graph.
+-- Covers adding and deleting modules, changes to multiple modules,
+-- changes to import graph, and changes to module references.
 --
 -- The comments in fine-grained.test explain how these tests work.
 
@@ -808,3 +808,41 @@ def main() -> None:
 [file config.py]
 [out]
 ==
+
+
+-- Misc
+-- ----
+
+
+[case testChangeModuleToVariable]
+from a import m
+m.x
+[file a.py]
+from b import m
+[file b.py]
+import m
+[file b.py.2]
+m = ''
+[file m.py]
+x = 1
+[file m2.py]
+[out]
+==
+main:2: error: "str" has no attribute "x"
+
+[case testChangeVariableToModule]
+from a import m
+y: str = m
+[file a.py]
+from b import m
+[file b.py]
+m = ''
+[file b.py.2]
+import m
+[file m.py]
+x = 1
+[file m2.py]
+[builtins fixtures/module.pyi]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type Module, variable has type "str")
