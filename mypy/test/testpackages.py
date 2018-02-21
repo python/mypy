@@ -53,7 +53,7 @@ class TestPackages(TestCase):
         out, err, returncode = mypy.api.run(cmd_line)
         assert out == expected_out, err
         assert err == expected_err, out
-        assert expected_returncode == returncode
+        assert returncode == expected_returncode, returncode
 
     def test_typed_package(self) -> None:
         """Tests type checking based on installed packages.
