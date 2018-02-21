@@ -817,6 +817,7 @@ def reprocess_nodes(manager: BuildManager,
     file_node = manager.modules[module_id]
     old_symbols = find_symbol_tables_recursive(file_node.fullname(), file_node.names)
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
+    old_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
 
     def key(node: DeferredNode) -> int:
         # Unlike modules which are sorted by name within SCC,
@@ -828,9 +829,6 @@ def reprocess_nodes(manager: BuildManager,
 
     # TODO: ignore_all argument to set_file_ignored_lines
     manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
-
-    # Keep track of potentially affected attribute types before type checking.
-    old_types_map = get_enclosing_namespace_types(nodes)
 
     # Strip semantic analysis information.
     for deferred in nodes:
@@ -878,8 +876,12 @@ def reprocess_nodes(manager: BuildManager,
         if graph[module_id].type_checker().check_second_pass():
             more = True
 
+    new_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
     # Check if any attribute types were changed and need to be propagated further.
-    new_triggered = get_triggered_namespace_items(old_types_map)
+    changed = compare_symbol_table_snapshots(file_node.fullname(),
+                                             old_symbols_snapshot,
+                                             new_symbols_snapshot)
+    new_triggered = {make_trigger(name) for name in changed}
 
     # Dependencies may have changed.
     update_deps(module_id, nodes, graph, deps, manager.options)
@@ -907,40 +909,6 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str,
             more = find_symbol_tables_recursive(prefix + '.' + name, node.node.names)
             result.update(more)
     return result
-
-
-NamespaceNode = Union[TypeInfo, MypyFile]
-
-
-def get_enclosing_namespace_types(nodes: List[DeferredNode]) -> Dict[NamespaceNode,
-                                                                     Dict[str, Type]]:
-    types = {}  # type: Dict[NamespaceNode, Dict[str, Type]]
-    for deferred in nodes:
-        info = deferred.active_typeinfo
-        if info:
-            target = info  # type: Optional[NamespaceNode]
-        elif isinstance(deferred.node, MypyFile):
-            target = deferred.node
-        else:
-            target = None
-        if target and target not in types:
-            local_types = {name: node.node.type
-                         for name, node in target.names.items()
-                         if isinstance(node.node, Var) and node.node.type}
-            types[target] = local_types
-    return types
-
-
-def get_triggered_namespace_items(old_types_map: Dict[NamespaceNode, Dict[str, Type]]) -> Set[str]:
-    new_triggered = set()
-    for namespace_node, old_types in old_types_map.items():
-        for name, node in namespace_node.names.items():
-            if (name in old_types and
-                    (not isinstance(node.node, Var) or
-                     node.node.type and not is_identical_type(node.node.type, old_types[name]))):
-                # Type checking a method changed an attribute type.
-                new_triggered.add(make_trigger('{}.{}'.format(namespace_node.fullname(), name)))
-    return new_triggered
 
 
 def update_deps(module_id: str,

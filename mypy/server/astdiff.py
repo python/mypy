@@ -244,7 +244,7 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
 
     Only "shallow" state is included in the snapshot -- references to
     things defined in other modules are represented just by the names of
-    the targers.
+    the targets.
     """
     result = {}  # type: Dict[str, SnapshotItem]
     for name, symbol in table.items():
