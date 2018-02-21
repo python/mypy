@@ -223,6 +223,26 @@ example we use the same type variable in two generic functions:
    def last(seq: Sequence[T]) -> T:
        return seq[-1]
 
+Note that a variable cannot have a type variable in its type unless the type variable is bound in a containing generic class or function:
+
+.. code-block:: python
+
+    from typing import Sequence, TypeVar
+
+    T = TypeVar('T')      # Declare type variable
+
+    def first(seq: Sequence[T]) -> T:
+        return seq[0]
+
+    s = first(['foo', 'bar'])  # s has type str.
+    n = first([1, 2, 3])       # n has type int
+
+    def bad_function() -> T:
+        return 1
+
+    x = bad_function()  # Error! There is no containing class or function binding T.
+                        # x has type T, which cannot be replaced with a non-generic type.
+
 .. _generic-methods-and-generic-self:
 
 Generic methods and generic self
