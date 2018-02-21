@@ -821,7 +821,6 @@ find_module_is_file_cache = {}  # type: Dict[str, bool]
 find_module_isdir_cache = {}  # type: Dict[Tuple[str, str], bool]
 
 
-
 def find_module_clear_caches() -> None:
     find_module_cache.clear()
     find_module_dir_cache.clear()
@@ -872,7 +871,8 @@ VIRTUALENV_SITE_PACKAGES = \
 
 
 def call_python(python_executable: str, command: str) -> str:
-    return subprocess.check_output([python_executable, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
+    return subprocess.check_output([python_executable, '-c', command],
+                                   stderr=subprocess.PIPE).decode('UTF-8')
 
 
 @functools.lru_cache(maxsize=None)
