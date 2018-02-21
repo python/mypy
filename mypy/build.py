@@ -871,7 +871,7 @@ VIRTUALENV_SITE_PACKAGES = \
 
 
 def call_python(python_executable: str, command: str) -> str:
-    return subprocess.check_output(python_executable.split(' ') + ['-c', command],
+    return subprocess.check_output([python_executable, '-c', command],
                                    stderr=subprocess.PIPE).decode()
 
 

@@ -66,18 +66,8 @@ class TestPackages(TestCase):
                 "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
             )
 
-        with self.install_package('typedpkg'):
-            self.check_mypy_run(
-                ['simple.py'],
-                "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
-            )
-
-        with self.install_package('typedpkg'), self.install_package('typedpkg-stubs'):
-            self.check_mypy_run(
-                ['simple.py'],
-                "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
-            )
-
+        # The Python 2 tests are intentionally placed after a Python 3 test to check
+        # the package_dir_cache is behaving correctly.
         python2 = try_find_python2_interpreter()
         if python2:
             with self.install_package('typedpkg-stubs', python2):
@@ -91,10 +81,23 @@ class TestPackages(TestCase):
                     "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
                 )
 
-            with self.install_package('typedpkg', python2), \
-                 self.install_package('typedpkg-stubs', python2):
+            with self.install_package('typedpkg', python2):
+                with self.install_package('typedpkg-stubs', python2):
+                    self.check_mypy_run(
+                        ['--python-executable={}'.format(python2), 'simple.py'],
+                        "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                    )
+
+        with self.install_package('typedpkg'):
+            self.check_mypy_run(
+                ['simple.py'],
+                "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
+            )
+
+        with self.install_package('typedpkg'):
+            with self.install_package('typedpkg-stubs'):
                 self.check_mypy_run(
-                    ['--python-executable={}'.format(python2), 'simple.py'],
+                    ['simple.py'],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
         os.remove('simple.py')
