@@ -920,7 +920,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
     if not python_executable:
         python_executable = sys.executable
     package_dirs = get_package_dirs(python_executable)
-    if python_executable and not package_dirs:
+    if not package_dirs:
         print("Could not find package directories for Python '{}'".format(
             python_executable), file=sys.stderr)
         sys.exit(2)
