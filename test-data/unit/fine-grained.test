@@ -2112,6 +2112,58 @@ def f(x: a.A[str]):
 ==
 b.py:2: error: Bad number of arguments for type alias, expected: 2, given: 1
 
+[case testAliasFineAdded]
+import b
+[file a.py]
+[file a.py.2]
+A = int
+[file b.py]
+import a
+x: a.A
+[out]
+b.py:2: error: Name 'a.A' is not defined
+==
+
+[case testAliasFineDeleted]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+[file b.py]
+import a
+x: a.A
+[out]
+==
+b.py:2: error: Name 'a.A' is not defined
+
+[case testAliasFineClassToAlias]
+import b
+[file a.py]
+class A: pass
+[file a.py.2]
+A = int
+[file b.py]
+import a
+x: a.A
+x = 1
+[out]
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "A")
+==
+
+[case testAliasFineAliasToClass]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+class A: pass
+[file b.py]
+import a
+x: a.A
+x = 1
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "A")
+
 [case testAliasFineComponentDeleted]
 import b
 [file a.py]

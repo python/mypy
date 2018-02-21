@@ -1,7 +1,10 @@
 """Test cases for generating node-level dependencies (for fine-grained incremental checking)"""
 
 import os
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Set
+MYPY = False
+if MYPY:
+    from typing import DefaultDict
 from collections import defaultdict
 
 from mypy import build, defaults
@@ -45,7 +48,7 @@ class GetDependenciesSuite(DataSuite):
             if not a:
                 a = ['Unknown compile error (likely syntax error in test case or fixture)']
         else:
-            deps = defaultdict(set)
+            deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
             for module in files:
                 if module in dumped_modules or dump_all and module not in ('abc', 'typing'):
                     new_deps = get_dependencies(files[module], type_map, python_version)
