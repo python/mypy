@@ -896,15 +896,17 @@ def get_package_dirs(python: str) -> List[str]:
         # executable
         try:
             output = call_python(python, USER_SITE_PACKAGES)
-            for line in output.splitlines():
-                if os.path.isdir(line):
-                    package_dirs.append(line)
         except subprocess.CalledProcessError:
-            # if no paths are found, we fall back on sysconfig
-            output = call_python(python, VIRTUALENV_SITE_PACKAGES)
-            for line in output.splitlines():
-                if os.path.isdir(line):
-                    package_dirs.append(line)
+            output = ''
+        for line in output.splitlines():
+            if os.path.isdir(line):
+                package_dirs.append(line)
+        # if no paths are found, we fall back on sysconfig, the python is likely in a
+        # virtual environment, thus lacking needed site methods
+        output = call_python(python, VIRTUALENV_SITE_PACKAGES)
+        for line in output.splitlines():
+            if os.path.isdir(line):
+                package_dirs.append(line)
     package_dirs_cache[python] = package_dirs
     return package_dirs
 
