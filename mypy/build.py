@@ -879,8 +879,8 @@ def call_python(python: str, command: str) -> str:
 def get_package_dirs(python_executable: str) -> List[str]:
     """Find package directories for given python
 
-     This defaults to the Python running mypy.
-     """
+    This defaults to the Python running mypy.
+    """
     if python_executable in package_dirs_cache:
         return package_dirs_cache[python_executable]
     package_dirs = []  # type: List[str]
