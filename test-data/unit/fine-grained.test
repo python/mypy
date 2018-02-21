@@ -1861,3 +1861,59 @@ def f() -> None:
 [out]
 a.py:1: error: Need type annotation for 'y'
 ==
+
+[case testSkippedClass1]
+import a
+[file a.py]
+class A: pass
+[file a.py.2]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testSkippedClass2]
+import a
+[file a.py]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[file a.py.2]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testSkippedClass3]
+import a
+[file a.py]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[file a.py.2]
+class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testSkippedClass4]
+import a
+[file a.py]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+else:
+    class A: pass
+[file a.py.2]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+else:
+    class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==

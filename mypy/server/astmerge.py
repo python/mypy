@@ -254,7 +254,9 @@ class NodeReplaceVisitor(TraverserVisitor):
     def fixup_type(self, typ: Type) -> None:
         typ.accept(TypeReplaceVisitor(self.replacements))
 
-    def process_type_info(self, info: TypeInfo) -> None:
+    def process_type_info(self, info: Optional[TypeInfo]) -> None:
+        if info is None:
+            return
         # TODO: Additional things:
         # - declared_metaclass
         # - metaclass_type
