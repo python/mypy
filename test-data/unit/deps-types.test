@@ -638,16 +638,20 @@ class I: pass
 <mod.I> -> <m.P.x>, <m.P>, m, m.P
 
 [case testAliasDepsNamedTupleFunctional]
+# __dump_all__
 from typing import NamedTuple
+import a
+P = NamedTuple('P', [('x', a.A)])
+[file a.py]
 from mod import I
 A = I
-P = NamedTuple('P', [('x', A)])
 [file mod.py]
 class I: pass
 [out]
-<m.A> -> m
-<mod.I.__init__> -> m
-<mod.I> -> <m.P.x>, <m.P>, m
+<a.A> -> m
+<a> -> m
+<mod.I.__init__> -> a
+<mod.I> -> <m.P.x>, <m.P>, m, a, mod.I
 
 [case testAliasDepsTypedDict]
 from mypy_extensions import TypedDict
@@ -666,17 +670,21 @@ class I: pass
 <mypy_extensions.TypedDict> -> m
 
 [case testAliasDepsTypedDictFunctional]
+# __dump_all__
 from mypy_extensions import TypedDict
+import a
+P = TypedDict('P', {'x': a.A})
+[file a.py]
 from mod import I
 A = I
-P = TypedDict('P', {'x': A})
 [file mod.py]
 class I: pass
 [builtins fixtures/dict.pyi]
 [out]
-<m.A> -> m
-<mod.I.__init__> -> m
-<mod.I> -> <m.P>, m
+<a.A> -> m
+<a> -> m
+<mod.I.__init__> -> a
+<mod.I> -> <m.P>, a, mod.I
 <mypy_extensions.TypedDict> -> m
 
 [case testAliasDepsClassInFunction]

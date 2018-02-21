@@ -50,7 +50,8 @@ class GetDependenciesSuite(DataSuite):
         else:
             deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
             for module in files:
-                if module in dumped_modules or dump_all and module not in ('abc', 'typing'):
+                if module in dumped_modules or dump_all and module not in ('abc', 'typing',
+                                                                           'mypy_extensions'):
                     new_deps = get_dependencies(files[module], type_map, python_version)
                     for source in new_deps:
                         deps[source].update(new_deps[source])
