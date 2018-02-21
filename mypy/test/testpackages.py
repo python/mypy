@@ -23,13 +23,13 @@ class TestPackages(TestCase):
 
     @contextmanager
     def install_package(self, pkg: str,
-                        python: str = sys.executable) -> Generator[None, None, None]:
+                        python_executable: str = sys.executable) -> Generator[None, None, None]:
         """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
-        install_cmd = [python, '-m', 'pip', 'install', '.']
+        install_cmd = [python_executable, '-m', 'pip', 'install', '.']
         # if we aren't in a virtualenv, install in the
         # user package directory so we don't need sudo
-        if not hasattr(sys, 'real_prefix') or python != sys.executable:
+        if not hasattr(sys, 'real_prefix') or python_executable != sys.executable:
             install_cmd.append('--user')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
@@ -37,7 +37,7 @@ class TestPackages(TestCase):
         try:
             yield
         finally:
-            run_command([python, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
+            run_command([python_executable, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
 
     def test_get_package_dirs(self) -> None:
         """Check that get_package_dirs works."""

@@ -876,15 +876,15 @@ def call_python(python: str, command: str) -> str:
     return subprocess.check_output([python, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
 
 
-def get_package_dirs(python: str) -> List[str]:
+def get_package_dirs(python_executable: str) -> List[str]:
     """Find package directories for given python
 
      This defaults to the Python running mypy.
      """
-    if python in package_dirs_cache:
-        return package_dirs_cache[python]
+    if python_executable in package_dirs_cache:
+        return package_dirs_cache[python_executable]
     package_dirs = []  # type: List[str]
-    if python == sys.executable:
+    if python_executable == sys.executable:
         # Use running Python's package dirs
         try:
             user_dir = site.getusersitepackages()
@@ -895,7 +895,7 @@ def get_package_dirs(python: str) -> List[str]:
         # Use subprocess to get the package directory of given Python
         # executable
         try:
-            output = call_python(python, USER_SITE_PACKAGES)
+            output = call_python(python_executable, USER_SITE_PACKAGES)
         except subprocess.CalledProcessError:
             output = ''
         for line in output.splitlines():
@@ -903,23 +903,24 @@ def get_package_dirs(python: str) -> List[str]:
                 package_dirs.append(line)
         # if no paths are found, we fall back on sysconfig, the python is likely in a
         # virtual environment, thus lacking needed site methods
-        output = call_python(python, VIRTUALENV_SITE_PACKAGES)
+        output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
         for line in output.splitlines():
             if os.path.isdir(line):
                 package_dirs.append(line)
-    package_dirs_cache[python] = package_dirs
+    package_dirs_cache[python_executable] = package_dirs
     return package_dirs
 
 
 def find_module(id: str, lib_path_arg: Iterable[str],
-                python: Optional[str] = None) -> Optional[str]:
+                python_executable: Optional[str] = None) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-    if not python:
-        python = sys.executable
-    package_dirs = get_package_dirs(python)
-    if python and not package_dirs:
-        print("Could not find package directories for Python '{}'".format(python), file=sys.stderr)
+    if not python_executable:
+        python_executable = sys.executable
+    package_dirs = get_package_dirs(python_executable)
+    if python_executable and not package_dirs:
+        print("Could not find package directories for Python '{}'".format(
+            python_executable), file=sys.stderr)
         sys.exit(2)
     components = id.split('.')
     dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
