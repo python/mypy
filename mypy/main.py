@@ -206,6 +206,12 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+if sys.platform == 'win32':
+    python_executable_prefix = 'py -{}'
+else:
+    python_executable_prefix = 'python{}'
+
+
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
@@ -517,15 +523,31 @@ def process_options(args: List[str],
     if options.quick_and_dirty:
         options.incremental = True
 
+    # try setting a valid Python executable based on a specified version
+    if options.python_version:
+        if not options.python_executable:
+            try:
+                output = subprocess.check_output(
+                    [python_executable_prefix.format(options.python_version)],
+                    stderr=subprocess.STDOUT).decode()
+            except FileNotFoundError:
+                output = ''
+            if output.startswith('Python '):
+                options.python_executable = python_executable_prefix.format(options.python_version)
+
+    # Set Python version if given Python executable, but no version
     if options.python_executable:
-        check = subprocess.check_output([options.python_executable, '-V'],
-                                        stderr=subprocess.STDOUT).decode('UTF-8')
-        assert check.startswith('Python'), \
-            "Mypy could not use the Python executable: {}".format(options.python_executable)
-        ver = re.fullmatch(r'Python (\d)\.(\d)\.\d\s*', check)
-        if ver:
-            python_ver = int(ver.group(1)), int(ver.group(2))
-            options.python_version = python_ver
+        if not options.python_version:
+            check = subprocess.check_output([options.python_executable, '-V'],
+                                            stderr=subprocess.STDOUT).decode()
+            if not check.startswith('Python '):
+                print("Mypy could not use the Python executable: {}".format(
+                    options.python_executable), file=sys.stderr)
+                sys.exit(2)
+            ver = re.fullmatch(r'Python (\d)\.(\d)\.\d\s*', check)
+            if ver:
+                python_ver = int(ver.group(1)), int(ver.group(2))
+                options.python_version = python_ver
 
     # Set target.
     if special_opts.modules:
