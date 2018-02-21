@@ -58,11 +58,10 @@ def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
         check = subprocess.check_output([python_executable, '-c',
                                          'import sys; print(repr(sys.version_info[:2]))'],
                                         stderr=subprocess.STDOUT).decode()
+        return ast.literal_eval(check)
     except (subprocess.CalledProcessError, FileNotFoundError):
         print('Error: invalid Python executable {}'.format(python_executable), file=sys.stderr)
         sys.exit(2)
-    else:
-        return ast.literal_eval(check)
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> Optional[str]:
@@ -71,10 +70,9 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> Optional
         sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
                                           ['-c', 'import sys; print(sys.executable)'],
                                           stderr=subprocess.STDOUT).decode().strip()
+        return sys_exe
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
-    else:
-        return sys_exe
 
 
 def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
