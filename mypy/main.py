@@ -59,7 +59,8 @@ def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
                                          'import sys; print(repr(sys.version_info[:2]))'],
                                         stderr=subprocess.STDOUT).decode()
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return sys.version_info[:2]
+        print('Error: invalid Python executable {}'.format(python_executable), file=sys.stderr)
+        sys.exit(2)
     else:
         return ast.literal_eval(check)
 
@@ -95,13 +96,19 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         args = sys.argv[1:]
     sources, options = process_options(args)
 
-    # try setting a valid Python executable based on a specified version
-    if options.python_version and not options.python_executable:
-        options.python_executable = _python_executable_from_version(options.python_version)
-
-    # Set Python version if given Python executable, but no version
-    if options.python_executable and not options.python_version:
+    # Set Python version if given Python executable, but the version is default
+    if options.python_executable and options.python_version == defaults.PYTHON3_VERSION:
         options.python_version = _python_version_from_executable(options.python_executable)
+
+    # try setting a valid Python executable based on a specified version
+    if options.python_version:
+        if options.python_executable:
+            py_exe_ver = _python_version_from_executable(options.python_executable)
+            if py_exe_ver != options.python_version:
+                print('Error: Python version and executable are mismatched.')
+                sys.exit(2)
+        else:
+            options.python_executable = _python_executable_from_version(options.python_version)
 
     messages = []
 
