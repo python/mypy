@@ -916,8 +916,9 @@ def find_module(id: str, lib_path_arg: Iterable[str],
     if not python:
         python = sys.executable
     package_dirs = get_package_dirs(python)
-    if python:
-        assert package_dirs, "Could not find package directories for Python '{}'".format(python)
+    if python and not package_dirs:
+        print("Could not find package directories for Python '{}'".format(python), file=sys.stderr)
+        sys.exit(2)
     components = id.split('.')
     dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
 
