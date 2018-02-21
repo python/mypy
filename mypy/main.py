@@ -212,6 +212,18 @@ else:
     python_executable_prefix = 'python{}'
 
 
+def _python_version_from_executable(python_executable: str) -> Optional[Tuple[int, int]]:
+    check = subprocess.check_output([python_executable, '-V'],
+                                    stderr=subprocess.STDOUT).decode()
+    if not check.startswith('Python '):
+        print("Mypy could not use the Python executable: {}".format(
+            python_executable), file=sys.stderr)
+        sys.exit(2)
+    ver = re.fullmatch(r'Python (\d)\.(\d)\.\d\s*', check)
+    if ver:
+        return int(ver.group(1)), int(ver.group(2))
+
+
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
@@ -538,15 +550,8 @@ def process_options(args: List[str],
     # Set Python version if given Python executable, but no version
     if options.python_executable:
         if not options.python_version:
-            check = subprocess.check_output([options.python_executable, '-V'],
-                                            stderr=subprocess.STDOUT).decode()
-            if not check.startswith('Python '):
-                print("Mypy could not use the Python executable: {}".format(
-                    options.python_executable), file=sys.stderr)
-                sys.exit(2)
-            ver = re.fullmatch(r'Python (\d)\.(\d)\.\d\s*', check)
-            if ver:
-                python_ver = int(ver.group(1)), int(ver.group(2))
+            python_ver = _python_version_from_executable(options.python_executable)
+            if python_ver:
                 options.python_version = python_ver
 
     # Set target.
