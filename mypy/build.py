@@ -871,8 +871,8 @@ VIRTUALENV_SITE_PACKAGES = \
 
 
 def call_python(python_executable: str, command: str) -> str:
-    return subprocess.check_output([python_executable, '-c', command],
-                                   stderr=subprocess.PIPE).decode('UTF-8')
+    return subprocess.check_output(python_executable.split(' ') + ['-c', command],
+                                   stderr=subprocess.PIPE).decode()
 
 
 @functools.lru_cache(maxsize=None)
@@ -881,7 +881,6 @@ def get_package_dirs(python_executable: str) -> List[str]:
 
     This defaults to the Python running mypy.
     """
-    package_dirs = []  # type: List[str]
     if python_executable == sys.executable:
         # Use running Python's package dirs
         try:
@@ -895,18 +894,11 @@ def get_package_dirs(python_executable: str) -> List[str]:
         try:
             output = call_python(python_executable, USER_SITE_PACKAGES)
         except subprocess.CalledProcessError:
-            output = ''
-        if output:
-            for line in output.splitlines():
-                if os.path.isdir(line):
-                    package_dirs.append(line)
-        else:
-            # if no paths are found, we fall back on sysconfig, the python is likely in a
-            # virtual environment, thus lacking needed site methods
+            # if no paths are found (raising a CalledProcessError, we fall back on sysconfig,
+            # the python executable is likely in a virtual environment, thus lacking
+            # needed site methods
             output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
-            for line in output.splitlines():
-                if os.path.isdir(line):
-                    package_dirs.append(line)
+        return [line for line in output.splitlines() if os.path.isdir(line)]
     return package_dirs
 
 
@@ -914,7 +906,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 python_executable: Optional[str] = None) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-    if not python_executable:
+    if python_executable is None:
         python_executable = sys.executable
     package_dirs = get_package_dirs(python_executable)
     if not package_dirs:
