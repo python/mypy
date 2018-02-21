@@ -885,9 +885,10 @@ def get_package_dirs(python_executable: str) -> List[str]:
         # Use running Python's package dirs
         try:
             user_dir = site.getusersitepackages()
-            package_dirs = site.getsitepackages() + [user_dir]
+            return site.getsitepackages() + [user_dir]
         except AttributeError:
-            package_dirs = [get_python_lib()]
+            # fall back on get_python_lib for virtualenvs
+            return [get_python_lib()]
     else:
         # Use subprocess to get the package directory of given Python
         # executable
@@ -899,7 +900,6 @@ def get_package_dirs(python_executable: str) -> List[str]:
             # needed site methods
             output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
         return [line for line in output.splitlines() if os.path.isdir(line)]
-    return package_dirs
 
 
 def find_module(id: str, lib_path_arg: Iterable[str],
