@@ -872,8 +872,8 @@ VIRTUALENV_SITE_PACKAGES = \
     'from distutils.sysconfig import get_python_lib; print(get_python_lib())'
 
 
-def call_python(python: str, command: str) -> str:
-    return subprocess.check_output([python, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
+def call_python(python_executable: str, command: str) -> str:
+    return subprocess.check_output([python_executable, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
 
 
 def get_package_dirs(python_executable: str) -> List[str]:
