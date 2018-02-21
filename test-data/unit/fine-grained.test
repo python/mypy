@@ -2163,6 +2163,147 @@ def f() -> None:
 ==
 b.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testAliasFineInitNormalMod]
+import c
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+from b import B
+B(int())
+[out]
+==
+c.py:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+
+[case testAliasFineInitNormalFunc]
+import c
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+from b import B
+def f() -> None:
+    B(int())
+[out]
+==
+c.py:3: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+
+[case testAliasFineInitGenericMod]
+import c
+[file a.py]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: T) -> None:
+        pass
+[file a.py.2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: S) -> None:
+        pass
+[file b.py]
+import a
+B = a.A[int, str]
+[file c.py]
+from b import B
+B(int())
+[out]
+==
+c.py:2: error: Argument 1 has incompatible type "int"; expected "str"
+
+[case testAliasFineInitGenericFunc]
+import c
+[file a.py]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: T) -> None:
+        pass
+[file a.py.2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: S) -> None:
+        pass
+[file b.py]
+import a
+B = a.A[int, str]
+[file c.py]
+from b import B
+def f() -> None:
+    B(str())
+[out]
+c.py:3: error: Argument 1 has incompatible type "str"; expected "int"
+==
+
+[case testAliasFineInitChainedMod]
+import d
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+import b
+C = b.B
+[file d.py]
+from c import C
+C(int())
+[out]
+==
+d.py:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+
+[case testAliasFineInitChainedFunc]
+import d
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+import b
+C = b.B
+[file d.py]
+from c import C
+def f() -> None:
+    C(str())
+[out]
+d.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
+==
+
 [case testNonePartialType]
 import a
 a.y

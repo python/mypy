@@ -286,8 +286,11 @@ class DependencyVisitor(TraverserVisitor):
             assert len(o.lvalues) == 1
             lvalue = o.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            # TODO: Do we need `self.process_global_ref_expr(lvalue)` to get deps from .__init__?
-            # I think no, if an alias is used at runtime corresponding deps will be generated
+            # TODO: get rid of this extra dependency from __init__ to alias definition scope
+            typ = self.type_map.get(lvalue)
+            if isinstance(typ, FunctionLike) and typ.is_type_obj():
+                class_name = typ.type_object().fullname()
+                self.add_dependency(make_trigger(class_name + '.__init__'))
             if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
                 self.add_type_dependencies(rvalue.analyzed.type)
         else:
