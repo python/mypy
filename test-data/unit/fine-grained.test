@@ -1959,7 +1959,6 @@ A = str
 b.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAliasFineChainedFunc]
-# This and next don't work without <A> -> <B> intermediate deps
 import b
 [file a.py]
 A = int

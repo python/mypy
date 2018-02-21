@@ -2,6 +2,7 @@
 
 import os
 from typing import List, Tuple, Dict, Optional
+from collections import defaultdict
 
 from mypy import build, defaults
 from mypy.build import BuildSource
@@ -33,6 +34,7 @@ class GetDependenciesSuite(DataSuite):
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
+        dump_all = '# __dump_all__' in src
         if testcase.name.endswith('python2'):
             python_version = defaults.PYTHON2_VERSION
         else:
@@ -43,11 +45,12 @@ class GetDependenciesSuite(DataSuite):
             if not a:
                 a = ['Unknown compile error (likely syntax error in test case or fixture)']
         else:
-            deps = {}
-            for module in dumped_modules:
-                if module in files:
+            deps = defaultdict(set)
+            for module in files:
+                if module in dumped_modules or dump_all and module not in ('abc', 'typing'):
                     new_deps = get_dependencies(files[module], type_map, python_version)
-                    deps.update(new_deps)
+                    for source in new_deps:
+                        deps[source].update(new_deps[source])
 
             for source, targets in sorted(deps.items()):
                 line = '%s -> %s' % (source, ', '.join(sorted(targets)))
