@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 import os
-import site
 import sys
 from typing import Generator, List
 from unittest import TestCase, main
@@ -11,7 +10,6 @@ from mypy.test.config import package_path
 from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
 
-
 SIMPLE_PROGRAM = """
 from typedpkg.sample import ex
 a = ex([''])
@@ -20,7 +18,6 @@ reveal_type(a)
 
 
 class TestPackages(TestCase):
-
     @contextmanager
     def install_package(self, pkg: str,
                         python_executable: str = sys.executable) -> Generator[None, None, None]:
@@ -69,8 +66,18 @@ class TestPackages(TestCase):
                 "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
             )
 
-        # The Python 2 tests are intentionally placed after a Python 3 test to check
-        # the package_dir_cache is behaving correctly.
+        with self.install_package('typedpkg'):
+            self.check_mypy_run(
+                ['simple.py'],
+                "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
+            )
+
+        with self.install_package('typedpkg'), self.install_package('typedpkg-stubs'):
+            self.check_mypy_run(
+                ['simple.py'],
+                "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+            )
+
         python2 = try_find_python2_interpreter()
         if python2:
             with self.install_package('typedpkg-stubs', python2):
@@ -84,23 +91,10 @@ class TestPackages(TestCase):
                     "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
                 )
 
-            with self.install_package('typedpkg', python2):
-                with self.install_package('typedpkg-stubs', python2):
-                    self.check_mypy_run(
-                        ['--python-executable={}'.format(python2), 'simple.py'],
-                        "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
-                    )
-
-        with self.install_package('typedpkg'):
-            self.check_mypy_run(
-                ['simple.py'],
-                "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
-            )
-
-        with self.install_package('typedpkg'):
-            with self.install_package('typedpkg-stubs'):
+            with self.install_package('typedpkg', python2), \
+                 self.install_package('typedpkg-stubs', python2):
                 self.check_mypy_run(
-                    ['simple.py'],
+                    ['--python-executable={}'.format(python2), 'simple.py'],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
         os.remove('simple.py')
