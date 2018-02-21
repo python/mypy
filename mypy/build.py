@@ -14,6 +14,7 @@ import binascii
 import collections
 import contextlib
 from distutils.sysconfig import get_python_lib
+import functools
 import gc
 import hashlib
 import json
@@ -819,8 +820,6 @@ find_module_is_file_cache = {}  # type: Dict[str, bool]
 # Cache for isdir(join(head, tail))
 find_module_isdir_cache = {}  # type: Dict[Tuple[str, str], bool]
 
-# Cache packages for each Python executable
-package_dirs_cache = {}  # type: Dict[str, List[str]]
 
 
 def find_module_clear_caches() -> None:
@@ -876,13 +875,12 @@ def call_python(python_executable: str, command: str) -> str:
     return subprocess.check_output([python_executable, '-c', command], stderr=subprocess.PIPE).decode('UTF-8')
 
 
+@functools.lru_cache(maxsize=None)
 def get_package_dirs(python_executable: str) -> List[str]:
     """Find package directories for given python
 
     This defaults to the Python running mypy.
     """
-    if python_executable in package_dirs_cache:
-        return package_dirs_cache[python_executable]
     package_dirs = []  # type: List[str]
     if python_executable == sys.executable:
         # Use running Python's package dirs
@@ -909,7 +907,6 @@ def get_package_dirs(python_executable: str) -> List[str]:
             for line in output.splitlines():
                 if os.path.isdir(line):
                     package_dirs.append(line)
-    package_dirs_cache[python_executable] = package_dirs
     return package_dirs
 
 
