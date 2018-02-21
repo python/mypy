@@ -2,6 +2,7 @@
 
 from collections import OrderedDict
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict, Union
+
 from itertools import chain
 
 from contextlib import contextmanager
@@ -63,9 +64,11 @@ def analyze_type_alias(node: Expression,
                        allow_unnormalized: bool = False,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True,
-                       warn_bound_tvar: bool = False) -> Optional[Type]:
-    """Return type if node is valid as a type alias rvalue.
+                       warn_bound_tvar: bool = False) -> Optional[Tuple[Type, Set[str]]]:
+    """Analyze r.h.s. of a (potential) type alias definition.
 
+    If `node` is valid as a type alias rvalue, return the resulting type and a set of
+    full names of type aliases it depends on (directly or indirectly).
     Return None otherwise. 'node' must have been semantically analyzed.
     """
     # Quickly return None if the expression doesn't look like a type. Note
@@ -103,7 +106,7 @@ def analyze_type_alias(node: Expression,
             arg = lookup_func(node.args[0].name, node.args[0])
             if (call is not None and call.node and call.node.fullname() == 'builtins.type' and
                     arg is not None and arg.node and arg.node.fullname() == 'builtins.None'):
-                return NoneTyp()
+                return NoneTyp(), set()
             return None
         return None
     else:
@@ -120,7 +123,8 @@ def analyze_type_alias(node: Expression,
                             allow_unnormalized=allow_unnormalized, warn_bound_tvar=warn_bound_tvar)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
-    return type.accept(analyzer)
+    res = type.accept(analyzer)
+    return res, analyzer.aliases_used
 
 
 def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
@@ -171,6 +175,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.is_typeshed_stub = is_typeshed_stub
         self.warn_bound_tvar = warn_bound_tvar
         self.third_pass = third_pass
+        # Names of type aliases encountered while analysing a type will be collected here.
+        self.aliases_used = set()  # type: Set[str]
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
         if t.optional:
@@ -259,6 +265,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
                 return UninhabitedType(is_noreturn=True)
             elif sym.kind == TYPE_ALIAS:
+                if sym.alias_name is not None:
+                    self.aliases_used.add(sym.alias_name)
                 override = sym.type_override
                 all_vars = sym.alias_tvars
                 assert override is not None
@@ -307,6 +315,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.note_func("Forward references to type variables are prohibited", t)
                 return t
             info = sym.node  # type: TypeInfo
+            if sym.is_aliasing:
+                if sym.alias_name is not None:
+                    self.aliases_used.add(sym.alias_name)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
                 return TupleType(self.anal_array(t.args), fallback, t.line)
@@ -666,6 +677,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         self.is_typeshed_stub = is_typeshed_stub
         self.indicator = indicator
         self.patches = patches
+        self.aliases_used = set()  # type: Set[str]
 
     def visit_instance(self, t: Instance) -> None:
         info = t.type
@@ -796,7 +808,9 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                             self.options,
                             self.is_typeshed_stub,
                             third_pass=True)
-        return tp.accept(tpan)
+        res = tp.accept(tpan)
+        self.aliases_used = tpan.aliases_used
+        return res
 
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]

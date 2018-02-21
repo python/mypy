@@ -618,3 +618,65 @@ p = Point(dict(x=42, y=1337))
 [out]
 __main__.Point
 __main__.p
+
+[case testTypeAliasSimple]
+A = int
+B = int
+[file next.py]
+A = str
+B = int
+[out]
+__main__.A
+
+[case testTypeAliasGeneric]
+from typing import List
+A = List[int]
+B = List[int]
+[file next.py]
+from typing import List
+A = List[str]
+B = List[int]
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenToNonGen]
+from typing import List
+A = List[str]
+B = List
+[file next.py]
+from typing import List
+A = List
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasNonGenToGen]
+from typing import List
+A = List
+B = List
+[file next.py]
+from typing import List
+A = List[str]
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenericTypeVar]
+from typing import TypeVar, Dict
+T = TypeVar('T')
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[file next.py]
+from typing import TypeVar, Dict
+class T: pass
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[builtins fixtures/dict.pyi]
+[out]
+__main__.A
+__main__.T
