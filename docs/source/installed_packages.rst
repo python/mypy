@@ -72,5 +72,5 @@ If you use mypy to type check a Python other than the version running mypy, you
 can use the ``--python-executable`` flag to point to the executable, and mypy
 will find packages installed for that python executable.
 
-Note that mypy does not support some more dynamic import features, such as zip
-imports, namespace packages, and advanced custom import hooks.
+Note that mypy does not support some more advanced import features, such as zip
+imports, namespace packages, and custom import hooks.
