@@ -371,10 +371,10 @@ Here are some more useful flags:
   written by quick mode.
 
 - ``--python-executable EXECUTABLE`` will have mypy collect type information
-  from PEP 561 compliant packages installed with the given Python executable.
-  By default, mypy will use PEP 561 compliant packages installed for the Python
-  executable running mypy. See :ref:`installed_packages` for more on making
-  PEP 561 compliant packages.
+  from PEP 561 compliant packages installed for the Python executable
+  ``EXECUTABLE``. If not provided, mypy will use PEP 561 compliant packages
+  installed for the Python executable running mypy. See
+  :ref:`installed_packages` for more on making PEP 561 compliant packages.
 
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
