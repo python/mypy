@@ -389,7 +389,6 @@ def default_lib_path(data_dir: str,
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
-                        ('memory_only', bool),  # no corresponding json files (fine-grained only)
                         ('mtime', int),
                         ('size', int),
                         ('hash', str),
@@ -415,7 +414,6 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
     return CacheMeta(
         meta.get('id', sentinel),
         meta.get('path', sentinel),
-        meta.get('memory_only', False),
         int(meta['mtime']) if 'mtime' in meta else sentinel,
         meta.get('size', sentinel),
         meta.get('hash', sentinel),
@@ -1120,12 +1118,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     if meta.ignore_all and not ignore_all:
         manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
-
-    if meta.memory_only:
-        # Special case for fine-grained incremental mode when the JSON file is missing but
-        # we want to cache the module anyway.
-        manager.log('Memory-only metadata for {}'.format(id))
-        return meta
 
     assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.

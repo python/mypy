@@ -5,7 +5,7 @@ import shutil
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource, State
+from mypy.build import BuildManager, BuildSource, State, Graph
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, UNBOUND_IMPORTED
@@ -77,13 +77,13 @@ class ASTMergeSuite(DataSuite):
         target_path = os.path.join(test_temp_dir, 'target.py')
         shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
-        a.extend(self.dump(manager, kind))
+        a.extend(self.dump(fine_grained_manager, kind))
         old_subexpr = get_subexpressions(manager.modules['target'])
 
         a.append('==>')
 
         new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
-        a.extend(self.dump(manager, kind))
+        a.extend(self.dump(fine_grained_manager, kind))
 
         for expr in old_subexpr:
             # Verify that old AST nodes are removed from the expression type map.
@@ -119,13 +119,13 @@ class ASTMergeSuite(DataSuite):
                                                             Dict[Expression, Type]]:
         manager.update([(module_id, path)])
         module = manager.manager.modules[module_id]
-        type_map = manager.type_maps[module_id]
+        type_map = manager.graph[module_id].type_map()
         return module, type_map
 
     def dump(self,
-             manager: BuildManager,
+             manager: FineGrainedBuildManager,
              kind: str) -> List[str]:
-        modules = manager.modules
+        modules = manager.manager.modules
         if kind == AST:
             return self.dump_asts(modules)
         elif kind == TYPEINFO:
@@ -203,14 +203,14 @@ class ASTMergeSuite(DataSuite):
                       type_str_conv=self.type_str_conv)
         return s.splitlines()
 
-    def dump_types(self, manager: BuildManager) -> List[str]:
+    def dump_types(self, manager: FineGrainedBuildManager) -> List[str]:
         a = []
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
-        for module_id in sorted(manager.modules):
+        for module_id in sorted(manager.manager.modules):
             if not is_dumped_module(module_id):
                 continue
-            type_map = manager.saved_cache[module_id][2]
+            type_map = manager.graph[module_id].type_map()
             if type_map:
                 a.append('## {}'.format(module_id))
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),

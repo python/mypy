@@ -115,15 +115,14 @@ Major todo items:
 
 - Fully support multiple type checking passes
 - Use mypy.fscache to access file system
-- Don't use load_graph() and update the import graph incrementally
 """
 
 import os.path
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
 
 from mypy.build import (
-    BuildManager, State, BuildSource, Graph, load_graph, SavedCache, CacheMeta,
-    cache_meta_from_dict, find_module_clear_caches, DEBUG_FINE_GRAINED
+    BuildManager, State, BuildSource, Graph, load_graph, find_module_clear_caches,
+    DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -172,7 +171,6 @@ class FineGrainedBuildManager:
         # this directly reflected in load_graph's interface.
         self.options.cache_dir = os.devnull
         manager.saved_cache = {}
-        self.type_maps = extract_type_maps(graph)
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
 
@@ -253,6 +251,7 @@ class FineGrainedBuildManager:
         # TODO: If new module brings in other modules, we parse some files multiple times.
         manager = self.manager
         previous_modules = self.previous_modules
+        graph = self.graph
 
         # Record symbol table snaphot of old version the changed module.
         old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
@@ -261,14 +260,14 @@ class FineGrainedBuildManager:
             old_snapshots[module] = snapshot
 
         manager.errors.reset()
-        result = update_single_isolated(module, path, manager, previous_modules, self.graph)
+        result = update_single_isolated(module, path, manager, previous_modules, graph)
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
             module, path, remaining, errors = result
             self.previous_modules = get_module_to_path_map(manager)
             return errors, remaining, (module, path), True
         assert isinstance(result, NormalUpdate)  # Work around #4124
-        module, path, remaining, tree, graph = result
+        module, path, remaining, tree = result
 
         # TODO: What to do with stale dependencies?
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
@@ -285,20 +284,7 @@ class FineGrainedBuildManager:
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = manager.errors.targets()
-        # If deleted, module won't be in the graph.
-        if module in graph:
-            # Generate metadata so that we can reuse the AST in the next run.
-            graph[module].write_cache()
-        for id, state in graph.items():
-            # Look up missing ASTs from saved cache.
-            if state.tree is None and id in manager.saved_cache:
-                meta, tree, type_map = manager.saved_cache[id]
-                state.tree = tree
         self.previous_modules = get_module_to_path_map(manager)
-        self.type_maps = extract_type_maps(graph)
-
-        # XXX: I want us to not need this
-        self.graph = graph
 
         return manager.errors.new_messages(), remaining, (module, path), False
 
@@ -317,15 +303,13 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
 # - Id of the changed module (can be different from the module argument)
 # - Path of the changed module
 # - New AST for the changed module (None if module was deleted)
-# - The entire updated build graph
 # - Remaining changed modules that are not processed yet as (module id, path)
 #   tuples (non-empty if the original changed module imported other new
 #   modules)
 NormalUpdate = NamedTuple('NormalUpdate', [('module', str),
                                            ('path', str),
                                            ('remaining', List[Tuple[str, str]]),
-                                           ('tree', Optional[MypyFile]),
-                                           ('graph', Graph)])
+                                           ('tree', Optional[MypyFile])])
 
 # The result of update_single_isolated when there is a blocking error. Items
 # are similar to NormalUpdate (but there are fewer).
@@ -362,10 +346,11 @@ def update_single_isolated(module: str,
 
     old_modules = dict(manager.modules)
     sources = get_sources(previous_modules, [(module, path)])
-    invalidate_stale_cache_entries(manager.saved_cache, graph, [(module, path)])
 
     manager.missing_modules.clear()
     try:
+        if module in graph:
+            del graph[module]
         load_graph(sources, manager, graph)
     except CompileError as err:
         # Parse error somewhere in the program -- a blocker
@@ -383,8 +368,8 @@ def update_single_isolated(module: str,
         return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
 
     if not os.path.isfile(path):
-        graph = delete_module(module, graph, manager)
-        return NormalUpdate(module, path, [], None, graph)
+        delete_module(module, graph, manager)
+        return NormalUpdate(module, path, [], None)
 
     # Find any other modules brought in by imports.
     changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
@@ -438,7 +423,7 @@ def update_single_isolated(module: str,
 
     graph[module] = state
 
-    return NormalUpdate(module, path, remaining_modules, state.tree, graph)
+    return NormalUpdate(module, path, remaining_modules, state.tree)
 
 
 def find_relative_leaf_module(modules: List[Tuple[str, str]], graph: Graph) -> Tuple[str, str]:
@@ -475,14 +460,13 @@ def assert_equivalent_paths(path1: str, path2: str) -> None:
 
 
 def delete_module(module_id: str,
-                  graph: Dict[str, State],
-                  manager: BuildManager) -> Dict[str, State]:
+                  graph: Graph,
+                  manager: BuildManager) -> None:
     manager.log_fine_grained('delete module %r' % module_id)
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
-    new_graph = graph.copy()
-    if module_id in new_graph:
-        del new_graph[module_id]
+    if module_id in graph:
+        del graph[module_id]
     if module_id in manager.modules:
         del manager.modules[module_id]
     if module_id in manager.saved_cache:
@@ -496,7 +480,6 @@ def delete_module(module_id: str,
             parent = manager.modules[parent_id]
             if components[-1] in parent.names:
                 del parent.names[components[-1]]
-    return new_graph
 
 
 def dedupe_modules(modules: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
@@ -518,15 +501,10 @@ def get_sources(modules: Dict[str, str],
                 changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
     # TODO: Race condition when reading from the file system; we should only read each
     #       bit of external state once during a build to have a consistent view of the world
-    items = sorted(modules.items(), key=lambda x: x[0])
-    sources = [BuildSource(path, id, None)
-               for id, path in items
-               if os.path.isfile(path)]
     sources = []
     for id, path in changed_modules:
-        if os.path.isfile(path):# and id not in modules:
+        if os.path.isfile(path):
             sources.append(BuildSource(path, id, None))
-    # print(changed_modules, sources)
     return sources
 
 
@@ -542,16 +520,6 @@ def get_all_changed_modules(root_module: str,
             changed_set.add(st.id)
             changed_modules.append((st.id, st.path))
     return changed_modules
-
-
-def invalidate_stale_cache_entries(cache: SavedCache,
-                                   graph: Graph,
-                                   changed_modules: List[Tuple[str, str]]) -> None:
-    for name, _ in changed_modules:
-        if name in cache:
-            del cache[name]
-        if name in graph:
-            del graph[name]
 
 
 def verify_dependencies(state: State, manager: BuildManager) -> None:
@@ -905,12 +873,6 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
                              MypyFile,
                              OverloadedFuncDef)), 'unexpected type: %s' % type(node)
     return [DeferredNode(node, active_class_name, active_class)]
-
-
-def extract_type_maps(graph: Graph) -> Dict[str, Dict[Expression, Type]]:
-    # This is used to export information used only by the testmerge harness.
-    return {id: state.type_map() for id, state in graph.items()
-            if state.tree}
 
 
 def is_verbose(manager: BuildManager) -> bool:
