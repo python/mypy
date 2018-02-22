@@ -45,36 +45,6 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-if sys.platform == 'win32':
-    def python_executable_prefix(v: str) -> List[str]:
-        return ['py', '-{}'.format(v)]
-else:
-    def python_executable_prefix(v: str) -> List[str]:
-        return ['python{}'.format(v)]
-
-
-def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
-    try:
-        check = subprocess.check_output([python_executable, '-c',
-                                         'import sys; print(repr(sys.version_info[:2]))'],
-                                        stderr=subprocess.STDOUT).decode()
-        return ast.literal_eval(check)
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print('Error: invalid Python executable {}'.format(python_executable), file=sys.stderr)
-        sys.exit(2)
-
-
-def _python_executable_from_version(python_version: Tuple[int, int]) -> Optional[str]:
-    str_ver = '.'.join(map(str, python_version))
-    try:
-        sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
-                                          ['-c', 'import sys; print(sys.executable)'],
-                                          stderr=subprocess.STDOUT).decode().strip()
-        return sys_exe
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
 def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
@@ -93,20 +63,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if args is None:
         args = sys.argv[1:]
     sources, options = process_options(args)
-
-    # Set Python version if given Python executable, but the version is default
-    if options.python_executable and options.python_version == defaults.PYTHON3_VERSION:
-        options.python_version = _python_version_from_executable(options.python_executable)
-
-    # try setting a valid Python executable based on a specified version
-    if options.python_version:
-        if options.python_executable:
-            py_exe_ver = _python_version_from_executable(options.python_executable)
-            if py_exe_ver != options.python_version:
-                print('Error: Python version and executable are mismatched.')
-                sys.exit(2)
-        else:
-            options.python_executable = _python_executable_from_version(options.python_version)
 
     messages = []
 
@@ -251,6 +207,36 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+if sys.platform == 'win32':
+    def python_executable_prefix(v: str) -> List[str]:
+        return ['py', '-{}'.format(v)]
+else:
+    def python_executable_prefix(v: str) -> List[str]:
+        return ['python{}'.format(v)]
+
+
+def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
+    try:
+        check = subprocess.check_output([python_executable, '-c',
+                                         'import sys; print(repr(sys.version_info[:2]))'],
+                                        stderr=subprocess.STDOUT).decode()
+        return ast.literal_eval(check)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print('Error: invalid Python executable {}'.format(python_executable), file=sys.stderr)
+        sys.exit(2)
+
+
+def _python_executable_from_version(python_version: Tuple[int, int]) -> Optional[str]:
+    str_ver = '.'.join(map(str, python_version))
+    try:
+        sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
+                                          ['-c', 'import sys; print(sys.executable)'],
+                                          stderr=subprocess.STDOUT).decode().strip()
+        return sys_exe
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
@@ -301,10 +287,10 @@ def process_options(args: List[str],
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
-                        help='use Python x.y')
+                        help='use Python x.y', dest='special-opts:python_version')
     parser.add_argument('--python-executable', action='store',
                         help="Python executable whose installed packages will be"
-                             " used in typechecking.")
+                             " used in typechecking.", dest='special-opts:python_executable')
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
                         "(defaults to sys.platform).")
@@ -527,6 +513,24 @@ def process_options(args: List[str],
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
+
+    # Infer Python version and/or executable if one is not given
+    if special_opts.python_executable is not None and special_opts.python_version is not None:
+        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
+        if py_exe_ver != special_opts.python_version:
+            print('Error: Python version and executable are mismatched.')
+            sys.exit(2)
+        else:
+            options.python_version = special_opts.python_version
+            options.python_executable = special_opts.python_executable
+    elif special_opts.python_executable is None and special_opts.python_version is not None:
+        py_exe = _python_executable_from_version(special_opts.python_version)
+        if py_exe is not None:
+            options.python_executable = py_exe
+        options.python_version = special_opts.python_version
+    elif special_opts.python_version is None and special_opts.python_executable is not None:
+        options.python_version = _python_version_from_executable(special_opts.python_executable)
+        options.python_executable = special_opts.python_executable
 
     # Check for invalid argument combinations.
     if require_targets:
