@@ -251,8 +251,14 @@ class Server:
             return self.fine_grained_increment(sources)
 
     def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
-        self.fscache = FileSystemCache(self.options.python_version)
-        self.fswatcher = FileSystemWatcher(self.fscache)
+        # The file system cache we create gets passed off to
+        # BuildManager, and thence to FineGrainedBuildManager, which
+        # assumes responsibility for clearing it at the appropriate
+        # times (after init and update()).
+        # We also need to clear it ourselves sometimes, when we don't invoke
+        # update, which is unfortunate.
+        fscache = FileSystemCache(self.options.python_version)
+        self.fswatcher = FileSystemWatcher(fscache)
         self.update_sources(sources)
         if not self.options.use_fine_grained_cache:
             # Stores the initial state of sources as a side effect.
@@ -260,7 +266,8 @@ class Server:
         try:
             # TODO: alt_lib_path
             result = mypy.build.build(sources=sources,
-                                      options=self.options)
+                                      options=self.options,
+                                      fscache=fscache)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
             if e.use_stdout:
@@ -274,7 +281,7 @@ class Server:
         self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
         self.fine_grained_initialized = True
         self.previous_sources = sources
-        self.fscache.flush()
+        #self.fscache.flush()
 
         # If we are using the fine-grained cache, build hasn't actually done
         # the typechecking on the updated files yet.
@@ -294,7 +301,8 @@ class Server:
             changed = self.find_changed(sources)
             if changed:
                 messages = self.fine_grained_manager.update(changed)
-            self.fscache.flush()
+            else:
+                self.fine_grained_manager.manager.fscache.flush() # XXX: sigh
 
         status = 1 if messages else 0
         self.previous_messages = messages[:]
@@ -308,6 +316,7 @@ class Server:
         if not changed:
             # Nothing changed -- just produce the same result as before.
             messages = self.previous_messages
+            self.fine_grained_manager.manager.fscache.flush() # XXX: sigh
         else:
             messages = self.fine_grained_manager.update(changed)
         t2 = time.time()
@@ -317,7 +326,6 @@ class Server:
         status = 1 if messages else 0
         self.previous_messages = messages[:]
         self.previous_sources = sources
-        self.fscache.flush()
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def update_sources(self, sources: List[mypy.build.BuildSource]) -> None:

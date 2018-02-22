@@ -32,7 +32,6 @@ import os
 import stat
 from typing import Tuple, Dict, List
 
-from mypy.build import read_with_python_encoding
 from mypy.errors import DecodeError
 
 
@@ -52,6 +51,8 @@ class FileSystemCache:
         self.listdir_error_cache = {}  # type: Dict[str, Exception]
 
     def read_with_python_encoding(self, path: str) -> str:
+        from mypy.build import read_with_python_encoding
+
         if path in self.read_cache:
             return self.read_cache[path]
         if path in self.read_error_cache:

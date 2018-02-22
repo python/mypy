@@ -53,6 +53,7 @@ from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
+from mypy.fscache import FileSystemCache
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -142,6 +143,7 @@ def build(sources: List[BuildSource],
           bin_dir: Optional[str] = None,
           saved_cache: Optional[SavedCache] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
+          fscache: Optional[FileSystemCache] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -165,6 +167,7 @@ def build(sources: List[BuildSource],
         directories; if omitted, use '.' as the data directory
       saved_cache: optional dict with saved cache state for dmypy (read-write!)
       flush_errors: optional function to flush errors after a file is processed
+      fscache: optionally a file-system cacher
 
     """
     # If we were not given a flush_errors, we use one that will populate those
@@ -177,7 +180,8 @@ def build(sources: List[BuildSource],
     flush_errors = flush_errors or default_flush_errors
 
     try:
-        result = _build(sources, options, alt_lib_path, bin_dir, saved_cache, flush_errors)
+        result = _build(sources, options, alt_lib_path, bin_dir,
+                        saved_cache, flush_errors, fscache)
         result.errors = messages
         return result
     except CompileError as e:
@@ -197,6 +201,7 @@ def _build(sources: List[BuildSource],
            bin_dir: Optional[str],
            saved_cache: Optional[SavedCache],
            flush_errors: Callable[[List[str], bool], None],
+           fscache: Optional[FileSystemCache],
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
@@ -260,7 +265,8 @@ def _build(sources: List[BuildSource],
                            plugin=plugin,
                            errors=errors,
                            saved_cache=saved_cache,
-                           flush_errors=flush_errors)
+                           flush_errors=flush_errors,
+                           fscache=fscache)
 
     try:
         graph = dispatch(sources, manager)
@@ -570,6 +576,7 @@ class BuildManager:
       saved_cache:     Dict with saved cache state for coarse-grained dmypy
                        (read-write!)
       stats:           Dict with various instrumentation numbers
+      fscache:         A file system cacher
     """
 
     def __init__(self, data_dir: str,
@@ -583,6 +590,7 @@ class BuildManager:
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
                  saved_cache: Optional[SavedCache] = None,
+                 fscache: Optional[FileSystemCache] = None,
                  ) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
@@ -608,6 +616,7 @@ class BuildManager:
         self.flush_errors = flush_errors
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+        self.fscache = fscache or FileSystemCache(self.options.python_version)
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -616,7 +625,7 @@ class BuildManager:
         return path
 
     def get_stat(self, path: str) -> os.stat_result:
-        return os.stat(self.maybe_swap_for_shadow_path(path))
+        return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -1167,8 +1176,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     mtime = int(st.st_mtime)
     if mtime != meta.mtime or path != meta.path:
-        with open(path, 'rb') as f:
-            source_hash = hashlib.md5(f.read()).hexdigest()
+        source_hash = manager.fscache.md5(path)
         if source_hash != meta.hash:
             manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
             return None
@@ -1872,8 +1880,8 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source, self.source_hash = read_with_python_encoding(
-                        path, self.options.python_version)
+                    source = manager.fscache.read_with_python_encoding(path)
+                    self.source_hash = manager.fscache.md5(path)
                 except IOError as ioerr:
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])

@@ -173,6 +173,7 @@ class FineGrainedBuildManager:
         manager.saved_cache = {}
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
+        self.manager.fscache.flush()
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -225,8 +226,9 @@ class FineGrainedBuildManager:
             if blocker:
                 self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
-                return messages
+                break
 
+        self.manager.fscache.flush()
         return messages
 
     def update_single(self, module: str, path: str) -> Tuple[List[str],
