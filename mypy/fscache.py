@@ -31,8 +31,7 @@ advantage of the benefits.
 import os
 import stat
 from typing import Tuple, Dict, List
-
-from mypy.errors import DecodeError
+from mypy.util import read_with_python_encoding
 
 
 class FileSystemCache:
@@ -51,8 +50,6 @@ class FileSystemCache:
         self.listdir_error_cache = {}  # type: Dict[str, Exception]
 
     def read_with_python_encoding(self, path: str) -> str:
-        from mypy.build import read_with_python_encoding
-
         if path in self.read_cache:
             return self.read_cache[path]
         if path in self.read_error_cache:

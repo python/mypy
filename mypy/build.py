@@ -39,10 +39,10 @@ from mypy.semanal import SemanticAnalyzerPass2
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
+from mypy.errors import Errors, CompileError, report_internal_error
+from mypy.util import DecodeError
 from mypy.report import Reports
 from mypy import moduleinfo
-from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.nodes import Expression
 from mypy.options import Options
@@ -969,42 +969,6 @@ def verify_module(id: str, path: str) -> bool:
                    for extension in PYTHON_EXTENSIONS):
             return False
     return True
-
-
-def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
-    """Read the Python file with while obeying PEP-263 encoding detection.
-
-    Returns:
-      A tuple: the source as a string, and the hash calculated from the binary representation.
-    """
-    source_bytearray = bytearray()
-    encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
-
-    with open(path, 'rb') as f:
-        # read first two lines and check if PEP-263 coding is present
-        source_bytearray.extend(f.readline())
-        source_bytearray.extend(f.readline())
-        m = hashlib.md5(source_bytearray)
-
-        # check for BOM UTF-8 encoding and strip it out if present
-        if source_bytearray.startswith(b'\xef\xbb\xbf'):
-            encoding = 'utf8'
-            source_bytearray = source_bytearray[3:]
-        else:
-            _encoding, _ = util.find_python_encoding(source_bytearray, pyversion)
-            # check that the coding isn't mypy. We skip it since
-            # registering may not have happened yet
-            if _encoding != 'mypy':
-                encoding = _encoding
-
-        remainder = f.read()
-        m.update(remainder)
-        source_bytearray.extend(remainder)
-        try:
-            source_text = source_bytearray.decode(encoding)
-        except LookupError as lookuperr:
-            raise DecodeError(str(lookuperr))
-        return source_text, m.hexdigest()
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:

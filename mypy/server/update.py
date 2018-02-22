@@ -116,6 +116,7 @@ Major todo items:
 - Fully support multiple type checking passes
 """
 
+import os
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
 
 from mypy.build import (
