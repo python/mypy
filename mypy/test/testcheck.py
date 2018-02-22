@@ -7,7 +7,7 @@ import shutil
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.build import BuildSource, find_module_clear_caches
+from mypy.build import BuildSource
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
@@ -113,7 +113,6 @@ class TypeCheckSuite(DataSuite):
             shutil.rmtree(dn)
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
-        find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
@@ -312,7 +311,8 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                path = build.find_module(build.FindModuleCache(),
+                                         module_name, [test_temp_dir])
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()

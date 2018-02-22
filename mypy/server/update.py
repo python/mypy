@@ -120,7 +120,7 @@ import os
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, find_module_clear_caches,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
@@ -198,8 +198,8 @@ class FineGrainedBuildManager:
             self.manager.fscache.flush()
             return self.previous_messages
 
-        # Reset global caches for the new build.
-        find_module_clear_caches()
+        # Reset find_module's caches for the new build.
+        self.manager.find_module_cache.clear()
 
         self.triggered = []
         changed_modules = dedupe_modules(changed_modules + self.stale)

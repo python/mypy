@@ -527,7 +527,8 @@ def process_options(args: List[str],
                  .format(special_opts.package))
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(special_opts.package, lib_path)
+        targets = build.find_modules_recursive(build.FindModuleCache(),
+                                               special_opts.package, lib_path)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
         return targets, options

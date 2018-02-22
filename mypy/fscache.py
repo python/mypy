@@ -30,14 +30,18 @@ advantage of the benefits.
 
 import os
 import stat
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 from mypy.util import read_with_python_encoding
 
 
 class FileSystemCache:
-    def __init__(self, pyversion: Tuple[int, int]) -> None:
+    def __init__(self, pyversion: Optional[Tuple[int, int]] = None) -> None:
         self.pyversion = pyversion
         self.flush()
+
+    def set_pyversion(self, pyversion: Tuple[int, int]) -> None:
+        assert not self.read_cache
+        self.pyversion = pyversion
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
@@ -48,8 +52,10 @@ class FileSystemCache:
         self.hash_cache = {}  # type: Dict[str, str]
         self.listdir_cache = {}  # type: Dict[str, List[str]]
         self.listdir_error_cache = {}  # type: Dict[str, Exception]
+        self.isfile_case_cache = {}  # type: Dict[str, bool]
 
     def read_with_python_encoding(self, path: str) -> str:
+        assert self.pyversion
         if path in self.read_cache:
             return self.read_cache[path]
         if path in self.read_error_cache:
@@ -95,12 +101,39 @@ class FileSystemCache:
         return results
 
     def isfile(self, path: str) -> bool:
-        st = self.stat(path)
-        return stat.S_ISREG(st.st_mode)
+        try:
+            st = self.stat(path)
+            return stat.S_ISREG(st.st_mode)
+        except OSError:
+            return False
+
+    def isfile_case(self, path: str) -> bool:
+        """Return whether path exists and is a file.
+
+        On case-insensitive filesystems (like Mac or Windows) this returns
+        False if the case of the path's last component does not exactly
+        match the case found in the filesystem.
+        """
+        if path in self.isfile_case_cache:
+            return self.isfile_case_cache[path]
+        head, tail = os.path.split(path)
+        if not tail:
+            res = False
+        else:
+            try:
+                names = self.listdir(head)
+                res = tail in names and self.isfile(path)
+            except OSError:
+                res = False
+        self.isfile_case_cache[path] = res
+        return res
 
     def isdir(self, path: str) -> bool:
-        st = self.stat(path)
-        return stat.S_ISDIR(st.st_mode)
+        try:
+            st = self.stat(path)
+            return stat.S_ISDIR(st.st_mode)
+        except OSError:
+            return False
 
     def exists(self, path: str) -> bool:
         try:
