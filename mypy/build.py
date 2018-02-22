@@ -883,12 +883,12 @@ def get_package_dirs(python_executable: str) -> List[str]:
     """
     if python_executable == sys.executable:
         # Use running Python's package dirs
-        try:
+        if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
             user_dir = site.getusersitepackages()
             return site.getsitepackages() + [user_dir]
-        except AttributeError:
-            # fall back on get_python_lib for virtualenvs
-            return [get_python_lib()]
+        # If site doesn't have get(user)sitepackages, we are running in a
+        # virtualenv, and should fall back to get_python_lib
+        return [get_python_lib()]
     else:
         # Use subprocess to get the package directory of given Python
         # executable
