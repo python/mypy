@@ -255,8 +255,6 @@ class Server:
         # BuildManager, and thence to FineGrainedBuildManager, which
         # assumes responsibility for clearing it at the appropriate
         # times (after init and update()).
-        # We also need to clear it ourselves sometimes, when we don't invoke
-        # update, which is unfortunate.
         fscache = FileSystemCache(self.options.python_version)
         self.fswatcher = FileSystemWatcher(fscache)
         self.update_sources(sources)
@@ -276,12 +274,9 @@ class Server:
                 out, err = '', output
             return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
-        manager = result.manager
-        graph = result.graph
-        self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
+        self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(result)
         self.fine_grained_initialized = True
         self.previous_sources = sources
-        #self.fscache.flush()
 
         # If we are using the fine-grained cache, build hasn't actually done
         # the typechecking on the updated files yet.
@@ -298,14 +293,9 @@ class Server:
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
             # Run an update
-            changed = self.find_changed(sources)
-            if changed:
-                messages = self.fine_grained_manager.update(changed)
-            else:
-                self.fine_grained_manager.manager.fscache.flush() # XXX: sigh
+            messages = self.fine_grained_manager.update(self.find_changed(sources))
 
         status = 1 if messages else 0
-        self.previous_messages = messages[:]
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
@@ -313,18 +303,12 @@ class Server:
         self.update_sources(sources)
         changed = self.find_changed(sources)
         t1 = time.time()
-        if not changed:
-            # Nothing changed -- just produce the same result as before.
-            messages = self.previous_messages
-            self.fine_grained_manager.manager.fscache.flush() # XXX: sigh
-        else:
-            messages = self.fine_grained_manager.update(changed)
+        messages = self.fine_grained_manager.update(changed)
         t2 = time.time()
         self.fine_grained_manager.manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
                 t1 - t0, t2 - t1))
         status = 1 if messages else 0
-        self.previous_messages = messages[:]
         self.previous_sources = sources
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 

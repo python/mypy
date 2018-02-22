@@ -121,7 +121,7 @@ import os.path
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
 
 from mypy.build import (
-    BuildManager, State, BuildSource, Graph, load_graph, find_module_clear_caches,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, find_module_clear_caches,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
@@ -146,21 +146,23 @@ MAX_ITER = 1000
 
 
 class FineGrainedBuildManager:
-    def __init__(self,
-                 manager: BuildManager,
-                 graph: Graph) -> None:
+    def __init__(self, result: BuildResult) -> None:
         """Initialize fine-grained build based on a batch build.
 
         Args:
+            result: Result from the initialized build.
+                    The manager and graph will be taken over by this class.
             manager: State of the build (mutated by this class)
             graph: Additional state of the build (only read to initialize state)
         """
+        manager = result.manager
         self.manager = manager
+        self.graph = result.graph
         self.options = manager.options
         self.previous_modules = get_module_to_path_map(manager)
-        self.deps = get_all_dependencies(manager, graph, self.options)
+        self.deps = get_all_dependencies(manager, self.graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
-        self.graph = graph
+        self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         # TODO: Handle blocking errors in the initial build
         self.blocking_error = None  # type: Optional[Tuple[str, str]]
@@ -192,7 +194,9 @@ class FineGrainedBuildManager:
         Returns:
             A list of errors.
         """
-        assert changed_modules, 'No changed modules'
+        if not changed_modules:
+            self.manager.fscache.flush()
+            return self.previous_messages
 
         # Reset global caches for the new build.
         find_module_clear_caches()
@@ -229,6 +233,7 @@ class FineGrainedBuildManager:
                 break
 
         self.manager.fscache.flush()
+        self.previous_messages = messages[:]
         return messages
 
     def update_single(self, module: str, path: str) -> Tuple[List[str],

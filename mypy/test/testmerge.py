@@ -5,7 +5,7 @@ import shutil
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource, State, Graph
+from mypy.build import BuildManager, BuildSource, BuildResult, State, Graph
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
@@ -67,19 +67,19 @@ class ASTMergeSuite(DataSuite):
             kind = AST
 
         main_src = '\n'.join(testcase.input)
-        messages, manager, graph = self.build(main_src)
-        assert manager is not None, 'cases where CompileError occurred should not be run'
-        fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        result = self.build(main_src)
+        assert result is not None, 'cases where CompileError occurred should not be run'
+        fine_grained_manager = FineGrainedBuildManager(result)
 
         a = []
-        if messages:
-            a.extend(messages)
+        if result.errors:
+            a.extend(result.errors)
 
         target_path = os.path.join(test_temp_dir, 'target.py')
         shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
         a.extend(self.dump(fine_grained_manager, kind))
-        old_subexpr = get_subexpressions(manager.modules['target'])
+        old_subexpr = get_subexpressions(result.manager.modules['target'])
 
         a.append('==>')
 
@@ -100,7 +100,7 @@ class ASTMergeSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], Optional[BuildManager], Dict[str, State]]:
+    def build(self, source: str) -> Optional[BuildResult]:
         options = Options()
         options.incremental = True
         options.fine_grained_incremental = True
@@ -115,8 +115,8 @@ class ASTMergeSuite(DataSuite):
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
             # TODO: Is it okay to return None?
-            return e.messages, None, {}
-        return result.errors, result.manager, result.graph
+            return None
+        return result
 
     def build_increment(self, manager: FineGrainedBuildManager,
                         module_id: str, path: str) -> Tuple[MypyFile,
