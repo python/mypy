@@ -1623,7 +1623,8 @@ class State:
                         self.ignore_all = True
                     else:
                         # In 'error' mode, produce special error messages.
-                        manager.log("Skipping %s (%s)" % (path, id))
+                        if id not in manager.missing_modules:
+                            manager.log("Skipping %s (%s)" % (path, id))
                         if follow_imports == 'error':
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
