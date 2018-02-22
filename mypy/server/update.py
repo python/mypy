@@ -114,10 +114,8 @@ test cases (test-data/unit/fine-grained*.test).
 Major todo items:
 
 - Fully support multiple type checking passes
-- Use mypy.fscache to access file system
 """
 
-import os.path
 from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
 
 from mypy.build import (
@@ -132,6 +130,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.types import Type
+from mypy.fscache import FileSystemCache
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, is_identical_type, SnapshotItem
 )
@@ -352,7 +351,7 @@ def update_single_isolated(module: str,
         manager.log_fine_grained('new module %r' % module)
 
     old_modules = dict(manager.modules)
-    sources = get_sources(previous_modules, [(module, path)])
+    sources = get_sources(manager.fscache, previous_modules, [(module, path)])
 
     if module in manager.missing_modules:
         manager.missing_modules.remove(module)
@@ -376,7 +375,7 @@ def update_single_isolated(module: str,
             remaining_modules = []
         return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
 
-    if not os.path.isfile(path):
+    if not manager.fscache.isfile(path):
         delete_module(module, graph, manager)
         return NormalUpdate(module, path, [], None)
 
@@ -506,13 +505,14 @@ def get_module_to_path_map(manager: BuildManager) -> Dict[str, str]:
             for module, node in manager.modules.items()}
 
 
-def get_sources(modules: Dict[str, str],
+def get_sources(fscache: FileSystemCache,
+                modules: Dict[str, str],
                 changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
     # TODO: Race condition when reading from the file system; we should only read each
     #       bit of external state once during a build to have a consistent view of the world
     sources = []
     for id, path in changed_modules:
-        if os.path.isfile(path):
+        if fscache.isfile(path):
             sources.append(BuildSource(path, id, None))
     return sources
 
