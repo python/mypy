@@ -161,6 +161,7 @@ class FineGrainedBuildManager:
         self.previous_modules = get_module_to_path_map(manager)
         self.deps = get_all_dependencies(manager, graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
+        self.graph = graph
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         # TODO: Handle blocking errors in the initial build
         self.blocking_error = None  # type: Optional[Tuple[str, str]]
@@ -170,8 +171,7 @@ class FineGrainedBuildManager:
         # for the cache. This is kind of a hack and it might be better to have
         # this directly reflected in load_graph's interface.
         self.options.cache_dir = os.devnull
-        mark_all_meta_as_memory_only(graph, manager)
-        manager.saved_cache = preserve_full_cache(graph, manager)
+        manager.saved_cache = {}
         self.type_maps = extract_type_maps(graph)
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
@@ -261,7 +261,7 @@ class FineGrainedBuildManager:
             old_snapshots[module] = snapshot
 
         manager.errors.reset()
-        result = update_single_isolated(module, path, manager, previous_modules)
+        result = update_single_isolated(module, path, manager, previous_modules, self.graph)
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
             module, path, remaining, errors = result
@@ -294,23 +294,13 @@ class FineGrainedBuildManager:
             if state.tree is None and id in manager.saved_cache:
                 meta, tree, type_map = manager.saved_cache[id]
                 state.tree = tree
-        mark_all_meta_as_memory_only(graph, manager)
-        manager.saved_cache = preserve_full_cache(graph, manager)
         self.previous_modules = get_module_to_path_map(manager)
         self.type_maps = extract_type_maps(graph)
 
+        # XXX: I want us to not need this
+        self.graph = graph
+
         return manager.errors.new_messages(), remaining, (module, path), False
-
-
-def mark_all_meta_as_memory_only(graph: Dict[str, State],
-                                 manager: BuildManager) -> None:
-    for id, state in graph.items():
-        if id in manager.saved_cache:
-            # Don't look at disk.
-            old = manager.saved_cache[id]
-            manager.saved_cache[id] = (old[0]._replace(memory_only=True),
-                                       old[1],
-                                       old[2])
 
 
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
@@ -350,7 +340,8 @@ UpdateResult = Union[NormalUpdate, BlockedUpdate]
 def update_single_isolated(module: str,
                            path: str,
                            manager: BuildManager,
-                           previous_modules: Dict[str, str]) -> UpdateResult:
+                           previous_modules: Dict[str, str],
+                           graph: Graph) -> UpdateResult:
     """Build a new version of one changed module only.
 
     Don't propagate changes to elsewhere in the program. Raise CompleError on
@@ -371,11 +362,11 @@ def update_single_isolated(module: str,
 
     old_modules = dict(manager.modules)
     sources = get_sources(previous_modules, [(module, path)])
-    invalidate_stale_cache_entries(manager.saved_cache, [(module, path)])
+    invalidate_stale_cache_entries(manager.saved_cache, graph, [(module, path)])
 
     manager.missing_modules.clear()
     try:
-        graph = load_graph(sources, manager)
+        load_graph(sources, manager, graph)
     except CompileError as err:
         # Parse error somewhere in the program -- a blocker
         assert err.module_with_blocker
@@ -437,6 +428,7 @@ def update_single_isolated(module: str,
     replace_modules_with_new_variants(manager, graph, old_modules, new_modules)
 
     # Perform type checking.
+    state.type_checker().reset()
     state.type_check_first_pass()
     state.type_check_second_pass()
     state.compute_fine_grained_deps()
@@ -488,8 +480,9 @@ def delete_module(module_id: str,
     manager.log_fine_grained('delete module %r' % module_id)
     # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
-    assert module_id not in graph
     new_graph = graph.copy()
+    if module_id in new_graph:
+        del new_graph[module_id]
     if module_id in manager.modules:
         del manager.modules[module_id]
     if module_id in manager.saved_cache:
@@ -529,9 +522,11 @@ def get_sources(modules: Dict[str, str],
     sources = [BuildSource(path, id, None)
                for id, path in items
                if os.path.isfile(path)]
+    sources = []
     for id, path in changed_modules:
-        if os.path.isfile(path) and id not in modules:
+        if os.path.isfile(path):# and id not in modules:
             sources.append(BuildSource(path, id, None))
+    # print(changed_modules, sources)
     return sources
 
 
@@ -549,75 +544,14 @@ def get_all_changed_modules(root_module: str,
     return changed_modules
 
 
-def preserve_full_cache(graph: Graph, manager: BuildManager) -> SavedCache:
-    """Preserve every module with an AST in the graph, including modules with errors."""
-    saved_cache = {}
-    for id, state in graph.items():
-        assert state.id == id
-        if state.tree is not None:
-            meta = state.meta
-            if meta is None:
-                # No metadata, likely because of an error. We still want to retain the AST.
-                # There is no corresponding JSON so create partial "memory-only" metadata.
-                assert state.path
-                dep_prios = state.dependency_priorities()
-                dep_lines = state.dependency_lines()
-                meta = memory_only_cache_meta(
-                    id,
-                    state.path,
-                    state.dependencies,
-                    state.suppressed,
-                    list(state.child_modules),
-                    dep_prios,
-                    dep_lines,
-                    state.source_hash,
-                    state.ignore_all,
-                    manager)
-            else:
-                meta = meta._replace(memory_only=True)
-            saved_cache[id] = (meta, state.tree, state.type_map())
-    return saved_cache
-
-
-def memory_only_cache_meta(id: str,
-                           path: str,
-                           dependencies: List[str],
-                           suppressed: List[str],
-                           child_modules: List[str],
-                           dep_prios: List[int],
-                           dep_lines: List[int],
-                           source_hash: str,
-                           ignore_all: bool,
-                           manager: BuildManager) -> CacheMeta:
-    """Create cache metadata for module that doesn't have a JSON cache files.
-
-    JSON cache files aren't written for modules with errors, but we want to still
-    cache them in fine-grained incremental mode.
-    """
-    options = manager.options.clone_for_module(id)
-    # Note that we omit attributes related to the JSON files.
-    meta = {'id': id,
-            'path': path,
-            'memory_only': True,  # Important bit: don't expect JSON files to exist
-            'hash': source_hash,
-            'dependencies': dependencies,
-            'suppressed': suppressed,
-            'child_modules': child_modules,
-            'options': options.select_options_affecting_cache(),
-            'dep_prios': dep_prios,
-            'dep_lines': dep_lines,
-            'interface_hash': '',
-            'version_id': manager.version_id,
-            'ignore_all': ignore_all,
-            }
-    return cache_meta_from_dict(meta, '')
-
-
 def invalidate_stale_cache_entries(cache: SavedCache,
+                                   graph: Graph,
                                    changed_modules: List[Tuple[str, str]]) -> None:
     for name, _ in changed_modules:
         if name in cache:
             del cache[name]
+        if name in graph:
+            del graph[name]
 
 
 def verify_dependencies(state: State, manager: BuildManager) -> None:
@@ -809,8 +743,8 @@ def reprocess_nodes(manager: BuildManager,
 
     Return fired triggers.
     """
-    if module_id not in manager.saved_cache or module_id not in graph:
-        manager.log_fine_grained('%s not in saved cache or graph (blocking errors or deleted?)' %
+    if module_id not in graph:
+        manager.log_fine_grained('%s not in graph (blocking errors or deleted?)' %
                     module_id)
         return set()
 
@@ -863,10 +797,8 @@ def reprocess_nodes(manager: BuildManager,
             merge_asts(file_node, old_symbols[name], file_node, new_symbols[name])
 
     # Type check.
-    meta, file_node, type_map = manager.saved_cache[module_id]
-    graph[module_id].tree = file_node
-    graph[module_id].type_checker().type_map = type_map
     checker = graph[module_id].type_checker()
+    checker.reset()
     # We seem to need additional passes in fine-grained incremental mode.
     checker.pass_num = 0
     checker.last_pass = 3

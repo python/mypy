@@ -149,6 +149,7 @@ class TypeCheckSuite(DataSuite):
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.verbosity = 1
         if 'optional' in testcase.file:
             options.strict_optional = True
         if incremental_step:

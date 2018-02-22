@@ -282,10 +282,11 @@ class Server:
         if self.options.use_fine_grained_cache:
             # Pull times and hashes out of the saved_cache and stick them into
             # the fswatcher, so we pick up the changes.
-            for meta, mypyfile, type_map in manager.saved_cache.values():
-                if meta.mtime is None: continue
+            for state in self.fine_grained_manager.graph.values():
+                meta = state.meta
+                if meta is None: continue
                 self.fswatcher.set_file_data(
-                    mypyfile.path,
+                    state.xpath,
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
             # Run an update
