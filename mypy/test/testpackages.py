@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import os
+import shutil
 import sys
 from typing import Generator, List
 from unittest import TestCase, main
@@ -57,50 +58,57 @@ class TestPackages(TestCase):
 
         This test CANNOT be split up, concurrency means that simultaneously
         installing/uninstalling will break tests"""
-        with open('simple.py', 'w') as f:
+        test_file = 'simple.py'
+        if not os.path.isdir('test-packages-data'):
+            os.mkdir('test-packages-data')
+        old_cwd = os.getcwd()
+        os.chdir('test-packages-data')
+        with open(test_file, 'w') as f:
             f.write(SIMPLE_PROGRAM)
-
-        with self.install_package('typedpkg-stubs'):
-            self.check_mypy_run(
-                ['simple.py'],
-                "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
-            )
-
-        # The Python 2 tests are intentionally placed after a Python 3 test to check
-        # the package_dir_cache is behaving correctly.
-        python2 = try_find_python2_interpreter()
-        if python2:
-            with self.install_package('typedpkg-stubs', python2):
+        try:
+            with self.install_package('typedpkg-stubs'):
                 self.check_mypy_run(
-                    ['--python-executable={}'.format(python2), 'simple.py'],
+                    [test_file],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
-            with self.install_package('typedpkg', python2):
+
+            # The Python 2 tests are intentionally placed after a Python 3 test to check
+            # the package_dir_cache is behaving correctly.
+            python2 = try_find_python2_interpreter()
+            if python2:
+                with self.install_package('typedpkg-stubs', python2):
+                    self.check_mypy_run(
+                        ['--python-executable={}'.format(python2), test_file],
+                        "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                    )
+                with self.install_package('typedpkg', python2):
+                    self.check_mypy_run(
+                        ['--python-executable={}'.format(python2), 'simple.py'],
+                        "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
+                    )
+
+                with self.install_package('typedpkg', python2):
+                    with self.install_package('typedpkg-stubs', python2):
+                        self.check_mypy_run(
+                            ['--python-executable={}'.format(python2), test_file],
+                            "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                        )
+
+            with self.install_package('typedpkg'):
                 self.check_mypy_run(
-                    ['--python-executable={}'.format(python2), 'simple.py'],
+                    [test_file],
                     "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
                 )
 
-            with self.install_package('typedpkg', python2):
-                with self.install_package('typedpkg-stubs', python2):
+            with self.install_package('typedpkg'):
+                with self.install_package('typedpkg-stubs'):
                     self.check_mypy_run(
-                        ['--python-executable={}'.format(python2), 'simple.py'],
+                        [test_file],
                         "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                     )
-
-        with self.install_package('typedpkg'):
-            self.check_mypy_run(
-                ['simple.py'],
-                "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
-            )
-
-        with self.install_package('typedpkg'):
-            with self.install_package('typedpkg-stubs'):
-                self.check_mypy_run(
-                    ['simple.py'],
-                    "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
-                )
-        os.remove('simple.py')
+        finally:
+            os.chdir(old_cwd)
+            shutil.rmtree('test-packages-data')
 
 
 if __name__ == '__main__':
