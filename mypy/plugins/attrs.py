@@ -114,6 +114,12 @@ class Attribute:
             Context(line=data['context_line'], column=data['context_column'])
         )
 
+    def var(self, ctx: 'mypy.plugin.ClassDefContext') -> Var:
+        """Return the Var node that this attribute points to."""
+        node = ctx.cls.info.names[self.name].node
+        assert isinstance(node, Var)
+        return node
+
 
 def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                               auto_attribs_default: bool = False) -> None:
@@ -188,6 +194,10 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {'attributes': [attr.serialize() for attr in attributes]}
+
+    # Make sure all our attributes are instance variables and not class variables.
+    for attribute in own_attrs.values():
+        attribute.var(ctx).is_initialized_in_class = False
 
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
@@ -386,10 +396,7 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
     """Turn all the attributes into properties to simulate frozen classes."""
     # TODO: Handle subclasses of frozen classes.
     for attribute in attributes:
-        node = ctx.cls.info.names[attribute.name].node
-        assert isinstance(node, Var)
-        node.is_initialized_in_class = False
-        node.is_property = True
+        attribute.var(ctx).is_property = True
 
 
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
