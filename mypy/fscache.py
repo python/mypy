@@ -39,10 +39,6 @@ class FileSystemCache:
         self.pyversion = pyversion
         self.flush()
 
-    def set_pyversion(self, pyversion: Tuple[int, int]) -> None:
-        assert not self.read_cache
-        self.pyversion = pyversion
-
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         self.stat_cache = {}  # type: Dict[str, os.stat_result]
