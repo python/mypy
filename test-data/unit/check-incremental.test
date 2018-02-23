@@ -3766,19 +3766,53 @@ main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> 
 main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
 
 [case testAttrsIncrementalConverterManyStyles]
+import a
+[file a.py]
 from base import Base
-reveal_type(Base)
+Base(1, 'str', True)
+Base(None, None, None)
+
 from subclass import A, B
-reveal_type(A)
-reveal_type(B)
+A(1, 'str', True)
+A(None, None, None)
+B(1, 'str', True, 1, 'str', True)
+B(None, None, None, None, None, None)
+
 from submodule.base import SubBase
-reveal_type(SubBase)
+SubBase(1, 'str', True)
+SubBase(None, None, None)
+
 from submodule.subclass import AA, BB
-reveal_type(AA)
-reveal_type(BB)
+AA(1, 'str', True)
+AA(None, None, None)
+BB(1, 'str', True, 1, 'str', True)
+BB(None, None, None, None, None, None)
+
 from submodule.subsubclass import SubAA, SubBB
-reveal_type(SubAA)
-reveal_type(SubBB)
+SubAA(1, 'str', True)
+SubAA(None, None, None)
+SubBB(1, 'str', True, 1, 'str', True)
+SubBB(None, None, None, None, None, None)
+
+[file a.py.2]
+# Now with errors.
+from base import Base
+Base(1, 1, True)
+
+from subclass import A, B
+A(1, 1, True)
+B(1, 'str', True, 1, 1, True)
+
+from submodule.base import SubBase
+SubBase(1, 1, True)
+
+from submodule.subclass import AA, BB
+AA(1, 1, True)
+BB(1, 'str', True, 1, 1, True)
+
+from submodule.subsubclass import SubAA, SubBB
+SubAA(1, 1, True)
+SubBB(1, 'str', True, 1, 1, True)
 
 [file foo.py]
 from typing import Optional
@@ -3866,23 +3900,15 @@ class SubBB(SubBase):
     zz: bool = attr.ib(converter=bar.maybe_bool)
 [builtins fixtures/list.pyi]
 [out1]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> base.Base'
-main:4: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> subclass.A'
-main:5: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None], xx: Union[builtins.int, builtins.None], yy: Union[builtins.str, builtins.None], zz: Union[builtins.bool, builtins.None]) -> subclass.B'
-main:7: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> submodule.base.SubBase'
-main:9: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> submodule.subclass.AA'
-main:10: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None], xx: Union[builtins.int, builtins.None], yy: Union[builtins.str, builtins.None], zz: Union[builtins.bool, builtins.None]) -> submodule.subclass.BB'
-main:12: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> submodule.subsubclass.SubAA'
-main:13: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None], xx: Union[builtins.int, builtins.None], yy: Union[builtins.str, builtins.None], zz: Union[builtins.bool, builtins.None]) -> submodule.subsubclass.SubBB'
 [out2]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> base.Base'
-main:4: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> subclass.A'
-main:5: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None], xx: Union[builtins.int, builtins.None], yy: Union[builtins.str, builtins.None], zz: Union[builtins.bool, builtins.None]) -> subclass.B'
-main:7: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> submodule.base.SubBase'
-main:9: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> submodule.subclass.AA'
-main:10: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None], xx: Union[builtins.int, builtins.None], yy: Union[builtins.str, builtins.None], zz: Union[builtins.bool, builtins.None]) -> submodule.subclass.BB'
-main:12: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None]) -> submodule.subsubclass.SubAA'
-main:13: error: Revealed type is 'def (x: Union[builtins.int, builtins.None], y: Union[builtins.str, builtins.None], z: Union[builtins.bool, builtins.None], xx: Union[builtins.int, builtins.None], yy: Union[builtins.str, builtins.None], zz: Union[builtins.bool, builtins.None]) -> submodule.subsubclass.SubBB'
+tmp/a.py:3: error: Argument 2 to "Base" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:6: error: Argument 2 to "A" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:7: error: Argument 5 to "B" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:10: error: Argument 2 to "SubBase" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:13: error: Argument 2 to "AA" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:14: error: Argument 5 to "BB" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:17: error: Argument 2 to "SubAA" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:18: error: Argument 5 to "SubBB" has incompatible type "int"; expected "Optional[str]"
 
 [case testAttrsIncrementalConverterInFunction]
 import attr
@@ -3895,9 +3921,9 @@ def foo() -> None:
     reveal_type(A)
 [builtins fixtures/list.pyi]
 [out1]
-main:8: error: Revealed type is 'def (x: str?) -> __main__.A@5'
+main:8: error: Revealed type is 'def (x: builtins.str) -> __main__.A@5'
 [out2]
-main:8: error: Revealed type is 'def (x: str?) -> __main__.A@5'
+main:8: error: Revealed type is 'def (x: builtins.str) -> __main__.A@5'
 
 [case testAttrsIncrementalConverterInSubmoduleForwardRef]
 from a.a import A

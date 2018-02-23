@@ -64,11 +64,13 @@ class Attribute:
                     and converter.type
                     and isinstance(converter.type, CallableType)
                     and converter.type.arg_types):
-                init_type = converter.type.arg_types[0]
+                init_type = ctx.api.anal_type(converter.type.arg_types[0])
             else:
+                ctx.api.fail("Cannot determine type of converter function", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
         elif self.converter_name == '':
             # This means we had a converter but it's not of a type we can infer.
+            # Error was shown in _get_converter_name
             init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
@@ -317,12 +319,13 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert
-    converter_name = _get_converter_name(converter)
+    converter_name = _get_converter_name(ctx, converter)
 
     return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, converter_name, stmt)
 
 
-def _get_converter_name(converter: Optional[Expression]) -> Optional[str]:
+def _get_converter_name(ctx: 'mypy.plugin.ClassDefContext',
+                        converter: Optional[Expression]) -> Optional[str]:
     """Return the full name of the converter if it exists and is a simple function."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if converter:
@@ -334,6 +337,10 @@ def _get_converter_name(converter: Optional[Expression]) -> Optional[str]:
                 and converter.node.type.arg_types):
             return converter.node.fullname()
         # Signal that we have an unsupported converter.
+        ctx.api.fail(
+            "Unsupported converter function, only named functions are currently supported",
+            converter
+        )
         return ''
     return None
 
