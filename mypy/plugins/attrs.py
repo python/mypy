@@ -54,7 +54,7 @@ class Attribute:
         if self.converter_name:
             # When a converter is set the init_type is overriden by the first argument
             # of the converter method.
-            converter = ctx.api.lookup_fully_qualified(self.converter_name)
+            converter = ctx.api.lookup_fully_qualified_or_none(self.converter_name)
             if (converter
                     and converter.type
                     and isinstance(converter.type, CallableType)
