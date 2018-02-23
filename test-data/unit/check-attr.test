@@ -532,21 +532,6 @@ class C:
 
 [builtins fixtures/list.pyi]
 
-[case testAttrsUsingUnsupportedConverter]
-import attr
-class Thing:
-    def do_it(self, int) -> str:
-        ...
-thing = Thing()
-def factory(default: int):
-   ...
-@attr.s
-class C:
-    x: str = attr.ib(converter=thing.do_it)
-    y: str = attr.ib(converter=lambda x: x)
-    z: str = attr.ib(converter=factory(8))
-reveal_type(C)  # E: Revealed type is 'def (x: Any, y: Any, z: Any) -> __main__.C'
-[builtins fixtures/list.pyi]
 
 [case testAttrsUsingConverterAndSubclass]
 import attr
