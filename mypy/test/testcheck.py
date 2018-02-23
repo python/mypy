@@ -3,6 +3,7 @@
 import os
 import re
 import shutil
+import sys
 
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -312,7 +313,7 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                path = build.find_module(module_name, [test_temp_dir], sys.executable)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()

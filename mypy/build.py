@@ -903,11 +903,9 @@ def get_package_dirs(python_executable: str) -> List[str]:
 
 
 def find_module(id: str, lib_path_arg: Iterable[str],
-                python_executable: Optional[str] = None) -> Optional[str]:
+                python_executable: str) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-    if python_executable is None:
-        python_executable = sys.executable
     package_dirs = get_package_dirs(python_executable)
     if not package_dirs:
         print("Could not find package directories for Python '{}'".format(
@@ -939,8 +937,8 @@ def find_module(id: str, lib_path_arg: Iterable[str],
         for pkg_dir in package_dirs:
             stub_name = components[0] + '-stubs'
             typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
-            stub_typed_file = os.path.join(pkg_dir, stub_name, 'py.typed')
-            if os.path.isfile(stub_typed_file):
+            stub_dir = os.path.join(pkg_dir, stub_name)
+            if os.path.isdir(stub_dir):
                 components[0] = stub_name
                 rest = components[:-1]
                 path = os.path.join(pkg_dir, *rest)
@@ -964,7 +962,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                path_stubs = base_path + '_stubs' + sepinit + extension
+                path_stubs = base_path + '-stubs' + sepinit + extension
                 if is_file(path) and verify_module(id, path):
                     return path
                 elif is_file(path_stubs) and verify_module(id, path_stubs):
@@ -979,7 +977,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
     if id not in find_module_cache:
         find_module_cache[id] = find()
 
-    #  If we searched for items with a base directory of site-packages/ we need to
+    # If we searched for items with a base directory of site-packages/ we need to
     # remove it to avoid searching it for non-typed ids.
     for dir in package_dirs:
         if dir + os.sep in find_module_dir_cache[dir_chain]:
@@ -989,8 +987,8 @@ def find_module(id: str, lib_path_arg: Iterable[str],
 
 
 def find_modules_recursive(module: str, lib_path: List[str],
-                           python: Optional[str]) -> List[BuildSource]:
-    module_path = find_module(module, lib_path, python)
+                           python_executable: str) -> List[BuildSource]:
+    module_path = find_module(module, lib_path, python_executable)
     if not module_path:
         return []
     result = [BuildSource(module_path, module, None)]
@@ -1010,14 +1008,14 @@ def find_modules_recursive(module: str, lib_path: List[str],
                     (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
                     os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
                 hits.add(item)
-                result += find_modules_recursive(module + '.' + item, lib_path, python)
+                result += find_modules_recursive(module + '.' + item, lib_path, python_executable)
             elif item != '__init__.py' and item != '__init__.pyi' and \
                     item.endswith(('.py', '.pyi')):
                 mod = item.split('.')[0]
                 if mod not in hits:
                     hits.add(mod)
                     result += find_modules_recursive(module + '.' + mod,
-                                                     lib_path, python)
+                                                     lib_path, python_executable)
     return result
 
 
