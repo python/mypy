@@ -18,7 +18,7 @@ reveal_type(a)
 """
 
 
-class TestPackages(TestCase):
+class TestPEP561(TestCase):
     @contextmanager
     def install_package(self, pkg: str,
                         python_executable: str = sys.executable) -> Generator[None, None, None]:
@@ -37,7 +37,7 @@ class TestPackages(TestCase):
         finally:
             run_command([python_executable, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
 
-    def test_get_package_dirs(self) -> None:
+    def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
         dirs = get_package_dirs(sys.executable)
         assert dirs
@@ -53,7 +53,7 @@ class TestPackages(TestCase):
         assert err == expected_err, out
         assert returncode == expected_returncode, returncode
 
-    def test_typed_package(self) -> None:
+    def test_typed_pkg(self) -> None:
         """Tests type checking based on installed packages.
 
         This test CANNOT be split up, concurrency means that simultaneously

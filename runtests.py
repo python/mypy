@@ -212,7 +212,6 @@ PYTEST_FILES = test_path(
     'testmerge',
     'testtransform',
     'testtypegen',
-    'testpackages',
     'testparse',
     'testsemanal',
     'testerrorstream',
@@ -232,6 +231,8 @@ SLOW_FILES = test_path(
     'testpythoneval',
     'testcmdline',
     'teststubgen',
+    # non-data-driven:
+    'testpep561',
 )
 
 for f in find_files('mypy', prefix='test', suffix='.py'):
