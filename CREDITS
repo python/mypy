@@ -7,12 +7,17 @@ https://github.com/python/mypy/commits/master
 For lists of contributors per mypy release (including typeshed) see
 the release blog posts at https://mypy-lang.blogspot.com/.
 
-Mypy team:
+Dropbox core team:
 
   Jukka Lehtosalo <jukka.lehtosalo@iki.fi>
   Guido van Rossum <guido@python.org>
   Ivan Levkivskyi
   Michael J. Sullivan
+
+Non-Dropbox core team members:
+
+  Ethan Smith
+  Jelle Zijlstra
 
 Past Dropbox core team members:
 
@@ -22,11 +27,6 @@ Past Dropbox core team members:
   Naomi Seyfer
   Michael Lee
   Reid Barton
-
-Non-Dropbox core team members:
-
-  Ethan Smith
-  Jelle Zijlstra
 
 Additional thanks to:
 
