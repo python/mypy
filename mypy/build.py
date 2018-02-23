@@ -1796,8 +1796,11 @@ class State:
                     source = manager.fscache.read_with_python_encoding(path)
                     self.source_hash = manager.fscache.md5(path)
                 except IOError as ioerr:
+                    # ioerr.strerror differs for os.stat failures between Windows and
+                    # other systems, but os.strerror(ioerr.errno) does not, so we use that.
                     raise CompileError([
-                        "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
+                        "mypy: can't read file '{}': {}".format(
+                            self.path, os.strerror(ioerr.errno))])
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
