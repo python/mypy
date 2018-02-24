@@ -1786,9 +1786,35 @@ y = 0
 tmp/m.py:2: error: "int" not callable
 main:3: error: "int" not callable
 
+[case testForwardReferenceToDecoratedClassMethod]
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+def dec() -> Callable[[T], T]: pass
+
+A.g  # E: Cannot determine type of 'g'
+
+class A:
+    @classmethod
+    def f(cls) -> None:
+        reveal_type(cls.g)  # E: Revealed type is 'def (x: builtins.str)'
+
+    @classmethod
+    @dec()
+    def g(cls, x: str) -> None:
+        pass
+
+    @classmethod
+    def h(cls) -> None:
+        reveal_type(cls.g)  # E: Revealed type is 'def (x: builtins.str)'
+
+reveal_type(A.g)  # E: Revealed type is 'def (x: builtins.str)'
+[builtins fixtures/classmethod.pyi]
+
 
 -- Tests for special cases of unification
 -- --------------------------------------
+
 
 [case testUnificationRedundantUnion]
 from typing import Union
@@ -2001,3 +2027,279 @@ if bool():
     1() # E: "int" not callable
 [builtins fixtures/list.pyi]
 [out]
+
+
+-- --local-partial-types
+-- ---------------------
+
+
+[case testLocalPartialTypesWithGlobalInitializedToNone]
+# flags: --local-partial-types
+x = None # E: Need type annotation for 'x'
+
+def f() -> None:
+    global x
+    x = 1
+
+# TODO: "Any" could be a better type here to avoid multiple error messages
+reveal_type(x) # E: Revealed type is 'builtins.None'
+
+[case testLocalPartialTypesWithGlobalInitializedToNone2]
+# flags: --local-partial-types
+x = None # E: Need type annotation for 'x'
+
+def f():
+    global x
+    x = 1
+
+# TODO: "Any" could be a better type here to avoid multiple error messages
+reveal_type(x) # E: Revealed type is 'builtins.None'
+
+[case testLocalPartialTypesWithGlobalInitializedToNone3]
+# flags: --local-partial-types
+x = None
+
+def f() -> None:
+    global x
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+x = ''
+reveal_type(x) # E: Revealed type is 'builtins.str'
+
+[case testLocalPartialTypesWithGlobalInitializedToNoneStrictOptional]
+# flags: --local-partial-types --strict-optional
+x = None
+
+def f() -> None:
+    global x
+    x = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[str]")
+
+x = ''
+def g() -> None:
+    reveal_type(x) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+
+[case testLocalPartialTypesWithGlobalInitializedToNone4]
+# flags: --local-partial-types
+a = None
+
+def f() -> None:
+    reveal_type(a)  # E: Revealed type is 'builtins.str'
+
+# TODO: This should probably be 'builtins.str', since there could be a
+#     call that causes a non-None value to be assigned
+reveal_type(a)  # E: Revealed type is 'builtins.None'
+a = ''
+reveal_type(a)  # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithClassAttributeInitializedToNone]
+# flags: --local-partial-types
+class A:
+    x = None # E: Need type annotation for 'x'
+
+    def f(self) -> None:
+        self.x = 1
+
+[case testLocalPartialTypesWithClassAttributeInitializedToEmptyDict]
+# flags: --local-partial-types
+class A:
+    x = {}  # E: Need type annotation for 'x'
+
+    def f(self) -> None:
+        self.x[0] = ''
+
+reveal_type(A().x)  # E: Revealed type is 'Any'
+reveal_type(A.x)  # E: Revealed type is 'Any'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyList]
+# flags: --local-partial-types
+a = []
+
+def f() -> None:
+    a[0]
+    reveal_type(a)  # E: Revealed type is 'builtins.list[builtins.int]'
+
+a.append(1)
+reveal_type(a) # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyList2]
+# flags: --local-partial-types
+a = [] # E: Need type annotation for 'a'
+
+def f() -> None:
+    a.append(1)
+    reveal_type(a)  # E: Revealed type is 'Any'
+
+reveal_type(a) # E: Revealed type is 'Any'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyList3]
+# flags: --local-partial-types
+a = [] # E: Need type annotation for 'a'
+
+def f():
+    a.append(1)
+
+reveal_type(a) # E: Revealed type is 'Any'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyDict]
+# flags: --local-partial-types
+a = {}
+
+def f() -> None:
+    a[0]
+    reveal_type(a)  # E: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+
+a[0] = ''
+reveal_type(a) # E: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyDict2]
+# flags: --local-partial-types
+a = {} # E: Need type annotation for 'a'
+
+def f() -> None:
+    a[0] = ''
+    reveal_type(a)  # E: Revealed type is 'Any'
+
+reveal_type(a) # E: Revealed type is 'Any'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithGlobalInitializedToEmptyDict3]
+# flags: --local-partial-types
+a = {} # E: Need type annotation for 'a'
+
+def f():
+    a[0] = ''
+
+reveal_type(a) # E: Revealed type is 'Any'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithNestedFunction]
+# flags: --local-partial-types
+def f() -> None:
+    a = {}
+    def g() -> None:
+        a[0] = ''
+    reveal_type(a) # E: Revealed type is 'builtins.dict[builtins.int, builtins.str]'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithNestedFunction2]
+# flags: --local-partial-types
+def f() -> None:
+    a = []
+    def g() -> None:
+        a.append(1)
+    reveal_type(a) # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesWithNestedFunction3]
+# flags: --local-partial-types
+def f() -> None:
+    a = None
+    def g() -> None:
+        nonlocal a
+        a = ''
+    reveal_type(a) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+
+[case testLocalPartialTypesWithInheritance]
+# flags: --local-partial-types
+from typing import Optional
+
+class A:
+    x: Optional[str]
+
+class B(A):
+    x = None
+
+reveal_type(B.x) # E: Revealed type is 'builtins.None'
+
+[case testLocalPartialTypesWithInheritance2]
+# flags: --local-partial-types --strict-optional
+class A:
+    x: str
+
+class B(A):
+    x = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "str")
+
+[case testLocalPartialTypesWithAnyBaseClass]
+# flags: --local-partial-types --strict-optional
+from typing import Any
+
+A: Any
+
+class B(A):
+    x = None
+
+class C(B):
+    y = None
+
+[case testLocalPartialTypesInMultipleMroItems]
+# flags: --local-partial-types --strict-optional
+from typing import Optional
+
+class A:
+    x: Optional[str]
+
+class B(A):
+    x = None
+
+class C(B):
+    x = None
+
+# TODO: Inferring None below is unsafe (https://github.com/python/mypy/issues/3208)
+reveal_type(B.x)  # E: Revealed type is 'builtins.None'
+reveal_type(C.x)  # E: Revealed type is 'builtins.None'
+
+[case testLocalPartialTypesWithInheritance2-skip]
+# flags: --local-partial-types
+# This is failing because of https://github.com/python/mypy/issues/4552
+from typing import Optional
+
+class X: pass
+class Y(X): pass
+
+class A:
+    x: Optional[X]
+
+class B(A):
+    x = None
+    x = Y()
+
+reveal_type(B.x) # E: revealed type is 'Union[__main__.Y, builtins.None]'
+
+[case testLocalPartialTypesBinderSpecialCase]
+# flags: --local-partial-types
+from typing import List
+
+def f(x): pass
+
+class A:
+    x = None  # E: Need type annotation for 'x'
+
+    def f(self, p: List[str]) -> None:
+        self.x = f(p)
+        f(z for z in p)
+[builtins fixtures/list.pyi]
+
+[case testLocalPartialTypesAccessPartialNoneAttribute]
+# flags: --local-partial-types
+class C:
+    a = None  # E: Need type annotation for 'a'
+
+    def f(self, x) -> None:
+        # TODO: It would be better for the type to be Any here
+        C.a.y  # E: "None" has no attribute "y"
+
+[case testLocalPartialTypesAccessPartialNoneAttribute]
+# flags: --local-partial-types
+class C:
+    a = None  # E: Need type annotation for 'a'
+
+    def f(self, x) -> None:
+        # TODO: It would be better for the type to be Any here
+        self.a.y  # E: "None" has no attribute "y"

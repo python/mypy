@@ -80,11 +80,7 @@ For every pull request, we aim to promptly either merge it or say why
 it's not yet ready; if you go a few days without a reply, please feel
 free to ping the thread by adding a new comment.
 
-At present the core developers are (alphabetically):
-* David Fisher (@ddfisher)
-* Jukka Lehtosalo (@JukkaL)
-* Greg Price (@gnprice)
-* Guido van Rossum (@gvanrossum)
+For a list of mypy core developers, see the file [CREDITS](CREDITS).
 
 
 Preparing Changes

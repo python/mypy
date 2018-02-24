@@ -43,7 +43,7 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr
 )
 from mypy.traverser import TraverserVisitor
 
@@ -203,6 +203,10 @@ class NodeStripVisitor(TraverserVisitor):
             self.strip_class_attr(node.name)
             node.def_var = None
         super().visit_member_expr(node)
+
+    def visit_index_expr(self, node: IndexExpr) -> None:
+        node.analyzed = None  # was a type alias
+        super().visit_index_expr(node)
 
     def strip_class_attr(self, name: str) -> None:
         if self.type is not None:

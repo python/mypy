@@ -415,6 +415,9 @@ def process_options(args: List[str],
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
     # --semantic-analysis-only does exactly that.
     parser.add_argument('--semantic-analysis-only', action='store_true', help=argparse.SUPPRESS)
+    # --local-partial-types disallows partial types spanning module top level and a function
+    # (implicitly defined in fine-grained incremental mode)
+    parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
     parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
                         help=argparse.SUPPRESS)
