@@ -102,6 +102,8 @@ class ASTMergeSuite(DataSuite):
         options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.python_version = (3, 6)
+        options.no_site_packages = True
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w') as f:
             f.write(source)

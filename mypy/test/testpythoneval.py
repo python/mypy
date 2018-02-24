@@ -47,7 +47,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     version.
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
-    mypy_cmdline = ['--show-traceback']
+    mypy_cmdline = ['--show-traceback', '--no-site-packages']
     py2 = testcase.name.lower().endswith('python2')
     if py2:
         mypy_cmdline.append('--py2')
@@ -59,6 +59,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
             return
     else:
         interpreter = python3_path
+        mypy_cmdline.append('--python-version=3.6')
 
     # Write the program to a file.
     program = '_' + testcase.name + '.py'

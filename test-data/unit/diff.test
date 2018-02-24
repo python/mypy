@@ -577,6 +577,7 @@ __main__.Point
 __main__.p
 
 [case testTypedDict2]
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 class Point(TypedDict):
     x: int
