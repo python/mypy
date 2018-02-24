@@ -230,7 +230,7 @@ def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
             'Error: invalid Python executable {}'.format(python_executable))
 
 
-def _python_executable_from_version(python_version: Tuple[int, int]) -> Optional[str]:
+def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
     str_ver = '.'.join(map(str, python_version))
@@ -538,25 +538,27 @@ def process_options(args: List[str],
                 options.python_version = special_opts.python_version
                 options.python_executable = special_opts.python_executable
         except PythonExecutableInferenceError as e:
-            parser.error(e)
+            parser.error(str(e))
             sys.exit(2)
     elif special_opts.python_executable is None and special_opts.python_version is not None:
-        try:
-            py_exe = _python_executable_from_version(special_opts.python_version)
-            options.python_executable = py_exe
-        except PythonExecutableInferenceError as e:
-            if not options.no_site_packages:
-                # raise error if we cannot find site-packages and PEP 561 searching is not disabled
-                parser.error(e)
-                sys.exit(2)
-        finally:
-            options.python_version = special_opts.python_version
+        options.python_version = special_opts.python_version
+        if not options.no_site_packages:
+            try:
+                py_exe = _python_executable_from_version(special_opts.python_version)
+                options.python_executable = py_exe
+            except PythonExecutableInferenceError as e:
+                if not options.no_site_packages:
+                    # raise error if we cannot find site-packages and PEP 561
+                    # searching is not disabled
+                    parser.error(str(e))
+                    sys.exit(2)
     elif special_opts.python_version is None and special_opts.python_executable is not None:
         try:
-            options.python_version = _python_version_from_executable(special_opts.python_executable)
+            options.python_version = _python_version_from_executable(
+                special_opts.python_executable)
             options.python_executable = special_opts.python_executable
         except PythonExecutableInferenceError as e:
-            parser.error(e)
+            parser.error(str(e))
             sys.exit(2)
 
     # Check for invalid argument combinations.
