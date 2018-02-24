@@ -109,3 +109,6 @@ find packages installed for that Python executable.
 
 Note that mypy does not support some more advanced import features, such as zip
 imports, namespace packages, and custom import hooks.
+
+If you do not want to use typed packages, use the ``--no-site-packages`` flag
+to disable searching.

@@ -10,7 +10,7 @@ flag (or its long form ``--help``)::
   $ mypy -h
   usage: mypy [-h] [-v] [-V] [--python-version x.y]
               [--python-executable PYTHON_EXECUTABLE] [--platform PLATFORM] [-2]
-              [--ignore-missing-imports]
+              [--ignore-missing-imports] [--no-site-packages]
               [--follow-imports {normal,silent,skip,error}]
               [--disallow-any-unimported] [--disallow-any-expr]
               [--disallow-any-decorated] [--disallow-any-explicit]
@@ -380,7 +380,16 @@ Here are some more useful flags:
   run under Python version X.Y. Without this option, mypy will default to using
   whatever version of Python is running mypy. Note that the ``-2`` and
   ``--py2`` flags are aliases for ``--python-version 2.7``. See
-  :ref:`version_and_platform_checks` for more about this feature.
+  :ref:`version_and_platform_checks` for more about this feature. This flag
+  will attempt to find a Python executable of the corresponding version to
+  search for PEP 561 compliant packages. If you'd like to disable this, see
+  ``--no-site-packages`` below.
+
+- ``--no-site-packages`` will disable searching for PEP 561 compliant packages.
+  This will also disable searching for a usable Python executable. Use this
+  flag if mypy cannot find a Python executable for the version of Python being
+  checked, and you don't need to use PEP 561 typed packages. Otherwise, use
+  ``--python-executable``.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
   run under the the given operating system. Without this option, mypy will
