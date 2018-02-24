@@ -528,6 +528,11 @@ def process_options(args: List[str],
     if special_opts.python_executable is not None and special_opts.python_version is not None:
         try:
             py_exe_ver = _python_version_from_executable(special_opts.python_executable)
+
+        except PythonExecutableInferenceError as e:
+            parser.error(str(e))
+            sys.exit(2)
+        else:
             if py_exe_ver != special_opts.python_version:
                 parser.error(
                     'Error: Python version {} did not match executable {}, got version {}.'.format(
@@ -537,9 +542,6 @@ def process_options(args: List[str],
             else:
                 options.python_version = special_opts.python_version
                 options.python_executable = special_opts.python_executable
-        except PythonExecutableInferenceError as e:
-            parser.error(str(e))
-            sys.exit(2)
     elif special_opts.python_executable is None and special_opts.python_version is not None:
         options.python_version = special_opts.python_version
         if not options.no_site_packages:
@@ -552,6 +554,8 @@ def process_options(args: List[str],
                     # searching is not disabled
                     parser.error(str(e))
                     sys.exit(2)
+                else:
+                    options.python_executable = None
     elif special_opts.python_version is None and special_opts.python_executable is not None:
         try:
             options.python_version = _python_version_from_executable(

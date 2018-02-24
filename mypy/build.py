@@ -990,7 +990,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
 
 
 def find_modules_recursive(module: str, lib_path: List[str],
-                           python_executable: str) -> List[BuildSource]:
+                           python_executable: Optional[str]) -> List[BuildSource]:
     module_path = find_module(module, lib_path, python_executable)
     if not module_path:
         return []

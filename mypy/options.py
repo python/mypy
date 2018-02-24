@@ -53,7 +53,7 @@ class Options:
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version = sys.version_info[:2]  # type: Tuple[int, int]
-        self.python_executable = sys.executable  # type: str
+        self.python_executable = sys.executable  # type: Optional[str]
         self.no_site_packages = False
         self.platform = sys.platform
         self.custom_typing_module = None  # type: Optional[str]
