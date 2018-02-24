@@ -903,14 +903,17 @@ def get_package_dirs(python_executable: str) -> List[str]:
 
 
 def find_module(id: str, lib_path_arg: Iterable[str],
-                python_executable: str) -> Optional[str]:
+                python_executable: Optional[str]) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-    package_dirs = get_package_dirs(python_executable)
-    if not package_dirs:
-        print("Could not find package directories for Python '{}'".format(
-            python_executable), file=sys.stderr)
-        sys.exit(2)
+    if python_executable:
+        package_dirs = get_package_dirs(python_executable)
+        if not package_dirs:
+            print("Could not find package directories for Python '{}'".format(
+                python_executable), file=sys.stderr)
+            sys.exit(2)
+    else:
+        package_dirs = []
     components = id.split('.')
     dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
 

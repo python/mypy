@@ -586,7 +586,7 @@ reveal_type(wrap(z)) # E: Revealed type is '__main__.Node[builtins.int, builtins
 main:13: error: Argument 2 to "Node" has incompatible type "int"; expected "str"
 
 [case testGenericTypeAliasesWrongAliases]
-# flags: --show-column-numbers --python-version 3.6
+# flags: --show-column-numbers --python-version 3.6 --no-site-packages
 from typing import TypeVar, Generic, List, Callable, Tuple, Union
 T = TypeVar('T')
 S = TypeVar('S')

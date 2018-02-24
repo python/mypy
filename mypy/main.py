@@ -207,6 +207,10 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+class PythonExecutableInferenceError(Exception):
+    """Represents a failure to infer the version or executable while searching."""
+
+
 if sys.platform == 'win32':
     def python_executable_prefix(v: str) -> List[str]:
         return ['py', '-{}'.format(v)]
@@ -222,11 +226,13 @@ def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
                                         stderr=subprocess.STDOUT).decode()
         return ast.literal_eval(check)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print('Error: invalid Python executable {}'.format(python_executable), file=sys.stderr)
-        sys.exit(2)
+        raise PythonExecutableInferenceError(
+            'Error: invalid Python executable {}'.format(python_executable))
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> Optional[str]:
+    if sys.version_info[:2] == python_version:
+        return sys.executable
     str_ver = '.'.join(map(str, python_version))
     try:
         sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
@@ -234,7 +240,9 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> Optional
                                           stderr=subprocess.STDOUT).decode().strip()
         return sys_exe
     except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
+        raise PythonExecutableInferenceError(
+            'Error: failed to find a Python executable matching version {},'
+            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
 def process_options(args: List[str],
@@ -291,6 +299,8 @@ def process_options(args: List[str],
     parser.add_argument('--python-executable', action='store',
                         help="Python executable whose installed packages will be"
                              " used in typechecking.", dest='special-opts:python_executable')
+    parser.add_argument('--no-site-packages', action='store_true',
+                        help="Do not search for PEP 561 packages in the package directory.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
                         "(defaults to sys.platform).")
@@ -516,21 +526,38 @@ def process_options(args: List[str],
 
     # Infer Python version and/or executable if one is not given
     if special_opts.python_executable is not None and special_opts.python_version is not None:
-        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
-        if py_exe_ver != special_opts.python_version:
-            print('Error: Python version and executable are mismatched.')
+        try:
+            py_exe_ver = _python_version_from_executable(special_opts.python_executable)
+            if py_exe_ver != special_opts.python_version:
+                parser.error(
+                    'Error: Python version {} did not match executable {}, got version {}.'.format(
+                        special_opts.python_version, special_opts.python_executable, py_exe_ver
+                    ))
+                sys.exit(2)
+            else:
+                options.python_version = special_opts.python_version
+                options.python_executable = special_opts.python_executable
+        except PythonExecutableInferenceError as e:
+            parser.error(e)
             sys.exit(2)
-        else:
-            options.python_version = special_opts.python_version
-            options.python_executable = special_opts.python_executable
     elif special_opts.python_executable is None and special_opts.python_version is not None:
-        py_exe = _python_executable_from_version(special_opts.python_version)
-        if py_exe is not None:
+        try:
+            py_exe = _python_executable_from_version(special_opts.python_version)
             options.python_executable = py_exe
-        options.python_version = special_opts.python_version
+        except PythonExecutableInferenceError as e:
+            if not options.no_site_packages:
+                # raise error if we cannot find site-packages and PEP 561 searching is not disabled
+                parser.error(e)
+                sys.exit(2)
+        finally:
+            options.python_version = special_opts.python_version
     elif special_opts.python_version is None and special_opts.python_executable is not None:
-        options.python_version = _python_version_from_executable(special_opts.python_executable)
-        options.python_executable = special_opts.python_executable
+        try:
+            options.python_version = _python_version_from_executable(special_opts.python_executable)
+            options.python_executable = special_opts.python_executable
+        except PythonExecutableInferenceError as e:
+            parser.error(e)
+            sys.exit(2)
 
     # Check for invalid argument combinations.
     if require_targets:
