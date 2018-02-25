@@ -31,6 +31,13 @@ reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
 m = Medal.gold
 m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
 
+[case testEnumFromEnumMetaGeneric]
+from enum import EnumMeta
+from typing import Generic, TypeVar
+T = TypeVar("T")
+class Medal(Generic[T], metaclass=EnumMeta):  # E: Enum class cannot be generic
+    q = None
+
 [case testEnumNameAndValue]
 from enum import Enum
 class Truth(Enum):
