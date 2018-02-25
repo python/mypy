@@ -557,8 +557,6 @@ def process_options(args: List[str],
                     # searching is not disabled
                     parser.error(str(e))
                     sys.exit(2)
-                else:
-                    options.python_executable = None
     elif special_opts.python_version is None and special_opts.python_executable is not None:
         try:
             options.python_version = _python_version_from_executable(
@@ -567,6 +565,9 @@ def process_options(args: List[str],
         except PythonExecutableInferenceError as e:
             parser.error(str(e))
             sys.exit(2)
+
+    if options.no_site_packages:
+        options.python_executable = None
 
     # Check for invalid argument combinations.
     if require_targets:
