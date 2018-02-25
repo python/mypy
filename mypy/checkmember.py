@@ -366,7 +366,7 @@ def freeze_type_vars(member_type: Type) -> None:
 
 
 def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,
-                                  context: Context) -> Type:
+                                  node: SymbolNode) -> Type:
     if typ.type is None:
         # 'None' partial type. It has a well-defined type -- 'None'.
         # In an lvalue context we want to preserver the knowledge of
@@ -375,7 +375,7 @@ def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: Messag
             return NoneTyp()
         return typ
     else:
-        msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+        msg.need_annotation_for_var(node, node)
         return AnyType(TypeOfAny.from_error)
 
 
@@ -467,8 +467,12 @@ def analyze_class_attribute_access(itype: Instance,
         return builtin_type('types.ModuleType')
 
     if is_decorated:
-        # TODO: Return type of decorated function. This is quick hack to work around #998.
-        return AnyType(TypeOfAny.special_form)
+        assert isinstance(node.node, Decorator)
+        if node.node.type:
+            return node.node.type
+        else:
+            not_ready_callback(name, context)
+            return AnyType(TypeOfAny.from_error)
     else:
         return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 

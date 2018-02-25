@@ -167,16 +167,6 @@ features will be supported in a restricted form (for example, runtime
 modification is only supported for classes or methods registered as
 dynamic or 'patchable').
 
-How is mypy different from PyPy?
-********************************
-
-*This answer relates to PyPy as a Python implementation. See also the answer related to RPython below.*
-
-Mypy and PyPy are orthogonal. Mypy does static type checking, i.e. it
-is basically a linter, but static typing has no runtime effect,
-whereas the PyPy is an Python implementation. You can use PyPy to run
-mypy programs.
-
 How is mypy different from Cython?
 **********************************
 

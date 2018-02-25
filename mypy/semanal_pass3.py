@@ -10,7 +10,8 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple
+from contextlib import contextmanager
+from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iterator
 
 from mypy import messages, experiments
 from mypy.nodes import (
@@ -31,6 +32,7 @@ from mypy.typevars import has_no_typevars
 from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
+from mypy.scope import Scope
 import mypy.semanal
 
 
@@ -46,6 +48,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.modules = modules
         self.errors = errors
         self.sem = sem
+        self.scope = Scope()
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
@@ -59,18 +62,23 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
         self.sem.cur_mod_id = file_node.fullname()
+        self.cur_mod_node = file_node
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
+            self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
+            self.scope.leave()
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
+        self.scope.enter_file(self.sem.cur_mod_id)
         if isinstance(node, MypyFile):
             self.recurse_into_functions = False
             self.refresh_top_level(node)
         else:
             self.recurse_into_functions = True
             self.accept(node)
+        self.scope.leave()
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
@@ -91,10 +99,12 @@ class SemanticAnalyzerPass3(TraverserVisitor):
     def visit_func_def(self, fdef: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
+        self.scope.enter_function(fdef)
         self.errors.push_function(fdef.name())
         self.analyze(fdef.type, fdef)
         super().visit_func_def(fdef)
         self.errors.pop_function()
+        self.scope.leave()
 
     def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
@@ -105,6 +115,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
     def visit_class_def(self, tdef: ClassDef) -> None:
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
+        self.scope.enter_class(tdef.info)
         if not tdef.info.is_named_tuple:
             types = list(tdef.info.bases)  # type: List[Type]
             for tvar in tdef.type_vars:
@@ -135,6 +146,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
                 self.analyze_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
+        self.scope.leave()
 
     def visit_decorator(self, dec: Decorator) -> None:
         """Try to infer the type of the decorated function.
@@ -353,6 +365,9 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
             self.generate_type_patches(node, indicator, warn)
+            if analyzer.aliases_used:
+                target = self.scope.current_target()
+                self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
 
     def analyze_types(self, types: List[Type], node: Node) -> None:
         # Similar to above but for nodes with multiple types.
@@ -361,6 +376,9 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
+            if analyzer.aliases_used:
+                target = self.scope.current_target()
+                self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
         self.generate_type_patches(node, indicator, warn=False)
 
     def generate_type_patches(self,

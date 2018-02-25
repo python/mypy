@@ -183,11 +183,11 @@ def f(x: int,
 [out2]
 tmp/a.py:2: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 tmp/a.py:3: error: Argument 2 to "f" has incompatible type "int"; expected "str"
-tmp/a.py:4: error: Argument 2 to "f" has incompatible type "int"; expected "str"
+tmp/a.py:4: error: Argument "y" to "f" has incompatible type "int"; expected "str"
 tmp/a.py:5: error: Argument 4 to "f" has incompatible type "str"; expected "int"
-tmp/a.py:6: error: Argument 3 to "f" has incompatible type "str"; expected "int"
-tmp/a.py:7: error: Argument 3 to "f" has incompatible type "str"; expected "int"
-tmp/a.py:8: error: Argument 4 to "f" has incompatible type "int"; expected "str"
+tmp/a.py:6: error: Argument "z" to "f" has incompatible type "str"; expected "int"
+tmp/a.py:7: error: Argument "zz" to "f" has incompatible type "str"; expected "int"
+tmp/a.py:8: error: Argument "foo" to "f" has incompatible type "int"; expected "str"
 
 [case testSerializeOverloadedFunction]
 import a
@@ -920,7 +920,7 @@ tmp/a.py:5: error: Incompatible types in assignment (expression has type "Tuple[
 tmp/a.py:6: error: Incompatible types in assignment (expression has type "Tuple[int]", variable has type "N")
 tmp/a.py:9: error: Revealed type is 'Tuple[builtins.int, fallback=b.N]'
 tmp/a.py:10: error: Revealed type is 'builtins.int'
-tmp/a.py:11: error: Argument 1 to "N" has incompatible type "str"; expected "int"
+tmp/a.py:11: error: Argument "x" to "N" has incompatible type "str"; expected "int"
 
 --
 -- Types and type aliases

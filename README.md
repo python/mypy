@@ -14,7 +14,7 @@ sure you've found a bug please search our issue trackers for a
 duplicate before filing a new issue:
 
 - [mypy tracker](https://github.com/python/mypy/issues)
-  for mypy isues
+  for mypy issues
 - [typeshed tracker](https://github.com/python/typeshed/issues)
   for issues with specific modules
 - [typing tracker](https://github.com/python/typing/issues)

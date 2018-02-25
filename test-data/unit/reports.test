@@ -12,6 +12,7 @@
 bad_report = .
 [out]
 mypy.ini: [mypy]: Unrecognized report type: bad_report
+== Return code: 0
 
 [case testCoberturaParser]
 # cmd: mypy --cobertura-xml-report build pkg

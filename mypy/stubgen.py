@@ -59,7 +59,7 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
+    IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
@@ -457,7 +457,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 annotation = ""
             if arg_.initializer:
                 initializer = '...'
-                if kind in (ARG_NAMED, ARG_NAMED_OPT) and '*' not in args:
+                if kind in (ARG_NAMED, ARG_NAMED_OPT) and not any(arg.startswith('*')
+                                                                  for arg in args):
                     args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True)
@@ -475,7 +476,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         retname = None
         if isinstance(o.type, CallableType):
             retname = self.print_annotation(o.type.ret_type)
-        elif o.name() == '__init__':
+        elif o.name() == '__init__' or not has_return_statement(o):
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -593,7 +594,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         name = repr(getattr(rvalue.args[0], 'value', '<ERROR>'))
         if isinstance(rvalue.args[1], StrExpr):
             items = repr(rvalue.args[1].value)
-        elif isinstance(rvalue.args[1], ListExpr):
+        elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
@@ -812,6 +813,19 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
 
     fdef.accept(SelfTraverser())
     return results
+
+
+def has_return_statement(fdef: FuncBase) -> bool:
+    class ReturnSeeker(mypy.traverser.TraverserVisitor):
+        def __init__(self) -> None:
+            self.found = False
+
+        def visit_return_stmt(self, o: ReturnStmt) -> None:
+            self.found = True
+
+    seeker = ReturnSeeker()
+    fdef.accept(seeker)
+    return seeker.found
 
 
 def get_qualified_name(o: Expression) -> str:

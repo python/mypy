@@ -13,14 +13,18 @@ import os
 import socket
 import sys
 import time
+import traceback
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import mypy.build
 import mypy.errors
 import mypy.main
+import mypy.server.update
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
+from mypy.fscache import FileSystemCache
+from mypy.fswatcher import FileSystemWatcher, FileData
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -82,7 +86,11 @@ class Server:
     def __init__(self, flags: List[str]) -> None:
         """Initialize the server with the desired mypy flags."""
         self.saved_cache = {}  # type: mypy.build.SavedCache
-        sources, options = mypy.main.process_options(['-i'] + flags, False)
+        self.fine_grained_initialized = False
+        sources, options = mypy.main.process_options(['-i'] + flags,
+                                                     require_targets=False,
+                                                     server_options=True)
+        self.fine_grained = options.fine_grained_incremental
         if sources:
             sys.exit("dmypy: start/restart does not accept sources")
         if options.report_dirs:
@@ -91,9 +99,21 @@ class Server:
             sys.exit("dmypy: start/restart should not disable incremental mode")
         if options.quick_and_dirty:
             sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
+        if options.use_fine_grained_cache and not options.fine_grained_incremental:
+            sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
         self.options = options
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
+        if self.fine_grained:
+            options.incremental = True
+            options.show_traceback = True
+            if options.use_fine_grained_cache:
+                options.cache_fine_grained = True  # set this so that cache options match
+            else:
+                options.cache_dir = os.devnull
+            # Fine-grained incremental doesn't support general partial types
+            # (details in https://github.com/python/mypy/issues/4492)
+            options.local_partial_types = True
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
@@ -128,6 +148,9 @@ class Server:
                 os.unlink(STATUS_FILE)
         finally:
             os.unlink(self.sockname)
+            exc_info = sys.exc_info()
+            if exc_info[0]:
+                traceback.print_exception(*exc_info)  # type: ignore
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
@@ -160,7 +183,7 @@ class Server:
         """Stop daemon."""
         return {}
 
-    last_sources = None
+    last_sources = None  # type: List[mypy.build.BuildSource]
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
@@ -190,6 +213,14 @@ class Server:
 
     def check(self, sources: List[mypy.build.BuildSource],
               alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        if self.fine_grained:
+            return self.check_fine_grained(sources)
+        else:
+            return self.check_default(sources, alt_lib_path)
+
+    def check_default(self, sources: List[mypy.build.BuildSource],
+                      alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+        """Check using the default (per-file) incremental mode."""
         self.last_manager = None
         with GcLogger() as gc_result:
             try:
@@ -211,6 +242,100 @@ class Server:
         if self.last_manager is not None:
             response.update(self.last_manager.stats_summary())
         return response
+
+    def check_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        """Check using fine-grained incremental mode."""
+        if not self.fine_grained_initialized:
+            return self.initialize_fine_grained(sources)
+        else:
+            return self.fine_grained_increment(sources)
+
+    def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        self.fscache = FileSystemCache(self.options.python_version)
+        self.fswatcher = FileSystemWatcher(self.fscache)
+        self.update_sources(sources)
+        if not self.options.use_fine_grained_cache:
+            # Stores the initial state of sources as a side effect.
+            self.fswatcher.find_changed()
+        try:
+            # TODO: alt_lib_path
+            result = mypy.build.build(sources=sources,
+                                      options=self.options)
+        except mypy.errors.CompileError as e:
+            output = ''.join(s + '\n' for s in e.messages)
+            if e.use_stdout:
+                out, err = output, ''
+            else:
+                out, err = '', output
+            return {'out': out, 'err': err, 'status': 2}
+        messages = result.errors
+        manager = result.manager
+        graph = result.graph
+        self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
+        self.fine_grained_initialized = True
+        self.previous_sources = sources
+        self.fscache.flush()
+
+        # If we are using the fine-grained cache, build hasn't actually done
+        # the typechecking on the updated files yet.
+        # Run a fine-grained update starting from the cached data
+        if self.options.use_fine_grained_cache:
+            # Pull times and hashes out of the saved_cache and stick them into
+            # the fswatcher, so we pick up the changes.
+            for meta, mypyfile, type_map in manager.saved_cache.values():
+                if meta.mtime is None: continue
+                self.fswatcher.set_file_data(
+                    mypyfile.path,
+                    FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
+
+            # Run an update
+            changed = self.find_changed(sources)
+            if changed:
+                messages = self.fine_grained_manager.update(changed)
+            self.fscache.flush()
+
+        status = 1 if messages else 0
+        self.previous_messages = messages[:]
+        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
+
+    def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        t0 = time.time()
+        self.update_sources(sources)
+        changed = self.find_changed(sources)
+        t1 = time.time()
+        if not changed:
+            # Nothing changed -- just produce the same result as before.
+            messages = self.previous_messages
+        else:
+            messages = self.fine_grained_manager.update(changed)
+        t2 = time.time()
+        self.fine_grained_manager.manager.log(
+            "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
+                t1 - t0, t2 - t1))
+        status = 1 if messages else 0
+        self.previous_messages = messages[:]
+        self.previous_sources = sources
+        self.fscache.flush()
+        return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
+
+    def update_sources(self, sources: List[mypy.build.BuildSource]) -> None:
+        paths = [source.path for source in sources if source.path is not None]
+        self.fswatcher.add_watched_paths(paths)
+
+    def find_changed(self, sources: List[mypy.build.BuildSource]) -> List[Tuple[str, str]]:
+        changed_paths = self.fswatcher.find_changed()
+        changed = [(source.module, source.path)
+                   for source in sources
+                   if source.path in changed_paths]
+        modules = {source.module for source in sources}
+        omitted = [source for source in self.previous_sources if source.module not in modules]
+        for source in omitted:
+            path = source.path
+            assert path
+            # Note that a file could be removed from the list of root sources but have no changes.
+            if path in changed_paths:
+                changed.append((source.module, path))
+        return changed
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""

@@ -286,7 +286,9 @@ main:5: error: Module has no attribute "B"
 ==
 main:5: error: Module has no attribute "B"
 
-[case testContinueToReportErrorAtTopLevel]
+[case testContinueToReportErrorAtTopLevel-skip-cache]
+-- Different cache/no-cache tests because:
+-- Error message ordering differs
 import n
 import m
 m.A().f()
@@ -306,6 +308,31 @@ class A:
 ==
 main:3: error: "A" has no attribute "f"
 n.py:2: error: "A" has no attribute "g"
+==
+n.py:2: error: "A" has no attribute "g"
+
+[case testContinueToReportErrorAtTopLevel-skip-nocache]
+-- Different cache/no-cache tests because:
+-- Error message ordering differs
+import n
+import m
+m.A().f()
+[file n.py]
+import m
+m.A().g()
+[file m.py]
+class A:
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[file m.py.2]
+class A: pass
+[file m.py.3]
+class A:
+    def f(self) -> None: pass
+[out]
+==
+n.py:2: error: "A" has no attribute "g"
+main:3: error: "A" has no attribute "f"
 ==
 n.py:2: error: "A" has no attribute "g"
 
@@ -655,6 +682,42 @@ class A:
 ==
 main:4: error: Too few arguments for "A"
 
+[case testConstructorSignatureChanged2]
+from typing import Callable
+import m
+
+def use(x: Callable[[], m.A]) -> None:
+    x()
+def f() -> None:
+    use(m.A)
+[file m.py]
+class A:
+    def __init__(self) -> None: pass
+[file m.py.2]
+class A:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+-- This is a bad error message
+main:7: error: Argument 1 to "use" has incompatible type "Type[A]"; expected "Callable[[], A]"
+
+[case testConstructorSignatureChanged3]
+from a import C
+class D(C):
+    def g(self) -> None:
+        super().__init__()
+D()
+[file a.py]
+class C:
+    def __init__(self) -> None: pass
+[file a.py.2]
+class C:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:4: error: Too few arguments for "__init__" of "C"
+main:5: error: Too few arguments for "D"
+
 [case testConstructorAdded]
 import m
 
@@ -699,6 +762,21 @@ class B(A): pass
 [out]
 ==
 main:4: error: Too few arguments for "B"
+
+[case testSuperField]
+from a import C
+class D(C):
+    def g(self) -> int:
+        return super().x
+[file a.py]
+class C:
+    def __init__(self) -> None: self.x = 12
+[file a.py.2]
+class C:
+    def __init__(self) -> None: self.x = 'ar'
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
 
 [case testImportFrom]
 from m import f
@@ -1025,15 +1103,14 @@ def f() -> Iterator[None]:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b>
-3: <b>
+2: <b>, __main__
+3: <b>, __main__, a
 [out]
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
-a.py:1: error: Cannot find module named 'b'
-a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 a.py:3: error: Cannot find module named 'b'
+a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 
@@ -1072,15 +1149,14 @@ def g() -> None:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b.h>, <b>
-3: <b.h>, <b>
-4:
+2: <b.h>, <b>, a.g
+3: <b.h>, <b>, a
+4: a.g
 [out]
 a.py:11: error: Too many arguments for "h"
 ==
-a.py:1: error: Cannot find module named 'b'
-a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:10: error: Cannot find module named 'b'
+a.py:10: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 a.py:11: error: Too many arguments for "h"
 ==
@@ -1113,9 +1189,8 @@ def f(x: List[int]) -> Iterator[None]:
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:1: error: Cannot find module named 'b'
-a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 a.py:3: error: Cannot find module named 'b'
+a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 ==
 
@@ -1172,10 +1247,8 @@ def g() -> None: pass
 [delete n.py.2]
 [out]
 ==
-main:1: error: Cannot find module named 'm'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:1: error: Cannot find module named 'n'
 main:2: error: Cannot find module named 'm'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:9: error: Cannot find module named 'n'
 
 [case testOverloadSpecialCase]
@@ -1202,10 +1275,8 @@ def g() -> None: pass
 [builtins fixtures/ops.pyi]
 [out]
 ==
-main:1: error: Cannot find module named 'm'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:1: error: Cannot find module named 'n'
 main:2: error: Cannot find module named 'm'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:14: error: Cannot find module named 'n'
 
 [case testRefreshGenericClass]
@@ -1293,7 +1364,7 @@ class C(Generic[T]): pass
 [out]
 main:4: error: "object" has no attribute "C"
 ==
-main:4: error: Need type annotation for variable
+main:4: error: Need type annotation for 'x'
 
 [case testPartialTypeInNestedClass]
 import a
@@ -1310,9 +1381,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:7: error: Need type annotation for variable
+main:7: error: Need type annotation for 'x'
 ==
-main:7: error: Need type annotation for variable
+main:7: error: Need type annotation for 'x'
 
 [case testRefreshPartialTypeInClass]
 import a
@@ -1327,9 +1398,9 @@ def g() -> None: pass
 def g() -> int: pass
 [builtins fixtures/dict.pyi]
 [out]
-main:5: error: Need type annotation for variable
+main:5: error: Need type annotation for 'x'
 ==
-main:5: error: Need type annotation for variable
+main:5: error: Need type annotation for 'x'
 
 [case testRefreshTryExcept]
 import a
@@ -1344,5 +1415,1063 @@ def g() -> int: pass
 [file a.py.2]
 def g() -> str: pass
 [builtins fixtures/exception.pyi]
+[out]
+==
+
+[case testMroSpecialCase]
+import b
+import a
+
+[file a.py]
+class C: pass
+class D(C):
+    1()
+class E(D): pass
+
+[file b.py]
+import a
+
+[file a.py.2]
+class C: pass
+class D(C):
+    1()
+class E(D): pass
+
+[file b.py.2]
+import a
+
+[triggered]
+2: a, a
+[out]
+a.py:3: error: "int" not callable
+==
+a.py:3: error: "int" not callable
+
+[case testMetaclassDefinition_python2]
+# flags: --py2
+import abc
+import m
+m.f()
+
+class A:
+    __metaclass__ = abc.ABCMeta
+[file m.py]
+def f(): pass
+[file m.py.2]
+def f(x=1): pass
+[out]
+==
+
+[case testRefreshGenericSubclass]
+from typing import Generic, TypeVar
+import m
+m.x
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+
+class D(C[T]):
+    def __init__(self, x: T) -> None:
+        m.x
+        super(D, self).__init__(x)
+[file m.py]
+x = 0
+[file m.py.2]
+x = ''
+[out]
+==
+
+[case testRefreshNamedTupleSubclass]
+from typing import NamedTuple
+import m
+m.x
+
+N = NamedTuple('N', [('x', int)])
+
+class C(N):
+    pass
+[file m.py]
+x = 0
+[file m.py.2]
+x = ''
+[out]
+==
+
+[case testNewTypeRefresh]
+import a
+
+[file a.py]
+from typing import Dict, NewType
+
+N = NewType('N', int)
+
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+
+[file a.py.2]
+from typing import Dict, NewType  # dummy change
+
+N = NewType('N', int)
+
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testRefreshFunctionalEnum]
+import a
+
+[file a.py]
+from typing import Dict
+from enum import Enum
+
+N = Enum('N', 'x')
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+
+[file a.py.2]
+from typing import Dict
+from enum import Enum
+
+N = Enum('N', 'x')
+a: Dict[N, int]
+
+def f(self, x: N) -> None:
+    a.get(x)
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testFineGrainedCallable]
+import a
+[file a.py]
+def f(o: object) -> None:
+    if callable(o):
+        o()
+[file a.py.2]
+def f(o: object) -> None:
+    if callable(o):
+        o()
+[builtins fixtures/callable.pyi]
+[out]
+==
+
+[case testRefreshFunctionalNamedTuple]
+import a
+
+[file a.py]
+from typing import NamedTuple
+from b import L
+
+A = NamedTuple('A', [])
+a: A
+
+def g() -> None:
+    x = L(A())
+    x.f(a)
+
+[file b.pyi]
+from typing import TypeVar, Generic, overload
+
+T = TypeVar('T')
+
+class L(Generic[T]):
+    def __init__(self, x: T) -> None: pass
+    @overload
+    def f(self) -> None: pass
+    @overload
+    def f(self, a: T) -> None: pass
+
+[file a.py.2]
+from typing import NamedTuple
+from b import L
+
+A = NamedTuple('A', [])
+a: A
+
+def g() -> None:
+    x = L(A())
+    x.f(a)
+[out]
+==
+
+[case testRefreshSubclassNestedInFunction1]
+from a import C
+def f() -> None:
+    class D(C): pass
+[file a.py]
+class C: pass
+[file a.py.2]
+[out]
+==
+main:1: error: Module 'a' has no attribute 'C'
+
+[case testRefreshSubclassNestedInFunction2]
+from a import C
+def f() -> None:
+    class D(C):
+        def g(self) -> None:
+            super().__init__()
+    d = D()
+[file a.py]
+class C:
+    def __init__(self) -> None: pass
+[file a.py.2]
+class C:
+    def __init__(self, x: int) -> None: pass
+[out]
+==
+main:5: error: Too few arguments for "__init__" of "C"
+main:6: error: Too few arguments for "D"
+
+[case testInferAttributeTypeAndMultipleStaleTargets]
+import a
+
+class A:
+    def g(self) -> None:
+        a.x
+        self.x = 1
+
+    def f(self) -> None:
+        a.x
+        b = self.x
+        self.x = 1
+
+[file a.py]
+x = 0
+[file a.py.2]
+x = ''
+[out]
+==
+
+[case testNamedTupleUpdate]
+import b
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', str)])
+x = N('hi')
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
+
+[case testNamedTupleUpdate2]
+import b
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('y', int)])
+x = N(2)
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
+
+[case testNamedTupleUpdate3]
+import c
+[file a.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int)])
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', str)])
+x = N('hi')
+[file b.py]
+import a
+from typing import NamedTuple
+M = NamedTuple('M', [('z', 'a.N')])
+x = M(a.x)
+[file c.py]
+import a
+import b
+from typing import Tuple
+def lol(n: Tuple[Tuple[int]]) -> None:
+    pass
+def f(x: b.M) -> None:
+    lol(x)
+f(b.x)
+lol(b.x)
+[out]
+==
+c.py:7: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
+c.py:9: error: Argument 1 to "lol" has incompatible type "M"; expected "Tuple[Tuple[int]]"
+
+[case testNamedTupleUpdate4]
+import b
+[file a.py]
+from typing import NamedTuple
+class N(NamedTuple):
+    x: int
+x = N(1)
+[file a.py.2]
+from typing import NamedTuple
+class N(NamedTuple):
+    x: str
+x = N('hi')
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
+
+[case testTypedDictRefresh]
+[builtins fixtures/dict.pyi]
+import a
+[file a.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file a.py.2]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[out]
+==
+
+[case testTypedDictUpdate]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file a.py.2]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': str})
+p = Point(dict(x=42, y='lurr'))
+[file b.py]
+from a import Point
+def foo(x: Point) -> int:
+    return x['x'] + x['y']
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testTypedDictUpdate2]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+p = Point(dict(x=42, y=1337))
+[file a.py.2]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: str
+p = Point(dict(x=42, y='lurr'))
+[file b.py]
+from a import Point
+def foo(x: Point) -> int:
+    return x['x'] + x['y']
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testBasicAliasUpdate]
+import b
+[file a.py]
+N = int
+x = 1
+[file a.py.2]
+N = str
+x = 'hi'
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[out]
+==
+
+[case testBasicAliasUpdateGeneric]
+import b
+[file a.py]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+D = Dict[int, T]
+x = {1: 1}
+[file a.py.2]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+D = Dict[str, T]
+x = {'hi': 1}
+[file b.py]
+import a
+def f(x: a.D[int]) -> None:
+    pass
+f(a.x)
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testAliasFineNormalMod]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+x: a.A = int()
+[out]
+==
+b.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNormalFunc]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+def f(x: a.A):
+    x = int()
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNormalClass]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+class C:
+    x: a.A
+c = C()
+c.x = int()
+[out]
+==
+b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNormalClassBases]
+import b
+[file a.py]
+import c
+A = c.BaseI
+[file a.py.2]
+import c
+A = c.BaseS
+[file b.py]
+import a
+class C(a.A):
+    x = int()
+[file c.py]
+class BaseI:
+    x: int
+class BaseS:
+    x: str
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
+
+[case testAliasFineGenericMod]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file b.py]
+import a
+x: a.A = {str(): int()}
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineGenericFunc]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file b.py]
+import a
+def f(x: a.A):
+    pass
+f({str(): int()})
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:4: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineForwardMod]
+import b
+[file b.py]
+x: A = int()
+A = int
+[file b.py.2]
+x: A = int()
+A = str
+[out]
+==
+b.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineForwardFunc]
+import b
+[file b.py]
+def f(x: A):
+    x = int()
+A = int
+[file b.py.2]
+def f(x: A):
+    x = int()
+A = str
+[out]
+==
+b.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineChainedFunc]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file aa.py]
+import a
+B = a.A
+[file b.py]
+import aa
+def f(x: aa.B):
+    x = int()
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineChainedClass]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file aa.py]
+import a
+B = a.A
+[file b.py]
+import aa
+class C:
+    x: aa.B
+c = C()
+c.x = int()
+[out]
+==
+b.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineNestedMod]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file aa.py]
+from typing import Dict
+import a
+B = Dict[str, a.A]
+[file b.py]
+import aa
+x: aa.B = {'first': {str(): int()}}
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineNestedFunc]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file aa.py]
+from typing import Dict
+import a
+B = Dict[str, a.A]
+[file b.py]
+import aa
+def f(x: aa.B):
+    x = {'first': {str(): int()}}
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineNestedFuncDirect]
+import b
+[file a.py]
+from typing import Dict
+A = Dict[str, int]
+[file a.py.2]
+from typing import Dict
+A = Dict[str, str]
+[file aa.py]
+from typing import Dict
+import a
+E = Dict
+[file b.py]
+import aa
+def f(x: aa.E[str, aa.a.A]):
+    x = {'first': {str(): int()}}
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:3: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"
+
+[case testAliasFineNonGenericToGeneric]
+import b
+[file a.py]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, int]
+[file a.py.2]
+A = str
+[file b.py]
+import a
+def f(x: a.A[str]):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: "str" expects no type arguments, but 1 given
+
+[case testAliasFineGenericToNonGeneric]
+import b
+[file a.py]
+A = str
+[file a.py.2]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, int]
+[file b.py]
+import a
+def f(x: a.A):
+    pass
+reveal_type(f)
+[builtins fixtures/dict.pyi]
+[out]
+b.py:4: error: Revealed type is 'def (x: builtins.str) -> Any'
+==
+b.py:4: error: Revealed type is 'def (x: builtins.dict[Any, builtins.int]) -> Any'
+
+[case testAliasFineChangedNumberOfTypeVars]
+import b
+[file a.py]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, int]
+[file a.py.2]
+from typing import Dict, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+A = Dict[T, S]
+[file b.py]
+import a
+def f(x: a.A[str]):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:2: error: Bad number of arguments for type alias, expected: 2, given: 1
+
+[case testAliasFineAdded]
+import b
+[file a.py]
+[file a.py.2]
+A = int
+[file b.py]
+import a
+x: a.A
+[out]
+b.py:2: error: Name 'a.A' is not defined
+==
+
+[case testAliasFineDeleted]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+[file b.py]
+import a
+x: a.A
+[out]
+==
+b.py:2: error: Name 'a.A' is not defined
+
+[case testAliasFineClassToAlias]
+import b
+[file a.py]
+class A: pass
+[file a.py.2]
+A = int
+[file b.py]
+import a
+x: a.A
+x = 1
+[out]
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "A")
+==
+
+[case testAliasFineAliasToClass]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+class A: pass
+[file b.py]
+import a
+x: a.A
+x = 1
+[out]
+==
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "A")
+
+[case testAliasFineComponentDeleted]
+import b
+[file a.py]
+class B: pass
+[file a.py.2]
+x = 1
+[file b.py]
+import a
+from typing import Dict, TypeVar
+T = TypeVar('T')
+A = Dict[T, a.B]
+def f(x: A[int]):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:4: error: Name 'a.B' is not defined
+
+[case testAliasFineTargetDeleted]
+import c
+[file a.py]
+A = int
+[file b.py]
+import a
+B = a.A
+[file b.py.2]
+x = 1
+[file c.py]
+import b
+def f(x: b.B):
+    pass
+[out]
+==
+c.py:2: error: Name 'b.B' is not defined
+
+[case testAliasFineClassInFunction]
+import b
+[file a.py]
+A = int
+[file a.py.2]
+A = str
+[file b.py]
+import a
+def f() -> None:
+    class C:
+        x: a.A = int()
+[out]
+==
+b.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testAliasFineInitNormalMod]
+import c
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+from b import B
+B(int())
+[out]
+==
+c.py:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+
+[case testAliasFineInitNormalFunc]
+import c
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+from b import B
+def f() -> None:
+    B(int())
+[out]
+==
+c.py:3: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+
+[case testAliasFineInitGenericMod]
+import c
+[file a.py]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: T) -> None:
+        pass
+[file a.py.2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: S) -> None:
+        pass
+[file b.py]
+import a
+B = a.A[int, str]
+[file c.py]
+from b import B
+B(int())
+[out]
+==
+c.py:2: error: Argument 1 has incompatible type "int"; expected "str"
+
+[case testAliasFineInitGenericFunc]
+import c
+[file a.py]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: T) -> None:
+        pass
+[file a.py.2]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    def __init__(self, x: S) -> None:
+        pass
+[file b.py]
+import a
+B = a.A[int, str]
+[file c.py]
+from b import B
+def f() -> None:
+    B(str())
+[out]
+c.py:3: error: Argument 1 has incompatible type "str"; expected "int"
+==
+
+[case testAliasFineInitChainedMod]
+import d
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+import b
+C = b.B
+[file d.py]
+from c import C
+C(int())
+[out]
+==
+d.py:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+
+[case testAliasFineInitChainedFunc]
+import d
+[file a.py]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+[file a.py.2]
+class A:
+    def __init__(self, x: str) -> None:
+        pass
+[file b.py]
+import a
+B = a.A
+[file c.py]
+import b
+C = b.B
+[file d.py]
+from c import C
+def f() -> None:
+    C(str())
+[out]
+d.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
+==
+
+[case testNonePartialType]
+import a
+a.y
+
+x = None
+
+def f() -> None:
+    global x
+    x = 1
+[file a.py]
+y = 0
+[file a.py.2]
+y = ''
+[out]
+main:4: error: Need type annotation for 'x'
+==
+main:4: error: Need type annotation for 'x'
+
+[case testNonePartialType2]
+import a
+a.y
+
+x = None
+
+def f():
+    global x
+    x = 1
+[file a.py]
+y = 0
+[file a.py.2]
+y = ''
+[out]
+main:4: error: Need type annotation for 'x'
+==
+main:4: error: Need type annotation for 'x'
+
+[case testNonePartialType3]
+import a
+[file a.py]
+[file a.py.2]
+y = None
+def f() -> None:
+    global y
+    y = ''
+[out]
+==
+a.py:1: error: Need type annotation for 'y'
+
+[case testNonePartialType4]
+import a
+[file a.py]
+y = None
+def f() -> None:
+    global y
+    y = ''
+[file a.py.2]
+from typing import Optional
+y: Optional[str] = None
+def f() -> None:
+    global y
+    y = ''
+[out]
+a.py:1: error: Need type annotation for 'y'
+==
+
+[case testSkippedClass1]
+import a
+[file a.py]
+class A: pass
+[file a.py.2]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testSkippedClass2]
+import a
+[file a.py]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[file a.py.2]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testSkippedClass3]
+import a
+[file a.py]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+[file a.py.2]
+class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testSkippedClass4]
+import a
+[file a.py]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+else:
+    class A: pass
+[file a.py.2]
+import sys
+if sys.platform == 'xyz':
+    class A: pass
+else:
+    class A: pass
+[builtins fixtures/ops.pyi]
 [out]
 ==
