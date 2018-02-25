@@ -112,6 +112,6 @@ setup(name='mypy',
                           ],
       extras_require = {
           ':python_version < "3.5"': 'typing >= 3.5.3',
-          'dmypy': 'psutil >= 5.4.0, < 5.5.0',
+          'dmypy': 'psutil >= 5.4.0, < 5.5.0; sys_platform!="win32"',
       },
       )
