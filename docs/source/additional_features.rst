@@ -40,7 +40,7 @@ If you're using ``auto_attribs=True`` you must use variable annotations.
         two: int = 7
         three: int = attr.ib(8)
 
-The Typeshed has a couple of "white lie" annotations to make type checking
+Typeshed has a couple of "white lie" annotations to make type checking
 easier. ``attr.ib`` and ``attr.Factory`` actually return objects, but the
 annotation says these return the types that they expect to be assigned to.
 That enables this to work:
