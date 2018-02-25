@@ -13,6 +13,12 @@ you can install mypy with:
 
     $ python3 -m pip install mypy
 
+Optionally you can install extra dependencies for daemon server with:
+
+.. code-block:: text
+
+    $ python3 -m pip install mypy[dmypy]
+
 Installing from source
 **********************
 
