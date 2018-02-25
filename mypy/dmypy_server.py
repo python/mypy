@@ -363,7 +363,8 @@ def get_meminfo() -> Mapping[str, float]:
     try:
         import psutil  # type: ignore  # It's not in typeshed yet
     except ImportError:
-        pass
+        if sys.platform != 'win32':
+            print('psutil not found, run pip install mypy[dmypy] to install the needed components for dmypy')
     else:
         process = psutil.Process(os.getpid())
         meminfo = process.memory_info()
