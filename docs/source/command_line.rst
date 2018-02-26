@@ -371,10 +371,10 @@ Here are some more useful flags:
   written by quick mode.
 
 - ``--python-executable EXECUTABLE`` will have mypy collect type information
-  from `PEP 561 <https://www.python.org/dev/peps/pep-0561/>`_ compliant
+  from `PEP 561`_ compliant
   packages installed for the Python executable ``EXECUTABLE``. If not provided,
   mypy will use PEP 561 compliant packages installed for the Python executable
-  running mypy. See :ref:`installed_packages` for more on making PEP 561
+  running mypy. See :ref:`installed-packages` for more on making PEP 561
   compliant packages. This flag will attempt to set ``--python-version`` if not
   already set.
 
@@ -384,11 +384,11 @@ Here are some more useful flags:
   ``--py2`` flags are aliases for ``--python-version 2.7``. See
   :ref:`version_and_platform_checks` for more about this feature. This flag
   will attempt to find a Python executable of the corresponding version to
-  search for `PEP 561 <https://www.python.org/dev/peps/pep-0561/>`_ compliant
+  search for `PEP 561`_ compliant
   packages. If you'd like to disable this, see ``--no-site-packages`` below.
 
 - ``--no-site-packages`` will disable searching for 
-  `PEP 561 <https://www.python.org/dev/peps/pep-0561/>`_ compliant packages.
+  `PEP 561`_ compliant packages.
   This will also disable searching for a usable Python executable. Use this
   flag if mypy cannot find a Python executable for the version of Python being
   checked, and you don't need to use PEP 561 typed packages. Otherwise, use
@@ -474,6 +474,9 @@ For the remaining flags you can read the full ``mypy -h`` output.
 .. note::
 
    Command line flags are liable to change between releases.
+
+
+.. _PEP 561: https://www.python.org/dev/peps/pep-0561/
 
 .. _integrating-mypy:
 
