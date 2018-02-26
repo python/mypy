@@ -17,7 +17,6 @@ classifiers = [
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
-    'Operating System :: POSIX',
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
@@ -37,7 +36,6 @@ setup(
     author_email='jukka.lehtosalo@iki.fi',
     url='http://www.mypy-lang.org/',
     license='MIT License',
-    platforms=['POSIX'],
     py_modules=['mypy_extensions'],
     classifiers=classifiers,
     install_requires=[
