@@ -552,10 +552,9 @@ def process_options(args: List[str],
                 py_exe = _python_executable_from_version(special_opts.python_version)
                 options.python_executable = py_exe
             except PythonExecutableInferenceError as e:
-                if not special_opts.no_site_packages:
-                    # raise error if we cannot find site-packages and PEP 561
-                    # searching is not disabled
-                    parser.error(str(e))
+                # raise error if we cannot find site-packages and PEP 561
+                # searching is not disabled
+                parser.error(str(e))
     elif special_opts.python_version is None and special_opts.python_executable is not None:
         try:
             options.python_version = _python_version_from_executable(

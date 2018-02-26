@@ -876,11 +876,8 @@ def call_python(python_executable: str, command: str) -> str:
 
 
 @functools.lru_cache(maxsize=None)
-def get_package_dirs(python_executable: str) -> List[str]:
-    """Find package directories for given python
-
-    This defaults to the Python running mypy.
-    """
+def get_site_packages_dirs(python_executable: str) -> List[str]:
+    """Find package directories for given python."""
     if python_executable == sys.executable:
         # Use running Python's package dirs
         if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
@@ -895,7 +892,7 @@ def get_package_dirs(python_executable: str) -> List[str]:
         try:
             output = call_python(python_executable, USER_SITE_PACKAGES)
         except subprocess.CalledProcessError:
-            # if no paths are found (raising a CalledProcessError, we fall back on sysconfig,
+            # if no paths are found (raising a CalledProcessError), we fall back on sysconfig,
             # the python executable is likely in a virtual environment, thus lacking
             # needed site methods
             output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
@@ -907,7 +904,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
     if python_executable is not None:
-        site_packages_dirs = get_package_dirs(python_executable)
+        site_packages_dirs = get_site_packages_dirs(python_executable)
         if not site_packages_dirs:
             print("Could not find package directories for Python '{}'".format(
                 python_executable), file=sys.stderr)
