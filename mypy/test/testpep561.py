@@ -39,7 +39,7 @@ class TestPEP561(TestCase):
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
-        dirs = get_package_dirs(sys.executable)
+        dirs = get_site_packages_dirs(sys.executable)
         assert dirs
 
     @staticmethod

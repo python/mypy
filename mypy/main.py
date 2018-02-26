@@ -528,15 +528,10 @@ def process_options(args: List[str],
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
 
-    # Infer Python version and/or executable if one is not given
-    if special_opts.python_executable is not None and special_opts.python_version is not None:
-        try:
+    try:
+        # Infer Python version and/or executable if one is not given
+        if special_opts.python_executable is not None and special_opts.python_version is not None:
             py_exe_ver = _python_version_from_executable(special_opts.python_executable)
-
-        except PythonExecutableInferenceError as e:
-            parser.error(str(e))
-            sys.exit(2)
-        else:
             if py_exe_ver != special_opts.python_version:
                 parser.error(
                     'Python version {} did not match executable {}, got version {}.'.format(
@@ -545,23 +540,17 @@ def process_options(args: List[str],
             else:
                 options.python_version = special_opts.python_version
                 options.python_executable = special_opts.python_executable
-    elif special_opts.python_executable is None and special_opts.python_version is not None:
-        options.python_version = special_opts.python_version
-        if not special_opts.no_site_packages:
-            try:
+        elif special_opts.python_executable is None and special_opts.python_version is not None:
+            options.python_version = special_opts.python_version
+            if not special_opts.no_site_packages:
                 py_exe = _python_executable_from_version(special_opts.python_version)
                 options.python_executable = py_exe
-            except PythonExecutableInferenceError as e:
-                # raise error if we cannot find site-packages and PEP 561
-                # searching is not disabled
-                parser.error(str(e))
-    elif special_opts.python_version is None and special_opts.python_executable is not None:
-        try:
+        elif special_opts.python_version is None and special_opts.python_executable is not None:
             options.python_version = _python_version_from_executable(
                 special_opts.python_executable)
             options.python_executable = special_opts.python_executable
-        except PythonExecutableInferenceError as e:
-            parser.error(str(e))
+    except PythonExecutableInferenceError as e:
+        parser.error(str(e))
 
     if special_opts.no_site_packages:
         options.python_executable = None
