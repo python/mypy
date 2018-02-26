@@ -147,6 +147,10 @@ overridden by the pattern sections matching the module name.
   pattern matching is used, the pattern should match the name of the
   *imported* module, not the module containing the import statement.
 
+- ``ignore_missing_stubs`` (List[str], default []) suppress error
+  messages about imports that are resolved but are missing library
+  stubs.
+
 - ``silent_imports`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip`` plus ``ignore_missing_imports=True``.
 

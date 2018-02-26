@@ -1295,6 +1295,7 @@ y = 1
 import __dummy_third_party1
 [out]
 main:1: error: No library stub file for module '__dummy_third_party1'
+main:1: note: (To suppress this error add this module to --ignore-missing-stubs)
 main:1: note: (Stub files are from https://github.com/python/typeshed)
 
 [case testMissingStubForStdLibModule]

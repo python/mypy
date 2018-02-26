@@ -718,8 +718,12 @@ class BuildManager:
                 line, 0, "No library stub file for standard library module '{}'".format(target))
             self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         elif moduleinfo.is_third_party_module(target):
-            self.errors.report(line, 0, "No library stub file for module '{}'".format(target))
-            self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
+            if target not in self.options.ignore_missing_stubs:
+                self.errors.report(line, 0, "No library stub file for module '{}'".format(target))
+                self.errors.report(
+                    line, 0, "(To suppress this error add this module to --ignore-missing-stubs)",
+                    severity='note', only_once=True)
+                self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
         else:
             self.errors.report(line, 0, "Cannot find module named '{}'".format(target))
             self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
