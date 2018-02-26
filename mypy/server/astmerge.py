@@ -50,7 +50,7 @@ from typing import Dict, List, cast, TypeVar, Optional
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, MDEF
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -156,15 +156,11 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_func_def(self, node: FuncDef) -> None:
         node = self.fixup(node)
-        if node.type:
-            self.fixup_type(node.type)
-        if node.info:
-            node.info = self.fixup(node.info)
+        self.process_base_func(node)
         super().visit_func_def(node)
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
-        if node.info:
-            node.info = self.fixup(node.info)
+        self.process_base_func(node)
         super().visit_overloaded_func_def(node)
 
     def visit_class_def(self, node: ClassDef) -> None:
@@ -175,6 +171,15 @@ class NodeReplaceVisitor(TraverserVisitor):
             self.process_type_var_def(tv)
         self.process_type_info(node.info)
         super().visit_class_def(node)
+
+    def process_base_func(self, node: FuncBase) -> None:
+        if node.type:
+            self.fixup_type(node.type)
+        if node.info:
+            node.info = self.fixup(node.info)
+        if node.unanalyzed_type:
+            # Unanalyzed types can have AST node references
+            self.fixup_type(node.unanalyzed_type)
 
     def process_type_var_def(self, tv: TypeVarDef) -> None:
         for value in tv.values:
