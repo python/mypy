@@ -50,6 +50,7 @@ That enables this to work:
     import attr
     from typing import Dict
     @attr.s(auto_attribs=True)
+    class A:
         one: int = attr.ib(8)
         two: Dict[str, str] = attr.Factory(dict)
         bad: str = attr.ib(16)   # Error: can't assign int to str
