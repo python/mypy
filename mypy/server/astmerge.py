@@ -377,14 +377,18 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 new.__dict__ = node.node.__dict__
                 node.node = new
                 # TODO: Other node types
-                if isinstance(node.node, Var) and node.node.type:
-                    node.node.type.accept(TypeReplaceVisitor(replacements))
+                if isinstance(node.node, Var):
+                    if node.node.type:
+                        node.node.type.accept(TypeReplaceVisitor(replacements))
                     node.node.info = cast(TypeInfo, replacements.get(node.node.info,
                                                                      node.node.info))
             else:
                 # TODO: Other node types
-                if isinstance(node.node, Var) and node.node.type:
-                    node.node.type.accept(TypeReplaceVisitor(replacements))
+                if isinstance(node.node, Var):
+                    if node.node.type:
+                        node.node.type.accept(TypeReplaceVisitor(replacements))
+                    node.node.info = cast(TypeInfo, replacements.get(node.node.info,
+                                                                     node.node.info))
         override = node.type_override
         if override:
             override.accept(TypeReplaceVisitor(replacements))
