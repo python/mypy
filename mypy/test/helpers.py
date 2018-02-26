@@ -335,7 +335,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
 def split_lines(*streams: bytes) -> List[str]:
     """Returns a single list of string lines from the byte streams in args."""
     return [
-        s.rstrip('\n\r')
+        s
         for stream in streams
         for s in stream.decode('utf8').splitlines()
     ]
