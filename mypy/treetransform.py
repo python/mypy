@@ -38,8 +38,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
      * Do not duplicate TypeInfo nodes. This would generally not be desirable.
      * Only update some name binding cross-references, but only those that
-       refer to Var or FuncDef nodes, not those targeting ClassDef or TypeInfo
-       nodes.
+       refer to Var, Decorator or FuncDef nodes, not those targeting ClassDef or
+       TypeInfo nodes.
      * Types are not transformed, but you can override type() to also perform
        type transformation.
 
@@ -76,26 +76,11 @@ class TransformVisitor(NodeVisitor[Node]):
         return ImportAll(node.id, node.relative)
 
     def copy_argument(self, argument: Argument) -> Argument:
-        init_stmt = None  # type: Optional[AssignmentStmt]
-
-        if argument.initialization_statement:
-            init_lvalue = cast(
-                NameExpr,
-                self.expr(argument.initialization_statement.lvalues[0]),
-            )
-            init_lvalue.set_line(argument.line)
-            init_stmt = AssignmentStmt(
-                [init_lvalue],
-                self.expr(argument.initialization_statement.rvalue),
-                self.optional_type(argument.initialization_statement.type),
-            )
-
         arg = Argument(
             self.visit_var(argument.variable),
             argument.type_annotation,
             argument.initializer,
             argument.kind,
-            init_stmt,
         )
 
         # Refresh lines of the inner things
@@ -177,7 +162,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.block(node.defs),
                        node.type_vars,
                        self.expressions(node.base_type_exprs),
-                       node.metaclass)
+                       self.optional_expr(node.metaclass))
         new.fullname = node.fullname
         new.info = node.info
         new.decorators = [self.expr(decorator)
@@ -299,8 +284,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_exec_stmt(self, node: ExecStmt) -> ExecStmt:
         return ExecStmt(self.expr(node.expr),
-                        self.optional_expr(node.variables1),
-                        self.optional_expr(node.variables2))
+                        self.optional_expr(node.globals),
+                        self.optional_expr(node.locals))
 
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)
@@ -352,11 +337,14 @@ class TransformVisitor(NodeVisitor[Node]):
         target = original.node
         if isinstance(target, Var):
             target = self.visit_var(target)
+        elif isinstance(target, Decorator):
+            target = self.visit_var(target.var)
         elif isinstance(target, FuncDef):
             # Use a placeholder node for the function if it exists.
             target = self.func_placeholder_map.get(target, target)
         new.node = target
-        new.is_def = original.is_def
+        new.is_new_def = original.is_new_def
+        new.is_inferred_def = original.is_inferred_def
 
     def visit_yield_from_expr(self, node: YieldFromExpr) -> YieldFromExpr:
         return YieldFromExpr(self.expr(node.expr))
@@ -392,7 +380,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return RevealTypeExpr(self.expr(node.expr))
 
     def visit_super_expr(self, node: SuperExpr) -> SuperExpr:
-        new = SuperExpr(node.name)
+        call = self.expr(node.call)
+        assert isinstance(call, CallExpr)
+        new = SuperExpr(node.name, call)
         new.info = node.info
         return new
 

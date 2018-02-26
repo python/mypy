@@ -1,10 +1,6 @@
 -- Test cases for taking a diff of two module ASTs/symbol tables.
 -- The diffs are used for fined-grained incremental checking.
 
---
--- Module top-levels
---
-
 [case testChangeTypeOfModuleAttribute]
 x = 1
 y = 1
@@ -265,3 +261,422 @@ class A:
 
 [out]
 __main__.A.B
+
+[case testChangeNamedTupleAttribute]
+from typing import NamedTuple
+class A:
+    x: str
+N = NamedTuple('N', [('x', int), ('y', str)])
+M = NamedTuple('M', [('x', int), ('y', str)])
+[file next.py]
+from typing import NamedTuple
+N = NamedTuple('N', [('x', int), ('y', int)])
+M = NamedTuple('M', [('x', int), ('y', str)])
+[out]
+__main__.A
+__main__.N
+__main__.N.__init__
+__main__.N._asdict
+__main__.N._make
+__main__.N._replace
+__main__.N.y
+
+[case testSimpleDecoratedFunction]
+from a import dec
+@dec
+def f() -> None: pass
+@dec
+def g() -> None: pass
+[file next.py]
+from a import dec
+@dec
+def f(x: int) -> None: pass
+@dec
+def g() -> None: pass
+[file a.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def dec(f: T) -> T:
+    return f
+[out]
+__main__.f
+
+[case testSimpleDecoratedMethod]
+from a import dec
+class A:
+    @dec
+    def f(self) -> None:
+        self.g()
+    @dec
+    def g(self) -> None: pass
+[file next.py]
+from a import dec
+class A:
+    @dec
+    def f(self, x: int) -> None:
+        self.g()
+    @dec
+    def g(self) -> None: pass
+[file a.py]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def dec(f: T) -> T:
+    return f
+[out]
+__main__.A.f
+
+[case testTypeVarBound]
+from typing import TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+[file next.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+S = TypeVar('S')
+[out]
+__main__.T
+
+[case testTypeVarVariance]
+from typing import TypeVar
+A = TypeVar('A', covariant=True)
+B = TypeVar('B', covariant=True)
+C = TypeVar('C', covariant=True)
+[file next.py]
+from typing import TypeVar
+A = TypeVar('A', covariant=True)
+B = TypeVar('B', contravariant=True)
+C = TypeVar('C')
+[out]
+__main__.B
+__main__.C
+
+[case testTypeVarValues]
+from typing import TypeVar
+A = TypeVar('A', int, str)
+B = TypeVar('B', int, str)
+C = TypeVar('C', int, str)
+[file next.py]
+from typing import TypeVar
+A = TypeVar('A', int, str)
+B = TypeVar('B', int, str, object)
+C = TypeVar('C')
+[out]
+__main__.B
+__main__.C
+
+[case testGenericFunction]
+from typing import TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+def f(x: T) -> T: pass
+def g(x: S) -> S: pass
+[file next.py]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+S = TypeVar('S')
+def f(x: T) -> T: pass
+def g(x: S) -> S: pass
+[out]
+__main__.T
+__main__.f
+
+[case testGenericTypes]
+from typing import List
+x: List[int]
+y: List[int]
+[file next.py]
+from typing import List
+x: List[int]
+y: List[str]
+[builtins fixtures/list.pyi]
+[out]
+__main__.y
+
+[case testTypeAliasOfList]
+from typing import List
+X = List[int]
+Y = List[int]
+[file next.py]
+from typing import List
+X = List[str]
+Y = List[int]
+[builtins fixtures/list.pyi]
+[out]
+__main__.X
+
+[case testTypeAliasOfCallable]
+from typing import Callable
+A = Callable[[int], str]
+B = Callable[[int], str]
+C = Callable[[int], str]
+[file next.py]
+from typing import Callable
+A = Callable[[int], str]
+B = Callable[[], str]
+C = Callable[[int], int]
+[out]
+__main__.B
+__main__.C
+
+[case testGenericTypeAlias]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+A = Callable[[T], T]
+B = Callable[[T], T]
+[file next.py]
+from typing import Callable, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+A = Callable[[T], T]
+B = Callable[[T], S]
+[out]
+__main__.B
+__main__.S
+
+[case testDifferentListTypes]
+from typing import List
+A = List
+B = list
+C = List
+[file next.py]
+from typing import List
+A = List
+B = list
+C = list
+[builtins fixtures/list.pyi]
+[out]
+__main__.C
+
+[case testDecoratorChangesSignature]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: str) -> Iterator[None]:
+    yield
+[file next.py]
+from contextlib import contextmanager
+from typing import Iterator, List, Tuple
+
+@contextmanager
+def f(x: List[Tuple[int]]) -> Iterator[None]:
+    yield
+
+@contextmanager
+def g(x: object) -> Iterator[None]:
+    yield
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/list.pyi]
+[out]
+__main__.g
+
+[case testOverloadedMethod]
+from typing import overload
+
+class A:
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    def f(self, x): pass
+
+    @overload
+    def g(self, x: int) -> int: pass
+    @overload
+    def g(self, x: str) -> str: pass
+    def g(self, x): pass
+[file next.py]
+from typing import overload
+
+class A:
+    @overload
+    def f(self, x: int) -> int: pass
+    @overload
+    def f(self, x: str) -> str: pass
+    def f(self, x): pass
+
+    @overload
+    def g(self, x: int) -> int: pass
+    @overload
+    def g(self, x: object) -> object: pass
+    def g(self, x): pass
+[out]
+__main__.A.g
+
+[case testPropertyWithSetter]
+class A:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+
+class B:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+[file next.py]
+class A:
+    @property
+    def x(self) -> int:
+        pass
+
+    @x.setter
+    def x(self, o: int) -> None:
+        pass
+
+class B:
+    @property
+    def x(self) -> str:
+        pass
+
+    @x.setter
+    def x(self, o: str) -> None:
+        pass
+[builtins fixtures/property.pyi]
+[out]
+__main__.B.x
+
+[case testFunctionalEnum]
+from enum import Enum
+A = Enum('A', 'x')
+B = Enum('B', 'x')
+[file next.py]
+from enum import Enum
+A = Enum('A', 'x')
+B = Enum('B', 'y')
+[out]
+__main__.B.x
+__main__.B.y
+
+[case testTypedDict]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': str})
+p = Point(dict(x=42, y='lurr'))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict2]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: int
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+class Point(TypedDict):
+    x: int
+    y: str
+p = Point(dict(x=42, y='lurr'))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict3]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int})
+p = Point(dict(x=42))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypedDict4]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+p = Point(dict(x=42, y=1337))
+[file next.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int}, total=False)
+p = Point(dict(x=42, y=1337))
+[builtins fixtures/dict.pyi]
+[out]
+__main__.Point
+__main__.p
+
+[case testTypeAliasSimple]
+A = int
+B = int
+[file next.py]
+A = str
+B = int
+[out]
+__main__.A
+
+[case testTypeAliasGeneric]
+from typing import List
+A = List[int]
+B = List[int]
+[file next.py]
+from typing import List
+A = List[str]
+B = List[int]
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenToNonGen]
+from typing import List
+A = List[str]
+B = List
+[file next.py]
+from typing import List
+A = List
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasNonGenToGen]
+from typing import List
+A = List
+B = List
+[file next.py]
+from typing import List
+A = List[str]
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenericTypeVar]
+from typing import TypeVar, Dict
+T = TypeVar('T')
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[file next.py]
+from typing import TypeVar, Dict
+class T: pass
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[builtins fixtures/dict.pyi]
+[out]
+__main__.A
+__main__.T

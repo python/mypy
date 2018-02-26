@@ -34,6 +34,9 @@ Built-in types
    x = [1]  # type: List[int]
    x = {6, 7}  # type: Set[int]
 
+   # Empty Tuple types are a bit special
+   x = ()  # type: Tuple[()]
+
    # For mappings, we need the types of both keys and values.
    x = {'field': 2.0}  # type: Dict[str, float]
 
@@ -239,7 +242,7 @@ Other stuff
        else:
            return sys.stdout
 
-   # forward references are useful if you want to referemce a class before it is designed
+   # forward references are useful if you want to reference a class before it is designed
    
    def f(foo: A) -> int:  # this will fail
        ...
@@ -304,4 +307,4 @@ Mypy brings limited support for PEP 526 annotations.
         def __init__(self) -> None:
             self.items: List[str] = []
    
-Please see :ref:`python-36` for more on mypy's compatability with Python 3.6's new features.
+Please see :ref:`python-36` for more on mypy's compatibility with Python 3.6's new features.

@@ -11,9 +11,10 @@ class object:
 class list(Generic[T]): pass
 
 class type:
+    __name__: str
     def mro(self) -> List['type']: pass
 
-class tuple: pass
+class tuple(Generic[T]): pass
 class function: pass
 class bool: pass
 class int: pass

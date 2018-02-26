@@ -1,10 +1,12 @@
 """Classes for producing HTML reports about imprecision."""
 
 from abc import ABCMeta, abstractmethod
+import collections
 import json
 import os
 import shutil
 import tokenize
+import typing
 from operator import attrgetter
 from urllib.request import pathname2url
 from typing import Any, Callable, Dict, List, Optional, Tuple, cast
@@ -13,19 +15,29 @@ import time
 
 import sys
 
+import itertools
+
 from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
-from mypy.types import Type
+from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
 try:
-    import lxml.etree as etree
+    import lxml.etree as etree  # type: ignore
     LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
 
+type_of_any_name_map = collections.OrderedDict([
+    (TypeOfAny.unannotated, "Unannotated"),
+    (TypeOfAny.explicit, "Explicit"),
+    (TypeOfAny.from_unimported_type, "Unimported"),
+    (TypeOfAny.from_omitted_generics, "Omitted Generics"),
+    (TypeOfAny.from_error, "Error"),
+    (TypeOfAny.special_form, "Special Form"),
+])  # type: collections.OrderedDict[TypeOfAny, str]
 
 reporter_classes = {}  # type: Dict[str, Tuple[Callable[[Reports, str], AbstractReporter], bool]]
 
@@ -147,6 +159,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
+        self.any_types_counter = {}  # type: Dict[str, typing.Counter[TypeOfAny]]
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
@@ -154,58 +167,81 @@ class AnyExpressionsReporter(AbstractReporter):
                 type_map: Dict[Expression, Type],
                 options: Options) -> None:
         visitor = stats.StatisticsVisitor(inferred=True, filename=tree.fullname(),
-                                          typemap=type_map, all_nodes=True)
+                                          typemap=type_map, all_nodes=True,
+                                          visit_untyped_defs=False)
         tree.accept(visitor)
+        self.any_types_counter[tree.fullname()] = visitor.type_of_any_counter
         num_unanalyzed_lines = list(visitor.line_map.values()).count(stats.TYPE_UNANALYZED)
         # count each line of dead code as one expression of type "Any"
-        num_any = visitor.num_any + num_unanalyzed_lines
-        num_total = visitor.num_imprecise + visitor.num_precise + num_any
+        num_any = visitor.num_any_exprs + num_unanalyzed_lines
+        num_total = visitor.num_imprecise_exprs + visitor.num_precise_exprs + num_any
         if num_total > 0:
             self.counts[tree.fullname()] = (num_any, num_total)
 
     def on_finish(self) -> None:
+        self._report_any_exprs()
+        self._report_types_of_anys()
+
+    def _write_out_report(self,
+                          filename: str,
+                          header: List[str],
+                          rows: List[List[str]],
+                          footer: List[str],
+                          ) -> None:
+        row_len = len(header)
+        assert all(len(row) == row_len for row in rows + [header, footer])
+        min_column_distance = 3  # minimum distance between numbers in two columns
+        widths = [-1] * row_len
+        for row in rows + [header, footer]:
+            for i, value in enumerate(row):
+                widths[i] = max(widths[i], len(value))
+        for i, w in enumerate(widths):
+            # Do not add min_column_distance to the first column.
+            if i > 0:
+                widths[i] = w + min_column_distance
+        with open(os.path.join(self.output_dir, filename), 'w') as f:
+            header_str = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(header, widths)))
+            separator = '-' * len(header_str)
+            f.write(header_str + '\n')
+            f.write(separator + '\n')
+            for row_values in rows:
+                r = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(row_values, widths)))
+                f.writelines(r + '\n')
+            f.write(separator + '\n')
+            footer_str = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(footer, widths)))
+            f.writelines(footer_str + '\n')
+
+    def _report_any_exprs(self) -> None:
         total_any = sum(num_any for num_any, _ in self.counts.values())
         total_expr = sum(total for _, total in self.counts.values())
         total_coverage = 100.0
         if total_expr > 0:
             total_coverage = (float(total_expr - total_any) / float(total_expr)) * 100
 
-        any_column_name = "Anys"
-        total_column_name = "Exprs"
+        column_names = ["Name", "Anys", "Exprs", "Coverage"]
+        rows = []  # type: List[List[str]]
+        for filename in sorted(self.counts):
+            (num_any, num_total) = self.counts[filename]
+            coverage = (float(num_total - num_any) / float(num_total)) * 100
+            coverage_str = '{:.2f}%'.format(coverage)
+            rows.append([filename, str(num_any), str(num_total), coverage_str])
+        total_row = ["Total", str(total_any), str(total_expr), '{:.2f}%'.format(total_coverage)]
+        self._write_out_report('any-exprs.txt', column_names, rows, total_row)
+
+    def _report_types_of_anys(self) -> None:
+        total_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+        for counter in self.any_types_counter.values():
+            for any_type, value in counter.items():
+                total_counter[any_type] += value
         file_column_name = "Name"
         total_row_name = "Total"
-        coverage_column_name = "Coverage"
-        # find the longest filename all files
-        name_width = max([len(file) for file in self.counts] +
-                         [len(file_column_name), len(total_row_name)])
-        # totals are the largest numbers in their column - no need to look at others
-        min_column_distance = 3  # minimum distance between numbers in two columns
-        any_width = max(len(str(total_any)) + min_column_distance, len(any_column_name))
-        exprs_width = max(len(str(total_expr)) + min_column_distance, len(total_column_name))
-        coverage_width = len(coverage_column_name) + min_column_distance
-        header = '{:{name_width}} {:>{any_width}} {:>{total_width}} {:>{coverage_width}}'.format(
-            file_column_name, any_column_name, total_column_name, coverage_column_name,
-            name_width=name_width, any_width=any_width, total_width=exprs_width,
-            coverage_width=coverage_width)
-
-        with open(os.path.join(self.output_dir, 'any-exprs.txt'), 'w') as f:
-            f.write(header + '\n')
-            separator = '-' * len(header) + '\n'
-            f.write(separator)
-            coverage_width -= 1  # subtract one for '%'
-            for file in sorted(self.counts):
-                (num_any, num_total) = self.counts[file]
-                coverage = (float(num_total - num_any) / float(num_total)) * 100
-                f.write('{:{name_width}} {:{any_width}} {:{total_width}} '
-                        '{:>{coverage_width}.2f}%\n'.
-                        format(file, num_any, num_total, coverage, name_width=name_width,
-                               any_width=any_width, total_width=exprs_width,
-                               coverage_width=coverage_width))
-            f.write(separator)
-            f.write('{:{name_width}} {:{any_width}} {:{total_width}} {:>{coverage_width}.2f}%\n'
-                    .format(total_row_name, total_any, total_expr, total_coverage,
-                            name_width=name_width, any_width=any_width, total_width=exprs_width,
-                            coverage_width=coverage_width))
+        column_names = [file_column_name] + list(type_of_any_name_map.values())
+        rows = []  # type: List[List[str]]
+        for filename, counter in self.any_types_counter.items():
+            rows.append([filename] + [str(counter[typ]) for typ in type_of_any_name_map])
+        total_row = [total_row_name] + [str(total_counter[typ])
+                                        for typ in type_of_any_name_map]
+        self._write_out_report('types-of-anys.txt', column_names, rows, total_row)
 
 
 register_reporter('any-exprs', AnyExpressionsReporter)
@@ -325,25 +361,6 @@ class LineCoverageReporter(AbstractReporter):
 register_reporter('linecoverage', LineCoverageReporter)
 
 
-class OldHtmlReporter(AbstractReporter):
-    """Old HTML reporter.
-
-    This just calls the old functions in `stats`, which use global
-    variables to preserve state for the index.
-    """
-
-    def on_file(self,
-                tree: MypyFile,
-                type_map: Dict[Expression, Type], options: Options) -> None:
-        stats.generate_html_report(tree, tree.path, type_map, self.output_dir)
-
-    def on_finish(self) -> None:
-        stats.generate_html_index(self.output_dir)
-
-
-register_reporter('old-html', OldHtmlReporter)
-
-
 class FileInfo:
     def __init__(self, name: str, module: str) -> None:
         self.name = name
@@ -371,7 +388,7 @@ class MemoryXmlReporter(AbstractReporter):
         self.css_html_path = os.path.join(reports.data_dir, 'xml', 'mypy-html.css')
         xsd_path = os.path.join(reports.data_dir, 'xml', 'mypy.xsd')
         self.schema = etree.XMLSchema(etree.parse(xsd_path))
-        self.last_xml = None  # type: Optional[etree._ElementTree]
+        self.last_xml = None  # type: Optional[Any]
         self.files = []  # type: List[FileInfo]
 
     def on_file(self,
@@ -402,7 +419,8 @@ class MemoryXmlReporter(AbstractReporter):
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
                                  precision=stats.precision_names[status],
-                                 content=line_text.rstrip('\n'))
+                                 content=line_text.rstrip('\n'),
+                                 any_info=self._get_any_info_for_line(visitor, lineno))
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
@@ -412,6 +430,19 @@ class MemoryXmlReporter(AbstractReporter):
 
         self.last_xml = doc
         self.files.append(file_info)
+
+    @staticmethod
+    def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
+        if lineno in visitor.any_line_map:
+            result = "Any Types on this line: "
+            counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+            for typ in visitor.any_line_map[lineno]:
+                counter[typ.type_of_any] += 1
+            for any_type, occurrences in counter.items():
+                result += "\n{} (x{})".format(type_of_any_name_map[any_type], occurrences)
+            return result
+        else:
+            return "No Anys on this line!"
 
     def on_finish(self) -> None:
         self.last_xml = None
@@ -451,7 +482,7 @@ class CoberturaPackage(object):
     """
     def __init__(self, name: str) -> None:
         self.name = name
-        self.classes = {}  # type: Dict[str, etree._Element]
+        self.classes = {}  # type: Dict[str, Any]
         self.packages = {}  # type: Dict[str, CoberturaPackage]
         self.total_lines = 0
         self.covered_lines = 0

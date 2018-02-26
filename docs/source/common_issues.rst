@@ -14,7 +14,7 @@ Can't install mypy using pip
 
 If installation fails, you've probably hit one of these issues:
 
-* Mypy needs Python 3.3 or later to run.
+* Mypy needs Python 3.4 or later to run.
 * You may have to run pip like this:
   ``python3 -m pip install mypy``.
 
@@ -226,6 +226,48 @@ Possible strategies in such situations are:
          return x[0]
      f_good(new_lst) # OK
 
+Covariant subtyping of mutable protocol members is rejected
+-----------------------------------------------------------
+
+Mypy rejects this because this is potentially unsafe.
+Consider this example:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       x: float
+
+   def fun(arg: P) -> None:
+       arg.x = 3.14
+
+   class C:
+       x = 42
+   c = C()
+   fun(c)  # This is not safe
+   c.x << 5  # Since this will fail!
+
+To work around this problem consider whether "mutating" is actually part
+of a protocol. If not, then one can use a ``@property`` in
+the protocol definition:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       @property
+       def x(self) -> float:
+          pass
+
+   def fun(arg: P) -> None:
+       ...
+
+   class C:
+       x = 42
+   fun(C())  # OK
+
 Declaring a supertype as variable type
 --------------------------------------
 
@@ -430,3 +472,27 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
+
+
+.. _silencing-linters:
+
+Silencing linters
+-----------------
+
+In some cases, linters will complain about unused imports or code. In
+these cases, you can silence them with a comment after type comments, or on
+the same line as the import:
+
+.. code-block:: python
+
+   # to silence complaints about unused imports
+   from typing import List  # noqa
+   a = None  # type: List[int]
+
+
+To silence the linter on the same line as a type comment
+put the linter comment *after* the type comment:
+
+.. code-block:: python
+
+    a = some_complex_thing()  # type: ignore  # noqa

@@ -339,7 +339,7 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py:12: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
+_program.py:12: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
 
 [case testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType]
 from typing import Generator, Any
@@ -359,7 +359,7 @@ print(future.result())
 loop.close()
 [out]
 _program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
-_program.py:12: error: Argument 1 to "slow_operation" has incompatible type Future[str]; expected Future[int]
+_program.py:12: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
 
 [case testErrorSettingCallbackWithDifferentFutureType]
 import typing
@@ -386,7 +386,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:18: error: Argument 1 to "add_done_callback" of "Future" has incompatible type Callable[[Future[int]], None]; expected Callable[[Future[str]], Any]
+_program.py:18: error: Argument 1 to "add_done_callback" of "Future" has incompatible type "Callable[[Future[int]], None]"; expected "Callable[[Future[str]], Any]"
 
 [case testErrorOneMoreFutureInReturnType]
 import typing
@@ -422,7 +422,7 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[Future[Future[int]]])
+_program.py:18: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[Future[Future[int]]]")
 
 [case testErrorOneLessFutureInReturnType]
 import typing
@@ -456,7 +456,7 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py:18: error: Incompatible return value type (got Future[Future[int]], expected Future[int])
+_program.py:18: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[int]")
 
 [case testErrorAssignmentDifferentType]
 import typing
@@ -484,3 +484,21 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py:16: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testForwardRefToBadAsyncShouldNotCrash]
+from typing import TypeVar
+import asyncio
+
+T = TypeVar('T')
+P = whatever  # type: ignore
+
+def test() -> None:
+    reveal_type(bad)
+    bad(0)
+
+@asyncio.coroutine
+def bad(arg: P) -> T:
+    pass
+[out]
+_program.py:8: error: Revealed type is 'def [T] (arg: P?) -> T`-1'
+_program.py:12: error: Invalid type "_testForwardRefToBadAsyncShouldNotCrash.P"

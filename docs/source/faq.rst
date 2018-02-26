@@ -101,35 +101,39 @@ Is mypy free?
 Yes. Mypy is free software, and it can also be used for commercial and
 proprietary projects. Mypy is available under the MIT license.
 
-Why not use structural subtyping?
-*********************************
+Can I use structural subtyping?
+*******************************
 
-Mypy primarily uses `nominal subtyping
-<https://en.wikipedia.org/wiki/Nominative_type_system>`_ instead of
+Mypy provides support for both `nominal subtyping
+<https://en.wikipedia.org/wiki/Nominative_type_system>`_ and
 `structural subtyping
-<https://en.wikipedia.org/wiki/Structural_type_system>`_. Some argue
-that structural subtyping is better suited for languages with duck
-typing such as Python.
-
-Here are some reasons why mypy uses nominal subtyping:
+<https://en.wikipedia.org/wiki/Structural_type_system>`_.
+Some argue that structural subtyping is better suited for languages with duck
+typing such as Python. Mypy however primarily uses nominal subtyping,
+leaving structural subtyping mostly opt-in (except for built-in protocols
+such as ``Iterable`` that always support structural subtyping). Here are some
+reasons why:
 
 1. It is easy to generate short and informative error messages when
    using a nominal type system. This is especially important when
    using type inference.
 
-2. Python supports basically nominal isinstance tests and they are
-   widely used in programs. It is not clear how to support isinstance
-   in a purely structural type system while remaining compatible with
-   Python idioms.
+2. Python provides built-in support for nominal ``isinstance()`` tests and
+   they are widely used in programs. Only limited support for structural
+   ``isinstance()`` is available, and it's less type safe than
+   nominal type tests.
 
-3. Many programmers are already familiar with nominal subtyping and it
+3. Many programmers are already familiar with static, nominal subtyping and it
    has been successfully used in languages such as Java, C++ and
-   C#. Only few languages use structural subtyping.
+   C#. Fewer languages use structural subtyping.
 
-However, structural subtyping can also be useful. Structural subtyping
-is a likely feature to be added to mypy in the future, even though we
-expect that most mypy programs will still primarily use nominal
-subtyping.
+However, structural subtyping can also be useful. For example, a "public API"
+may be more flexible if it is typed with protocols. Also, using protocol types
+removes the necessity to explicitly declare implementations of ABCs.
+As a rule of thumb, we recommend using nominal classes where possible, and
+protocols where necessary. For more details about protocol types and structural
+subtyping see :ref:`protocol-types` and
+`PEP 544 <https://www.python.org/dev/peps/pep-0544/>`_.
 
 I like Python and I have no need for static typing
 **************************************************
@@ -162,16 +166,6 @@ runtime addition of methods. However, it is likely that many of these
 features will be supported in a restricted form (for example, runtime
 modification is only supported for classes or methods registered as
 dynamic or 'patchable').
-
-How is mypy different from PyPy?
-********************************
-
-*This answer relates to PyPy as a Python implementation. See also the answer related to RPython below.*
-
-Mypy and PyPy are orthogonal. Mypy does static type checking, i.e. it
-is basically a linter, but static typing has no runtime effect,
-whereas the PyPy is an Python implementation. You can use PyPy to run
-mypy programs.
 
 How is mypy different from Cython?
 **********************************

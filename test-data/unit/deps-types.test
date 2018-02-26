@@ -1,0 +1,702 @@
+-- Test cases for generating fine-grained dependencies between types.
+--
+-- The dependencies are used for fined-grained incremental checking.
+--
+-- See the comment at the top of deps.test for more documentation.
+
+[case testFilterOutBuiltInTypes]
+class A: pass
+
+def f(x: int, y: str, z: A) -> None:
+    pass
+[out]
+<m.A> -> <m.f>, m.A, m.f
+
+[case testTupleType]
+from typing import Tuple
+
+class A: pass
+class B: pass
+
+def f(x: Tuple[A, B]) -> None:
+    pass
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> <m.f>, m.B, m.f
+
+[case testUnionType]
+from typing import Union
+
+class A: pass
+class B: pass
+
+def f() -> None:
+    x: Union[int, A, B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+
+[case testCallableType]
+from typing import Callable
+
+class A: pass
+class B: pass
+
+def f() -> None:
+    x: Callable[[int, A], None]
+    y: Callable[[int, str], B]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+
+[case testTypeType]
+from typing import Type
+
+class A: pass
+
+def f() -> None:
+    x: Type[A]
+    y: Type[int]
+[out]
+<m.A> -> m.A, m.f
+
+[case testTypeTypeAttribute]
+from typing import Type
+
+class A:
+    @staticmethod
+    def f() -> None: pass
+
+def f(x: Type[A]) -> None:
+    x.f()
+[builtins fixtures/staticmethod.pyi]
+[out]
+<m.A.f> -> m, m.f
+<m.A> -> <m.f>, m.A, m.f
+
+[case testComplexNestedType]
+from typing import Union, Callable, Type
+
+class A: pass
+class B: pass
+class C: pass
+
+def f() -> None:
+    x: Union[int, Callable[[Type[A]], B], C]
+[out]
+<m.A> -> m.A, m.f
+<m.B> -> m.B, m.f
+<m.C> -> m.C, m.f
+
+[case testUnionTypeAttributeAccess]
+from typing import Union
+
+class A:
+    def f(self) -> None:
+        self.x = 0
+
+class B:
+    def f(self) -> None:
+        self.x = ''
+
+def f(a: Union[A, B]) -> None:
+    a.x
+    a.f()
+[out]
+<m.A.f> -> m.f
+<m.A.x> -> m.A.f, m.f
+<m.A> -> <m.f>, m.A, m.f
+<m.B.f> -> m.f
+<m.B.x> -> m.B.f, m.f
+<m.B> -> <m.f>, m.B, m.f
+
+[case testTupleTypeAttributeAccess]
+from typing import Tuple
+
+class C(Tuple[int, str]):
+    def f(self) -> None: pass
+
+def f(c: C) -> None:
+    c.f()
+[builtins fixtures/tuple.pyi]
+[out]
+<m.C.f> -> m.f
+<m.C> -> <m.f>, m.C, m.f
+
+[case testOverloaded]
+from typing import overload
+
+class A: pass
+class B: pass
+
+def g() -> None: pass
+
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+
+def f(x):
+    g()
+
+ff = f
+
+def h() -> None:
+    f(A())
+    ff(A())
+[out]
+<m.A.__init__> -> m.h
+<m.A> -> <m.f>, <m.ff>, m.A, m.f, m.h
+<m.B> -> <m.f>, <m.ff>, m.B, m.f
+<m.f> -> m, m.h
+<m.ff> -> m, m.h
+<m.g> -> m.f
+
+-- Type aliases
+
+[case testAliasDepsNormalMod]
+from mod import I
+A = I
+x: A
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m
+<m.x> -> m
+<mod.I.__init__> -> m
+<mod.I> -> <m.x>, m
+
+[case testAliasDepsNormalModExtended]
+# __dump_all__
+import a
+x: a.A
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+class I: pass
+[out]
+<m.x> -> m
+<a.A> -> m
+<a> -> m
+<mod.I.__init__> -> a
+<mod.I> -> <m.x>, m, a, mod.I
+
+[case testAliasDepsNormalFunc]
+from mod import I
+A = I
+def f(x: A) -> None:
+    pass
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m.f
+<mod.I.__init__> -> m
+<mod.I> -> <m.f>, m, m.f
+
+[case testAliasDepsNormalFuncExtended]
+# __dump_all__
+import a
+def f(x: a.A) -> None:
+    pass
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+class I: pass
+[out]
+<a.A> -> m.f
+<a> -> m
+<mod.I.__init__> -> a
+<mod.I> -> <m.f>, m.f, a, mod.I
+
+[case testAliasDepsNormalClass]
+from a import A
+class C:
+    x: A
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+class I: pass
+[out]
+<m.C> -> m.C
+<a.A> -> m
+<mod.I> -> <m.C.x>, m
+
+[case testAliasDepsNormalClassBases]
+from a import A
+class C(A):
+    pass
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+class I: pass
+[out]
+<m.C> -> m.C
+<a.A> -> m
+<mod.I.__init__> -> <m.C.__init__>
+<mod.I> -> m, m.C
+
+[case testAliasDepsGenericMod]
+from mod import I, S, D
+A = D[I, S]
+x: A
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m
+<m.x> -> m
+<mod.D.__init__> -> m
+<mod.D> -> <m.x>, m
+<mod.I> -> <m.x>, m
+<mod.S> -> <m.x>, m
+
+[case testAliasDepsGenericFunc]
+from mod import I, S, D
+A = D[S, I]
+def f(x: A) -> None:
+    pass
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m.f
+<mod.D.__init__> -> m
+<mod.D> -> <m.f>, m, m.f
+<mod.I> -> <m.f>, m, m.f
+<mod.S> -> <m.f>, m, m.f
+
+[case testAliasDepsGenericFuncExtended]
+import a
+def f(x: a.A) -> None:
+    pass
+[file a.py]
+from mod import I, S, D
+A = D[S, I]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<a.A> -> m.f
+<a> -> m
+<mod.D> -> <m.f>, m.f
+<mod.I> -> <m.f>, m.f
+<mod.S> -> <m.f>, m.f
+
+[case testAliasDepsGenericClass]
+from mod import I, D, S, T
+A = D[S, T]
+class C:
+    x: A[I]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m
+<m.C> -> m.C
+<mod.D.__init__> -> m
+<mod.D> -> <m.C.x>, m
+<mod.I> -> <m.C.x>, m
+<mod.S> -> <m.C.x>, m
+<mod.T> -> m
+
+[case testAliasDepsForwardMod]
+from mod import I
+x: A
+A = I
+[file mod.py]
+from typing import TypeVar, Generic
+class I: pass
+[out]
+<m.A> -> m
+<m.x> -> m
+<mod.I.__init__> -> m
+<mod.I> -> <m.x>, m
+
+[case testAliasDepsForwardFunc]
+from mod import I
+def f(x: A) -> None:
+    pass
+A = I
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m.f
+<mod.I.__init__> -> m
+<mod.I> -> <m.f>, m, m.f
+
+[case testAliasDepsForwardClass]
+from mod import I
+class C:
+    x: A
+A = I
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m
+<m.C> -> m.C
+<mod.I.__init__> -> m
+<mod.I> -> <m.C.x>, m
+
+[case testAliasDepsChainedMod]
+from mod import I
+A = I
+B = A
+x: B
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.x> -> m
+<mod.I.__init__> -> m
+<mod.I> -> <m.x>, m
+
+[case testAliasDepsChainedFunc]
+from mod import I
+A = I
+B = A
+def f(x: B) -> None:
+    pass
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m
+<m.B> -> m.f
+<mod.I.__init__> -> m
+<mod.I> -> <m.f>, m, m.f
+
+[case testAliasDepsChainedFuncExtended]
+import a
+B = a.A
+def f(x: B) -> None:
+    pass
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+class I: pass
+[out]
+<m.B> -> m.f
+<a.A> -> m
+<a> -> m
+<mod.I.__init__> -> m
+<mod.I> -> <m.f>, m, m.f
+
+[case testAliasDepsChainedClass]
+from mod import I
+A = I
+B = A
+class C(B):
+    pass
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.C> -> m.C
+<mod.I.__init__> -> <m.C.__init__>, m
+<mod.I> -> m, m.C
+
+[case testAliasDepsNestedMod]
+from mod import I, S, D
+A = D[S, I]
+B = D[S, A]
+x: B
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.x> -> m
+<mod.D.__init__> -> m
+<mod.D> -> <m.x>, m
+<mod.I> -> <m.x>, m
+<mod.S> -> <m.x>, m
+
+[case testAliasDepsNestedModExtended]
+# __dump_all__
+from mod import S, D
+import a
+B = D[S, a.A]
+x: B
+[file a.py]
+from mod import I, S, D
+A = D[S, I]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.B> -> m
+<m.x> -> m
+<a.A> -> m
+<a> -> m
+<mod.D.__init__> -> m, a
+<mod.D> -> <m.x>, m, a, mod.D
+<mod.I> -> <m.x>, m, a, mod.I
+<mod.S> -> <m.x>, m, a, mod.S
+<mod.T> -> mod.D
+<mod.U> -> mod.D
+
+[case testAliasDepsNestedFunc]
+from mod import I, S, D
+A = D[S, I]
+B = D[S, A]
+def f(x: B) -> None:
+    pass
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m
+<m.B> -> m.f
+<mod.D.__init__> -> m
+<mod.D> -> <m.f>, m, m.f
+<mod.I> -> <m.f>, m, m.f
+<mod.S> -> <m.f>, m, m.f
+
+[case testAliasDepsNestedFuncExtended]
+# __dump_all__
+from mod import S, D
+import a
+B = D[S, a.A]
+def f(x: B) -> None:
+    pass
+[file a.py]
+from mod import I, S, D
+A = D[S, I]
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.B> -> m.f
+<a.A> -> m
+<a> -> m
+<mod.D.__init__> -> m, a
+<mod.D> -> <m.f>, m, m.f, a, mod.D
+<mod.I> -> <m.f>, m, m.f, a, mod.I
+<mod.S> -> <m.f>, m, m.f, a, mod.S
+<mod.T> -> mod.D
+<mod.U> -> mod.D
+
+[case testAliasDepsNestedFuncDirect]
+from mod import I, S, D
+A = D[S, I]
+E = D
+def f(x: E[S, A]) -> None:
+    pass
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m.f
+<m.E> -> m.f
+<mod.D.__init__> -> m
+<mod.D> -> <m.f>, m, m.f
+<mod.I> -> <m.f>, m, m.f
+<mod.S> -> <m.f>, m, m.f
+
+[case testAliasDepsNestedClass]
+from mod import I, S, D
+A = D[S, I]
+B = D[S, A]
+class C:
+    x: B
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m
+<m.B> -> m
+<m.C> -> m.C
+<mod.D.__init__> -> m
+<mod.D> -> <m.C.x>, m
+<mod.I> -> <m.C.x>, m
+<mod.S> -> <m.C.x>, m
+
+[case testAliasDepsCast]
+from typing import cast
+from mod import I
+A = I
+def fun() -> None:
+    x = cast(A, 42)
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m.fun
+<mod.I.__init__> -> m
+<mod.I> -> m, m.fun
+
+[case testAliasDepsRuntime]
+from mod import I, S, D
+A = I
+x = D[S, A]()
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.A> -> m
+<m.x> -> m
+<mod.D.__init__> -> m
+<mod.D> -> <m.x>, m
+<mod.I.__init__> -> m
+<mod.I> -> <m.x>, m
+<mod.S> -> <m.x>, m
+
+[case testAliasDepsRuntimeExtended]
+# __dump_all__
+from mod import I, S, D
+import a
+x = D[S, a.A]()
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+U = TypeVar('U')
+class D(Generic[T, U]): pass
+class I: pass
+class S: pass
+[out]
+<m.x> -> m
+<a.A> -> m
+<a> -> m
+<mod.D.__init__> -> m
+<mod.D> -> <m.x>, m, mod.D
+<mod.I.__init__> -> a
+<mod.I> -> <m.x>, m, a, mod.I
+<mod.S> -> <m.x>, m, mod.S
+<mod.T> -> mod.D
+<mod.U> -> mod.D
+
+[case testAliasDepsNamedTuple]
+from typing import NamedTuple
+from mod import I
+A = I
+class P(NamedTuple):
+    x: A
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m
+<m.P> -> m.P
+<mod.I.__init__> -> m
+<mod.I> -> <m.P.x>, <m.P>, m, m.P
+
+[case testAliasDepsNamedTupleFunctional]
+# __dump_all__
+from typing import NamedTuple
+import a
+P = NamedTuple('P', [('x', a.A)])
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+class I: pass
+[out]
+<a.A> -> m
+<a> -> m
+<mod.I.__init__> -> a
+<mod.I> -> <m.P.x>, <m.P>, m, a, mod.I
+
+[case testAliasDepsTypedDict]
+from mypy_extensions import TypedDict
+from mod import I
+A = I
+class P(TypedDict):
+    x: A
+[file mod.py]
+class I: pass
+[builtins fixtures/dict.pyi]
+[out]
+<m.A> -> m
+<m.P> -> m.P
+<mod.I.__init__> -> m
+<mod.I> -> <m.P>, m, m.P
+<mypy_extensions.TypedDict> -> m
+
+[case testAliasDepsTypedDictFunctional]
+# __dump_all__
+from mypy_extensions import TypedDict
+import a
+P = TypedDict('P', {'x': a.A})
+[file a.py]
+from mod import I
+A = I
+[file mod.py]
+class I: pass
+[builtins fixtures/dict.pyi]
+[out]
+<a.A> -> m
+<a> -> m
+<mod.I.__init__> -> a
+<mod.I> -> <m.P>, a, mod.I
+<mypy_extensions.TypedDict> -> m
+
+[case testAliasDepsClassInFunction]
+from mod import I
+A = I
+def f() -> None:
+    class C:
+        x: A
+[file mod.py]
+class I: pass
+[out]
+<m.A> -> m.f
+<m.f> -> m.f
+<mod.I.__init__> -> m
+<mod.I> -> <m.f.x>, m, m.f

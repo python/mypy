@@ -295,7 +295,7 @@ from mypy_extensions import TypedDict
 from typing import Mapping
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_mapping(p: Point) -> Mapping[str, str]:
-    return p  # E: Incompatible return value type (got "Point", expected Mapping[str, str])
+    return p  # E: Incompatible return value type (got "Point", expected "Mapping[str, str]")
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictAcceptsIntForFloatDuckTypes]
@@ -341,9 +341,11 @@ from mypy_extensions import TypedDict
 from typing import Dict, MutableMapping
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_dict(p: Point) -> Dict[str, int]:
-    return p  # E: Incompatible return value type (got "Point", expected Dict[str, int])
+    return p  # E: Incompatible return value type (got "Point", expected "Dict[str, int]")
 def as_mutable_mapping(p: Point) -> MutableMapping[str, int]:
-    return p  # E: Incompatible return value type (got "Point", expected MutableMapping[str, int])
+    return p  # E: Incompatible return value type (got "Point", expected "MutableMapping[str, int]") \
+              # N: 'Point' is missing following 'MutableMapping' protocol member: \
+              # N:     __setitem__
 [builtins fixtures/dict.pyi]
 
 [case testCanConvertTypedDictToAny]
@@ -367,11 +369,57 @@ c: C
 def f(a: A) -> None: pass
 
 l = [a, b]  # Join generates an anonymous TypedDict
-f(l) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int})]; expected "A"
+f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x': int, 'z': str})]; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x': int, 'z': str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 
+[case testTypedDictWithSimpleProtocol]
+from typing_extensions import Protocol
+from mypy_extensions import TypedDict
+
+class StrIntMap(Protocol):
+    def __getitem__(self, key: str) -> int: ...
+
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+
+def fun(arg: StrIntMap) -> None: ...
+a: A
+b: B
+fun(a)
+fun(b)  # Error
+[builtins fixtures/dict.pyi]
+[out]
+main:14: error: Argument 1 to "fun" has incompatible type "B"; expected "StrIntMap"
+main:14: note: Following member(s) of "B" have conflicts:
+main:14: note:     Expected:
+main:14: note:         def __getitem__(self, str) -> int
+main:14: note:     Got:
+main:14: note:         def __getitem__(self, str) -> object
+
+[case testTypedDictWithSimpleProtocolInference]
+from typing_extensions import Protocol
+from mypy_extensions import TypedDict
+from typing import TypeVar
+
+T_co = TypeVar('T_co', covariant=True)
+T = TypeVar('T')
+
+class StrMap(Protocol[T_co]):
+    def __getitem__(self, key: str) -> T_co: ...
+
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+
+def fun(arg: StrMap[T]) -> T:
+    return arg['whatever']
+a: A
+b: B
+reveal_type(fun(a))  # E: Revealed type is 'builtins.int*'
+reveal_type(fun(b))  # E: Revealed type is 'builtins.object*'
+[builtins fixtures/dict.pyi]
+[out]
 
 -- Join
 
@@ -693,7 +741,7 @@ class C:
         A = TypedDict('A', {'x': int})
     def g(self):
         A = TypedDict('A', {'y': int})
-C.A  # E: Type[C] has no attribute "A"
+C.A  # E: "Type[C]" has no attribute "A"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictInFunction]
@@ -1048,9 +1096,9 @@ c: C
 def f(a: A) -> None: pass
 
 l = [a, b]  # Join generates an anonymous TypedDict
-f(l) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x'?: int})]; expected "A"
+f(l) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int})]"; expected "A"
 ll = [b, c]
-f(ll) # E: Argument 1 to "f" has incompatible type List[TypedDict({'x'?: int, 'z'?: str})]; expected "A"
+f(ll) # E: Argument 1 to "f" has incompatible type "List[TypedDict({'x'?: int, 'z'?: str})]"; expected "A"
 [builtins fixtures/dict.pyi]
 
 
@@ -1132,9 +1180,16 @@ def f(x: int) -> None: ...
 def f(x): pass
 
 a: A
-f(a)  # E: Argument 1 to "f" has incompatible type "A"; expected Iterable[int]
+f(a)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+[out]
+main:13: error: Argument 1 to "f" has incompatible type "A"; expected "Iterable[int]"
+main:13: note: Following member(s) of "A" have conflicts:
+main:13: note:     Expected:
+main:13: note:         def __iter__(self) -> Iterator[int]
+main:13: note:     Got:
+main:13: note:         def __iter__(self) -> Iterator[str]
 
 [case testTypedDictOverloading3]
 from typing import overload
@@ -1229,7 +1284,7 @@ class C(B): pass
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})'
 m1: Mapping[str, B] = x
-m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, C]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceInClassTypedDict]
@@ -1243,16 +1298,64 @@ class C(B): pass
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})'
 m1: Mapping[str, B] = x
-m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type Mapping[str, C])
+m2: Mapping[str, C] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, C]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceToTypedDictInTypedDict]
 from typing import Mapping
 from mypy_extensions import TypedDict
-# Forward references don't quite work yet
-X = TypedDict('X', {'a': 'A'}) # E: Invalid type "__main__.A"
+X = TypedDict('X', {'a': 'A'})
 A = TypedDict('A', {'b': int})
 x: X
 reveal_type(x) # E: Revealed type is 'TypedDict('__main__.X', {'a': TypedDict('__main__.A', {'b': builtins.int})})'
 reveal_type(x['a']['b']) # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
+
+[case testSelfRecursiveTypedDictInheriting]
+from mypy_extensions import TypedDict
+
+class MovieBase(TypedDict):
+    name: str
+    year: int
+
+class Movie(MovieBase): # type: ignore # warning about recursive not fully supported
+    director: 'Movie'
+
+m: Movie
+reveal_type(m['director']['name']) # E: Revealed type is 'builtins.str'
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testTypedDictForwardAsUpperBound]
+from typing import TypeVar, Generic
+from mypy_extensions import TypedDict
+T = TypeVar('T', bound='M')
+class G(Generic[T]):
+    x: T
+
+yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict('__main__.M', {'x': builtins.int})"
+yg: G[M]
+z: int = G[M]().x['x']
+
+class M(TypedDict):
+    x: int
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testTypedDictWithImportCycleForward]
+import a
+[file a.py]
+from mypy_extensions import TypedDict
+from b import f
+
+N = TypedDict('N', {'a': str})
+[file b.py]
+import a
+
+def f(x: a.N) -> None:
+    reveal_type(x)
+    reveal_type(x['a'])
+[builtins fixtures/dict.pyi]
+[out]
+tmp/b.py:4: error: Revealed type is 'TypedDict('a.N', {'a': builtins.str})'
+tmp/b.py:5: error: Revealed type is 'builtins.str'

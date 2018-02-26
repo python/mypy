@@ -3,7 +3,7 @@ import fnmatch
 import pprint
 import sys
 
-from typing import Mapping, MutableMapping, Optional, Tuple, List, Pattern, Dict
+from typing import Dict, List, Mapping, MutableMapping, Optional, Pattern, Set, Tuple
 
 from mypy import defaults
 
@@ -20,7 +20,12 @@ class Options:
     PER_MODULE_OPTIONS = {
         "ignore_missing_imports",
         "follow_imports",
-        "disallow_any",
+        "disallow_any_generics",
+        "disallow_any_unimported",
+        "disallow_any_expr",
+        "disallow_any_decorated",
+        "disallow_any_explicit",
+        "disallow_subclassing_any",
         "disallow_untyped_calls",
         "disallow_untyped_defs",
         "check_untyped_defs",
@@ -29,16 +34,22 @@ class Options:
         "show_none_errors",
         "warn_no_return",
         "warn_return_any",
+        "warn_unused_ignores",
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
         "strict_optional",
+        "disallow_untyped_decorators",
     }
 
-    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS | {"quick_and_dirty", "platform"})
+    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
+                                {"quick_and_dirty", "platform", "cache_fine_grained"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
+        # Cache for clone_for_module()
+        self.clone_cache = {}  # type: Dict[str, Options]
+
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version = defaults.PYTHON3_VERSION
@@ -49,7 +60,13 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
-        self.disallow_any = []  # type: List[str]
+
+        # disallow_any options
+        self.disallow_any_generics = False
+        self.disallow_any_unimported = False
+        self.disallow_any_expr = False
+        self.disallow_any_decorated = False
+        self.disallow_any_explicit = False
 
         # Disallow calling untyped functions from typed ones
         self.disallow_untyped_calls = False
@@ -57,8 +74,14 @@ class Options:
         # Disallow defining untyped (or incompletely typed) functions
         self.disallow_untyped_defs = False
 
+        # Disallow defining incompletely typed functions
+        self.disallow_incomplete_defs = False
+
         # Type check unannotated functions
         self.check_untyped_defs = False
+
+        # Disallow decorating typed functions with untyped decorators
+        self.disallow_untyped_decorators = False
 
         # Disallow subclassing values of type 'Any'
         self.disallow_subclassing_any = False
@@ -78,6 +101,9 @@ class Options:
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
+
+        # Warn about unused '[mypy-<pattern>] config sections
+        self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
@@ -116,6 +142,9 @@ class Options:
         self.debug_cache = False
         self.quick_and_dirty = False
         self.skip_version_check = False
+        self.fine_grained_incremental = False
+        self.cache_fine_grained = False
+        self.use_fine_grained_cache = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]
@@ -123,6 +152,8 @@ class Options:
         # Per-module options (raw)
         pm_opts = OrderedDict()  # type: OrderedDict[Pattern[str], Dict[str, object]]
         self.per_module_options = pm_opts
+        # Map pattern back to glob
+        self.unused_configs = OrderedDict()  # type: OrderedDict[Pattern[str], str]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -142,6 +173,9 @@ class Options:
         self.shadow_file = None  # type: Optional[Tuple[str, str]]
         self.show_column_numbers = False  # type: bool
         self.dump_graph = False
+        self.dump_deps = False
+        # If True, partial types can't span a module top level and a function
+        self.local_partial_types = False
 
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
@@ -150,18 +184,32 @@ class Options:
         return not self == other
 
     def __repr__(self) -> str:
-        return 'Options({})'.format(pprint.pformat(self.__dict__))
+        d = dict(self.__dict__)
+        del d['clone_cache']
+        return 'Options({})'.format(pprint.pformat(d))
 
     def clone_for_module(self, module: str) -> 'Options':
+        """Create an Options object that incorporates per-module options.
+
+        NOTE: Once this method is called all Options objects should be
+        considered read-only, else the caching might be incorrect.
+        """
+        res = self.clone_cache.get(module)
+        if res is not None:
+            return res
         updates = {}
         for pattern in self.per_module_options:
             if self.module_matches_pattern(module, pattern):
+                if pattern in self.unused_configs:
+                    del self.unused_configs[pattern]
                 updates.update(self.per_module_options[pattern])
         if not updates:
+            self.clone_cache[module] = self
             return self
         new_options = Options()
         new_options.__dict__.update(self.__dict__)
         new_options.__dict__.update(updates)
+        self.clone_cache[module] = new_options
         return new_options
 
     def module_matches_pattern(self, module: str, pattern: Pattern[str]) -> bool:

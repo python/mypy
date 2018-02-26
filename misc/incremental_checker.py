@@ -9,7 +9,7 @@ of commits to find the expected result, then rewinds back to the first commit an
 re-runs mypy on the commits with incremental mode enabled to make sure it returns
 the same results.
 
-This script will download and test the offical mypy repo by default. Running:
+This script will download and test the official mypy repo by default. Running:
 
     python3 misc/incremental_checker.py last 30
 
@@ -39,6 +39,7 @@ import base64
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -49,6 +50,7 @@ import time
 CACHE_PATH = ".incremental_checker_cache.json"
 MYPY_REPO_URL = "https://github.com/python/mypy.git"
 MYPY_TARGET_FILE = "mypy"
+DAEMON_CMD = ["python3", "-m", "mypy.dmypy"]
 
 JsonDict = Dict[str, Any]
 
@@ -113,7 +115,7 @@ def get_commits_starting_at(repo_folder_path: str, start_commit: str) -> List[Tu
     return get_commits(repo_folder_path, '{0}^..HEAD'.format(start_commit))
 
 
-def get_nth_commit(repo_folder_path, n: int) -> Tuple[str, str]:
+def get_nth_commit(repo_folder_path: str, n: int) -> Tuple[str, str]:
     print("Fetching last {} commits (or all, if there are fewer commits than n)".format(n))
     return get_commits(repo_folder_path, '-{}'.format(n))[0]
 
@@ -121,31 +123,67 @@ def get_nth_commit(repo_folder_path, n: int) -> Tuple[str, str]:
 def run_mypy(target_file_path: Optional[str],
              mypy_cache_path: str,
              mypy_script: Optional[str],
-             incremental: bool = True,
-             verbose: bool = False) -> Tuple[float, str]:
+             *,
+             incremental: bool = False,
+             daemon: bool = False,
+             verbose: bool = False) -> Tuple[float, str, Dict[str, Any]]:
     """Runs mypy against `target_file_path` and returns what mypy prints to stdout as a string.
 
     If `incremental` is set to True, this function will use store and retrieve all caching data
     inside `mypy_cache_path`. If `verbose` is set to True, this function will pass the "-v -v"
     flags to mypy to make it output debugging information.
+
+    If `daemon` is True, we use daemon mode; the daemon must be started and stopped by the caller.
     """
-    if mypy_script is None:
-        command = ["python3", "-m", "mypy"]
+    stats = {}  # type: Dict[str, Any]
+    if daemon:
+        command = DAEMON_CMD + ["check", "-v"]
     else:
-        command = [mypy_script]
-    command.extend(["--cache-dir", mypy_cache_path])
-    if incremental:
-        command.append("--incremental")
-    if verbose:
-        command.extend(["-v", "-v"])
+        if mypy_script is None:
+            command = ["python3", "-m", "mypy"]
+        else:
+            command = [mypy_script]
+        command.extend(["--cache-dir", mypy_cache_path])
+        if incremental:
+            command.append("--incremental")
+        if verbose:
+            command.extend(["-v", "-v"])
     if target_file_path is not None:
         command.append(target_file_path)
     start = time.time()
     output, stderr, _ = execute(command, False)
     if stderr != "":
         output = stderr
+    else:
+        if daemon:
+            output, stats = filter_daemon_stats(output)
     runtime = time.time() - start
-    return runtime, output
+    return runtime, output, stats
+
+
+def filter_daemon_stats(output: str) -> Tuple[str, Dict[str, Any]]:
+    stats = {}  # type: Dict[str, Any]
+    lines = output.splitlines()
+    output_lines = []
+    for line in lines:
+        m = re.match('(\w+)\s+:\s+(.*)', line)
+        if m:
+            key, value = m.groups()
+            stats[key] = value
+        else:
+            output_lines.append(line)
+    if output_lines:
+        output_lines.append('\n')
+    return '\n'.join(output_lines), stats
+
+
+def start_daemon(mypy_cache_path: str) -> None:
+    cmd = DAEMON_CMD + ["restart", "--log-file", "./@incr-chk-logs", "--", "--cache-dir", mypy_cache_path]
+    execute(cmd)
+
+
+def stop_daemon() -> None:
+    execute(DAEMON_CMD + ["stop"])
 
 
 def load_cache(incremental_cache_path: str = CACHE_PATH) -> JsonDict:
@@ -180,8 +218,8 @@ def set_expected(commits: List[Tuple[str, str]],
         else:
             print('Caching expected output for commit {0}: "{1}"'.format(commit_id, message))
             execute(["git", "-C", temp_repo_path, "checkout", commit_id])
-            runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
-                                       incremental=False)
+            runtime, output, stats = run_mypy(target_file_path, mypy_cache_path, mypy_script,
+                                              incremental=False)
             cache[commit_id] = {'runtime': runtime, 'output': output}
             if output == "":
                 print("    Clean output ({:.3f} sec)".format(runtime))
@@ -196,7 +234,10 @@ def test_incremental(commits: List[Tuple[str, str]],
                      temp_repo_path: str,
                      target_file_path: Optional[str],
                      mypy_cache_path: str,
-                     mypy_script: Optional[str]) -> None:
+                     *,
+                     mypy_script: Optional[str] = None,
+                     daemon: bool = False,
+                     exit_on_error: bool = False) -> None:
     """Runs incremental mode on all `commits` to verify the output matches the expected output.
 
     This function runs mypy on the `target_file_path` inside the `temp_repo_path`. The
@@ -204,11 +245,13 @@ def test_incremental(commits: List[Tuple[str, str]],
     """
     print("Note: first commit is evaluated twice to warm up cache")
     commits = [commits[0]] + commits
+    overall_stats = {}  # type: Dict[str, float]
     for commit_id, message in commits:
         print('Now testing commit {0}: "{1}"'.format(commit_id, message))
         execute(["git", "-C", temp_repo_path, "checkout", commit_id])
-        runtime, output = run_mypy(target_file_path, mypy_cache_path, mypy_script,
-                                   incremental=True)
+        runtime, output, stats = run_mypy(target_file_path, mypy_cache_path, mypy_script,
+                                          incremental=True, daemon=daemon)
+        relevant_stats = combine_stats(overall_stats, stats)
         expected_runtime = cache[commit_id]['runtime']  # type: float
         expected_output = cache[commit_id]['output']  # type: str
         if output != expected_output:
@@ -217,10 +260,29 @@ def test_incremental(commits: List[Tuple[str, str]],
             print_offset(expected_output, 8)
             print("    Actual output: ({:.3f} sec):".format(runtime))
             print_offset(output, 8)
+            if exit_on_error:
+                break
         else:
             print("    Output matches expected result!")
             print("    Incremental: {:.3f} sec".format(runtime))
             print("    Original:    {:.3f} sec".format(expected_runtime))
+            if relevant_stats:
+                print("    Stats:       {}".format(relevant_stats))
+    if overall_stats:
+        print("Overall stats:", overall_stats)
+
+
+def combine_stats(overall_stats: Dict[str, float],
+                  new_stats: Dict[str, Any]) -> Dict[str, float]:
+    INTERESTING_KEYS = ['build_time', 'gc_time']
+    # For now, we only support float keys
+    relevant_stats = {}  # type: Dict[str, float]
+    for key in INTERESTING_KEYS:
+        if key in new_stats:
+            value = float(new_stats[key])
+            relevant_stats[key] = value
+            overall_stats[key] = overall_stats.get(key, 0.0) + value
+    return relevant_stats
 
 
 def cleanup(temp_repo_path: str, mypy_cache_path: str) -> None:
@@ -232,7 +294,7 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
               target_file_path: Optional[str],
               mypy_path: str, incremental_cache_path: str, mypy_cache_path: str,
               range_type: str, range_start: str, branch: str,
-              params: Optional[Namespace] = None) -> None:
+              params: Namespace) -> None:
     """Tests incremental mode against the repo specified in `target_repo_url`.
 
     This algorithm runs in five main stages:
@@ -265,7 +327,9 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     else:
         raise RuntimeError("Invalid option: {}".format(range_type))
     commits = get_commits_starting_at(temp_repo_path, start_commit)
-    if params is not None and params.sample:
+    if params.limit:
+        commits = commits[:params.limit]
+    if params.sample:
         seed = params.seed or base64.urlsafe_b64encode(os.urandom(15)).decode('ascii')
         random.seed(seed)
         commits = random.sample(commits, params.sample)
@@ -278,15 +342,23 @@ def test_repo(target_repo_url: str, temp_repo_path: str,
     save_cache(cache, incremental_cache_path)
 
     # Stage 4: Rewind and re-run mypy (with incremental mode enabled)
+    if params.daemon:
+        print('Starting daemon')
+        start_daemon(mypy_cache_path)
     test_incremental(commits, cache, temp_repo_path, target_file_path, mypy_cache_path,
-                     mypy_script=params.mypy_script)
+                     mypy_script=params.mypy_script, daemon=params.daemon,
+                     exit_on_error=params.exit_on_error)
 
-    # Stage 5: Remove temp files
-    cleanup(temp_repo_path, mypy_cache_path)
+    # Stage 5: Remove temp files, stop daemon
+    if not params.keep_temporary_files:
+        cleanup(temp_repo_path, mypy_cache_path)
+    if params.daemon:
+        print('Stopping daemon')
+        stop_daemon()
 
 
 def main() -> None:
-    help_factory = (lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32))
+    help_factory = (lambda prog: RawDescriptionHelpFormatter(prog=prog, max_help_position=32))  # type: Any
     parser = ArgumentParser(
         prog='incremental_checker',
         description=__doc__,
@@ -301,6 +373,10 @@ def main() -> None:
                         help="the repo to clone and run tests on")
     parser.add_argument("-f", "--file-path", default=MYPY_TARGET_FILE, metavar="FILE",
                         help="the name of the file or directory to typecheck")
+    parser.add_argument("-x", "--exit-on-error", action='store_true',
+                        help="Exits as soon as an error occurs")
+    parser.add_argument("--keep-temporary-files", action='store_true',
+                        help="Keep temporary files on exit")
     parser.add_argument("--cache-path", default=CACHE_PATH, metavar="DIR",
                         help="sets a custom location to store cache data")
     parser.add_argument("--branch", default=None, metavar="NAME",
@@ -308,7 +384,11 @@ def main() -> None:
                         "uses the default if not specified")
     parser.add_argument("--sample", type=int, help="use a random sample of size SAMPLE")
     parser.add_argument("--seed", type=str, help="random seed")
+    parser.add_argument("--limit", type=int,
+                        help="maximum number of commits to use (default until end)")
     parser.add_argument("--mypy-script", type=str, help="alternate mypy script to run")
+    parser.add_argument("--daemon", action='store_true',
+                        help="use mypy daemon instead of incremental (highly experimental)")
 
     if len(sys.argv[1:]) == 0:
         parser.print_help()

@@ -1,13 +1,17 @@
-from typing import Dict, List, Set, Iterator, Union, Optional, cast
+from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from contextlib import contextmanager
+from collections import defaultdict
 
-from mypy.types import Type, AnyType, PartialType, UnionType, NoneTyp
-from mypy.nodes import (Key, Node, Expression, Var, RefExpr, SymbolTableNode)
+MYPY = False
+if MYPY:
+    from typing import DefaultDict
 
+from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
-
+from mypy.nodes import Expression, Var, RefExpr
+from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
@@ -38,6 +42,12 @@ class DeclarationsFrame(Dict[Key, Optional[Type]]):
         self.unreachable = False
 
 
+if MYPY:
+    # This is the type of stored assignments for union type rvalues.
+    # We use 'if MYPY: ...' since typing-3.5.1 does not have 'DefaultDict'
+    Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+
+
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables.
 
@@ -58,10 +68,13 @@ class ConditionalTypeBinder:
     reveal_type(lst[0].a) # str
     ```
     """
+    # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
+    # This maps an expression to a list of bound types for every item in the union type.
+    type_assignments = None  # type: Optional[Assigns]
 
     def __init__(self) -> None:
         # The stack of frames currently used.  These map
-        # expr.literal_hash -- literals like 'foo.bar' --
+        # literal_hash(expr) -- literals like 'foo.bar' --
         # to types. The last element of this list is the
         # top-most, current frame. Each earlier element
         # records the state as of when that frame was last
@@ -75,7 +88,7 @@ class ConditionalTypeBinder:
         # has no corresponding element in this list.
         self.options_on_return = []  # type: List[List[Frame]]
 
-        # Maps expr.literal_hash to get_declaration(expr)
+        # Maps literal_hash(expr) to get_declaration(expr)
         # for every expr stored in the binder
         self.declarations = DeclarationsFrame()
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
@@ -94,9 +107,8 @@ class ConditionalTypeBinder:
             value = key
         else:
             self.dependencies.setdefault(key, set()).add(value)
-        for elt in key:
-            if isinstance(elt, Key):
-                self._add_dependencies(elt, value)
+        for elt in subkeys(key):
+            self._add_dependencies(elt, value)
 
     def push_frame(self) -> Frame:
         """Push a new frame into the binder."""
@@ -119,12 +131,11 @@ class ConditionalTypeBinder:
     def put(self, expr: Expression, typ: Type) -> None:
         if not isinstance(expr, BindableTypes):
             return
-        if not expr.literal:
+        if not literal(expr):
             return
-        key = expr.literal_hash
+        key = literal_hash(expr)
         assert key is not None, 'Internal error: binder tried to put non-literal'
         if key not in self.declarations:
-            assert isinstance(expr, BindableTypes)
             self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
         self._put(key, typ)
@@ -133,8 +144,9 @@ class ConditionalTypeBinder:
         self.frames[-1].unreachable = True
 
     def get(self, expr: Expression) -> Optional[Type]:
-        assert expr.literal_hash is not None, 'Internal error: binder tried to get non-literal'
-        return self._get(expr.literal_hash)
+        key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried to get non-literal'
+        return self._get(key)
 
     def is_unreachable(self) -> bool:
         # TODO: Copy the value of unreachable into new frames to avoid
@@ -143,8 +155,9 @@ class ConditionalTypeBinder:
 
     def cleanse(self, expr: Expression) -> None:
         """Remove all references to a Node from the binder."""
-        assert expr.literal_hash is not None, 'Internal error: binder tried cleanse non-literal'
-        self._cleanse_key(expr.literal_hash)
+        key = literal_hash(expr)
+        assert key is not None, 'Internal error: binder tried cleanse non-literal'
+        self._cleanse_key(key)
 
     def _cleanse_key(self, key: Key) -> None:
         """Remove all references to a key from the binder."""
@@ -175,10 +188,11 @@ class ConditionalTypeBinder:
 
             type = resulting_values[0]
             assert type is not None
-            if isinstance(self.declarations.get(key), AnyType):
+            declaration_type = self.declarations.get(key)
+            if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
                 if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
-                    type = AnyType()
+                    type = AnyType(TypeOfAny.from_another_any, source_any=declaration_type)
             else:
                 for other in resulting_values[1:]:
                     assert other is not None
@@ -210,13 +224,33 @@ class ConditionalTypeBinder:
 
         return result
 
+    @contextmanager
+    def accumulate_type_assignments(self) -> 'Iterator[Assigns]':
+        """Push a new map to collect assigned types in multiassign from union.
+
+        If this map is not None, actual binding is deferred until all items in
+        the union are processed (a union of collected items is later bound
+        manually by the caller).
+        """
+        old_assignments = None
+        if self.type_assignments is not None:
+            old_assignments = self.type_assignments
+        self.type_assignments = defaultdict(list)
+        yield self.type_assignments
+        self.type_assignments = old_assignments
+
     def assign_type(self, expr: Expression,
                     type: Type,
-                    declared_type: Type,
+                    declared_type: Optional[Type],
                     restrict_any: bool = False) -> None:
+        if self.type_assignments is not None:
+            # We are in a multiassign from union, defer the actual binding,
+            # just collect the types.
+            self.type_assignments[expr].append((type, declared_type))
+            return
         if not isinstance(expr, BindableTypes):
             return None
-        if not expr.literal:
+        if not literal(expr):
             return
         self.invalidate_dependencies(expr)
 
@@ -265,14 +299,15 @@ class ConditionalTypeBinder:
         It is overly conservative: it invalidates globally, including
         in code paths unreachable from here.
         """
-        assert expr.literal_hash is not None
-        for dep in self.dependencies.get(expr.literal_hash, set()):
+        key = literal_hash(expr)
+        assert key is not None
+        for dep in self.dependencies.get(key, set()):
             self._cleanse_key(dep)
 
     def most_recent_enclosing_type(self, expr: BindableExpression, type: Type) -> Optional[Type]:
         if isinstance(type, AnyType):
             return get_declaration(expr)
-        key = expr.literal_hash
+        key = literal_hash(expr)
         assert key is not None
         enclosers = ([get_declaration(expr)] +
                      [f[key] for f in self.frames

@@ -977,7 +977,7 @@ a value, you should use the
 Note that unlike many other generics in the typing module, the ``SendType`` of
 ``Generator`` behaves contravariantly, not covariantly or invariantly.
 
-If you do not plan on recieving or returning values, then set the ``SendType``
+If you do not plan on receiving or returning values, then set the ``SendType``
 or ``ReturnType`` to ``None``, as appropriate. For example, we could have
 annotated the first example as the following:
 
@@ -986,6 +986,11 @@ annotated the first example as the following:
    def squares(n: int) -> Generator[int, None, None]:
        for i in range(n):
            yield i * i
+           
+This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
+since generators have ``close()``, ``send()``, and ``throw()`` methods that
+generic iterables don't. If you will call these methods on the returned
+generator, use the ``Generator`` type instead of ``Iterable`` or ``Iterator``.
 
 .. _async-and-await:
 
@@ -1166,8 +1171,8 @@ TypedDict
 
 .. note::
 
-   TypedDict is not yet an officially supported feature.  It may not work reliably,
-   and details of TypedDict may change in future mypy releases.
+   TypedDict is an officially supported feature, but it is still experimental.
+
 
 Python programs often use dictionaries with string keys to represent objects.
 Here is a typical example:
@@ -1307,7 +1312,9 @@ Class-based syntax
 ------------------
 
 Python 3.6 supports an alternative, class-based syntax to define a
-TypedDict:
+TypedDict. This means that your code must be checked as if it were
+Python 3.6 (using the ``--python-version`` flag on the command line,
+for example). Simply running mypy on Python 3.6 is insufficient.
 
 .. code-block:: python
 

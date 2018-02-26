@@ -9,7 +9,8 @@ class object:
     def __init__(self) -> None: pass
 
 class type: pass
-class tuple: pass
+class tuple(Generic[t]):
+    def __iter__(self) -> Iterator[t]: pass
 class function: pass
 class bool: pass
 class int: pass # for convenience
