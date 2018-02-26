@@ -300,6 +300,7 @@ def process_options(args: List[str],
                         help="Python executable whose installed packages will be"
                              " used in typechecking.", dest='special-opts:python_executable')
     parser.add_argument('--no-site-packages', action='store_true',
+                        dest='special-opts:no_site_packages',
                         help="Do not search for PEP 561 packages in the package directory.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
@@ -547,12 +548,12 @@ def process_options(args: List[str],
                 options.python_executable = special_opts.python_executable
     elif special_opts.python_executable is None and special_opts.python_version is not None:
         options.python_version = special_opts.python_version
-        if not options.no_site_packages:
+        if not special_opts.no_site_packages:
             try:
                 py_exe = _python_executable_from_version(special_opts.python_version)
                 options.python_executable = py_exe
             except PythonExecutableInferenceError as e:
-                if not options.no_site_packages:
+                if not special_opts.no_site_packages:
                     # raise error if we cannot find site-packages and PEP 561
                     # searching is not disabled
                     parser.error(str(e))
@@ -566,7 +567,7 @@ def process_options(args: List[str],
             parser.error(str(e))
             sys.exit(2)
 
-    if options.no_site_packages:
+    if special_opts.no_site_packages:
         options.python_executable = None
 
     # Check for invalid argument combinations.

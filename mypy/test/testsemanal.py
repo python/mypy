@@ -39,7 +39,7 @@ def get_semanal_options() -> Options:
     options.semantic_analysis_only = True
     options.show_traceback = True
     options.python_version = (3, 6)
-    options.no_site_packages = True
+    options.python_executable = None
     return options
 
 

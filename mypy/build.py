@@ -906,14 +906,14 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 python_executable: Optional[str]) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-    if python_executable:
-        package_dirs = get_package_dirs(python_executable)
-        if not package_dirs:
+    if python_executable is not None:
+        site_packages_dirs = get_package_dirs(python_executable)
+        if not site_packages_dirs:
             print("Could not find package directories for Python '{}'".format(
                 python_executable), file=sys.stderr)
             sys.exit(2)
     else:
-        package_dirs = []
+        site_packages_dirs = []
     components = id.split('.')
     dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
 
@@ -937,7 +937,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                     dirs.append(dir)
 
         # Third-party stub/typed packages
-        for pkg_dir in package_dirs:
+        for pkg_dir in site_packages_dirs:
             stub_name = components[0] + '-stubs'
             typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_dir = os.path.join(pkg_dir, stub_name)
@@ -982,7 +982,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
 
     # If we searched for items with a base directory of site-packages/ we need to
     # remove it to avoid searching it for non-typed ids.
-    for dir in package_dirs:
+    for dir in site_packages_dirs:
         if dir + os.sep in find_module_dir_cache[dir_chain]:
             find_module_dir_cache[dir_chain].remove(dir + os.sep)
 
