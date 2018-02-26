@@ -663,6 +663,7 @@ class CallableType(FunctionLike):
                  from_type_type: bool = False,
                  bound_args: Optional[List[Optional[Type]]] = None,
                  ) -> None:
+        assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
             variables = []
         assert len(arg_types) == len(arg_kinds)

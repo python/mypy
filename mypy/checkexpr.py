@@ -10,8 +10,8 @@ from mypy.types import (
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType, TypeOfAny,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    get_typ_args, set_typ_args,
-    StarType)
+    get_typ_args, StarType
+)
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
@@ -2088,7 +2088,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_ctx = callable_ctx.copy_modified(
                 is_ellipsis_args=False,
                 arg_types=[AnyType(TypeOfAny.special_form)] * len(arg_kinds),
-                arg_kinds=arg_kinds
+                arg_kinds=arg_kinds,
+                arg_names=[None] * len(arg_kinds)
             )
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
