@@ -432,12 +432,12 @@ idiomatic.
 
 .. _strict_optional:
 
-Experimental strict optional type and None checking
+Strict optional type and None checking
 ***************************************************
 
 Currently, ``None`` is a valid value for each type, similar to
 ``null`` or ``NULL`` in many languages. However, you can use the
-experimental ``--strict-optional`` command line option to tell mypy
+``--strict-optional`` command line option to tell mypy
 that types should not include ``None``
 by default. The ``Optional`` type modifier is then used to define
 a type variant that includes ``None``, such as ``Optional[int]``:
@@ -477,10 +477,6 @@ recognizes ``is None`` checks:
 
 Mypy will infer the type of ``x`` to be ``int`` in the else block due to the
 check against ``None`` in the if condition.
-
-.. note::
-
-    ``--strict-optional`` is experimental and still has known issues.
 
 .. _noreturn:
 
@@ -986,7 +982,7 @@ annotated the first example as the following:
    def squares(n: int) -> Generator[int, None, None]:
        for i in range(n):
            yield i * i
-           
+
 This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
 since generators have ``close()``, ``send()``, and ``throw()`` methods that
 generic iterables don't. If you will call these methods on the returned
