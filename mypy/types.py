@@ -242,9 +242,10 @@ class CallableArgument(Type):
 class TypeList(Type):
     """Information about argument types and names [...].
 
-    This is only used for the arguments of a Callable type, i.e. for
+    This is used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
-    but a syntactic AST construct.
+    but a syntactic AST construct. UnboundTypes can also have TypeList
+    types before they are processed into Callable type.s
     """
 
     items = None  # type: List[Type]
@@ -254,7 +255,6 @@ class TypeList(Type):
         self.items = items
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        assert isinstance(visitor, SyntheticTypeVisitor)
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:

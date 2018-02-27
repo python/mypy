@@ -56,7 +56,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef
+    Overloaded, TypeVarDef, TypeList
 )
 from mypy.util import get_prefix
 
@@ -349,6 +349,10 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_unbound_type(self, typ: UnboundType) -> None:
         for arg in typ.args:
             arg.accept(self)
+
+    def visit_type_list(self, typ: TypeList) -> None:
+        for item in typ.items:
+            item.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass
