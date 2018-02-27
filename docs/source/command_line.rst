@@ -292,22 +292,11 @@ Here are some more useful flags:
 - ``--ignore-missing-imports`` suppresses error messages about imports
   that cannot be resolved (see :ref:`follow-imports` for some examples).
 
-- ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
-  types and ``None`` values. Without this option, mypy doesn't generally check the
-  use of ``None`` values -- they are valid everywhere. See :ref:`strict_optional` for
-  more about this feature.
-
-- ``--strict-optional-whitelist`` attempts to suppress strict Optional-related
-  errors in non-whitelisted files.  Takes an arbitrary number of globs as the
-  whitelist.  This option is intended to be used to incrementally roll out
-  ``--strict-optional`` to a large codebase that already has mypy annotations.
-  However, this flag comes with some significant caveats.  It does not suppress
-  all errors caused by turning on ``--strict-optional``, only most of them, so
-  there may still be a bit of upfront work to be done before it can be used in
-  CI.  It will also suppress some errors that would be caught in a
-  non-strict-Optional run.  Therefore, when using this flag, you should also
-  re-check your code without ``--strict-optional`` to ensure new type errors
-  are not introduced.
+- ``--strict-optional`` enables strict checking of ``Optional[...]``
+  types and ``None`` values. Without this option, mypy doesn't
+  generally check the use of ``None`` values -- they are valid
+  everywhere. See :ref:`strict_optional` for more about this feature.
+  This flag will become the default in the near future.
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
@@ -342,17 +331,19 @@ Here are some more useful flags:
 
 .. _incremental:
 
-- ``--incremental`` is an experimental option that enables a module
-  cache. When enabled, mypy caches results from previous runs
-  to speed up type checking. Incremental mode can help when most parts
-  of your program haven't changed since the previous mypy run.  A
-  companion flag is ``--cache-dir DIR``, which specifies where the
-  cache files are written.  By default this is ``.mypy_cache`` in the
-  current directory.  While the cache is only read in incremental
-  mode, it is written even in non-incremental mode, in order to "warm"
-  the cache.  To disable writing the cache, use
-  ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul`` (Windows).
-  Cache files belonging to a different mypy version are ignored.
+- ``--incremental`` enables a module cache, using results from
+  previous runs to speed up type checking. Incremental mode can help
+  when most parts of your program haven't changed since the previous
+  mypy run.
+
+- ``--cache-dir DIR`` is a companion flag to ``-incremental``, which
+  specifies where the cache files are written.  By default this is
+  ``.mypy_cache`` in the current directory.  While the cache is only
+  read in incremental mode, it is written even in non-incremental
+  mode, in order to "warm" the cache.  To disable writing the cache,
+  use ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul``
+  (Windows).  Cache files belonging to a different mypy version are
+  ignored.
 
 .. _quick-mode:
 
