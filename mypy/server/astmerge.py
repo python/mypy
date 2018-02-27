@@ -210,7 +210,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
         node.info = self.fixup(node.info)
-        self.process_type_info(node.info)
+        self.process_synthetic_type_info(node.info)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
         super().visit_super_expr(node)
