@@ -333,8 +333,10 @@ Here are some more useful flags:
 - ``--incremental`` enables a module cache, using results from
   previous runs to speed up type checking. Incremental mode can help
   when most parts of your program haven't changed since the previous
-  mypy run.  A companion flag is ``--cache-dir DIR``, which specifies
-  where the cache files are written.  By default this is
+  mypy run.
+
+- ``--cache-dir DIR`` is a companion flag to ``-incremental``, which
+  specifies where the cache files are written.  By default this is
   ``.mypy_cache`` in the current directory.  While the cache is only
   read in incremental mode, it is written even in non-incremental
   mode, in order to "warm" the cache.  To disable writing the cache,
