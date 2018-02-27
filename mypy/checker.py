@@ -20,7 +20,7 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase,
-    ARG_POS, LITERAL_TYPE, MDEF, GDEF,
+    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT,
 )
 from mypy import nodes
@@ -897,13 +897,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(ret_type, Instance):
             if ret_type.type.fullname() == 'builtins.object':
                 return
-
+        if reverse_type.arg_kinds[0] == ARG_STAR:
+            reverse_type = reverse_type.copy_modified(arg_types=[reverse_type.arg_types[0]] * 2,
+                                                      arg_kinds=[ARG_POS] * 2,
+                                                      arg_names=[reverse_type.arg_names[0], "_"])
         assert len(reverse_type.arg_types) == 2
 
         forward_name = nodes.normal_from_reverse_op[reverse_name]
         forward_inst = reverse_type.arg_types[1]
+        if isinstance(forward_inst, TypeVarType):
+            forward_inst = forward_inst.upper_bound
         if isinstance(forward_inst, (FunctionLike, TupleType, TypedDictType)):
             forward_inst = forward_inst.fallback
+        if isinstance(forward_inst, TypeType):
+            item = forward_inst.item
+            if isinstance(item, Instance):
+                opt_meta = item.type.metaclass_type
+                if opt_meta is not None:
+                    forward_inst = opt_meta
         if not (isinstance(forward_inst, (Instance, UnionType))
                 and forward_inst.has_readable_member(forward_name)):
             return
