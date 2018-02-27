@@ -4,9 +4,20 @@ from typing import List, Dict, Iterator, Optional, Tuple, Mapping
 import weakref
 import types
 
+from mypy.nodes import SymbolNode, Var, Decorator, OverloadedFuncDef, FuncDef
+
+
 method_descriptor_type = type(object.__dir__)
 method_wrapper_type = type(object().__ne__)
 wrapper_descriptor_type = type(object.__ne__)
+
+FUNCTION_TYPES = (types.BuiltinFunctionType,
+                  types.FunctionType,
+                  types.MethodType,
+                  method_descriptor_type,
+                  wrapper_descriptor_type,
+                  method_wrapper_type)
+
 ATTR_BLACKLIST = {
     '__doc__',
     '__name__',
@@ -20,35 +31,57 @@ ATTR_BLACKLIST = {
     'semantic_analyzer', # semantic analyzer has stale caches
     'semantic_analyzer_pass3', # semantic analyzer has stale caches
 }
-TYPE_BLACKLIST = {
+
+# Instances of these types can't have references to other objects
+ATOMIC_TYPE_BLACKLIST = {
+    bool,
     int,
     float,
     str,
+    type(None),
+    object,
+}
+
+COLLECTION_TYPE_BLACKLIST = {
+    list,
+    set,
+    dict,
+    tuple,
+}
+
+TYPE_BLACKLIST = {
     weakref.ReferenceType,
 }
 
 
+def isproperty(o: object, attr: str) -> bool:
+    return isinstance(getattr(type(o), attr, None), property)
+
+
 def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
-    for attr in dir(o):
-        if attr not in ATTR_BLACKLIST and hasattr(o, attr):
-            yield attr, getattr(o, attr)
-    if isinstance(o, Iterable) and not isinstance(o, str):
-        for i, e in enumerate(o):
-            yield i, e
+    if type(o) not in COLLECTION_TYPE_BLACKLIST:
+        for attr in dir(o):
+            if attr not in ATTR_BLACKLIST and hasattr(o, attr) and not isproperty(o, attr):
+                e = getattr(o, attr)
+                if not type(e) in ATOMIC_TYPE_BLACKLIST:
+                    yield attr, e
     if isinstance(o, Mapping):
         for k, v in o.items():
             yield k, v
+    elif isinstance(o, Iterable) and not isinstance(o, str):
+        for i, e in enumerate(o):
+            yield i, e
 
 
 def get_edges(o: object) -> Iterator[Tuple[object, object]]:
     for s, e in get_edge_candidates(o):
-        if (
-                isinstance(e, types.BuiltinFunctionType) or
-                isinstance(e, types.FunctionType) or
-                isinstance(e, types.MethodType) or
-                isinstance(e, method_descriptor_type) or
-                isinstance(e, wrapper_descriptor_type) or
-                isinstance(e, method_wrapper_type)):
+        #if isinstance(e, (types.BuiltinFunctionType,
+        #                  method_descriptor_type,
+        #                  wrapper_descriptor_type)):
+        #    print(s, e)
+        #else:
+        #    print(s, type(e))
+        if (isinstance(e, FUNCTION_TYPES)):
             # We don't want to collect methods, but do want to collect values
             # in closures and self pointers to other objects
 
@@ -104,9 +137,10 @@ def get_path(o: object,
 
 #####################################################
 
-from mypy.nodes import SymbolNode, Var, Decorator, OverloadedFuncDef, FuncDef
 
-PRINT_MISMATCH = False
+DUMP_MISMATCH_NODES = False
+
+
 def check_consistency(o: object) -> None:
     seen, parents = get_reachable_graph(o)
     reachable = list(seen.values())
@@ -115,6 +149,8 @@ def check_consistency(o: object) -> None:
     m = {}  # type: Dict[str, SymbolNode]
     for sym in syms:
         fn = sym.fullname()
+        if fn is None:
+            continue
         # Skip stuff that should be expected to have duplicate names
         if isinstance(sym, Var): continue
         if isinstance(sym, Decorator): continue
@@ -136,6 +172,32 @@ def check_consistency(o: object) -> None:
 
         path1 = get_path(sym1, seen, parents)
         path2 = get_path(sym2, seen, parents)
-        if PRINT_MISMATCH:
-            print(sym1, sym2, path1, path2)
+        if DUMP_MISMATCH_NODES and fn in m:
+            print('---')
+            print(id(sym1), sym1)
+            print('---')
+            print(id(sym2), sym2)
+
+        if fn in m:
+            print('\nDuplicate %r nodes with fullname %r found:' % (type(sym).__name__, fn))
+            print('[1] %d: %s' % (id(sym1), path_to_str(path1)))
+            print('[2] %d: %s' % (id(sym2), path_to_str(path2)))
         assert sym.fullname() not in m
+
+
+def path_to_str(path: List[Tuple[object, object]]) -> str:
+    result = '<root>'
+    for attr, obj in path:
+        t = type(obj).__name__
+        if t in ('dict', 'tuple', 'SymbolTable', 'list'):
+            result += '[%s]' % repr(attr)
+        else:
+            if t == 'Var':
+                result += '.%s(%s:%s)' % (attr, t, obj.name())
+            elif t in ('BuildManager', 'FineGrainedBuildManager'):
+                # Omit class name for some classes that aren't part of a class
+                # hierarchy since there isn't much ambiguity.
+                result += '.%s' % attr
+            else:
+                result += '.%s(%s)' % (attr, t)
+    return result
