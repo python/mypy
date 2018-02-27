@@ -220,9 +220,19 @@ class NodeReplaceVisitor(TraverserVisitor):
         if node.info:
             node.info = self.fixup(node.info)
             self.process_type_info(node.info)
+            self.process_synthetic_type_info(node.info)
         if node.old_type:
             self.fixup_type(node.old_type)
         super().visit_newtype_expr(node)
+
+    def process_synthetic_type_info(self, info: TypeInfo) -> None:
+        # Synthetic types (types not created using a class statement) don't
+        # have bodies in the AST so we need to iterate over their symbol
+        # tables separately, unlike normal classes.
+        info.defn.info = info
+        for name, node in info.names.items():
+            if node.node:
+                node.node.accept(self)
 
     def visit_lambda_expr(self, node: LambdaExpr) -> None:
         if node.info:
