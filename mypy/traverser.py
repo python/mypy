@@ -59,6 +59,8 @@ class TraverserVisitor(NodeVisitor[None]):
         for base in o.base_type_exprs:
             base.accept(self)
         o.defs.accept(self)
+        if o.analyzed:
+            o.analyzed.accept(self)
 
     def visit_decorator(self, o: Decorator) -> None:
         o.func.accept(self)
