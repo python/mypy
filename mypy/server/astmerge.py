@@ -50,7 +50,8 @@ from typing import Dict, List, cast, TypeVar, Optional
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, MDEF
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
+    MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -215,6 +216,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_super_expr(node)
         if node.info is not None:
             node.info = self.fixup(node.info)
+
+    def visit_call_expr(self, node: CallExpr) -> None:
+        super().visit_call_expr(node)
+        node.analyzed = self.fixup(node.analyzed)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
         if node.info:
