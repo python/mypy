@@ -86,10 +86,16 @@ flagged as an error.
   read up about these and other useful flags in :ref:`command-line`.
 
 - **A function annotated as returning non-optional type but returns ``None``
-  and mypy doesn't complain** By default, the ``None`` value is considered
-  compatible with everything. See :ref:`optional` for details on strict
-  optional checking, which allows mypy to check ``None`` values precisely, and
-  will soon become default.
+  and mypy doesn't complain**.
+
+  .. code-block:: python
+
+      def foo() -> str:
+          return None  # No error!
+
+  By default, the ``None`` value is considered compatible with everything. See
+  :ref:`optional` for details on strict optional checking, which allows mypy to
+  check ``None`` values precisely, and will soon become default.
 
 .. _silencing_checker:
 
