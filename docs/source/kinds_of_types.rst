@@ -437,8 +437,9 @@ Strict optional type and None checking
 
 Currently, ``None`` is a valid value for each type, similar to
 ``null`` or ``NULL`` in many languages. However, you can use the
-``--strict-optional`` command line option to tell mypy
-that types should not include ``None``
+``--strict-optional`` command line option
+(which will become the default in the near future)
+to tell mypy that types should not include ``None``
 by default. The ``Optional`` type modifier is then used to define
 a type variant that includes ``None``, such as ``Optional[int]``:
 

@@ -296,6 +296,7 @@ Here are some more useful flags:
   types and ``None`` values. Without this option, mypy doesn't
   generally check the use of ``None`` values -- they are valid
   everywhere. See :ref:`strict_optional` for more about this feature.
+  This flag will become the default in the near future.
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
