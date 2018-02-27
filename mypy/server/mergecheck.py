@@ -1,14 +1,20 @@
+"""Check for duplicate AST nodes after merge."""
+
 from typing import Dict, List, Tuple
 
 from mypy.nodes import SymbolNode, Var, Decorator, OverloadedFuncDef, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
 
 
+# If True, print more verbose output on failure.
 DUMP_MISMATCH_NODES = False
 
 
 def check_consistency(o: object) -> None:
-    """Fail if there are two AST nodes with the same fullname reachable from 'o'."""
+    """Fail if there are two AST nodes with the same fullname reachable from 'o'.
+
+    Raise AssertionError on failure and print some debugging output.
+    """
     seen, parents = get_reachable_graph(o)
     reachable = list(seen.values())
     syms = [x for x in reachable if isinstance(x, SymbolNode)]
