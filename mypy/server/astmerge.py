@@ -168,9 +168,14 @@ class NodeReplaceVisitor(TraverserVisitor):
         # TODO additional things?
         node.defs.body = self.replace_statements(node.defs.body)
         node.info = self.fixup(node.info)
+        info = node.info
         for tv in node.type_vars:
             self.process_type_var_def(tv)
-        self.process_type_info(node.info)
+        if info:
+            if info.is_named_tuple:
+                self.process_synthetic_type_info(info)
+            else:
+                self.process_type_info(info)
         super().visit_class_def(node)
 
     def process_base_func(self, node: FuncBase) -> None:
@@ -235,8 +240,9 @@ class NodeReplaceVisitor(TraverserVisitor):
         super().visit_lambda_expr(node)
 
     def visit_typeddict_expr(self, node: TypedDictExpr) -> None:
-        node.info = self.fixup(node.info)
         super().visit_typeddict_expr(node)
+        node.info = self.fixup(node.info)
+        self.process_synthetic_type_info(node.info)
 
     def visit_enum_call_expr(self, node: EnumCallExpr) -> None:
         node.info = self.fixup(node.info)
@@ -276,8 +282,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         # - declared_metaclass
         # - metaclass_type
         # - _promote
-        # - typeddict_type
         # - replaced
+        info.defn.info = self.fixup(info)
+        if info.typeddict_type:
+            self.fixup_type(info.typeddict_type)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
             info.mro[i] = self.fixup(info.mro[i])
@@ -291,7 +299,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         # have bodies in the AST so we need to iterate over their symbol
         # tables separately, unlike normal classes.
         self.process_type_info(info)
-        info.defn.info = info
         for name, node in info.names.items():
             if node.node:
                 node.node.accept(self)
