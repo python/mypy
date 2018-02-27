@@ -224,20 +224,10 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
         if node.info:
             node.info = self.fixup(node.info)
-            self.process_type_info(node.info)
             self.process_synthetic_type_info(node.info)
         if node.old_type:
             self.fixup_type(node.old_type)
         super().visit_newtype_expr(node)
-
-    def process_synthetic_type_info(self, info: TypeInfo) -> None:
-        # Synthetic types (types not created using a class statement) don't
-        # have bodies in the AST so we need to iterate over their symbol
-        # tables separately, unlike normal classes.
-        info.defn.info = info
-        for name, node in info.names.items():
-            if node.node:
-                node.node.accept(self)
 
     def visit_lambda_expr(self, node: LambdaExpr) -> None:
         if node.info:
@@ -250,7 +240,7 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_enum_call_expr(self, node: EnumCallExpr) -> None:
         node.info = self.fixup(node.info)
-        self.process_type_info(node.info)
+        self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
@@ -295,6 +285,16 @@ class NodeReplaceVisitor(TraverserVisitor):
             self.fixup_type(info.bases[i])
         if info.tuple_type:
             self.fixup_type(info.tuple_type)
+
+    def process_synthetic_type_info(self, info: TypeInfo) -> None:
+        # Synthetic types (types not created using a class statement) don't
+        # have bodies in the AST so we need to iterate over their symbol
+        # tables separately, unlike normal classes.
+        self.process_type_info(info)
+        info.defn.info = info
+        for name, node in info.names.items():
+            if node.node:
+                node.node.accept(self)
 
     def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
         result = []
