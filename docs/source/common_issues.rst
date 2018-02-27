@@ -51,12 +51,6 @@ flagged as an error.
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
-- **A function annotated as non-optional returns ``None`` and mypy doesn't
-  complain** By default, ``None`` value is considered compatible
-  with everything. See :ref:`optional` for details on strict optional checking,
-  which allows mypy to check ``None`` values precisely, and will soon become
-  default.
-
 - **One of the values involved has type ``Any``.** Extending the above
   example, if we were to leave out the annotation for ``a``, we'd get
   no error:
@@ -90,6 +84,12 @@ flagged as an error.
   module found at all) leave out ``--ignore-missing-imports``; to get
   clarity about the latter use ``--follow-imports=error``.  You can
   read up about these and other useful flags in :ref:`command-line`.
+
+- **A function annotated as returning non-optional type but returns ``None``
+  and mypy doesn't complain** By default, the ``None`` value is considered
+  compatible with everything. See :ref:`optional` for details on strict
+  optional checking, which allows mypy to check ``None`` values precisely, and
+  will soon become default.
 
 .. _silencing_checker:
 
