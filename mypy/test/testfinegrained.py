@@ -35,6 +35,10 @@ from mypy.server.mergecheck import check_consistency
 import pytest  # type: ignore  # no pytest in typeshed
 
 
+# Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
+CHECK_CONSISTENCY = False
+
+
 class FineGrainedSuite(DataSuite):
     files = [
         'fine-grained.test',
@@ -82,7 +86,8 @@ class FineGrainedSuite(DataSuite):
         fine_grained_manager = None
         if not self.use_cache:
             fine_grained_manager = FineGrainedBuildManager(manager, graph)
-            # check_consistency(fine_grained_manager)
+            if CHECK_CONSISTENCY:
+                check_consistency(fine_grained_manager)
 
         steps = testcase.find_steps()
         all_triggered = []
@@ -110,7 +115,8 @@ class FineGrainedSuite(DataSuite):
                 fine_grained_manager = FineGrainedBuildManager(manager, graph)
 
             new_messages = fine_grained_manager.update(modules)
-            # check_consistency(fine_grained_manager)
+            if CHECK_CONSISTENCY:
+                check_consistency(fine_grained_manager)
             all_triggered.append(fine_grained_manager.triggered)
             new_messages = normalize_messages(new_messages)
 
