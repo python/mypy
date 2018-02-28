@@ -122,7 +122,7 @@ from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, N
 
 from mypy.build import (
     BuildManager, State, BuildSource, Graph, load_graph, find_module_clear_caches,
-    DEBUG_FINE_GRAINED,
+    PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -347,7 +347,9 @@ def update_single_isolated(module: str,
     old_modules = dict(manager.modules)
     sources = get_sources(previous_modules, [(module, path)])
 
-    manager.missing_modules.clear()
+    if module in manager.missing_modules:
+        manager.missing_modules.remove(module)
+
     try:
         if module in graph:
             del graph[module]
@@ -524,7 +526,9 @@ def get_all_changed_modules(root_module: str,
 
 def verify_dependencies(state: State, manager: BuildManager) -> None:
     """Report errors for import targets in module that don't exist."""
-    for dep in state.dependencies + state.suppressed:  # TODO: ancestors?
+    # Strip out indirect dependencies. See comment in build.load_graph().
+    dependencies = [dep for dep in state.dependencies if state.priorities.get(dep) != PRI_INDIRECT]
+    for dep in dependencies + state.suppressed:  # TODO: ancestors?
         if dep not in manager.modules and not manager.options.ignore_missing_imports:
             assert state.tree
             line = find_import_line(state.tree, dep) or 1

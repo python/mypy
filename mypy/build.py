@@ -1660,7 +1660,7 @@ class State:
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
-            self.suppressed = []
+            self.compute_dependencies()
             self.child_modules = set()
 
     def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
@@ -1815,6 +1815,8 @@ class State:
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
+        # TODO: I suspect that splitting compute_dependencies() out from parse_file
+        # obviates the need for this but lacking a test case for the problem this fixed...
         silent_mode = (self.options.ignore_missing_imports or
                        self.options.follow_imports == 'skip')
         if not silent_mode:
@@ -1881,30 +1883,34 @@ class State:
         # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
-        # Compute (direct) dependencies.
-        # Add all direct imports (this is why we needed the first pass).
-        # Also keep track of each dependency's source line.
-        dependencies = []
-        suppressed = []
-        priorities = {}  # type: Dict[str, int]  # id -> priority
-        dep_line_map = {}  # type: Dict[str, int]  # id -> line
         for pri, id, line in manager.all_imported_modules_in_file(self.tree):
-            priorities[id] = min(pri, priorities.get(id, PRI_ALL))
-            if id == self.id:
-                continue
-            # Omit missing modules, as otherwise we could not type-check
-            # programs with missing modules.
-            if id in manager.missing_modules:
-                if id not in dep_line_map:
-                    suppressed.append(id)
-                    dep_line_map[id] = line
-                continue
             if id == '':
                 # Must be from a relative import.
                 manager.errors.set_file(self.xpath, self.id)
                 manager.errors.report(line, 0,
                                       "No parent module -- cannot perform relative import",
                                       blocker=True)
+
+        self.check_blockers()
+
+    def compute_dependencies(self):
+        """Compute a module's dependencies after parsing it.
+
+        This is used when we parse a file that we didn't have
+        up-to-date cache information for. When we have an up-to-date
+        cache, we just use the cached info.
+        """
+        manager = self.manager
+
+        # Compute (direct) dependencies.
+        # Add all direct imports (this is why we needed the first pass).
+        # Also keep track of each dependency's source line.
+        dependencies = []
+        priorities = {}  # type: Dict[str, int]  # id -> priority
+        dep_line_map = {}  # type: Dict[str, int]  # id -> line
+        for pri, id, line in manager.all_imported_modules_in_file(self.tree):
+            priorities[id] = min(pri, priorities.get(id, PRI_ALL))
+            if id == self.id:
                 continue
             if id not in dep_line_map:
                 dependencies.append(id)
@@ -1913,17 +1919,17 @@ class State:
         if self.id != 'builtins' and 'builtins' not in dep_line_map:
             dependencies.append('builtins')
 
-        # If self.dependencies is already set, it was read from the
-        # cache, but for some reason we're re-parsing the file.
         # NOTE: What to do about race conditions (like editing the
         # file while mypy runs)?  A previous version of this code
         # explicitly checked for this, but ran afoul of other reasons
         # for differences (e.g. silent mode).
+
+        # Missing dependencies will be moved from dependencies to
+        # suppressed when they fail to be loaded in load_graph.
         self.dependencies = dependencies
-        self.suppressed = suppressed
+        self.suppressed = []
         self.priorities = priorities
         self.dep_line_map = dep_line_map
-        self.check_blockers()
 
     def semantic_analysis(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"

@@ -32,7 +32,7 @@ def f() -> str:
 [out2]
 tmp/b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testAddFileFineGrainedIncremental]
+[case testAddFileFineGrainedIncremental1]
 # cmd: mypy -m a
 # cmd2: mypy -m a b
 [file a.py]
@@ -43,6 +43,19 @@ def f(x: str) -> None: pass
 [out1]
 tmp/a.py:1: error: Cannot find module named 'b'
 tmp/a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out2]
+tmp/a.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddFileFineGrainedIncremental2]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m a
+# cmd2: mypy -m a b
+[file a.py]
+import b
+b.f(1)
+[file b.py.2]
+def f(x: str) -> None: pass
+[out1]
 [out2]
 tmp/a.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
