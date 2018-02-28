@@ -1503,6 +1503,11 @@ class TypeVisitor(Generic[T]):
     def visit_forwardref_type(self, t: ForwardRef) -> T:
         raise RuntimeError('Internal error: unresolved forward reference')
 
+    def visit_type_list(self, t: TypeList) -> T:
+        # TODO: Do we need to implement this in more visitors? TypeList objects can
+        #   exist as components of UnboundTypes.
+        raise self._notimplemented_helper('type_list')
+
 
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.

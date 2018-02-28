@@ -229,7 +229,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_call_expr(self, node: CallExpr) -> None:
         super().visit_call_expr(node)
-        node.analyzed = self.fixup(node.analyzed)
+        if isinstance(node.analyzed, SymbolNode):
+            node.analyzed = self.fixup(node.analyzed)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
         if node.info:
