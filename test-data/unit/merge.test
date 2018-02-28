@@ -1358,3 +1358,40 @@ __main__:
 target:
     <callable subtype of object>: TypeInfo<1>
     g: FuncDef<2>
+
+[case testMetaclass_typeinfo]
+import target
+[file target.py]
+class M(type): pass
+class C(metaclass=M):
+    pass
+[file target.py.next]
+class M(type): pass
+class C(metaclass=M):
+    pass # dummy change
+[out]
+TypeInfo<0>(
+  Name(target.C)
+  Bases(builtins.object<1>)
+  Mro(target.C<0>, builtins.object<1>)
+  Names()
+  DeclaredMetaclass(target.M<2>)
+  MetaclassType(target.M<2>))
+TypeInfo<2>(
+  Name(target.M)
+  Bases(builtins.type<3>)
+  Mro(target.M<2>, builtins.type<3>, builtins.object<1>)
+  Names())
+==>
+TypeInfo<0>(
+  Name(target.C)
+  Bases(builtins.object<1>)
+  Mro(target.C<0>, builtins.object<1>)
+  Names()
+  DeclaredMetaclass(target.M<2>)
+  MetaclassType(target.M<2>))
+TypeInfo<2>(
+  Name(target.M)
+  Bases(builtins.type<3>)
+  Mro(target.M<2>, builtins.type<3>, builtins.object<1>)
+  Names())

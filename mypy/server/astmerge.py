@@ -276,21 +276,18 @@ class NodeReplaceVisitor(TraverserVisitor):
     def process_type_info(self, info: Optional[TypeInfo]) -> None:
         if info is None:
             return
-        # TODO: Additional things:
-        # - declared_metaclass
-        # - metaclass_type
-        # - _promote
+        self.fixup_type(info.declared_metaclass)
+        self.fixup_type(info.metaclass_type)
+        self.fixup_type(info._promote)
+        self.fixup_type(info.tuple_type)
+        self.fixup_type(info.typeddict_type)
         info.defn.info = self.fixup(info)
         info.replaced = self.fixup(info.replaced)
-        if info.typeddict_type:
-            self.fixup_type(info.typeddict_type)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
             info.mro[i] = self.fixup(info.mro[i])
         for i, base in enumerate(info.bases):
             self.fixup_type(info.bases[i])
-        if info.tuple_type:
-            self.fixup_type(info.tuple_type)
 
     def process_synthetic_type_info(self, info: TypeInfo) -> None:
         # Synthetic types (types not created using a class statement) don't
@@ -405,13 +402,10 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 new = replacements[node.node]
                 new.__dict__ = node.node.__dict__
                 node.node = new
-                # TODO: Other node types
-                if isinstance(node.node, Var):
-                    fixup_var(node.node, replacements)
-            else:
-                # TODO: Other node types
-                if isinstance(node.node, Var):
-                    fixup_var(node.node, replacements)
+            if isinstance(node.node, Var):
+                # Handle them here just in case these aren't exposed through the AST.
+                # TODO: Is this necessary?
+                fixup_var(node.node, replacements)
         override = node.type_override
         if override:
             override.accept(TypeReplaceVisitor(replacements))
