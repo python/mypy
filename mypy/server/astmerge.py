@@ -282,8 +282,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         # - declared_metaclass
         # - metaclass_type
         # - _promote
-        # - replaced
         info.defn.info = self.fixup(info)
+        info.replaced = self.fixup(info.replaced)
         if info.typeddict_type:
             self.fixup_type(info.typeddict_type)
         replace_nodes_in_symbol_table(info.names, self.replacements)
