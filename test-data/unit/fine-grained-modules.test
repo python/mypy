@@ -266,7 +266,9 @@ main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
-[case testDeletionOfSubmoduleTriggersImportFrom1]
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-cache]
+-- Different cache/no-cache tests because:
+-- missing module error message mismatch
 from p import q
 [file p/__init__.py]
 [file p/q.py]
@@ -276,6 +278,20 @@ from p import q
 ==
 main:1: error: Module 'p' has no attribute 'q'
 -- TODO: The following messages are different compared to non-incremental mode
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache]
+-- Different cache/no-cache tests because:
+-- missing module error message mismatch
+from p import q
+[file p/__init__.py]
+[file p/q.py]
+[delete p/q.py.2]
+[file p/q.py.3]
+[out]
+==
 main:1: error: Cannot find module named 'p.q'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
