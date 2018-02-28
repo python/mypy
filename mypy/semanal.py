@@ -991,9 +991,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                             defn.name, items, types, default_items)
                         node.node = info
                         defn.info.replaced = info
-                        # Mark that the original TypeInfo should no longer be used.
-                        defn.info._fullname += '<stale>'
-                        print('orig:', id(defn.info), 'replaced:', id(info))
                         defn.info = info
                         defn.analyzed = NamedTupleExpr(info)
                         defn.analyzed.line = defn.line
