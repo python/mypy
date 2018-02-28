@@ -51,7 +51,7 @@ from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
-    Decorator, MDEF
+    MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -193,11 +193,6 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         self.fixup_type(node.type)
         super().visit_assignment_stmt(node)
-
-    def visit_decorator(self, node: Decorator) -> None:
-        super().visit_decorator(node)
-        node.func = self.fixup(node.func)
-        node.var = self.fixup(node.var)
 
     # Expressions
 
