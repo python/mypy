@@ -8,7 +8,8 @@ from mypy import build
 from mypy.build import BuildManager, BuildSource, State
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, UNBOUND_IMPORTED
+    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
+    UNBOUND_IMPORTED
 )
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
@@ -86,6 +87,9 @@ class ASTMergeSuite(DataSuite):
         a.extend(self.dump(manager, kind))
 
         for expr in old_subexpr:
+            if isinstance(expr, TypeVarExpr):
+                # These are merged so we can't perform the check.
+                continue
             # Verify that old AST nodes are removed from the expression type map.
             assert expr not in new_types
 
