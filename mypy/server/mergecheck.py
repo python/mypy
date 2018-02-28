@@ -68,7 +68,7 @@ def path_to_str(path: List[Tuple[object, object]]) -> str:
         if t in ('dict', 'tuple', 'SymbolTable', 'list'):
             result += '[%s]' % repr(attr)
         else:
-            if t == 'Var':
+            if isinstance(obj, Var):
                 result += '.%s(%s:%s)' % (attr, t, obj.name())
             elif t in ('BuildManager', 'FineGrainedBuildManager'):
                 # Omit class name for some classes that aren't part of a class
