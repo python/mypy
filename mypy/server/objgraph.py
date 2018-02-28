@@ -25,9 +25,7 @@ ATTR_BLACKLIST = {
     '__dict__',
 
     # Mypy specific attribute blacklists
-    'indirection_detector',
     'all_types',
-    'type_maps',
 }
 
 # Instances of these types can't have references to other objects
