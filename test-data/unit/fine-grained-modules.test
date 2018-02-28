@@ -963,5 +963,11 @@ class Foo:
 class Foo:
     def foo(self) -> None: pass
 x = Foo()
+[file b.py.3]
+class Foo:
+    def foo(self, x: int) -> None: pass
+x = Foo()
 [out]
 ==
+==
+main:2: error: Too few arguments for "foo" of "Foo"

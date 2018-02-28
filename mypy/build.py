@@ -567,7 +567,7 @@ class BuildManager:
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
       flush_errors:    A function for processing errors after each SCC
-      saved_cache:     Dict with saved cache state for dmypy and fine-grained incremental mode
+      saved_cache:     Dict with saved cache state for coarse-grained dmypy
                        (read-write!)
       stats:           Dict with various instrumentation numbers
     """
@@ -624,6 +624,8 @@ class BuildManager:
 
         Return list of tuples (priority, module id, import line number)
         for all modules imported in file; lower numbers == higher priority.
+
+        Can generate blocking errors on bogus relative imports.
         """
 
         def correct_rel_imp(imp: Union[ImportFrom, ImportAll]) -> str:
@@ -637,6 +639,12 @@ class BuildManager:
             if rel != 0:
                 file_id = ".".join(file_id.split(".")[:-rel])
             new_id = file_id + "." + imp.id if imp.id else file_id
+
+            if not new_id:
+                self.errors.set_file(file.path, file.name())
+                self.errors.report(imp.line, 0,
+                                   "No parent module -- cannot perform relative import",
+                                   blocker=True)
 
             return new_id
 
@@ -1891,14 +1899,6 @@ class State:
         # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
-        for pri, id, line in manager.all_imported_modules_in_file(self.tree):
-            if id == '':
-                # Must be from a relative import.
-                manager.errors.set_file(self.xpath, self.id)
-                manager.errors.report(line, 0,
-                                      "No parent module -- cannot perform relative import",
-                                      blocker=True)
-
         self.check_blockers()
 
     def compute_dependencies(self) -> None:
@@ -1939,6 +1939,8 @@ class State:
         self.suppressed = []
         self.priorities = priorities
         self.dep_line_map = dep_line_map
+
+        self.check_blockers()  # Can fail due to bogus relative imports
 
     def semantic_analysis(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
