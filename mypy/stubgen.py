@@ -65,7 +65,10 @@ from mypy.nodes import (
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
-from mypy.types import Type, TypeStrVisitor, AnyType, CallableType, UnboundType, NoneTyp, TupleType, TypeList
+from mypy.types import (
+    Type, TypeStrVisitor, AnyType, CallableType,
+    UnboundType, NoneTyp, TupleType, TypeList,
+)
 from mypy.visitor import NodeVisitor
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
