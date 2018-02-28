@@ -1992,7 +1992,9 @@ class State:
             return
         with self.wrap_context():
             # Some tests want to look at the set of all types.
-            if manager.options.use_builtins_fixtures or manager.options.dump_deps:
+            options = manager.options
+            if ((options.use_builtins_fixtures and not options.fine_grained_incremental) or
+                    manager.options.dump_deps):
                 manager.all_types.update(self.type_map())
 
             if self.options.incremental:

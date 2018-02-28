@@ -23,9 +23,6 @@ ATTR_BLACKLIST = {
     '__name__',
     '__class__',
     '__dict__',
-
-    # Mypy specific attribute blacklists
-    'all_types',
 }
 
 # Instances of these types can't have references to other objects
