@@ -22,5 +22,6 @@ class int:
 class str: pass
 class bytes: pass
 class bool: pass
+class ellipsis: pass
 
 class tuple(typing.Generic[_T]): pass

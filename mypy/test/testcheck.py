@@ -74,6 +74,7 @@ typecheck_files = [
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
     'check-default-plugin.test',
+    'check-attr.test',
 ]
 
 
@@ -86,32 +87,24 @@ class TypeCheckSuite(DataSuite):
         incremental = ('incremental' in testcase.name.lower()
                        or 'incremental' in testcase.file
                        or 'serialize' in testcase.file)
-        optional = 'optional' in testcase.file
-        old_strict_optional = experiments.STRICT_OPTIONAL
-        try:
-            if incremental:
-                # Incremental tests are run once with a cold cache, once with a warm cache.
-                # Expect success on first run, errors from testcase.output (if any) on second run.
-                # We briefly sleep to make sure file timestamps are distinct.
-                self.clear_cache()
-                num_steps = max([2] + list(testcase.output2.keys()))
-                # Check that there are no file changes beyond the last run (they would be ignored).
-                for dn, dirs, files in os.walk(os.curdir):
-                    for file in files:
-                        m = re.search(r'\.([2-9])$', file)
-                        if m and int(m.group(1)) > num_steps:
-                            raise ValueError(
-                                'Output file {} exists though test case only has {} runs'.format(
-                                    file, num_steps))
-                for step in range(1, num_steps + 1):
-                    self.run_case_once(testcase, step)
-            elif optional:
-                experiments.STRICT_OPTIONAL = True
-                self.run_case_once(testcase)
-            else:
-                self.run_case_once(testcase)
-        finally:
-            experiments.STRICT_OPTIONAL = old_strict_optional
+        if incremental:
+            # Incremental tests are run once with a cold cache, once with a warm cache.
+            # Expect success on first run, errors from testcase.output (if any) on second run.
+            # We briefly sleep to make sure file timestamps are distinct.
+            self.clear_cache()
+            num_steps = max([2] + list(testcase.output2.keys()))
+            # Check that there are no file changes beyond the last run (they would be ignored).
+            for dn, dirs, files in os.walk(os.curdir):
+                for file in files:
+                    m = re.search(r'\.([2-9])$', file)
+                    if m and int(m.group(1)) > num_steps:
+                        raise ValueError(
+                            'Output file {} exists though test case only has {} runs'.format(
+                                file, num_steps))
+            for step in range(1, num_steps + 1):
+                self.run_case_once(testcase, step)
+        else:
+            self.run_case_once(testcase)
 
     def clear_cache(self) -> None:
         dn = defaults.CACHE_DIR

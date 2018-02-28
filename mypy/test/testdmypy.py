@@ -47,6 +47,7 @@ class DmypySuite(DataSuite):
     files = dmypy_files
     base_path = test_temp_dir
     optional_out = True
+    test_name_suffix = '_dmypy'
 
     @classmethod
     def filter(cls, testcase: DataDrivenTestCase) -> bool:
@@ -120,6 +121,7 @@ class DmypySuite(DataSuite):
             if 'fine-grained' in testcase.file:
                 server_options.append('--experimental')
                 options.fine_grained_incremental = True
+                options.local_partial_types = True
             self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
             self.server.options = options
 

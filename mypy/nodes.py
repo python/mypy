@@ -2,10 +2,14 @@
 
 import os
 from abc import abstractmethod
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence
 )
+
+MYPY = False
+if MYPY:
+    from typing import DefaultDict
 
 import mypy.strconv
 from mypy.util import short_type
@@ -194,6 +198,8 @@ class MypyFile(SymbolNode):
     path = ''
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
+    # Type alias dependencies as mapping from target to set of alias full names
+    alias_deps = None  # type: DefaultDict[str, Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
     names = None  # type: SymbolTable
@@ -215,6 +221,7 @@ class MypyFile(SymbolNode):
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
+        self.alias_deps = defaultdict(set)
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
@@ -797,6 +804,8 @@ class AssignmentStmt(Statement):
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax = False  # type: bool
+    # Does this assignment define a type alias?
+    is_alias_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
@@ -1321,6 +1330,7 @@ op_methods = {
     '*': '__mul__',
     '/': '__truediv__',
     '%': '__mod__',
+    'divmod': '__divmod__',
     '//': '__floordiv__',
     '**': '__pow__',
     '@': '__matmul__',
@@ -1356,6 +1366,7 @@ reverse_op_methods = {
     '__mul__': '__rmul__',
     '__truediv__': '__rtruediv__',
     '__mod__': '__rmod__',
+    '__divmod__': '__rdivmod__',
     '__floordiv__': '__rfloordiv__',
     '__pow__': '__rpow__',
     '__matmul__': '__rmatmul__',
@@ -1993,6 +2004,10 @@ class TypeInfo(SymbolNode):
     # needed during the semantic passes.)
     replaced = None  # type: TypeInfo
 
+    # This is a dictionary that will be serialized and un-serialized as is.
+    # It is useful for plugins to add their data to save in the cache.
+    metadata = None  # type: Dict[str, JsonDict]
+
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'
@@ -2016,6 +2031,7 @@ class TypeInfo(SymbolNode):
         self._cache = set()
         self._cache_proper = set()
         self.add_type_vars()
+        self.metadata = {}
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
@@ -2218,6 +2234,7 @@ class TypeInfo(SymbolNode):
                 'typeddict_type':
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
                 'flags': get_flags(self, TypeInfo.FLAGS),
+                'metadata': self.metadata,
                 }
         return data
 
@@ -2244,6 +2261,7 @@ class TypeInfo(SymbolNode):
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
                             else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
+        ti.metadata = data['metadata']
         set_flags(ti, data['flags'])
         return ti
 
@@ -2334,6 +2352,10 @@ class SymbolTableNode:
     normalized = False  # type: bool
     # Was this defined by assignment to self attribute?
     implicit = False  # type: bool
+    # Is this node refers to other node via node aliasing?
+    # (This is currently used for simple aliases like `A = int` instead of .type_override)
+    is_aliasing = False  # type: bool
+    alias_name = None  # type: Optional[str]
 
     def __init__(self,
                  kind: int,
@@ -2612,3 +2634,10 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
             fail("Duplicate argument '{}' in {}".format(name, description), node)
             break
         seen_names.add(name)
+
+
+def is_class_var(expr: NameExpr) -> bool:
+    """Return whether the expression is ClassVar[...]"""
+    if isinstance(expr.node, Var):
+        return expr.node.is_classvar
+    return False

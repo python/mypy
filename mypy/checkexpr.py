@@ -10,8 +10,8 @@ from mypy.types import (
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType, TypeOfAny,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    get_typ_args, set_typ_args,
-    StarType)
+    get_typ_args, StarType
+)
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
@@ -136,16 +136,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
-                if result.type is None:
+                in_scope, partial_types = self.chk.find_partial_types_in_all_scopes(node)
+                if result.type is None and in_scope:
                     # 'None' partial type. It has a well-defined type. In an lvalue context
                     # we want to preserve the knowledge of it being a partial type.
                     if not lvalue:
                         result = NoneTyp()
                 else:
-                    partial_types = self.chk.find_partial_types(node)
                     if partial_types is not None and not self.chk.current_node_deferred:
-                        context = partial_types[node]
-                        self.msg.need_annotation_for_var(node, context)
+                        if in_scope:
+                            context = partial_types[node]
+                            self.msg.need_annotation_for_var(node, context)
+                        else:
+                            # Defer the node -- we might get a better type in the outer scope
+                            self.chk.handle_cannot_determine_type(node.name(), e)
                     result = AnyType(TypeOfAny.special_form)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
@@ -2084,7 +2088,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_ctx = callable_ctx.copy_modified(
                 is_ellipsis_args=False,
                 arg_types=[AnyType(TypeOfAny.special_form)] * len(arg_kinds),
-                arg_kinds=arg_kinds
+                arg_kinds=arg_kinds,
+                arg_names=[None] * len(arg_kinds)
             )
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:

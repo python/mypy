@@ -200,8 +200,8 @@ def generate_stub(path: str,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                   include_private: bool = False
                   ) -> None:
-    with open(path, 'rb') as f:
-        source = f.read()
+
+    source, _ = mypy.build.read_with_python_encoding(path, pyversion)
     options = MypyOptions()
     options.python_version = pyversion
     try:
