@@ -28,8 +28,6 @@ ATTR_BLACKLIST = {
     'indirection_detector',
     'all_types',
     'type_maps',
-    'semantic_analyzer',  # Semantic analyzer has stale caches
-    'semantic_analyzer_pass3',  # Semantic analyzer has stale caches
 }
 
 # Instances of these types can't have references to other objects
