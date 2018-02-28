@@ -1893,7 +1893,7 @@ class State:
 
         self.check_blockers()
 
-    def compute_dependencies(self):
+    def compute_dependencies(self) -> None:
         """Compute a module's dependencies after parsing it.
 
         This is used when we parse a file that we didn't have
@@ -1901,6 +1901,7 @@ class State:
         cache, we just use the cached info.
         """
         manager = self.manager
+        assert self.tree is not None
 
         # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
