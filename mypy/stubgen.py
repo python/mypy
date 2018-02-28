@@ -202,7 +202,7 @@ def generate_stub(path: str,
                   include_private: bool = False
                   ) -> None:
 
-    source, _ = mypy.build.read_with_python_encoding(path, pyversion)
+    source, _ = mypy.util.read_with_python_encoding(path, pyversion)
     options = MypyOptions()
     options.python_version = pyversion
     try:
