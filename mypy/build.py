@@ -389,7 +389,6 @@ def default_lib_path(data_dir: str,
 CacheMeta = NamedTuple('CacheMeta',
                        [('id', str),
                         ('path', str),
-                        ('memory_only', bool),  # no corresponding json files (fine-grained only)
                         ('mtime', int),
                         ('size', int),
                         ('hash', str),
@@ -415,7 +414,6 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
     return CacheMeta(
         meta.get('id', sentinel),
         meta.get('path', sentinel),
-        meta.get('memory_only', False),
         int(meta['mtime']) if 'mtime' in meta else sentinel,
         meta.get('size', sentinel),
         meta.get('hash', sentinel),
@@ -569,7 +567,7 @@ class BuildManager:
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
       flush_errors:    A function for processing errors after each SCC
-      saved_cache:     Dict with saved cache state for dmypy and fine-grained incremental mode
+      saved_cache:     Dict with saved cache state for coarse-grained dmypy
                        (read-write!)
       stats:           Dict with various instrumentation numbers
     """
@@ -626,6 +624,8 @@ class BuildManager:
 
         Return list of tuples (priority, module id, import line number)
         for all modules imported in file; lower numbers == higher priority.
+
+        Can generate blocking errors on bogus relative imports.
         """
 
         def correct_rel_imp(imp: Union[ImportFrom, ImportAll]) -> str:
@@ -639,6 +639,12 @@ class BuildManager:
             if rel != 0:
                 file_id = ".".join(file_id.split(".")[:-rel])
             new_id = file_id + "." + imp.id if imp.id else file_id
+
+            if not new_id:
+                self.errors.set_file(file.path, file.name())
+                self.errors.report(imp.line, 0,
+                                   "No parent module -- cannot perform relative import",
+                                   blocker=True)
 
             return new_id
 
@@ -1129,12 +1135,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
 
-    if meta.memory_only:
-        # Special case for fine-grained incremental mode when the JSON file is missing but
-        # we want to cache the module anyway.
-        manager.log('Memory-only metadata for {}'.format(id))
-        return meta
-
     assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
@@ -1623,7 +1623,8 @@ class State:
                         self.ignore_all = True
                     else:
                         # In 'error' mode, produce special error messages.
-                        manager.log("Skipping %s (%s)" % (path, id))
+                        if id not in manager.missing_modules:
+                            manager.log("Skipping %s (%s)" % (path, id))
                         if follow_imports == 'error':
                             if ancestor_for:
                                 self.skipping_ancestor(id, path, ancestor_for)
@@ -1675,7 +1676,7 @@ class State:
         else:
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
-            self.suppressed = []
+            self.compute_dependencies()
             self.child_modules = set()
 
     def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
@@ -1830,6 +1831,8 @@ class State:
         """
         # TODO: See if it's possible to move this check directly into parse_file in some way.
         # TODO: Find a way to write a test case for this fix.
+        # TODO: I suspect that splitting compute_dependencies() out from parse_file
+        # obviates the need for this but lacking a test case for the problem this fixed...
         silent_mode = (self.options.ignore_missing_imports or
                        self.options.follow_imports == 'skip')
         if not silent_mode:
@@ -1896,30 +1899,27 @@ class State:
         # TODO: Why can't SemanticAnalyzerPass1 .analyze() do this?
         self.tree.names = manager.semantic_analyzer.globals
 
+        self.check_blockers()
+
+    def compute_dependencies(self) -> None:
+        """Compute a module's dependencies after parsing it.
+
+        This is used when we parse a file that we didn't have
+        up-to-date cache information for. When we have an up-to-date
+        cache, we just use the cached info.
+        """
+        manager = self.manager
+        assert self.tree is not None
+
         # Compute (direct) dependencies.
         # Add all direct imports (this is why we needed the first pass).
         # Also keep track of each dependency's source line.
         dependencies = []
-        suppressed = []
         priorities = {}  # type: Dict[str, int]  # id -> priority
         dep_line_map = {}  # type: Dict[str, int]  # id -> line
         for pri, id, line in manager.all_imported_modules_in_file(self.tree):
             priorities[id] = min(pri, priorities.get(id, PRI_ALL))
             if id == self.id:
-                continue
-            # Omit missing modules, as otherwise we could not type-check
-            # programs with missing modules.
-            if id in manager.missing_modules:
-                if id not in dep_line_map:
-                    suppressed.append(id)
-                    dep_line_map[id] = line
-                continue
-            if id == '':
-                # Must be from a relative import.
-                manager.errors.set_file(self.xpath, self.id)
-                manager.errors.report(line, 0,
-                                      "No parent module -- cannot perform relative import",
-                                      blocker=True)
                 continue
             if id not in dep_line_map:
                 dependencies.append(id)
@@ -1928,17 +1928,19 @@ class State:
         if self.id != 'builtins' and 'builtins' not in dep_line_map:
             dependencies.append('builtins')
 
-        # If self.dependencies is already set, it was read from the
-        # cache, but for some reason we're re-parsing the file.
         # NOTE: What to do about race conditions (like editing the
         # file while mypy runs)?  A previous version of this code
         # explicitly checked for this, but ran afoul of other reasons
         # for differences (e.g. silent mode).
+
+        # Missing dependencies will be moved from dependencies to
+        # suppressed when they fail to be loaded in load_graph.
         self.dependencies = dependencies
-        self.suppressed = suppressed
+        self.suppressed = []
         self.priorities = priorities
         self.dep_line_map = dep_line_map
-        self.check_blockers()
+
+        self.check_blockers()  # Can fail due to bogus relative imports
 
     def semantic_analysis(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -2195,13 +2197,19 @@ def dump_graph(graph: Graph) -> None:
     print("[" + ",\n ".join(node.dumps() for node in nodes) + "\n]")
 
 
-def load_graph(sources: List[BuildSource], manager: BuildManager) -> Graph:
+def load_graph(sources: List[BuildSource], manager: BuildManager,
+               old_graph: Optional[Graph] = None) -> Graph:
     """Given some source files, load the full dependency graph.
+
+    If an old_graph is passed in, it is used as the starting point and
+    modified during graph loading.
 
     As this may need to parse files, this can raise CompileError in case
     there are syntax errors.
     """
-    graph = {}  # type: Graph
+
+    graph = old_graph or {}  # type: Graph
+
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.

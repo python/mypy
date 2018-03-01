@@ -56,7 +56,7 @@ b.py:1: error: Cannot find module named 'a'
 b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
-[case testAddFileFixesAndGeneratesError]
+[case testAddFileFixesAndGeneratesError1]
 import b
 [file b.py]
 [file b.py.2]
@@ -75,6 +75,38 @@ b.py:1: error: Cannot find module named 'a'
 b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 b.py:2: error: Too many arguments for "f"
+
+[case testAddFileFixesAndGeneratesError2]
+import b
+[file b.py]
+[file b.py.2]
+from a import f
+f(1)
+[file c.py.3]
+x = 'whatever'
+[file a.py.4]
+def f() -> None: pass
+[out]
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+b.py:2: error: Too many arguments for "f"
+
+[case testAddFileGeneratesError1]
+# flags: --ignore-missing-imports
+import a
+[file a.py]
+from b import f
+f(1)
+[file b.py.2]
+def f() -> None: pass
+[out]
+==
+a.py:2: error: Too many arguments for "f"
 
 [case testAddFilePreservesError1]
 import b
@@ -236,24 +268,7 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 
 [case testDeletionOfSubmoduleTriggersImportFrom1-skip-cache]
 -- Different cache/no-cache tests because:
--- Cache mode matches the message from regular mode and no-cache mode
--- matches the message from coarse incremental mode...
-from p import q
-[file p/__init__.py]
-[file p/q.py]
-[delete p/q.py.2]
-[file p/q.py.3]
-[out]
-==
-main:1: error: Cannot find module named 'p.q'
--- TODO: The following messages are different compared to non-incremental mode
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-==
-
-[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache]
--- Different cache/no-cache tests because:
--- Cache mode matches the message from regular mode and no-cache mode
--- matches the message from coarse incremental mode...
+-- missing module error message mismatch
 from p import q
 [file p/__init__.py]
 [file p/q.py]
@@ -262,8 +277,24 @@ from p import q
 [out]
 ==
 main:1: error: Module 'p' has no attribute 'q'
+-- TODO: The following messages are different compared to non-incremental mode
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache]
+-- Different cache/no-cache tests because:
+-- missing module error message mismatch
+from p import q
+[file p/__init__.py]
+[file p/q.py]
+[delete p/q.py.2]
+[file p/q.py.3]
+[out]
+==
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
 
 [case testDeletionOfSubmoduleTriggersImportFrom2]
 from p.q import f
@@ -638,7 +669,6 @@ main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
 main:1: error: Cannot find module named 'p'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:1: error: Cannot find module named 'p.a'
 
 [case testDeletePackage3]
 import p.a
@@ -846,3 +876,98 @@ x = 1
 [out]
 ==
 main:2: error: Incompatible types in assignment (expression has type Module, variable has type "str")
+
+[case testRefreshImportOfIgnoredModule1]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy c.py a/__init__.py b.py
+[file c.py]
+from a import a2
+import b
+b.x
+[file a/__init__.py]
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[file b.py.3]
+x = 0
+[file a/a2.py]
+[out]
+==
+==
+
+[case testRefreshImportOfIgnoredModule2]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy c.py a/__init__.py b.py
+[file c.py]
+from a import a2
+import b
+b.x
+[file a/__init__.py]
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[file b.py.3]
+x = 0
+[file a/a2/__init__.py]
+[out]
+==
+==
+
+[case testIncrementalWithIgnoresTwice]
+import a
+[file a.py]
+import b
+import foo # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file b.py.3]
+x = 1
+[out]
+==
+==
+
+[case testIgnoredImport2]
+import x
+[file y.py]
+import xyz  # type: ignore
+B = 0
+from x import A
+[file x.py]
+A = 0
+from y import B
+[file x.py.2]
+A = 1
+from y import B
+[file x.py.3]
+A = 2
+from y import B
+[out]
+==
+==
+
+[case testDeleteIndirectDependency]
+import b
+b.x.foo()
+[file b.py]
+import c
+x = c.Foo()
+[file c.py]
+class Foo:
+    def foo(self) -> None: pass
+[delete c.py.2]
+[file b.py.2]
+class Foo:
+    def foo(self) -> None: pass
+x = Foo()
+[file b.py.3]
+class Foo:
+    def foo(self, x: int) -> None: pass
+x = Foo()
+[out]
+==
+==
+main:2: error: Too few arguments for "foo" of "Foo"

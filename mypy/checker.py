@@ -211,6 +211,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
 
+    def reset(self) -> None:
+        """Cleanup stale state that might be left over from a typechecking run.
+
+        This allows us to reuse TypeChecker objects in fine-grained
+        incremental mode.
+        """
+        # TODO: verify this is still actually worth it over creating new checkers
+        self.partial_reported.clear()
+        self.module_refs.clear()
+        self.binder = ConditionalTypeBinder()
+        self.type_map.clear()
+
+        assert self.inferred_attribute_types is None
+        assert self.partial_types == []
+        assert self.deferred_nodes == []
+        assert len(self.scope.stack) == 1
+        assert self.partial_types == []
+
     def check_first_pass(self) -> None:
         """Type check the entire file, but defer functions with unresolved references.
 
