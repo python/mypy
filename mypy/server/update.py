@@ -698,9 +698,11 @@ def replace_modules_with_new_variants(
     for id in new_modules:
         new_module = new_modules[id]
         if id in old_modules and new_module is not None:
-            merge_asts(old_modules[id], old_modules[id].names,
+            preserved_module = old_modules[id]
+            merge_asts(preserved_module, old_modules[id].names,
                        new_module, new_module.names)
-            manager.modules[id] = old_modules[id]
+            manager.modules[id] = preserved_module
+            graph[id].tree = preserved_module
 
 
 def propagate_changes_using_dependencies(

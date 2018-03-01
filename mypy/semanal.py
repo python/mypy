@@ -306,6 +306,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
             del self.options
             del self.patches
+            del self.cur_mod_node
+            del self.globals
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
@@ -324,6 +326,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         self.recurse_into_functions = False
         for d in file_node.defs:
             self.accept(d)
+        del self.patches
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,

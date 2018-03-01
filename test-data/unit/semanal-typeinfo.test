@@ -68,12 +68,15 @@ TypeInfoMap(
     Name(__main__.c)
     Bases(__main__.i)
     Mro(__main__.c, __main__.i, builtins.object)
-    Names())
+    Names()
+    MetaclassType(abc.ABCMeta))
   __main__.i : TypeInfo(
     Name(__main__.i)
     Bases(builtins.object)
     Mro(__main__.i, builtins.object)
-    Names()))
+    Names()
+    DeclaredMetaclass(abc.ABCMeta)
+    MetaclassType(abc.ABCMeta)))
 
 [case testAttributeWithoutType]
 class A:

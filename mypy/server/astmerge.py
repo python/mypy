@@ -50,13 +50,14 @@ from typing import Dict, List, cast, TypeVar, Optional
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, MDEF
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
+    MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef
+    Overloaded, TypeVarDef, TypeList
 )
 from mypy.util import get_prefix
 
@@ -156,25 +157,33 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_func_def(self, node: FuncDef) -> None:
         node = self.fixup(node)
-        if node.type:
-            self.fixup_type(node.type)
-        if node.info:
-            node.info = self.fixup(node.info)
+        self.process_base_func(node)
         super().visit_func_def(node)
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
-        if node.info:
-            node.info = self.fixup(node.info)
+        self.process_base_func(node)
         super().visit_overloaded_func_def(node)
 
     def visit_class_def(self, node: ClassDef) -> None:
         # TODO additional things?
         node.defs.body = self.replace_statements(node.defs.body)
         node.info = self.fixup(node.info)
+        info = node.info
         for tv in node.type_vars:
             self.process_type_var_def(tv)
-        self.process_type_info(node.info)
+        if info:
+            if info.is_named_tuple:
+                self.process_synthetic_type_info(info)
+            else:
+                self.process_type_info(info)
         super().visit_class_def(node)
+
+    def process_base_func(self, node: FuncBase) -> None:
+        self.fixup_type(node.type)
+        node.info = self.fixup(node.info)
+        if node.unanalyzed_type:
+            # Unanalyzed types can have AST node references
+            self.fixup_type(node.unanalyzed_type)
 
     def process_type_var_def(self, tv: TypeVarDef) -> None:
         for value in tv.values:
@@ -182,8 +191,7 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.fixup_type(tv.upper_bound)
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
-        if node.type:
-            self.fixup_type(node.type)
+        self.fixup_type(node.type)
         super().visit_assignment_stmt(node)
 
     # Expressions
@@ -200,46 +208,56 @@ class NodeReplaceVisitor(TraverserVisitor):
     def visit_ref_expr(self, node: RefExpr) -> None:
         if node.node is not None:
             node.node = self.fixup(node.node)
+            if isinstance(node.node, Var):
+                # The Var node may be an orphan and won't otherwise be processed.
+                fixup_var(node.node, self.replacements)
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
         node.info = self.fixup(node.info)
-        self.process_type_info(node.info)
+        self.process_synthetic_type_info(node.info)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
         super().visit_super_expr(node)
         if node.info is not None:
             node.info = self.fixup(node.info)
 
+    def visit_call_expr(self, node: CallExpr) -> None:
+        super().visit_call_expr(node)
+        if isinstance(node.analyzed, SymbolNode):
+            node.analyzed = self.fixup(node.analyzed)
+
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
         if node.info:
             node.info = self.fixup(node.info)
-            self.process_type_info(node.info)
-        if node.old_type:
-            self.fixup_type(node.old_type)
+            self.process_synthetic_type_info(node.info)
+        self.fixup_type(node.old_type)
         super().visit_newtype_expr(node)
 
     def visit_lambda_expr(self, node: LambdaExpr) -> None:
-        if node.info:
-            node.info = self.fixup(node.info)
+        node.info = self.fixup(node.info)
         super().visit_lambda_expr(node)
 
     def visit_typeddict_expr(self, node: TypedDictExpr) -> None:
-        node.info = self.fixup(node.info)
         super().visit_typeddict_expr(node)
+        node.info = self.fixup(node.info)
+        self.process_synthetic_type_info(node.info)
 
     def visit_enum_call_expr(self, node: EnumCallExpr) -> None:
         node.info = self.fixup(node.info)
-        self.process_type_info(node.info)
+        self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
+
+    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
+        self.fixup_type(node.type)
+        self.fixup_type(node.fallback)
+        super().visit_type_alias_expr(node)
 
     # Others
 
     def visit_var(self, node: Var) -> None:
-        if node.info:
-            node.info = self.fixup(node.info)
-        if node.type:
-            self.fixup_type(node.type)
+        node.info = self.fixup(node.info)
+        self.fixup_type(node.type)
         super().visit_var(node)
 
     # Helpers
@@ -251,25 +269,34 @@ class NodeReplaceVisitor(TraverserVisitor):
             return cast(SN, new)
         return node
 
-    def fixup_type(self, typ: Type) -> None:
-        typ.accept(TypeReplaceVisitor(self.replacements))
+    def fixup_type(self, typ: Optional[Type]) -> None:
+        if typ is not None:
+            typ.accept(TypeReplaceVisitor(self.replacements))
 
     def process_type_info(self, info: Optional[TypeInfo]) -> None:
         if info is None:
             return
-        # TODO: Additional things:
-        # - declared_metaclass
-        # - metaclass_type
-        # - _promote
-        # - typeddict_type
-        # - replaced
+        self.fixup_type(info.declared_metaclass)
+        self.fixup_type(info.metaclass_type)
+        self.fixup_type(info._promote)
+        self.fixup_type(info.tuple_type)
+        self.fixup_type(info.typeddict_type)
+        info.defn.info = self.fixup(info)
+        info.replaced = self.fixup(info.replaced)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
             info.mro[i] = self.fixup(info.mro[i])
         for i, base in enumerate(info.bases):
             self.fixup_type(info.bases[i])
-        if info.tuple_type:
-            self.fixup_type(info.tuple_type)
+
+    def process_synthetic_type_info(self, info: TypeInfo) -> None:
+        # Synthetic types (types not created using a class statement) don't
+        # have bodies in the AST so we need to iterate over their symbol
+        # tables separately, unlike normal classes.
+        self.process_type_info(info)
+        for name, node in info.names.items():
+            if node.node:
+                node.node.accept(self)
 
     def replace_statements(self, nodes: List[Statement]) -> List[Statement]:
         result = []
@@ -345,6 +372,10 @@ class TypeReplaceVisitor(TypeVisitor[None]):
         for arg in typ.args:
             arg.accept(self)
 
+    def visit_type_list(self, typ: TypeList) -> None:
+        for item in typ.items:
+            item.accept(self)
+
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass
 
@@ -371,15 +402,16 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 new = replacements[node.node]
                 new.__dict__ = node.node.__dict__
                 node.node = new
-                # TODO: Other node types
-                if isinstance(node.node, Var) and node.node.type:
-                    node.node.type.accept(TypeReplaceVisitor(replacements))
-                    node.node.info = cast(TypeInfo, replacements.get(node.node.info,
-                                                                     node.node.info))
-            else:
-                # TODO: Other node types
-                if isinstance(node.node, Var) and node.node.type:
-                    node.node.type.accept(TypeReplaceVisitor(replacements))
+            if isinstance(node.node, Var):
+                # Handle them here just in case these aren't exposed through the AST.
+                # TODO: Is this necessary?
+                fixup_var(node.node, replacements)
         override = node.type_override
         if override:
             override.accept(TypeReplaceVisitor(replacements))
+
+
+def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:
+    if node.type:
+        node.type.accept(TypeReplaceVisitor(replacements))
+    node.info = cast(TypeInfo, replacements.get(node.info, node.info))

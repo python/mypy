@@ -2206,11 +2206,18 @@ class TypeInfo(SymbolNode):
             if isinstance(node, Var) and node.type:
                 description += ' ({})'.format(type_str(node.type))
             names.append(description)
+        items = [
+            'Name({})'.format(self.fullname()),
+            base,
+            mro,
+            ('Names', names),
+        ]
+        if self.declared_metaclass:
+            items.append('DeclaredMetaclass({})'.format(type_str(self.declared_metaclass)))
+        if self.metaclass_type:
+            items.append('MetaclassType({})'.format(type_str(self.metaclass_type)))
         return mypy.strconv.dump_tagged(
-            ['Name({})'.format(self.fullname()),
-             base,
-             mro,
-             ('Names', names)],
+            items,
             head,
             str_conv=str_conv)
 

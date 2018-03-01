@@ -68,6 +68,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
             self.scope.leave()
+        del self.cur_mod_node
+        self.patches = []
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
