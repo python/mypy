@@ -2199,6 +2199,9 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                old_graph: Optional[Graph] = None) -> Graph:
     """Given some source files, load the full dependency graph.
 
+    If an old_graph is passed in, it is used as the starting point and
+    modified during graph loading.
+
     As this may need to parse files, this can raise CompileError in case
     there are syntax errors.
     """

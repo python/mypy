@@ -285,8 +285,9 @@ class Server:
             for state in self.fine_grained_manager.graph.values():
                 meta = state.meta
                 if meta is None: continue
+                assert state.path is not None
                 self.fswatcher.set_file_data(
-                    state.xpath,
+                    state.path,
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
             # Run an update
