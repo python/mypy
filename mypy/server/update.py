@@ -119,7 +119,9 @@ Major todo items:
 """
 
 import os.path
-from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
+from typing import (
+    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable
+)
 
 from mypy.build import (
     BuildManager, State, BuildSource, Graph, load_graph, SavedCache, CacheMeta,
@@ -133,6 +135,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.types import Type
+from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, is_identical_type, SnapshotItem
 )
@@ -837,6 +840,8 @@ def reprocess_nodes(manager: BuildManager,
         strip_target(deferred.node)
     semantic_analyzer = manager.semantic_analyzer
 
+    patches = []  # type: List[Tuple[int, Callable[[], None]]]
+
     # Second pass of semantic analysis. We don't redo the first pass, because it only
     # does local things that won't go stale.
     for deferred in nodes:
@@ -845,7 +850,7 @@ def reprocess_nodes(manager: BuildManager,
                 fnam=file_node.path,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
-            manager.semantic_analyzer.refresh_partial(deferred.node)
+            manager.semantic_analyzer.refresh_partial(deferred.node, patches)
 
     # Third pass of semantic analysis.
     for deferred in nodes:
@@ -855,6 +860,8 @@ def reprocess_nodes(manager: BuildManager,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
+
+    apply_semantic_analyzer_patches(patches)
 
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as

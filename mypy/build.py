@@ -35,7 +35,7 @@ if MYPY:
 
 from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
-from mypy.semanal import SemanticAnalyzerPass2
+from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
@@ -1958,9 +1958,7 @@ class State:
         self.patches = patches + self.patches
 
     def semantic_analysis_apply_patches(self) -> None:
-        patches_by_priority = sorted(self.patches, key=lambda x: x[0])
-        for priority, patch_func in patches_by_priority:
-            patch_func()
+        apply_semantic_analyzer_patches(self.patches)
 
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
