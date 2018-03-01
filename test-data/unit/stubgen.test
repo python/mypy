@@ -886,3 +886,12 @@ def g(): ...
 def f(): ...
 [out]
 def f() -> None: ...
+
+[case testCallable]
+from typing import Callable
+
+x: Callable[[int, int], int]
+[out]
+from typing import Callable
+
+x: Callable[[int, int], int]
