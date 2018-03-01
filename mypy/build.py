@@ -911,8 +911,6 @@ def find_module(id: str, lib_path_arg: Iterable[str],
             sys.exit(2)
     else:
         site_packages_dirs = []
-    components = id.split('.')
-    dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
 
     def find() -> Optional[str]:
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -975,13 +973,15 @@ def find_module(id: str, lib_path_arg: Iterable[str],
         return None
 
     if id not in find_module_cache:
+        components = id.split('.')
+        dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
         find_module_cache[id] = find()
-
-    # If we searched for items with a base directory of site-packages/ we need to
-    # remove it to avoid searching it for non-typed ids.
-    for dir in site_packages_dirs:
-        if dir + os.sep in find_module_dir_cache[dir_chain]:
-            find_module_dir_cache[dir_chain].remove(dir + os.sep)
+        # If we searched for items with a base directory of site-packages/ we need to
+        # remove it to avoid searching it for untyped modules and packages e.g.
+        # site-packages/file.py
+        for dir in site_packages_dirs:
+            if dir + os.sep in find_module_dir_cache[dir_chain]:
+                find_module_dir_cache[dir_chain].remove(dir + os.sep)
 
     return find_module_cache[id]
 
