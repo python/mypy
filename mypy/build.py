@@ -1065,7 +1065,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
 
-    # TODO: Share stat() outcome with find_module()
     path = os.path.abspath(path)
     st = manager.get_stat(path)  # TODO: Errors
     if not stat.S_ISREG(st.st_mode):
@@ -1309,14 +1308,6 @@ c. Must order mtimes of files to decide whether to re-process; depends
 
 d. from P import M; checks filesystem whether module P.M exists in
    filesystem.
-
-e. Race conditions, where somebody modifies a file while we're
-   processing.  I propose not to modify the algorithm to handle this,
-   but to detect when this could lead to inconsistencies.  (For
-   example, when we decide on the dependencies based on cache
-   metadata, and then we decide to re-parse a file because of a stale
-   dependency, if the re-parsing leads to a different list of
-   dependencies we should warn the user or start over.)
 
 Steps
 -----
@@ -1851,11 +1842,6 @@ class State:
         # Every module implicitly depends on builtins.
         if self.id != 'builtins' and 'builtins' not in dep_line_map:
             dependencies.append('builtins')
-
-        # NOTE: What to do about race conditions (like editing the
-        # file while mypy runs)?  A previous version of this code
-        # explicitly checked for this, but ran afoul of other reasons
-        # for differences (e.g. silent mode).
 
         # Missing dependencies will be moved from dependencies to
         # suppressed when they fail to be loaded in load_graph.
