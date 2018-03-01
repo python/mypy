@@ -75,7 +75,8 @@ class FineGrainedSuite(DataSuite):
             return
 
         main_src = '\n'.join(testcase.input)
-        sources_override = self.parse_sources(main_src)
+        step = 1
+        sources_override = self.parse_sources(main_src, step)
         messages, manager, graph = self.build(main_src, testcase, sources_override,
                                               build_cache=self.use_cache,
                                               enable_cache=self.use_cache)
@@ -92,6 +93,7 @@ class FineGrainedSuite(DataSuite):
         steps = testcase.find_steps()
         all_triggered = []
         for operations in steps:
+            step += 1
             modules = []
             for op in operations:
                 if isinstance(op, UpdateFile):
@@ -102,6 +104,7 @@ class FineGrainedSuite(DataSuite):
                     # Delete file
                     os.remove(op.path)
                     modules.append((op.module, op.path))
+            sources_override = self.parse_sources(main_src, step)
             if sources_override is not None:
                 modules = [(module, path)
                            for module, path in sources_override
@@ -181,14 +184,21 @@ class FineGrainedSuite(DataSuite):
             result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
         return result
 
-    def parse_sources(self, program_text: str) -> Optional[List[Tuple[str, str]]]:
+    def parse_sources(self, program_text: str, incremental_step: int) -> Optional[List[Tuple[str, str]]]:
         """Return target (module, path) tuples for a test case, if not using the defaults.
 
         These are defined through a comment like '# cmd: main a.py' in the test case
         description.
         """
-        # TODO: Support defining separately for each incremental step.
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
+        regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
+        alt_m = re.search(regex, program_text, flags=re.MULTILINE)
+        if alt_m is not None and incremental_step > 1:
+            # Optionally return a different command if in a later step
+            # of incremental mode, otherwise default to reusing the
+            # original cmd.
+            m = alt_m
+
         if m:
             # The test case wants to use a non-default set of files.
             paths = m.group(1).strip().split()
