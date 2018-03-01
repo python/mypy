@@ -2182,7 +2182,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             arg_types=[Instance(info, []), old_type],
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
-            ret_type=old_type,
+            ret_type=NoneTyp(),
             fallback=self.named_type('__builtins__.function'),
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)

@@ -1506,7 +1506,8 @@ import a
 [file a.py]
 from typing import Dict, NewType
 
-N = NewType('N', int)
+class A: pass
+N = NewType('N', A)
 
 a: Dict[N, int]
 
@@ -1516,7 +1517,8 @@ def f(self, x: N) -> None:
 [file a.py.2]
 from typing import Dict, NewType  # dummy change
 
-N = NewType('N', int)
+class A: pass
+N = NewType('N', A)
 
 a: Dict[N, int]
 
@@ -2475,3 +2477,68 @@ else:
 [builtins fixtures/ops.pyi]
 [out]
 ==
+
+[case testNewTypeDependencies1]
+from a import N
+
+def f(x: N) -> None:
+    x.y = 1
+[file a.py]
+from typing import NewType
+from b import C
+
+N = NewType('N', C)
+[file b.py]
+class C:
+    y: int
+[file b.py.2]
+class C:
+    y: str
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testNewTypeDependencies2]
+from a import N
+from b import C, D
+
+def f(x: C) -> None: pass
+
+def g(x: N) -> None:
+    f(x)
+[file a.py]
+from typing import NewType
+from b import D
+
+N = NewType('N', D)
+[file b.py]
+class C: pass
+class D(C): pass
+[file b.py.2]
+class C: pass
+class D: pass
+[out]
+==
+main:7: error: Argument 1 to "f" has incompatible type "N"; expected "C"
+
+[case testNewTypeDependencies3]
+from a import N
+
+def f(x: N) -> None:
+    x.y
+[file a.py]
+from typing import NewType
+from b import C
+N = NewType('N', C)
+[file a.py.2]
+from typing import NewType
+from b import D
+N = NewType('N', D)
+[file b.py]
+class C:
+    y: int
+class D:
+    pass
+[out]
+==
+main:4: error: "N" has no attribute "y"

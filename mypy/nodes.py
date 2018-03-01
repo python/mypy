@@ -2080,6 +2080,11 @@ class TypeInfo(SymbolNode):
             return (left, right) in self._cache
         return (left, right) in self._cache_proper
 
+    def reset_subtype_cache(self) -> None:
+        for item in self.mro:
+            item._cache = set()
+            item._cache_proper = set()
+
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
@@ -2122,6 +2127,7 @@ class TypeInfo(SymbolNode):
         self.is_enum = self._calculate_is_enum()
         # The property of falling back to Any is inherited.
         self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
+        self.reset_subtype_cache()
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass

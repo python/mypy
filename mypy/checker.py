@@ -861,12 +861,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         body = block.body
 
         # Skip a docstring
-        if (isinstance(body[0], ExpressionStmt) and
+        if (body and isinstance(body[0], ExpressionStmt) and
                 isinstance(body[0].expr, (StrExpr, UnicodeExpr))):
             body = block.body[1:]
 
         if len(body) == 0:
-            # There's only a docstring.
+            # There's only a docstring (or no body at all).
             return True
         elif len(body) > 1:
             return False

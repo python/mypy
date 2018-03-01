@@ -655,3 +655,20 @@ class C:
 <m.C> -> m.C
 <sys.platform> -> m
 <sys> -> m
+
+[case testNewType]
+from typing import NewType
+from m import C
+
+N = NewType('N', C)
+
+def f(n: N) -> None:
+    pass
+[file m.py]
+class C:
+    x: int
+[out]
+<m.N> -> <m.f>, m, m.f
+<m.C.__init__> -> <m.N.__init__>
+<m.C.x> -> <m.N.x>
+<m.C> -> m, m.N

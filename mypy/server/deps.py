@@ -92,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -211,18 +211,27 @@ class DependencyVisitor(TraverserVisitor):
         # Add dependencies to type variables of a generic class.
         for tv in o.type_vars:
             self.add_dependency(make_trigger(tv.fullname), target)
-        # Add dependencies to base types.
-        for base in o.info.bases:
-            self.add_type_dependencies(base, target=target)
-        if o.info.tuple_type:
-            self.add_type_dependencies(o.info.tuple_type, target=make_trigger(target))
-        if o.info.typeddict_type:
-            self.add_type_dependencies(o.info.typeddict_type, target=make_trigger(target))
-        # TODO: Add dependencies based on remaining TypeInfo attributes.
+        self.process_type_info(o.info)
         super().visit_class_def(o)
-        self.add_type_alias_deps(self.scope.current_target())
         self.is_class = old_is_class
-        info = o.info
+        self.scope.leave()
+
+    def visit_newtype_expr(self, o: NewTypeExpr) -> None:
+        if o.info:
+            self.scope.enter_class(o.info)
+            self.process_type_info(o.info)
+            self.scope.leave()
+
+    def process_type_info(self, info: TypeInfo) -> None:
+        target = self.scope.current_full_target()
+        for base in info.bases:
+            self.add_type_dependencies(base, target=target)
+        if info.tuple_type:
+            self.add_type_dependencies(info.tuple_type, target=make_trigger(target))
+        if info.typeddict_type:
+            self.add_type_dependencies(info.typeddict_type, target=make_trigger(target))
+        # TODO: Add dependencies based on remaining TypeInfo attributes.
+        self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
                 for base_info in non_trivial_bases(info):
@@ -236,7 +245,6 @@ class DependencyVisitor(TraverserVisitor):
                                     target=make_trigger(info.fullname() + '.' + name))
             self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
-        self.scope.leave()
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
