@@ -1274,7 +1274,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             if defn.metaclass is not None:
                 self.fail("Inconsistent metaclass structure for '%s'" % defn.name, defn)
         else:
-            if defn.info.metaclass_type.type.fullname() == 'enum.EnumMeta':
+            if defn.info.metaclass_type.type.has_base('enum.EnumMeta'):
                 defn.info.is_enum = True
                 if defn.type_vars:
                     self.fail("Enum class cannot be generic", defn)
