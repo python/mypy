@@ -859,7 +859,7 @@ def reprocess_nodes(manager: BuildManager,
                 fnam=file_node.path,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
-            manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
+            manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
 
     apply_semantic_analyzer_patches(patches)
 
