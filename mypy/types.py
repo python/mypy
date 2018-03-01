@@ -245,7 +245,7 @@ class TypeList(Type):
     This is used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
     but a syntactic AST construct. UnboundTypes can also have TypeList
-    types before they are processed into Callable type.s
+    types before they are processed into Callable types.
     """
 
     items = None  # type: List[Type]
