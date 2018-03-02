@@ -184,7 +184,8 @@ class FineGrainedSuite(DataSuite):
             result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
         return result
 
-    def parse_sources(self, program_text: str, incremental_step: int) -> Optional[List[Tuple[str, str]]]:
+    def parse_sources(self, program_text: str,
+                      incremental_step: int) -> Optional[List[Tuple[str, str]]]:
         """Return target (module, path) tuples for a test case, if not using the defaults.
 
         These are defined through a comment like '# cmd: main a.py' in the test case
