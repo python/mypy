@@ -2598,3 +2598,40 @@ x = ''
 b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
 ==
 b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
+
+[case testReprocessEllipses1]
+import a
+[file a.py]
+from typing import Tuple
+def foo(x: Tuple[int, ...]) -> None: pass
+[file a.py.2]
+from typing import Tuple
+def foo(x: Tuple[int, ...]) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out]
+==
+
+[case testReprocessEllipses2]
+import a
+[file a.py]
+from typing import Callable
+def foo(x: Callable[..., int]) -> None: pass
+[file a.py.2]
+from typing import Callable
+def foo(x: Callable[..., int]) -> None: pass
+[out]
+==
+
+[case testReprocessCallableArg]
+import a
+[file a.py]
+from typing import Callable
+from mypy_extensions import Arg
+def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
+[file a.py.2]
+from typing import Callable
+from mypy_extensions import Arg
+def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
+[builtins fixtures/dict.pyi]
+[out]
+==

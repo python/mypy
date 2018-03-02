@@ -1,3 +1,5 @@
+# NOTE: Requires fixtures/dict.pyi
+
 from typing import Dict, Type, TypeVar, Optional, Any
 
 _T = TypeVar('_T')
