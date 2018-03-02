@@ -2475,3 +2475,37 @@ else:
 [builtins fixtures/ops.pyi]
 [out]
 ==
+
+[case testNamedTupleWithinFunction]
+from typing import NamedTuple
+import b
+def f() -> None:
+    b.x
+    n = NamedTuple('n', [])
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[out]
+==
+
+[case testNamedTupleFallback]
+# This test will fail without semantic analyzer pass 2 patches
+import a
+[file a.py]
+import b
+[file b.py]
+from typing import NamedTuple
+import c
+c.x
+class N(NamedTuple):
+    count: int
+[file c.py]
+x = 0
+[file c.py.2]
+x = ''
+[builtins fixtures/tuple.pyi]
+[out]
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
+==
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
