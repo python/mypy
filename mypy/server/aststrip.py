@@ -43,7 +43,7 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -192,9 +192,19 @@ class NodeStripVisitor(TraverserVisitor):
                 for name, as_name in node.ids:
                     imported_name = as_name or name
                     initial = imported_name.split('.')[0]
-                    symnode = self.names[initial]
-                    symnode.kind = UNBOUND_IMPORTED
-                    symnode.node = None
+                    self.reset_imported_name(initial)
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        # Reset entries in the symbol table that were added through the statement.
+        # (The description in visit_import is relevant here as well.)
+        for name in node.imported_names:
+            del self.names[name]
+        node.imported_names = []
+
+    def reset_imported_name(self, name: str) -> None:
+        symnode = self.names[name]
+        symnode.kind = UNBOUND_IMPORTED
+        symnode.node = None
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1, and we

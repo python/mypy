@@ -1109,3 +1109,73 @@ x = 1
 [builtins fixtures/bool.pyi]
 [out]
 ==
+
+[case testImportStarPropagateChange1]
+from b import f
+f()
+[file b.py]
+from c import *
+[file c.py]
+def f() -> None: pass
+[file c.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarPropagateChange2]
+from b import *
+f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarAddMissingDependency1]
+from b import f
+f()
+[file b.py]
+from c import *
+[file c.py]
+[file c.py.2]
+def f(x: int) -> None: pass
+[out]
+main:1: error: Module 'b' has no attribute 'f'
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarAddMissingDependency2]
+from b import *
+f()
+[file b.py]
+[file b.py.2]
+def f(x: int) -> None: pass
+[out]
+main:2: error: Name 'f' is not defined
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarRemoveDependency1]
+from b import f
+f()
+[file b.py]
+from c import *
+[file c.py]
+def f() -> None: pass
+[file c.py.2]
+[out]
+==
+main:1: error: Module 'b' has no attribute 'f'
+
+[case testImportStarRemoveDependency2]
+from b import *
+f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+[out]
+==
+main:2: error: Name 'f' is not defined

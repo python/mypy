@@ -1669,6 +1669,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                                           new_node.type_override,
                                                           normalized=new_node.normalized,
                                                           alias_tvars=new_node.alias_tvars), i)
+                    i.imported_names.append(name)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass

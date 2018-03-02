@@ -143,7 +143,7 @@ from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies, get_dependencies_of_target
 from mypy.server.target import module_prefix, split_target
-from mypy.server.trigger import make_trigger
+from mypy.server.trigger import make_trigger, WILDCARD_TAG
 
 
 MAX_ITER = 1000
@@ -594,7 +594,14 @@ def calculate_active_triggers(manager: BuildManager,
             names.add(id)
         else:
             snapshot2 = snapshot_symbol_table(id, new.names)
-        names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
+        diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
+        for item in diff:
+            if item.count('.') <= 1 and not item.split('.')[-1].startswith('_'):
+                # Activate catch-all wildcard trigger for top-level module changes (used for
+                # "from m import *").
+                diff.add(id + WILDCARD_TAG)
+                break
+        names |= diff
     return {make_trigger(name) for name in names}
 
 
@@ -648,14 +655,17 @@ def propagate_changes_using_dependencies(
         todo = find_targets_recursive(manager, triggered, deps,
                                       manager.modules, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
-        # errors might be lost.
-        for target in targets_with_errors:
-            id = module_prefix(manager.modules, target)
-            if id is not None and id not in up_to_date_modules:
-                if id not in todo:
-                    todo[id] = set()
-                manager.log_fine_grained('process: %s' % target)
-                todo[id].update(lookup_target(manager.modules, target))
+        # errors might be lost. Only do this when there are no other triggered
+        # targets to avoid repeated work.
+        if not triggered:
+            for target in targets_with_errors:
+                id = module_prefix(manager.modules, target)
+                if id is not None and id not in up_to_date_modules:
+                    if id not in todo:
+                        todo[id] = set()
+                    manager.log_fine_grained('process target with error: %s' % target)
+                    todo[id].update(lookup_target(manager.modules, target))
+            targets_with_errors = set()
         triggered = set()
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
@@ -671,7 +681,6 @@ def propagate_changes_using_dependencies(
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
-        targets_with_errors = set()
         if is_verbose(manager):
             manager.log_fine_grained('triggered: %r' % list(triggered))
 
@@ -712,7 +721,7 @@ def find_targets_recursive(
                     continue
                 if module_id not in result:
                     result[module_id] = set()
-                manager.log_fine_grained('process %s' % target)
+                manager.log_fine_grained('process: %s' % target)
                 deferred = lookup_target(modules, target)
                 result[module_id].update(deferred)
 
