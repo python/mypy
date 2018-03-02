@@ -138,7 +138,6 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
     assert os.path.isabs(handle.name)
     path = os.path.basename(handle.name)
     name = path[:-3]
-    # print(path, name, handle.name, sys.path)
     path = os.path.join('stubgen-test-path', path)
     out_dir = '_out'
     os.mkdir(out_dir)
