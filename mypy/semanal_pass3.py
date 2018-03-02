@@ -71,8 +71,10 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         del self.cur_mod_node
         self.patches = []
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
+    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+                        patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
+        self.patches = patches
         self.scope.enter_file(self.sem.cur_mod_id)
         if isinstance(node, MypyFile):
             self.recurse_into_functions = False
@@ -81,6 +83,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             self.recurse_into_functions = True
             self.accept(node)
         self.scope.leave()
+        self.patches = []
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""

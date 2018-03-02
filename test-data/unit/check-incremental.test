@@ -4059,3 +4059,71 @@ class Baz:
 [out]
 [out2]
 tmp/a.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testIncrementalWithIgnoresTwice]
+import a
+[file a.py]
+import b
+import foo # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file b.py.3]
+x = 1
+[builtins fixtures/module.pyi]
+[out]
+[out2]
+[out3]
+
+[case testIgnoredImport2]
+import x
+[file y.py]
+import xyz  # type: ignore
+B = 0
+from x import A
+[file x.py]
+A = 0
+from y import B
+[file x.py.2]
+A = 1
+from y import B
+[file x.py.3]
+A = 2
+from y import B
+[out]
+[out2]
+[out3]
+
+[case testDeletionOfSubmoduleTriggersImportFrom2]
+from p.q import f
+f()
+[file p/__init__.py]
+[file p/q.py]
+def f() -> None: pass
+[delete p/q.py.2]
+[file p/q.py.3]
+def f(x: int) -> None: pass
+[out]
+[out2]
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out3]
+main:2: error: Too few arguments for "f"
+
+[case testDeleteIndirectDependency]
+import b
+b.x.foo()
+[file b.py]
+import c
+x = c.Foo()
+[file c.py]
+class Foo:
+    def foo(self) -> None: pass
+[delete c.py.2]
+[file b.py.2]
+class Foo:
+    def foo(self) -> None: pass
+x = Foo()
+[out]
+[out2]

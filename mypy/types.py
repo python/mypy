@@ -517,6 +517,9 @@ class Instance(Type):
     def copy_modified(self, *, args: List[Type]) -> 'Instance':
         return Instance(self.type, args, self.line, self.column, self.erased)
 
+    def has_readable_member(self, name: str) -> bool:
+        return self.type.has_readable_member(name)
+
 
 class TypeVarType(Type):
     """A type variable type.

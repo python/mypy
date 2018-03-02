@@ -78,19 +78,23 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_class_def(self, node: ClassDef) -> None:
         """Strip class body and type info, but don't strip methods."""
-        node.info.type_vars = []
-        node.info.bases = []
-        node.info.abstract_attributes = []
-        node.info.mro = []
-        node.info.add_type_vars()
-        node.info.tuple_type = None
-        node.info.typeddict_type = None
-        node.info._cache = set()
-        node.info._cache_proper = set()
+        self.strip_type_info(node.info)
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
         with self.enter_class(node.info):
             super().visit_class_def(node)
+
+    def strip_type_info(self, info: TypeInfo) -> None:
+        info.type_vars = []
+        info.bases = []
+        info.abstract_attributes = []
+        info.mro = []
+        info.add_type_vars()
+        info.tuple_type = None
+        info.typeddict_type = None
+        info.tuple_type = None
+        info._cache = set()
+        info._cache_proper = set()
 
     def visit_func_def(self, node: FuncDef) -> None:
         if not self.recurse_into_functions:

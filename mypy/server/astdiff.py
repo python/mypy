@@ -304,10 +304,6 @@ def snapshot_definition(node: Optional[SymbolNode],
                 snapshot_optional_type(node.var.type),
                 snapshot_definition(node.func, common))
     elif isinstance(node, TypeInfo):
-        # TODO:
-        #   type_vars
-        #   bases
-        #   _promote
         attrs = (node.is_abstract,
                  node.is_enum,
                  node.fallback_to_any,
@@ -315,12 +311,15 @@ def snapshot_definition(node: Optional[SymbolNode],
                  node.is_newtype,
                  snapshot_optional_type(node.tuple_type),
                  snapshot_optional_type(node.typeddict_type),
-                 [base.fullname() for base in node.mro])
+                 [base.fullname() for base in node.mro],
+                 node.type_vars,
+                 [snapshot_type(base) for base in node.bases],
+                 snapshot_optional_type(node._promote))
         prefix = node.fullname()
         symbol_table = snapshot_symbol_table(prefix, node.names)
         return ('TypeInfo', common, attrs, symbol_table)
     else:
-        # TODO: Handle additional types: TypeVarExpr, MypyFile, ...
+        # Other node types are handled elsewhere.
         assert False, type(node)
 
 

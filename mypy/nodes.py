@@ -2095,14 +2095,8 @@ class TypeInfo(SymbolNode):
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
 
-    # IDEA: Refactor the has* methods to be more consistent and document
-    #       them.
-
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
-
-    def has_method(self, name: str) -> bool:
-        return self.get_method(name) is not None
 
     def get_method(self, name: str) -> Optional[FuncBase]:
         if self.mro is None:  # Might be because of a previous error.

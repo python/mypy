@@ -1108,9 +1108,9 @@ def f() -> Iterator[None]:
 [out]
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 a.py:3: error: Cannot find module named 'b'
 a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 ==
 main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
 
@@ -1295,6 +1295,28 @@ class A: pass
 [out]
 ==
 main:2: error: Module 'a' has no attribute 'A'
+==
+
+[case testRefreshGenericAndFailInPass3]
+# Failure in semantic analysis pass 3
+from a import C
+a: C[int]
+[file a.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]): pass
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class C(Generic[T, S]): pass
+[file a.py.3]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]): pass
+[out]
+==
+main:3: error: "C" expects 2 type arguments, but 1 given
 ==
 
 [case testPrintStatement_python2]
@@ -2357,7 +2379,7 @@ def f() -> None:
 d.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
 ==
 
-[case testNonePartialType]
+[case testNonePartialType1]
 import a
 a.y
 
@@ -2542,3 +2564,37 @@ class D:
 [out]
 ==
 main:4: error: "N" has no attribute "y"
+
+[case testNamedTupleWithinFunction]
+from typing import NamedTuple
+import b
+def f() -> None:
+    b.x
+    n = NamedTuple('n', [])
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[out]
+==
+
+[case testNamedTupleFallback]
+# This test will fail without semantic analyzer pass 2 patches
+import a
+[file a.py]
+import b
+[file b.py]
+from typing import NamedTuple
+import c
+c.x
+class N(NamedTuple):
+    count: int
+[file c.py]
+x = 0
+[file c.py.2]
+x = ''
+[builtins fixtures/tuple.pyi]
+[out]
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
+==
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
