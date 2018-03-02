@@ -253,8 +253,7 @@ class Server:
     def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         # The file system cache we create gets passed off to
         # BuildManager, and thence to FineGrainedBuildManager, which
-        # assumes responsibility for clearing it at the appropriate
-        # times (after init and update()).
+        # assumes responsibility for clearing it after updates.
         fscache = FileSystemCache(self.options.python_version)
         self.fswatcher = FileSystemWatcher(fscache)
         self.update_sources(sources)
@@ -295,6 +294,7 @@ class Server:
             # Run an update
             messages = self.fine_grained_manager.update(self.find_changed(sources))
 
+        fscache.flush()
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 

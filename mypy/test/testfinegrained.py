@@ -86,6 +86,7 @@ class FineGrainedSuite(DataSuite):
 
         fine_grained_manager = None
         if not self.use_cache:
+            result.manager.fscache.flush()
             fine_grained_manager = FineGrainedBuildManager(result)
             if CHECK_CONSISTENCY:
                 check_consistency(fine_grained_manager)

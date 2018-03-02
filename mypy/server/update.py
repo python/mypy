@@ -175,7 +175,6 @@ class FineGrainedBuildManager:
         manager.saved_cache = {}
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
-        self.manager.fscache.flush()
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.

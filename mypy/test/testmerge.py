@@ -69,6 +69,7 @@ class ASTMergeSuite(DataSuite):
         main_src = '\n'.join(testcase.input)
         result = self.build(main_src)
         assert result is not None, 'cases where CompileError occurred should not be run'
+        result.manager.fscache.flush()
         fine_grained_manager = FineGrainedBuildManager(result)
 
         a = []
