@@ -3,7 +3,7 @@ Revision history
 
 List of major changes:
 
-- March 2017
+- March 2018
     * Publish ``mypy`` version 0.570 on PyPI.
 
       * Add support for :ref:`attrs_package`.
