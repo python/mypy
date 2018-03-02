@@ -55,9 +55,9 @@ from mypy.nodes import (
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
+    Type, SyntheticTypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef, TypeList
+    Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType
 )
 from mypy.util import get_prefix
 
@@ -307,7 +307,7 @@ class NodeReplaceVisitor(TraverserVisitor):
         return result
 
 
-class TypeReplaceVisitor(TypeVisitor[None]):
+class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     """Similar to NodeReplaceVisitor, but for type objects."""
 
     def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
@@ -375,6 +375,15 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_type_list(self, typ: TypeList) -> None:
         for item in typ.items:
             item.accept(self)
+
+    def visit_callable_argument(self, typ: CallableArgument) -> None:
+        typ.typ.accept(self)
+
+    def visit_ellipsis_type(self, typ: EllipsisType) -> None:
+        pass
+
+    def visit_star_type(self, typ: StarType) -> None:
+        typ.type.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass
