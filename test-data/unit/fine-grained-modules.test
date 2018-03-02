@@ -971,3 +971,56 @@ x = Foo()
 ==
 ==
 main:2: error: Too few arguments for "foo" of "Foo"
+
+[case testAddModuleAfterCache1]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py
+# cmd3: mypy main a.py b.py
+import a
+[file a.py]
+pass
+[file a.py.2]
+import b
+b.foo(0)
+[file b.py.2]
+def foo() -> None: pass
+[file b.py.3]
+def foo(x: int) -> None: pass
+[out]
+==
+a.py:2: error: Too many arguments for "foo"
+==
+
+[case testAddModuleAfterCache2]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py
+# cmd3: mypy main a.py b.py
+# flags: --ignore-missing-imports --follow-imports=skip
+import a
+[file a.py]
+import b
+b.foo(0)
+[file b.py.2]
+def foo() -> None: pass
+[file b.py.3]
+def foo(x: int) -> None: pass
+[out]
+==
+a.py:2: error: Too many arguments for "foo"
+==
+
+[case testAddModuleAfterCache3]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py
+# flags: --ignore-missing-imports --follow-imports=skip
+import a
+[file a.py]
+import b, c, d, e, f, g
+[file b.py.2]
+[file c.py.2]
+[file d.py.2]
+[file e.py.2]
+[file f.py.2]
+[file g.py.2]
+[out]
+==

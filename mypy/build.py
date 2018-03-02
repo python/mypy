@@ -588,6 +588,7 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
+        self.only_load_from_cache = options.use_fine_grained_cache
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
         self.reports = reports
@@ -1674,6 +1675,13 @@ class State:
                                  for id, line in zip(self.meta.dependencies, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
         else:
+            # In fine-grained cache mode, pretend we only know about modules that
+            # have cache information and defer handling new modules until the
+            # fine-grained update.
+            if manager.only_load_from_cache:
+                manager.log("Deferring module to fine-grained update %s (%s)" % (path, id))
+                raise ModuleNotFound
+
             # Parse the file (and then some) to get the dependencies.
             self.parse_file()
             self.compute_dependencies()
@@ -2093,6 +2101,15 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     manager.log("Mypy version %s" % __version__)
     t0 = time.time()
     graph = load_graph(sources, manager)
+
+    # This is a kind of unfortunate hack to work around some of fine-grained's
+    # fragility: if we have loaded less than 50% of the specified files from
+    # cache in fine-grained cache mode, load the graph again honestly.
+    if manager.options.use_fine_grained_cache and len(graph) < 0.50 * len(sources):
+        manager.log("Redoing load_graph because too much was missing")
+        manager.only_load_from_cache = False
+        graph = load_graph(sources, manager)
+
     t1 = time.time()
     manager.add_stats(graph_size=len(graph),
                       stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
@@ -2206,7 +2223,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
     there are syntax errors.
     """
 
-    graph = old_graph or {}  # type: Graph
+    graph = old_graph if old_graph is not None else {}  # type: Graph
 
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
