@@ -106,6 +106,27 @@ def parse_flags(program_text: str) -> Options:
     return parse_options(flag_list + ['dummy.py'])
 
 
+# We've been getting a nasty stubgen intermittent test flake.
+# Try to extract some debugging info.
+def report_stubgen_flake(name: str, path: str, out_dir: str) -> None:
+    import os
+    print("\nSTUBGEN FLAKE:")
+    print("module:", name, path)
+    print("out_dir:", out_dir)
+    print("cwd:", os.getcwd())
+    print("sys.path:", sys.path)
+    print("PYTHONPATH:", os.getenv("PYTHONPATH"))
+
+    def crawl(d: str, i: int) -> None:
+        print("  " * i + os.path.basename(d) + ":", os.listdir(d))
+        for s in os.listdir(d):
+            s = os.path.join(d, s)
+            if os.path.isdir(s):
+                crawl(s, i + 1)
+    print("Directory crawl:")
+    crawl(".", 0)
+
+
 def test_stubgen(testcase: DataDrivenTestCase) -> None:
     if 'stubgen-test-path' not in sys.path:
         sys.path.insert(0, 'stubgen-test-path')
@@ -117,6 +138,7 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
     assert os.path.isabs(handle.name)
     path = os.path.basename(handle.name)
     name = path[:-3]
+    # print(path, name, handle.name, sys.path)
     path = os.path.join('stubgen-test-path', path)
     out_dir = '_out'
     os.mkdir(out_dir)
@@ -128,12 +150,16 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         reset_importlib_caches()
         try:
             if testcase.name.endswith('_import'):
-                generate_stub_for_module(name, out_dir, quiet=True,
+                generate_stub_for_module(name, out_dir, quiet=False,
                                          no_import=options.no_import,
                                          include_private=options.include_private)
             else:
                 generate_stub(path, out_dir, include_private=options.include_private)
-            a = load_output(out_dir)
+
+            entries = glob.glob('%s/*' % out_dir)
+            if not entries:
+                report_stubgen_flake(name, path, out_dir)
+            a = load_output(entries)
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(testcase.output, a,
@@ -152,9 +178,8 @@ def reset_importlib_caches() -> None:
         pass
 
 
-def load_output(dirname: str) -> List[str]:
+def load_output(entries: List[str]) -> List[str]:
     result = []  # type: List[str]
-    entries = glob.glob('%s/*' % dirname)
     assert entries, 'No files generated'
     if len(entries) == 1:
         add_file(entries[0], result)
