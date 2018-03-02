@@ -1297,6 +1297,28 @@ class A: pass
 main:2: error: Module 'a' has no attribute 'A'
 ==
 
+[case testRefreshGenericAndFailInPass3]
+# Failure in semantic analysis pass 3
+from a import C
+a: C[int]
+[file a.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]): pass
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class C(Generic[T, S]): pass
+[file a.py.3]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]): pass
+[out]
+==
+main:3: error: "C" expects 2 type arguments, but 1 given
+==
+
 [case testPrintStatement_python2]
 # flags: --py2
 import a

@@ -680,3 +680,13 @@ B = Dict[str, S]
 [out]
 __main__.A
 __main__.T
+
+[case testChangeGenericBaseClassOnly]
+from typing import List
+class C(List[int]): pass
+[file next.py]
+from typing import List
+class C(List[str]): pass
+[builtins fixtures/list.pyi]
+[out]
+__main__.C
