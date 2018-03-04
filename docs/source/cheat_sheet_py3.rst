@@ -94,6 +94,36 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
            yield i
            i += 1
 
+   # A Python 3.4 coroutine should have a return type of
+   # Generator[Any, None, T], where T is the type it returns.
+   @asyncio.coroutine
+   def countdown(tag: str, count: int) -> Generator[Any, None, str]:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           yield from asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   # mypy currently does not support converting functions into coroutines in
+   # Python 3.4, so you need to add a 'yield' to make it typecheck.
+   @asyncio.coroutine
+   def quux(obj: object) -> Generator[None, None, str]:
+       if False:
+           yield
+       return "placeholder"
+
+   # A Python 3.5+ coroutine is typed like a normal function, and doesn't need
+   # a 'yield' to make it typecheck.
+   async def countdown(tag: str, count: int) -> str:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           await asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   async def quux(obj: object) -> str:
+       return "placeholder"
+
    # For a function with many arguments, you can of course split it over multiple lines
    def send_email(address: Union[str, List[str]],
                   sender: str,
