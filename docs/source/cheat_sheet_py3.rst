@@ -62,7 +62,8 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
 
 .. code-block:: python
 
-   from typing import Callable, Iterable, Union, Optional, List
+   from typing import Callable, Iterable, Union, Optional, List, Generator, Any
+   import asyncio
 
    # This is how you annotate a function definition.
    def stringify(num: int) -> str:
@@ -88,7 +89,7 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
 
    # A generator function that yields ints is secretly just a function that
    # returns an iterable (see below) of ints, so that's how we annotate it.
-   def f(n: int) -> Iterable[int]:
+   def f2(n: int) -> Iterable[int]:
        i = 0
        while i < n:
            yield i
@@ -97,7 +98,7 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
    # A Python 3.4 coroutine should have a return type of
    # Generator[Any, None, T], where T is the type it returns.
    @asyncio.coroutine
-   def countdown(tag: str, count: int) -> Generator[Any, None, str]:
+   def countdown34(tag: str, count: int) -> Generator[Any, None, str]:
        while count > 0:
            print('T-minus {} ({})'.format(count, tag))
            yield from asyncio.sleep(0.1)
@@ -107,21 +108,21 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
    # mypy currently does not support converting functions into coroutines in
    # Python 3.4, so you need to add a 'yield' to make it typecheck.
    @asyncio.coroutine
-   def quux(obj: object) -> Generator[None, None, str]:
+   def async1(obj: object) -> Generator[None, None, str]:
        if False:
            yield
        return "placeholder"
 
    # A Python 3.5+ coroutine is typed like a normal function, and doesn't need
    # a 'yield' to make it typecheck.
-   async def countdown(tag: str, count: int) -> str:
+   async def countdown35(tag: str, count: int) -> str:
        while count > 0:
            print('T-minus {} ({})'.format(count, tag))
            await asyncio.sleep(0.1)
            count -= 1
        return "Blastoff!"
 
-   async def quux(obj: object) -> str:
+   async def async2(obj: object) -> str:
        return "placeholder"
 
    # For a function with many arguments, you can of course split it over multiple lines
