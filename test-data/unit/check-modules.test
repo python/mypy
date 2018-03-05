@@ -1958,7 +1958,7 @@ tmp/b.py:1: error: Cannot find module named 'c'
 main:1: error: Cannot find module named 'c'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
-[case testIndirectImportWithinCycle1]
+[case testIndirectFromImportWithinCycle]
 import a
 [file a.py]
 from b import f
@@ -1969,5 +1969,36 @@ from a import x
 def f() -> None: pass
 reveal_type(x) # E: Revealed type is 'builtins.str'
 [file c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycleInPackage]
+import p.a
+[file p/__init__.py]
+[file p/a.py]
+from p.b import f
+from p.c import x
+[file p/b.py]
+from p.c import y
+from p.a import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file p/c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycleInPackageIgnoredInit]
+# cmd: mypy -m p.a p.b p.c
+# flags: --follow-imports=skip --ignore-missing-imports
+[file p/__init__.py]
+[file p/a.py]
+from p.b import f
+from p.c import x
+[file p/b.py]
+from p.c import y
+from p.a import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file p/c.py]
 x = str()
 y = int()

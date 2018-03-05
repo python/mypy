@@ -3846,22 +3846,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             n = next_sym.node
         return n.names[parts[-1]]
 
-    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
-        """Lookup a fully qualified name.
+    def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
+        """Lookup a fully qualified name that refers to a module-level definition.
 
         Don't assume that the name is defined. This happens in the global namespace --
-        the local module namespace is ignored.
+        the local module namespace is ignored. This does not dereference indirect
+        refs.
+
+        Note that this can't be used for names nested in class namespaces.
         """
-        assert '.' in name
-        parts = name.split('.')
-        n = self.modules[parts[0]]
-        for i in range(1, len(parts) - 1):
-            next_sym = n.names.get(parts[i])
-            if not next_sym:
-                return None
-            assert isinstance(next_sym.node, MypyFile)
-            n = next_sym.node
-        return n.names.get(parts[-1])
+        assert '.' in fullname
+        module, name = fullname.rsplit('.', maxsplit=1)
+        if module not in self.modules:
+            return None
+        filenode = self.modules[module]
+        return filenode.names.get(name)
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
