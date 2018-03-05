@@ -38,6 +38,8 @@ def get_semanal_options() -> Options:
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
     options.show_traceback = True
+    options.python_version = (3, 6)
+    options.python_executable = None
     return options
 
 

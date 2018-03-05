@@ -78,7 +78,7 @@ p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has 
 -- Define TypedDict (Class syntax)
 
 [case testCanCreateTypedDictWithClass]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point(TypedDict):
@@ -90,7 +90,7 @@ reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point', {'x': builtin
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithSubclass]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point1D(TypedDict):
@@ -104,7 +104,7 @@ reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point2D', {'x': built
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithSubclass2]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point1D(TypedDict):
@@ -117,7 +117,7 @@ reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point2D', {'x': built
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictClassEmpty]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class EmptyDict(TypedDict):
@@ -131,7 +131,7 @@ reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.EmptyDict', {})'
 -- Define TypedDict (Class syntax errors)
 
 [case testCanCreateTypedDictWithClassOldVersion]
-# flags: --python-version 3.5
+# flags: --python-version 3.5 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point(TypedDict): # E: TypedDict class syntax is only supported in Python 3.6
@@ -139,7 +139,7 @@ class Point(TypedDict): # E: TypedDict class syntax is only supported in Python 
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassOtherBases]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class A: pass
@@ -154,7 +154,7 @@ reveal_type(p)  # E: Revealed type is 'TypedDict('__main__.Point2D', {'x': built
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point(TypedDict):
@@ -173,7 +173,7 @@ Point = TypedDict('Point', {'x': int, 'y': int, '_fallback': object})
 [builtins fixtures/dict.pyi]
 
 [case testCanCreateTypedDictWithClassUnderscores]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point(TypedDict):
@@ -185,7 +185,7 @@ reveal_type(p) # E: Revealed type is 'TypedDict('__main__.Point', {'x': builtins
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassOverwriting]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Bad(TypedDict):
@@ -197,7 +197,7 @@ reveal_type(b) # E: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.i
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassOverwriting2]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point1(TypedDict):
@@ -212,7 +212,7 @@ reveal_type(b) # E: Revealed type is 'TypedDict('__main__.Bad', {'x': builtins.i
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictWithClassOverwriting2]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from mypy_extensions import TypedDict
 
 class Point1(TypedDict):
@@ -647,7 +647,7 @@ reveal_type(p['y'])     # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 
 [case testCanGetItemOfTypedDictWithValidBytesOrUnicodeLiteralKey]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-site-packages
 from mypy_extensions import TypedDict
 Cell = TypedDict('Cell', {'value': int})
 c = Cell(value=42)

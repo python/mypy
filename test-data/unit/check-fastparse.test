@@ -67,7 +67,7 @@ def f7(x): # E: invalid type comment or annotation
 
 
 [case testFastParseInvalidTypes3]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 # All of these should not crash
 from typing import Callable, Tuple, Iterable
 

@@ -1,15 +1,15 @@
 [case testNewSyntaxRequire36]
-# flags: --python-version 3.5
+# flags: --python-version 3.5 --no-site-packages
 x: int = 5  # E: Variable annotation syntax is only supported in Python 3.6 and greater
 [out]
 
 [case testNewSyntaxSyntaxError]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 x: int: int  # E: invalid syntax
 [out]
 
 [case testNewSyntaxBasics]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 x: int
 x = 5
 y: int = 5
@@ -23,7 +23,7 @@ zzz: str  # E: Name 'zzz' already defined
 [out]
 
 [case testNewSyntaxWithDict]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from typing import Dict, Any
 
 d: Dict[int, str] = {}
@@ -34,7 +34,7 @@ d['ab'] = 'ab'  # E: Invalid index type "str" for "Dict[int, str]"; expected typ
 [out]
 
 [case testNewSyntaxWithRevealType]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from typing import Dict
 
 def tst_local(dct: Dict[int, T]) -> Dict[T, int]:
@@ -46,7 +46,7 @@ reveal_type(tst_local({1: 'a'}))  # E: Revealed type is 'builtins.dict[builtins.
 [out]
 
 [case testNewSyntaxWithInstanceVars]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 class TstInstance:
     a: str
     def __init__(self) -> None:
@@ -59,27 +59,27 @@ TstInstance().a = 'ab'
 [out]
 
 [case testNewSyntaxWithClassVars]
-# flags: --strict-optional --python-version 3.6
+# flags: --strict-optional --python-version 3.6 --no-site-packages
 class CCC:
     a: str = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
 [out]
 
 [case testNewSyntaxWithStrictOptional]
-# flags: --strict-optional --python-version 3.6
+# flags: --strict-optional --python-version 3.6 --no-site-packages
 strict: int
 strict = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 strict2: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testNewSyntaxWithStrictOptionalFunctions]
-# flags: --strict-optional --python-version 3.6
+# flags: --strict-optional --python-version 3.6 --no-site-packages
 def f() -> None:
     x: int
     x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
 [out]
 
 [case testNewSyntaxWithStrictOptionalClasses]
-# flags: --strict-optional --python-version 3.6
+# flags: --strict-optional --python-version 3.6 --no-site-packages
 class C:
     def meth(self) -> None:
         x: int = None  # E: Incompatible types in assignment (expression has type "None", variable has type "int")
@@ -87,7 +87,7 @@ class C:
 [out]
 
 [case testNewSyntaxSpecialAssign]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 class X:
     x: str
     x[0]: int
@@ -100,17 +100,17 @@ main:5: error: Type cannot be declared in assignment to non-self attribute
 main:5: error: "str" has no attribute "x"
 
 [case testNewSyntaxAsyncComprehensionError]
-# flags: --python-version 3.5
+# flags: --python-version 3.5 --no-site-packages
 async def f():
     results = [i async for i in aiter() if i % 2]  # E: Async comprehensions are only supported in Python 3.6 and greater
 
 
 [case testNewSyntaxFstringError]
-# flags: --python-version 3.5
+# flags: --python-version 3.5 --no-site-packages
 f''  # E: Format strings are only supported in Python 3.6 and greater
 
 [case testNewSyntaxFStringBasics]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 f'foobar'
 f'{"foobar"}'
 f'foo{"bar"}'
@@ -122,13 +122,13 @@ a = f'{"foobar"}'
 [builtins fixtures/f_string.pyi]
 
 [case testNewSyntaxFStringExpressionsOk]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 f'.{1 + 1}.'
 f'.{1 + 1}.{"foo" + "bar"}'
 [builtins fixtures/f_string.pyi]
 
 [case testNewSyntaxFStringExpressionsErrors]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 f'{1 + ""}'
 f'.{1 + ""}'
 [builtins fixtures/f_string.pyi]
@@ -137,7 +137,7 @@ main:2: error: Unsupported operand types for + ("int" and "str")
 main:3: error: Unsupported operand types for + ("int" and "str")
 
 [case testNewSyntaxFStringParseFormatOptions]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 value = 10.5142
 width = 10
 precision = 4
@@ -145,7 +145,7 @@ f'result: {value:{width}.{precision}}'
 [builtins fixtures/f_string.pyi]
 
 [case testNewSyntaxFStringSingleField]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 v = 1
 reveal_type(f'{v}') # E: Revealed type is 'builtins.str'
 reveal_type(f'{1}') # E: Revealed type is 'builtins.str'

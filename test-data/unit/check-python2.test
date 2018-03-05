@@ -246,7 +246,7 @@ class Foo: pass
 exec('print 1 + 1')
 
 [case testUnicodeDocStrings]
-# flags: --python-version=2.7
+# flags: --python-version=2.7 --no-site-packages
 __doc__ = u"unicode"
 
 class A:

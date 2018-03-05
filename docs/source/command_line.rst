@@ -8,17 +8,21 @@ summary of command line flags can always be printed using the ``-h``
 flag (or its long form ``--help``)::
 
   $ mypy -h
-  usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
-              [--ignore-missing-imports]
+  usage: mypy [-h] [-v] [-V] [--python-version x.y]
+              [--python-executable PYTHON_EXECUTABLE] [--platform PLATFORM] [-2]
+              [--ignore-missing-imports] [--no-site-packages]
               [--follow-imports {normal,silent,skip,error}]
-              [--disallow-any-{unimported,expr,decorated,explicit,generics}]
-              [--disallow-untyped-calls] [--disallow-untyped-defs]
+              [--disallow-any-unimported] [--disallow-any-expr]
+              [--disallow-any-decorated] [--disallow-any-explicit]
+              [--disallow-any-generics] [--disallow-untyped-calls]
+              [--disallow-untyped-defs] [--disallow-incomplete-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
-              [--warn-incomplete-stub] [--warn-redundant-casts]
-              [--no-warn-no-return] [--warn-return-any] [--warn-unused-ignores]
+              [--warn-incomplete-stub] [--disallow-untyped-decorators]
+              [--warn-redundant-casts] [--no-warn-no-return] [--warn-return-any]
+              [--warn-unused-ignores] [--warn-unused-configs]
               [--show-error-context] [--no-implicit-optional] [-i]
-              [--quick-and-dirty] [--cache-dir DIR] [--skip-version-check]
-              [--strict-optional]
+              [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
+              [--skip-version-check] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
@@ -28,9 +32,9 @@ flag (or its long form ``--help``)::
               [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
               [--cobertura-xml-report DIR] [--html-report DIR]
               [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR]
-              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
-              [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
+              [--memory-xml-report DIR] [--txt-report DIR] [--xml-report DIR]
+              [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
+              [-c PROGRAM_TEXT] [-p PACKAGE]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -357,11 +361,29 @@ Here are some more useful flags:
   updates the cache, but regular incremental mode ignores cache files
   written by quick mode.
 
+- ``--python-executable EXECUTABLE`` will have mypy collect type information
+  from `PEP 561`_ compliant
+  packages installed for the Python executable ``EXECUTABLE``. If not provided,
+  mypy will use PEP 561 compliant packages installed for the Python executable
+  running mypy. See :ref:`installed-packages` for more on making PEP 561
+  compliant packages. This flag will attempt to set ``--python-version`` if not
+  already set.
+
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
   whatever version of Python is running mypy. Note that the ``-2`` and
   ``--py2`` flags are aliases for ``--python-version 2.7``. See
-  :ref:`version_and_platform_checks` for more about this feature.
+  :ref:`version_and_platform_checks` for more about this feature. This flag
+  will attempt to find a Python executable of the corresponding version to
+  search for `PEP 561`_ compliant
+  packages. If you'd like to disable this, see ``--no-site-packages`` below.
+
+- ``--no-site-packages`` will disable searching for 
+  `PEP 561`_ compliant packages.
+  This will also disable searching for a usable Python executable. Use this
+  flag if mypy cannot find a Python executable for the version of Python being
+  checked, and you don't need to use PEP 561 typed packages. Otherwise, use
+  ``--python-executable``.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
   run under the the given operating system. Without this option, mypy will
@@ -443,6 +465,9 @@ For the remaining flags you can read the full ``mypy -h`` output.
 .. note::
 
    Command line flags are liable to change between releases.
+
+
+.. _PEP 561: https://www.python.org/dev/peps/pep-0561/
 
 .. _integrating-mypy:
 

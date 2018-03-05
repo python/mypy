@@ -1111,13 +1111,13 @@ a = None # type: Any
 '%b' % 1  # E: Format character 'b' is only supported on bytes patterns
 
 [case testStringInterPolationPython2]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-site-packages
 b'%b' % 1  # E: Format character 'b' is only supported in Python 3.5 and later
 b'%s' % 1
 b'%a' % 1  # E: Format character 'a' is only supported in Python 3
 
 [case testBytesInterpolationBefore35]
-# flags: --python-version 3.4
+# flags: --python-version 3.4 --no-site-packages
 b'%b' % 1  # E: Unsupported left operand type for % ("bytes")
 
 [case testBytesInterpolation]

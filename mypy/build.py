@@ -14,6 +14,7 @@ import binascii
 import collections
 import contextlib
 from distutils.sysconfig import get_python_lib
+import functools
 import gc
 import hashlib
 import json
@@ -21,6 +22,7 @@ import os.path
 import re
 import site
 import stat
+import subprocess
 import sys
 import time
 from os.path import dirname, basename
@@ -690,7 +692,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(id, self.lib_path) is not None
+        return find_module(id, self.lib_path, self.options.python_executable) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -803,8 +805,8 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
-# Cache find_module: (id, lib_path) -> result.
-find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
+# Cache find_module: id -> result.
+find_module_cache = {}  # type: Dict[Tuple[str, Optional[str], Tuple[str, ...]], Optional[str]]
 
 # Cache some repeated work within distinct find_module calls: finding which
 # elements of lib_path have even the subdirectory they'd need for the module
@@ -868,59 +870,134 @@ def is_file(path: str) -> bool:
     return res
 
 
-def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
+USER_SITE_PACKAGES = \
+    'from __future__ import print_function; import site; print(site.getusersitepackages());' \
+    'print(*site.getsitepackages(), sep="\\n")'
+VIRTUALENV_SITE_PACKAGES = \
+    'from distutils.sysconfig import get_python_lib; print(get_python_lib())'
+
+
+def call_python(python_executable: str, command: str) -> str:
+    return subprocess.check_output([python_executable, '-c', command],
+                                   stderr=subprocess.PIPE).decode()
+
+
+@functools.lru_cache(maxsize=None)
+def get_site_packages_dirs(python_executable: str) -> List[str]:
+    """Find package directories for given python."""
+    if python_executable == sys.executable:
+        # Use running Python's package dirs
+        if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
+            user_dir = site.getusersitepackages()
+            return site.getsitepackages() + [user_dir]
+        # If site doesn't have get(user)sitepackages, we are running in a
+        # virtualenv, and should fall back to get_python_lib
+        return [get_python_lib()]
+    else:
+        # Use subprocess to get the package directory of given Python
+        # executable
+        try:
+            output = call_python(python_executable, USER_SITE_PACKAGES)
+        except subprocess.CalledProcessError:
+            # if no paths are found (raising a CalledProcessError), we fall back on sysconfig,
+            # the python executable is likely in a virtual environment, thus lacking
+            # needed site methods
+            output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
+        return [line for line in output.splitlines() if os.path.isdir(line)]
+
+
+def find_base_dirs(lib_path: Tuple[str, ...], dir_chain: str, components: List[str],
+                   site_packages_dirs: List[str]) -> Tuple[str, ...]:
+    # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
+    # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
+    # that only once and cache it for when we look for modules like 'foo.bar.blah'
+    # that will require the same subdirectory.
+    # TODO (ethanhs): refactor to use lru_cache on each of these searches
+    dirs = find_module_dir_cache.get((dir_chain, lib_path), [])
+    if not dirs:
+        # Regular packages on the PATH
+        for pathitem in lib_path:
+            # e.g., '/usr/lib/python3.4/foo/bar'
+            isdir = find_module_isdir_cache.get((pathitem, dir_chain))
+            if isdir is None:
+                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                isdir = os.path.isdir(dir)
+                find_module_isdir_cache[pathitem, dir_chain] = isdir
+            if isdir:
+                dirs.append(dir)
+        find_module_dir_cache[dir_chain, lib_path] = dirs
+    third_party_dirs = []
+    # Third-party stub/typed packages
+    for pkg_dir in site_packages_dirs:
+        stub_name = components[0] + '-stubs'
+        typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
+        stub_dir = os.path.join(pkg_dir, stub_name)
+        if os.path.isdir(stub_dir):
+            stub_components = [stub_name] + components[1:]
+            path = os.path.join(pkg_dir, *stub_components[:-1])
+            if os.path.isdir(path):
+                third_party_dirs.append(path)
+        elif os.path.isfile(typed_file):
+            path = os.path.join(pkg_dir, dir_chain)
+            third_party_dirs.append(path)
+
+    return tuple(third_party_dirs +
+                 find_module_dir_cache[dir_chain, lib_path])
+
+
+def find_module_in_base_dirs(id: str, candidate_base_dirs: Iterable[str],
+                             last_component: str) -> Optional[str]:
+    # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
+    # contains just the subdirectories 'foo/bar' that actually exist under the
+    # elements of lib_path.  This is probably much shorter than lib_path itself.
+    # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
+    seplast = os.sep + last_component
+    sepinit = os.sep + '__init__'
+    for base_dir in candidate_base_dirs:
+        base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+        # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
+        for extension in PYTHON_EXTENSIONS:
+            path = base_path + sepinit + extension
+            path_stubs = base_path + '-stubs' + sepinit + extension
+            if is_file(path) and verify_module(id, path):
+                return path
+            elif is_file(path_stubs) and verify_module(id, path_stubs):
+                return path_stubs
+        # No package, look for module.
+        for extension in PYTHON_EXTENSIONS:
+            path = base_path + extension
+            if is_file(path) and verify_module(id, path):
+                return path
+    return None
+
+
+def find_module(id: str, lib_path_arg: Iterable[str],
+                python_executable: Optional[str]) -> Optional[str]:
     """Return the path of the module source file, or None if not found."""
     lib_path = tuple(lib_path_arg)
-
-    def find() -> Optional[str]:
-        # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
-        # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
-        # that only once and cache it for when we look for modules like 'foo.bar.blah'
-        # that will require the same subdirectory.
+    if (id, python_executable, lib_path) not in find_module_cache:
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if (dir_chain, lib_path) not in find_module_dir_cache:
-            dirs = []
-            for pathitem in lib_path:
-                # e.g., '/usr/lib/python3.4/foo/bar'
-                isdir = find_module_isdir_cache.get((pathitem, dir_chain))
-                if isdir is None:
-                    dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                    isdir = os.path.isdir(dir)
-                    find_module_isdir_cache[pathitem, dir_chain] = isdir
-                if isdir:
-                    dirs.append(dir)
-            find_module_dir_cache[dir_chain, lib_path] = dirs
-        candidate_base_dirs = find_module_dir_cache[dir_chain, lib_path]
 
-        # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
-        # contains just the subdirectories 'foo/bar' that actually exist under the
-        # elements of lib_path.  This is probably much shorter than lib_path itself.
-        # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
-        seplast = os.sep + components[-1]  # so e.g. '/baz'
-        sepinit = os.sep + '__init__'
-        for base_dir in candidate_base_dirs:
-            base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
-            # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
-            for extension in PYTHON_EXTENSIONS:
-                path = base_path + sepinit + extension
-                if is_file(path) and verify_module(id, path):
-                    return path
-            # No package, look for module.
-            for extension in PYTHON_EXTENSIONS:
-                path = base_path + extension
-                if is_file(path) and verify_module(id, path):
-                    return path
-        return None
+        if python_executable is not None:
+            site_packages_dirs = get_site_packages_dirs(python_executable)
+            if not site_packages_dirs:
+                print("Could not find package directories for Python '{}'".format(
+                    python_executable), file=sys.stderr)
+                sys.exit(2)
+        else:
+            site_packages_dirs = []
+        base_dirs = find_base_dirs(lib_path, dir_chain, components, site_packages_dirs)
+        find_module_cache[id,
+                          python_executable,
+                          lib_path] = find_module_in_base_dirs(id, base_dirs, components[-1])
 
-    key = (id, lib_path)
-    if key not in find_module_cache:
-        find_module_cache[key] = find()
-    return find_module_cache[key]
+    return find_module_cache[id, python_executable, lib_path]
 
 
-def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
-    module_path = find_module(module, lib_path)
+def find_modules_recursive(module: str, lib_path: List[str],
+                           python_executable: Optional[str]) -> List[BuildSource]:
+    module_path = find_module(module, lib_path, python_executable)
     if not module_path:
         return []
     result = [BuildSource(module_path, module, None)]
@@ -940,14 +1017,14 @@ def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource
                     (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
                     os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
                 hits.add(item)
-                result += find_modules_recursive(module + '.' + item, lib_path)
+                result += find_modules_recursive(module + '.' + item, lib_path, python_executable)
             elif item != '__init__.py' and item != '__init__.pyi' and \
                     item.endswith(('.py', '.pyi')):
                 mod = item.split('.')[0]
                 if mod not in hits:
                     hits.add(mod)
-                    result += find_modules_recursive(
-                        module + '.' + mod, lib_path)
+                    result += find_modules_recursive(module + '.' + mod,
+                                                     lib_path, python_executable)
     return result
 
 
@@ -1607,7 +1684,7 @@ class State:
                 # difference and just assume 'builtins' everywhere,
                 # which simplifies code.
                 file_id = '__builtin__'
-            path = find_module(file_id, manager.lib_path)
+            path = find_module(file_id, manager.lib_path, manager.options.python_executable)
             if path:
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze

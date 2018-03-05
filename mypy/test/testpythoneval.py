@@ -13,15 +13,14 @@ Note: These test cases are *not* included in the main test suite, as including
 import os
 import os.path
 import re
-import subprocess
 import sys
 
 import pytest  # type: ignore  # no pytest in typeshed
-from typing import Dict, List, Tuple, Optional
+from typing import List
 
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, run_command
 from mypy.util import try_find_python2_interpreter
 from mypy import api
 
@@ -48,7 +47,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     version.
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
-    mypy_cmdline = ['--show-traceback']
+    mypy_cmdline = ['--show-traceback', '--no-site-packages']
     py2 = testcase.name.lower().endswith('python2')
     if py2:
         mypy_cmdline.append('--py2')
@@ -60,6 +59,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
             return
     else:
         interpreter = python3_path
+        mypy_cmdline.append('--python-version=3.6')
 
     # Write the program to a file.
     program = '_' + testcase.name + '.py'
@@ -79,7 +79,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
             output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.
-        returncode, interp_out = run([interpreter, program])
+        returncode, interp_out = run_command([interpreter, program])
         output.extend(interp_out)
     # Remove temp file.
     os.remove(program_path)
@@ -88,35 +88,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
                                    testcase.file, testcase.line))
 
 
-def split_lines(*streams: bytes) -> List[str]:
-    """Returns a single list of string lines from the byte streams in args."""
-    return [
-        s.rstrip('\n\r')
-        for stream in streams
-        for s in str(stream, 'utf8').splitlines()
-    ]
-
-
 def adapt_output(testcase: DataDrivenTestCase) -> List[str]:
     """Translates the generic _program.py into the actual filename."""
     program = '_' + testcase.name + '.py'
     return [program_re.sub(program, line) for line in testcase.output]
-
-
-def run(
-    cmdline: List[str], *, env: Optional[Dict[str, str]] = None, timeout: int = 300
-) -> Tuple[int, List[str]]:
-    """A poor man's subprocess.run() for 3.3 and 3.4 compatibility."""
-    process = subprocess.Popen(
-        cmdline,
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        cwd=test_temp_dir,
-    )
-    try:
-        out, err = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        out = err = b''
-        process.kill()
-    return process.returncode, split_lines(out, err)

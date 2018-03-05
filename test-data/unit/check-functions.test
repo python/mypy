@@ -406,7 +406,7 @@ class B: pass
 class A: pass
 
 [case testDefaultArgumentExpressionsPython2]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-site-packages
 from typing import Tuple
 def f(x = B()): # E: Incompatible default for argument "x" (default has type "B", argument has type "A")
     # type: (A) -> None
@@ -417,7 +417,7 @@ class B: pass
 class A: pass
 
 [case testDefaultTupleArgumentExpressionsPython2]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-site-packages
 from typing import Tuple
 def f((x, y) = (A(), B())): # E: Incompatible default for tuple argument 1 (default has type "Tuple[A, B]", argument has type "Tuple[B, B]")
     # type: (Tuple[B, B]) -> None
@@ -2116,12 +2116,12 @@ a.__eq__(other=a) # E: Unexpected keyword argument "other" for "__eq__" of "A"
 [builtins fixtures/bool.pyi]
 
 [case testTupleArguments]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-site-packages
 
 def f(a, (b, c), d): pass
 
 [case testTupleArgumentsFastparse]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-site-packages
 
 def f(a, (b, c), d): pass
 

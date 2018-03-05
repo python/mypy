@@ -53,6 +53,8 @@ class ASTDiffSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
+        options.python_version = (3, 6)
+        options.python_executable = None
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

@@ -9,6 +9,7 @@ from mypy import util
 import itertools
 import os
 from os.path import join, isdir
+import re
 import sys
 
 
@@ -73,14 +74,16 @@ class Driver:
             return
         args = [sys.executable, self.mypy] + mypy_args
         args.append('--show-traceback')
+        args.append('--no-site-packages')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, list(args), cwd=cwd)
 
     def add_mypy_modules(self, name: str, modules: Iterable[str],
-                         cwd: Optional[str] = None) -> None:
-        args = list(itertools.chain(*(['-m', mod] for mod in modules)))
+                         cwd: Optional[str] = None, extra_args: List[str] = None) -> None:
+        args = extra_args or []
+        args.extend(list(itertools.chain(*(['-m', mod] for mod in modules))))
         self.add_mypy_cmd(name, args, cwd=cwd)
 
     def add_mypy_package(self, name: str, packagename: str, *flags: str) -> None:
@@ -231,6 +234,8 @@ SLOW_FILES = test_path(
     'testpythoneval',
     'testcmdline',
     'teststubgen',
+    # non-data-driven:
+    'testpep561',
 )
 
 for f in find_files('mypy', prefix='test', suffix='.py'):
@@ -256,7 +261,7 @@ def add_stubs(driver: Driver) -> None:
                 module = file_to_module(f[len(stubdir) + 1:])
                 modules.add(module)
 
-    driver.add_mypy_modules('stubs', sorted(modules))
+    driver.add_mypy_modules('stubs', sorted(modules), extra_args=['--python-version=3.5'])
 
 
 def add_stdlibsamples(driver: Driver) -> None:
@@ -276,7 +281,11 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        driver.add_mypy('file %s' % f, f)
+        if f == os.path.join('test-data', 'samples', 'crawl2.py'):
+            # This test requires 3.5
+            driver.add_mypy_cmd('file {}'.format(f), ['--python-version=3.5', f])
+        else:
+            driver.add_mypy('file %s' % f, f)
 
 
 def usage(status: int) -> None:

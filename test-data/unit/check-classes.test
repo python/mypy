@@ -4157,7 +4157,7 @@ class CQA(Q1): pass
 class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for 'CQW'
 
 [case testSixMetaclassErrors_python2]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-site-packages
 import six
 class M(type): pass
 class C4(six.with_metaclass(M)):  # E: Multiple metaclass definitions

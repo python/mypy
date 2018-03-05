@@ -1,10 +1,12 @@
 """Mypy type checker command line tool."""
 
 import argparse
+import ast
 import configparser
 import fnmatch
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -205,6 +207,44 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+class PythonExecutableInferenceError(Exception):
+    """Represents a failure to infer the version or executable while searching."""
+
+
+if sys.platform == 'win32':
+    def python_executable_prefix(v: str) -> List[str]:
+        return ['py', '-{}'.format(v)]
+else:
+    def python_executable_prefix(v: str) -> List[str]:
+        return ['python{}'.format(v)]
+
+
+def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
+    try:
+        check = subprocess.check_output([python_executable, '-c',
+                                         'import sys; print(repr(sys.version_info[:2]))'],
+                                        stderr=subprocess.STDOUT).decode()
+        return ast.literal_eval(check)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise PythonExecutableInferenceError(
+            'Error: invalid Python executable {}'.format(python_executable))
+
+
+def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
+    if sys.version_info[:2] == python_version:
+        return sys.executable
+    str_ver = '.'.join(map(str, python_version))
+    try:
+        sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
+                                          ['-c', 'import sys; print(sys.executable)'],
+                                          stderr=subprocess.STDOUT).decode().strip()
+        return sys_exe
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise PythonExecutableInferenceError(
+            'Error: failed to find a Python executable matching version {},'
+            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
+
+
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
@@ -255,7 +295,13 @@ def process_options(args: List[str],
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
-                        help='use Python x.y')
+                        help='use Python x.y', dest='special-opts:python_version')
+    parser.add_argument('--python-executable', action='store',
+                        help="Python executable whose installed packages will be"
+                             " used in typechecking.", dest='special-opts:python_executable')
+    parser.add_argument('--no-site-packages', action='store_true',
+                        dest='special-opts:no_site_packages',
+                        help="Do not search for PEP 561 packages in the package directory.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
                         "(defaults to sys.platform).")
@@ -482,6 +528,33 @@ def process_options(args: List[str],
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
 
+    try:
+        # Infer Python version and/or executable if one is not given
+        if special_opts.python_executable is not None and special_opts.python_version is not None:
+            py_exe_ver = _python_version_from_executable(special_opts.python_executable)
+            if py_exe_ver != special_opts.python_version:
+                parser.error(
+                    'Python version {} did not match executable {}, got version {}.'.format(
+                        special_opts.python_version, special_opts.python_executable, py_exe_ver
+                    ))
+            else:
+                options.python_version = special_opts.python_version
+                options.python_executable = special_opts.python_executable
+        elif special_opts.python_executable is None and special_opts.python_version is not None:
+            options.python_version = special_opts.python_version
+            if not special_opts.no_site_packages:
+                py_exe = _python_executable_from_version(special_opts.python_version)
+                options.python_executable = py_exe
+        elif special_opts.python_version is None and special_opts.python_executable is not None:
+            options.python_version = _python_version_from_executable(
+                special_opts.python_executable)
+            options.python_executable = special_opts.python_executable
+    except PythonExecutableInferenceError as e:
+        parser.error(str(e))
+
+    if special_opts.no_site_packages:
+        options.python_executable = None
+
     # Check for invalid argument combinations.
     if require_targets:
         code_methods = sum(bool(c) for c in [special_opts.modules,
@@ -527,7 +600,8 @@ def process_options(args: List[str],
                  .format(special_opts.package))
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(special_opts.package, lib_path)
+        targets = build.find_modules_recursive(special_opts.package, lib_path,
+                                               options.python_executable)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
         return targets, options

@@ -719,7 +719,7 @@ def call(c: Callable[[int], Any], i: int) -> None:
 [out]
 
 [case testCallableMeetAndJoin]
-# flags: --python-version 3.6
+# flags: --python-version 3.6 --no-site-packages
 from typing import Callable, Any, TypeVar
 
 class A: ...
