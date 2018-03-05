@@ -174,6 +174,7 @@ class FineGrainedBuildManager:
         # this directly reflected in load_graph's interface.
         self.options.cache_dir = os.devnull
         manager.saved_cache = {}
+        manager.only_load_from_cache = False
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
 
