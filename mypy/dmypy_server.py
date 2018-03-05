@@ -281,10 +281,14 @@ class Server:
             # Pull times and hashes out of the saved_cache and stick them into
             # the fswatcher, so we pick up the changes.
             for state in self.fine_grained_manager.graph.values():
+                # Only grab hashes from modules that came from the
+                # cache. For modules that actually got parsed &
+                # typechecked we rely on the data from the actual disk
+                # cache, since we don't generate metas for those.
+                assert state.tree is not None
+                if not state.tree.is_cache_skeleton: continue
                 meta = state.meta
-                # If there isn't a meta, that means the current
-                # version got checked in the initial build.
-                if meta is None: continue
+                assert meta is not None
                 assert state.path is not None
                 self.fswatcher.set_file_data(
                     state.path,
