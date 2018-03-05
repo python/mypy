@@ -917,9 +917,11 @@ def find_base_dirs(lib_path: Tuple[str, ...], dir_chain: str, components: List[s
                 find_module_isdir_cache[pathitem, dir_chain] = isdir
             if isdir:
                 dirs.append(dir)
-
+        find_module_dir_cache[dir_chain, lib_path] = dirs
+    third_party_dirs = []
     # Third-party stub/typed packages
     for pkg_dir in site_packages_dirs:
+        prefix = components[0]
         stub_name = components[0] + '-stubs'
         typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
         stub_dir = os.path.join(pkg_dir, stub_name)
@@ -928,13 +930,14 @@ def find_base_dirs(lib_path: Tuple[str, ...], dir_chain: str, components: List[s
             rest = components[:-1]
             path = os.path.join(pkg_dir, *rest)
             if os.path.isdir(path):
-                dirs.append(path)
+                third_party_dirs.append(path)
+            components[0] = prefix
         elif os.path.isfile(typed_file):
             path = os.path.join(pkg_dir, dir_chain)
-            dirs.append(path)
+            third_party_dirs.append(path)
 
-    find_module_dir_cache[dir_chain, lib_path] = dirs
-    return tuple(find_module_dir_cache[dir_chain, lib_path]), components
+    return tuple(third_party_dirs +
+                 find_module_dir_cache[dir_chain, lib_path]), components
 
 
 def find_module_in_base_dirs(id: str, candidate_base_dirs: Iterable[str],
@@ -983,13 +986,6 @@ def find_module(id: str, lib_path_arg: Iterable[str],
         find_module_cache[id,
                           python_executable,
                           lib_path] = find_module_in_base_dirs(id, base_dirs, components[-1])
-
-        # If we searched for items with a base directory of site-packages/ we need to
-        # remove it to avoid searching it for untyped modules and packages e.g.
-        # site-packages/file.py
-        for dir in site_packages_dirs:
-            if dir + os.sep in find_module_dir_cache[dir_chain, lib_path]:
-                find_module_dir_cache[dir_chain, lib_path].remove(dir + os.sep)
 
     return find_module_cache[id, python_executable, lib_path]
 
