@@ -900,11 +900,12 @@ def get_site_packages_dirs(python_executable: str) -> List[str]:
 
 
 def find_base_dirs(lib_path: Tuple[str, ...], dir_chain: str, components: List[str],
-                   site_packages_dirs: List[str]) -> Tuple[Iterable[str], List[str]]:
+                   site_packages_dirs: List[str]) -> Tuple[str, ...]:
     # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
     # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
     # that only once and cache it for when we look for modules like 'foo.bar.blah'
     # that will require the same subdirectory.
+    # TODO (ethanhs): refactor to use lru_cache on each of these searches
     dirs = find_module_dir_cache.get((dir_chain, lib_path), [])
     if not dirs:
         # Regular packages on the PATH
@@ -921,23 +922,20 @@ def find_base_dirs(lib_path: Tuple[str, ...], dir_chain: str, components: List[s
     third_party_dirs = []
     # Third-party stub/typed packages
     for pkg_dir in site_packages_dirs:
-        prefix = components[0]
         stub_name = components[0] + '-stubs'
         typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
         stub_dir = os.path.join(pkg_dir, stub_name)
         if os.path.isdir(stub_dir):
-            components[0] = stub_name
-            rest = components[:-1]
-            path = os.path.join(pkg_dir, *rest)
+            stub_components = [stub_name] + components[1:]
+            path = os.path.join(pkg_dir, *stub_components[:-1])
             if os.path.isdir(path):
                 third_party_dirs.append(path)
-            components[0] = prefix
         elif os.path.isfile(typed_file):
             path = os.path.join(pkg_dir, dir_chain)
             third_party_dirs.append(path)
 
     return tuple(third_party_dirs +
-                 find_module_dir_cache[dir_chain, lib_path]), components
+                 find_module_dir_cache[dir_chain, lib_path])
 
 
 def find_module_in_base_dirs(id: str, candidate_base_dirs: Iterable[str],
@@ -982,7 +980,7 @@ def find_module(id: str, lib_path_arg: Iterable[str],
                 sys.exit(2)
         else:
             site_packages_dirs = []
-        base_dirs, components = find_base_dirs(lib_path, dir_chain, components, site_packages_dirs)
+        base_dirs = find_base_dirs(lib_path, dir_chain, components, site_packages_dirs)
         find_module_cache[id,
                           python_executable,
                           lib_path] = find_module_in_base_dirs(id, base_dirs, components[-1])
