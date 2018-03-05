@@ -1330,6 +1330,8 @@ pass
 [file b]
 pass
 
+-- Misc
+
 [case testScriptsAreNotModules]
 # cmd: mypy a b
 [file a]
@@ -1955,3 +1957,17 @@ import c
 tmp/b.py:1: error: Cannot find module named 'c'
 main:1: error: Cannot find module named 'c'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIndirectImportWithinCycle1]
+import a
+[file a.py]
+from b import f
+from c import x
+[file b.py]
+from c import y
+from a import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file c.py]
+x = str()
+y = int()

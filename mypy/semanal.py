@@ -55,7 +55,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
@@ -1488,6 +1488,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
+            node = self.dereference_module_cross_ref(node)
+
             missing = False
             possible_module_id = import_id + '.' + id
 
@@ -1516,11 +1518,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     ast_node = Var(name, type=typ)
                     symbol = SymbolTableNode(GDEF, ast_node)
                     self.add_symbol(name, symbol, imp)
-                    return
+                    continue
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
                 node = self.normalize_type_alias(node, imp)
                 if not node:
-                    return
+                    # Normalization failed because target is not defined. Avoid duplicate
+                    # error messages by marking the imported name as unknown.
+                    self.add_unknown_symbol(as_id or id, imp, is_import=True)
+                    continue
                 imported_id = as_id or id
                 existing_symbol = self.globals.get(imported_id)
                 if existing_symbol:
@@ -1550,6 +1555,26 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 # Missing module.
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
 
+    def dereference_module_cross_ref(
+            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
+        """Dereference cross references to other modules (if any).
+
+        If the node is not a cross reference, return it unmodified.
+        """
+        seen = set()  # type: Set[str]
+        # Continue until we reach a node that's nota cross reference (or until we find
+        # nothing).
+        while node and isinstance(node.node, ImportedName):
+            fullname = node.node.fullname()
+            if fullname in seen:
+                # Looks like a reference cycle. Just break it.
+                # TODO: Generate a more specific error message.
+                node = None
+                break
+            node = self.lookup_fully_qualified_or_none(fullname)
+            seen.add(fullname)
+        return node
+
     def process_import_over_existing_name(self,
                                           imported_id: str, existing_symbol: SymbolTableNode,
                                           module_symbol: SymbolTableNode,
@@ -1573,6 +1598,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> Optional[SymbolTableNode]:
+        """If node refers to a built-intype alias, normalize it.
+
+        An example normalization is 'typing.List' -> '__builtins__.list'.
+
+        By default, if the node doesn't refer to a built-in type alias, return
+        the original node. If normalization fails because the target isn't
+        defined, return None.
+        """
         normalized = False
         fullname = node.fullname
         if fullname in type_aliases:
@@ -3861,6 +3894,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
+        # NOTE: This logic mostly parallels SemanticAnalyzerPass1.add_symbol. If you change
+        #     this, you may have to change the other method as well.
         if self.is_func_scope():
             assert self.locals[-1] is not None
             if name in self.locals[-1]:
@@ -3873,8 +3908,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             self.type.names[name] = node
         else:
             existing = self.globals.get(name)
-            if existing and (not isinstance(node.node, MypyFile) or
-                             existing.node != node.node) and existing.kind != UNBOUND_IMPORTED:
+            if (existing
+                    and (not isinstance(node.node, MypyFile) or existing.node != node.node)
+                    and existing.kind != UNBOUND_IMPORTED
+                    and not isinstance(existing.node, ImportedName)):
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
                 ok = False
