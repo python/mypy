@@ -105,8 +105,10 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
        
        ...
 
-Coroutines
-**********
+Coroutines and asyncio
+**********************
+
+See :ref:`async-and-await` for the full detail on typing coroutines and asynchronous code.
 
 .. code-block:: python
 
