@@ -52,7 +52,7 @@ class Options:
 
         # -- build options --
         self.build_type = BuildType.STANDARD
-        self.python_version = sys.version_info[:2]
+        self.python_version = sys.version_info[:2]  # type: Tuple[int, int]
         self.platform = sys.platform
         self.custom_typing_module = None  # type: Optional[str]
         self.custom_typeshed_dir = None  # type: Optional[str]

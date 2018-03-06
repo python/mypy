@@ -19,6 +19,7 @@ import sys
 import pytest  # type: ignore  # no pytest in typeshed
 from typing import Dict, List, Tuple, Optional
 
+from mypy.defaults import PYTHON3_VERSION
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
@@ -60,6 +61,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
             return
     else:
         interpreter = python3_path
+        mypy_cmdline.append('--python-version={}'.format('.'.join(map(str, PYTHON3_VERSION))))
 
     # Write the program to a file.
     program = '_' + testcase.name + '.py'

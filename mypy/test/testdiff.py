@@ -5,6 +5,7 @@ from typing import List, Tuple, Dict, Optional
 
 from mypy import build
 from mypy.build import BuildSource
+from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile
 from mypy.options import Options
@@ -53,6 +54,7 @@ class ASTDiffSuite(DataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
+        options.python_version = PYTHON3_VERSION
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

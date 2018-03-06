@@ -6,6 +6,7 @@ from typing import List, Tuple, Dict, Optional
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, State, Graph
+from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
@@ -106,6 +107,7 @@ class ASTMergeSuite(DataSuite):
         options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.python_version = PYTHON3_VERSION
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w') as f:
             f.write(source)
