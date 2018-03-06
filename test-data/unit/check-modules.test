@@ -1971,6 +1971,7 @@ from m import One
 reveal_type(One)
 x: One
 reveal_type(x)
+# TODO also resolve One correctly when used as base class (currently resolves as Any)
 class Two:
     pass
 [out]

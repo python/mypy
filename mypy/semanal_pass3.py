@@ -221,9 +221,12 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         resulted from this assignment (if any). Currently this includes
         NewType, TypedDict, NamedTuple, and TypeVar.
         """
-        if isinstance(s.type, AnyType) and s.type.type_of_any == TypeOfAny.from_unbound_import:
+        if (isinstance(s.type, AnyType) and
+                s.type.type_of_any == TypeOfAny.from_unbound_import and
+                len(s.lvalues) == 1 and
+                isinstance(s.lvalues[0], NameExpr)):
             node = self.sem.globals.get(s.lvalues[0].name)
-            if node and node.type == s.type:
+            if node and isinstance(node.node, Var) and s.unanalyzed_type:
                 s.type = self.sem.anal_type(s.unanalyzed_type, third_pass=True)
                 node.node.type = s.type
         self.analyze(s.type, s)
@@ -302,6 +305,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
     def visit_name_expr(self, expr: NameExpr) -> None:
         # Fixup remaining UNBOUND_IMPORTED nodes from import cycles
         if expr.kind == UNBOUND_IMPORTED:
+            # TODO: this works only for module-level attributes, because not all
+            # the namespace context is set up correctly in pass 3.
             n = self.sem.lookup(expr.name, expr, suppress_errors=True)
             if n:
                 expr.kind = n.kind
