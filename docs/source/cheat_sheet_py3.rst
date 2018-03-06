@@ -62,8 +62,7 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
 
 .. code-block:: python
 
-   from typing import Callable, Iterable, Union, Optional, List, Generator, Any
-   import asyncio
+   from typing import Callable, Iterable, Union, Optional, List
 
    # This is how you annotate a function definition.
    def stringify(num: int) -> str:
@@ -89,11 +88,30 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
 
    # A generator function that yields ints is secretly just a function that
    # returns an iterable (see below) of ints, so that's how we annotate it.
-   def f2(n: int) -> Iterable[int]:
+   def f(n: int) -> Iterable[int]:
        i = 0
        while i < n:
            yield i
            i += 1
+
+   # For a function with many arguments, you can of course split it over multiple lines
+   def send_email(address: Union[str, List[str]],
+                  sender: str,
+                  cc: Optional[List[str]],
+                  bcc: Optional[List[str]],
+                  subject='',
+                  body: List[str] = None
+                  ) -> bool:
+       
+       ...
+
+Coroutines
+**********
+
+.. code-block:: python
+
+   import asyncio
+   from typing import Generator, Any
 
    # A Python 3.4 coroutine should have a return type of
    # Generator[Any, None, T], where T is the type it returns.
@@ -124,18 +142,6 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
 
    async def async2(obj: object) -> str:
        return "placeholder"
-
-   # For a function with many arguments, you can of course split it over multiple lines
-   def send_email(address: Union[str, List[str]],
-                  sender: str,
-                  cc: Optional[List[str]],
-                  bcc: Optional[List[str]],
-                  subject='',
-                  body: List[str] = None
-                  ) -> bool:
-       
-       ...
-
 
 When you're puzzled or when things are complicated
 **************************************************
