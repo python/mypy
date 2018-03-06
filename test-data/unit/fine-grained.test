@@ -2635,3 +2635,46 @@ def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
+
+[case testImplicitTuple1]
+import a
+[file a.py]
+# Bogus annotation in nested function masked because
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[file a.py.2]
+# dummy change
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[out]
+==
+
+[case testImplicitTuple2]
+import a
+[file a.py]
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[file a.py.2]
+# dummy change
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[out]
+a.py:1: error: Invalid tuple literal type
+==
+a.py:2: error: Invalid tuple literal type
+
+[case testImplicitTuple3]
+import a
+[file a.py]
+(x, y) = 1, 'hi'  # type: (int, str)
+[file a.py.2]
+# dummy change
+(x, y) = 1, 'hi'  # type: (int, str)
+[out]
+==

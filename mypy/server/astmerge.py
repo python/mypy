@@ -366,7 +366,9 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
             item.accept(self)
-        typ.fallback.accept(self)
+        # Fallback can be None for implicit tuple types that haven't been semantically analyzed.
+        if typ.fallback is not None:
+            typ.fallback.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         typ.item.accept(self)
