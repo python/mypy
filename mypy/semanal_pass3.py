@@ -63,13 +63,14 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
         self.sem.cur_mod_id = file_node.fullname()
-        self.cur_mod_node = file_node
+        self.sem.cur_mod_node = self.cur_mod_node = file_node
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
             self.scope.leave()
         del self.cur_mod_node
+        del self.sem.cur_mod_node
         self.patches = []
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
