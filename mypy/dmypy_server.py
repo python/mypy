@@ -25,6 +25,7 @@ from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
+from mypy.options import Options
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -78,32 +79,37 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 SOCKET_NAME = 'dmypy.sock'  # In current directory.
 
 
+def process_start_options(flags: List[str]) -> Options:
+    import mypy.main
+    sources, options = mypy.main.process_options(['-i'] + flags,
+                                                 require_targets=False,
+                                                 server_options=True)
+    if sources:
+        sys.exit("dmypy: start/restart does not accept sources")
+    if options.report_dirs:
+        sys.exit("dmypy: start/restart cannot generate reports")
+    if options.junit_xml:
+        sys.exit("dmypy: start/restart does not support --junit-xml; "
+                 "pass it to check/recheck instead")
+    if not options.incremental:
+        sys.exit("dmypy: start/restart should not disable incremental mode")
+    if options.quick_and_dirty:
+        sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
+    if options.use_fine_grained_cache and not options.fine_grained_incremental:
+        sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
+    return options
+
+
 class Server:
 
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
-    def __init__(self, flags: List[str]) -> None:
+    def __init__(self, options: Options) -> None:
         """Initialize the server with the desired mypy flags."""
         self.saved_cache = {}  # type: mypy.build.SavedCache
         self.fine_grained_initialized = False
-        sources, options = mypy.main.process_options(['-i'] + flags,
-                                                     require_targets=False,
-                                                     server_options=True)
         self.fine_grained = options.fine_grained_incremental
-        if sources:
-            sys.exit("dmypy: start/restart does not accept sources")
-        if options.report_dirs:
-            sys.exit("dmypy: start/restart cannot generate reports")
-        if options.junit_xml:
-            sys.exit("dmypy: start/restart does not support --junit-xml; "
-                     "pass it to check/recheck instead")
-        if not options.incremental:
-            sys.exit("dmypy: start/restart should not disable incremental mode")
-        if options.quick_and_dirty:
-            sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
-        if options.use_fine_grained_cache and not options.fine_grained_incremental:
-            sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
         self.options = options
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)

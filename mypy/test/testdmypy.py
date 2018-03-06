@@ -117,13 +117,9 @@ class DmypySuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
         if incremental_step == 1:
-            server_options = []  # type: List[str]
             if 'fine-grained' in testcase.file:
-                server_options.append('--experimental')
                 options.fine_grained_incremental = True
-                options.local_partial_types = True
-            self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
-            self.server.options = options
+            self.server = dmypy_server.Server(options)
 
         assert self.server is not None  # Set in step 1 and survives into next steps
         sources = []
