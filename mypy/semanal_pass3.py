@@ -18,7 +18,7 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef
+    TupleExpr, RevealTypeExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -67,6 +67,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
+            self.analyze_symbol_table(file_node.names)
             self.scope.leave()
         del self.cur_mod_node
         self.patches = []
@@ -151,6 +152,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
                 self.analyze_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
+        self.analyze_symbol_table(tdef.info.names)
         self.scope.leave()
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -385,6 +387,12 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 target = self.scope.current_target()
                 self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
         self.generate_type_patches(node, indicator, warn=False)
+
+    def analyze_symbol_table(self, names: SymbolTable) -> None:
+        """Analyze types in symbol table nodes only (shallow)."""
+        for node in names.values():
+            if node.type_override:
+                self.analyze(node.type_override, node)
 
     def generate_type_patches(self,
                               node: Union[Node, SymbolTableNode],

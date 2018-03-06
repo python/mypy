@@ -2002,3 +2002,19 @@ reveal_type(x) # E: Revealed type is 'builtins.str'
 [file p/c.py]
 x = str()
 y = int()
+
+[case testForwardReferenceToImportedAlias]
+class A:
+    @property
+    def p(self) -> C: pass
+    @p.setter
+    def p(self, c: C) -> None: pass
+    @p.deleter
+    def p(self) -> None: pass
+
+#reveal_type(A().x)
+
+from m import C
+[file m.py]
+C = str
+[builtins fixtures/property.pyi]
