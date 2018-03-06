@@ -1,11 +1,13 @@
 import os
 import re
+import subprocess
 import sys
 import time
 
 from typing import List, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
+from mypy.test.config import test_temp_dir
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -327,3 +329,30 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
     return options
+
+
+def split_lines(*streams: bytes) -> List[str]:
+    """Returns a single list of string lines from the byte streams in args."""
+    return [
+        s
+        for stream in streams
+        for s in stream.decode('utf8').splitlines()
+    ]
+
+
+def run_command(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
+                timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
+    """A poor man's subprocess.run() for 3.4 compatibility."""
+    process = subprocess.Popen(
+        cmdline,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+    )
+    try:
+        out, err = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        out = err = b''
+        process.kill()
+    return process.returncode, split_lines(out, err)
