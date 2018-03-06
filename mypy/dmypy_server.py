@@ -20,7 +20,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 import mypy.build
 import mypy.errors
 import mypy.main
-import mypy.server.update
+from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
@@ -109,12 +109,14 @@ class Server:
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
-    def __init__(self, options: Options) -> None:
+    def __init__(self, options: Options, alt_lib_path: Optional[str] = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.saved_cache = {}  # type: mypy.build.SavedCache
-        self.fine_grained_initialized = False
         self.fine_grained = options.fine_grained_incremental
         self.options = options
+        self.alt_lib_path = alt_lib_path
+        self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
+
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
         if self.fine_grained:
@@ -224,15 +226,13 @@ class Server:
     # Needed by tests.
     last_manager = None  # type: Optional[mypy.build.BuildManager]
 
-    def check(self, sources: List[mypy.build.BuildSource],
-              alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+    def check(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         if self.fine_grained:
             return self.check_fine_grained(sources)
         else:
-            return self.check_default(sources, alt_lib_path)
+            return self.check_default(sources)
 
-    def check_default(self, sources: List[mypy.build.BuildSource],
-                      alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
+    def check_default(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         """Check using the default (per-file) incremental mode."""
         self.last_manager = None
         blockers = False
@@ -241,7 +241,7 @@ class Server:
                 # saved_cache is mutated in place.
                 res = mypy.build.build(sources, self.options,
                                        saved_cache=self.saved_cache,
-                                       alt_lib_path=alt_lib_path)
+                                       alt_lib_path=self.alt_lib_path)
                 msgs = res.errors
                 self.last_manager = res.manager  # type: Optional[mypy.build.BuildManager]
             except mypy.errors.CompileError as err:
@@ -264,7 +264,7 @@ class Server:
 
     def check_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
-        if not self.fine_grained_initialized:
+        if not self.fine_grained_manager:
             return self.initialize_fine_grained(sources)
         else:
             return self.fine_grained_increment(sources)
@@ -277,9 +277,9 @@ class Server:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
         try:
-            # TODO: alt_lib_path
             result = mypy.build.build(sources=sources,
-                                      options=self.options)
+                                      options=self.options,
+                                      alt_lib_path=self.alt_lib_path)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
             if e.use_stdout:
@@ -290,8 +290,7 @@ class Server:
         messages = result.errors
         manager = result.manager
         graph = result.graph
-        self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
-        self.fine_grained_initialized = True
+        self.fine_grained_manager = FineGrainedBuildManager(manager, graph)
         self.previous_sources = sources
         self.fscache.flush()
 
@@ -320,6 +319,8 @@ class Server:
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+        assert self.fine_grained_manager is not None
+
         t0 = time.time()
         self.update_sources(sources)
         changed = self.find_changed(sources)

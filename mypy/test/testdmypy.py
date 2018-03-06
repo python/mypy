@@ -119,14 +119,14 @@ class DmypySuite(DataSuite):
         if incremental_step == 1:
             if 'fine-grained' in testcase.file:
                 options.fine_grained_incremental = True
-            self.server = dmypy_server.Server(options)
+            self.server = dmypy_server.Server(options, alt_lib_path=test_temp_dir)
 
         assert self.server is not None  # Set in step 1 and survives into next steps
         sources = []
         for module_name, program_path, program_text in module_data:
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(build.BuildSource(program_path, module_name, None))
-        response = self.server.check(sources, alt_lib_path=test_temp_dir)
+        response = self.server.check(sources)
         a = (response['out'] or response['err']).splitlines()
         a = normalize_error_messages(a)
 
