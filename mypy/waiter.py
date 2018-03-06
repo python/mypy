@@ -160,7 +160,7 @@ class Waiter:
                 test_log = json.load(fp)
         except FileNotFoundError:
             test_log = []
-        except json.JSONDecodeError:
+        except ValueError:
             print('corrupt test log file {}'.format(self.FULL_LOG_FILENAME), file=sys.stderr)
             test_log = []
         return test_log
