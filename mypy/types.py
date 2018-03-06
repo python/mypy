@@ -284,6 +284,8 @@ class TypeOfAny(Enum):
     special_form = 'special_form'
     # Does this Any come from interaction with another Any?
     from_another_any = 'from_another_any'
+    # Does this Any come from an unresolved unbound import (e.g. from import cycle)?
+    from_unbound_import = 'from_unbound_import'
 
 
 class AnyType(Type):

@@ -221,6 +221,11 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         resulted from this assignment (if any). Currently this includes
         NewType, TypedDict, NamedTuple, and TypeVar.
         """
+        if isinstance(s.type, AnyType) and s.type.type_of_any == TypeOfAny.from_unbound_import:
+            node = self.sem.globals.get(s.lvalues[0].name)
+            if node and node.type == s.type:
+                s.type = self.sem.anal_type(s.unanalyzed_type, third_pass=True)
+                node.node.type = s.type
         self.analyze(s.type, s)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
             self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed, warn=True)
