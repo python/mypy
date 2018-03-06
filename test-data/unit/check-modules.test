@@ -2003,18 +2003,15 @@ reveal_type(x) # E: Revealed type is 'builtins.str'
 x = str()
 y = int()
 
-[case testForwardReferenceToImportedAlias]
+[case testForwardReferenceToListAlias]
+x: List[int]
+reveal_type(x) # E: Revealed type is 'builtins.list[builtins.int]'
+def f() -> 'List[int]': pass
+reveal_type(f) # E: Revealed type is 'def () -> builtins.list[builtins.int]'
 class A:
-    @property
-    def p(self) -> C: pass
-    @p.setter
-    def p(self, c: C) -> None: pass
-    @p.deleter
-    def p(self) -> None: pass
-
-#reveal_type(A().x)
-
-from m import C
-[file m.py]
-C = str
-[builtins fixtures/property.pyi]
+    y: 'List[str]'
+    def g(self, x: 'List[int]') -> None: pass
+reveal_type(A().y) # E: Revealed type is 'builtins.list[builtins.str]'
+reveal_type(A().g) # E: Revealed type is 'def (x: builtins.list[builtins.int])'
+from typing import List
+[builtins fixtures/list.pyi]

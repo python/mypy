@@ -37,6 +37,11 @@ class SemanticAnalyzerInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def dereference_module_cross_ref(
+            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+    @abstractmethod
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
         raise NotImplementedError
