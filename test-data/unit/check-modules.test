@@ -2002,3 +2002,38 @@ tmp/m/two.py:2: error: Revealed type is 'def () -> m.one.One'
 tmp/m/two.py:4: error: Revealed type is 'm.one.One'
 tmp/m/__init__.py:3: error: Revealed type is 'def () -> m.one.One'
 main:2: error: Revealed type is 'def () -> m.one.One'
+
+[case testImportReExportedNamedTupleInCycle]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import NamedTuple
+class One(NamedTuple):
+    name: str
+[file m/two.py]
+import m
+x = m.One(name="Foo")
+reveal_type(x.name)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'builtins.str'
+
+[case testImportReExportedTypeAliasInCycle]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import Union
+One = Union[int, str]
+[file m/two.py]
+import m
+x: m.One
+reveal_type(x)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
