@@ -2015,3 +2015,17 @@ reveal_type(A().y) # E: Revealed type is 'builtins.list[builtins.str]'
 reveal_type(A().g) # E: Revealed type is 'def (x: builtins.list[builtins.int])'
 from typing import List
 [builtins fixtures/list.pyi]
+
+[case testIndirectStarImportWithinCycle]
+import a
+[file a.py]
+from b import f
+from c import x
+[file b.py]
+from c import y
+from a import *
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file c.py]
+x = str()
+y = int()

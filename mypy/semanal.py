@@ -1648,6 +1648,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             m = self.modules[i_id]
             self.add_submodules_to_parent_modules(i_id, True)
             for name, node in m.names.items():
+                node = self.dereference_module_cross_ref(node)
+                if node is None:
+                    continue
                 new_node = self.normalize_type_alias(node, i)
                 # if '__all__' exists, all nodes not included have had module_public set to
                 # False, and we can skip checking '_' because it's been explicitly included.
