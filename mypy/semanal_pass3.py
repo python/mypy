@@ -33,10 +33,12 @@ from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
 from mypy.scope import Scope
+from mypy.semanal_shared import SemanticAnalyzerInterface
 import mypy.semanal
 
 
-class SemanticAnalyzerPass3(TraverserVisitor):
+class SemanticAnalyzerPass3(TraverserVisitor,
+                            SemanticAnalyzerInterface):
     """The third and final pass of semantic analysis.
 
     Check type argument counts and values of generic types, and perform some
@@ -421,10 +423,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(sym.node.type, sym.node)
 
     def make_type_analyzer(self, indicator: Dict[str, bool]) -> TypeAnalyserPass3:
-        return TypeAnalyserPass3(self.sem.lookup_qualified,
-                                 self.sem.lookup_fully_qualified,
-                                 self.fail,
-                                 self.sem.note,
+        return TypeAnalyserPass3(self,
                                  self.sem.plugin,
                                  self.options,
                                  self.is_typeshed_file,
@@ -439,11 +438,23 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             if t.type_of_any == TypeOfAny.from_omitted_generics:
                 self.fail(messages.BARE_GENERIC, t)
 
-    def fail(self, msg: str, ctx: Context, *, blocker: bool = False) -> None:
+    def lookup_qualified(self, name: str, ctx: Context,
+                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        return self.sem.lookup_qualified(name, ctx, suppress_errors=suppress_errors)
+
+    def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
+        return self.sem.lookup_fully_qualified(fullname)
+
+    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
+        # TODO: Process all arguments
         self.errors.report(ctx.get_line(), ctx.get_column(), msg)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
+
+    def note(self, msg: str, ctx: Context) -> None:
+        self.sem.note(msg, ctx)
 
     def builtin_type(self, name: str, args: Optional[List[Type]] = None) -> Instance:
         names = self.modules['builtins']

@@ -1,5 +1,6 @@
 """Semantic analysis of types"""
 
+from abc import abstractmethod
 from collections import OrderedDict
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Dict, Union
 
@@ -28,6 +29,7 @@ from mypy.nodes import (
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
+from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy import nodes, messages
 
 
@@ -53,11 +55,8 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 
 
 def analyze_type_alias(node: Expression,
-                       lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
-                       lookup_fqn_func: Callable[[str], SymbolTableNode],
+                       api: SemanticAnalyzerInterface,
                        tvar_scope: TypeVarScope,
-                       fail_func: Callable[[str, Context], None],
-                       note_func: Callable[[str, Context], None],
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
@@ -79,7 +78,7 @@ def analyze_type_alias(node: Expression,
         # class-referenced type variable as a type alias.  It's easier to catch
         # that one in checkmember.py
         if node.kind == TVAR:
-            fail_func('Type variable "{}" is invalid as target for type alias'.format(
+            api.fail('Type variable "{}" is invalid as target for type alias'.format(
                 node.fullname), node)
             return None
         if not (isinstance(node.node, TypeInfo) or
@@ -102,8 +101,8 @@ def analyze_type_alias(node: Expression,
     elif isinstance(node, CallExpr):
         if (isinstance(node.callee, NameExpr) and len(node.args) == 1 and
                 isinstance(node.args[0], NameExpr)):
-            call = lookup_func(node.callee.name, node.callee)
-            arg = lookup_func(node.args[0].name, node.args[0])
+            call = api.lookup_qualified(node.callee.name, node.callee)
+            arg = api.lookup_qualified(node.args[0].name, node.args[0])
             if (call is not None and call.node and call.node.fullname() == 'builtins.type' and
                     arg is not None and arg.node and arg.node.fullname() == 'builtins.None'):
                 return NoneTyp(), set()
@@ -116,10 +115,9 @@ def analyze_type_alias(node: Expression,
     try:
         type = expr_to_unanalyzed_type(node)
     except TypeTranslationError:
-        fail_func('Invalid type alias', node)
+        api.fail('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(lookup_func, lookup_fqn_func, tvar_scope, fail_func, note_func,
-                            plugin, options, is_typeshed_stub, aliasing=True,
+    analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub, aliasing=True,
                             allow_unnormalized=allow_unnormalized, warn_bound_tvar=warn_bound_tvar)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -147,11 +145,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     global_scope = True  # type: bool
 
     def __init__(self,
-                 lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
-                 lookup_fqn_func: Callable[[str], SymbolTableNode],
+                 api: SemanticAnalyzerInterface,
                  tvar_scope: Optional[TypeVarScope],
-                 fail_func: Callable[[str, Context], None],
-                 note_func: Callable[[str, Context], None],
                  plugin: Plugin,
                  options: Options,
                  is_typeshed_stub: bool, *,
@@ -160,10 +155,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_unnormalized: bool = False,
                  third_pass: bool = False,
                  warn_bound_tvar: bool = False) -> None:
-        self.lookup = lookup_func
-        self.lookup_fqn_func = lookup_fqn_func
-        self.fail_func = fail_func
-        self.note_func = note_func
+        self.api = api
+        self.lookup = api.lookup_qualified
+        self.lookup_fqn_func = api.lookup_fully_qualified
+        self.fail_func = api.fail
+        self.note_func = api.note
         self.tvar_scope = tvar_scope
         self.aliasing = aliasing
         self.allow_tuple_literal = allow_tuple_literal
@@ -659,19 +655,17 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     """
 
     def __init__(self,
-                 lookup_func: Callable[[str, Context], Optional[SymbolTableNode]],
-                 lookup_fqn_func: Callable[[str], SymbolTableNode],
-                 fail_func: Callable[[str, Context], None],
-                 note_func: Callable[[str, Context], None],
+                 api: SemanticAnalyzerInterface,
                  plugin: Plugin,
                  options: Options,
                  is_typeshed_stub: bool,
                  indicator: Dict[str, bool],
                  patches: List[Tuple[int, Callable[[], None]]]) -> None:
-        self.lookup_func = lookup_func
-        self.lookup_fqn_func = lookup_fqn_func
-        self.fail = fail_func
-        self.note_func = note_func
+        self.api = api
+        self.lookup_func = api.lookup_qualified
+        self.lookup_fqn_func = api.lookup_fully_qualified
+        self.fail = api.fail
+        self.note_func = api.note
         self.options = options
         self.plugin = plugin
         self.is_typeshed_stub = is_typeshed_stub
@@ -799,11 +793,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             t.resolve(resolved)
 
     def anal_type(self, tp: UnboundType) -> Type:
-        tpan = TypeAnalyser(self.lookup_func,
-                            self.lookup_fqn_func,
+        tpan = TypeAnalyser(self.api,
                             None,
-                            self.fail,
-                            self.note_func,
                             self.plugin,
                             self.options,
                             self.is_typeshed_stub,

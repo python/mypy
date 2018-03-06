@@ -84,7 +84,7 @@ from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
 from mypy.util import get_prefix, correct_relative_import
-from mypy.semanal_shared import PRIORITY_FALLBACKS
+from mypy.semanal_shared import SemanticAnalyzerInterface, PRIORITY_FALLBACKS
 from mypy.scope import Scope
 
 
@@ -174,7 +174,9 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
+class SemanticAnalyzerPass2(NodeVisitor[None],
+                            SemanticAnalyzerInterface,
+                            SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -1703,11 +1705,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
-        tpan = TypeAnalyser(self.lookup_qualified,
-                            self.lookup_fully_qualified,
+        tpan = TypeAnalyser(self,
                             tvar_scope,
-                            self.fail,
-                            self.note,
                             self.plugin,
                             self.options,
                             self.is_typeshed_stub_file,
@@ -1836,11 +1835,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
         res = analyze_type_alias(rvalue,
-                                 self.lookup_qualified,
-                                 self.lookup_fully_qualified,
+                                 self,
                                  self.tvar_scope,
-                                 self.fail,
-                                 self.note,
                                  self.plugin,
                                  self.options,
                                  self.is_typeshed_stub_file,
