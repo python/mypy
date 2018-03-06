@@ -242,9 +242,10 @@ class CallableArgument(Type):
 class TypeList(Type):
     """Information about argument types and names [...].
 
-    This is only used for the arguments of a Callable type, i.e. for
+    This is used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
-    but a syntactic AST construct.
+    but a syntactic AST construct. UnboundTypes can also have TypeList
+    types before they are processed into Callable types.
     """
 
     items = None  # type: List[Type]
@@ -516,6 +517,9 @@ class Instance(Type):
 
     def copy_modified(self, *, args: List[Type]) -> 'Instance':
         return Instance(self.type, args, self.line, self.column, self.erased)
+
+    def has_readable_member(self, name: str) -> bool:
+        return self.type.has_readable_member(name)
 
 
 class TypeVarType(Type):

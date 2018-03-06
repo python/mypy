@@ -932,12 +932,12 @@ class MessageBuilder:
                   'of signature {}'.format(index1), context)
 
     def operator_method_signatures_overlap(
-            self, reverse_class: str, reverse_method: str, forward_class: str,
+            self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
             forward_method: str, context: Context) -> None:
-        self.fail('Signatures of "{}" of "{}" and "{}" of "{}" '
+        self.fail('Signatures of "{}" of "{}" and "{}" of {} '
                   'are unsafely overlapping'.format(
-                      reverse_method, reverse_class,
-                      forward_method, forward_class),
+                      reverse_method, reverse_class.name(),
+                      forward_method, self.format(forward_class)),
                   context)
 
     def forward_operator_not_callable(

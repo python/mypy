@@ -3,7 +3,6 @@
 import itertools
 import fnmatch
 from contextlib import contextmanager
-import sys
 
 from typing import (
     Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
@@ -11,23 +10,19 @@ from typing import (
 
 from mypy.errors import Errors, report_internal_error
 from mypy.nodes import (
-    SymbolTable, Statement, MypyFile, Var, Expression, Lvalue,
+    SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
-    ClassDef, GDEF, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
+    ClassDef, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
     TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
-    BytesExpr, UnicodeExpr, FloatExpr, OpExpr, UnaryExpr, CastExpr, RevealTypeExpr, SuperExpr,
-    TypeApplication, DictExpr, SliceExpr, LambdaExpr, TempNode, SymbolTableNode,
-    Context, ListComprehension, ConditionalExpr, GeneratorExpr,
-    Decorator, SetExpr, TypeVarExpr, NewTypeExpr, PrintStmt,
-    LITERAL_TYPE, BreakStmt, PassStmt, ContinueStmt, ComparisonExpr, StarExpr,
-    YieldFromExpr, NamedTupleExpr, TypedDictExpr, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr, YieldExpr, BackquoteExpr, Import, ImportFrom, ImportAll, ImportBase,
-    AwaitExpr, PromoteExpr, Node, EnumCallExpr,
-    ARG_POS, MDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT)
+    UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
+    Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
+    ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
+    Import, ImportFrom, ImportAll, ImportBase,
+    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
+    CONTRAVARIANT, COVARIANT, INVARIANT,
+)
 from mypy import nodes
 from mypy.literals import literal, literal_hash
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any
@@ -35,7 +30,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance, union_items
+    true_only, false_only, function_type, is_named_instance, union_items,
 )
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
@@ -215,6 +210,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
+
+    def reset(self) -> None:
+        """Cleanup stale state that might be left over from a typechecking run.
+
+        This allows us to reuse TypeChecker objects in fine-grained
+        incremental mode.
+        """
+        # TODO: verify this is still actually worth it over creating new checkers
+        self.partial_reported.clear()
+        self.module_refs.clear()
+        self.binder = ConditionalTypeBinder()
+        self.type_map.clear()
+
+        assert self.inferred_attribute_types is None
+        assert self.partial_types == []
+        assert self.deferred_nodes == []
+        assert len(self.scope.stack) == 1
+        assert self.partial_types == []
 
     def check_first_pass(self) -> None:
         """Type check the entire file, but defer functions with unresolved references.
@@ -861,12 +874,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         body = block.body
 
         # Skip a docstring
-        if (isinstance(body[0], ExpressionStmt) and
+        if (body and isinstance(body[0], ExpressionStmt) and
                 isinstance(body[0].expr, (StrExpr, UnicodeExpr))):
             body = block.body[1:]
 
         if len(body) == 0:
-            # There's only a docstring.
+            # There's only a docstring (or no body at all).
             return True
         elif len(body) > 1:
             return False
@@ -875,9 +888,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 (isinstance(stmt, ExpressionStmt) and
                  isinstance(stmt.expr, EllipsisExpr)))
 
-    def check_reverse_op_method(self, defn: FuncItem, typ: CallableType,
-                                method: str, context: Context) -> None:
+    def check_reverse_op_method(self, defn: FuncItem,
+                                reverse_type: CallableType, reverse_name: str,
+                                context: Context) -> None:
         """Check a reverse operator method such as __radd__."""
+        # Decides whether it's worth calling check_overlapping_op_methods().
 
         # This used to check for some very obscure scenario.  It now
         # just decides whether it's worth calling
@@ -890,46 +905,49 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                    [None, None],
                                    AnyType(TypeOfAny.special_form),
                                    self.named_type('builtins.function'))
-        if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+        if not is_subtype(reverse_type, method_type):
+            self.msg.invalid_signature(reverse_type, context)
             return
 
-        if method in ('__eq__', '__ne__'):
+        if reverse_name in ('__eq__', '__ne__'):
             # These are defined for all objects => can't cause trouble.
             return
 
         # With 'Any' or 'object' return type we are happy, since any possible
         # return value is valid.
-        ret_type = typ.ret_type
+        ret_type = reverse_type.ret_type
         if isinstance(ret_type, AnyType):
             return
         if isinstance(ret_type, Instance):
             if ret_type.type.fullname() == 'builtins.object':
                 return
+        if reverse_type.arg_kinds[0] == ARG_STAR:
+            reverse_type = reverse_type.copy_modified(arg_types=[reverse_type.arg_types[0]] * 2,
+                                                      arg_kinds=[ARG_POS] * 2,
+                                                      arg_names=[reverse_type.arg_names[0], "_"])
+        assert len(reverse_type.arg_types) == 2
 
-        if len(typ.arg_types) == 2:
-            # TODO check self argument kind
-
-            # Check for the issue described above.
-            arg_type = typ.arg_types[1]
-            other_method = nodes.normal_from_reverse_op[method]
-            if isinstance(arg_type, Instance):
-                if not arg_type.type.has_readable_member(other_method):
-                    return
-            elif isinstance(arg_type, AnyType):
-                return
-            elif isinstance(arg_type, UnionType):
-                if not arg_type.has_readable_member(other_method):
-                    return
-            else:
-                return
-
-            typ2 = self.expr_checker.analyze_external_member_access(
-                other_method, arg_type, defn)
-            self.check_overlapping_op_methods(
-                typ, method, defn.info,
-                typ2, other_method, cast(Instance, arg_type),
-                defn)
+        forward_name = nodes.normal_from_reverse_op[reverse_name]
+        forward_inst = reverse_type.arg_types[1]
+        if isinstance(forward_inst, TypeVarType):
+            forward_inst = forward_inst.upper_bound
+        if isinstance(forward_inst, (FunctionLike, TupleType, TypedDictType)):
+            forward_inst = forward_inst.fallback
+        if isinstance(forward_inst, TypeType):
+            item = forward_inst.item
+            if isinstance(item, Instance):
+                opt_meta = item.type.metaclass_type
+                if opt_meta is not None:
+                    forward_inst = opt_meta
+        if not (isinstance(forward_inst, (Instance, UnionType))
+                and forward_inst.has_readable_member(forward_name)):
+            return
+        forward_base = reverse_type.arg_types[1]
+        forward_type = self.expr_checker.analyze_external_member_access(forward_name, forward_base,
+                                                                        context=defn)
+        self.check_overlapping_op_methods(reverse_type, reverse_name, defn.info,
+                                          forward_type, forward_name, forward_base,
+                                          context=defn)
 
     def check_overlapping_op_methods(self,
                                      reverse_type: CallableType,
@@ -937,7 +955,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                      reverse_class: TypeInfo,
                                      forward_type: Type,
                                      forward_name: str,
-                                     forward_base: Instance,
+                                     forward_base: Type,
                                      context: Context) -> None:
         """Check for overlapping method and reverse method signatures.
 
@@ -998,8 +1016,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if is_unsafe_overlapping_signatures(forward_tweaked,
                                                     reverse_tweaked):
                     self.msg.operator_method_signatures_overlap(
-                        reverse_class.name(), reverse_name,
-                        forward_base.type.name(), forward_name, context)
+                        reverse_class, reverse_name,
+                        forward_base, forward_name, context)
             elif isinstance(forward_item, Overloaded):
                 for item in forward_item.items():
                     self.check_overlapping_op_methods(

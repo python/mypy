@@ -1944,6 +1944,18 @@ main:3: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]
 
+[case testFailedImportFromTwoModules]
+import c
+import b
+[file b.py]
+import c
+
+[out]
+-- TODO: it would be better for this to be in the other order
+tmp/b.py:1: error: Cannot find module named 'c'
+main:1: error: Cannot find module named 'c'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
 [case testImportFromReExportInCycle]
 from m import One
 reveal_type(One)
