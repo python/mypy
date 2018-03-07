@@ -263,7 +263,7 @@ def infer_python_version_and_executable(options: Options,
     elif special_opts.python_executable is None and special_opts.python_version is not None:
         options.python_version = special_opts.python_version
         py_exe = None
-        if not special_opts.no_site_packages:
+        if not special_opts.no_executable:
             py_exe = _python_executable_from_version(special_opts.python_version)
         options.python_executable = py_exe
     elif special_opts.python_version is None and special_opts.python_executable is not None:
@@ -325,11 +325,11 @@ def process_options(args: List[str],
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y', dest='special-opts:python_version')
     parser.add_argument('--python-executable', action='store', metavar='EXECUTABLE',
-                        help="Python executable whose installed packages will be"
-                             " used in typechecking.", dest='special-opts:python_executable')
-    parser.add_argument('--no-site-packages', action='store_true',
-                        dest='special-opts:no_site_packages',
-                        help="Do not search for PEP 561 packages in the package directory.")
+                        help="Python executable which will be used in typechecking.",
+                        dest='special-opts:python_executable')
+    parser.add_argument('--no-infer-executable', action='store_true',
+                        dest='special-opts:no_executable',
+                        help="Do not infer a Python executable based on the version.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
                              "(defaults to sys.platform).")
@@ -561,7 +561,7 @@ def process_options(args: List[str],
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
-    if special_opts.no_site_packages:
+    if special_opts.no_executable:
         options.python_executable = None
 
     # Check for invalid argument combinations.

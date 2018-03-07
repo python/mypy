@@ -360,27 +360,21 @@ Here are some more useful flags:
   updates the cache, but regular incremental mode ignores cache files
   written by quick mode.
 
-- ``--python-executable EXECUTABLE`` will have mypy collect type information
-  from `PEP 561`_ compliant packages installed for the Python executable
-  ``EXECUTABLE``. If not provided, mypy will use PEP 561 compliant packages
-  installed for the Python executable running mypy. See
-  :ref:`installed-packages` for more on making PEP 561 compliant packages. This
-  flag will attempt to set ``--python-version`` if not already set.
+- ``--python-executable EXECUTABLE``  This flag will attempt to set
+  ``--python-version`` if not already set based on the interpreter given.
 
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
   whatever version of Python is running mypy. Note that the ``-2`` and
   ``--py2`` flags are aliases for ``--python-version 2.7``. See
   :ref:`version_and_platform_checks` for more about this feature. This flag
-  will attempt to find a Python executable of the corresponding version to
-  search for `PEP 561`_ compliant packages. If you'd like to disable this, see
-  ``--no-site-packages`` below.
+  will attempt to find a Python executable of the corresponding version. If
+  you'd like to disable this, see ``--no-infer-executable`` below.
 
-- ``--no-site-packages`` will disable searching for `PEP 561`_ compliant
-  packages. This will also disable searching for a usable Python executable.
+- ``--no-infer-executable`` will disable searching for a usable Python
+  executable based on the Python version mypy is using to type check code.
   Use this flag if mypy cannot find a Python executable for the version of
-  Python being checked, and you don't need to use PEP 561 typed packages.
-  Otherwise, use ``--python-executable``.
+  Python being checked, and don't need mypy to use an executable.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
   run under the the given operating system. Without this option, mypy will
