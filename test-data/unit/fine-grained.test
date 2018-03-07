@@ -2678,3 +2678,40 @@ import a
 (x, y) = 1, 'hi'  # type: (int, str)
 [out]
 ==
+
+[case testCastConfusion]
+import b
+[file a.py]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+
+[file b.py]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+
+[file a.py.2]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+# update
+
+[file b.py.2]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+# update
+[builtins fixtures/ops.pyi]
+[out]
+==
