@@ -18,7 +18,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef
+    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef, ImportFrom,
+    MemberExpr, UNBOUND_IMPORTED, MODULE_REF
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -62,13 +63,14 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
         self.sem.cur_mod_id = file_node.fullname()
-        self.cur_mod_node = file_node
+        self.sem.cur_mod_node = self.cur_mod_node = file_node
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
             self.scope.leave()
         del self.cur_mod_node
+        del self.sem.cur_mod_node
         self.patches = []
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
@@ -219,6 +221,14 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         resulted from this assignment (if any). Currently this includes
         NewType, TypedDict, NamedTuple, and TypeVar.
         """
+        if (isinstance(s.type, AnyType) and
+                s.type.type_of_any == TypeOfAny.from_unbound_import and
+                len(s.lvalues) == 1 and
+                isinstance(s.lvalues[0], NameExpr)):
+            node = self.sem.globals.get(s.lvalues[0].name)
+            if node and isinstance(node.node, Var) and s.unanalyzed_type:
+                s.type = self.sem.anal_type(s.unanalyzed_type, third_pass=True)
+                node.node.type = s.type
         self.analyze(s.type, s)
         if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
             self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed, warn=True)
@@ -275,6 +285,50 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         for type in e.types:
             self.analyze(type, e)
         super().visit_type_application(e)
+
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        import_id = self.sem.correct_relative_import(imp)
+        module = self.modules.get(import_id)
+        if not module:
+            return
+        for id, as_id in imp.names:
+            my_node = self.sem.globals.get(as_id or id)
+            src_node = module.names.get(id)
+            # Fixup remaining UNBOUND_IMPORTED nodes from import cycles
+            if my_node and src_node and my_node.kind == UNBOUND_IMPORTED:
+                my_node.kind = src_node.kind
+                my_node.node = src_node.node
+                my_node.type_override = src_node.type_override
+                my_node.normalized = src_node.normalized
+                my_node.alias_tvars = src_node.alias_tvars
+
+    def visit_name_expr(self, expr: NameExpr) -> None:
+        # Fixup remaining UNBOUND_IMPORTED nodes from import cycles
+        if expr.kind == UNBOUND_IMPORTED:
+            # TODO: this works only for module-level attributes, because not all
+            # the namespace context is set up correctly in pass 3.
+            n = self.sem.lookup(expr.name, expr, suppress_errors=True)
+            if n:
+                expr.kind = n.kind
+                expr.node = n.node
+                expr.fullname = n.fullname
+
+    def visit_member_expr(self, expr: MemberExpr) -> None:
+        # Fixup remaining UNBOUND_IMPORTED from import cycles
+        base = expr.expr
+        base.accept(self)
+        if isinstance(base, RefExpr) and base.kind == MODULE_REF:
+            if isinstance(base, NameExpr) and expr.kind == UNBOUND_IMPORTED:
+                module_id = base.name
+                module = self.modules.get(module_id)
+                node = module and module.names.get(expr.name)
+                if node:
+                    expr.kind = node.kind
+                    expr.node = node.node
+                    expr.fullname = node.fullname
+            elif expr.kind is None:
+                self.sem.bind_module_attribute_reference(base, expr)
+        super().visit_member_expr(expr)
 
     # Helpers
 

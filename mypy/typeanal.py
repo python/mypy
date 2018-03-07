@@ -190,7 +190,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
                     self.fail('Internal error (node is None, kind={})'.format(sym.kind), t)
-                return AnyType(TypeOfAny.special_form)
+                return AnyType(TypeOfAny.from_unbound_import)
             fullname = sym.node.fullname()
             hook = self.plugin.get_type_analyze_hook(fullname)
             if hook:
