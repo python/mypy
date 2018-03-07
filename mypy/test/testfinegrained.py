@@ -9,7 +9,6 @@ information.
 
 import os
 import re
-import shutil
 
 from typing import List, Tuple, Optional, cast
 
@@ -22,7 +21,7 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
 )
-from mypy.test.helpers import assert_string_arrays_equal, parse_options
+from mypy.test.helpers import assert_string_arrays_equal, parse_options, copy_and_fudge_mtime
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
 from mypy.main import expand_dir
@@ -102,17 +101,7 @@ class FineGrainedSuite(DataSuite):
             for op in operations:
                 if isinstance(op, UpdateFile):
                     # Modify/create file
-
-                    # In some systems, mtime has a resolution of 1 second which can cause
-                    # annoying-to-debug issues when a file has the same size after a
-                    # change. We manually set the mtime to circumvent this.
-                    new_time = None
-                    if os.path.isfile(op.target_path):
-                        new_time = os.stat(op.target_path).st_mtime + 1
-
-                    shutil.copy(op.source_path, op.target_path)
-                    if new_time:
-                        os.utime(op.target_path, times=(new_time, new_time))
+                    copy_and_fudge_mtime(op.source_path, op.target_path)
                 else:
                     # Delete file
                     os.remove(op.path)
