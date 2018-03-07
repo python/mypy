@@ -2152,3 +2152,22 @@ class Two:
     pass
 [out]
 tmp/m/two.py:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testImportCycleSpecialCase]
+import p
+[file p/__init__.py]
+from . import a
+from . import b
+reveal_type(a.foo())
+[file p/a.py]
+import p
+def foo() -> int: pass
+[file p/b.py]
+import p
+
+def run() -> None:
+    reveal_type(p.a.foo())
+[builtins fixtures/module.pyi]
+[out]
+tmp/p/b.py:4: error: Revealed type is 'builtins.int'
+tmp/p/__init__.py:3: error: Revealed type is 'builtins.int'

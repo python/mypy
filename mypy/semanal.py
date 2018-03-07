@@ -1568,6 +1568,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # nothing).
         while node and isinstance(node.node, ImportedName):
             fullname = node.node.fullname()
+            if fullname in self.modules:
+                # This is a module reference.
+                return SymbolTableNode(MODULE_REF, self.modules[fullname])
             if fullname in seen:
                 # Looks like a reference cycle. Just break it.
                 # TODO: Generate a more specific error message.
