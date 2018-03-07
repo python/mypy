@@ -1795,13 +1795,15 @@ class State:
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
+        # We need to set quick_and_dirty when doing a fine grained
+        # cache load because we need to gracefully handle missing modules.
         fixup_module_pass_one(self.tree, self.manager.modules,
-                              self.manager.options.quick_and_dirty)
+                              self.manager.options.quick_and_dirty or
+                              self.manager.only_load_from_cache)
 
     def calculate_mros(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        fixup_module_pass_two(self.tree, self.manager.modules,
-                              self.manager.options.quick_and_dirty)
+        fixup_module_pass_two(self.tree, self.manager.modules)
 
     def patch_dependency_parents(self) -> None:
         """
@@ -2128,7 +2130,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_graph:
         dump_graph(graph)
         return graph
-    process_graph(graph, manager)
+    if manager.only_load_from_cache:
+        halfass_process_graph(graph, manager)
+    else:
+        process_graph(graph, manager)
     updated = preserve_cache(graph)
     set_updated = set(updated)
     manager.saved_cache.clear()
@@ -2437,14 +2442,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)
 
-    # If we are running in fine-grained incremental mode with caching,
-    # we always process fresh SCCs so that we have all of the symbol
-    # tables and fine-grained dependencies available.
-    if manager.options.use_fine_grained_cache:
-        for prev_scc in fresh_scc_queue:
-            process_fresh_scc(graph, prev_scc, manager)
-        fresh_scc_queue = []
-
     sccs_left = len(fresh_scc_queue)
     nodes_left = sum(len(scc) for scc in fresh_scc_queue)
     manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
@@ -2454,6 +2451,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         manager.trace(str(fresh_scc_queue))
     else:
         manager.log("No fresh SCCs left in queue")
+
+
+def halfass_process_graph(graph: Graph, manager: BuildManager) -> None:
+    """Finish loading everything for use in the fine-grained incremental cache"""
+
+    # If we are running in fine-grained incremental mode with caching,
+    # we process all SCCs as fresh SCCs so that we have all of the symbol
+    # tables and fine-grained dependencies available.
+    # We fail the loading of any SCC that we can't load a meta for, so we
+    # don't have anything *but* fresh SCCs.
+    sccs = sorted_components(graph)
+    manager.log("Found %d SCCs; largest has %d nodes" %
+                (len(sccs), max(len(scc) for scc in sccs)))
+
+    for ascc in sccs:
+        # Order the SCC's nodes using a heuristic.
+        # Note that ascc is a set, and scc is a list.
+        scc = order_ascc(graph, ascc)
+        process_fresh_scc(graph, scc, manager)
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:

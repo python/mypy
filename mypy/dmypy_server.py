@@ -310,6 +310,11 @@ class Server:
 
             # Run an update
             changed = self.find_changed(sources)
+            for state in self.fine_grained_manager.graph.values():
+                if not state.is_fresh():
+                    assert state.path is not None
+                    changed.append((state.id, state.path))
+
             if changed:
                 messages = self.fine_grained_manager.update(changed)
             self.fscache.flush()

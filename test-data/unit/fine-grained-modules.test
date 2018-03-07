@@ -624,6 +624,22 @@ c.f(1)
 ==
 a.py:2: error: Too many arguments for "f"
 
+[case testRenameAndDeleteModule]
+import a
+[file a.py]
+from b1 import f
+f()
+[file b1.py]
+def f() -> None: pass
+[file b2.py.2]
+def f() -> None: pass
+[delete b1.py.2]
+[file a.py.2]
+from b2 import f
+f()
+[out]
+==
+
 [case testDeleteFileWithinPackage]
 import a
 [file a.py]
