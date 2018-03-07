@@ -39,6 +39,7 @@ NOT_DUMPED_MODULES = (
     'contextlib',
     'sys',
     'mypy_extensions',
+    'enum',
 )
 
 
@@ -205,6 +206,9 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def dump_typeinfo(self, info: TypeInfo) -> List[str]:
+        if info.fullname() == 'enum.Enum':
+            # Avoid noise
+            return []
         s = info.dump(str_conv=self.str_conv,
                       type_str_conv=self.type_str_conv)
         return s.splitlines()
