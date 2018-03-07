@@ -1248,15 +1248,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
       corresponding to the metadata that was written (the latter may
       be None if the cache could not be written).
     """
-    # Obtain file paths
-    path = os.path.abspath(path)
-    meta_json, data_json = get_cache_names(id, path, manager)
-    manager.log('Writing {} {} {} {}'.format(id, path, meta_json, data_json))
-
-    # Make sure directory for cache files exists
-    parent = os.path.dirname(data_json)
-    assert os.path.dirname(meta_json) == parent
-
     # Serialize data and analyze interface
     data = {'tree': tree.serialize(),
             'fine_grained_deps': serialized_fine_grained_deps,
@@ -1266,6 +1257,21 @@ def write_cache(id: str, path: str, tree: MypyFile,
     else:
         data_str = json.dumps(data, sort_keys=True)
     interface_hash = compute_hash(data_str)
+
+    # Don't make file system modifications in fine-grained mode
+    # We still need to return an interface_hash, because it determines
+    # what gets recomputed in the initial build.
+    if manager.options.fine_grained_incremental:
+        return interface_hash, None
+
+    # Obtain file paths
+    path = os.path.abspath(path)
+    meta_json, data_json = get_cache_names(id, path, manager)
+    manager.log('Writing {} {} {} {}'.format(id, path, meta_json, data_json))
+
+    # Make sure directory for cache files exists
+    parent = os.path.dirname(data_json)
+    assert os.path.dirname(meta_json) == parent
 
     # Obtain and set up metadata
     try:
@@ -1348,6 +1354,10 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     This avoids inconsistent states with cache files from different mypy runs,
     see #4043 for an example.
     """
+    # Don't make file system modifications in fine-grained mode
+    if manager.options.fine_grained_incremental:
+        return
+
     path = os.path.abspath(path)
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))

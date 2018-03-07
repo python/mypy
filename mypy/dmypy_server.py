@@ -263,9 +263,8 @@ class Server:
         self.fscache = FileSystemCache(self.options.python_version)
         self.fswatcher = FileSystemWatcher(self.fscache)
         self.update_sources(sources)
-        if not self.options.use_fine_grained_cache:
-            # Stores the initial state of sources as a side effect.
-            self.fswatcher.find_changed()
+        # Stores the initial state of sources as a side effect.
+        self.fswatcher.find_changed()
         try:
             # TODO: alt_lib_path
             result = mypy.build.build(sources=sources,
@@ -283,17 +282,22 @@ class Server:
         self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(manager, graph)
         self.fine_grained_initialized = True
         self.previous_sources = sources
-        self.fscache.flush()
 
-        # If we are using the fine-grained cache, build hasn't actually done
-        # the typechecking on the updated files yet.
+        # If we are using the fine-grained cache, build might not have
+        # actually done the typechecking on the updated files yet.
         # Run a fine-grained update starting from the cached data
         if self.options.use_fine_grained_cache:
             # Pull times and hashes out of the saved_cache and stick them into
             # the fswatcher, so we pick up the changes.
             for state in self.fine_grained_manager.graph.values():
+                # Only grab hashes from modules that came from the
+                # cache. For modules that actually got parsed &
+                # typechecked we rely on the data from the actual disk
+                # cache, since we don't generate metas for those.
+                assert state.tree is not None
+                if not state.tree.is_cache_skeleton: continue
                 meta = state.meta
-                if meta is None: continue
+                assert meta is not None
                 assert state.path is not None
                 self.fswatcher.set_file_data(
                     state.path,
@@ -303,8 +307,8 @@ class Server:
             changed = self.find_changed(sources)
             if changed:
                 messages = self.fine_grained_manager.update(changed)
-            self.fscache.flush()
 
+        self.fscache.flush()
         status = 1 if messages else 0
         self.previous_messages = messages[:]
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
