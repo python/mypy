@@ -159,6 +159,8 @@ class NodeStripVisitor(TraverserVisitor):
         if node.assignments:
             node.assignments = []
         else:
+            # If the node is unreachable, don't reset entries: they point to something else!
+            if node.is_unreachable: return
             if self.names:
                 # Reset entries in the symbol table. This is necessary since
                 # otherwise the semantic analyzer will think that the import
@@ -173,6 +175,8 @@ class NodeStripVisitor(TraverserVisitor):
         if node.assignments:
             node.assignments = []
         else:
+            # If the node is unreachable, don't reset entries: they point to something else!
+            if node.is_unreachable: return
             if self.names:
                 # Reset entries in the symbol table. This is necessary since
                 # otherwise the semantic analyzer will think that the import

@@ -2635,3 +2635,84 @@ def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
 [builtins fixtures/dict.pyi]
 [out]
 ==
+
+[case testImplicitTuple1]
+import a
+[file a.py]
+# Bogus annotation in nested function masked because outer function
+# isn't annotated
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[file a.py.2]
+# dummy change
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[out]
+==
+
+[case testImplicitTuple2]
+import a
+[file a.py]
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[file a.py.2]
+# dummy change
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[out]
+a.py:1: error: Invalid tuple literal type
+==
+a.py:2: error: Invalid tuple literal type
+
+[case testImplicitTuple3]
+import a
+[file a.py]
+(x, y) = 1, 'hi'  # type: (int, str)
+[file a.py.2]
+# dummy change
+(x, y) = 1, 'hi'  # type: (int, str)
+[out]
+==
+
+[case testCastConfusion]
+import b
+[file a.py]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+
+[file b.py]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+
+[file a.py.2]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+# update
+
+[file b.py.2]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+# update
+[builtins fixtures/ops.pyi]
+[out]
+==

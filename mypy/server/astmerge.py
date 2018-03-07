@@ -51,6 +51,7 @@ from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
+    CastExpr,
     MDEF
 )
 from mypy.traverser import TraverserVisitor
@@ -217,6 +218,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.info = self.fixup_and_reset_typeinfo(node.info)
         self.process_synthetic_type_info(node.info)
 
+    def visit_cast_expr(self, node: CastExpr) -> None:
+        super().visit_cast_expr(node)
+        self.fixup_type(node.type)
+
     def visit_super_expr(self, node: SuperExpr) -> None:
         super().visit_super_expr(node)
         if node.info is not None:
@@ -366,7 +371,9 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
             item.accept(self)
-        typ.fallback.accept(self)
+        # Fallback can be None for implicit tuple types that haven't been semantically analyzed.
+        if typ.fallback is not None:
+            typ.fallback.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         typ.item.accept(self)
