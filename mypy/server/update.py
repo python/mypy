@@ -117,7 +117,6 @@ Major todo items:
 - Use mypy.fscache to access file system
 """
 
-import time
 import os.path
 from typing import (
     Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable
@@ -218,7 +217,6 @@ class FineGrainedBuildManager:
             self.blocking_error = None
 
         while changed_modules:
-            t0 = time.time()
             next_id, next_path = changed_modules.pop(0)
             if next_id not in self.previous_modules and next_id not in initial_set:
                 self.manager.log_fine_grained('skip %r (module not in import graph)' % next_id)
@@ -228,11 +226,6 @@ class FineGrainedBuildManager:
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
             changed_modules = dedupe_modules(remaining + changed_modules)
-            t1 = time.time()
-
-            self.manager.log_fine_grained(
-                "update once: {} in {:.3f}s - {} left".format(
-                    next_id, t1 - t0, len(changed_modules)))
             if blocker:
                 self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
