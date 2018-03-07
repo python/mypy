@@ -246,6 +246,33 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
             ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
+def infer_python_version_and_executable(options: Options,
+                                        special_opts: argparse.Namespace
+                                        ) -> Options:
+    # Infer Python version and/or executable if one is not given
+    if special_opts.python_executable is not None and special_opts.python_version is not None:
+        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
+        if py_exe_ver != special_opts.python_version:
+            raise PythonExecutableInferenceError(
+                'Python version {} did not match executable {}, got version {}.'.format(
+                    special_opts.python_version, special_opts.python_executable, py_exe_ver
+                ))
+        else:
+            options.python_version = special_opts.python_version
+            options.python_executable = special_opts.python_executable
+    elif special_opts.python_executable is None and special_opts.python_version is not None:
+        options.python_version = special_opts.python_version
+        py_exe = None
+        if not special_opts.no_site_packages:
+            py_exe = _python_executable_from_version(special_opts.python_version)
+        options.python_executable = py_exe
+    elif special_opts.python_version is None and special_opts.python_executable is not None:
+        options.python_version = _python_version_from_executable(
+            special_opts.python_executable)
+        options.python_executable = special_opts.python_executable
+    return options
+
+
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
@@ -530,27 +557,7 @@ def process_options(args: List[str],
               "is now mypy's default and only parser.")
 
     try:
-        # Infer Python version and/or executable if one is not given
-        if special_opts.python_executable is not None and special_opts.python_version is not None:
-            py_exe_ver = _python_version_from_executable(special_opts.python_executable)
-            if py_exe_ver != special_opts.python_version:
-                parser.error(
-                    'Python version {} did not match executable {}, got version {}.'.format(
-                        special_opts.python_version, special_opts.python_executable, py_exe_ver
-                    ))
-            else:
-                options.python_version = special_opts.python_version
-                options.python_executable = special_opts.python_executable
-        elif special_opts.python_executable is None and special_opts.python_version is not None:
-            options.python_version = special_opts.python_version
-            py_exe = None
-            if not special_opts.no_site_packages:
-                py_exe = _python_executable_from_version(special_opts.python_version)
-            options.python_executable = py_exe
-        elif special_opts.python_version is None and special_opts.python_executable is not None:
-            options.python_version = _python_version_from_executable(
-                special_opts.python_executable)
-            options.python_executable = special_opts.python_executable
+        options = infer_python_version_and_executable(options, special_opts)
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
