@@ -2639,7 +2639,8 @@ def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
 [case testImplicitTuple1]
 import a
 [file a.py]
-# Bogus annotation in nested function masked because
+# Bogus annotation in nested function masked because outer function
+# isn't annotated
 def unchecked():
     def inner():
         # type: () -> (str, int)
