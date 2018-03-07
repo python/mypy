@@ -95,6 +95,9 @@ class Server:
             sys.exit("dmypy: start/restart does not accept sources")
         if options.report_dirs:
             sys.exit("dmypy: start/restart cannot generate reports")
+        if options.junit_xml:
+            sys.exit("dmypy: start/restart does not support --junit-xml; "
+                     "pass it to check/recheck instead")
         if not options.incremental:
             sys.exit("dmypy: start/restart should not disable incremental mode")
         if options.quick_and_dirty:
@@ -222,6 +225,7 @@ class Server:
                       alt_lib_path: Optional[str] = None) -> Dict[str, Any]:
         """Check using the default (per-file) incremental mode."""
         self.last_manager = None
+        blockers = False
         with GcLogger() as gc_result:
             try:
                 # saved_cache is mutated in place.
@@ -231,10 +235,15 @@ class Server:
                 msgs = res.errors
                 self.last_manager = res.manager  # type: Optional[mypy.build.BuildManager]
             except mypy.errors.CompileError as err:
+                blockers = True
                 msgs = err.messages
         if msgs:
             msgs.append("")
-            response = {'out': "\n".join(msgs), 'err': "", 'status': 1}
+            text = "\n".join(msgs)
+            if blockers:
+                response = {'out': "", 'err': text, 'status': 2}
+            else:
+                response = {'out': text, 'err': "", 'status': 1}
         else:
             response = {'out': "", 'err': "", 'status': 0}
         response.update(gc_result.get_stats())
