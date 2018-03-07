@@ -360,11 +360,21 @@ Here are some more useful flags:
   updates the cache, but regular incremental mode ignores cache files
   written by quick mode.
 
+- ``--python-executable EXECUTABLE``  This flag will attempt to set
+  ``--python-version`` if not already set based on the interpreter given.
+
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
   whatever version of Python is running mypy. Note that the ``-2`` and
   ``--py2`` flags are aliases for ``--python-version 2.7``. See
-  :ref:`version_and_platform_checks` for more about this feature.
+  :ref:`version_and_platform_checks` for more about this feature. This flag
+  will attempt to find a Python executable of the corresponding version. If
+  you'd like to disable this, see ``--no-infer-executable`` below.
+
+- ``--no-infer-executable`` will disable searching for a usable Python
+  executable based on the Python version mypy is using to type check code.
+  Use this flag if mypy cannot find a Python executable for the version of
+  Python being checked, and don't need mypy to use an executable.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
   run under the the given operating system. Without this option, mypy will
@@ -446,6 +456,8 @@ For the remaining flags you can read the full ``mypy -h`` output.
 .. note::
 
    Command line flags are liable to change between releases.
+
+.. _PEP 561: https://www.python.org/dev/peps/pep-0561/
 
 .. _integrating-mypy:
 

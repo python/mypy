@@ -1,10 +1,12 @@
 """Mypy type checker command line tool."""
 
 import argparse
+import ast
 import configparser
 import fnmatch
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -205,6 +207,72 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+class PythonExecutableInferenceError(Exception):
+    """Represents a failure to infer the version or executable while searching."""
+
+
+if sys.platform == 'win32':
+    def python_executable_prefix(v: str) -> List[str]:
+        return ['py', '-{}'.format(v)]
+else:
+    def python_executable_prefix(v: str) -> List[str]:
+        return ['python{}'.format(v)]
+
+
+def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
+    try:
+        check = subprocess.check_output([python_executable, '-c',
+                                         'import sys; print(repr(sys.version_info[:2]))'],
+                                        stderr=subprocess.STDOUT).decode()
+        return ast.literal_eval(check)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise PythonExecutableInferenceError(
+            'Error: invalid Python executable {}'.format(python_executable))
+
+
+def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
+    if sys.version_info[:2] == python_version:
+        return sys.executable
+    str_ver = '.'.join(map(str, python_version))
+    print(str_ver)
+    try:
+        sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
+                                          ['-c', 'import sys; print(sys.executable)'],
+                                          stderr=subprocess.STDOUT).decode().strip()
+        return sys_exe
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise PythonExecutableInferenceError(
+            'Error: failed to find a Python executable matching version {},'
+            ' perhaps try --python-executable, or --no-infer-executable?'.format(python_version))
+
+
+def infer_python_version_and_executable(options: Options,
+                                        special_opts: argparse.Namespace
+                                        ) -> Options:
+    # Infer Python version and/or executable if one is not given
+    if special_opts.python_executable is not None and special_opts.python_version is not None:
+        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
+        if py_exe_ver != special_opts.python_version:
+            raise PythonExecutableInferenceError(
+                'Python version {} did not match executable {}, got version {}.'.format(
+                    special_opts.python_version, special_opts.python_executable, py_exe_ver
+                ))
+        else:
+            options.python_version = special_opts.python_version
+            options.python_executable = special_opts.python_executable
+    elif special_opts.python_executable is None and special_opts.python_version is not None:
+        options.python_version = special_opts.python_version
+        py_exe = None
+        if not special_opts.no_executable:
+            py_exe = _python_executable_from_version(special_opts.python_version)
+        options.python_executable = py_exe
+    elif special_opts.python_version is None and special_opts.python_executable is not None:
+        options.python_version = _python_version_from_executable(
+            special_opts.python_executable)
+        options.python_executable = special_opts.python_executable
+    return options
+
+
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
@@ -255,10 +323,16 @@ def process_options(args: List[str],
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
-                        help='use Python x.y')
+                        help='use Python x.y', dest='special-opts:python_version')
+    parser.add_argument('--python-executable', action='store', metavar='EXECUTABLE',
+                        help="Python executable which will be used in typechecking.",
+                        dest='special-opts:python_executable')
+    parser.add_argument('--no-infer-executable', action='store_true',
+                        dest='special-opts:no_executable',
+                        help="Do not infer a Python executable based on the version.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
-                        "(defaults to sys.platform).")
+                             "(defaults to sys.platform).")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('--ignore-missing-imports', action='store_true',
@@ -481,6 +555,14 @@ def process_options(args: List[str],
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
+
+    try:
+        options = infer_python_version_and_executable(options, special_opts)
+    except PythonExecutableInferenceError as e:
+        parser.error(str(e))
+
+    if special_opts.no_executable:
+        options.python_executable = None
 
     # Check for invalid argument combinations.
     if require_targets:

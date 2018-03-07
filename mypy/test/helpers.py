@@ -316,6 +316,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
     flag_list = None
     if flags:
         flag_list = flags.group(1).split()
+        flag_list.append('--no-infer-executable')  # the tests shouldn't need an installed Python
         targets, options = process_options(flag_list, require_targets=False)
         if targets:
             # TODO: support specifying targets via the flags pragma
