@@ -1089,3 +1089,24 @@ def foo(x: int) -> None: pass
 ==
 a.py:2: error: Too many arguments for "foo"
 ==
+
+[case testRefreshImportIfMypyElse1]
+# flags: --verbose
+import a
+[file a.py]
+from b import foo
+
+MYPY = False
+if MYPY:
+    x = 0
+else:
+    from fictional import x
+
+x = 1
+[file b/__init__.py]
+[file b/foo.py]
+[file b/__init__.py.2]
+# Dummy change
+[builtins fixtures/bool.pyi]
+[out]
+==
