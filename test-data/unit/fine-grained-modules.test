@@ -1091,7 +1091,6 @@ a.py:2: error: Too many arguments for "foo"
 ==
 
 [case testRefreshImportIfMypyElse1]
-# flags: --verbose
 import a
 [file a.py]
 from b import foo
