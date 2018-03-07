@@ -2049,3 +2049,106 @@ class B:
     x: int
 x = str()
 y = int()
+
+[case testImportFromReExportInCycleUsingRelativeImport1]
+from m import One
+reveal_type(One)
+[file m/__init__.py]
+from .one import One
+from .two import Two
+reveal_type(One)
+[file m/one.py]
+class One:
+    pass
+[file m/two.py]
+from m import One
+reveal_type(One)
+x: One
+reveal_type(x)
+
+class Two(One):
+    pass
+y: Two
+y = x
+x = y
+[out]
+tmp/m/two.py:2: error: Revealed type is 'def () -> m.one.One'
+tmp/m/two.py:4: error: Revealed type is 'm.one.One'
+tmp/m/two.py:9: error: Incompatible types in assignment (expression has type "One", variable has type "Two")
+tmp/m/__init__.py:3: error: Revealed type is 'def () -> m.one.One'
+main:2: error: Revealed type is 'def () -> m.one.One'
+
+[case testImportReExportInCycleUsingRelativeImport2]
+from m import One
+reveal_type(One)
+[file m/__init__.py]
+from .one import One
+from .two import Two
+reveal_type(One)
+[file m/one.py]
+class One:
+    pass
+[file m/two.py]
+import m
+reveal_type(m.One)
+x: m.One
+reveal_type(x)
+class Two:
+    pass
+[out]
+tmp/m/two.py:2: error: Revealed type is 'def () -> m.one.One'
+tmp/m/two.py:4: error: Revealed type is 'm.one.One'
+tmp/m/__init__.py:3: error: Revealed type is 'def () -> m.one.One'
+main:2: error: Revealed type is 'def () -> m.one.One'
+
+[case testImportReExportedNamedTupleInCycle1]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import NamedTuple
+class One(NamedTuple):
+    name: str
+[file m/two.py]
+import m
+x = m.One(name="Foo")
+reveal_type(x.name)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'builtins.str'
+
+[case testImportReExportedNamedTupleInCycle2]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import NamedTuple
+One = NamedTuple('One', [('name', str)])
+[file m/two.py]
+import m
+x = m.One(name="Foo")
+reveal_type(x.name)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'builtins.str'
+
+[case testImportReExportedTypeAliasInCycle]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import Union
+One = Union[int, str]
+[file m/two.py]
+import m
+x: m.One
+reveal_type(x)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'Union[builtins.int, builtins.str]'

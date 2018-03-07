@@ -181,12 +181,18 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(self.visit_unbound_type(t))
         sym = self.lookup(t.name, t, suppress_errors=self.third_pass)  # type: ignore
-        # TODO: Replace "if isinstance(...)" below with this, which is more correct:
-        #     sym = self.api.dereference_module_cross_ref(sym)
+        if '.' in t.name:
+            # Handle indirect references to imported names.
+            #
+            # TODO: Do this for module-local references as well and remove ImportedName
+            #    type check below.
+            sym = self.api.dereference_module_cross_ref(sym)
         if sym is not None:
             if isinstance(sym.node, ImportedName):
                 # Forward reference to an imported name that hasn't been processed yet.
                 # To maintain backward compatibility, these get translated to Any.
+                #
+                # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
             if sym.fullname in type_aliases:
                 # Resolve forward reference to type alias like 'typing.List'.
