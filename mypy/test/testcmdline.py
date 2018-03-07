@@ -47,6 +47,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
             file.write('{}\n'.format(s))
     args = parse_args(testcase.input[0])
     args.append('--show-traceback')
+    args.append('--no-infer-executable')
     # Type check the program.
     fixed = [python3_path,
              os.path.join(testcase.old_cwd, 'scripts', 'mypy')]

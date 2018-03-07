@@ -73,6 +73,7 @@ class Driver:
             return
         args = [sys.executable, self.mypy] + mypy_args
         args.append('--show-traceback')
+        args.append('--no-infer-executable')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
