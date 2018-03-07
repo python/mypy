@@ -24,7 +24,7 @@ from mypy.nodes import (
     TVAR, TYPE_ALIAS, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, Node, type_aliases
+    Decorator, Node, ImportedName, type_aliases
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -181,8 +181,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(self.visit_unbound_type(t))
         sym = self.lookup(t.name, t, suppress_errors=self.third_pass)  # type: ignore
-        sym = self.api.dereference_module_cross_ref(sym)
+        # TODO: Replace "if isinstance(...)" below with this, which is more correct:
+        #     sym = self.api.dereference_module_cross_ref(sym)
         if sym is not None:
+            if isinstance(sym.node, ImportedName):
+                # Forward reference to an imported name that hasn't been processed yet.
+                # To maintain backward compatibility, these get translated to Any.
+                return AnyType(TypeOfAny.implementation_artifact)
             if sym.fullname in type_aliases:
                 # Resolve forward reference to type alias like 'typing.List'.
                 # TODO: Unify how type aliases are handled; currently we resolve them in two

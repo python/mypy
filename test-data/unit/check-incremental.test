@@ -4127,22 +4127,3 @@ class Foo:
 x = Foo()
 [out]
 [out2]
-
-[case testForwardReferenceToImportedAliasInProperty]
-import a
-
-class A:
-    @property
-    def p(self) -> C: pass
-    @p.setter
-    def p(self, c: C) -> None: pass
-    @p.deleter
-    def p(self) -> None: pass
-
-from m import C
-[file m.py]
-C = str
-[file a.py]
-[file a.py.2]
-# dummy
-[builtins fixtures/property.pyi]

@@ -284,6 +284,8 @@ class TypeOfAny(Enum):
     special_form = 'special_form'
     # Does this Any come from interaction with another Any?
     from_another_any = 'from_another_any'
+    # Does this Any come from an implementation limitation/bug?
+    implementation_artifact = 'implementation_artifact'
 
 
 class AnyType(Type):

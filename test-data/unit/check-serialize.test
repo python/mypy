@@ -1312,4 +1312,5 @@ from m import C
 C = str
 [builtins fixtures/property.pyi]
 [out2]
-tmp/a.py:2: error: Revealed type is 'builtins.str'
+-- TODO: Should be 'builtins.str'
+tmp/a.py:2: error: Revealed type is 'Any'

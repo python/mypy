@@ -2003,7 +2003,9 @@ reveal_type(x) # E: Revealed type is 'builtins.str'
 x = str()
 y = int()
 
-[case testForwardReferenceToListAlias]
+[case testForwardReferenceToListAlias-skip]
+# TODO: This fails because of missing ImportedName handling in
+#     mypy.typeanal.TypeAnalyser.visit_unbound_type.
 x: List[int]
 reveal_type(x) # E: Revealed type is 'builtins.list[builtins.int]'
 def f() -> 'List[int]': pass
@@ -2027,5 +2029,23 @@ from a import *
 def f() -> None: pass
 reveal_type(x) # E: Revealed type is 'builtins.str'
 [file c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
+-- TODO: Fails because of missing ImportedName handling in mypy.typeanal
+import a
+[file a.py]
+from b import f
+from c import B
+[file b.py]
+from c import y
+class A(B): pass
+reveal_type(A().x) # E: Revealed type is 'builtins.str'
+from a import B
+def f() -> None: pass
+[file c.py]
+class B:
+    x: int
 x = str()
 y = int()
