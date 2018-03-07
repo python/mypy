@@ -243,7 +243,7 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise PythonExecutableInferenceError(
             'Error: failed to find a Python executable matching version {},'
-            ' perhaps try --python-executable, or --no-infer-executable?'.format(python_version))
+            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
 def infer_python_version_and_executable(options: Options,
@@ -327,9 +327,9 @@ def process_options(args: List[str],
     parser.add_argument('--python-executable', action='store', metavar='EXECUTABLE',
                         help="Python executable which will be used in typechecking.",
                         dest='special-opts:python_executable')
-    parser.add_argument('--no-infer-executable', action='store_true',
+    parser.add_argument('--no-site-packages', action='store_true',
                         dest='special-opts:no_executable',
-                        help="Do not infer a Python executable based on the version.")
+                        help="Do not search for installed PEP 561 compliant packages.")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
                              "(defaults to sys.platform).")

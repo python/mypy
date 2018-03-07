@@ -60,9 +60,9 @@ class ArgSuite(Suite):
         assert str(e.value) == 'Python version (2, 10) did not match executable {}, got' \
                                ' version {}.'.format(sys.executable, str(sys.version_info[:2]))
 
-        # test that --no-infer-executable will disable executable inference
+        # test that --no-site-packages will disable executable inference
         matching_version = base + ['--python-version={}'.format(sys_ver_str),
-                                   '--no-infer-executable']
+                                   '--no-site-packages']
         _, options = process_options(matching_version)
         assert options.python_version == sys.version_info[:2]
         assert options.python_executable is None
