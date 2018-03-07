@@ -43,8 +43,9 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode
 )
+from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
 
 
@@ -65,6 +66,7 @@ class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
         self.type = None  # type: Optional[TypeInfo]
         self.names = None  # type: Optional[SymbolTable]
+        self.file_node = None  # type: Optional[MypyFile]
         self.is_class_body = False
         # By default, process function definitions. If False, don't -- this is used for
         # processing module top levels.
@@ -73,6 +75,7 @@ class NodeStripVisitor(TraverserVisitor):
     def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""
         self.names = file_node.names
+        self.file_node = file_node
         self.recurse_into_functions = False
         file_node.accept(self)
 
@@ -165,9 +168,14 @@ class NodeStripVisitor(TraverserVisitor):
                 # assigns to an existing name instead of defining a new one.
                 for name, as_name in node.names:
                     imported_name = as_name or name
-                    symnode = self.names[imported_name]
-                    symnode.kind = UNBOUND_IMPORTED
-                    symnode.node = None
+                    # This assert is safe since we check for self.names above.
+                    assert self.file_node is not None
+                    sym = create_indirect_imported_name(self.file_node,
+                                                        node.id,
+                                                        node.relative,
+                                                        name)
+                    if sym:
+                        self.names[imported_name] = sym
 
     def visit_import(self, node: Import) -> None:
         if node.assignments:

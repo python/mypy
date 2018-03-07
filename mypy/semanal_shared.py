@@ -3,7 +3,8 @@
 from abc import abstractmethod
 from typing import Optional
 
-from mypy.nodes import Context, SymbolTableNode
+from mypy.nodes import Context, SymbolTableNode, MypyFile, ImportedName, GDEF
+from mypy.util import correct_relative_import
 
 
 # Priorities for ordering of patches within the final "patch" phase of semantic analysis
@@ -49,3 +50,24 @@ class SemanticAnalyzerInterface:
     @abstractmethod
     def note(self, msg: str, ctx: Context) -> None:
         raise NotImplementedError
+
+
+def create_indirect_imported_name(file_node: MypyFile,
+                                  module: str,
+                                  relative: int,
+                                  imported_name: str) -> Optional[SymbolTableNode]:
+    """Create symbol table entry for a name imported from another module.
+
+    These entries act as indirect references.
+    """
+    target_module, ok = correct_relative_import(
+        file_node.fullname(),
+        relative,
+        module,
+        file_node.is_package_init_file())
+    if not ok:
+        return None
+    target_name = '%s.%s' % (target_module, imported_name)
+    link = ImportedName(target_name)
+    # Use GDEF since this refers to a module-level definition.
+    return SymbolTableNode(GDEF, link)

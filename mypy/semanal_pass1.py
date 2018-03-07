@@ -28,6 +28,7 @@ from mypy.nodes import (
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
+from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
@@ -244,15 +245,11 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         for name, as_name in node.names:
             imported_name = as_name or name
             if imported_name not in self.sem.globals:
-                target_module, ok = correct_relative_import(
-                    self.sem.cur_mod_id,
-                    node.relative,
-                    node.id,
-                    self.sem.cur_mod_node.is_package_init_file())
-                if ok:
-                    target_name = '%s.%s' % (target_module, imported_name)
-                    link_node = ImportedName(target_name)
-                    sym = SymbolTableNode(GDEF, link_node)
+                sym = create_indirect_imported_name(self.sem.cur_mod_node,
+                                                    node.id,
+                                                    node.relative,
+                                                    name)
+                if sym:
                     self.add_symbol(imported_name, sym, context=node)
 
     def visit_import(self, node: Import) -> None:
