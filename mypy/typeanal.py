@@ -180,7 +180,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
             return make_optional_type(self.visit_unbound_type(t))
-        sym = self.lookup(t.name, t, suppress_errors=self.third_pass)  # type: ignore
+        sym = self.lookup(t.name, t, suppress_errors=self.third_pass)
         if '.' in t.name:
             # Handle indirect references to imported names.
             #

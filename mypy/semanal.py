@@ -1647,8 +1647,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if i_id in self.modules:
             m = self.modules[i_id]
             self.add_submodules_to_parent_modules(i_id, True)
-            for name, node in m.names.items():
-                node = self.dereference_module_cross_ref(node)
+            for name, orig_node in m.names.items():
+                node = self.dereference_module_cross_ref(orig_node)
                 if node is None:
                     continue
                 new_node = self.normalize_type_alias(node, i)

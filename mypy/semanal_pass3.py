@@ -442,7 +442,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         return self.sem.lookup_qualified(name, ctx, suppress_errors=suppress_errors)
 
-    def lookup_fully_qualified(self, fullname: str) -> Optional[SymbolTableNode]:
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
         return self.sem.lookup_fully_qualified(fullname)
 
     def dereference_module_cross_ref(
