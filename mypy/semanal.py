@@ -3440,6 +3440,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
+            n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
