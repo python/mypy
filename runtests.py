@@ -230,6 +230,7 @@ PYTEST_FILES = test_path(
 )
 
 SLOW_FILES = test_path(
+    'testpep561',
     'testpythoneval',
     'testcmdline',
     'teststubgen',
