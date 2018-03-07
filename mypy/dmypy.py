@@ -17,6 +17,7 @@ import time
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, TypeVar
 
 from mypy.dmypy_util import STATUS_FILE, receive
+from mypy.util import write_junit_xml
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
@@ -50,12 +51,14 @@ check_parser = p = subparsers.add_parser('check',
                                          help="Check some files (requires running daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
+p.add_argument('--junit-xml', help="write junit.xml to the given file")
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
 recheck_parser = p = subparsers.add_parser('recheck',
     help="Check the same files as the most previous  check run (requires running daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
+p.add_argument('--junit-xml', help="write junit.xml to the given file")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -144,8 +147,8 @@ def do_restart(args: argparse.Namespace) -> None:
 def start_server(args: argparse.Namespace) -> None:
     """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import daemonize, Server
-    if daemonize(Server(args.flags).serve, args.log_file) != 0:
+    from mypy.dmypy_server import daemonize, Server, process_start_options
+    if daemonize(Server(process_start_options(args.flags)).serve, args.log_file) != 0:
         sys.exit(1)
     wait_for_server()
 
@@ -221,7 +224,7 @@ def do_check(args: argparse.Namespace) -> None:
     response = request('check', files=args.files)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response, args.verbose)
+    check_output(response, args.verbose, args.junit_xml)
 
 
 @action(recheck_parser)
@@ -234,10 +237,10 @@ def do_recheck(args: argparse.Namespace) -> None:
     response = request('recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
-    check_output(response, args.verbose)
+    check_output(response, args.verbose, args.junit_xml)
 
 
-def check_output(response: Dict[str, Any], verbose: bool) -> None:
+def check_output(response: Dict[str, Any], verbose: bool, junit_xml: Optional[str]) -> None:
     """Print the output from a check or recheck command.
 
     Call sys.exit() unless the status code is zero.
@@ -252,6 +255,9 @@ def check_output(response: Dict[str, Any], verbose: bool) -> None:
     sys.stderr.write(err)
     if verbose:
         show_stats(response)
+    if junit_xml:
+        messages = (out + err).splitlines()
+        write_junit_xml(response['roundtrip_time'], bool(err), messages, junit_xml)
     if status_code:
         sys.exit(status_code)
 
@@ -277,8 +283,8 @@ def do_hang(args: argparse.Namespace) -> None:
 def do_daemon(args: argparse.Namespace) -> None:
     """Serve requests in the foreground."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import Server
-    Server(args.flags).serve()
+    from mypy.dmypy_server import Server, process_start_options
+    Server(process_start_options(args.flags)).serve()
 
 
 @action(help_parser)

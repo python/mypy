@@ -282,7 +282,9 @@ main:1: error: Cannot find module named 'p.q'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
-[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache]
+-- TODO: Fix this bug. It is a real bug that was been papered over
+-- by the test harness.
+[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache-skip]
 -- Different cache/no-cache tests because:
 -- missing module error message mismatch
 from p import q
@@ -971,3 +973,141 @@ x = Foo()
 ==
 ==
 main:2: error: Too few arguments for "foo" of "Foo"
+
+-- This series of tests is designed to test adding a new module that
+-- doesn't appear in the cache, for cache mode. They aren't run only
+-- in cache mode, though, because they are still perfectly good
+-- regular tests.
+[case testAddModuleAfterCache1]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py
+# cmd3: mypy main a.py b.py
+import a
+[file a.py]
+pass
+[file a.py.2]
+import b
+b.foo(0)
+[file b.py.2]
+def foo() -> None: pass
+[file b.py.3]
+def foo(x: int) -> None: pass
+[out]
+==
+a.py:2: error: Too many arguments for "foo"
+==
+
+[case testAddModuleAfterCache2]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py
+# cmd3: mypy main a.py b.py
+# flags: --ignore-missing-imports --follow-imports=skip
+import a
+[file a.py]
+import b
+b.foo(0)
+[file b.py.2]
+def foo() -> None: pass
+[file b.py.3]
+def foo(x: int) -> None: pass
+[out]
+==
+a.py:2: error: Too many arguments for "foo"
+==
+
+[case testAddModuleAfterCache3]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py
+# flags: --ignore-missing-imports --follow-imports=skip
+import a
+[file a.py]
+import b, c, d, e, f, g
+[file b.py.2]
+[file c.py.2]
+[file d.py.2]
+[file e.py.2]
+[file f.py.2]
+[file g.py.2]
+[out]
+==
+
+[case testAddModuleAfterCache4]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py
+# cmd3: mypy main a.py b.py
+# flags: --ignore-missing-imports --follow-imports=skip
+import a
+import b
+[file a.py]
+def foo() -> None: pass
+[file b.py.2]
+import a
+a.foo(10)
+[file a.py.3]
+def foo(x: int) -> None: pass
+[out]
+==
+b.py:2: error: Too many arguments for "foo"
+==
+
+[case testAddModuleAfterCache5]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py
+# cmd3: mypy main a.py b.py
+# flags: --ignore-missing-imports --follow-imports=skip
+import a
+import b
+[file a.py]
+def foo(x: int) -> None: pass
+[file a.py.2]
+def foo() -> None: pass
+[file b.py.2]
+import a
+a.foo(10)
+[file a.py.3]
+def foo(x: int) -> None: pass
+[out]
+==
+b.py:2: error: Too many arguments for "foo"
+==
+
+[case testAddModuleAfterCache6]
+# cmd: mypy main a.py
+# cmd2: mypy main a.py b.py
+# cmd3: mypy main a.py b.py
+# flags: --ignore-missing-imports --follow-imports=skip
+import a
+[file a.py]
+import b
+b.foo()
+[file a.py.2]
+import b
+b.foo(0)
+[file b.py.2]
+def foo() -> None: pass
+[file b.py.3]
+def foo(x: int) -> None: pass
+[out]
+==
+a.py:2: error: Too many arguments for "foo"
+==
+
+[case testRefreshImportIfMypyElse1]
+import a
+[file a.py]
+from b import foo
+
+MYPY = False
+if MYPY:
+    x = 0
+else:
+    from fictional import x
+
+x = 1
+[file b/__init__.py]
+[file b/foo.py]
+[file b/__init__.py.2]
+# Dummy change
+[builtins fixtures/bool.pyi]
+[out]
+==

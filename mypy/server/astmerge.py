@@ -51,13 +51,14 @@ from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
+    CastExpr,
     MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, TypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
+    Type, SyntheticTypeVisitor, Instance, AnyType, NoneTyp, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef, TypeList
+    Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType
 )
 from mypy.util import get_prefix
 
@@ -166,8 +167,8 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_class_def(self, node: ClassDef) -> None:
         # TODO additional things?
+        node.info = self.fixup_and_reset_typeinfo(node.info)
         node.defs.body = self.replace_statements(node.defs.body)
-        node.info = self.fixup(node.info)
         info = node.info
         for tv in node.type_vars:
             self.process_type_var_def(tv)
@@ -214,8 +215,12 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_namedtuple_expr(self, node: NamedTupleExpr) -> None:
         super().visit_namedtuple_expr(node)
-        node.info = self.fixup(node.info)
+        node.info = self.fixup_and_reset_typeinfo(node.info)
         self.process_synthetic_type_info(node.info)
+
+    def visit_cast_expr(self, node: CastExpr) -> None:
+        super().visit_cast_expr(node)
+        self.fixup_type(node.type)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
         super().visit_super_expr(node)
@@ -229,7 +234,7 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> None:
         if node.info:
-            node.info = self.fixup(node.info)
+            node.info = self.fixup_and_reset_typeinfo(node.info)
             self.process_synthetic_type_info(node.info)
         self.fixup_type(node.old_type)
         super().visit_newtype_expr(node)
@@ -240,11 +245,11 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_typeddict_expr(self, node: TypedDictExpr) -> None:
         super().visit_typeddict_expr(node)
-        node.info = self.fixup(node.info)
+        node.info = self.fixup_and_reset_typeinfo(node.info)
         self.process_synthetic_type_info(node.info)
 
     def visit_enum_call_expr(self, node: EnumCallExpr) -> None:
-        node.info = self.fixup(node.info)
+        node.info = self.fixup_and_reset_typeinfo(node.info)
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
 
@@ -268,6 +273,19 @@ class NodeReplaceVisitor(TraverserVisitor):
             new.__dict__ = node.__dict__
             return cast(SN, new)
         return node
+
+    def fixup_and_reset_typeinfo(self, node: TypeInfo) -> TypeInfo:
+        """Fix-up type info and reset subtype caches.
+
+        This needs to be called at least once per each merged TypeInfo, as otherwise we
+        may leak stale caches.
+        """
+        if node in self.replacements:
+            # The subclass relationships may change, so reset all caches relevant to the
+            # old MRO.
+            new = cast(TypeInfo, self.replacements[node])
+            new.reset_subtype_cache()
+        return self.fixup(node)
 
     def fixup_type(self, typ: Optional[Type]) -> None:
         if typ is not None:
@@ -307,7 +325,7 @@ class NodeReplaceVisitor(TraverserVisitor):
         return result
 
 
-class TypeReplaceVisitor(TypeVisitor[None]):
+class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     """Similar to NodeReplaceVisitor, but for type objects."""
 
     def __init__(self, replacements: Dict[SymbolNode, SymbolNode]) -> None:
@@ -353,7 +371,9 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_tuple_type(self, typ: TupleType) -> None:
         for item in typ.items:
             item.accept(self)
-        typ.fallback.accept(self)
+        # Fallback can be None for implicit tuple types that haven't been semantically analyzed.
+        if typ.fallback is not None:
+            typ.fallback.accept(self)
 
     def visit_type_type(self, typ: TypeType) -> None:
         typ.item.accept(self)
@@ -375,6 +395,15 @@ class TypeReplaceVisitor(TypeVisitor[None]):
     def visit_type_list(self, typ: TypeList) -> None:
         for item in typ.items:
             item.accept(self)
+
+    def visit_callable_argument(self, typ: CallableArgument) -> None:
+        typ.typ.accept(self)
+
+    def visit_ellipsis_type(self, typ: EllipsisType) -> None:
+        pass
+
+    def visit_star_type(self, typ: StarType) -> None:
+        typ.type.accept(self)
 
     def visit_uninhabited_type(self, typ: UninhabitedType) -> None:
         pass

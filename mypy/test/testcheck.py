@@ -12,7 +12,8 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
-    retry_on_error, update_testcase_output, parse_options
+    retry_on_error, update_testcase_output, parse_options,
+    copy_and_fudge_mtime
 )
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -131,14 +132,7 @@ class TypeCheckSuite(DataSuite):
                         if file.endswith('.' + str(incremental_step)):
                             full = os.path.join(dn, file)
                             target = full[:-2]
-                            # Use retries to work around potential flakiness on Windows (AppVeyor).
-                            retry_on_error(lambda: shutil.copy(full, target))
-
-                            # In some systems, mtime has a resolution of 1 second which can cause
-                            # annoying-to-debug issues when a file has the same size after a
-                            # change. We manually set the mtime to circumvent this.
-                            new_time = os.stat(target).st_mtime + 1
-                            os.utime(target, times=(new_time, new_time))
+                            copy_and_fudge_mtime(full, target)
                 # Delete files scheduled to be deleted in [delete <path>.num] sections.
                 for path in testcase.deleted_paths.get(incremental_step, set()):
                     # Use retries to work around potential flakiness on Windows (AppVeyor).

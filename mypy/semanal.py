@@ -309,8 +309,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             del self.cur_mod_node
             del self.globals
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
+    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+                        patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
+        self.patches = patches
         self.scope.enter_file(self.cur_mod_id)
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
@@ -318,15 +320,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             self.recurse_into_functions = True
             self.accept(node)
         self.scope.leave()
+        del self.patches
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
-        # TODO: Invoke patches in fine-grained incremental mode.
-        self.patches = []
         self.recurse_into_functions = False
         for d in file_node.defs:
             self.accept(d)
-        del self.patches
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
@@ -2182,7 +2182,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             arg_types=[Instance(info, []), old_type],
             arg_kinds=[arg.kind for arg in args],
             arg_names=['self', 'item'],
-            ret_type=old_type,
+            ret_type=NoneTyp(),
             fallback=self.named_type('__builtins__.function'),
             name=name)
         init_func = FuncDef('__init__', args, Block([]), typ=signature)
@@ -4307,3 +4307,13 @@ class MakeAnyNonExplicit(TypeTranslator):
         if t.type_of_any == TypeOfAny.explicit:
             return t.copy_modified(TypeOfAny.special_form)
         return t
+
+
+def apply_semantic_analyzer_patches(patches: List[Tuple[int, Callable[[], None]]]) -> None:
+    """Call patch callbacks in the right order.
+
+    This should happen after semantic analyzer pass 3.
+    """
+    patches_by_priority = sorted(patches, key=lambda x: x[0])
+    for priority, patch_func in patches_by_priority:
+        patch_func()

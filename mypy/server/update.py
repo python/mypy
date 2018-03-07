@@ -117,7 +117,10 @@ Major todo items:
 """
 
 import os
-from typing import Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple
+import os.path
+from typing import (
+    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable
+)
 
 from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
@@ -132,6 +135,7 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.types import Type
 from mypy.fscache import FileSystemCache
+from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, is_identical_type, SnapshotItem
 )
@@ -173,6 +177,7 @@ class FineGrainedBuildManager:
         # this directly reflected in load_graph's interface.
         self.options.cache_dir = os.devnull
         manager.saved_cache = {}
+        manager.only_load_from_cache = False
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
 
@@ -750,6 +755,8 @@ def reprocess_nodes(manager: BuildManager,
         strip_target(deferred.node)
     semantic_analyzer = manager.semantic_analyzer
 
+    patches = []  # type: List[Tuple[int, Callable[[], None]]]
+
     # Second pass of semantic analysis. We don't redo the first pass, because it only
     # does local things that won't go stale.
     for deferred in nodes:
@@ -758,7 +765,7 @@ def reprocess_nodes(manager: BuildManager,
                 fnam=file_node.path,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
-            manager.semantic_analyzer.refresh_partial(deferred.node)
+            manager.semantic_analyzer.refresh_partial(deferred.node, patches)
 
     # Third pass of semantic analysis.
     for deferred in nodes:
@@ -767,7 +774,9 @@ def reprocess_nodes(manager: BuildManager,
                 fnam=file_node.path,
                 options=manager.options,
                 active_type=deferred.active_typeinfo):
-            manager.semantic_analyzer_pass3.refresh_partial(deferred.node)
+            manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
+
+    apply_semantic_analyzer_patches(patches)
 
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as

@@ -1297,6 +1297,28 @@ class A: pass
 main:2: error: Module 'a' has no attribute 'A'
 ==
 
+[case testRefreshGenericAndFailInPass3]
+# Failure in semantic analysis pass 3
+from a import C
+a: C[int]
+[file a.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]): pass
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class C(Generic[T, S]): pass
+[file a.py.3]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]): pass
+[out]
+==
+main:3: error: "C" expects 2 type arguments, but 1 given
+==
+
 [case testPrintStatement_python2]
 # flags: --py2
 import a
@@ -1436,9 +1458,11 @@ class C: pass
 class D(C):
     1()
 class E(D): pass
+# Something needs to change
 
 [file b.py.2]
 import a
+# Something needs to change
 
 [triggered]
 2: a, a
@@ -1506,7 +1530,8 @@ import a
 [file a.py]
 from typing import Dict, NewType
 
-N = NewType('N', int)
+class A: pass
+N = NewType('N', A)
 
 a: Dict[N, int]
 
@@ -1516,7 +1541,8 @@ def f(self, x: N) -> None:
 [file a.py.2]
 from typing import Dict, NewType  # dummy change
 
-N = NewType('N', int)
+class A: pass
+N = NewType('N', A)
 
 a: Dict[N, int]
 
@@ -1751,7 +1777,7 @@ p = Point(dict(x=42, y=1337))
 [file a.py.2]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(dict(x=42, y=1337))
+p = Point(dict(x=42, y=1337)) # dummy change
 [out]
 ==
 
@@ -2472,6 +2498,223 @@ if sys.platform == 'xyz':
     class A: pass
 else:
     class A: pass
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testNewTypeDependencies1]
+from a import N
+
+def f(x: N) -> None:
+    x.y = 1
+[file a.py]
+from typing import NewType
+from b import C
+
+N = NewType('N', C)
+[file b.py]
+class C:
+    y: int
+[file b.py.2]
+class C:
+    y: str
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testNewTypeDependencies2]
+from a import N
+from b import C, D
+
+def f(x: C) -> None: pass
+
+def g(x: N) -> None:
+    f(x)
+[file a.py]
+from typing import NewType
+from b import D
+
+N = NewType('N', D)
+[file b.py]
+class C: pass
+class D(C): pass
+[file b.py.2]
+class C: pass
+class D: pass
+[out]
+==
+main:7: error: Argument 1 to "f" has incompatible type "N"; expected "C"
+
+[case testNewTypeDependencies3]
+from a import N
+
+def f(x: N) -> None:
+    x.y
+[file a.py]
+from typing import NewType
+from b import C
+N = NewType('N', C)
+[file a.py.2]
+from typing import NewType
+from b import D
+N = NewType('N', D)
+[file b.py]
+class C:
+    y: int
+class D:
+    pass
+[out]
+==
+main:4: error: "N" has no attribute "y"
+
+[case testNamedTupleWithinFunction]
+from typing import NamedTuple
+import b
+def f() -> None:
+    b.x
+    n = NamedTuple('n', [])
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[out]
+==
+
+[case testNamedTupleFallback]
+# This test will fail without semantic analyzer pass 2 patches
+import a
+[file a.py]
+import b
+[file b.py]
+from typing import NamedTuple
+import c
+c.x
+class N(NamedTuple):
+    count: int
+[file c.py]
+x = 0
+[file c.py.2]
+x = ''
+[builtins fixtures/tuple.pyi]
+[out]
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
+==
+b.py:5: error: Incompatible types in assignment (expression has type "int", base class "tuple" defined the type as "Callable[[Tuple[int, ...], Any], int]")
+
+[case testReprocessEllipses1]
+import a
+[file a.py]
+from typing import Tuple
+def foo(x: Tuple[int, ...]) -> None: pass
+[file a.py.2]
+from typing import Tuple
+def foo(x: Tuple[int, ...]) -> None: pass
+[builtins fixtures/tuple.pyi]
+[out]
+==
+
+[case testReprocessEllipses2]
+import a
+[file a.py]
+from typing import Callable
+def foo(x: Callable[..., int]) -> None: pass
+[file a.py.2]
+from typing import Callable
+def foo(x: Callable[..., int]) -> None: pass
+[out]
+==
+
+[case testReprocessCallableArg]
+import a
+[file a.py]
+from typing import Callable
+from mypy_extensions import Arg
+def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
+[file a.py.2]
+from typing import Callable
+from mypy_extensions import Arg
+def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+
+[case testImplicitTuple1]
+import a
+[file a.py]
+# Bogus annotation in nested function masked because outer function
+# isn't annotated
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[file a.py.2]
+# dummy change
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[out]
+==
+
+[case testImplicitTuple2]
+import a
+[file a.py]
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[file a.py.2]
+# dummy change
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[out]
+a.py:1: error: Invalid tuple literal type
+==
+a.py:2: error: Invalid tuple literal type
+
+[case testImplicitTuple3]
+import a
+[file a.py]
+(x, y) = 1, 'hi'  # type: (int, str)
+[file a.py.2]
+# dummy change
+(x, y) = 1, 'hi'  # type: (int, str)
+[out]
+==
+
+[case testCastConfusion]
+import b
+[file a.py]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+
+[file b.py]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+
+[file a.py.2]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+# update
+
+[file b.py.2]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+# update
 [builtins fixtures/ops.pyi]
 [out]
 ==

@@ -1395,3 +1395,30 @@ TypeInfo<2>(
   Bases(builtins.type<3>)
   Mro(target.M<2>, builtins.type<3>, builtins.object<1>)
   Names())
+
+[case testCast_symtable]
+import target
+[file target.py]
+from typing import cast
+class Thing:
+    pass
+thing = cast(Thing, Thing())
+[file target.py.next]
+from typing import cast
+class Thing:
+    pass
+thing = cast(Thing, Thing())
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    Thing: TypeInfo<1>
+    cast: Var<2>
+    thing: Var<3>(target.Thing<1>)
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    Thing: TypeInfo<1>
+    cast: Var<2>
+    thing: Var<3>(target.Thing<1>)

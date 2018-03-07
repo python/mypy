@@ -680,3 +680,37 @@ B = Dict[str, S]
 [out]
 __main__.A
 __main__.T
+
+[case testNewType]
+from typing import NewType
+class C: pass
+class D: pass
+N1 = NewType('N1', C)
+N2 = NewType('N2', D)
+N3 = NewType('N3', C)
+class N4(C): pass
+[file next.py]
+from typing import NewType
+class C: pass
+class D(C): pass
+N1 = NewType('N1', C)
+N2 = NewType('N2', D)
+class N3(C): pass
+N4 = NewType('N4', C)
+[out]
+__main__.D
+__main__.N2
+__main__.N3
+__main__.N3.__init__
+__main__.N4
+__main__.N4.__init__
+
+[case testChangeGenericBaseClassOnly]
+from typing import List
+class C(List[int]): pass
+[file next.py]
+from typing import List
+class C(List[str]): pass
+[builtins fixtures/list.pyi]
+[out]
+__main__.C

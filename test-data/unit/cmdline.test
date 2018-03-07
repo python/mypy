@@ -581,7 +581,7 @@ m.py:6: error: Explicit "Any" is not allowed
 m.py:9: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitVarDeclaration]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 
 [file mypy.ini]
 [[mypy]
@@ -601,7 +601,7 @@ m.py:3: error: Explicit "Any" is not allowed
 m.py:5: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitGenericVarDeclaration]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 
 [file mypy.ini]
 [[mypy]
@@ -785,7 +785,7 @@ N = TypedDict('N', {'x': str, 'y': List})  # no error
 m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyGenericsTupleNoTypeParams]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -821,7 +821,7 @@ def g(s: List[Tuple[str, str]]) -> None: pass  # no error
 m.py:3: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsTypeType]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -858,7 +858,7 @@ def g(l: L[str]) -> None: pass  # no error
 m.py:5: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsGenericAlias]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -882,7 +882,7 @@ m.py:7: error: Missing type parameters for generic type
 m.py:11: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsPlainList]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -906,7 +906,7 @@ m.py:8: error: Need type annotation for 'x'
 m.py:9: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsCustomGenericClass]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]

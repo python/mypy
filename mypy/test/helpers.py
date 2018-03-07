@@ -1,11 +1,14 @@
 import os
 import re
+import subprocess
 import sys
 import time
+import shutil
 
 from typing import List, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
+from mypy.test.config import test_temp_dir
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -327,3 +330,49 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
     return options
+
+
+def split_lines(*streams: bytes) -> List[str]:
+    """Returns a single list of string lines from the byte streams in args."""
+    return [
+        s
+        for stream in streams
+        for s in stream.decode('utf8').splitlines()
+    ]
+
+
+def run_command(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
+                timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
+    """A poor man's subprocess.run() for 3.4 compatibility."""
+    process = subprocess.Popen(
+        cmdline,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+    )
+    try:
+        out, err = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        out = err = b''
+        process.kill()
+    return process.returncode, split_lines(out, err)
+
+
+def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
+    # In some systems, mtime has a resolution of 1 second which can
+    # cause annoying-to-debug issues when a file has the same size
+    # after a change. We manually set the mtime to circumvent this.
+    # Note that we increment the old file's mtime, which guarentees a
+    # different value, rather than incrementing the mtime after the
+    # copy, which could leave the mtime unchanged if the old file had
+    # a similarly fudged mtime.
+    new_time = None
+    if os.path.isfile(target_path):
+        new_time = os.stat(target_path).st_mtime + 1
+
+    # Use retries to work around potential flakiness on Windows (AppVeyor).
+    retry_on_error(lambda: shutil.copy(source_path, target_path))
+
+    if new_time:
+        os.utime(target_path, times=(new_time, new_time))

@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from mypy import build
 from mypy.build import BuildSource
+from mypy.defaults import PYTHON3_VERSION
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,
 )
@@ -38,6 +39,7 @@ def get_semanal_options() -> Options:
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
     options.show_traceback = True
+    options.python_version = PYTHON3_VERSION
     return options
 
 
