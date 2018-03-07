@@ -109,11 +109,14 @@ class Server:
     # NOTE: the instance is constructed in the parent process but
     # serve() is called in the grandchild (by daemonize()).
 
-    def __init__(self, options: Options, alt_lib_path: Optional[str] = None) -> None:
+    def __init__(self, options: Options,
+                 timeout: Optional[int] = None,
+                 alt_lib_path: Optional[str] = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.saved_cache = {}  # type: mypy.build.SavedCache
         self.fine_grained = options.fine_grained_incremental
         self.options = options
+        self.timeout = timeout
         self.alt_lib_path = alt_lib_path
         self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
 
@@ -134,13 +137,19 @@ class Server:
         """Serve requests, synchronously (no thread or fork)."""
         try:
             sock = self.create_listening_socket()
+            if self.timeout is not None:
+                sock.settimeout(self.timeout)
             try:
                 with open(STATUS_FILE, 'w') as f:
                     json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
                     f.write('\n')  # I like my JSON with trailing newline
                 while True:
                     conn, addr = sock.accept()
-                    data = receive(conn)
+                    try:
+                        data = receive(conn)
+                    except OSError as err:
+                        conn.close()  # Maybe the client hung up
+                        continue
                     resp = {}  # type: Dict[str, Any]
                     if 'command' not in data:
                         resp = {'error': "No command found in request"}
@@ -159,12 +168,15 @@ class Server:
                     if command == 'stop':
                         sock.close()
                         sys.exit(0)
+            except socket.timeout:
+                print("Exiting due to inactivity.")
+                sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)
         finally:
             os.unlink(self.sockname)
             exc_info = sys.exc_info()
-            if exc_info[0]:
+            if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)  # type: ignore
 
     def create_listening_socket(self) -> socket.socket:
