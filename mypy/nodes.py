@@ -333,7 +333,7 @@ class ImportedName(SymbolNode):
     analysis pass 2, these references should be replaced with direct
     reference to a real AST node.
 
-    Note that this is neither a Statement nor an Expressions so this
+    Note that this is neither a Statement nor an Expression so this
     can't be visited.
     """
 
@@ -352,6 +352,9 @@ class ImportedName(SymbolNode):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'ImportedName':
         assert False, "ImportedName should never be serialized"
+
+    def __str__(self) -> str:
+        return 'ImportedName(%s)' % self.target_fullname
 
 
 class FuncBase(Node):
