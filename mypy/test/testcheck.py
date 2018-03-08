@@ -11,7 +11,7 @@ from mypy.build import BuildSource
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages,
+    assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
     copy_and_fudge_mtime
 )
@@ -189,28 +189,14 @@ class TypeCheckSuite(DataSuite):
                 self.verify_cache(module_data, a, res.manager)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'rechecked' + suffix,
                     testcase.expected_rechecked_modules.get(incremental_step - 1),
                     res.manager.rechecked_modules)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'stale' + suffix,
                     testcase.expected_stale_modules.get(incremental_step - 1),
                     res.manager.stale_modules)
-
-    def check_module_equivalence(self, name: str,
-                                 expected: Optional[Set[str]], actual: Set[str]) -> None:
-        if expected is not None:
-            expected_normalized = sorted(expected)
-            actual_normalized = sorted(actual.difference({"__main__"}))
-            assert_string_arrays_equal(
-                expected_normalized,
-                actual_normalized,
-                ('Actual modules ({}) do not match expected modules ({}) '
-                 'for "[{} ...]"').format(
-                    ', '.join(actual_normalized),
-                    ', '.join(expected_normalized),
-                    name))
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager) -> None:

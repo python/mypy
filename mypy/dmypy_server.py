@@ -276,9 +276,6 @@ class Server:
         fscache = FileSystemCache(self.options.python_version)
         self.fswatcher = FileSystemWatcher(fscache)
         self.update_sources(sources)
-        if not self.options.use_fine_grained_cache:
-            # Stores the initial state of sources as a side effect.
-            self.fswatcher.find_changed()
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
@@ -298,7 +295,7 @@ class Server:
         # If we are using the fine-grained cache, build hasn't actually done
         # the typechecking on the updated files yet.
         # Run a fine-grained update starting from the cached data
-        if self.options.use_fine_grained_cache:
+        if result.used_cache:
             # Pull times and hashes out of the saved_cache and stick them into
             # the fswatcher, so we pick up the changes.
             for state in self.fine_grained_manager.graph.values():
@@ -310,7 +307,18 @@ class Server:
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
             # Run an update
-            messages = self.fine_grained_manager.update(self.find_changed(sources))
+            changed = self.find_changed(sources)
+
+            # Find anything that has had its dependency list change
+            for state in self.fine_grained_manager.graph.values():
+                if not state.is_fresh():
+                    assert state.path is not None
+                    changed.append((state.id, state.path))
+
+            messages = self.fine_grained_manager.update(changed)
+        else:
+            # Stores the initial state of sources as a side effect.
+            self.fswatcher.find_changed()
 
         fscache.flush()
         status = 1 if messages else 0

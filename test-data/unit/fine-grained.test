@@ -15,6 +15,11 @@
 --   <optional output from batch pass>
 --   ==
 --   <optional output from first incremental pass>
+--
+--
+-- Modules that are expected to be detected as changed can be checked with [stale ...]
+-- while modules that are reprocessed by update (which can include cached files
+-- that need to be loaded) can be checked with [rechecked ...]
 
 [case testReprocessFunction]
 import m
