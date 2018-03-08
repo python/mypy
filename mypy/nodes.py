@@ -325,6 +325,38 @@ class ImportAll(ImportBase):
         return visitor.visit_import_all(self)
 
 
+class ImportedName(SymbolNode):
+    """Indirect reference to a fullname stored in symbol table.
+
+    This node is not present in the original program as such. This is
+    just a temporary artifact in binding imported names. After semantic
+    analysis pass 2, these references should be replaced with direct
+    reference to a real AST node.
+
+    Note that this is neither a Statement nor an Expression so this
+    can't be visited.
+    """
+
+    def __init__(self, target_fullname: str) -> None:
+        self.target_fullname = target_fullname
+
+    def name(self) -> str:
+        return self.target_fullname.split('.')[-1]
+
+    def fullname(self) -> str:
+        return self.target_fullname
+
+    def serialize(self) -> JsonDict:
+        assert False, "ImportedName leaked from semantic analysis"
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ImportedName':
+        assert False, "ImportedName should never be serialized"
+
+    def __str__(self) -> str:
+        return 'ImportedName(%s)' % self.target_fullname
+
+
 class FuncBase(Node):
     """Abstract base class for function-like nodes"""
 

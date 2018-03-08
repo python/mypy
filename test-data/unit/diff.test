@@ -563,6 +563,48 @@ B = Enum('B', 'y')
 __main__.B.x
 __main__.B.y
 
+[case testClassBasedEnum]
+from enum import Enum
+class A(Enum):
+    X = 0
+    Y = 1
+class B(Enum):
+    X = 0
+    Y = 1
+class C(Enum):
+    X = 0
+    Y = 1
+class D(Enum):
+    X = 0
+    Y = 1
+class E(Enum):
+    X = 0
+[file next.py]
+from enum import Enum
+class A(Enum):
+    X = 0
+    Y = 1
+class B(Enum):
+    X = 0
+    Z = 1
+class C(Enum):
+    X = 0
+    Y = 1
+    Z = 2
+class D(Enum):
+    X = 'a'
+    Y = 'b'
+class F(Enum):
+    X = 0
+[out]
+__main__.B.Y
+__main__.B.Z
+__main__.C.Z
+__main__.D.X
+__main__.D.Y
+__main__.E
+__main__.F
+
 [case testTypedDict]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})

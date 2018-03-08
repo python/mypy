@@ -55,7 +55,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr,
+    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname,
 )
@@ -84,7 +84,7 @@ from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
 from mypy.util import get_prefix, correct_relative_import
-from mypy.semanal_shared import PRIORITY_FALLBACKS
+from mypy.semanal_shared import SemanticAnalyzerInterface, PRIORITY_FALLBACKS
 from mypy.scope import Scope
 
 
@@ -174,7 +174,9 @@ SUGGESTED_TEST_FIXTURES = {
 }
 
 
-class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
+class SemanticAnalyzerPass2(NodeVisitor[None],
+                            SemanticAnalyzerInterface,
+                            SemanticAnalyzerPluginInterface):
     """Semantically analyze parsed mypy files.
 
     The analyzer binds names and does various consistency checks for a
@@ -1488,6 +1490,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         module = self.modules.get(import_id)
         for id, as_id in imp.names:
             node = module.names.get(id) if module else None
+            node = self.dereference_module_cross_ref(node)
+
             missing = False
             possible_module_id = import_id + '.' + id
 
@@ -1516,11 +1520,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                     ast_node = Var(name, type=typ)
                     symbol = SymbolTableNode(GDEF, ast_node)
                     self.add_symbol(name, symbol, imp)
-                    return
+                    continue
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
                 node = self.normalize_type_alias(node, imp)
                 if not node:
-                    return
+                    # Normalization failed because target is not defined. Avoid duplicate
+                    # error messages by marking the imported name as unknown.
+                    self.add_unknown_symbol(as_id or id, imp, is_import=True)
+                    continue
                 imported_id = as_id or id
                 existing_symbol = self.globals.get(imported_id)
                 if existing_symbol:
@@ -1550,6 +1557,29 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                 # Missing module.
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
 
+    def dereference_module_cross_ref(
+            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
+        """Dereference cross references to other modules (if any).
+
+        If the node is not a cross reference, return it unmodified.
+        """
+        seen = set()  # type: Set[str]
+        # Continue until we reach a node that's nota cross reference (or until we find
+        # nothing).
+        while node and isinstance(node.node, ImportedName):
+            fullname = node.node.fullname()
+            if fullname in self.modules:
+                # This is a module reference.
+                return SymbolTableNode(MODULE_REF, self.modules[fullname])
+            if fullname in seen:
+                # Looks like a reference cycle. Just break it.
+                # TODO: Generate a more specific error message.
+                node = None
+                break
+            node = self.lookup_fully_qualified_or_none(fullname)
+            seen.add(fullname)
+        return node
+
     def process_import_over_existing_name(self,
                                           imported_id: str, existing_symbol: SymbolTableNode,
                                           module_symbol: SymbolTableNode,
@@ -1573,6 +1603,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> Optional[SymbolTableNode]:
+        """If node refers to a built-in type alias, normalize it.
+
+        An example normalization is 'typing.List' -> '__builtins__.list'.
+
+        By default, if the node doesn't refer to a built-in type alias, return
+        the original node. If normalization fails because the target isn't
+        defined, return None.
+        """
         normalized = False
         fullname = node.fullname
         if fullname in type_aliases:
@@ -1612,7 +1650,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         if i_id in self.modules:
             m = self.modules[i_id]
             self.add_submodules_to_parent_modules(i_id, True)
-            for name, node in m.names.items():
+            for name, orig_node in m.names.items():
+                node = self.dereference_module_cross_ref(orig_node)
+                if node is None:
+                    continue
                 new_node = self.normalize_type_alias(node, i)
                 # if '__all__' exists, all nodes not included have had module_public set to
                 # False, and we can skip checking '_' because it's been explicitly included.
@@ -1670,11 +1711,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
-        tpan = TypeAnalyser(self.lookup_qualified,
-                            self.lookup_fully_qualified,
+        tpan = TypeAnalyser(self,
                             tvar_scope,
-                            self.fail,
-                            self.note,
                             self.plugin,
                             self.options,
                             self.is_typeshed_stub_file,
@@ -1803,11 +1841,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
         dynamic = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         global_scope = not self.type and not self.function_stack
         res = analyze_type_alias(rvalue,
-                                 self.lookup_qualified,
-                                 self.lookup_fully_qualified,
+                                 self,
                                  self.tvar_scope,
-                                 self.fail,
-                                 self.note,
                                  self.plugin,
                                  self.options,
                                  self.is_typeshed_stub_file,
@@ -3408,6 +3443,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
+            n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
                 if not n:
@@ -3813,22 +3849,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             n = next_sym.node
         return n.names[parts[-1]]
 
-    def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
-        """Lookup a fully qualified name.
+    def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
+        """Lookup a fully qualified name that refers to a module-level definition.
 
         Don't assume that the name is defined. This happens in the global namespace --
-        the local module namespace is ignored.
+        the local module namespace is ignored. This does not dereference indirect
+        refs.
+
+        Note that this can't be used for names nested in class namespaces.
         """
-        assert '.' in name
-        parts = name.split('.')
-        n = self.modules[parts[0]]
-        for i in range(1, len(parts) - 1):
-            next_sym = n.names.get(parts[i])
-            if not next_sym:
-                return None
-            assert isinstance(next_sym.node, MypyFile)
-            n = next_sym.node
-        return n.names.get(parts[-1])
+        assert '.' in fullname
+        module, name = fullname.rsplit('.', maxsplit=1)
+        if module not in self.modules:
+            return None
+        filenode = self.modules[module]
+        return filenode.names.get(name)
 
     def qualified_name(self, n: str) -> str:
         if self.type is not None:
@@ -3861,6 +3896,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
+        # NOTE: This logic mostly parallels SemanticAnalyzerPass1.add_symbol. If you change
+        #     this, you may have to change the other method as well.
         if self.is_func_scope():
             assert self.locals[-1] is not None
             if name in self.locals[-1]:
@@ -3873,8 +3910,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None], SemanticAnalyzerPluginInterface):
             self.type.names[name] = node
         else:
             existing = self.globals.get(name)
-            if existing and (not isinstance(node.node, MypyFile) or
-                             existing.node != node.node) and existing.kind != UNBOUND_IMPORTED:
+            if (existing
+                    and (not isinstance(node.node, MypyFile) or existing.node != node.node)
+                    and existing.kind != UNBOUND_IMPORTED
+                    and not isinstance(existing.node, ImportedName)):
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
                 ok = False

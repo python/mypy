@@ -50,13 +50,18 @@ class GetDependenciesSuite(DataSuite):
         else:
             deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
             for module in files:
-                if module in dumped_modules or dump_all and module not in ('abc', 'typing',
-                                                                           'mypy_extensions'):
+                if module in dumped_modules or dump_all and module not in ('abc',
+                                                                           'typing',
+                                                                           'mypy_extensions',
+                                                                           'enum'):
                     new_deps = get_dependencies(files[module], type_map, python_version)
                     for source in new_deps:
                         deps[source].update(new_deps[source])
 
             for source, targets in sorted(deps.items()):
+                if source.startswith('<enum.'):
+                    # Remove noise.
+                    continue
                 line = '%s -> %s' % (source, ', '.join(sorted(targets)))
                 # Clean up output a bit
                 line = line.replace('__main__', 'm')

@@ -16,10 +16,6 @@ A summary of the module contents:
   module id and returns fully qualified names of differences (which act as
   triggers).
 
-* is_identical_type(t, s) determines whether two Type objects are equivalent.
-
-* is_identical_types(a, b) is like the above, but for lists of types.
-
 To compare two versions of a module symbol table, take snapshots of both
 versions and compare the snapshots. The use of snapshots makes it easy to
 compare two versions of the *same* symbol table that is being mutated.
@@ -66,120 +62,6 @@ from mypy.types import (
     UnionType, Overloaded, PartialType, TypeType, function_type
 )
 from mypy.util import get_prefix
-
-
-def is_identical_type(t: Type, s: Type) -> bool:
-    return t.accept(IdenticalTypeVisitor(s))
-
-
-TT = TypeVar('TT', bound=Type)
-
-
-def is_identical_types(a: List[TT], b: List[TT]) -> bool:
-    return len(a) == len(b) and all(is_identical_type(t, s) for t, s in zip(a, b))
-
-
-class IdenticalTypeVisitor(TypeVisitor[bool]):
-    """Visitor for checking whether two types are identical.
-
-    This may be conservative -- it's okay for two types to be considered
-    different even if they are actually the same. The results are only
-    used to improve performance, not relied on for correctness.
-
-    Differences from mypy.sametypes:
-
-    * Types with the same name but different AST nodes are considered
-      identical.
-
-    * If one of the types is not valid for whatever reason, they are
-      considered different.
-
-    * Sometimes require types to be structurally identical, even if they
-      are semantically the same type.
-    """
-
-    def __init__(self, right: Type) -> None:
-        self.right = right
-
-    # visit_x(left) means: is left (which is an instance of X) the same type as
-    # right?
-
-    def visit_unbound_type(self, left: UnboundType) -> bool:
-        return False
-
-    def visit_any(self, left: AnyType) -> bool:
-        return isinstance(self.right, AnyType)
-
-    def visit_none_type(self, left: NoneTyp) -> bool:
-        return isinstance(self.right, NoneTyp)
-
-    def visit_uninhabited_type(self, t: UninhabitedType) -> bool:
-        return isinstance(self.right, UninhabitedType)
-
-    def visit_erased_type(self, left: ErasedType) -> bool:
-        return False
-
-    def visit_deleted_type(self, left: DeletedType) -> bool:
-        return isinstance(self.right, DeletedType)
-
-    def visit_instance(self, left: Instance) -> bool:
-        return (isinstance(self.right, Instance) and
-                left.type.fullname() == self.right.type.fullname() and
-                is_identical_types(left.args, self.right.args))
-
-    def visit_type_var(self, left: TypeVarType) -> bool:
-        return (isinstance(self.right, TypeVarType) and
-                left.id == self.right.id)
-
-    def visit_callable_type(self, left: CallableType) -> bool:
-        # FIX generics
-        if isinstance(self.right, CallableType):
-            cright = self.right
-            return (is_identical_type(left.ret_type, cright.ret_type) and
-                    is_identical_types(left.arg_types, cright.arg_types) and
-                    left.arg_names == cright.arg_names and
-                    left.arg_kinds == cright.arg_kinds and
-                    left.is_type_obj() == cright.is_type_obj() and
-                    left.is_ellipsis_args == cright.is_ellipsis_args)
-        return False
-
-    def visit_tuple_type(self, left: TupleType) -> bool:
-        if isinstance(self.right, TupleType):
-            return is_identical_types(left.items, self.right.items)
-        return False
-
-    def visit_typeddict_type(self, left: TypedDictType) -> bool:
-        if isinstance(self.right, TypedDictType):
-            if left.items.keys() != self.right.items.keys():
-                return False
-            if left.required_keys != self.right.required_keys:
-                return False
-            for (_, left_item_type, right_item_type) in left.zip(self.right):
-                if not is_identical_type(left_item_type, right_item_type):
-                    return False
-            return True
-        return False
-
-    def visit_union_type(self, left: UnionType) -> bool:
-        if isinstance(self.right, UnionType):
-            # Require structurally identical types.
-            return is_identical_types(left.items, self.right.items)
-        return False
-
-    def visit_overloaded(self, left: Overloaded) -> bool:
-        if isinstance(self.right, Overloaded):
-            return is_identical_types(left.items(), self.right.items())
-        return False
-
-    def visit_partial_type(self, left: PartialType) -> bool:
-        # A partial type is not fully defined, so the result is indeterminate. We shouldn't
-        # get here.
-        raise RuntimeError
-
-    def visit_type_type(self, left: TypeType) -> bool:
-        if isinstance(self.right, TypeType):
-            return is_identical_type(left.item, self.right.item)
-        return False
 
 
 # Snapshot representation of a symbol table node or type. The representation is

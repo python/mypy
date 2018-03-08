@@ -2718,3 +2718,101 @@ class User:
 [builtins fixtures/ops.pyi]
 [out]
 ==
+
+[case testRefreshClassBasedEnum]
+import aa
+[file aa.py]
+import a
+[file a.py]
+from enum import Enum
+import b
+b.x
+class C(Enum):
+    X = 0
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[file aa.py.3]
+from a import C
+c: C
+c = C.X
+c = 1
+[out]
+==
+==
+aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
+[case testRefreshClassBasedIntEnum]
+import aa
+[file aa.py]
+import a
+[file a.py]
+from enum import IntEnum
+import b
+b.x
+class C(IntEnum):
+    X = 0
+x: int
+x = C.X
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[file aa.py.3]
+from a import C
+c: C
+c = C.X
+c = 1
+n: int
+n = C.X
+n = c
+[out]
+==
+==
+aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
+[case testClassBasedEnumPropagation1]
+import a
+[file a.py]
+from b import C
+
+def f(x: C) -> None: pass
+f(C.X)
+f(C.Y)
+[file b.py]
+from enum import Enum
+
+class C(Enum):
+    X = 0
+    Y = 1
+[file b.py.2]
+from enum import Enum
+
+class C(Enum):
+    X = 0
+[out]
+==
+a.py:5: error: "Type[C]" has no attribute "Y"
+
+[case testClassBasedEnumPropagation2]
+import a
+[file a.py]
+from b import C
+
+def f(x: int) -> None: pass
+f(C.X)
+f(C.Y)
+[file b.py]
+class C:
+    X = 0
+    Y = 1
+[file b.py.2]
+from enum import Enum
+class C(Enum):
+    X = 0
+    Y = 1
+[out]
+==
+a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
+a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
