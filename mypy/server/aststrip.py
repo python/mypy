@@ -195,7 +195,9 @@ class NodeStripVisitor(TraverserVisitor):
                 for name, as_name in node.ids:
                     imported_name = as_name or name
                     initial = imported_name.split('.')[0]
-                    self.reset_imported_name(initial)
+                    symnode = self.names[initial]
+                    symnode.kind = UNBOUND_IMPORTED
+                    symnode.node = None
 
     def visit_import_all(self, node: ImportAll) -> None:
         # Reset entries in the symbol table that were added through the statement.
@@ -203,11 +205,6 @@ class NodeStripVisitor(TraverserVisitor):
         for name in node.imported_names:
             del self.names[name]
         node.imported_names = []
-
-    def reset_imported_name(self, name: str) -> None:
-        symnode = self.names[name]
-        symnode.kind = UNBOUND_IMPORTED
-        symnode.node = None
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1, and we

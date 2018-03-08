@@ -929,4 +929,4 @@ def target_from_node(module: str,
         else:
             return '%s.%s' % (module, node.name())
     else:
-        assert False
+        assert False, "Lambda expressions can't be deferred in fine-grained incremental mode"
