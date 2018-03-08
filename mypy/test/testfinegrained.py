@@ -9,31 +9,28 @@ information.
 
 import os
 import re
-import shutil
 
-from typing import List, Tuple, Dict, Optional, Set
+from typing import List, Tuple, Optional, cast
 
 from mypy import build
 from mypy.build import BuildManager, BuildSource, Graph
-from mypy.errors import Errors, CompileError
-from mypy.nodes import Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression
+from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.server.astmerge import merge_asts
-from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
-from mypy.strconv import StrConv, indent
-from mypy.test.config import test_temp_dir, test_data_prefix
+from mypy.test.config import test_temp_dir
 from mypy.test.data import (
-    parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
 )
-from mypy.test.helpers import assert_string_arrays_equal, parse_options
-from mypy.test.testtypegen import ignore_node
-from mypy.types import TypeStrVisitor, Type
-from mypy.util import short_type
+from mypy.test.helpers import assert_string_arrays_equal, parse_options, copy_and_fudge_mtime
 from mypy.server.mergecheck import check_consistency
+from mypy.dmypy_server import Server
+from mypy.main import expand_dir
 
 import pytest  # type: ignore  # no pytest in typeshed
 
+# TODO: This entire thing is a weird semi-duplication of testdmypy.
+# One of them should be eliminated and its remaining useful features
+# merged into the other.
 
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
 CHECK_CONSISTENCY = False
@@ -75,52 +72,46 @@ class FineGrainedSuite(DataSuite):
             return
 
         main_src = '\n'.join(testcase.input)
+        main_path = os.path.join(test_temp_dir, 'main')
+        with open(main_path, 'w') as f:
+            f.write(main_src)
+
+        server = Server(self.get_options(main_src, testcase, build_cache=False),
+                        alt_lib_path=test_temp_dir)
+
         step = 1
-        sources_override = self.parse_sources(main_src, step)
-        messages, manager, graph = self.build(main_src, testcase, sources_override,
-                                              build_cache=self.use_cache,
-                                              enable_cache=self.use_cache)
+        sources = self.parse_sources(main_src, step)
+        if self.use_cache:
+            messages = self.build(self.get_options(main_src, testcase, build_cache=True), sources)
+        else:
+            messages = self.run_check(server, sources)
+
         a = []
         if messages:
             a.extend(normalize_messages(messages))
 
-        fine_grained_manager = None
-        if not self.use_cache:
-            fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
-                check_consistency(fine_grained_manager)
+                check_consistency(server.fine_grained_manager)
 
         steps = testcase.find_steps()
         all_triggered = []
         for operations in steps:
             step += 1
-            modules = []
             for op in operations:
                 if isinstance(op, UpdateFile):
                     # Modify/create file
-                    shutil.copy(op.source_path, op.target_path)
-                    modules.append((op.module, op.target_path))
+                    copy_and_fudge_mtime(op.source_path, op.target_path)
                 else:
                     # Delete file
                     os.remove(op.path)
-                    modules.append((op.module, op.path))
-            sources_override = self.parse_sources(main_src, step)
-            if sources_override is not None:
-                modules = [(module, path)
-                           for module, path in sources_override
-                           if any(m == module for m, _ in modules)]
+            sources = self.parse_sources(main_src, step)
+            new_messages = self.run_check(server, sources)
 
-            # If this is the second iteration and we are using a
-            # cache, now we need to set it up
-            if fine_grained_manager is None:
-                messages, manager, graph = self.build(main_src, testcase, sources_override,
-                                                      build_cache=False, enable_cache=True)
-                fine_grained_manager = FineGrainedBuildManager(manager, graph)
-
-            new_messages = fine_grained_manager.update(modules)
-            if CHECK_CONSISTENCY:
-                check_consistency(fine_grained_manager)
-            all_triggered.append(fine_grained_manager.triggered)
+            if server.fine_grained_manager:
+                if CHECK_CONSISTENCY:
+                    check_consistency(server.fine_grained_manager)
+                all_triggered.append(server.fine_grained_manager.triggered)
             new_messages = normalize_messages(new_messages)
 
             a.append('==')
@@ -141,39 +132,39 @@ class FineGrainedSuite(DataSuite):
                 'Invalid active triggers ({}, line {})'.format(testcase.file,
                                                                testcase.line))
 
-    def build(self,
-              source: str,
-              testcase: DataDrivenTestCase,
-              sources_override: Optional[List[Tuple[str, str]]],
-              build_cache: bool,
-              enable_cache: bool) -> Tuple[List[str], BuildManager, Graph]:
+    def get_options(self,
+                    source: str,
+                    testcase: DataDrivenTestCase,
+                    build_cache: bool) -> Options:
         # This handles things like '# flags: --foo'.
         options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.fine_grained_incremental = not build_cache
-        options.use_fine_grained_cache = enable_cache and not build_cache
-        options.cache_fine_grained = enable_cache
+        options.use_fine_grained_cache = self.use_cache and not build_cache
+        options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
+        if options.follow_imports == 'normal':
+            options.follow_imports = 'error'
 
-        main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w') as f:
-            f.write(source)
-        if sources_override is not None:
-            sources = [BuildSource(path, module, None)
-                       for module, path in sources_override]
-        else:
-            sources = [BuildSource(main_path, None, None)]
+        return options
+
+    def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
+        response = server.check(sources)
+        out = cast(str, response['out'] or response['err'])
+        return out.splitlines()
+
+    def build(self,
+              options: Options,
+              sources: List[BuildSource]) -> List[str]:
         try:
             result = build.build(sources=sources,
                                  options=options,
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
-            # TODO: We need a manager and a graph in this case as well
-            assert False, str('\n'.join(e.messages))
-            return e.messages, None, None
-        return result.errors, result.manager, result.graph
+            return e.messages
+        return result.errors
 
     def format_triggered(self, triggered: List[List[str]]) -> List[str]:
         result = []
@@ -185,11 +176,22 @@ class FineGrainedSuite(DataSuite):
         return result
 
     def parse_sources(self, program_text: str,
-                      incremental_step: int) -> Optional[List[Tuple[str, str]]]:
-        """Return target (module, path) tuples for a test case, if not using the defaults.
+                      incremental_step: int) -> List[BuildSource]:
+        """Return target BuildSources for a test case.
 
-        These are defined through a comment like '# cmd: main a.py' in the test case
-        description.
+        Normally, the unit tests will check all files included in the test
+        case. This differs from how testcheck works by default, as dmypy
+        doesn't currently support following imports.
+
+        You can override this behavior and instruct the tests to check
+        multiple modules by using a comment like this in the test case
+        input:
+
+          # cmd: main a.py
+
+        You can also use `# cmdN:` to have a different cmd for incremental
+        step N (2, 3, ...).
+
         """
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
         regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
@@ -209,9 +211,11 @@ class FineGrainedSuite(DataSuite):
                 module = module_from_path(path)
                 if module == 'main':
                     module = '__main__'
-                result.append((module, path))
+                result.append(BuildSource(path, module, None))
             return result
-        return None
+        else:
+            base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
+            return [base] + expand_dir(test_temp_dir)
 
 
 def normalize_messages(messages: List[str]) -> List[str]:

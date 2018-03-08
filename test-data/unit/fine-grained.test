@@ -1458,9 +1458,11 @@ class C: pass
 class D(C):
     1()
 class E(D): pass
+# Something needs to change
 
 [file b.py.2]
 import a
+# Something needs to change
 
 [triggered]
 2: a, a
@@ -1775,7 +1777,7 @@ p = Point(dict(x=42, y=1337))
 [file a.py.2]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(dict(x=42, y=1337))
+p = Point(dict(x=42, y=1337)) # dummy change
 [out]
 ==
 

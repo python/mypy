@@ -147,8 +147,8 @@ def do_restart(args: argparse.Namespace) -> None:
 def start_server(args: argparse.Namespace) -> None:
     """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import daemonize, Server
-    if daemonize(Server(args.flags).serve, args.log_file) != 0:
+    from mypy.dmypy_server import daemonize, Server, process_start_options
+    if daemonize(Server(process_start_options(args.flags)).serve, args.log_file) != 0:
         sys.exit(1)
     wait_for_server()
 
@@ -283,8 +283,8 @@ def do_hang(args: argparse.Namespace) -> None:
 def do_daemon(args: argparse.Namespace) -> None:
     """Serve requests in the foreground."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import Server
-    Server(args.flags).serve()
+    from mypy.dmypy_server import Server, process_start_options
+    Server(process_start_options(args.flags)).serve()
 
 
 @action(help_parser)
