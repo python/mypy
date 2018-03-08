@@ -4127,3 +4127,26 @@ class Foo:
 x = Foo()
 [out]
 [out2]
+
+[case testImportReExportInCycle]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+class One:
+    pass
+[file m/two.py]
+import m
+class Two:
+    pass
+[file m/one.py.2]
+class One:
+    name: str
+[file m/two.py.2]
+import m
+reveal_type(m.One.name)
+class Two:
+    pass
+[out2]
+tmp/m/two.py:2: error: Revealed type is 'builtins.str'

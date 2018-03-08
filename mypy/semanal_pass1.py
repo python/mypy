@@ -23,14 +23,16 @@ from mypy import experiments
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
-    TryStmt, OverloadedFuncDef, Lvalue, Context, LDEF, GDEF, MDEF, UNBOUND_IMPORTED, MODULE_REF,
-    implicit_module_attrs
+    TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
+    MODULE_REF, implicit_module_attrs
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
+from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
+from mypy.util import correct_relative_import
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
@@ -62,6 +64,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         self.pyversion = options.python_version
         self.platform = options.platform
         sem.cur_mod_id = mod_id
+        sem.cur_mod_node = file
         sem.errors.set_file(fnam, mod_id)
         sem.globals = SymbolTable()
         sem.global_decls = [set()]
@@ -148,7 +151,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         if at_module and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]
-            if original_sym.kind == UNBOUND_IMPORTED:
+            if (original_sym.kind == UNBOUND_IMPORTED or
+                    isinstance(original_sym.node, ImportedName)):
                 # Ah this is an imported name. We can't resolve them now, so we'll postpone
                 # this until the main phase of semantic analysis.
                 return
@@ -241,7 +245,12 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         for name, as_name in node.names:
             imported_name = as_name or name
             if imported_name not in self.sem.globals:
-                self.add_symbol(imported_name, SymbolTableNode(UNBOUND_IMPORTED, None), node)
+                sym = create_indirect_imported_name(self.sem.cur_mod_node,
+                                                    node.id,
+                                                    node.relative,
+                                                    name)
+                if sym:
+                    self.add_symbol(imported_name, sym, context=node)
 
     def visit_import(self, node: Import) -> None:
         node.is_top_level = self.sem.is_module_scope()
@@ -312,8 +321,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
-        # This is related to SemanticAnalyzerPass2.add_symbol. Since both methods will
-        # be called on top-level definitions, they need to co-operate.
+        # NOTE: This is closely related to SemanticAnalyzerPass2.add_symbol. Since both methods
+        #     will be called on top-level definitions, they need to co-operate. If you change
+        #     this, you may have to change the other method as well.
         if self.sem.is_func_scope():
             assert self.sem.locals[-1] is not None
             if name in self.sem.locals[-1]:
@@ -325,8 +335,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         else:
             assert self.sem.type is None  # Pass 1 doesn't look inside classes
             existing = self.sem.globals.get(name)
-            if existing and (not isinstance(node.node, MypyFile) or
-                             existing.node != node.node) and existing.kind != UNBOUND_IMPORTED:
+            if (existing
+                    and (not isinstance(node.node, MypyFile) or existing.node != node.node)
+                    and existing.kind != UNBOUND_IMPORTED
+                    and not isinstance(existing.node, ImportedName)):
                 # Modules can be imported multiple times to support import
                 # of multiple submodules of a package (e.g. a.x and a.y).
                 ok = False
