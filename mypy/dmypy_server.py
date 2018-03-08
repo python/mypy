@@ -280,6 +280,9 @@ class Server:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
                                       alt_lib_path=self.alt_lib_path)
+            # build will clear use_fine_grained_cache if it needs to give up
+            # on doing a cache load.
+            cache_load_succeeded = self.options.use_fine_grained_cache
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
             if e.use_stdout:
@@ -297,7 +300,7 @@ class Server:
         # If we are using the fine-grained cache, build hasn't actually done
         # the typechecking on the updated files yet.
         # Run a fine-grained update starting from the cached data
-        if self.options.use_fine_grained_cache:
+        if cache_load_succeeded:
             # Pull times and hashes out of the saved_cache and stick them into
             # the fswatcher, so we pick up the changes.
             for state in self.fine_grained_manager.graph.values():

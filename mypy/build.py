@@ -588,7 +588,6 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
-        self.only_load_from_cache = options.use_fine_grained_cache
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
         self.reports = reports
@@ -1675,10 +1674,10 @@ class State:
                                  for id, line in zip(self.meta.dependencies, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
         else:
-            # In fine-grained cache mode, pretend we only know about modules that
-            # have cache information and defer handling new modules until the
-            # fine-grained update.
-            if manager.only_load_from_cache:
+            # When doing a fine-grained cache load, pretend we only
+            # know about modules that have cache information and defer
+            # handling new modules until the fine-grained update.
+            if manager.options.use_fine_grained_cache:
                 manager.log("Deferring module to fine-grained update %s (%s)" % (path, id))
                 raise ModuleNotFound
 
@@ -1799,7 +1798,7 @@ class State:
         # cache load because we need to gracefully handle missing modules.
         fixup_module_pass_one(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty or
-                              self.manager.only_load_from_cache)
+                              self.manager.options.use_fine_grained_cache)
 
     def calculate_mros(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -2107,9 +2106,13 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # This is a kind of unfortunate hack to work around some of fine-grained's
     # fragility: if we have loaded less than 50% of the specified files from
     # cache in fine-grained cache mode, load the graph again honestly.
+    # In this case, we just turn the cache off entirely, so we don't need
+    # to worry about some files being loaded and some from cache and so
+    # that fine-grained mode never *writes* to the cache.
     if manager.options.use_fine_grained_cache and len(graph) < 0.50 * len(sources):
-        manager.log("Redoing load_graph because too much was missing")
-        manager.only_load_from_cache = False
+        manager.log("Redoing load_graph without cache because too much was missing")
+        manager.options.use_fine_grained_cache = False
+        manager.options.cache_dir = os.devnull
         graph = load_graph(sources, manager)
 
     t1 = time.time()
@@ -2130,8 +2133,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_graph:
         dump_graph(graph)
         return graph
-    if manager.only_load_from_cache:
-        halfass_process_graph(graph, manager)
+    if manager.options.use_fine_grained_cache:
+        process_fine_grained_cache_graph(graph, manager)
     else:
         process_graph(graph, manager)
     updated = preserve_cache(graph)
@@ -2453,7 +2456,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         manager.log("No fresh SCCs left in queue")
 
 
-def halfass_process_graph(graph: Graph, manager: BuildManager) -> None:
+def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> None:
     """Finish loading everything for use in the fine-grained incremental cache"""
 
     # If we are running in fine-grained incremental mode with caching,
