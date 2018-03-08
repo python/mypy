@@ -171,10 +171,8 @@ class FineGrainedBuildManager:
         # Module that we haven't processed yet but that are known to be stale.
         self.stale = []  # type: List[Tuple[str, str]]
         # Disable the cache so that load_graph doesn't try going back to disk
-        # for the cache. This is kind of a hack and it might be better to have
-        # this directly reflected in load_graph's interface.
-        self.options.cache_dir = os.devnull
-        self.options.use_fine_grained_cache = False
+        # for the cache.
+        self.manager.cache_enabled = False
         manager.saved_cache = {}
         # Active triggers during the last update
         self.triggered = []  # type: List[str]

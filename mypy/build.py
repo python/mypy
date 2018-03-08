@@ -80,6 +80,7 @@ class BuildResult:
       manager: The build manager.
       files:   Dictionary from module name to related AST node.
       types:   Dictionary from parse tree node to its inferred type.
+      used_cache: Whether the build took advantage of a cache
       errors:  List of error messages.
     """
 
@@ -88,6 +89,7 @@ class BuildResult:
         self.graph = graph
         self.files = manager.modules
         self.types = manager.all_types  # Non-empty for tests only or if dumping deps
+        self.used_cache = manager.cache_enabled
         self.errors = []  # type: List[str]  # Filled in by build if desired
 
 
@@ -569,6 +571,7 @@ class BuildManager:
       flush_errors:    A function for processing errors after each SCC
       saved_cache:     Dict with saved cache state for coarse-grained dmypy
                        (read-write!)
+      cache_enabled:   Whether cache usage is enabled
       stats:           Dict with various instrumentation numbers
     """
 
@@ -606,8 +609,12 @@ class BuildManager:
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
         self.flush_errors = flush_errors
+        self.cache_enabled = options.incremental and options.cache_dir != os.devnull
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+
+    def use_fine_grained_cache(self) -> bool:
+        return self.cache_enabled and self.options.use_fine_grained_cache
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -1156,7 +1163,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # changed since the cache was generated. We *don't* want to do a
     # coarse-grained incremental rebuild, so we accept the cache
     # metadata even if it doesn't match the source file.
-    if manager.options.use_fine_grained_cache:
+    if manager.use_fine_grained_cache():
         manager.log('Using potentially stale metadata for {}'.format(id))
         return meta
 
@@ -1654,7 +1661,7 @@ class State:
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
-        if path and source is None and self.options.incremental:
+        if path and source is None and self.manager.cache_enabled:
             self.meta = find_cache_meta(self.id, path, manager)
             # TODO: Get mtime if not cached.
             if self.meta is not None:
@@ -1677,7 +1684,7 @@ class State:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
             # handling new modules until the fine-grained update.
-            if manager.options.use_fine_grained_cache:
+            if manager.use_fine_grained_cache():
                 manager.log("Deferring module to fine-grained update %s (%s)" % (path, id))
                 raise ModuleNotFound
 
@@ -1798,7 +1805,7 @@ class State:
         # cache load because we need to gracefully handle missing modules.
         fixup_module_pass_one(self.tree, self.manager.modules,
                               self.manager.options.quick_and_dirty or
-                              self.manager.options.use_fine_grained_cache)
+                              self.manager.use_fine_grained_cache())
 
     def calculate_mros(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -2059,7 +2066,7 @@ class State:
 
     def write_cache(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        if not self.path or self.options.cache_dir == os.devnull:
+        if not self.path or not self.manager.cache_enabled:
             return
         if self.manager.options.quick_and_dirty:
             is_errors = self.manager.errors.is_errors_for_file(self.path)
@@ -2109,10 +2116,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # In this case, we just turn the cache off entirely, so we don't need
     # to worry about some files being loaded and some from cache and so
     # that fine-grained mode never *writes* to the cache.
-    if manager.options.use_fine_grained_cache and len(graph) < 0.50 * len(sources):
+    if manager.use_fine_grained_cache() and len(graph) < 0.50 * len(sources):
         manager.log("Redoing load_graph without cache because too much was missing")
-        manager.options.use_fine_grained_cache = False
-        manager.options.cache_dir = os.devnull
+        manager.cache_enabled = False
         graph = load_graph(sources, manager)
 
     t1 = time.time()
@@ -2133,7 +2139,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_graph:
         dump_graph(graph)
         return graph
-    if manager.options.use_fine_grained_cache:
+    # If we are loading a fine-grained incremental mode cache, we
+    # don't want to do a real incremental reprocess of the graph---we
+    # just want to load in all of the cache information.
+    if manager.use_fine_grained_cache():
         process_fine_grained_cache_graph(graph, manager)
     else:
         process_graph(graph, manager)
