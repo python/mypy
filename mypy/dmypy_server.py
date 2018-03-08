@@ -144,7 +144,11 @@ class Server:
                     json.dump({'pid': os.getpid(), 'sockname': sock.getsockname()}, f)
                     f.write('\n')  # I like my JSON with trailing newline
                 while True:
-                    conn, addr = sock.accept()
+                    try:
+                        conn, addr = sock.accept()
+                    except socket.timeout:
+                        print("Exiting due to inactivity.")
+                        sys.exit(0)
                     try:
                         data = receive(conn)
                     except OSError as err:
@@ -168,9 +172,6 @@ class Server:
                     if command == 'stop':
                         sock.close()
                         sys.exit(0)
-            except socket.timeout:
-                print("Exiting due to inactivity.")
-                sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)
         finally:
