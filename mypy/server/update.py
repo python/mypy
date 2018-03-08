@@ -131,7 +131,7 @@ from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, OverloadedFuncDef, SymbolTable
+    Import, ImportFrom, OverloadedFuncDef, SymbolTable, LambdaExpr
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -756,6 +756,10 @@ def reprocess_nodes(manager: BuildManager,
     # TODO: ignore_all argument to set_file_ignored_lines
     manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
 
+    targets = {target_from_node(module_id, node.node)
+               for node in nodes}
+    manager.errors.clear_errors_in_targets(file_node.path, targets)
+
     # Strip semantic analysis information.
     for deferred in nodes:
         strip_target(deferred.node)
@@ -905,3 +909,22 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
 
 def is_verbose(manager: BuildManager) -> bool:
     return manager.options.verbosity >= 1 or DEBUG_FINE_GRAINED
+
+
+def target_from_node(module: str,
+                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]) -> str:
+    """Return the target name corresponding to a deferred node.
+
+    Args:
+        module: Must be module id of the module that defines 'node'
+    """
+    if isinstance(node, MypyFile):
+        assert module == node.fullname()
+        return module
+    elif isinstance(node, (OverloadedFuncDef, FuncDef)):
+        if node.info is not None:
+            return '%s.%s' % (node.info.fullname(), node.name())
+        else:
+            return '%s.%s' % (module, node.name())
+    else:
+        assert False

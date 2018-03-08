@@ -21,7 +21,7 @@ class ErrorInfo:
     # related to this error. Each item is a (path, line number) tuple.
     import_ctx = None  # type: List[Tuple[str, int]]
 
-    # The source file that was the source of this error.
+    # The path to source file that was the source of this error.
     file = ''
 
     # The fully-qualified id of the source module for this error.
@@ -51,7 +51,7 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
-    # Actual origin of the error message
+    # Actual origin of the error message as tuple (path, line number)
     origin = None  # type: Tuple[str, int]
 
     # Fine-grained incremental target where this was reported
@@ -348,6 +348,13 @@ class Errors:
                 return
             self.only_once_messages.add(info.message)
         self._add_error_info(file, info)
+
+    def clear_errors_in_targets(self, path: str, targets: Set[str]) -> None:
+        """Remove errors in specific fine-grained targets within a file."""
+        if path in self.error_info_map:
+            new_errors = [info for info in self.error_info_map[path]
+                          if info.target not in targets]
+            self.error_info_map[path] = new_errors
 
     def generate_unused_ignore_notes(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
