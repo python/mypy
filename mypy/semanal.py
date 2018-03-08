@@ -1603,7 +1603,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def normalize_type_alias(self, node: SymbolTableNode,
                              ctx: Context) -> Optional[SymbolTableNode]:
-        """If node refers to a built-intype alias, normalize it.
+        """If node refers to a built-in type alias, normalize it.
 
         An example normalization is 'typing.List' -> '__builtins__.list'.
 

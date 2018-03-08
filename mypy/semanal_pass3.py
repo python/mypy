@@ -451,8 +451,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
              blocker: bool = False) -> None:
-        # TODO: Process all arguments
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg)
+        self.sem.fail(msg, ctx, serious, blocker=blocker)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)

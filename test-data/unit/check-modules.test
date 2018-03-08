@@ -1958,7 +1958,7 @@ tmp/b.py:1: error: Cannot find module named 'c'
 main:1: error: Cannot find module named 'c'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
-[case testIndirectFromImportWithinCycle]
+[case testIndirectFromImportWithinCycle1]
 import a
 [file a.py]
 from b import f
@@ -1968,6 +1968,20 @@ from c import y
 from a import x
 def f() -> None: pass
 reveal_type(x) # E: Revealed type is 'builtins.str'
+[file c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycle2]
+import a
+[file a.py]
+from c import y
+from b import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file b.py]
+from a import f
+from c import x
 [file c.py]
 x = str()
 y = int()
@@ -2018,7 +2032,7 @@ reveal_type(A().g) # E: Revealed type is 'def (x: builtins.list[builtins.int])'
 from typing import List
 [builtins fixtures/list.pyi]
 
-[case testIndirectStarImportWithinCycle]
+[case testIndirectStarImportWithinCycle1]
 import a
 [file a.py]
 from b import f
@@ -2028,6 +2042,20 @@ from c import y
 from a import *
 def f() -> None: pass
 reveal_type(x) # E: Revealed type is 'builtins.str'
+[file c.py]
+x = str()
+y = int()
+
+[case testIndirectStarImportWithinCycle2]
+import a
+[file a.py]
+from c import y
+from b import *
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file b.py]
+from a import f
+from c import x
 [file c.py]
 x = str()
 y = int()
