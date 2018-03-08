@@ -137,7 +137,7 @@ from mypy.options import Options
 from mypy.types import Type
 from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
-    snapshot_symbol_table, compare_symbol_table_snapshots, is_identical_type, SnapshotItem
+    snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
