@@ -4007,9 +4007,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
 
     def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
-        if self.is_func_scope():
+        if self.locals[-1] is not None:
             return self.locals[-1].get(name)
-        elif self.is_class_scope():
+        elif self.type is not None:
             return self.type.names.get(name)
         else:
             return self.globals.get(name)
