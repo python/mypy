@@ -655,17 +655,14 @@ def propagate_changes_using_dependencies(
         todo = find_targets_recursive(manager, triggered, deps,
                                       manager.modules, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
-        # errors might be lost. Only do this when there are no other triggered
-        # targets to avoid repeated work.
-        if not triggered:
-            for target in targets_with_errors:
-                id = module_prefix(manager.modules, target)
-                if id is not None and id not in up_to_date_modules:
-                    if id not in todo:
-                        todo[id] = set()
-                    manager.log_fine_grained('process target with error: %s' % target)
-                    todo[id].update(lookup_target(manager.modules, target))
-            targets_with_errors = set()
+        # errors might be lost.
+        for target in targets_with_errors:
+            id = module_prefix(manager.modules, target)
+            if id is not None and id not in up_to_date_modules:
+                if id not in todo:
+                    todo[id] = set()
+                manager.log_fine_grained('process target with error: %s' % target)
+                todo[id].update(lookup_target(manager.modules, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
@@ -681,6 +678,7 @@ def propagate_changes_using_dependencies(
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
         up_to_date_modules = set()
+        targets_with_errors = set()
         if is_verbose(manager):
             manager.log_fine_grained('triggered: %r' % list(triggered))
 
