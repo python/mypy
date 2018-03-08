@@ -595,8 +595,10 @@ def calculate_active_triggers(manager: BuildManager,
         else:
             snapshot2 = snapshot_symbol_table(id, new.names)
         diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
+        package_nesting_level = id.count('.')
         for item in diff:
-            if item.count('.') <= 1 and not item.split('.')[-1].startswith('_'):
+            if (item.count('.') <= package_nesting_level + 1
+                    and not item.split('.')[-1].startswith('_')):
                 # Activate catch-all wildcard trigger for top-level module changes (used for
                 # "from m import *").
                 diff.add(id + WILDCARD_TAG)

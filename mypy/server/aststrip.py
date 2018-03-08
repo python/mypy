@@ -65,6 +65,7 @@ def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
         self.type = None  # type: Optional[TypeInfo]
+        # Currently active module/class symbol table
         self.names = None  # type: Optional[SymbolTable]
         self.file_node = None  # type: Optional[MypyFile]
         self.is_class_body = False
@@ -125,14 +126,16 @@ class NodeStripVisitor(TraverserVisitor):
 
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
-        # TODO: Update and restore self.names
         old_type = self.type
         old_is_class_body = self.is_class_body
+        old_names = self.names
         self.type = info
         self.is_class_body = True
+        self.names = info.names
         yield
         self.type = old_type
         self.is_class_body = old_is_class_body
+        self.names = old_names
 
     @contextlib.contextmanager
     def enter_method(self, info: TypeInfo) -> Iterator[None]:
