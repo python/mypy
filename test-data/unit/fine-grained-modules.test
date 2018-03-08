@@ -1231,3 +1231,17 @@ def f() -> None: pass
 [out]
 ==
 main:2: error: Name 'f' is not defined
+
+[case testImportStarWithinFunction]
+def f() -> None:
+    from m import *
+    f()
+[file m.py]
+[file m.py.2]
+def f(x: int) -> None: pass
+[file m.py.3]
+def f() -> None: pass
+[out]
+==
+main:3: error: Too few arguments for "f"
+==

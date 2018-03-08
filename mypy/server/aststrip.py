@@ -202,8 +202,9 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_import_all(self, node: ImportAll) -> None:
         # Reset entries in the symbol table that were added through the statement.
         # (The description in visit_import is relevant here as well.)
-        for name in node.imported_names:
-            del self.names[name]
+        if self.names:
+            for name in node.imported_names:
+                del self.names[name]
         node.imported_names = []
 
     def visit_name_expr(self, node: NameExpr) -> None:
