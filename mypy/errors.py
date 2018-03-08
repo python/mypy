@@ -352,8 +352,12 @@ class Errors:
     def clear_errors_in_targets(self, path: str, targets: Set[str]) -> None:
         """Remove errors in specific fine-grained targets within a file."""
         if path in self.error_info_map:
-            new_errors = [info for info in self.error_info_map[path]
-                          if info.target not in targets]
+            new_errors = []
+            for info in self.error_info_map[path]:
+                if info.target not in targets:
+                    new_errors.append(info)
+                elif info.only_once:
+                    self.only_once_messages.remove(info.message)
             self.error_info_map[path] = new_errors
 
     def generate_unused_ignore_notes(self, file: str) -> None:
