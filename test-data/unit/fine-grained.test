@@ -3289,4 +3289,80 @@ def f() -> str: pass
 ==
 a.py:10: error: Argument 1 to "h" has incompatible type "int"; expected "str"
 a.py:11: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+
+[case testNoOpUpdateFineGrainedIncremental1]
+# cmd: mypy a.py
+[file a.py]
+1()
+[file b.py.2]
+# Note: this file is not part of the build
+[file a.py.3]
+x = 1
+[out]
+a.py:1: error: "int" not callable
+==
+a.py:1: error: "int" not callable
+==
+
+[case testNoOpUpdateFineGrainedIncremental2]
+# cmd: mypy a.py
+[file a.py]
+1()
+[file a.py.2]
+1()
+[file a.py.3]
+x = 1
+[file a.py.4]
+x = 1
+[out]
+a.py:1: error: "int" not callable
+==
+a.py:1: error: "int" not callable
+==
+==
+
+[case testNonExistentFileOnCommandLine1]
+# cmd: mypy a.py nonexistent.py
+[file a.py]
+[file a.py.2]
+1()
+[out]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+==
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+
+[case testNonExistentFileOnCommandLine2]
+# cmd: mypy a.py
+# cmd2: mypy a.py nonexistent.py
+[file a.py]
+[file a.py.2]
+1()
+[out]
+==
+a.py:1: error: "int" not callable
+
+[case testNonExistentFileOnCommandLine3]
+# cmd: mypy a.py
+# cmd2: mypy a.py nonexistent.py
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+==
+
+[case testNonExistentFileOnCommandLine4]
+# cmd: mypy a.py nonexistent.py
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+==
+
+[case testNonExistentFileOnCommandLine5]
+# cmd: mypy a.py nonexistent_stub.pyi
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent_stub.pyi]
+[delete nonexistent_stub.pyi.2]
+[out]
 ==

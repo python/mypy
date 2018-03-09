@@ -389,3 +389,21 @@ a.py:1: error: invalid syntax
 <ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
 ==
 a.py:2: error: "int" not callable
+
+[case testInitialBlocker]
+# cmd: mypy a.py b.py
+[file a.py]
+1 1
+[file b.py]
+def f() -> int:
+    return ''
+[file a.py.2]
+x = 1
+[file b.py.3]
+def f() -> int:
+    return 0
+[out]
+a.py:1: error: invalid syntax
+==
+b.py:2: error: Incompatible return value type (got "str", expected "int")
+==
