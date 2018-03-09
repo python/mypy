@@ -171,13 +171,17 @@ class FineGrainedBuildManager:
         # Module that we haven't processed yet but that are known to be stale.
         self.stale = []  # type: List[Tuple[str, str]]
         # Disable the cache so that load_graph doesn't try going back to disk
-        # for the cache. This is kind of a hack and it might be better to have
-        # this directly reflected in load_graph's interface.
-        self.options.cache_dir = os.devnull
+        # for the cache.
+        self.manager.cache_enabled = False
         manager.saved_cache = {}
-        manager.only_load_from_cache = False
+
+        # Some hints to the test suite about what is going on:
         # Active triggers during the last update
         self.triggered = []  # type: List[str]
+        # Modules passed to update during the last update
+        self.changed_modules = []  # type: List[Tuple[str, str]]
+        # Modules processed during the last update
+        self.updated_modules = []  # type: List[str]
 
     def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
@@ -198,10 +202,13 @@ class FineGrainedBuildManager:
         """
         assert changed_modules, 'No changed modules'
 
+        self.changed_modules = changed_modules
+
         # Reset global caches for the new build.
         find_module_clear_caches()
 
         self.triggered = []
+        self.updated_modules = []
         changed_modules = dedupe_modules(changed_modules + self.stale)
         initial_set = {id for id, _ in changed_modules}
         self.manager.log_fine_grained('==== update %s ====' % ', '.join(
@@ -258,6 +265,7 @@ class FineGrainedBuildManager:
             - Whether there was a blocking error in the module
         """
         self.manager.log_fine_grained('--- update single %r ---' % module)
+        self.updated_modules.append(module)
 
         # TODO: If new module brings in other modules, we parse some files multiple times.
         manager = self.manager

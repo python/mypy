@@ -15,6 +15,22 @@
 --   <optional output from batch pass>
 --   ==
 --   <optional output from first incremental pass>
+--
+--
+-- Modules that are expected to be detected as changed by dmypy_server
+-- can be checked with [stale ...]
+-- Generally this should mean added, deleted, or changed files, though there
+-- are important edge cases related to the cache: deleted files won't be detected
+-- as changed in the initial run with the cache while modules that depended on them
+-- should be.
+--
+-- Modules that are require a full-module reprocessing by update can be checked with
+-- [rechecked ...]. This should include any files detected as having changed as well
+-- as any files that contain targets that need to be reprocessed but which haven't
+-- been loaded yet. If there is no [rechecked...] directive, it inherits the value of
+-- [stale ...].
+--
+-- Specifications for later runs can be given with [stale2 ...], [stale3 ...], etc.
 
 [case testReprocessFunction]
 import m
