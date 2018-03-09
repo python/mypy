@@ -571,7 +571,9 @@ class BuildManager:
       flush_errors:    A function for processing errors after each SCC
       saved_cache:     Dict with saved cache state for coarse-grained dmypy
                        (read-write!)
-      cache_enabled:   Whether cache usage is enabled
+      cache_enabled:   Whether cache usage is enabled. This is set based on options,
+                       but is disabled if fine-grained cache loading fails
+                       and after an initial fine-grained load.
       stats:           Dict with various instrumentation numbers
     """
 
@@ -609,7 +611,8 @@ class BuildManager:
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
         self.flush_errors = flush_errors
-        self.cache_enabled = options.incremental and options.cache_dir != os.devnull
+        self.cache_enabled = options.incremental and (
+            not options.fine_grained_incremental or options.use_fine_grained_cache)
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
 
