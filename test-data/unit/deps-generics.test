@@ -142,3 +142,22 @@ def f(x: T) -> None:
 <m.A.f> -> m.f
 <m.A> -> <m.T>, <m.f>, m.A, m.f
 <m.T> -> <m.f>, m.f
+
+[case testTypeVarValues]
+from typing import TypeVar
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+T = TypeVar('T', A, B)
+S = TypeVar('S', C, D)
+
+def f(x: T) -> S:
+    pass
+[out]
+<m.A> -> <m.f>, m.A, m.f
+<m.B> -> <m.f>, m.B, m.f
+<m.C> -> <m.f>, m.C, m.f
+<m.D> -> <m.f>, m.D, m.f
+<m.S> -> <m.f>, m.f
+<m.T> -> <m.f>, m.f
