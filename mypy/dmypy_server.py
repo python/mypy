@@ -113,7 +113,6 @@ class Server:
                  timeout: Optional[int] = None,
                  alt_lib_path: Optional[str] = None) -> None:
         """Initialize the server with the desired mypy flags."""
-        self.saved_cache = {}  # type: mypy.build.SavedCache
         self.options = options
         self.timeout = timeout
         self.alt_lib_path = alt_lib_path
