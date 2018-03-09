@@ -111,8 +111,6 @@ class FineGrainedSuite(DataSuite):
             sources = self.parse_sources(main_src, step)
             new_messages = self.run_check(server, sources)
 
-            assert server.fine_grained_manager
-
             updated = []  # type: List[str]
             changed = []  # type: List[str]
             if server.fine_grained_manager:
