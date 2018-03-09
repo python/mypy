@@ -2876,6 +2876,15 @@ tmp/c.py:1: error: Module 'd' has no attribute 'x'
 [out3]
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
 
+[case testNoCrashOnDeletedWithCacheOnCmdline]
+# cmd: mypy -m nonexistent
+# cmd2: mypy -m nonexistent
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+[out2]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
 # cmd2: mypy -m c

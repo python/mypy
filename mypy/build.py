@@ -1084,7 +1084,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         return None
 
     path = os.path.abspath(path)
-    st = manager.get_stat(path)  # TODO: Errors
+    try:
+        st = manager.get_stat(path)
+    except OSError:
+        return None
     if not stat.S_ISREG(st.st_mode):
         manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
         return None
@@ -1106,7 +1109,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     mtime = int(st.st_mtime)
     if mtime != meta.mtime or path != meta.path:
-        source_hash = manager.fscache.md5(path)
+        try:
+            source_hash = manager.fscache.md5(path)
+        except (OSError, UnicodeDecodeError, DecodeError):
+            return None
         if source_hash != meta.hash:
             manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
             return None
