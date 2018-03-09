@@ -113,7 +113,8 @@ class FineGrainedSuite(DataSuite):
 
             assert server.fine_grained_manager
 
-            updated, changed = [], []
+            updated = []  # type: List[str]
+            changed = []  # type: List[str]
             if server.fine_grained_manager:
                 if CHECK_CONSISTENCY:
                     check_consistency(server.fine_grained_manager)
