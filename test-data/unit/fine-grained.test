@@ -2719,6 +2719,60 @@ class User:
 [out]
 ==
 
+[case testTypeVarValuesFunction]
+import a
+[file a.py]
+from typing import TypeVar
+from c import A, B
+T = TypeVar('T', A, B)
+
+def f(x: T) -> T:
+    x.x = int()
+    return x
+[file c.py]
+class A:
+    x: int
+class B:
+    x: int
+[file c.py.2]
+class A:
+    x: int
+class B:
+    x: str
+[out]
+
+[case testTypeVarValuesClass]
+import a
+[file a.py]
+import c
+class C:
+    x: c.D[c.A]
+[file c.py]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+class C: pass
+T = TypeVar('T', A, B, C)
+class D(Generic[T]):
+    pass
+[file c.py.2]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+class C: pass
+T = TypeVar('T', B, C)
+class D(Generic[T]):
+    pass
+[out]
+
+[case testTypeVarBoundFunction]
+
+[out]
+
+[case testTypeVarBoundClass]
+
+[out]
+
 [case testRefreshClassBasedEnum]
 import aa
 [file aa.py]

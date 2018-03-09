@@ -631,6 +631,9 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(get_type_triggers(arg))
+        # TODO: process this separately.
+        for tvar in typ.type.defn.type_vars:
+            triggers.append(make_trigger(tvar.fullname))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:
