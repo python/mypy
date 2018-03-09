@@ -767,8 +767,13 @@ def parse_section(prefix: str, template: Options,
                     continue
                 if key.startswith('x_'):
                     continue  # Don't complain about `x_blah` flags
-                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
-                      file=sys.stderr)
+                elif key == 'strict':
+                    print("%s: Strict mode is not supported in configuration files: specify "
+                          "individual flags instead (see 'mypy -h' for the list of flags enabled "
+                          "in strict mode)" % prefix, file=sys.stderr)
+                else:
+                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
+                          file=sys.stderr)
                 continue
             ct = type(dv)
         v = None  # type: Any

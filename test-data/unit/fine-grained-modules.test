@@ -976,7 +976,7 @@ main:2: error: Too few arguments for "foo" of "Foo"
 
 -- This series of tests is designed to test adding a new module that
 -- doesn't appear in the cache, for cache mode. They are run in
--- cache mode oly because stale and rechecked differ heavily between
+-- cache mode only because stale and rechecked differ heavily between
 -- the modes.
 [case testAddModuleAfterCache1-skip-nocache]
 # cmd: mypy main a.py
@@ -1148,7 +1148,7 @@ def f() -> None: pass
 from b2 import f
 f()
 
--- in no cache mode, there is no way to know about b1 yet
+-- in cache mode, there is no way to know about b1 yet
 [stale a, b2]
 
 [out]
@@ -1163,8 +1163,9 @@ f()
 def f() -> None: pass
 [delete b.py.2]
 
--- in no cache mode, there is no way to know about b yet,
--- but a should still get triggered
+-- in cache mode, there is no way to know about b yet,
+-- but a should get flagged as changed by the initial cache
+-- check, since one of its dependencies is missing.
 [stale a]
 
 [out]
