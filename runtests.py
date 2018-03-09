@@ -204,7 +204,6 @@ def test_path(*names: str):
 
 PYTEST_FILES = test_path(
     'testcheck',
-    'testdmypy',
     'testextensions',
     'testdeps',
     'testdiff',
