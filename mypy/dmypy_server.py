@@ -319,7 +319,6 @@ class Server:
                     state.path,
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
-            # Run an update
             changed = self.find_changed(sources)
 
             # Find anything that has had its dependency list change
@@ -328,6 +327,7 @@ class Server:
                     assert state.path is not None
                     changed.append((state.id, state.path))
 
+            # Run an update
             messages = self.fine_grained_manager.update(changed)
         else:
             # Stores the initial state of sources as a side effect.

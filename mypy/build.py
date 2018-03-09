@@ -550,23 +550,6 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class FindModuleCache:
-    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
-        self.fscache = fscache or FileSystemCache(None)
-        # Cache find_module: (id, lib_path) -> result.
-        self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
-
-        # Cache some repeated work within distinct find_module calls: finding which
-        # elements of lib_path have even the subdirectory they'd need for the module
-        # to exist.  This is shared among different module ids when they differ only
-        # in the last component.
-        self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
-
-    def clear(self) -> None:
-        self.results.clear()
-        self.dirs.clear()
-
-
 class BuildManager:
     """This class holds shared state for building a mypy program.
 
@@ -724,7 +707,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(self.find_module_cache, id, self.lib_path) is not None
+        return self.find_module_cache.find_module(id, self.lib_path) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -837,85 +820,108 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
-def find_module(cache: FindModuleCache, id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
-    """Return the path of the module source file, or None if not found."""
-    lib_path = tuple(lib_path_arg)
-    fscache = cache.fscache
+class FindModuleCache:
+    """Module finder with integrated cache.
 
-    def find() -> Optional[str]:
-        # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
-        # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
-        # that only once and cache it for when we look for modules like 'foo.bar.blah'
-        # that will require the same subdirectory.
-        components = id.split('.')
-        dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if (dir_chain, lib_path) not in cache.dirs:
-            dirs = []
-            for pathitem in lib_path:
-                # e.g., '/usr/lib/python3.4/foo/bar'
-                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                if fscache.isdir(dir):
-                    dirs.append(dir)
-            cache.dirs[dir_chain, lib_path] = dirs
-        candidate_base_dirs = cache.dirs[dir_chain, lib_path]
+       Module locations and some intermediate results are cached internally
+       and can be cleared with the clear() method.
 
-        # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
-        # contains just the subdirectories 'foo/bar' that actually exist under the
-        # elements of lib_path.  This is probably much shorter than lib_path itself.
-        # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
-        seplast = os.sep + components[-1]  # so e.g. '/baz'
-        sepinit = os.sep + '__init__'
-        for base_dir in candidate_base_dirs:
-            base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
-            # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
-            for extension in PYTHON_EXTENSIONS:
-                path = base_path + sepinit + extension
-                if fscache.isfile_case(path) and verify_module(fscache, id, path):
-                    return path
-            # No package, look for module.
-            for extension in PYTHON_EXTENSIONS:
-                path = base_path + extension
-                if fscache.isfile_case(path) and verify_module(fscache, id, path):
-                    return path
-        return None
+       All file system accesses are performed through a FileSystemCache,
+       which is not ever cleared by this class. If necessary it must be
+       cleared by client code.
+    """
 
-    key = (id, lib_path)
-    if key not in cache.results:
-        cache.results[key] = find()
-    return cache.results[key]
+    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
+        self.fscache = fscache or FileSystemCache(None)
+        # Cache find_module: (id, lib_path) -> result.
+        self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
 
+        # Cache some repeated work within distinct find_module calls: finding which
+        # elements of lib_path have even the subdirectory they'd need for the module
+        # to exist.  This is shared among different module ids when they differ only
+        # in the last component.
+        self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 
-def find_modules_recursive(cache: FindModuleCache,
-                           module: str, lib_path: List[str]) -> List[BuildSource]:
-    module_path = find_module(cache, module, lib_path)
-    if not module_path:
-        return []
-    result = [BuildSource(module_path, module, None)]
-    if module_path.endswith(('__init__.py', '__init__.pyi')):
-        # Subtle: this code prefers the .pyi over the .py if both
-        # exists, and also prefers packages over modules if both x/
-        # and x.py* exist.  How?  We sort the directory items, so x
-        # comes before x.py and x.pyi.  But the preference for .pyi
-        # over .py is encoded in find_module(); even though we see
-        # x.py before x.pyi, find_module() will find x.pyi first.  We
-        # use hits to avoid adding it a second time when we see x.pyi.
-        # This also avoids both x.py and x.pyi when x/ was seen first.
-        hits = set()  # type: Set[str]
-        for item in sorted(os.listdir(os.path.dirname(module_path))):
-            abs_path = os.path.join(os.path.dirname(module_path), item)
-            if os.path.isdir(abs_path) and \
-                    (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
-                    os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
-                hits.add(item)
-                result += find_modules_recursive(cache, module + '.' + item, lib_path)
-            elif item != '__init__.py' and item != '__init__.pyi' and \
-                    item.endswith(('.py', '.pyi')):
-                mod = item.split('.')[0]
-                if mod not in hits:
-                    hits.add(mod)
-                    result += find_modules_recursive(
-                        cache, module + '.' + mod, lib_path)
-    return result
+    def clear(self) -> None:
+        self.results.clear()
+        self.dirs.clear()
+
+    def find_module(self, id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
+        """Return the path of the module source file, or None if not found."""
+        lib_path = tuple(lib_path_arg)
+        fscache = self.fscache
+
+        def find() -> Optional[str]:
+            # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
+            # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
+            # that only once and cache it for when we look for modules like 'foo.bar.blah'
+            # that will require the same subdirectory.
+            components = id.split('.')
+            dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
+            if (dir_chain, lib_path) not in self.dirs:
+                dirs = []
+                for pathitem in lib_path:
+                    # e.g., '/usr/lib/python3.4/foo/bar'
+                    dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                    if fscache.isdir(dir):
+                        dirs.append(dir)
+                self.dirs[dir_chain, lib_path] = dirs
+            candidate_base_dirs = self.dirs[dir_chain, lib_path]
+
+            # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
+            # contains just the subdirectories 'foo/bar' that actually exist under the
+            # elements of lib_path.  This is probably much shorter than lib_path itself.
+            # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
+            seplast = os.sep + components[-1]  # so e.g. '/baz'
+            sepinit = os.sep + '__init__'
+            for base_dir in candidate_base_dirs:
+                base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+                # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
+                for extension in PYTHON_EXTENSIONS:
+                    path = base_path + sepinit + extension
+                    if fscache.isfile_case(path) and verify_module(fscache, id, path):
+                        return path
+                # No package, look for module.
+                for extension in PYTHON_EXTENSIONS:
+                    path = base_path + extension
+                    if fscache.isfile_case(path) and verify_module(fscache, id, path):
+                        return path
+            return None
+
+        key = (id, lib_path)
+        if key not in self.results:
+            self.results[key] = find()
+        return self.results[key]
+
+    def find_modules_recursive(self, module: str, lib_path: List[str]) -> List[BuildSource]:
+        module_path = self.find_module(module, lib_path)
+        if not module_path:
+            return []
+        result = [BuildSource(module_path, module, None)]
+        if module_path.endswith(('__init__.py', '__init__.pyi')):
+            # Subtle: this code prefers the .pyi over the .py if both
+            # exists, and also prefers packages over modules if both x/
+            # and x.py* exist.  How?  We sort the directory items, so x
+            # comes before x.py and x.pyi.  But the preference for .pyi
+            # over .py is encoded in find_module(); even though we see
+            # x.py before x.pyi, find_module() will find x.pyi first.  We
+            # use hits to avoid adding it a second time when we see x.pyi.
+            # This also avoids both x.py and x.pyi when x/ was seen first.
+            hits = set()  # type: Set[str]
+            for item in sorted(os.listdir(os.path.dirname(module_path))):
+                abs_path = os.path.join(os.path.dirname(module_path), item)
+                if os.path.isdir(abs_path) and \
+                        (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
+                        os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
+                    hits.add(item)
+                    result += self.find_modules_recursive(module + '.' + item, lib_path)
+                elif item != '__init__.py' and item != '__init__.pyi' and \
+                        item.endswith(('.py', '.pyi')):
+                    mod = item.split('.')[0]
+                    if mod not in hits:
+                        hits.add(mod)
+                        result += self.find_modules_recursive(module + '.' + mod, lib_path)
+        return result
 
 
 def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
@@ -1528,7 +1534,7 @@ class State:
                 # difference and just assume 'builtins' everywhere,
                 # which simplifies code.
                 file_id = '__builtin__'
-            path = find_module(manager.find_module_cache, file_id, manager.lib_path)
+            path = manager.find_module_cache.find_module(file_id, manager.lib_path)
             if path:
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze

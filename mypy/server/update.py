@@ -528,8 +528,6 @@ def get_module_to_path_map(manager: BuildManager) -> Dict[str, str]:
 def get_sources(fscache: FileSystemCache,
                 modules: Dict[str, str],
                 changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
-    # TODO: Race condition when reading from the file system; we should only read each
-    #       bit of external state once during a build to have a consistent view of the world
     sources = []
     for id, path in changed_modules:
         if fscache.isfile(path):

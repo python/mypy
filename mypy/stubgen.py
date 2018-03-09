@@ -156,8 +156,7 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        module_path = mypy.build.find_module(mypy.build.FindModuleCache(),
-                                             module, ['.'] + search_path)
+        module_path = mypy.build.FindModuleCache().find_module(module, ['.'] + search_path)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))

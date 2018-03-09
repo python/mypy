@@ -291,8 +291,7 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.find_module(build.FindModuleCache(),
-                                         module_name, [test_temp_dir])
+                path = build.FindModuleCache().find_module(module_name, [test_temp_dir])
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()
