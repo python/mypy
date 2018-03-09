@@ -674,10 +674,13 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
-        # TODO: bound (values?)
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
+        if typ.upper_bound:
+            triggers.extend(get_type_triggers(typ.upper_bound))
+        for val in typ.values:
+            triggers.extend(get_type_triggers(val))
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
