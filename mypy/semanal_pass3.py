@@ -18,7 +18,8 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef
+    TupleExpr, RevealTypeExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
+    MDEF,
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -258,6 +259,18 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                 node = self.sem.lookup(s.lvalues[0].name, s, suppress_errors=True)
                 if node:
                     self.analyze(node.type_override, node)
+        # Subclass attribute assignments with no type annotation should be
+        # assumed to be classvar if overriding a declared classvar from the base
+        # class.
+        if (isinstance(s.lvalues[0], NameExpr) and s.lvalues[0].kind == MDEF
+                and isinstance(s.lvalues[0].node, Var)):
+            var = s.lvalues[0].node
+            if var.info is not None and var.is_inferred and not var.is_classvar:
+                for base in var.info.mro[1:]:
+                    tnode = base.names.get(var.name())
+                    if (tnode is not None and isinstance(tnode.node, Var)
+                            and tnode.node.is_classvar):
+                        var.is_classvar = True
         super().visit_assignment_stmt(s)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
