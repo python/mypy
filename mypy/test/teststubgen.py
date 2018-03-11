@@ -194,3 +194,13 @@ class StubgencSuite(Suite):
         mod = ModuleType('module', '')  # any module is fine
         generate_c_type_stub(mod, 'alias', object, output)
         assert_equal(output[0], 'class alias:')
+
+    def test_generate_c_type_stub_variable_type_annotation(self) -> None:
+        # This class mimics the stubgen unit test 'testClassVariable'
+        class TestClassVariableCls:
+            x = 1
+
+        output = []  # type: List[str]
+        mod = ModuleType('module', '')  # any module is fine
+        generate_c_type_stub(mod, 'C', TestClassVariableCls, output)
+        assert_equal(output, ['class C:', '    x: Any = ...'])
