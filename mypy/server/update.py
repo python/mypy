@@ -131,7 +131,7 @@ from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, OverloadedFuncDef, SymbolTable
+    Import, ImportFrom, OverloadedFuncDef, SymbolTable, LambdaExpr
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -143,7 +143,7 @@ from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
 from mypy.server.deps import get_dependencies, get_dependencies_of_target
 from mypy.server.target import module_prefix, split_target
-from mypy.server.trigger import make_trigger
+from mypy.server.trigger import make_trigger, WILDCARD_TAG
 
 
 MAX_ITER = 1000
@@ -602,7 +602,25 @@ def calculate_active_triggers(manager: BuildManager,
             names.add(id)
         else:
             snapshot2 = snapshot_symbol_table(id, new.names)
-        names |= compare_symbol_table_snapshots(id, snapshot1, snapshot2)
+        diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
+        package_nesting_level = id.count('.')
+        for item in diff:
+            if (item.count('.') <= package_nesting_level + 1
+                    and item.split('.')[-1] not in ('__builtins__',
+                                                    '__file__',
+                                                    '__name__',
+                                                    '__package__',
+                                                    '__doc__')):
+                # Activate catch-all wildcard trigger for top-level module changes (used for
+                # "from m import *"). This also gets triggered by changes to module-private
+                # entries, but as these unneeded dependencies only result in extra processing,
+                # it's a minor problem.
+                #
+                # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
+                #     special casing them here.
+                diff.add(id + WILDCARD_TAG)
+                break
+        names |= diff
     return {make_trigger(name) for name in names}
 
 
@@ -662,7 +680,7 @@ def propagate_changes_using_dependencies(
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
-                manager.log_fine_grained('process: %s' % target)
+                manager.log_fine_grained('process target with error: %s' % target)
                 todo[id].update(lookup_target(manager.modules, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
@@ -720,7 +738,7 @@ def find_targets_recursive(
                     continue
                 if module_id not in result:
                     result[module_id] = set()
-                manager.log_fine_grained('process %s' % target)
+                manager.log_fine_grained('process: %s' % target)
                 deferred = lookup_target(modules, target)
                 result[module_id].update(deferred)
 
@@ -756,6 +774,10 @@ def reprocess_nodes(manager: BuildManager,
 
     # TODO: ignore_all argument to set_file_ignored_lines
     manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
+
+    targets = {target_from_node(module_id, node.node)
+               for node in nodes}
+    manager.errors.clear_errors_in_targets(file_node.path, targets)
 
     # Strip semantic analysis information.
     for deferred in nodes:
@@ -906,3 +928,22 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
 
 def is_verbose(manager: BuildManager) -> bool:
     return manager.options.verbosity >= 1 or DEBUG_FINE_GRAINED
+
+
+def target_from_node(module: str,
+                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]) -> str:
+    """Return the target name corresponding to a deferred node.
+
+    Args:
+        module: Must be module id of the module that defines 'node'
+    """
+    if isinstance(node, MypyFile):
+        assert module == node.fullname()
+        return module
+    elif isinstance(node, (OverloadedFuncDef, FuncDef)):
+        if node.info is not None:
+            return '%s.%s' % (node.info.fullname(), node.name())
+        else:
+            return '%s.%s' % (module, node.name())
+    else:
+        assert False, "Lambda expressions can't be deferred in fine-grained incremental mode"

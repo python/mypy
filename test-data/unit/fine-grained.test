@@ -1165,8 +1165,8 @@ def g() -> None:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b.h>, <b>, a.g
-3: <b.h>, <b>, a
+2: <b.h>, <b>, <b[wildcard]>, a.g
+3: <b.h>, <b>, <b[wildcard]>, a
 4: a.g
 [out]
 a.py:11: error: Too many arguments for "h"
