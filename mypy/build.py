@@ -80,6 +80,7 @@ class BuildResult:
       manager: The build manager.
       files:   Dictionary from module name to related AST node.
       types:   Dictionary from parse tree node to its inferred type.
+      used_cache: Whether the build took advantage of a cache
       errors:  List of error messages.
     """
 
@@ -88,6 +89,7 @@ class BuildResult:
         self.graph = graph
         self.files = manager.modules
         self.types = manager.all_types  # Non-empty for tests only or if dumping deps
+        self.used_cache = manager.cache_enabled
         self.errors = []  # type: List[str]  # Filled in by build if desired
 
 
@@ -569,6 +571,9 @@ class BuildManager:
       flush_errors:    A function for processing errors after each SCC
       saved_cache:     Dict with saved cache state for coarse-grained dmypy
                        (read-write!)
+      cache_enabled:   Whether cache usage is enabled. This is set based on options,
+                       but is disabled if fine-grained cache loading fails
+                       and after an initial fine-grained load.
       stats:           Dict with various instrumentation numbers
     """
 
@@ -588,7 +593,6 @@ class BuildManager:
         self.data_dir = data_dir
         self.errors = errors
         self.errors.set_ignore_prefix(ignore_prefix)
-        self.only_load_from_cache = options.use_fine_grained_cache
         self.lib_path = tuple(lib_path)
         self.source_set = source_set
         self.reports = reports
@@ -607,8 +611,13 @@ class BuildManager:
         self.rechecked_modules = set()  # type: Set[str]
         self.plugin = plugin
         self.flush_errors = flush_errors
+        self.cache_enabled = options.incremental and (
+            not options.fine_grained_incremental or options.use_fine_grained_cache)
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+
+    def use_fine_grained_cache(self) -> bool:
+        return self.cache_enabled and self.options.use_fine_grained_cache
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
         if (self.options.shadow_file and
@@ -1157,7 +1166,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # changed since the cache was generated. We *don't* want to do a
     # coarse-grained incremental rebuild, so we accept the cache
     # metadata even if it doesn't match the source file.
-    if manager.options.use_fine_grained_cache:
+    if manager.use_fine_grained_cache():
         manager.log('Using potentially stale metadata for {}'.format(id))
         return meta
 
@@ -1655,7 +1664,7 @@ class State:
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
-        if path and source is None and self.options.incremental:
+        if path and source is None and self.manager.cache_enabled:
             self.meta = find_cache_meta(self.id, path, manager)
             # TODO: Get mtime if not cached.
             if self.meta is not None:
@@ -1675,10 +1684,10 @@ class State:
                                  for id, line in zip(self.meta.dependencies, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
         else:
-            # In fine-grained cache mode, pretend we only know about modules that
-            # have cache information and defer handling new modules until the
-            # fine-grained update.
-            if manager.only_load_from_cache:
+            # When doing a fine-grained cache load, pretend we only
+            # know about modules that have cache information and defer
+            # handling new modules until the fine-grained update.
+            if manager.use_fine_grained_cache():
                 manager.log("Deferring module to fine-grained update %s (%s)" % (path, id))
                 raise ModuleNotFound
 
@@ -1795,13 +1804,15 @@ class State:
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
+        # We need to set quick_and_dirty when doing a fine grained
+        # cache load because we need to gracefully handle missing modules.
         fixup_module_pass_one(self.tree, self.manager.modules,
-                              self.manager.options.quick_and_dirty)
+                              self.manager.options.quick_and_dirty or
+                              self.manager.use_fine_grained_cache())
 
     def calculate_mros(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        fixup_module_pass_two(self.tree, self.manager.modules,
-                              self.manager.options.quick_and_dirty)
+        fixup_module_pass_two(self.tree, self.manager.modules)
 
     def patch_dependency_parents(self) -> None:
         """
@@ -2058,7 +2069,7 @@ class State:
 
     def write_cache(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        if not self.path or self.options.cache_dir == os.devnull:
+        if not self.path or not self.manager.cache_enabled:
             return
         if self.manager.options.quick_and_dirty:
             is_errors = self.manager.errors.is_errors_for_file(self.path)
@@ -2105,9 +2116,12 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # This is a kind of unfortunate hack to work around some of fine-grained's
     # fragility: if we have loaded less than 50% of the specified files from
     # cache in fine-grained cache mode, load the graph again honestly.
-    if manager.options.use_fine_grained_cache and len(graph) < 0.50 * len(sources):
-        manager.log("Redoing load_graph because too much was missing")
-        manager.only_load_from_cache = False
+    # In this case, we just turn the cache off entirely, so we don't need
+    # to worry about some files being loaded and some from cache and so
+    # that fine-grained mode never *writes* to the cache.
+    if manager.use_fine_grained_cache() and len(graph) < 0.50 * len(sources):
+        manager.log("Redoing load_graph without cache because too much was missing")
+        manager.cache_enabled = False
         graph = load_graph(sources, manager)
 
     t1 = time.time()
@@ -2128,7 +2142,13 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_graph:
         dump_graph(graph)
         return graph
-    process_graph(graph, manager)
+    # If we are loading a fine-grained incremental mode cache, we
+    # don't want to do a real incremental reprocess of the graph---we
+    # just want to load in all of the cache information.
+    if manager.use_fine_grained_cache():
+        process_fine_grained_cache_graph(graph, manager)
+    else:
+        process_graph(graph, manager)
     updated = preserve_cache(graph)
     set_updated = set(updated)
     manager.saved_cache.clear()
@@ -2437,14 +2457,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)
 
-    # If we are running in fine-grained incremental mode with caching,
-    # we always process fresh SCCs so that we have all of the symbol
-    # tables and fine-grained dependencies available.
-    if manager.options.use_fine_grained_cache:
-        for prev_scc in fresh_scc_queue:
-            process_fresh_scc(graph, prev_scc, manager)
-        fresh_scc_queue = []
-
     sccs_left = len(fresh_scc_queue)
     nodes_left = sum(len(scc) for scc in fresh_scc_queue)
     manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
@@ -2454,6 +2466,25 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         manager.trace(str(fresh_scc_queue))
     else:
         manager.log("No fresh SCCs left in queue")
+
+
+def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> None:
+    """Finish loading everything for use in the fine-grained incremental cache"""
+
+    # If we are running in fine-grained incremental mode with caching,
+    # we process all SCCs as fresh SCCs so that we have all of the symbol
+    # tables and fine-grained dependencies available.
+    # We fail the loading of any SCC that we can't load a meta for, so we
+    # don't have anything *but* fresh SCCs.
+    sccs = sorted_components(graph)
+    manager.log("Found %d SCCs; largest has %d nodes" %
+                (len(sccs), max(len(scc) for scc in sccs)))
+
+    for ascc in sccs:
+        # Order the SCC's nodes using a heuristic.
+        # Note that ascc is a set, and scc is a list.
+        scc = order_ascc(graph, ascc)
+        process_fresh_scc(graph, scc, manager)
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:

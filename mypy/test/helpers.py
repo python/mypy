@@ -3,8 +3,9 @@ import re
 import subprocess
 import sys
 import time
+import shutil
 
-from typing import List, Dict, Tuple, Callable, Any, Optional
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
 from mypy.test.config import test_temp_dir
@@ -95,6 +96,21 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
             show_align_message(expected[first_diff], actual[first_diff])
 
         raise AssertionError(msg)
+
+
+def assert_module_equivalence(name: str,
+                              expected: Optional[Iterable[str]], actual: Iterable[str]) -> None:
+    if expected is not None:
+        expected_normalized = sorted(expected)
+        actual_normalized = sorted(set(actual).difference({"__main__"}))
+        assert_string_arrays_equal(
+            expected_normalized,
+            actual_normalized,
+            ('Actual modules ({}) do not match expected modules ({}) '
+             'for "[{} ...]"').format(
+                 ', '.join(actual_normalized),
+                 ', '.join(expected_normalized),
+                 name))
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
@@ -356,3 +372,22 @@ def run_command(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
         out = err = b''
         process.kill()
     return process.returncode, split_lines(out, err)
+
+
+def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
+    # In some systems, mtime has a resolution of 1 second which can
+    # cause annoying-to-debug issues when a file has the same size
+    # after a change. We manually set the mtime to circumvent this.
+    # Note that we increment the old file's mtime, which guarentees a
+    # different value, rather than incrementing the mtime after the
+    # copy, which could leave the mtime unchanged if the old file had
+    # a similarly fudged mtime.
+    new_time = None
+    if os.path.isfile(target_path):
+        new_time = os.stat(target_path).st_mtime + 1
+
+    # Use retries to work around potential flakiness on Windows (AppVeyor).
+    retry_on_error(lambda: shutil.copy(source_path, target_path))
+
+    if new_time:
+        os.utime(target_path, times=(new_time, new_time))

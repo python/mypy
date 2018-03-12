@@ -30,6 +30,8 @@ subparsers = parser.add_subparsers()
 start_parser = p = subparsers.add_parser('start', help="Start daemon")
 p.add_argument('--log-file', metavar='FILE', type=str,
                help="Direct daemon stdout/stderr to FILE")
+p.add_argument('--timeout', metavar='TIMEOUT', type=int,
+               help="Server shutdown timeout (in seconds)")
 p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                help="Regular mypy flags (precede with --)")
 
@@ -37,6 +39,8 @@ restart_parser = p = subparsers.add_parser('restart',
     help="Restart daemon (stop or kill followed by start)")
 p.add_argument('--log-file', metavar='FILE', type=str,
                help="Direct daemon stdout/stderr to FILE")
+p.add_argument('--timeout', metavar='TIMEOUT', type=int,
+               help="Server shutdown timeout (in seconds)")
 p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                help="Regular mypy flags (precede with --)")
 
@@ -63,6 +67,8 @@ p.add_argument('--junit-xml', help="write junit.xml to the given file")
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
 daemon_parser = p = subparsers.add_parser('daemon', help="Run daemon in foreground")
+p.add_argument('--timeout', metavar='TIMEOUT', type=int,
+               help="Server shutdown timeout (in seconds)")
 p.add_argument('flags', metavar='FLAG', nargs='*', type=str,
                help="Regular mypy flags (precede with --)")
 
@@ -147,8 +153,9 @@ def do_restart(args: argparse.Namespace) -> None:
 def start_server(args: argparse.Namespace) -> None:
     """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import daemonize, Server
-    if daemonize(Server(args.flags).serve, args.log_file) != 0:
+    from mypy.dmypy_server import daemonize, Server, process_start_options
+    if daemonize(Server(process_start_options(args.flags), timeout=args.timeout).serve,
+                 args.log_file) != 0:
         sys.exit(1)
     wait_for_server()
 
@@ -283,8 +290,8 @@ def do_hang(args: argparse.Namespace) -> None:
 def do_daemon(args: argparse.Namespace) -> None:
     """Serve requests in the foreground."""
     # Lazy import so this import doesn't slow down other commands.
-    from mypy.dmypy_server import Server
-    Server(args.flags).serve()
+    from mypy.dmypy_server import Server, process_start_options
+    Server(process_start_options(args.flags), timeout=args.timeout).serve()
 
 
 @action(help_parser)
