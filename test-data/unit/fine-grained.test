@@ -432,7 +432,10 @@ class A: pass
 [file m.py.2]
 class A:
     def f(self) -> int: pass
+[file n.py.3]
 [out]
+==
+main:3: error: Return type of "f" incompatible with supertype "A"
 ==
 main:3: error: Return type of "f" incompatible with supertype "A"
 
@@ -1243,6 +1246,216 @@ a.py:9: error: Unsupported operand types for + ("int" and "str")
 a.py:9: error: Unsupported operand types for + ("int" and "str")
 ==
 a.py:9: error: Unsupported operand types for + ("int" and "str")
+==
+
+[case testPreviousErrorInDecoratedMethodOverride]
+import a
+[file a.py]
+from typing import Callable
+from b import B
+
+def dec(x: Callable[['A'], int]) -> Callable[['A'], int]:
+    return x
+
+class A(B):
+    @dec
+    def foo(self) -> int: return 12
+
+[file b.py]
+class B:
+    def foo(self) -> str: return 'hi'
+[file c.py.2]
+[file c.py.3]
+[file b.py.4]
+class B:
+    def foo(self) -> int: return 12
+[out]
+a.py:9: error: Return type of "foo" incompatible with supertype "B"
+==
+a.py:9: error: Return type of "foo" incompatible with supertype "B"
+==
+a.py:9: error: Return type of "foo" incompatible with supertype "B"
+==
+
+[case testPreviousErrorInMethodSemanal1]
+import a
+[file a.py]
+class A:
+    def foo() -> int: pass
+[file c.py.2]
+[file c.py.3]
+[file a.py.4]
+class A:
+    def foo(self) -> int: pass
+[out]
+a.py:2: error: Method must have at least one argument
+==
+a.py:2: error: Method must have at least one argument
+==
+a.py:2: error: Method must have at least one argument
+==
+
+[case testPreviousErrorInMethodSemanal2]
+import a
+[file a.py]
+class A:
+    def foo(self) -> None:
+        nothing
+[file c.py.2]
+[file c.py.3]
+[file a.py.4]
+class A:
+    def foo(self) -> int: pass
+[out]
+a.py:3: error: Name 'nothing' is not defined
+==
+a.py:3: error: Name 'nothing' is not defined
+==
+a.py:3: error: Name 'nothing' is not defined
+==
+
+[case testPreviousErrorInMethodSemanalPass3]
+import a
+[file a.py]
+from typing import List
+class A:
+    def __init__(self) -> None:
+        self.x = []  # type: List[int, str]
+[file c.py.2]
+[file c.py.3]
+[file a.py.4]
+from typing import List
+class A:
+    def __init__(self) -> None:
+        self.x = []  # type: List[int]
+[builtins fixtures/list.pyi]
+[out]
+a.py:4: error: "list" expects 1 type argument, but 2 given
+==
+a.py:4: error: "list" expects 1 type argument, but 2 given
+==
+a.py:4: error: "list" expects 1 type argument, but 2 given
+==
+
+[case testPreviousErrorInOverloadedFunctionSemanalPass3]
+import a
+[file a.py]
+from typing import overload, List
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> List[int, str]: ...
+def f(x: object) -> object:
+    pass
+[file c.py.2]
+[file c.py.3]
+[file a.py.4]
+from typing import overload, List
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> List[int]: ...
+def f(x: object) -> object:
+    pass
+[builtins fixtures/list.pyi]
+[out]
+a.py:5: error: "list" expects 1 type argument, but 2 given
+==
+a.py:5: error: "list" expects 1 type argument, but 2 given
+==
+a.py:5: error: "list" expects 1 type argument, but 2 given
+==
+
+[case testPreviousErrorInOverloadedFunction]
+import a
+[file a.py]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> int: ...
+def f(x: object) -> None:
+	pass
+[file b.py]
+[file b.py.2]
+1
+[file b.py.3]
+2
+[file a.py.4]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> None: ...
+def f(x: object) -> None:
+	pass
+[out]
+a.py:6: error: Overloaded function implementation cannot produce return type of signature 2
+==
+a.py:6: error: Overloaded function implementation cannot produce return type of signature 2
+==
+a.py:6: error: Overloaded function implementation cannot produce return type of signature 2
+==
+
+[case testPreviousErrorInOverloadedFunctionSemanal]
+import a
+[file a.py]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> None: ...
+[file b.py]
+[file b.py.2]
+1
+[file b.py.3]
+2
+[file a.py.4]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> None: ...
+def f(x: object) -> None:
+	pass
+[out]
+a.py:2: error: An overloaded function outside a stub file must have an implementation
+==
+a.py:2: error: An overloaded function outside a stub file must have an implementation
+==
+a.py:2: error: An overloaded function outside a stub file must have an implementation
+==
+
+[case testPreviousErrorInDecoratedMethodSemanalPass3]
+import a
+[file a.py]
+from typing import Callable, TypeVar, Any, List
+
+T = TypeVar('T', bound=Callable)
+def dec(x: T) -> T:
+    return x
+
+@dec
+def foo(self) -> List[str, int]: return []
+
+[file c.py.2]
+[file c.py.3]
+[file a.py.4]
+from typing import Callable, TypeVar, Any, List
+
+T = TypeVar('T', bound=Callable[..., Any])
+def dec(x: T) -> T:
+    return x
+
+@dec
+def foo(self) -> List[str]: return []
+[builtins fixtures/list.pyi]
+[out]
+a.py:8: error: "list" expects 1 type argument, but 2 given
+==
+a.py:8: error: "list" expects 1 type argument, but 2 given
+==
+a.py:8: error: "list" expects 1 type argument, but 2 given
 ==
 
 [case testOverloadRefresh]

@@ -117,12 +117,20 @@ class SemanticAnalyzerPass3(TraverserVisitor,
     def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
             return
+        self.scope.enter_function(fdef)
+        self.errors.push_function(fdef.name())
+
         self.analyze(fdef.type, fdef)
         super().visit_overloaded_func_def(fdef)
+
+        self.errors.pop_function()
+        self.scope.leave()
+
 
     def visit_class_def(self, tdef: ClassDef) -> None:
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
+        self.errors.push_type(tdef.name)
         self.scope.enter_class(tdef.info)
         if not tdef.info.is_named_tuple:
             types = list(tdef.info.bases)  # type: List[Type]
@@ -156,6 +164,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         super().visit_class_def(tdef)
         self.analyze_symbol_table(tdef.info.names)
         self.scope.leave()
+        self.errors.pop_type()
 
     def visit_decorator(self, dec: Decorator) -> None:
         """Try to infer the type of the decorated function.

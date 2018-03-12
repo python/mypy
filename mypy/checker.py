@@ -372,6 +372,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
             return
+        with self.errors.enter_function(defn.name()):
+            self._visit_overloaded_func_def(defn)
+
+    def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         num_abstract = 0
         if not defn.items:
             # In this case we have already complained about none of these being
@@ -589,9 +593,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return AnyType(TypeOfAny.special_form)
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        """Type check a function definition."""
         if not self.recurse_into_functions:
             return
+        with self.errors.enter_function(defn.name()):
+            self._visit_func_def(defn)
+
+    def _visit_func_def(self, defn: FuncDef) -> None:
+        """Type check a function definition."""
         self.check_func_item(defn, name=defn.name())
         if defn.info:
             if not defn.is_dynamic():
@@ -650,7 +658,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
-        with self.errors.enter_function(fdef.name()) if fdef else nothing():
+        # with self.errors.enter_function(fdef.name()) if fdef else nothing():
+        with nothing():
             with self.enter_partial_types(is_function=True):
                 typ = self.function_type(defn)
                 if type_override:
@@ -2585,7 +2594,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
 
         if self.recurse_into_functions:
-            self.check_func_item(e.func, name=e.func.name())
+            # XXX: IS THIS RIGHT????
+            with self.errors.enter_function(e.func.name()):
+                self.check_func_item(e.func, name=e.func.name())
 
         # Process decorators from the inside out to determine decorated signature, which
         # may be different from the declared signature.
