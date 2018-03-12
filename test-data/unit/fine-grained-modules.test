@@ -975,7 +975,7 @@ x = Foo()
 main:2: error: Too few arguments for "foo" of "Foo"
 
 -- This series of tests is designed to test adding a new module that
--- doesn't appear in the cache, for cache mode. They are run in
+-- does not appear in the cache, for cache mode. They are run in
 -- cache mode only because stale and rechecked differ heavily between
 -- the modes.
 [case testAddModuleAfterCache1-skip-nocache]
@@ -1033,6 +1033,7 @@ a.py:2: error: Too many arguments for "foo"
 [case testAddModuleAfterCache3-skip-nocache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py
+# cmd3: mypy main a.py b.py c.py d.py e.py f.py g.py
 # flags: --ignore-missing-imports --follow-imports=skip
 import a
 [file a.py]
@@ -1344,4 +1345,20 @@ from a import *
 x = ''
 [out]
 ==
+==
+
+[case testDeleteFileWithErrors]
+# cmd: mypy main a.py
+# cmd2: mypy main
+# flags: --follow-imports=skip --ignore-missing-imports
+import a
+[file a.py]
+def f() -> None:
+    1()
+''()
+[file b.py.2]
+# unrelated change
+[out]
+a.py:2: error: "int" not callable
+a.py:3: error: "str" not callable
 ==

@@ -183,7 +183,9 @@ class FineGrainedBuildManager:
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
 
-    def update(self, changed_modules: List[Tuple[str, str]]) -> List[str]:
+    def update(self,
+               changed_modules: List[Tuple[str, str]],
+               removed_modules: List[Tuple[str, str]]) -> List[str]:
         """Update previous build result by processing changed modules.
 
         Also propagate changes to other modules as needed, but only process
@@ -194,14 +196,18 @@ class FineGrainedBuildManager:
 
         Args:
             changed_modules: Modules changed since the previous update/build; each is
-                a (module id, path) tuple. Includes modified, added and deleted modules.
+                a (module id, path) tuple. Includes modified and added modules.
                 Assume this is correct; it's not validated here.
+            removed_modules: Modules that have been deleted since the previous update
+                or removed from the build.
 
         Returns:
             A list of errors.
         """
-        assert changed_modules, 'No changed modules'
+        changed_modules = changed_modules + removed_modules
+        assert changed_modules or removed_modules, 'No changed modules'
 
+        removed_set = {module for module, _ in removed_modules}
         self.changed_modules = changed_modules
 
         # Reset global caches for the new build.
@@ -230,7 +236,7 @@ class FineGrainedBuildManager:
             if next_id not in self.previous_modules and next_id not in initial_set:
                 self.manager.log_fine_grained('skip %r (module not in import graph)' % next_id)
                 continue
-            result = self.update_single(next_id, next_path)
+            result = self.update_single(next_id, next_path, next_id in removed_set)
             messages, remaining, (next_id, next_path), blocker = result
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
@@ -247,14 +253,23 @@ class FineGrainedBuildManager:
 
         return messages
 
-    def update_single(self, module: str, path: str) -> Tuple[List[str],
-                                                             List[Tuple[str, str]],
-                                                             Tuple[str, str],
-                                                             bool]:
+    def update_single(self,
+                      module: str,
+                      path: str,
+                      force_removed: bool) -> Tuple[List[str],
+                                                    List[Tuple[str, str]],
+                                                    Tuple[str, str],
+                                                    bool]:
         """Update a single modified module.
 
         If the module contains imports of previously unseen modules, only process one of
         the new modules and return the remaining work to be done.
+
+        Args:
+            module: Id of the module
+            path: File system path of the module
+            force_removed: If True, consider module removed from the build even if path
+                exists (used for removing an existing file from the build)
 
         Returns:
             Tuple with these items:
@@ -279,7 +294,8 @@ class FineGrainedBuildManager:
             old_snapshots[module] = snapshot
 
         manager.errors.reset()
-        result = update_single_isolated(module, path, manager, previous_modules, graph)
+        result = update_single_isolated(module, path, manager, previous_modules, graph,
+                                        force_removed)
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
             module, path, remaining, errors = result
@@ -344,7 +360,8 @@ def update_single_isolated(module: str,
                            path: str,
                            manager: BuildManager,
                            previous_modules: Dict[str, str],
-                           graph: Graph) -> UpdateResult:
+                           graph: Graph,
+                           force_removed: bool) -> UpdateResult:
     """Build a new version of one changed module only.
 
     Don't propagate changes to elsewhere in the program. Raise CompleError on
@@ -355,6 +372,8 @@ def update_single_isolated(module: str,
         path: Path of the changed module
         manager: Build manager
         graph: Build graph
+        force_removed: If True, consider the module removed from the build even it the
+            file exists
 
     Returns a named tuple describing the result (see above for details).
     """
@@ -388,7 +407,7 @@ def update_single_isolated(module: str,
             remaining_modules = []
         return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
 
-    if not os.path.isfile(path):
+    if not os.path.isfile(path) or force_removed:
         delete_module(module, graph, manager)
         return NormalUpdate(module, path, [], None)
 

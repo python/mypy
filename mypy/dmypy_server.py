@@ -318,7 +318,7 @@ class Server:
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
             # Run an update
-            changed = self.find_changed(sources)
+            changed, removed = self.find_changed(sources)
 
             # Find anything that has had its dependency list change
             for state in self.fine_grained_manager.graph.values():
@@ -326,8 +326,8 @@ class Server:
                     assert state.path is not None
                     changed.append((state.id, state.path))
 
-            if changed:
-                messages = self.fine_grained_manager.update(changed)
+            if changed or removed:
+                messages = self.fine_grained_manager.update(changed, removed)
         else:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
@@ -343,13 +343,13 @@ class Server:
 
         t0 = time.time()
         self.update_sources(sources)
-        changed = self.find_changed(sources)
+        changed, removed = self.find_changed(sources)
         t1 = time.time()
-        if not changed:
+        if not (changed or removed):
             # Nothing changed -- just produce the same result as before.
             messages = self.previous_messages
         else:
-            messages = self.fine_grained_manager.update(changed)
+            messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
         self.fine_grained_manager.manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
@@ -364,20 +364,20 @@ class Server:
         paths = [source.path for source in sources if source.path is not None]
         self.fswatcher.add_watched_paths(paths)
 
-    def find_changed(self, sources: List[mypy.build.BuildSource]) -> List[Tuple[str, str]]:
+    def find_changed(self, sources: List[mypy.build.BuildSource]) -> Tuple[List[Tuple[str, str]],
+                                                                           List[Tuple[str, str]]]:
         changed_paths = self.fswatcher.find_changed()
         changed = [(source.module, source.path)
                    for source in sources
                    if source.path in changed_paths]
         modules = {source.module for source in sources}
         omitted = [source for source in self.previous_sources if source.module not in modules]
+        removed = []
         for source in omitted:
             path = source.path
             assert path
-            # Note that a file could be removed from the list of root sources but have no changes.
-            if path in changed_paths:
-                changed.append((source.module, path))
-        return changed
+            removed.append((source.module, path))
+        return changed, removed
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
