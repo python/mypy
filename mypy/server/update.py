@@ -235,14 +235,14 @@ class FineGrainedBuildManager:
             changed_modules = dedupe_modules([self.blocking_error] + changed_modules)
             self.blocking_error = None
 
-        while changed_modules:
+        while True:
             t0 = time.time()
             next_id, next_path = changed_modules.pop(0)
             if next_id not in self.previous_modules and next_id not in initial_set:
                 self.manager.log_fine_grained('skip %r (module not in import graph)' % next_id)
                 continue
             result = self.update_single(next_id, next_path, next_id in removed_set)
-            messages, remaining, (next_id, next_path), blocker = result
+            remaining, (next_id, next_path), blocker_messages = result
             changed_modules = [(id, path) for id, path in changed_modules
                                if id != next_id]
             changed_modules = dedupe_modules(remaining + changed_modules)
@@ -251,10 +251,32 @@ class FineGrainedBuildManager:
             self.manager.log_fine_grained(
                 "update once: {} in {:.3f}s - {} left".format(
                     next_id, t1 - t0, len(changed_modules)))
-            if blocker:
+
+            if blocker_messages is not None:
                 self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
+                messages = blocker_messages
                 break
+
+            # It looks like we are done processing everything, so now
+            # reprocess all targets with errors. We are careful to
+            # support the possibility that reprocessing an errored module
+            # might trigger loading of a module, but I am not sure
+            # if this can really happen.
+            if not changed_modules:
+                # N.B: We just checked next_id, so manager.errors contains
+                # the errors from it. Thus we consider next_id up to date
+                # when propagating changes from the errored targets.
+                changed_modules = propagate_changes_using_dependencies(
+                    self.manager, self.graph, self.deps, set(),
+                    {next_id},
+                    self.previous_targets_with_errors)
+                changed_modules = dedupe_modules(changed_modules)
+                if not changed_modules:
+                    # Preserve state needed for the next update.
+                    self.previous_targets_with_errors = self.manager.errors.targets()
+                    messages = self.manager.errors.new_messages()
+                    break
 
         self.manager.fscache.flush()
         self.previous_messages = messages[:]
@@ -263,10 +285,9 @@ class FineGrainedBuildManager:
     def update_single(self,
                       module: str,
                       path: str,
-                      force_removed: bool) -> Tuple[List[str],
-                                                    List[Tuple[str, str]],
+                      force_removed: bool) -> Tuple[List[Tuple[str, str]],
                                                     Tuple[str, str],
-                                                    bool]:
+                                                    Optional[List[str]]]:
         """Update a single modified module.
 
         If the module contains imports of previously unseen modules, only process one of
@@ -284,7 +305,7 @@ class FineGrainedBuildManager:
             - Error messages
             - Remaining modules to process as (module id, path) tuples
             - Module which was actually processed as (id, path) tuple
-            - Whether there was a blocking error in the module
+            - If there was a blocking error, the error messages from it
         """
         self.manager.log_fine_grained('--- update single %r ---' % module)
         self.updated_modules.append(module)
@@ -307,7 +328,7 @@ class FineGrainedBuildManager:
             # Blocking error -- just give up
             module, path, remaining, errors = result
             self.previous_modules = get_module_to_path_map(manager)
-            return errors, remaining, (module, path), True
+            return remaining, (module, path), errors
         assert isinstance(result, NormalUpdate)  # Work around #4124
         module, path, remaining, tree = result
 
@@ -322,13 +343,13 @@ class FineGrainedBuildManager:
         remaining += propagate_changes_using_dependencies(
             manager, graph, self.deps, triggered,
             {module},
-            self.previous_targets_with_errors)
+            targets_with_errors=set())
 
         # Preserve state needed for the next update.
-        self.previous_targets_with_errors = manager.errors.targets()
+        self.previous_targets_with_errors.update(manager.errors.targets())
         self.previous_modules = get_module_to_path_map(manager)
 
-        return manager.errors.new_messages(), remaining, (module, path), False
+        return remaining, (module, path), None
 
 
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
@@ -685,6 +706,8 @@ def propagate_changes_using_dependencies(
     Returns a list (module id, path) tuples representing modules that contain
     a target that needs to be reprocessed but that has not been parsed yet."""
 
+    t0 = time.time()
+
     # TODO: Multiple type checking passes
     num_iter = 0
     remaining_modules = []
@@ -724,6 +747,9 @@ def propagate_changes_using_dependencies(
         targets_with_errors = set()
         if is_verbose(manager):
             manager.log_fine_grained('triggered: %r' % list(triggered))
+
+    t1 = time.time()
+    manager.log_fine_grained("propagated changes in {:.3f}s".format(t1 - t0))
 
     return remaining_modules
 
