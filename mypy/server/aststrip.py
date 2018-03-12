@@ -200,6 +200,9 @@ class NodeStripVisitor(TraverserVisitor):
                     symnode.node = None
 
     def visit_import_all(self, node: ImportAll) -> None:
+        # If the node is unreachable, we don't want to reset entries from a reachable import.
+        if node.is_unreachable:
+            return
         # Reset entries in the symbol table that were added through the statement.
         # (The description in visit_import is relevant here as well.)
         if self.names:
