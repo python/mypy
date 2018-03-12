@@ -119,7 +119,10 @@ class B:
 class A: pass
 [file m.py.2]
 def A() -> None: pass
+[file n.py.3]
 [out]
+==
+main:3: error: Invalid type "m.A"
 ==
 main:3: error: Invalid type "m.A"
 
@@ -929,7 +932,10 @@ class A:
 def f() -> int: pass
 [file m.py.2]
 def f() -> str: pass
+[file n.py.3]
 [out]
+==
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 ==
 main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
