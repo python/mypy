@@ -52,11 +52,12 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         be used.
     """
     # Check for known bad Python versions.
-    vi = tuple(sys.version_info)
-    if vi[:2] < (3, 4):
-        sys.exit("Running mypy with Python 3.3 or lower is not supported; please upgrade")
-    if vi[:3] == (3, 5, 0):
-        sys.exit("Running mypy with Python 3.5.0 is not supported; please upgrade")
+    if sys.version_info[:2] < (3, 4):
+        sys.exit("Running mypy with Python 3.3 or lower is not supported; "
+                 "please upgrade to 3.4 or newer")
+    if sys.version_info[:3] == (3, 5, 0):
+        sys.exit("Running mypy with Python 3.5.0 is not supported; "
+                 "please upgrade to 3.5.1 or newer")
 
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
