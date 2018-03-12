@@ -1329,3 +1329,19 @@ def f() -> None: pass
 ==
 main:3: error: Too few arguments for "f"
 ==
+
+[case testImportStarMutuallyRecursive]
+import a
+[file a.py]
+from b import *
+[file b.py]
+from a import *
+[file b.py.2]
+from a import *
+x = 0
+[file b.py.3]
+from a import *
+x = ''
+[out]
+==
+==
