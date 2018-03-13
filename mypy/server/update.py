@@ -901,10 +901,15 @@ def update_deps(module_id: str,
 def lookup_target(manager: BuildManager,
                   target: str) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
+
+    def not_found() -> None:
+        manager.log_fine_grained(
+            "Can't find matching target for %s (stale dependency?)" % target)
+
     modules = manager.modules
     items = split_target(modules, target)
     if items is None:
-        # Deleted target
+        not_found()  # Stale dependency
         return []
     module, rest = items
     if rest:
@@ -921,11 +926,9 @@ def lookup_target(manager: BuildManager,
             active_class_name = node.name()
         if isinstance(node, MypyFile):
             file = node
-        if not isinstance(node, (MypyFile, TypeInfo)):
-            # Stale target points to something unexpected
-            return []
-        if c not in node.names:
-            # Deleted target
+        if (not isinstance(node, (MypyFile, TypeInfo))
+                or c not in node.names):
+            not_found()  # Stale dependency
             return []
         node = node.names[c].node
     if isinstance(node, TypeInfo):
@@ -938,6 +941,7 @@ def lookup_target(manager: BuildManager,
             # This is a reference to a different TypeInfo, likely due to a stale dependency.
             # Processing them would spell trouble -- for example, we could be refreshing
             # a deserialized TypeInfo with missing attributes.
+            not_found()
             return []
         result = [DeferredNode(file, None, None)]
         for name, symnode in node.names.items():
@@ -952,16 +956,13 @@ def lookup_target(manager: BuildManager,
                              MypyFile,
                              OverloadedFuncDef)):
         # The target can't be refreshed. It's possible that the target was
-        # changed to another type and we have a stale dependency pointing to
-        # it.
-        name = node.fullname() if node is not None else 'None'
-        manager.log_fine_grained(
-            "Skipping %s (%s node can't be refereshed -- stale dependency?)" % (
-                name, type(node).__name__))
+        # changed to another type and we have a stale dependency pointing to it.
+        not_found()
         return []
     if node.fullname() != target:
         # Stale reference points to something unexpected. We shouldn't process since the
         # context will be wrong and it could be a partially initialized deserialized node.
+        not_found()
         return []
     return [DeferredNode(node, active_class_name, active_class)]
 
