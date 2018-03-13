@@ -58,7 +58,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
         self.recurse_into_functions = True
-        self.errors.set_file(fnam, file_node.fullname())
+        self.errors.set_file(fnam, file_node.fullname(), scope=self.scope)
         self.options = options
         self.sem.options = options
         self.patches = patches

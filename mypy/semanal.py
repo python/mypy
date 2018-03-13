@@ -270,7 +270,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """
         self.recurse_into_functions = True
         self.options = options
-        self.errors.set_file(fnam, file_node.fullname())
+        self.errors.set_file(fnam, file_node.fullname(), scope=self.scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
@@ -330,19 +330,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
-                     active_type: Optional[TypeInfo]) -> Iterator[None]:
+                     active_type: Optional[TypeInfo],
+                     scope: Optional[Scope] = None) -> Iterator[None]:
         # TODO: Use this above in visit_file
+        scope = scope or self.scope
         self.options = options
-        self.errors.set_file(fnam, file_node.fullname())
+        self.errors.set_file(fnam, file_node.fullname(), scope=scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
-        self.scope.enter_file(self.cur_mod_id)
+        scope.enter_file(self.cur_mod_id)
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
         if active_type:
-            self.scope.enter_class(active_type)
+            scope.enter_class(active_type)
             self.errors.push_type(active_type.name())
             self.enter_class(active_type.defn.info)
             for tvar in active_type.defn.type_vars:
@@ -351,18 +353,19 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         yield
 
         if active_type:
-            self.scope.leave()
+            scope.leave()
             self.errors.pop_type()
             self.leave_class()
             self.type = None
-        self.scope.leave()
+        scope.leave()
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
         with self.errors.enter_function(defn.name()):
-            self._visit_func_def(defn)
+            with self.scope.function_scope(defn):
+                self._visit_func_def(defn)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -484,7 +487,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # This is fine, though, because only the outermost function is
         # used to compute targets.
         with self.errors.enter_function(defn.name()):
-            self._visit_overloaded_func_def(defn)
+            with self.scope.function_scope(defn):
+                self._visit_overloaded_func_def(defn)
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
@@ -614,7 +618,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
-        self.scope.enter_function(defn)
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
@@ -660,7 +663,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
             self.leave()
             self.function_stack.pop()
-            self.scope.leave()
 
     def check_classvar_in_signature(self, typ: Type) -> None:
         if isinstance(typ, Overloaded):

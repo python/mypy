@@ -6,6 +6,7 @@ from contextlib import contextmanager
 
 from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional, cast
 
+from mypy.scope import Scope
 from mypy.options import Options
 from mypy.version import __version__ as mypy_version
 
@@ -136,6 +137,10 @@ class Errors:
 
     # State for keeping track of the current fine-grained incremental mode target.
     # (See mypy.server.update for more about targets.)
+    scope = None  # type: Optional[Scope]
+
+    # State for keeping track of the current fine-grained incremental mode target.
+    # (See mypy.server.update for more about targets.)
     #
     # Current module id.
     target_module = None  # type: Optional[str]
@@ -165,6 +170,7 @@ class Errors:
         self.used_ignored_lines = defaultdict(set)
         self.ignored_files = set()
         self.only_once_messages = set()
+        self.scope = None
         self.target_module = None
         self.target_class = None
         self.target_function = None
@@ -198,7 +204,8 @@ class Errors:
         return remove_path_prefix(file, self.ignore_prefix)
 
     def set_file(self, file: str,
-                 module: Optional[str]) -> None:
+                 module: Optional[str],
+                 scope: Optional[Scope] = None) -> None:
         """Set the path and module id of the current file."""
         # The path will be simplified later, in render_messages. That way
         #  * 'file' is always a key that uniquely identifies a source file
@@ -211,6 +218,7 @@ class Errors:
         self.target_class = None
         self.target_function = None
         self.target_ignore_depth = 0
+        self.scope = scope
 
     def set_file_ignored_lines(self, file: str,
                                ignored_lines: Set[int],
@@ -264,6 +272,8 @@ class Errors:
     def current_target(self) -> Optional[str]:
         if self.target_module is None:
             return None
+        if self.scope is not None:
+            return self.scope.current_target()
         target = self.target_module
         if self.target_function is not None:
             # Only include class name if we are inside a method, since a class

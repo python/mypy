@@ -3,7 +3,8 @@
 TODO: Use everywhere where we track targets, including in mypy.errors.
 """
 
-from typing import List, Optional
+from contextlib import contextmanager
+from typing import List, Optional, Iterator
 
 from mypy.nodes import TypeInfo, FuncItem
 
@@ -78,3 +79,9 @@ class Scope:
             # Leave module.
             assert self.module
             self.module = None
+
+    @contextmanager
+    def function_scope(self, fdef: FuncItem) -> Iterator[None]:
+        self.enter_function(fdef)
+        yield
+        self.leave()
