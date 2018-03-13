@@ -302,7 +302,7 @@ class Server:
                 out, err = '', output
             return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
-        self.fine_grained_manager = mypy.server.update.FineGrainedBuildManager(result)
+        self.fine_grained_manager = FineGrainedBuildManager(result)
         self.previous_sources = sources
 
         # If we are using the fine-grained cache, build hasn't actually done

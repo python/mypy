@@ -99,9 +99,9 @@ class FileSystemCache:
     def isfile(self, path: str) -> bool:
         try:
             st = self.stat(path)
-            return stat.S_ISREG(st.st_mode)
         except OSError:
             return False
+        return stat.S_ISREG(st.st_mode)
 
     def isfile_case(self, path: str) -> bool:
         """Return whether path exists and is a file.
@@ -109,6 +109,8 @@ class FileSystemCache:
         On case-insensitive filesystems (like Mac or Windows) this returns
         False if the case of the path's last component does not exactly
         match the case found in the filesystem.
+        TODO: We should maybe check the case for some directory components also,
+        to avoid permitting wrongly-cased *packages*.
         """
         if path in self.isfile_case_cache:
             return self.isfile_case_cache[path]
@@ -127,9 +129,9 @@ class FileSystemCache:
     def isdir(self, path: str) -> bool:
         try:
             st = self.stat(path)
-            return stat.S_ISDIR(st.st_mode)
         except OSError:
             return False
+        return stat.S_ISDIR(st.st_mode)
 
     def exists(self, path: str) -> bool:
         try:

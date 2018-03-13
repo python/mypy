@@ -209,6 +209,7 @@ def _build(sources: List[BuildSource],
     gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
+    fscache = fscache or FileSystemCache(options.python_version)
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,
@@ -225,7 +226,7 @@ def _build(sources: List[BuildSource],
         for source in sources:
             if source.path:
                 # Include directory of the program file in the module search path.
-                dir = remove_cwd_prefix_from_path(dirname(source.path))
+                dir = remove_cwd_prefix_from_path(fscache, dirname(source.path))
                 if dir not in lib_path:
                     lib_path.insert(0, dir)
 
@@ -592,8 +593,8 @@ class BuildManager:
                  plugin: Plugin,
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
+                 fscache: FileSystemCache,
                  saved_cache: Optional[SavedCache] = None,
-                 fscache: Optional[FileSystemCache] = None,
                  ) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
@@ -621,7 +622,7 @@ class BuildManager:
             not options.fine_grained_incremental or options.use_fine_grained_cache)
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
-        self.fscache = fscache or FileSystemCache(self.options.python_version)
+        self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
 
     def use_fine_grained_cache(self) -> bool:
@@ -792,7 +793,7 @@ class BuildManager:
         return self.stats
 
 
-def remove_cwd_prefix_from_path(p: str) -> str:
+def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     """Remove current working directory prefix from p, if present.
 
     Also crawl up until a directory without __init__.py is found.
@@ -805,8 +806,8 @@ def remove_cwd_prefix_from_path(p: str) -> str:
         cur += os.sep
     # Compute root path.
     while (p and
-           (os.path.isfile(os.path.join(p, '__init__.py')) or
-            os.path.isfile(os.path.join(p, '__init__.pyi')))):
+           (fscache.isfile(os.path.join(p, '__init__.py')) or
+            fscache.isfile(os.path.join(p, '__init__.pyi')))):
         dir, base = os.path.split(p)
         if not base:
             break
@@ -823,12 +824,12 @@ def remove_cwd_prefix_from_path(p: str) -> str:
 class FindModuleCache:
     """Module finder with integrated cache.
 
-       Module locations and some intermediate results are cached internally
-       and can be cleared with the clear() method.
+    Module locations and some intermediate results are cached internally
+    and can be cleared with the clear() method.
 
-       All file system accesses are performed through a FileSystemCache,
-       which is not ever cleared by this class. If necessary it must be
-       cleared by client code.
+    All file system accesses are performed through a FileSystemCache,
+    which is not ever cleared by this class. If necessary it must be
+    cleared by client code.
     """
 
     def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
@@ -908,7 +909,7 @@ class FindModuleCache:
             # use hits to avoid adding it a second time when we see x.pyi.
             # This also avoids both x.py and x.pyi when x/ was seen first.
             hits = set()  # type: Set[str]
-            for item in sorted(os.listdir(os.path.dirname(module_path))):
+            for item in sorted(self.fscache.listdir(os.path.dirname(module_path))):
                 abs_path = os.path.join(os.path.dirname(module_path), item)
                 if os.path.isdir(abs_path) and \
                         (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
@@ -1324,6 +1325,10 @@ c. Must order mtimes of files to decide whether to re-process; depends
 
 d. from P import M; checks filesystem whether module P.M exists in
    filesystem.
+
+e. Race conditions, where somebody modifies a file while we're
+   processing. Solved by using a FileSystemCache.
+
 
 Steps
 -----
@@ -1814,6 +1819,8 @@ class State:
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
                     # other systems, but os.strerror(ioerr.errno) does not, so we use that.
+                    # (We want the error messages to be platform-independent so that the
+                    # tests have predictable output.)
                     raise CompileError([
                         "mypy: can't read file '{}': {}".format(
                             self.path, os.strerror(ioerr.errno))])

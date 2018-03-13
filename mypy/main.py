@@ -535,6 +535,7 @@ def process_options(args: List[str],
                  .format(special_opts.package))
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
+        # TODO: use the same cache as the BuildManager will
         targets = build.FindModuleCache().find_modules_recursive(special_opts.package, lib_path)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
@@ -547,7 +548,7 @@ def process_options(args: List[str],
         targets = create_source_list(special_opts.files, options)
         return targets, options
 
-
+# TODO: use a FileSystemCache for this
 def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
     targets = []
     for f in files:
