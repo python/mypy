@@ -2925,3 +2925,55 @@ class A: pass
 [out]
 ==
 ==
+
+[case testClassToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+class A:
+    def f(self) -> c.A: pass
+[file a.py.2]
+A = 0
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testFunctionToImportedFunctionAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from d import f
+[file c.py]
+class A: pass
+[file c.py.3]
+[file d.py]
+def g() -> None: pass
+def f() -> None:
+    g()
+[out]
+==
+==
+
+[case testMethodToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+class B:
+    def f(self) -> c.A: pass
+[file a.py.2]
+class B:
+    f = 0
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==

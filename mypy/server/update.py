@@ -919,10 +919,11 @@ def lookup_target(manager: BuildManager,
         if isinstance(node, TypeInfo):
             active_class = node
             active_class_name = node.name()
-        # TODO: Is it possible for the assertion to fail?
         if isinstance(node, MypyFile):
             file = node
-        assert isinstance(node, (MypyFile, TypeInfo))
+        if not isinstance(node, (MypyFile, TypeInfo)):
+            # Stale target points to something unexpected
+            return []
         if c not in node.names:
             # Deleted target
             return []
@@ -957,6 +958,10 @@ def lookup_target(manager: BuildManager,
         manager.log_fine_grained(
             "Skipping %s (%s node can't be refereshed -- stale dependency?)" % (
                 name, type(node).__name__))
+        return []
+    if node.fullname() != target:
+        # Stale reference points to something unexpected. We shouldn't process since the
+        # context will be wrong and it could be a partially initialized deserialized node.
         return []
     return [DeferredNode(node, active_class_name, active_class)]
 
