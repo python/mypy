@@ -458,7 +458,7 @@ class Argument(Node):
 
 
 class FuncItem(FuncBase):
-    arguments = []  # type: List[Argument]
+    arguments = []  # type: List[Argument]  # Note: Can be None if deserialized (type is a lie!)
     arg_names = []  # type: List[str]
     arg_kinds = []  # type: List[int]
     # Minimum number of arguments

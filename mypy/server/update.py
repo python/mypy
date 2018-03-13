@@ -690,8 +690,7 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo = find_targets_recursive(manager, triggered, deps,
-                                      manager.modules, up_to_date_modules)
+        todo = find_targets_recursive(manager, triggered, deps, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
@@ -700,7 +699,7 @@ def propagate_changes_using_dependencies(
                 if id not in todo:
                     todo[id] = set()
                 manager.log_fine_grained('process target with error: %s' % target)
-                todo[id].update(lookup_target(manager.modules, target))
+                todo[id].update(lookup_target(manager, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
@@ -727,7 +726,6 @@ def find_targets_recursive(
         manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        modules: Dict[str, MypyFile],
         up_to_date_modules: Set[str]) -> Dict[str, Set[DeferredNode]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
@@ -748,7 +746,7 @@ def find_targets_recursive(
             if target.startswith('<'):
                 worklist |= deps.get(target, set()) - processed
             else:
-                module_id = module_prefix(modules, target)
+                module_id = module_prefix(manager.modules, target)
                 if module_id is None:
                     # Deleted module.
                     continue
@@ -758,7 +756,7 @@ def find_targets_recursive(
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained('process: %s' % target)
-                deferred = lookup_target(modules, target)
+                deferred = lookup_target(manager, target)
                 result[module_id].update(deferred)
 
     return result
@@ -794,8 +792,11 @@ def reprocess_nodes(manager: BuildManager,
     # TODO: ignore_all argument to set_file_ignored_lines
     manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
 
-    targets = {target_from_node(module_id, node.node)
-               for node in nodes}
+    targets = set()
+    for node in nodes:
+        target = target_from_node(module_id, node.node)
+        if target is not None:
+            targets.add(target)
     manager.errors.clear_errors_in_targets(file_node.path, targets)
 
     # Strip semantic analysis information.
@@ -897,8 +898,10 @@ def update_deps(module_id: str,
             deps.setdefault(trigger, set()).update(targets)
 
 
-def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNode]:
+def lookup_target(manager: BuildManager,
+                  target: str) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
+    modules = manager.modules
     items = split_target(modules, target)
     if items is None:
         # Deleted target
@@ -930,18 +933,31 @@ def lookup_target(modules: Dict[str, MypyFile], target: str) -> List[DeferredNod
         # typically a module top-level, since we don't support processing class
         # bodies as separate entitites for simplicity.
         assert file is not None
+        if node.fullname() != target:
+            # This is a reference to a different TypeInfo, likely due to a stale dependency.
+            # Processing them would spell trouble -- for example, we could be refreshing
+            # a deserialized TypeInfo with missing attributes.
+            return []
         result = [DeferredNode(file, None, None)]
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                result.extend(lookup_target(modules, target + '.' + name))
+                result.extend(lookup_target(manager, target + '.' + name))
         return result
     if isinstance(node, Decorator):
         # Decorator targets actually refer to the function definition only.
         node = node.func
-    assert isinstance(node, (FuncDef,
+    if not isinstance(node, (FuncDef,
                              MypyFile,
-                             OverloadedFuncDef)), 'unexpected type: %s' % type(node)
+                             OverloadedFuncDef)):
+        # The target can't be refreshed. It's possible that the target was
+        # changed to another type and we have a stale dependency pointing to
+        # it.
+        name = node.fullname() if node is not None else 'None'
+        manager.log_fine_grained(
+            "Skipping %s (%s node can't be refereshed -- stale dependency?)" % (
+                name, type(node).__name__))
+        return []
     return [DeferredNode(node, active_class_name, active_class)]
 
 
@@ -950,14 +966,20 @@ def is_verbose(manager: BuildManager) -> bool:
 
 
 def target_from_node(module: str,
-                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]) -> str:
+                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]
+                     ) -> Optional[str]:
     """Return the target name corresponding to a deferred node.
 
     Args:
         module: Must be module id of the module that defines 'node'
+
+    Returns the target name, or None if the node is not a valid target in the given
+    module (for example, if it's actually defined in another module).
     """
     if isinstance(node, MypyFile):
-        assert module == node.fullname()
+        if module != node.fullname():
+            # Actually a reference to another module -- likely a stale dependency.
+            return None
         return module
     elif isinstance(node, (OverloadedFuncDef, FuncDef)):
         if node.info is not None:

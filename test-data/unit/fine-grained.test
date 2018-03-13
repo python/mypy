@@ -2832,3 +2832,96 @@ class C(Enum):
 ==
 a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
+
+[case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+f = 1
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeVarAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from typing import TypeVar
+f = TypeVar('f')
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToModuleAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+import c as f
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeAliasAndRefreshUsingStaleDependency1]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+f = int
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeAliasAndRefreshUsingStaleDependency2]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from typing import List
+f = List[int]
+[file c.py]
+class A: pass
+[file c.py.3]
+[builtins fixtures/list.pyi]
+[out]
+==
+==
+
+[case testChangeFunctionToClassAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+class f: pass
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
