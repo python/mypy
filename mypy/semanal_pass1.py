@@ -65,7 +65,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         self.platform = options.platform
         sem.cur_mod_id = mod_id
         sem.cur_mod_node = file
-        sem.errors.set_file(fnam, mod_id)
+        sem.errors.set_file(fnam, mod_id, scope=sem.scope)
         sem.globals = SymbolTable()
         sem.global_decls = [set()]
         sem.nonlocal_decls = [set()]
@@ -165,11 +165,11 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             # Also analyze the function body (needed in case there are unreachable
             # conditional imports).
             sem.function_stack.append(func)
-            sem.errors.push_function(func.name())
+            sem.scope.enter_function(func)
             sem.enter()
             func.body.accept(self)
             sem.leave()
-            sem.errors.pop_function()
+            sem.scope.leave()
             sem.function_stack.pop()
 
     def visit_overloaded_func_def(self, func: OverloadedFuncDef) -> None:
@@ -189,18 +189,18 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
             if isinstance(impl, FuncDef):
                 sem.function_stack.append(impl)
-                sem.errors.push_function(func.name())
+                sem.scope.push(func)
                 sem.enter()
                 impl.body.accept(self)
             elif isinstance(impl, Decorator):
                 sem.function_stack.append(impl.func)
-                sem.errors.push_function(func.name())
+                sem.scope.push_function(func)
                 sem.enter()
                 impl.func.body.accept(self)
             else:
                 assert False, "Implementation of an overload needs to be FuncDef or Decorator"
             sem.leave()
-            sem.errors.pop_function()
+            sem.scope.leave()
             sem.function_stack.pop()
 
     def visit_class_def(self, cdef: ClassDef) -> None:
