@@ -939,6 +939,23 @@ main:7: error: Incompatible types in assignment (expression has type "str", vari
 ==
 main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testReprocessMethodInNestedClassSemanal]
+import a
+[file a.py]
+class A:
+    class B:
+        def g() -> None: pass
+    def foo(self) -> int: return 12
+[file b.py.2]
+[file b.py.3]
+2
+[out]
+a.py:3: error: Method must have at least one argument
+==
+a.py:3: error: Method must have at least one argument
+==
+a.py:3: error: Method must have at least one argument
+
 [case testBaseClassDeleted]
 import m
 
@@ -1272,6 +1289,7 @@ class B:
     def foo(self) -> str: return 'hi'
 [file c.py.2]
 [file c.py.3]
+1
 [file b.py.4]
 class B:
     def foo(self) -> int: return 12
@@ -1290,6 +1308,7 @@ class A:
     def foo() -> int: pass
 [file c.py.2]
 [file c.py.3]
+1
 [file a.py.4]
 class A:
     def foo(self) -> int: pass
@@ -1309,6 +1328,7 @@ class A:
         nothing
 [file c.py.2]
 [file c.py.3]
+1
 [file a.py.4]
 class A:
     def foo(self) -> int: pass
@@ -1329,6 +1349,7 @@ class A:
         self.x = []  # type: List[int, str]
 [file c.py.2]
 [file c.py.3]
+1
 [file a.py.4]
 from typing import List
 class A:
@@ -1355,6 +1376,7 @@ def f(x: object) -> object:
     pass
 [file c.py.2]
 [file c.py.3]
+1
 [file a.py.4]
 from typing import overload, List
 @overload
