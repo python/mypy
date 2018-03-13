@@ -315,13 +315,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
-        self.scope.enter_file(self.cur_mod_id)
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
             self.recurse_into_functions = True
             self.accept(node)
-        self.scope.leave()
         del self.patches
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
@@ -338,11 +336,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.errors.set_file(fnam, file_node.fullname())
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
+        self.scope.enter_file(self.cur_mod_id)
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
         if active_type:
+            self.scope.enter_class(active_type)
+            self.errors.push_type(active_type.name())
             self.enter_class(active_type.defn.info)
             for tvar in active_type.defn.type_vars:
                 self.tvar_scope.bind_existing(tvar)
@@ -350,8 +351,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         yield
 
         if active_type:
+            self.scope.leave()
+            self.errors.pop_type()
             self.leave_class()
             self.type = None
+        self.scope.leave()
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
