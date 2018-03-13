@@ -26,22 +26,18 @@ class Scope:
     def current_target(self) -> str:
         """Return the current target (non-class; for a class return enclosing module)."""
         assert self.module
-        target = self.module
         if self.function:
-            if self.classes:
-                target += '.' + '.'.join(c.name() for c in self.classes)
-            target += '.' + self.function.name()
-        return target
+            return self.function.fullname()
+        return self.module
 
     def current_full_target(self) -> str:
         """Return the current target (may be a class)."""
         assert self.module
-        target = self.module
-        if self.classes:
-            target += '.' + '.'.join(c.name() for c in self.classes)
         if self.function:
-            target += '.' + self.function.name()
-        return target
+            return self.function.fullname()
+        if self.classes:
+            return self.classes[-1].fullname()
+        return self.module
 
     def enter_file(self, prefix: str) -> None:
         self.module = prefix
