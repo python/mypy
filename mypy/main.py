@@ -51,6 +51,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
         be used.
     """
+    # Check for known bad Python versions.
+    if sys.version_info[:2] < (3, 4):
+        sys.exit("Running mypy with Python 3.3 or lower is not supported; "
+                 "please upgrade to 3.4 or newer")
+    if sys.version_info[:3] == (3, 5, 0):
+        sys.exit("Running mypy with Python 3.5.0 is not supported; "
+                 "please upgrade to 3.5.1 or newer")
+
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
     if script_path:

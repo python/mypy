@@ -1066,8 +1066,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if kind == LDEF:
                 # We need to preserve local classes, let's store them
                 # in globals under mangled unique names
-                local_name = defn.info._fullname + '@' + str(defn.line)
-                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                #
+                # TODO: Putting local classes into globals breaks assumptions in fine-grained
+                #     incremental mode and we should avoid it.
+                if '@' not in defn.info._fullname:
+                    local_name = defn.info._fullname + '@' + str(defn.line)
+                    defn.info._fullname = self.cur_mod_id + '.' + local_name
+                else:
+                    # Preserve name from previous fine-grained incremental run.
+                    local_name = defn.info._fullname
                 defn.fullname = defn.info._fullname
                 self.globals[local_name] = node
 

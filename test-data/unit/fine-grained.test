@@ -2977,3 +2977,22 @@ class A: pass
 [out]
 ==
 ==
+
+[case testRefreshNestedClassWithSelfReference]
+import a
+[file a.py]
+import b
+
+def f(self) -> None:
+    b.y
+    class C:
+        z: C
+[file b.py]
+y = 0
+[file b.py.2]
+y = ''
+[file b.py.3]
+y = 0
+[out]
+==
+==
