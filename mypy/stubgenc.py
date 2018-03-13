@@ -48,7 +48,7 @@ def generate_stub_for_c_module(module_name: str,
             type_str = type(obj).__name__
             if type_str not in ('int', 'str', 'bytes', 'float', 'bool'):
                 type_str = 'Any'
-            variables.append('%s = ... # type: %s' % (name, type_str))
+            variables.append('%s: %s' % (name, type_str))
     output = []
     for line in variables:
         output.append(line)
@@ -167,7 +167,7 @@ def generate_c_type_stub(module: ModuleType,
         if is_skipped_attribute(attr):
             continue
         if attr not in done:
-            variables.append('%s = ... # type: Any' % attr)
+            variables.append('%s: Any = ...' % attr)
     all_bases = obj.mro()
     if all_bases[-1] is object:
         # TODO: Is this always object?

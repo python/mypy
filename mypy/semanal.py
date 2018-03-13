@@ -1066,8 +1066,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if kind == LDEF:
                 # We need to preserve local classes, let's store them
                 # in globals under mangled unique names
-                local_name = defn.info._fullname + '@' + str(defn.line)
-                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                #
+                # TODO: Putting local classes into globals breaks assumptions in fine-grained
+                #     incremental mode and we should avoid it.
+                if '@' not in defn.info._fullname:
+                    local_name = defn.info._fullname + '@' + str(defn.line)
+                    defn.info._fullname = self.cur_mod_id + '.' + local_name
+                else:
+                    # Preserve name from previous fine-grained incremental run.
+                    local_name = defn.info._fullname
                 defn.fullname = defn.info._fullname
                 self.globals[local_name] = node
 
@@ -1659,7 +1666,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # False, and we can skip checking '_' because it's been explicitly included.
                 if (new_node and new_node.module_public and
                         (not name.startswith('_') or '__all__' in m.names)):
-                    existing_symbol = self.globals.get(name)
+                    existing_symbol = self.lookup_current_scope(name)
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.
                         if self.process_import_over_existing_name(
@@ -1669,6 +1676,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                                           new_node.type_override,
                                                           normalized=new_node.normalized,
                                                           alias_tvars=new_node.alias_tvars), i)
+                    i.imported_names.append(name)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
@@ -4004,6 +4012,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             node.accept(self)
         except Exception as err:
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
+
+    def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
+        if self.locals[-1] is not None:
+            return self.locals[-1].get(name)
+        elif self.type is not None:
+            return self.type.names.get(name)
+        else:
+            return self.globals.get(name)
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

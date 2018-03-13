@@ -975,7 +975,7 @@ x = Foo()
 main:2: error: Too few arguments for "foo" of "Foo"
 
 -- This series of tests is designed to test adding a new module that
--- doesn't appear in the cache, for cache mode. They are run in
+-- does not appear in the cache, for cache mode. They are run in
 -- cache mode only because stale and rechecked differ heavily between
 -- the modes.
 [case testAddModuleAfterCache1-skip-nocache]
@@ -1033,6 +1033,7 @@ a.py:2: error: Too many arguments for "foo"
 [case testAddModuleAfterCache3-skip-nocache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py
+# cmd3: mypy main a.py b.py c.py d.py e.py f.py g.py
 # flags: --ignore-missing-imports --follow-imports=skip
 import a
 [file a.py]
@@ -1192,4 +1193,172 @@ x = 1
 # Dummy change
 [builtins fixtures/bool.pyi]
 [out]
+==
+
+[case testImportStarPropagateChange1]
+from b import f
+f()
+[file b.py]
+from c import *
+[file c.py]
+def f() -> None: pass
+[file c.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarPropagateChange2]
+from b import *
+f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+def f(x: int) -> None: pass
+[out]
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarAddMissingDependency1]
+from b import f
+f()
+[file b.py]
+from c import *
+[file c.py]
+[file c.py.2]
+def f(x: int) -> None: pass
+[out]
+main:1: error: Module 'b' has no attribute 'f'
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarAddMissingDependency2]
+from b import *
+f()
+[file b.py]
+[file b.py.2]
+def f(x: int) -> None: pass
+[out]
+main:2: error: Name 'f' is not defined
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarAddMissingDependencyWithinClass]
+class A:
+    from b import *
+    f()
+    x: C
+[file b.py]
+[file b.py.2]
+def f(x: int) -> None: pass
+[file b.py.3]
+def f(x: int) -> None: pass
+class C: pass
+[file b.py.4]
+def f() -> None: pass
+class C: pass
+[out]
+main:3: error: Name 'f' is not defined
+main:4: error: Name 'C' is not defined
+==
+main:3: error: Too few arguments for "f"
+main:4: error: Name 'C' is not defined
+==
+main:3: error: Too few arguments for "f"
+==
+
+[case testImportStarAddMissingDependencyInsidePackage1]
+from p.b import f
+f()
+[file p/__init__.py]
+[file p/b.py]
+from p.c import *
+[file p/c.py]
+[file p/c.py.2]
+def f(x: int) -> None: pass
+[out]
+main:1: error: Module 'p.b' has no attribute 'f'
+==
+main:2: error: Too few arguments for "f"
+
+[case testImportStarAddMissingDependencyInsidePackage2]
+import p.a
+[file p/__init__.py]
+[file p/a.py]
+from p.b import *
+f()
+[file p/b.py]
+[file p/b.py.2]
+def f(x: int) -> None: pass
+[out]
+p/a.py:2: error: Name 'f' is not defined
+==
+p/a.py:2: error: Too few arguments for "f"
+
+[case testImportStarRemoveDependency1]
+from b import f
+f()
+[file b.py]
+from c import *
+[file c.py]
+def f() -> None: pass
+[file c.py.2]
+[out]
+==
+main:1: error: Module 'b' has no attribute 'f'
+
+[case testImportStarRemoveDependency2]
+from b import *
+f()
+[file b.py]
+def f() -> None: pass
+[file b.py.2]
+[out]
+==
+main:2: error: Name 'f' is not defined
+
+[case testImportStarWithinFunction]
+def f() -> None:
+    from m import *
+    f()
+[file m.py]
+[file m.py.2]
+def f(x: int) -> None: pass
+[file m.py.3]
+def f() -> None: pass
+[out]
+==
+main:3: error: Too few arguments for "f"
+==
+
+[case testImportStarMutuallyRecursive]
+import a
+[file a.py]
+from b import *
+[file b.py]
+from a import *
+[file b.py.2]
+from a import *
+x = 0
+[file b.py.3]
+from a import *
+x = ''
+[out]
+==
+==
+
+[case testDeleteFileWithErrors]
+# cmd: mypy main a.py
+# cmd2: mypy main
+# flags: --follow-imports=skip --ignore-missing-imports
+import a
+[file a.py]
+def f() -> None:
+    1()
+''()
+[file b.py.2]
+# unrelated change
+[out]
+a.py:2: error: "int" not callable
+a.py:3: error: "str" not callable
 ==

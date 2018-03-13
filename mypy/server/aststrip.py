@@ -43,7 +43,7 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -65,6 +65,7 @@ def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
         self.type = None  # type: Optional[TypeInfo]
+        # Currently active module/class symbol table
         self.names = None  # type: Optional[SymbolTable]
         self.file_node = None  # type: Optional[MypyFile]
         self.is_class_body = False
@@ -125,14 +126,16 @@ class NodeStripVisitor(TraverserVisitor):
 
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
-        # TODO: Update and restore self.names
         old_type = self.type
         old_is_class_body = self.is_class_body
+        old_names = self.names
         self.type = info
         self.is_class_body = True
+        self.names = info.names
         yield
         self.type = old_type
         self.is_class_body = old_is_class_body
+        self.names = old_names
 
     @contextlib.contextmanager
     def enter_method(self, info: TypeInfo) -> Iterator[None]:
@@ -195,6 +198,17 @@ class NodeStripVisitor(TraverserVisitor):
                     symnode = self.names[initial]
                     symnode.kind = UNBOUND_IMPORTED
                     symnode.node = None
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        # If the node is unreachable, we don't want to reset entries from a reachable import.
+        if node.is_unreachable:
+            return
+        # Reset entries in the symbol table that were added through the statement.
+        # (The description in visit_import is relevant here as well.)
+        if self.names:
+            for name in node.imported_names:
+                del self.names[name]
+        node.imported_names = []
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1, and we

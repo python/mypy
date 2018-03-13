@@ -315,11 +315,13 @@ class ImportAll(ImportBase):
     """from m import *"""
     id = None  # type: str
     relative = None  # type: int
+    imported_names = None  # type: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
+        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)

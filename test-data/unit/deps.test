@@ -596,3 +596,10 @@ def foo(x: Point) -> int:
 <m.Point> -> <m.foo>, <m.p>, m, m.Point, m.foo
 <m.p> -> m
 <mypy_extensions.TypedDict> -> m
+
+[case testImportStar]
+from a import *
+[file a.py]
+x = 0
+[out]
+<a[wildcard]> -> m
