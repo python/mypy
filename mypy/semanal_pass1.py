@@ -71,6 +71,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         sem.nonlocal_decls = [set()]
         sem.block_depth = [0]
 
+        sem.scope.enter_file(mod_id)
+
         defs = file.defs
 
         with experiments.strict_optional_set(options.strict_optional):
@@ -126,6 +128,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     self.sem.globals[name] = SymbolTableNode(GDEF, v)
 
             del self.sem.options
+
+        sem.scope.leave()
 
     def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
@@ -189,12 +193,12 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
 
             if isinstance(impl, FuncDef):
                 sem.function_stack.append(impl)
-                sem.scope.push(func)
+                sem.scope.enter_function(func)
                 sem.enter()
                 impl.body.accept(self)
             elif isinstance(impl, Decorator):
                 sem.function_stack.append(impl.func)
-                sem.scope.push_function(func)
+                sem.scope.enter_function(func)
                 sem.enter()
                 impl.func.body.accept(self)
             else:

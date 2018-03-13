@@ -105,30 +105,20 @@ class SemanticAnalyzerPass3(TraverserVisitor,
     def visit_func_def(self, fdef: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        self.scope.enter_function(fdef)
-        self.errors.push_function(fdef.name())
-        self.analyze(fdef.type, fdef)
-        super().visit_func_def(fdef)
-        self.errors.pop_function()
-        self.scope.leave()
+        with self.scope.function_scope(fdef):
+            self.analyze(fdef.type, fdef)
+            super().visit_func_def(fdef)
 
     def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        self.scope.enter_function(fdef)
-        self.errors.push_function(fdef.name())
-
-        self.analyze(fdef.type, fdef)
-        super().visit_overloaded_func_def(fdef)
-
-        self.errors.pop_function()
-        self.scope.leave()
-
+        with self.scope.function_scope(fdef):
+            self.analyze(fdef.type, fdef)
+            super().visit_overloaded_func_def(fdef)
 
     def visit_class_def(self, tdef: ClassDef) -> None:
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
-        self.errors.push_type(tdef.name)
         self.scope.enter_class(tdef.info)
         if not tdef.info.is_named_tuple:
             types = list(tdef.info.bases)  # type: List[Type]
@@ -162,7 +152,6 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         super().visit_class_def(tdef)
         self.analyze_symbol_table(tdef.info.names)
         self.scope.leave()
-        self.errors.pop_type()
 
     def visit_decorator(self, dec: Decorator) -> None:
         """Try to infer the type of the decorated function.
@@ -403,6 +392,14 @@ class SemanticAnalyzerPass3(TraverserVisitor,
             if node.type_override:
                 self.analyze(node.type_override, node)
 
+    def make_scoped_patch(self, fn: Callable[[], None]) -> Callable[[], None]:
+        saved_scope = self.scope.save()
+
+        def patch() -> None:
+            with self.scope.saved_scope(saved_scope):
+                fn()
+        return patch
+
     def generate_type_patches(self,
                               node: Union[Node, SymbolTableNode],
                               indicator: Dict[str, bool],
@@ -412,13 +409,13 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                 self.perform_transform(node,
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
                                                                   node, warn)))
-            self.patches.append((PRIORITY_FORWARD_REF, patch))
+            self.patches.append((PRIORITY_FORWARD_REF, self.make_scoped_patch(patch)))
         if indicator.get('typevar'):
             def patch() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(TypeVariableChecker(self.fail)))
 
-            self.patches.append((PRIORITY_TYPEVAR_VALUES, patch))
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch)))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).

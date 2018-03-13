@@ -55,6 +55,7 @@ from mypy.meet import is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
+from mypy.scope import Scope as TargetScope
 
 from mypy import experiments
 
@@ -131,6 +132,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
+    tscope = None  # type: TargetScope
     scope = None  # type: Scope
     # Stack of function return types
     return_types = None  # type: List[Type]
@@ -186,6 +188,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg = MessageBuilder(errors, modules)
         self.plugin = plugin
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
+        self.tscope = TargetScope()
         self.scope = Scope(tree)
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
@@ -241,7 +244,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         self.recurse_into_functions = True
         with experiments.strict_optional_set(self.options.strict_optional):
-            self.errors.set_file(self.path, self.tree.fullname())
+            self.errors.set_file(self.path, self.tree.fullname(), scope=self.tscope)
+            self.tscope.enter_file(self.tree.fullname())
             with self.enter_partial_types():
                 with self.binder.top_frame_context():
                     for d in self.tree.defs:
@@ -263,6 +267,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.fail(messages.ALL_MUST_BE_SEQ_STR.format(str_seq_s, all_s),
                             all_node)
 
+            self.tscope.leave()
+
     def check_second_pass(self, todo: Optional[List[DeferredNode]] = None) -> bool:
         """Run second or following pass of type checking.
 
@@ -272,7 +278,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         with experiments.strict_optional_set(self.options.strict_optional):
             if not todo and not self.deferred_nodes:
                 return False
-            self.errors.set_file(self.path, self.tree.fullname())
+            self.errors.set_file(self.path, self.tree.fullname(), scope=self.tscope)
+            self.tscope.enter_file(self.tree.fullname())
             self.pass_num += 1
             if not todo:
                 todo = self.deferred_nodes
@@ -287,9 +294,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # print("XXX in pass %d, class %s, function %s" %
                 #       (self.pass_num, type_name, node.fullname() or node.name()))
                 done.add(node)
-                with self.errors.enter_type(type_name) if type_name else nothing():
+                with self.tscope.class_scope(active_typeinfo) if active_typeinfo else nothing():
                     with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
                         self.check_partial(node)
+            self.tscope.leave()
             return True
 
     def check_partial(self, node: Union[FuncDef,
@@ -372,7 +380,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        with self.errors.enter_function(defn.name()):
+        with self.tscope.function_scope(defn):
             self._visit_overloaded_func_def(defn)
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
@@ -595,7 +603,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        with self.errors.enter_function(defn.name()):
+        with self.tscope.function_scope(defn):
             self._visit_func_def(defn)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
@@ -650,25 +658,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         If type_override is provided, use it as the function type.
         """
-        # We may be checking a function definition or an anonymous function. In
-        # the first case, set up another reference with the precise type.
-        fdef = None  # type: Optional[FuncDef]
-        if isinstance(defn, FuncDef):
-            fdef = defn
-
         self.dynamic_funcs.append(defn.is_dynamic() and not type_override)
 
-        # with self.errors.enter_function(fdef.name()) if fdef else nothing():
-        with nothing():
-            with self.enter_partial_types(is_function=True):
-                typ = self.function_type(defn)
-                if type_override:
-                    typ = type_override.copy_modified(line=typ.line, column=typ.column)
-                if isinstance(typ, CallableType):
-                    with self.enter_attribute_inference_context():
-                        self.check_func_def(defn, typ, name)
-                else:
-                    raise RuntimeError('Not supported')
+        with self.enter_partial_types(is_function=True):
+            typ = self.function_type(defn)
+            if type_override:
+                typ = type_override.copy_modified(line=typ.line, column=typ.column)
+            if isinstance(typ, CallableType):
+                with self.enter_attribute_inference_context():
+                    self.check_func_def(defn, typ, name)
+            else:
+                raise RuntimeError('Not supported')
 
         self.dynamic_funcs.pop()
         self.current_node_deferred = False
@@ -1277,7 +1277,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = defn.info
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
-        with self.errors.enter_type(defn.name), self.enter_partial_types(is_class=True):
+        with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
             with self.binder.top_frame_context():
@@ -2594,8 +2594,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
 
         if self.recurse_into_functions:
-            # XXX: IS THIS RIGHT????
-            with self.errors.enter_function(e.func.name()):
+            with self.tscope.function_scope(e.func):
                 self.check_func_item(e.func, name=e.func.name())
 
         # Process decorators from the inside out to determine decorated signature, which

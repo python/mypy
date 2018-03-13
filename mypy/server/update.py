@@ -824,9 +824,8 @@ def reprocess_nodes(manager: BuildManager,
                 active_type=deferred.active_typeinfo,
                 scope=manager.semantic_analyzer_pass3.scope):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
-            # XXX: This is suuuuuuper dodgy!
-            apply_semantic_analyzer_patches(patches)
 
+    apply_semantic_analyzer_patches(patches)
 
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as

@@ -345,7 +345,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.tvar_scope = TypeVarScope()
         if active_type:
             scope.enter_class(active_type)
-            self.errors.push_type(active_type.name())
             self.enter_class(active_type.defn.info)
             for tvar in active_type.defn.type_vars:
                 self.tvar_scope.bind_existing(tvar)
@@ -354,7 +353,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         if active_type:
             scope.leave()
-            self.errors.pop_type()
             self.leave_class()
             self.type = None
         scope.leave()
@@ -363,9 +361,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        with self.errors.enter_function(defn.name()):
-            with self.scope.function_scope(defn):
-                self._visit_func_def(defn)
+        with self.scope.function_scope(defn):
+            self._visit_func_def(defn)
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -486,9 +483,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # underlying FuncDefs, the function might get entered twice.
         # This is fine, though, because only the outermost function is
         # used to compute targets.
-        with self.errors.enter_function(defn.name()):
-            with self.scope.function_scope(defn):
-                self._visit_overloaded_func_def(defn)
+        with self.scope.function_scope(defn):
+            self._visit_overloaded_func_def(defn)
 
     def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
@@ -690,12 +686,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
-        self.scope.enter_class(defn.info)
-        with self.errors.enter_type(defn.name), self.analyze_class_body(defn) as should_continue:
+        with self.scope.class_scope(defn.info), self.analyze_class_body(defn) as should_continue:
             if should_continue:
                 # Analyze class body.
                 defn.defs.accept(self)
-            self.scope.leave()
 
     @contextmanager
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:

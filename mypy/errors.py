@@ -111,12 +111,6 @@ class Errors:
     # Path to current file.
     file = None  # type: str
 
-    # Stack of short names of currents types (or None).
-    type_name = None  # type: List[Optional[str]]
-
-    # Stack of short names of current functions or members (or None).
-    function_or_member = None  # type: List[Optional[str]]
-
     # Ignore errors on these lines of each file.
     ignored_lines = None  # type: Dict[str, Set[int]]
 
@@ -137,22 +131,9 @@ class Errors:
 
     # State for keeping track of the current fine-grained incremental mode target.
     # (See mypy.server.update for more about targets.)
-    scope = None  # type: Optional[Scope]
-
-    # State for keeping track of the current fine-grained incremental mode target.
-    # (See mypy.server.update for more about targets.)
-    #
     # Current module id.
     target_module = None  # type: Optional[str]
-    # Partially qualified name of target class; without module prefix (examples: 'C' is top-level,
-    # 'C.D' nested).
-    target_class = None  # type: Optional[str]
-    # Short name of the outermost function/method.
-    target_function = None  # type: Optional[str]
-    # Nesting depth of functions/classes within the outermost function/method. These aren't
-    # separate targets and they are included in the surrounding function, but we this counter
-    # for internal bookkeeping.
-    target_ignore_depth = 0
+    scope = None  # type: Optional[Scope]
 
     def __init__(self, show_error_context: bool = False,
                  show_column_numbers: bool = False) -> None:
@@ -172,9 +153,6 @@ class Errors:
         self.only_once_messages = set()
         self.scope = None
         self.target_module = None
-        self.target_class = None
-        self.target_function = None
-        self.target_ignore_depth = 0
 
     def reset(self) -> None:
         self.initialize()
@@ -186,9 +164,7 @@ class Errors:
         new.type_name = self.type_name[:]
         new.function_or_member = self.function_or_member[:]
         new.target_module = self.target_module
-        new.target_class = self.target_class
-        new.target_function = self.target_function
-        new.target_ignore_depth = self.target_ignore_depth
+        new.scope = self.scope
         return new
 
     def set_ignore_prefix(self, prefix: str) -> None:
@@ -215,9 +191,6 @@ class Errors:
         #    processed.
         self.file = file
         self.target_module = module
-        self.target_class = None
-        self.target_function = None
-        self.target_ignore_depth = 0
         self.scope = scope
 
     def set_file_ignored_lines(self, file: str,
@@ -227,73 +200,15 @@ class Errors:
         if ignore_all:
             self.ignored_files.add(file)
 
-    def push_function(self, name: str) -> None:
-        """Set the current function or member short name (it can be None)."""
-        if self.target_function is None:
-            self.target_function = name
-        else:
-            self.target_ignore_depth += 1
-        self.function_or_member.append(name)
-
-    def pop_function(self) -> None:
-        self.function_or_member.pop()
-        if self.target_ignore_depth > 0:
-            self.target_ignore_depth -= 1
-        else:
-            self.target_function = None
-
-    @contextmanager
-    def enter_function(self, name: str) -> Iterator[None]:
-        self.push_function(name)
-        yield
-        self.pop_function()
-
-    def push_type(self, name: str) -> None:
-        """Set the short name of the current type (it can be None)."""
-        if self.target_function is not None:
-            self.target_ignore_depth += 1
-        elif self.target_class is None:
-            self.target_class = name
-        else:
-            self.target_class += '.' + name
-        self.type_name.append(name)
-
-    def pop_type(self) -> None:
-        self.type_name.pop()
-        if self.target_ignore_depth > 0:
-            self.target_ignore_depth -= 1
-        else:
-            assert self.target_class is not None
-            if '.' in self.target_class:
-                self.target_class = '.'.join(self.target_class.split('.')[:-1])
-            else:
-                self.target_class = None
-
     def current_target(self) -> Optional[str]:
         if self.target_module is None:
             return None
         if self.scope is not None:
             return self.scope.current_target()
-        target = self.target_module
-        if self.target_function is not None:
-            # Only include class name if we are inside a method, since a class
-            # target also includes all methods, which is not what we want
-            # here. Instead, the current target for a class body is the
-            # enclosing module top level.
-            if self.target_class is not None:
-                target += '.' + self.target_class
-            target += '.' + self.target_function
-        return target
+        return self.target_module
 
     def current_module(self) -> Optional[str]:
         return self.target_module
-
-    @contextmanager
-    def enter_type(self, name: str) -> Iterator[None]:
-        """Set the short name of the current type (it can be None)."""
-        self.push_type(name)
-        yield
-        self.pop_type()
 
     def import_context(self) -> List[Tuple[str, int]]:
         """Return a copy of the import context."""
@@ -324,15 +239,21 @@ class Errors:
             only_once: if True, only report this exact message once per build
             origin_line: if non-None, override current context as origin
         """
-        type = self.type_name[-1]  # type: Optional[str]
-        if len(self.function_or_member) > 2:
-            type = None  # Omit type context if nested function
+        if self.scope:
+            type = self.scope.current_type_name()
+            if self.scope.ignored > 0:
+                type = None  # Omit type context if nested function
+            function = self.scope.current_function_name()
+        else:
+            type = None
+            function = None
+
         if file is None:
             file = self.file
         if offset:
             message = " " * offset + message
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
-                         self.function_or_member[-1], line, column, severity, message,
+                         function, line, column, severity, message,
                          blocker, only_once,
                          origin=(self.file, origin_line) if origin_line else None,
                          target=self.current_target())
