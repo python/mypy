@@ -25,7 +25,7 @@ class ArgSuite(Suite):
 
     def test_executable_inference(self) -> None:
         """Test the --python-executable flag with --python-version"""
-        sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
+        sys_ver_str = '{ver.major}.{ver.minor}'.format(ver=sys.version_info[:2])
 
         base = ['file.py']  # dummy file
 
@@ -56,9 +56,9 @@ class ArgSuite(Suite):
         special_opts.python_version = (2, 10)  # obviously wrong
         special_opts.no_executable = None
         with pytest.raises(PythonExecutableInferenceError) as e:
-            options = infer_python_version_and_executable(options, special_opts)
+            infer_python_version_and_executable(options, special_opts)
         assert str(e.value) == 'Python version (2, 10) did not match executable {}, got' \
-                               ' version {}.'.format(sys.executable, str(sys.version_info[:2]))
+                               ' version {}.'.format(sys.executable, sys.version_info[:2])
 
         # test that --no-site-packages will disable executable inference
         matching_version = base + ['--python-version={}'.format(sys_ver_str),

@@ -255,8 +255,7 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
 
 
 def infer_python_version_and_executable(options: Options,
-                                        special_opts: argparse.Namespace
-                                        ) -> Options:
+                                        special_opts: argparse.Namespace) -> None:
     # Infer Python version and/or executable if one is not given
     if special_opts.python_executable is not None and special_opts.python_version is not None:
         py_exe_ver = _python_version_from_executable(special_opts.python_executable)
@@ -278,7 +277,6 @@ def infer_python_version_and_executable(options: Options,
         options.python_version = _python_version_from_executable(
             special_opts.python_executable)
         options.python_executable = special_opts.python_executable
-    return options
 
 
 def process_options(args: List[str],
@@ -565,7 +563,7 @@ def process_options(args: List[str],
               "is now mypy's default and only parser.")
 
     try:
-        options = infer_python_version_and_executable(options, special_opts)
+        infer_python_version_and_executable(options, special_opts)
     except PythonExecutableInferenceError as e:
         parser.error(str(e))
 
