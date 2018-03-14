@@ -706,8 +706,6 @@ def propagate_changes_using_dependencies(
     Returns a list (module id, path) tuples representing modules that contain
     a target that needs to be reprocessed but that has not been parsed yet."""
 
-    t0 = time.time()
-
     # TODO: Multiple type checking passes
     num_iter = 0
     remaining_modules = []
@@ -747,9 +745,6 @@ def propagate_changes_using_dependencies(
         targets_with_errors = set()
         if is_verbose(manager):
             manager.log_fine_grained('triggered: %r' % list(triggered))
-
-    t1 = time.time()
-    manager.log_fine_grained("propagated changes in {:.3f}s".format(t1 - t0))
 
     return remaining_modules
 
