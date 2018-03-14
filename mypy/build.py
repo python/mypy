@@ -847,51 +847,52 @@ class FindModuleCache:
         self.results.clear()
         self.dirs.clear()
 
+    def _find_module(self, id: str, lib_path: Tuple[str, ...]) -> Optional[str]:
+        fscache = self.fscache
+
+        # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
+        # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
+        # that only once and cache it for when we look for modules like 'foo.bar.blah'
+        # that will require the same subdirectory.
+        components = id.split('.')
+        dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
+        if (dir_chain, lib_path) not in self.dirs:
+            dirs = []
+            for pathitem in lib_path:
+                # e.g., '/usr/lib/python3.4/foo/bar'
+                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                if fscache.isdir(dir):
+                    dirs.append(dir)
+            self.dirs[dir_chain, lib_path] = dirs
+        candidate_base_dirs = self.dirs[dir_chain, lib_path]
+
+        # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
+        # contains just the subdirectories 'foo/bar' that actually exist under the
+        # elements of lib_path.  This is probably much shorter than lib_path itself.
+        # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
+        seplast = os.sep + components[-1]  # so e.g. '/baz'
+        sepinit = os.sep + '__init__'
+        for base_dir in candidate_base_dirs:
+            base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+            # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
+            for extension in PYTHON_EXTENSIONS:
+                path = base_path + sepinit + extension
+                if fscache.isfile_case(path) and verify_module(fscache, id, path):
+                    return path
+            # No package, look for module.
+            for extension in PYTHON_EXTENSIONS:
+                path = base_path + extension
+                if fscache.isfile_case(path) and verify_module(fscache, id, path):
+                    return path
+        return None
+
     def find_module(self, id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
         """Return the path of the module source file, or None if not found."""
         lib_path = tuple(lib_path_arg)
-        fscache = self.fscache
-
-        def find() -> Optional[str]:
-            # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
-            # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
-            # that only once and cache it for when we look for modules like 'foo.bar.blah'
-            # that will require the same subdirectory.
-            components = id.split('.')
-            dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-            if (dir_chain, lib_path) not in self.dirs:
-                dirs = []
-                for pathitem in lib_path:
-                    # e.g., '/usr/lib/python3.4/foo/bar'
-                    dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                    if fscache.isdir(dir):
-                        dirs.append(dir)
-                self.dirs[dir_chain, lib_path] = dirs
-            candidate_base_dirs = self.dirs[dir_chain, lib_path]
-
-            # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
-            # contains just the subdirectories 'foo/bar' that actually exist under the
-            # elements of lib_path.  This is probably much shorter than lib_path itself.
-            # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
-            seplast = os.sep + components[-1]  # so e.g. '/baz'
-            sepinit = os.sep + '__init__'
-            for base_dir in candidate_base_dirs:
-                base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
-                # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
-                for extension in PYTHON_EXTENSIONS:
-                    path = base_path + sepinit + extension
-                    if fscache.isfile_case(path) and verify_module(fscache, id, path):
-                        return path
-                # No package, look for module.
-                for extension in PYTHON_EXTENSIONS:
-                    path = base_path + extension
-                    if fscache.isfile_case(path) and verify_module(fscache, id, path):
-                        return path
-            return None
 
         key = (id, lib_path)
         if key not in self.results:
-            self.results[key] = find()
+            self.results[key] = self._find_module(id, lib_path)
         return self.results[key]
 
     def find_modules_recursive(self, module: str, lib_path: List[str]) -> List[BuildSource]:
