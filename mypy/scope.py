@@ -42,11 +42,11 @@ class Scope:
         return self.module
 
     def current_type_name(self) -> Optional[str]:
-        """Return the current type name if it exists"""
+        """Return the current type's short name if it exists"""
         return self.classes[-1].name() if self.classes else None
 
     def current_function_name(self) -> Optional[str]:
-        """Return the current function name if it exists"""
+        """Return the current function's short name if it exists"""
         return self.function.name() if self.function else None
 
     def enter_file(self, prefix: str) -> None:

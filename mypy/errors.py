@@ -201,8 +201,9 @@ class Errors:
             self.ignored_files.add(file)
 
     def current_target(self) -> Optional[str]:
-        if self.target_module is None:
-            return None
+        """Retrieves the current target from the associated scope.
+
+        If there is no associated scope, use the target module."""
         if self.scope is not None:
             return self.scope.current_target()
         return self.target_module

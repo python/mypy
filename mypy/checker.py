@@ -55,7 +55,7 @@ from mypy.meet import is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
-from mypy.scope import Scope as TargetScope
+from mypy.scope import Scope
 
 from mypy import experiments
 
@@ -132,8 +132,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Helper for type checking expressions
     expr_checker = None  # type: mypy.checkexpr.ExpressionChecker
 
-    tscope = None  # type: TargetScope
-    scope = None  # type: Scope
+    tscope = None  # type: Scope
+    scope = None  # type: CheckerScope
     # Stack of function return types
     return_types = None  # type: List[Type]
     # Flags; true for dynamically typed functions
@@ -188,8 +188,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.msg = MessageBuilder(errors, modules)
         self.plugin = plugin
         self.expr_checker = mypy.checkexpr.ExpressionChecker(self, self.msg, self.plugin)
-        self.tscope = TargetScope()
-        self.scope = Scope(tree)
+        self.tscope = Scope()
+        self.scope = CheckerScope(tree)
         self.binder = ConditionalTypeBinder()
         self.globals = tree.names
         self.return_types = []
@@ -3705,7 +3705,7 @@ def is_node_static(node: Optional[Node]) -> Optional[bool]:
     return None
 
 
-class Scope:
+class CheckerScope:
     # We keep two stacks combined, to maintain the relative order
     stack = None  # type: List[Union[TypeInfo, FuncItem, MypyFile]]
 
@@ -3733,7 +3733,7 @@ class Scope:
         top = self.top_function()
         assert top, "This method must be called from inside a function"
         index = self.stack.index(top)
-        assert index, "Scope stack must always start with a module"
+        assert index, "CheckerScope stack must always start with a module"
         enclosing = self.stack[index - 1]
         if isinstance(enclosing, TypeInfo):
             return enclosing

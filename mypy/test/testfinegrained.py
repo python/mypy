@@ -163,7 +163,6 @@ class FineGrainedSuite(DataSuite):
         options.use_fine_grained_cache = self.use_cache and not build_cache
         options.cache_fine_grained = self.use_cache
         options.local_partial_types = True
-        options.verbosity = 1
         if options.follow_imports == 'normal':
             options.follow_imports = 'error'
 
