@@ -1238,7 +1238,8 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Obtain and set up metadata
     try:
-        os.makedirs(parent, exist_ok=True)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         st = manager.get_stat(path)
     except OSError as err:
         manager.log("Cannot get stat for {}: {}".format(path, err))
