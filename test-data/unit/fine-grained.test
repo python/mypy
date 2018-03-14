@@ -2996,3 +2996,56 @@ y = 0
 [out]
 ==
 ==
+
+[case testMultipleAssignment]
+import a
+[file a.py]
+from b import f
+
+def h(x: str) -> None: pass
+
+class C:
+    def __init__(self) -> None:
+        self.a, self.b = f()
+
+    def g(self) -> None:
+        h(self.a)
+[file b.py]
+from typing import Tuple
+def f() -> Tuple[str, int]: pass
+[file b.py.2]
+from typing import Tuple
+def f() -> Tuple[int, object]: pass
+[file b.py.3]
+from typing import Tuple
+def f() -> Tuple[str, int]: pass
+[out]
+==
+a.py:10: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+==
+
+[case testMultipleLvalues]
+import a
+[file a.py]
+from b import f
+
+def h(x: str) -> None: pass
+
+class C:
+    def __init__(self) -> None:
+        self.a = self.b = f()
+
+    def g(self) -> None:
+        h(self.a)
+        h(self.b)
+[file b.py]
+def f() -> str: pass
+[file b.py.2]
+def f() -> int: pass
+[file b.py.3]
+def f() -> str: pass
+[out]
+==
+a.py:10: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+a.py:11: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+==
