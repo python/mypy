@@ -851,7 +851,7 @@ class FindModuleCache:
     def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
         self.fscache = fscache or FileSystemMetaCache()
         # Cache find_module: (id, lib_path) -> result.
-        self.results = {}  # type: Dict[Tuple[str, Optional[str], Tuple[str, ...]], Optional[str]]
+        self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...], Optional[str]], Optional[str]]
 
         # Cache some repeated work within distinct find_module calls: finding which
         # elements of lib_path have even the subdirectory they'd need for the module
@@ -952,7 +952,7 @@ class FindModuleCache:
         """Return the path of the module source file, or None if not found."""
         lib_path = tuple(lib_path_arg)
 
-        key = (id, python_executable, lib_path)
+        key = (id, lib_path, python_executable)
         if key not in self.results:
             self.results[key] = self._find_module(id, lib_path, python_executable)
         return self.results[key]
