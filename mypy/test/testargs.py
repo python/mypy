@@ -25,7 +25,7 @@ class ArgSuite(Suite):
 
     def test_executable_inference(self) -> None:
         """Test the --python-executable flag with --python-version"""
-        sys_ver_str = '{ver.major}.{ver.minor}'.format(ver=sys.version_info[:2])
+        sys_ver_str = '{ver.major}.{ver.minor}'.format(ver=sys.version_info)
 
         base = ['file.py']  # dummy file
 
