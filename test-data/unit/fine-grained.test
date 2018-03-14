@@ -15,6 +15,22 @@
 --   <optional output from batch pass>
 --   ==
 --   <optional output from first incremental pass>
+--
+--
+-- Modules that are expected to be detected as changed by dmypy_server
+-- can be checked with [stale ...]
+-- Generally this should mean added, deleted, or changed files, though there
+-- are important edge cases related to the cache: deleted files won't be detected
+-- as changed in the initial run with the cache while modules that depended on them
+-- should be.
+--
+-- Modules that are require a full-module reprocessing by update can be checked with
+-- [rechecked ...]. This should include any files detected as having changed as well
+-- as any files that contain targets that need to be reprocessed but which haven't
+-- been loaded yet. If there is no [rechecked...] directive, it inherits the value of
+-- [stale ...].
+--
+-- Specifications for later runs can be given with [stale2 ...], [stale3 ...], etc.
 
 [case testReprocessFunction]
 import m
@@ -1149,8 +1165,8 @@ def g() -> None:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b.h>, <b>, a.g
-3: <b.h>, <b>, a
+2: <b.h>, <b>, <b[wildcard]>, a.g
+3: <b.h>, <b>, <b[wildcard]>, a
 4: a.g
 [out]
 a.py:11: error: Too many arguments for "h"
@@ -1458,9 +1474,11 @@ class C: pass
 class D(C):
     1()
 class E(D): pass
+# Something needs to change
 
 [file b.py.2]
 import a
+# Something needs to change
 
 [triggered]
 2: a, a
@@ -1775,7 +1793,7 @@ p = Point(dict(x=42, y=1337))
 [file a.py.2]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
-p = Point(dict(x=42, y=1337))
+p = Point(dict(x=42, y=1337)) # dummy change
 [out]
 ==
 
@@ -2634,4 +2652,347 @@ from mypy_extensions import Arg
 def a(f: Callable[[Arg(int, 'x')], int]) -> None: pass
 [builtins fixtures/dict.pyi]
 [out]
+==
+
+[case testImplicitTuple1]
+import a
+[file a.py]
+# Bogus annotation in nested function masked because outer function
+# isn't annotated
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[file a.py.2]
+# dummy change
+def unchecked():
+    def inner():
+        # type: () -> (str, int)
+        return 'lol', 10
+[out]
+==
+
+[case testImplicitTuple2]
+import a
+[file a.py]
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[file a.py.2]
+# dummy change
+def inner():
+    # type: () -> (str, int)
+    return 'lol', 10
+[out]
+a.py:1: error: Invalid tuple literal type
+==
+a.py:2: error: Invalid tuple literal type
+
+[case testImplicitTuple3]
+import a
+[file a.py]
+(x, y) = 1, 'hi'  # type: (int, str)
+[file a.py.2]
+# dummy change
+(x, y) = 1, 'hi'  # type: (int, str)
+[out]
+==
+
+[case testCastConfusion]
+import b
+[file a.py]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+
+[file b.py]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+
+[file a.py.2]
+from typing import cast
+class Thing:
+    def foo(self) -> None: pass
+
+thing = cast(Thing, Thing())
+# update
+
+[file b.py.2]
+from typing import Optional
+from a import Thing, thing
+class User:
+    def __init__(self, x: Optional[Thing]) -> None:
+        self.x = x if x else thing
+    def use(self) -> None: self.x.foo()
+# update
+[builtins fixtures/ops.pyi]
+[out]
+==
+
+[case testRefreshClassBasedEnum]
+import aa
+[file aa.py]
+import a
+[file a.py]
+from enum import Enum
+import b
+b.x
+class C(Enum):
+    X = 0
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[file aa.py.3]
+from a import C
+c: C
+c = C.X
+c = 1
+[out]
+==
+==
+aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
+[case testRefreshClassBasedIntEnum]
+import aa
+[file aa.py]
+import a
+[file a.py]
+from enum import IntEnum
+import b
+b.x
+class C(IntEnum):
+    X = 0
+x: int
+x = C.X
+[file b.py]
+x = 0
+[file b.py.2]
+x = ''
+[file aa.py.3]
+from a import C
+c: C
+c = C.X
+c = 1
+n: int
+n = C.X
+n = c
+[out]
+==
+==
+aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+
+[case testClassBasedEnumPropagation1]
+import a
+[file a.py]
+from b import C
+
+def f(x: C) -> None: pass
+f(C.X)
+f(C.Y)
+[file b.py]
+from enum import Enum
+
+class C(Enum):
+    X = 0
+    Y = 1
+[file b.py.2]
+from enum import Enum
+
+class C(Enum):
+    X = 0
+[out]
+==
+a.py:5: error: "Type[C]" has no attribute "Y"
+
+[case testClassBasedEnumPropagation2]
+import a
+[file a.py]
+from b import C
+
+def f(x: int) -> None: pass
+f(C.X)
+f(C.Y)
+[file b.py]
+class C:
+    X = 0
+    Y = 1
+[file b.py.2]
+from enum import Enum
+class C(Enum):
+    X = 0
+    Y = 1
+[out]
+==
+a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
+a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
+
+[case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+f = 1
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeVarAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from typing import TypeVar
+f = TypeVar('f')
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToModuleAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+import c as f
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeAliasAndRefreshUsingStaleDependency1]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+f = int
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeAliasAndRefreshUsingStaleDependency2]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from typing import List
+f = List[int]
+[file c.py]
+class A: pass
+[file c.py.3]
+[builtins fixtures/list.pyi]
+[out]
+==
+==
+
+[case testChangeFunctionToClassAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+class f: pass
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testClassToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+class A:
+    def f(self) -> c.A: pass
+[file a.py.2]
+A = 0
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testFunctionToImportedFunctionAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from d import f
+[file c.py]
+class A: pass
+[file c.py.3]
+[file d.py]
+def g() -> None: pass
+def f() -> None:
+    g()
+[out]
+==
+==
+
+[case testMethodToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+class B:
+    def f(self) -> c.A: pass
+[file a.py.2]
+class B:
+    f = 0
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testRefreshNestedClassWithSelfReference]
+import a
+[file a.py]
+import b
+
+def f(self) -> None:
+    b.y
+    class C:
+        z: C
+[file b.py]
+y = 0
+[file b.py.2]
+y = ''
+[file b.py.3]
+y = 0
+[out]
+==
 ==

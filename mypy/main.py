@@ -53,6 +53,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
         be used.
     """
+    # Check for known bad Python versions.
+    if sys.version_info[:2] < (3, 4):
+        sys.exit("Running mypy with Python 3.3 or lower is not supported; "
+                 "please upgrade to 3.4 or newer")
+    if sys.version_info[:3] == (3, 5, 0):
+        sys.exit("Running mypy with Python 3.5.0 is not supported; "
+                 "please upgrade to 3.5.1 or newer")
+
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
     if script_path:
@@ -609,7 +617,8 @@ def process_options(args: List[str],
                  .format(special_opts.package))
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(special_opts.package, lib_path)
+        # TODO: use the same cache as the BuildManager will
+        targets = build.FindModuleCache().find_modules_recursive(special_opts.package, lib_path)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
         return targets, options
@@ -622,6 +631,7 @@ def process_options(args: List[str],
         return targets, options
 
 
+# TODO: use a FileSystemCache for this
 def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
     targets = []
     for f in files:
@@ -848,8 +858,13 @@ def parse_section(prefix: str, template: Options,
                     continue
                 if key.startswith('x_'):
                     continue  # Don't complain about `x_blah` flags
-                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
-                      file=sys.stderr)
+                elif key == 'strict':
+                    print("%s: Strict mode is not supported in configuration files: specify "
+                          "individual flags instead (see 'mypy -h' for the list of flags enabled "
+                          "in strict mode)" % prefix, file=sys.stderr)
+                else:
+                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
+                          file=sys.stderr)
                 continue
             ct = type(dv)
         v = None  # type: Any

@@ -22,8 +22,7 @@ def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
     node_fixer.visit_symbol_table(tree.names)
 
 
-def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile],
-                          quick_and_dirty: bool) -> None:
+def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
     compute_all_mros(tree.names, modules)
 
 

@@ -43,8 +43,9 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll
 )
+from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
 
 
@@ -64,7 +65,9 @@ def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
 class NodeStripVisitor(TraverserVisitor):
     def __init__(self) -> None:
         self.type = None  # type: Optional[TypeInfo]
+        # Currently active module/class symbol table
         self.names = None  # type: Optional[SymbolTable]
+        self.file_node = None  # type: Optional[MypyFile]
         self.is_class_body = False
         # By default, process function definitions. If False, don't -- this is used for
         # processing module top levels.
@@ -73,6 +76,7 @@ class NodeStripVisitor(TraverserVisitor):
     def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""
         self.names = file_node.names
+        self.file_node = file_node
         self.recurse_into_functions = False
         file_node.accept(self)
 
@@ -122,14 +126,16 @@ class NodeStripVisitor(TraverserVisitor):
 
     @contextlib.contextmanager
     def enter_class(self, info: TypeInfo) -> Iterator[None]:
-        # TODO: Update and restore self.names
         old_type = self.type
         old_is_class_body = self.is_class_body
+        old_names = self.names
         self.type = info
         self.is_class_body = True
+        self.names = info.names
         yield
         self.type = old_type
         self.is_class_body = old_is_class_body
+        self.names = old_names
 
     @contextlib.contextmanager
     def enter_method(self, info: TypeInfo) -> Iterator[None]:
@@ -159,20 +165,29 @@ class NodeStripVisitor(TraverserVisitor):
         if node.assignments:
             node.assignments = []
         else:
+            # If the node is unreachable, don't reset entries: they point to something else!
+            if node.is_unreachable: return
             if self.names:
                 # Reset entries in the symbol table. This is necessary since
                 # otherwise the semantic analyzer will think that the import
                 # assigns to an existing name instead of defining a new one.
                 for name, as_name in node.names:
                     imported_name = as_name or name
-                    symnode = self.names[imported_name]
-                    symnode.kind = UNBOUND_IMPORTED
-                    symnode.node = None
+                    # This assert is safe since we check for self.names above.
+                    assert self.file_node is not None
+                    sym = create_indirect_imported_name(self.file_node,
+                                                        node.id,
+                                                        node.relative,
+                                                        name)
+                    if sym:
+                        self.names[imported_name] = sym
 
     def visit_import(self, node: Import) -> None:
         if node.assignments:
             node.assignments = []
         else:
+            # If the node is unreachable, don't reset entries: they point to something else!
+            if node.is_unreachable: return
             if self.names:
                 # Reset entries in the symbol table. This is necessary since
                 # otherwise the semantic analyzer will think that the import
@@ -183,6 +198,17 @@ class NodeStripVisitor(TraverserVisitor):
                     symnode = self.names[initial]
                     symnode.kind = UNBOUND_IMPORTED
                     symnode.node = None
+
+    def visit_import_all(self, node: ImportAll) -> None:
+        # If the node is unreachable, we don't want to reset entries from a reachable import.
+        if node.is_unreachable:
+            return
+        # Reset entries in the symbol table that were added through the statement.
+        # (The description in visit_import is relevant here as well.)
+        if self.names:
+            for name in node.imported_names:
+                del self.names[name]
+        node.imported_names = []
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1, and we

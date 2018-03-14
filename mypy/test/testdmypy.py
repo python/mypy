@@ -15,6 +15,7 @@ from mypy.test.data import DataDrivenTestCase, DataSuite, has_stable_flags, is_i
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages,
     retry_on_error, testcase_pyversion, update_testcase_output,
+    copy_and_fudge_mtime,
 )
 from mypy.options import Options
 
@@ -81,7 +82,6 @@ class DmypySuite(DataSuite):
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
         assert incremental_step >= 1
-        build.find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
 
         if incremental_step > 1:
@@ -91,14 +91,7 @@ class DmypySuite(DataSuite):
                     if file.endswith('.' + str(incremental_step)):
                         full = os.path.join(dn, file)
                         target = full[:-2]
-                        # Use retries to work around potential flakiness on Windows (AppVeyor).
-                        retry_on_error(lambda: shutil.copy(full, target))
-
-                        # In some systems, mtime has a resolution of 1 second which can cause
-                        # annoying-to-debug issues when a file has the same size after a
-                        # change. We manually set the mtime to circumvent this.
-                        new_time = os.stat(target).st_mtime + 1
-                        os.utime(target, times=(new_time, new_time))
+                        copy_and_fudge_mtime(full, target)
             # Delete files scheduled to be deleted in [delete <path>.num] sections.
             for path in testcase.deleted_paths.get(incremental_step, set()):
                 # Use retries to work around potential flakiness on Windows (AppVeyor).
@@ -117,20 +110,16 @@ class DmypySuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = self.parse_options(original_program_text, testcase, incremental_step)
         if incremental_step == 1:
-            server_options = []  # type: List[str]
             if 'fine-grained' in testcase.file:
-                server_options.append('--experimental')
                 options.fine_grained_incremental = True
-                options.local_partial_types = True
-            self.server = dmypy_server.Server(server_options)  # TODO: Fix ugly API
-            self.server.options = options
+            self.server = dmypy_server.Server(options, alt_lib_path=test_temp_dir)
 
         assert self.server is not None  # Set in step 1 and survives into next steps
         sources = []
         for module_name, program_path, program_text in module_data:
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(build.BuildSource(program_path, module_name, None))
-        response = self.server.check(sources, alt_lib_path=test_temp_dir)
+        response = self.server.check(sources)
         a = (response['out'] or response['err']).splitlines()
         a = normalize_error_messages(a)
 
@@ -271,7 +260,7 @@ class DmypySuite(DataSuite):
             module_names = m.group(1)
             out = []  # type: List[Tuple[str, str, Optional[str]]]
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                path = build.FindModuleCache().find_module(module_name, [test_temp_dir])
                 if path is None and module_name.startswith(NON_EXISTENT_PREFIX):
                     # This is a special name for a file that we don't want to exist.
                     assert '.' not in module_name  # TODO: Packages not supported here

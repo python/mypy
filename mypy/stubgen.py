@@ -156,7 +156,7 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        module_path = mypy.build.find_module(module, ['.'] + search_path)
+        module_path = mypy.build.FindModuleCache().find_module(module, ['.'] + search_path)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))
@@ -201,7 +201,7 @@ def generate_stub(path: str,
                   include_private: bool = False
                   ) -> None:
 
-    source, _ = mypy.build.read_with_python_encoding(path, pyversion)
+    source, _ = mypy.util.read_with_python_encoding(path, pyversion)
     options = MypyOptions()
     options.python_version = pyversion
     try:

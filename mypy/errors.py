@@ -21,7 +21,7 @@ class ErrorInfo:
     # related to this error. Each item is a (path, line number) tuple.
     import_ctx = None  # type: List[Tuple[str, int]]
 
-    # The source file that was the source of this error.
+    # The path to source file that was the source of this error.
     file = ''
 
     # The fully-qualified id of the source module for this error.
@@ -51,7 +51,7 @@ class ErrorInfo:
     # Only report this particular messages once per program.
     only_once = False
 
-    # Actual origin of the error message
+    # Actual origin of the error message as tuple (path, line number)
     origin = None  # type: Tuple[str, int]
 
     # Fine-grained incremental target where this was reported
@@ -349,6 +349,17 @@ class Errors:
             self.only_once_messages.add(info.message)
         self._add_error_info(file, info)
 
+    def clear_errors_in_targets(self, path: str, targets: Set[str]) -> None:
+        """Remove errors in specific fine-grained targets within a file."""
+        if path in self.error_info_map:
+            new_errors = []
+            for info in self.error_info_map[path]:
+                if info.target not in targets:
+                    new_errors.append(info)
+                elif info.only_once:
+                    self.only_once_messages.remove(info.message)
+            self.error_info_map[path] = new_errors
+
     def generate_unused_ignore_notes(self, file: str) -> None:
         ignored_lines = self.ignored_lines[file]
         if not self.is_typeshed_file(file):
@@ -603,13 +614,6 @@ class CompileError(Exception):
         self.messages = messages
         self.use_stdout = use_stdout
         self.module_with_blocker = module_with_blocker
-
-
-class DecodeError(Exception):
-    """Exception raised when a file cannot be decoded due to an unknown encoding type.
-
-    Essentially a wrapper for the LookupError raised by `bytearray.decode`
-    """
 
 
 def remove_path_prefix(path: str, prefix: str) -> str:
