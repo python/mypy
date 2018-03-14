@@ -548,6 +548,7 @@ def process_options(args: List[str],
         targets = create_source_list(special_opts.files, options)
         return targets, options
 
+
 # TODO: use a FileSystemCache for this
 def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
     targets = []

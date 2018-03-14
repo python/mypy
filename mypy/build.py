@@ -53,7 +53,7 @@ from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
-from mypy.fscache import FileSystemCache
+from mypy.fscache import FileSystemCache, FileSystemMetaCache
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -832,8 +832,8 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
-        self.fscache = fscache or FileSystemCache(None)
+    def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
+        self.fscache = fscache or FileSystemMetaCache()
         # Cache find_module: (id, lib_path) -> result.
         self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
 
@@ -926,7 +926,7 @@ class FindModuleCache:
         return result
 
 
-def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
+def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = dirname(path)
