@@ -404,6 +404,7 @@ def process_options(args: List[str],
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
     if server_options:
+        # TODO: This flag is superfluous and should be removed after a short transition
         parser.add_argument('--experimental', action='store_true', dest='fine_grained_incremental',
                             help="enable fine-grained incremental mode")
         parser.add_argument('--use-fine-grained-cache', action='store_true',
