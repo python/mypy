@@ -3289,6 +3289,7 @@ def f() -> str: pass
 ==
 a.py:10: error: Argument 1 to "h" has incompatible type "int"; expected "str"
 a.py:11: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+==
 
 [case testNoOpUpdateFineGrainedIncremental1]
 # cmd: mypy a.py
