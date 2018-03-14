@@ -43,7 +43,7 @@ class Options:
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                                {"quick_and_dirty", "platform", "cache_fine_grained"})
+                                {"quick_and_dirty", "platform", "cache_fine_grained", "bazel"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
@@ -176,6 +176,8 @@ class Options:
         self.dump_deps = False
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
+        # Some behaviors are changed when using Bazel (https://bazel.build).
+        self.bazel = False
 
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__

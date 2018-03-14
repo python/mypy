@@ -367,6 +367,7 @@ def process_options(args: List[str],
     parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
                         dest='shadow_file',
                         help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
+
     # hidden options
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
@@ -381,6 +382,9 @@ def process_options(args: List[str],
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
+    # --bazel changes some behaviors for use with Bazel (https://bazel.build).
+    parser.add_argument('--bazel', action='store_true', help=argparse.SUPPRESS)
+
     # deprecated options
     parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
                         help=argparse.SUPPRESS)
@@ -500,6 +504,9 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
+    if options.bazel:
+        if not options.incremental:
+            fail("--bazel requires --incremental")
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
