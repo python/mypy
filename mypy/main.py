@@ -618,7 +618,8 @@ def process_options(args: List[str],
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
         # TODO: use the same cache as the BuildManager will
-        targets = build.FindModuleCache().find_modules_recursive(special_opts.package, lib_path)
+        targets = build.FindModuleCache().find_modules_recursive(special_opts.package, lib_path,
+                                                                 options.python_executable)
         if not targets:
             fail("Can't find package '{}'".format(special_opts.package))
         return targets, options
