@@ -1101,7 +1101,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
 
-    path = os.path.abspath(path)
+    path = relpath(path) if bazel else os.path.abspath(path)
     try:
         st = manager.get_stat(path)
     except OSError:
@@ -1121,7 +1121,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         return meta
 
     size = st.st_size
-    if size != meta.size:
+    if not bazel and size != meta.size:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
