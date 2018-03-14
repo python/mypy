@@ -39,10 +39,10 @@ from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
 from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.errors import Errors, CompileError, DecodeError, report_internal_error
+from mypy.errors import Errors, CompileError, report_internal_error
+from mypy.util import DecodeError
 from mypy.report import Reports
 from mypy import moduleinfo
-from mypy import util
 from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
 from mypy.nodes import Expression
 from mypy.options import Options
@@ -53,6 +53,7 @@ from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
+from mypy.fscache import FileSystemCache, FileSystemMetaCache
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -144,6 +145,7 @@ def build(sources: List[BuildSource],
           bin_dir: Optional[str] = None,
           saved_cache: Optional[SavedCache] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
+          fscache: Optional[FileSystemCache] = None,
           ) -> BuildResult:
     """Analyze a program.
 
@@ -167,6 +169,7 @@ def build(sources: List[BuildSource],
         directories; if omitted, use '.' as the data directory
       saved_cache: optional dict with saved cache state for dmypy (read-write!)
       flush_errors: optional function to flush errors after a file is processed
+      fscache: optionally a file-system cacher
 
     """
     # If we were not given a flush_errors, we use one that will populate those
@@ -179,7 +182,8 @@ def build(sources: List[BuildSource],
     flush_errors = flush_errors or default_flush_errors
 
     try:
-        result = _build(sources, options, alt_lib_path, bin_dir, saved_cache, flush_errors)
+        result = _build(sources, options, alt_lib_path, bin_dir,
+                        saved_cache, flush_errors, fscache)
         result.errors = messages
         return result
     except CompileError as e:
@@ -199,13 +203,13 @@ def _build(sources: List[BuildSource],
            bin_dir: Optional[str],
            saved_cache: Optional[SavedCache],
            flush_errors: Callable[[List[str], bool], None],
+           fscache: Optional[FileSystemCache],
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
-
-    find_module_clear_caches()
+    fscache = fscache or FileSystemCache(options.python_version)
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,
@@ -222,7 +226,7 @@ def _build(sources: List[BuildSource],
         for source in sources:
             if source.path:
                 # Include directory of the program file in the module search path.
-                dir = remove_cwd_prefix_from_path(dirname(source.path))
+                dir = remove_cwd_prefix_from_path(fscache, dirname(source.path))
                 if dir not in lib_path:
                     lib_path.insert(0, dir)
 
@@ -262,7 +266,8 @@ def _build(sources: List[BuildSource],
                            plugin=plugin,
                            errors=errors,
                            saved_cache=saved_cache,
-                           flush_errors=flush_errors)
+                           flush_errors=flush_errors,
+                           fscache=fscache)
 
     try:
         graph = dispatch(sources, manager)
@@ -575,6 +580,7 @@ class BuildManager:
                        but is disabled if fine-grained cache loading fails
                        and after an initial fine-grained load.
       stats:           Dict with various instrumentation numbers
+      fscache:         A file system cacher
     """
 
     def __init__(self, data_dir: str,
@@ -587,6 +593,7 @@ class BuildManager:
                  plugin: Plugin,
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
+                 fscache: FileSystemCache,
                  saved_cache: Optional[SavedCache] = None,
                  ) -> None:
         self.start_time = time.time()
@@ -615,6 +622,8 @@ class BuildManager:
             not options.fine_grained_incremental or options.use_fine_grained_cache)
         self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
+        self.fscache = fscache
+        self.find_module_cache = FindModuleCache(self.fscache)
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -626,7 +635,7 @@ class BuildManager:
         return path
 
     def get_stat(self, path: str) -> os.stat_result:
-        return os.stat(self.maybe_swap_for_shadow_path(path))
+        return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
 
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
@@ -699,7 +708,7 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return find_module(id, self.lib_path) is not None
+        return self.find_module_cache.find_module(id, self.lib_path) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -784,7 +793,7 @@ class BuildManager:
         return self.stats
 
 
-def remove_cwd_prefix_from_path(p: str) -> str:
+def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     """Remove current working directory prefix from p, if present.
 
     Also crawl up until a directory without __init__.py is found.
@@ -797,8 +806,8 @@ def remove_cwd_prefix_from_path(p: str) -> str:
         cur += os.sep
     # Compute root path.
     while (p and
-           (os.path.isfile(os.path.join(p, '__init__.py')) or
-            os.path.isfile(os.path.join(p, '__init__.pyi')))):
+           (fscache.isfile(os.path.join(p, '__init__.py')) or
+            fscache.isfile(os.path.join(p, '__init__.pyi')))):
         dir, base = os.path.split(p)
         if not base:
             break
@@ -812,95 +821,50 @@ def remove_cwd_prefix_from_path(p: str) -> str:
     return p
 
 
-# Cache find_module: (id, lib_path) -> result.
-find_module_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
+class FindModuleCache:
+    """Module finder with integrated cache.
 
-# Cache some repeated work within distinct find_module calls: finding which
-# elements of lib_path have even the subdirectory they'd need for the module
-# to exist.  This is shared among different module ids when they differ only
-# in the last component.
-find_module_dir_cache = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
+    Module locations and some intermediate results are cached internally
+    and can be cleared with the clear() method.
 
-# Cache directory listings.  We assume that while one os.listdir()
-# call may be more expensive than one os.stat() call, a small number
-# of os.stat() calls is quickly more expensive than caching the
-# os.listdir() outcome, and the advantage of the latter is that it
-# gives us the case-correct filename on Windows and Mac.
-find_module_listdir_cache = {}  # type: Dict[str, Optional[List[str]]]
-
-# Cache for is_file()
-find_module_is_file_cache = {}  # type: Dict[str, bool]
-
-# Cache for isdir(join(head, tail))
-find_module_isdir_cache = {}  # type: Dict[Tuple[str, str], bool]
-
-
-def find_module_clear_caches() -> None:
-    find_module_cache.clear()
-    find_module_dir_cache.clear()
-    find_module_listdir_cache.clear()
-    find_module_is_file_cache.clear()
-    find_module_isdir_cache.clear()
-
-
-def list_dir(path: str) -> Optional[List[str]]:
-    """Return a cached directory listing.
-
-    Returns None if the path doesn't exist or isn't a directory.
+    All file system accesses are performed through a FileSystemCache,
+    which is not ever cleared by this class. If necessary it must be
+    cleared by client code.
     """
-    res = find_module_listdir_cache.get(path)
-    if res is None:
-        try:
-            res = os.listdir(path)
-        except OSError:
-            res = None
-        find_module_listdir_cache[path] = res
-    return res
 
+    def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
+        self.fscache = fscache or FileSystemMetaCache()
+        # Cache find_module: (id, lib_path) -> result.
+        self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
 
-def is_file(path: str) -> bool:
-    """Return whether path exists and is a file.
+        # Cache some repeated work within distinct find_module calls: finding which
+        # elements of lib_path have even the subdirectory they'd need for the module
+        # to exist.  This is shared among different module ids when they differ only
+        # in the last component.
+        self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
 
-    On case-insensitive filesystems (like Mac or Windows) this returns
-    False if the case of the path's last component does not exactly
-    match the case found in the filesystem.
-    """
-    res = find_module_is_file_cache.get(path)
-    if res is None:
-        head, tail = os.path.split(path)
-        if not tail:
-            res = False
-        else:
-            names = list_dir(head)
-            res = names is not None and tail in names and os.path.isfile(path)
-        find_module_is_file_cache[path] = res
-    return res
+    def clear(self) -> None:
+        self.results.clear()
+        self.dirs.clear()
 
+    def _find_module(self, id: str, lib_path: Tuple[str, ...]) -> Optional[str]:
+        fscache = self.fscache
 
-def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
-    """Return the path of the module source file, or None if not found."""
-    lib_path = tuple(lib_path_arg)
-
-    def find() -> Optional[str]:
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
         # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
         # that only once and cache it for when we look for modules like 'foo.bar.blah'
         # that will require the same subdirectory.
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if (dir_chain, lib_path) not in find_module_dir_cache:
+        if (dir_chain, lib_path) not in self.dirs:
             dirs = []
             for pathitem in lib_path:
                 # e.g., '/usr/lib/python3.4/foo/bar'
-                isdir = find_module_isdir_cache.get((pathitem, dir_chain))
-                if isdir is None:
-                    dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                    isdir = os.path.isdir(dir)
-                    find_module_isdir_cache[pathitem, dir_chain] = isdir
-                if isdir:
+                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+                if fscache.isdir(dir):
                     dirs.append(dir)
-            find_module_dir_cache[dir_chain, lib_path] = dirs
-        candidate_base_dirs = find_module_dir_cache[dir_chain, lib_path]
+            self.dirs[dir_chain, lib_path] = dirs
+        candidate_base_dirs = self.dirs[dir_chain, lib_path]
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
@@ -913,99 +877,65 @@ def find_module(id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                if is_file(path) and verify_module(id, path):
+                if fscache.isfile_case(path) and verify_module(fscache, id, path):
                     return path
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
-                if is_file(path) and verify_module(id, path):
+                if fscache.isfile_case(path) and verify_module(fscache, id, path):
                     return path
         return None
 
-    key = (id, lib_path)
-    if key not in find_module_cache:
-        find_module_cache[key] = find()
-    return find_module_cache[key]
+    def find_module(self, id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
+        """Return the path of the module source file, or None if not found."""
+        lib_path = tuple(lib_path_arg)
+
+        key = (id, lib_path)
+        if key not in self.results:
+            self.results[key] = self._find_module(id, lib_path)
+        return self.results[key]
+
+    def find_modules_recursive(self, module: str, lib_path: List[str]) -> List[BuildSource]:
+        module_path = self.find_module(module, lib_path)
+        if not module_path:
+            return []
+        result = [BuildSource(module_path, module, None)]
+        if module_path.endswith(('__init__.py', '__init__.pyi')):
+            # Subtle: this code prefers the .pyi over the .py if both
+            # exists, and also prefers packages over modules if both x/
+            # and x.py* exist.  How?  We sort the directory items, so x
+            # comes before x.py and x.pyi.  But the preference for .pyi
+            # over .py is encoded in find_module(); even though we see
+            # x.py before x.pyi, find_module() will find x.pyi first.  We
+            # use hits to avoid adding it a second time when we see x.pyi.
+            # This also avoids both x.py and x.pyi when x/ was seen first.
+            hits = set()  # type: Set[str]
+            for item in sorted(self.fscache.listdir(os.path.dirname(module_path))):
+                abs_path = os.path.join(os.path.dirname(module_path), item)
+                if os.path.isdir(abs_path) and \
+                        (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
+                        os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
+                    hits.add(item)
+                    result += self.find_modules_recursive(module + '.' + item, lib_path)
+                elif item != '__init__.py' and item != '__init__.pyi' and \
+                        item.endswith(('.py', '.pyi')):
+                    mod = item.split('.')[0]
+                    if mod not in hits:
+                        hits.add(mod)
+                        result += self.find_modules_recursive(module + '.' + mod, lib_path)
+        return result
 
 
-def find_modules_recursive(module: str, lib_path: List[str]) -> List[BuildSource]:
-    module_path = find_module(module, lib_path)
-    if not module_path:
-        return []
-    result = [BuildSource(module_path, module, None)]
-    if module_path.endswith(('__init__.py', '__init__.pyi')):
-        # Subtle: this code prefers the .pyi over the .py if both
-        # exists, and also prefers packages over modules if both x/
-        # and x.py* exist.  How?  We sort the directory items, so x
-        # comes before x.py and x.pyi.  But the preference for .pyi
-        # over .py is encoded in find_module(); even though we see
-        # x.py before x.pyi, find_module() will find x.pyi first.  We
-        # use hits to avoid adding it a second time when we see x.pyi.
-        # This also avoids both x.py and x.pyi when x/ was seen first.
-        hits = set()  # type: Set[str]
-        for item in sorted(os.listdir(os.path.dirname(module_path))):
-            abs_path = os.path.join(os.path.dirname(module_path), item)
-            if os.path.isdir(abs_path) and \
-                    (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
-                    os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
-                hits.add(item)
-                result += find_modules_recursive(module + '.' + item, lib_path)
-            elif item != '__init__.py' and item != '__init__.pyi' and \
-                    item.endswith(('.py', '.pyi')):
-                mod = item.split('.')[0]
-                if mod not in hits:
-                    hits.add(mod)
-                    result += find_modules_recursive(
-                        module + '.' + mod, lib_path)
-    return result
-
-
-def verify_module(id: str, path: str) -> bool:
+def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = dirname(path)
     for i in range(id.count('.')):
         path = dirname(path)
-        if not any(is_file(os.path.join(path, '__init__{}'.format(extension)))
+        if not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
                    for extension in PYTHON_EXTENSIONS):
             return False
     return True
-
-
-def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
-    """Read the Python file with while obeying PEP-263 encoding detection.
-
-    Returns:
-      A tuple: the source as a string, and the hash calculated from the binary representation.
-    """
-    source_bytearray = bytearray()
-    encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
-
-    with open(path, 'rb') as f:
-        # read first two lines and check if PEP-263 coding is present
-        source_bytearray.extend(f.readline())
-        source_bytearray.extend(f.readline())
-        m = hashlib.md5(source_bytearray)
-
-        # check for BOM UTF-8 encoding and strip it out if present
-        if source_bytearray.startswith(b'\xef\xbb\xbf'):
-            encoding = 'utf8'
-            source_bytearray = source_bytearray[3:]
-        else:
-            _encoding, _ = util.find_python_encoding(source_bytearray, pyversion)
-            # check that the coding isn't mypy. We skip it since
-            # registering may not have happened yet
-            if _encoding != 'mypy':
-                encoding = _encoding
-
-        remainder = f.read()
-        m.update(remainder)
-        source_bytearray.extend(remainder)
-        try:
-            source_text = source_bytearray.decode(encoding)
-        except LookupError as lookuperr:
-            raise DecodeError(str(lookuperr))
-        return source_text, m.hexdigest()
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:
@@ -1153,7 +1083,6 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
 
-    # TODO: Share stat() outcome with find_module()
     path = os.path.abspath(path)
     st = manager.get_stat(path)  # TODO: Errors
     if not stat.S_ISREG(st.st_mode):
@@ -1177,8 +1106,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
 
     mtime = int(st.st_mtime)
     if mtime != meta.mtime or path != meta.path:
-        with open(path, 'rb') as f:
-            source_hash = hashlib.md5(f.read()).hexdigest()
+        source_hash = manager.fscache.md5(path)
         if source_hash != meta.hash:
             manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
             return None
@@ -1400,12 +1328,8 @@ d. from P import M; checks filesystem whether module P.M exists in
    filesystem.
 
 e. Race conditions, where somebody modifies a file while we're
-   processing.  I propose not to modify the algorithm to handle this,
-   but to detect when this could lead to inconsistencies.  (For
-   example, when we decide on the dependencies based on cache
-   metadata, and then we decide to re-parse a file because of a stale
-   dependency, if the re-parsing leads to a different list of
-   dependencies we should warn the user or start over.)
+   processing. Solved by using a FileSystemCache.
+
 
 Steps
 -----
@@ -1616,7 +1540,7 @@ class State:
                 # difference and just assume 'builtins' everywhere,
                 # which simplifies code.
                 file_id = '__builtin__'
-            path = find_module(file_id, manager.lib_path)
+            path = manager.find_module_cache.find_module(file_id, manager.lib_path)
             if path:
                 # For non-stubs, look at options.follow_imports:
                 # - normal (default) -> fully analyze
@@ -1891,11 +1815,16 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source, self.source_hash = read_with_python_encoding(
-                        path, self.options.python_version)
+                    source = manager.fscache.read_with_python_encoding(path)
+                    self.source_hash = manager.fscache.md5(path)
                 except IOError as ioerr:
+                    # ioerr.strerror differs for os.stat failures between Windows and
+                    # other systems, but os.strerror(ioerr.errno) does not, so we use that.
+                    # (We want the error messages to be platform-independent so that the
+                    # tests have predictable output.)
                     raise CompileError([
-                        "mypy: can't read file '{}': {}".format(self.path, ioerr.strerror)])
+                        "mypy: can't read file '{}': {}".format(
+                            self.path, os.strerror(ioerr.errno))])
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
@@ -1946,11 +1875,6 @@ class State:
         # Every module implicitly depends on builtins.
         if self.id != 'builtins' and 'builtins' not in dep_line_map:
             dependencies.append('builtins')
-
-        # NOTE: What to do about race conditions (like editing the
-        # file while mypy runs)?  A previous version of this code
-        # explicitly checked for this, but ran afoul of other reasons
-        # for differences (e.g. silent mode).
 
         # Missing dependencies will be moved from dependencies to
         # suppressed when they fail to be loaded in load_graph.
@@ -2129,11 +2053,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
                       stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
                                       for g in graph.values()),
                       graph_load_time=(t1 - t0),
-                      fm_cache_size=len(find_module_cache),
-                      fm_dir_cache_size=len(find_module_dir_cache),
-                      fm_listdir_cache_size=len(find_module_listdir_cache),
-                      fm_is_file_cache_size=len(find_module_is_file_cache),
-                      fm_isdir_cache_size=len(find_module_isdir_cache),
+                      fm_cache_size=len(manager.find_module_cache.results),
+                      fm_dir_cache_size=len(manager.find_module_cache.dirs),
                       )
     if not graph:
         print("Nothing to do?!")

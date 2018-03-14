@@ -13,7 +13,7 @@ import re
 from typing import List, Set, Tuple, Optional, cast
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource, Graph
+from mypy.build import BuildManager, BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.server.update import FineGrainedBuildManager

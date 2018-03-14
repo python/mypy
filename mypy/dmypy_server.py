@@ -283,12 +283,16 @@ class Server:
             return self.fine_grained_increment(sources)
 
     def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
-        self.fscache = FileSystemCache(self.options.python_version)
-        self.fswatcher = FileSystemWatcher(self.fscache)
+        # The file system cache we create gets passed off to
+        # BuildManager, and thence to FineGrainedBuildManager, which
+        # assumes responsibility for clearing it after updates.
+        fscache = FileSystemCache(self.options.python_version)
+        self.fswatcher = FileSystemWatcher(fscache)
         self.update_sources(sources)
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
+                                      fscache=fscache,
                                       alt_lib_path=self.alt_lib_path)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
@@ -298,9 +302,7 @@ class Server:
                 out, err = '', output
             return {'out': out, 'err': err, 'status': 2}
         messages = result.errors
-        manager = result.manager
-        graph = result.graph
-        self.fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        self.fine_grained_manager = FineGrainedBuildManager(result)
         self.previous_sources = sources
 
         # If we are using the fine-grained cache, build hasn't actually done
@@ -317,7 +319,6 @@ class Server:
                     state.path,
                     FileData(st_mtime=float(meta.mtime), st_size=meta.size, md5=meta.hash))
 
-            # Run an update
             changed, removed = self.find_changed(sources)
 
             # Find anything that has had its dependency list change
@@ -326,16 +327,14 @@ class Server:
                     assert state.path is not None
                     changed.append((state.id, state.path))
 
-            if changed or removed:
-                messages = self.fine_grained_manager.update(changed, removed)
+            # Run an update
+            messages = self.fine_grained_manager.update(changed, removed)
         else:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
 
-        self.fscache.flush()
-
+        fscache.flush()
         status = 1 if messages else 0
-        self.previous_messages = messages[:]
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
@@ -345,19 +344,13 @@ class Server:
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
         t1 = time.time()
-        if not (changed or removed):
-            # Nothing changed -- just produce the same result as before.
-            messages = self.previous_messages
-        else:
-            messages = self.fine_grained_manager.update(changed, removed)
+        messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
         self.fine_grained_manager.manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
                 t1 - t0, t2 - t1))
         status = 1 if messages else 0
-        self.previous_messages = messages[:]
         self.previous_sources = sources
-        self.fscache.flush()
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def update_sources(self, sources: List[mypy.build.BuildSource]) -> None:

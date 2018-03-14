@@ -114,9 +114,9 @@ test cases (test-data/unit/fine-grained*.test).
 Major todo items:
 
 - Fully support multiple type checking passes
-- Use mypy.fscache to access file system
 """
 
+import os
 import time
 import os.path
 from typing import (
@@ -124,7 +124,7 @@ from typing import (
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, Graph, load_graph, find_module_clear_caches,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
@@ -135,6 +135,7 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.types import Type
+from mypy.fscache import FileSystemCache
 from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
@@ -150,21 +151,23 @@ MAX_ITER = 1000
 
 
 class FineGrainedBuildManager:
-    def __init__(self,
-                 manager: BuildManager,
-                 graph: Graph) -> None:
+    def __init__(self, result: BuildResult) -> None:
         """Initialize fine-grained build based on a batch build.
 
         Args:
+            result: Result from the initialized build.
+                    The manager and graph will be taken over by this class.
             manager: State of the build (mutated by this class)
             graph: Additional state of the build (only read to initialize state)
         """
+        manager = result.manager
         self.manager = manager
+        self.graph = result.graph
         self.options = manager.options
         self.previous_modules = get_module_to_path_map(manager)
-        self.deps = get_all_dependencies(manager, graph, self.options)
+        self.deps = get_all_dependencies(manager, self.graph, self.options)
         self.previous_targets_with_errors = manager.errors.targets()
-        self.graph = graph
+        self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
         # TODO: Handle blocking errors in the initial build
         self.blocking_error = None  # type: Optional[Tuple[str, str]]
@@ -205,13 +208,15 @@ class FineGrainedBuildManager:
             A list of errors.
         """
         changed_modules = changed_modules + removed_modules
-        assert changed_modules or removed_modules, 'No changed modules'
-
         removed_set = {module for module, _ in removed_modules}
         self.changed_modules = changed_modules
 
-        # Reset global caches for the new build.
-        find_module_clear_caches()
+        if not changed_modules:
+            self.manager.fscache.flush()
+            return self.previous_messages
+
+        # Reset find_module's caches for the new build.
+        self.manager.find_module_cache.clear()
 
         self.triggered = []
         self.updated_modules = []
@@ -249,8 +254,10 @@ class FineGrainedBuildManager:
             if blocker:
                 self.blocking_error = (next_id, next_path)
                 self.stale = changed_modules
-                return messages
+                break
 
+        self.manager.fscache.flush()
+        self.previous_messages = messages[:]
         return messages
 
     def update_single(self,
@@ -383,7 +390,7 @@ def update_single_isolated(module: str,
         manager.log_fine_grained('new module %r' % module)
 
     old_modules = dict(manager.modules)
-    sources = get_sources(previous_modules, [(module, path)])
+    sources = get_sources(manager.fscache, previous_modules, [(module, path)])
 
     if module in manager.missing_modules:
         manager.missing_modules.remove(module)
@@ -407,7 +414,7 @@ def update_single_isolated(module: str,
             remaining_modules = []
         return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
 
-    if not os.path.isfile(path) or force_removed:
+    if not manager.fscache.isfile(path) or force_removed:
         delete_module(module, graph, manager)
         return NormalUpdate(module, path, [], None)
 
@@ -537,13 +544,12 @@ def get_module_to_path_map(manager: BuildManager) -> Dict[str, str]:
             for module, node in manager.modules.items()}
 
 
-def get_sources(modules: Dict[str, str],
+def get_sources(fscache: FileSystemCache,
+                modules: Dict[str, str],
                 changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
-    # TODO: Race condition when reading from the file system; we should only read each
-    #       bit of external state once during a build to have a consistent view of the world
     sources = []
     for id, path in changed_modules:
-        if os.path.isfile(path):
+        if fscache.isfile(path):
             sources.append(BuildSource(path, id, None))
     return sources
 
