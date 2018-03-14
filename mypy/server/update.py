@@ -266,7 +266,8 @@ class FineGrainedBuildManager:
             if not changed_modules:
                 # N.B: We just checked next_id, so manager.errors contains
                 # the errors from it. Thus we consider next_id up to date
-                # when propagating changes from the errored targets.
+                # when propagating changes from the errored targets,
+                # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
                     self.manager, self.graph, self.deps, set(),
                     {next_id},
