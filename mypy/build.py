@@ -66,11 +66,36 @@ DEBUG_FINE_GRAINED = False
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 
+if os.altsep:
+    SEPARATORS = frozenset([os.sep, os.altsep])
+else:
+    SEPARATORS = frozenset([os.sep])
+
+
 Graph = Dict[str, 'State']
 
 
 def getmtime(name: str) -> int:
     return int(os.path.getmtime(name))
+
+
+def relpath(path: str) -> str:
+    if not path or path[0] not in SEPARATORS:
+        # Relative path, or has drive letter prefix (C: etc.) on Windows.
+        assert not os.path.isabs(path), "%s is neither rel nor abs" % (path,)
+        return path
+    if os.altsep and os.altsep in path:
+        # So the rest of this code doesn't need to handle altsep on Windows.
+        path = path.replace(os.altsep, os.sep)
+    cwd = os.getcwd()
+    for i in range(10):
+        if path.startswith(cwd + os.sep):
+            # The .lstrip(os.sep) call strips duplicate leading slashes.
+            return '../'*i + path[len(cwd) + 1:].lstrip(os.sep)
+        cwd = os.path.dirname(cwd)
+        if all(c == os.sep for c in cwd):
+            break
+    return path
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -228,7 +253,12 @@ def _build(sources: List[BuildSource],
         # to the lib_path
         # TODO: Don't do this in some cases; for motivation see see
         # https://github.com/python/mypy/issues/4195#issuecomment-341915031
-        lib_path.insert(0, os.getcwd())
+        if options.bazel:
+            dir = '.'
+        else:
+            dir = os.getcwd()
+        if dir not in lib_path:
+            lib_path.insert(0, dir)
 
     # Prepend a config-defined mypy path.
     lib_path[:0] = options.mypy_path
@@ -939,12 +969,19 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
-    cache_dir = manager.options.cache_dir
-    pyversion = manager.options.python_version
-    prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
-    is_package = os.path.basename(path).startswith('__init__.py')
-    if is_package:
-        prefix = os.path.join(prefix, '__init__')
+    if manager.options.bazel:
+        # For Bazel we put the cache files alongside the source files.
+        # The reason is that Bazel output files cannot live outside
+        # the package, and the repo root is often higher up.
+        path = relpath(path)
+        prefix, _ = os.path.splitext(path)
+    else:
+        cache_dir = manager.options.cache_dir
+        pyversion = manager.options.python_version
+        prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
+        is_package = os.path.basename(path).startswith('__init__.py')
+        if is_package:
+            prefix = os.path.join(prefix, '__init__')
     return (prefix + '.meta.json', prefix + '.data.json')
 
 
@@ -1171,8 +1208,17 @@ def write_cache(id: str, path: str, tree: MypyFile,
       corresponding to the metadata that was written (the latter may
       be None if the cache could not be written).
     """
+    # For Bazel we use relative paths and zero mtimes.
+    bazel = manager.options.bazel
+
     # Obtain file paths
-    path = os.path.abspath(path)
+    if not bazel:
+        # Normally, make all paths absolute.
+        path = os.path.abspath(path)
+    else:
+        # For Bazel, make all paths relative (else Bazel caching is thwarted).
+        tree.path = path = relpath(path)
+
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Writing {} {} {} {}'.format(id, path, meta_json, data_json))
 
@@ -1207,10 +1253,11 @@ def write_cache(id: str, path: str, tree: MypyFile,
         return interface_hash, None
 
     # Write data cache file, if applicable
+    # Note that for Bazel we don't record the data file's mtime.
     if old_interface_hash == interface_hash:
         # If the interface is unchanged, the cached data is guaranteed
         # to be equivalent, and we only need to update the metadata.
-        data_mtime = getmtime(data_json)
+        data_mtime = 0 if bazel else getmtime(data_json)
         manager.trace("Interface for {} is unchanged".format(id))
     else:
         manager.trace("Interface for {} has changed".format(id))
@@ -1227,9 +1274,9 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # Both have the effect of slowing down the next run a
             # little bit due to an out-of-date cache file.
             return interface_hash, None
-        data_mtime = getmtime(data_json)
+        data_mtime = 0 if bazel else getmtime(data_json)
 
-    mtime = int(st.st_mtime)
+    mtime = 0 if bazel else int(st.st_mtime)
     size = st.st_size
     options = manager.options.clone_for_module(id)
     assert source_hash is not None
