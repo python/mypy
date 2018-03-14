@@ -828,7 +828,8 @@ def reprocess_nodes(manager: BuildManager,
                 file_node=file_node,
                 fnam=file_node.path,
                 options=manager.options,
-                active_type=deferred.active_typeinfo):
+                active_type=deferred.active_typeinfo,
+                scope=manager.semantic_analyzer_pass3.scope):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
 
     apply_semantic_analyzer_patches(patches)

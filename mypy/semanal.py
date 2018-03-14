@@ -270,7 +270,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """
         self.recurse_into_functions = True
         self.options = options
-        self.errors.set_file(fnam, file_node.fullname())
+        self.errors.set_file(fnam, file_node.fullname(), scope=self.scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
@@ -315,13 +315,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
-        self.scope.enter_file(self.cur_mod_id)
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
             self.recurse_into_functions = True
             self.accept(node)
-        self.scope.leave()
         del self.patches
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
@@ -332,17 +330,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     @contextmanager
     def file_context(self, file_node: MypyFile, fnam: str, options: Options,
-                     active_type: Optional[TypeInfo]) -> Iterator[None]:
+                     active_type: Optional[TypeInfo],
+                     scope: Optional[Scope] = None) -> Iterator[None]:
         # TODO: Use this above in visit_file
+        scope = scope or self.scope
         self.options = options
-        self.errors.set_file(fnam, file_node.fullname())
+        self.errors.set_file(fnam, file_node.fullname(), scope=scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
+        scope.enter_file(self.cur_mod_id)
         self.is_stub_file = fnam.lower().endswith('.pyi')
         self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
         if active_type:
+            scope.enter_class(active_type)
             self.enter_class(active_type.defn.info)
             for tvar in active_type.defn.type_vars:
                 self.tvar_scope.bind_existing(tvar)
@@ -350,24 +352,28 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         yield
 
         if active_type:
+            scope.leave()
             self.leave_class()
             self.type = None
+        scope.leave()
         del self.options
 
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
+        with self.scope.function_scope(defn):
+            self._visit_func_def(defn)
+
+    def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
             self.function_stack.append(defn)
             # First phase of analysis for function.
-            self.errors.push_function(defn.name())
             if not defn._fullname:
                 defn._fullname = self.qualified_name(defn.name())
             if defn.type:
                 assert isinstance(defn.type, CallableType)
                 self.update_function_type_variables(defn.type, defn)
-            self.errors.pop_function()
             self.function_stack.pop()
 
             defn.is_conditional = self.block_depth[-1] > 0
@@ -417,7 +423,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 return
         if phase_info != FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
             # Second phase of analysis for function.
-            self.errors.push_function(defn.name())
             self.analyze_function(defn)
             if defn.is_coroutine and isinstance(defn.type, CallableType):
                 if defn.is_async_generator:
@@ -429,7 +434,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     ret_type = self.named_type_or_none('typing.Awaitable', [defn.type.ret_type])
                     assert ret_type is not None, "Internal error: typing.Awaitable not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
-            self.errors.pop_function()
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
@@ -475,6 +479,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
             return
+        # NB: Since _visit_overloaded_func_def will call accept on the
+        # underlying FuncDefs, the function might get entered twice.
+        # This is fine, though, because only the outermost function is
+        # used to compute targets.
+        with self.scope.function_scope(defn):
+            self._visit_overloaded_func_def(defn)
+
+    def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         # OverloadedFuncDef refers to any legitimate situation where you have
         # more than one declaration for the same function in a row.  This occurs
         # with a @property with a setter or a deleter, and for a classic
@@ -602,7 +614,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
-        self.scope.enter_function(defn)
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
@@ -648,7 +659,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
             self.leave()
             self.function_stack.pop()
-            self.scope.leave()
 
     def check_classvar_in_signature(self, typ: Type) -> None:
         if isinstance(typ, Overloaded):
@@ -676,12 +686,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
-        self.scope.enter_class(defn.info)
-        with self.analyze_class_body(defn) as should_continue:
-            if should_continue:
-                # Analyze class body.
-                defn.defs.accept(self)
-            self.scope.leave()
+        with self.scope.class_scope(defn.info):
+            with self.analyze_class_body(defn) as should_continue:
+                if should_continue:
+                    # Analyze class body.
+                    defn.defs.accept(self)
 
     @contextmanager
     def analyze_class_body(self, defn: ClassDef) -> Iterator[bool]:
