@@ -1092,10 +1092,11 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
         return None
 
+    bazel = manager.options.bazel
     assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
-    data_mtime = getmtime(meta.data_json)
+    data_mtime = 0 if bazel else getmtime(meta.data_json)
     if data_mtime != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
@@ -1124,7 +1125,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
-    mtime = int(st.st_mtime)
+    mtime = 0 if bazel else int(st.st_mtime)
     if mtime != meta.mtime or path != meta.path:
         try:
             source_hash = manager.fscache.md5(path)
