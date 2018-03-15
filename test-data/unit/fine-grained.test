@@ -2766,11 +2766,43 @@ class D(Generic[T]):
 [out]
 
 [case testTypeVarBoundFunction]
+import a
+[file a.py]
+from typing import TypeVar
+from c import B
+T = TypeVar('T', bound=B)
 
+def f(x: T) -> T:
+    x.x = int()
+    return x
+[file c.py]
+class B:
+    x: int
+[file c.py.2]
+class B:
+    x: str
 [out]
 
 [case testTypeVarBoundClass]
-
+import a
+[file a.py]
+import c
+class C:
+    x: c.D[c.A]
+[file c.py]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+T = TypeVar('T', bound=A)
+class D(Generic[T]):
+    pass
+[file c.py.2]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+T = TypeVar('T', bound=B)
+class D(Generic[T]):
+    pass
 [out]
 
 [case testRefreshClassBasedEnum]
