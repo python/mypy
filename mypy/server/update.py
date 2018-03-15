@@ -236,21 +236,8 @@ class FineGrainedBuildManager:
             self.blocking_error = None
 
         while True:
-            t0 = time.time()
-            next_id, next_path = changed_modules.pop(0)
-            if next_id not in self.previous_modules and next_id not in initial_set:
-                self.manager.log_fine_grained('skip %r (module not in import graph)' % next_id)
-                continue
-            result = self.update_single(next_id, next_path, next_id in removed_set)
-            remaining, (next_id, next_path), blocker_messages = result
-            changed_modules = [(id, path) for id, path in changed_modules
-                               if id != next_id]
-            changed_modules = dedupe_modules(remaining + changed_modules)
-            t1 = time.time()
-
-            self.manager.log_fine_grained(
-                "update once: {} in {:.3f}s - {} left".format(
-                    next_id, t1 - t0, len(changed_modules)))
+            result = self.update_one(changed_modules, initial_set, removed_set)
+            changed_modules, (next_id, next_path), blocker_messages = result
 
             if blocker_messages is not None:
                 self.blocking_error = (next_id, next_path)
@@ -269,8 +256,7 @@ class FineGrainedBuildManager:
                 # when propagating changes from the errored targets,
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
-                    self.manager, self.graph, self.deps, set(),
-                    {next_id},
+                    self.manager, self.graph, self.deps, set(), {next_id},
                     self.previous_targets_with_errors)
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
@@ -283,7 +269,40 @@ class FineGrainedBuildManager:
         self.previous_messages = messages[:]
         return messages
 
-    def update_single(self,
+    def update_one(self,
+                   changed_modules: List[Tuple[str, str]],
+                   initial_set: Set[str],
+                   removed_set: Set[str]) -> Tuple[List[Tuple[str, str]],
+                                                   Tuple[str, str],
+                                                   Optional[List[str]]]:
+        """Process a module from the list of changed modules.
+
+        Returns:
+            Tuple with these items:
+
+            - Updated list of pending changed modules as (module id, path) tuples
+            - Module which was actually processed as (id, path) tuple
+            - If there was a blocking error, the error messages from it
+        """
+        t0 = time.time()
+        next_id, next_path = changed_modules.pop(0)
+        if next_id not in self.previous_modules and next_id not in initial_set:
+            self.manager.log_fine_grained('skip %r (module not in import graph)' % next_id)
+            return changed_modules, (next_id, next_path), None
+        result = self.update_module(next_id, next_path, next_id in removed_set)
+        remaining, (next_id, next_path), blocker_messages = result
+        changed_modules = [(id, path) for id, path in changed_modules
+                           if id != next_id]
+        changed_modules = dedupe_modules(remaining + changed_modules)
+        t1 = time.time()
+
+        self.manager.log_fine_grained(
+            "update once: {} in {:.3f}s - {} left".format(
+                next_id, t1 - t0, len(changed_modules)))
+
+        return changed_modules, (next_id, next_path), blocker_messages
+
+    def update_module(self,
                       module: str,
                       path: str,
                       force_removed: bool) -> Tuple[List[Tuple[str, str]],
@@ -303,7 +322,6 @@ class FineGrainedBuildManager:
         Returns:
             Tuple with these items:
 
-            - Error messages
             - Remaining modules to process as (module id, path) tuples
             - Module which was actually processed as (id, path) tuple
             - If there was a blocking error, the error messages from it
@@ -323,7 +341,7 @@ class FineGrainedBuildManager:
             old_snapshots[module] = snapshot
 
         manager.errors.reset()
-        result = update_single_isolated(module, path, manager, previous_modules, graph,
+        result = update_module_isolated(module, path, manager, previous_modules, graph,
                                         force_removed)
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
@@ -362,7 +380,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
     return deps
 
 
-# The result of update_single_isolated when no blockers, with these items:
+# The result of update_module_isolated when no blockers, with these items:
 #
 # - Id of the changed module (can be different from the module argument)
 # - Path of the changed module
@@ -375,7 +393,7 @@ NormalUpdate = NamedTuple('NormalUpdate', [('module', str),
                                            ('remaining', List[Tuple[str, str]]),
                                            ('tree', Optional[MypyFile])])
 
-# The result of update_single_isolated when there is a blocking error. Items
+# The result of update_module_isolated when there is a blocking error. Items
 # are similar to NormalUpdate (but there are fewer).
 BlockedUpdate = NamedTuple('BlockedUpdate', [('module', str),
                                              ('path', str),
@@ -385,7 +403,7 @@ BlockedUpdate = NamedTuple('BlockedUpdate', [('module', str),
 UpdateResult = Union[NormalUpdate, BlockedUpdate]
 
 
-def update_single_isolated(module: str,
+def update_module_isolated(module: str,
                            path: str,
                            manager: BuildManager,
                            previous_modules: Dict[str, str],
