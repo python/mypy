@@ -163,7 +163,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = type_object_type(node, self.named_type)
             if isinstance(result, CallableType) and isinstance(result.ret_type, Instance):
                 # We need to set correct line and column
-                # TODO: always do this in type_obj_type by pasing the original context
+                # TODO: always do this in type_object_type by passing the original context
                 result.ret_type.line = e.line
                 result.ret_type.column = e.column
             if isinstance(self.type_context[-1], TypeType):
