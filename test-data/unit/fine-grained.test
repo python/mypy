@@ -2855,6 +2855,9 @@ from typing import TypeVar
 T = TypeVar('T')
 U = TypeVar('U')
 [out]
+main:3: error: Value of type variable "submod.T" of "D" cannot be "S"
+main:3: error: Value of type variable "submod.U" of "D" cannot be "I"
+==
 
 [case testRefreshClassBasedEnum]
 import aa

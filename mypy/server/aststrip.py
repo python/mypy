@@ -75,6 +75,10 @@ class NodeStripVisitor(TraverserVisitor):
     def strip_file_top_level(self, file_node: MypyFile) -> None:
         """Strip a module top-level (don't recursive into functions)."""
         self.names = file_node.names
+        for node in self.names.values():
+            # Strip inferred variable types to avoid spurious errors
+            if isinstance(node.node, Var):
+                node.node.type = None
         self.file_node = file_node
         self.recurse_into_functions = False
         file_node.accept(self)
