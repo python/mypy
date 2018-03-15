@@ -223,8 +223,7 @@ class TypeCheckSuite(DataSuite):
         for line in a:
             m = re.match(r'([^\s:]+):(\d+:)?(\d+:)? (error|warning|note):', line)
             if m:
-                # Normalize to Linux paths.
-                p = m.group(1).replace(os.path.sep, '/')
+                p = m.group(1)
                 hits.add(p)
         return hits
 
