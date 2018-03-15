@@ -136,7 +136,9 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
         common = (fullname, symbol.kind, symbol.module_public)
         if symbol.kind == MODULE_REF:
             # This is a cross-reference to another module.
-            assert isinstance(node, MypyFile)
+            # If the reference is busted because the other module is missing,
+            # the node will be a "stale_info" TypeInfo produced by fixup,
+            # but that doesn't really matter to us here.
             result[name] = ('Moduleref', common)
         elif symbol.kind == TVAR:
             assert isinstance(node, TypeVarExpr)

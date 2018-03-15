@@ -82,7 +82,6 @@ class DmypySuite(DataSuite):
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
         assert incremental_step >= 1
-        build.find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
 
         if incremental_step > 1:
@@ -261,7 +260,7 @@ class DmypySuite(DataSuite):
             module_names = m.group(1)
             out = []  # type: List[Tuple[str, str, Optional[str]]]
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                path = build.FindModuleCache().find_module(module_name, [test_temp_dir])
                 if path is None and module_name.startswith(NON_EXISTENT_PREFIX):
                     # This is a special name for a file that we don't want to exist.
                     assert '.' not in module_name  # TODO: Packages not supported here

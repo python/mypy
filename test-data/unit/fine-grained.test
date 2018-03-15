@@ -15,6 +15,22 @@
 --   <optional output from batch pass>
 --   ==
 --   <optional output from first incremental pass>
+--
+--
+-- Modules that are expected to be detected as changed by dmypy_server
+-- can be checked with [stale ...]
+-- Generally this should mean added, deleted, or changed files, though there
+-- are important edge cases related to the cache: deleted files won't be detected
+-- as changed in the initial run with the cache while modules that depended on them
+-- should be.
+--
+-- Modules that are require a full-module reprocessing by update can be checked with
+-- [rechecked ...]. This should include any files detected as having changed as well
+-- as any files that contain targets that need to be reprocessed but which haven't
+-- been loaded yet. If there is no [rechecked...] directive, it inherits the value of
+-- [stale ...].
+--
+-- Specifications for later runs can be given with [stale2 ...], [stale3 ...], etc.
 
 [case testReprocessFunction]
 import m
@@ -103,7 +119,10 @@ class B:
 class A: pass
 [file m.py.2]
 def A() -> None: pass
+[file n.py.3]
 [out]
+==
+main:3: error: Invalid type "m.A"
 ==
 main:3: error: Invalid type "m.A"
 
@@ -416,7 +435,10 @@ class A: pass
 [file m.py.2]
 class A:
     def f(self) -> int: pass
+[file n.py.3]
 [out]
+==
+main:3: error: Return type of "f" incompatible with supertype "A"
 ==
 main:3: error: Return type of "f" incompatible with supertype "A"
 
@@ -910,9 +932,29 @@ class A:
 def f() -> int: pass
 [file m.py.2]
 def f() -> str: pass
+[file n.py.3]
 [out]
 ==
 main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+==
+main:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testReprocessMethodInNestedClassSemanal]
+import a
+[file a.py]
+class A:
+    class B:
+        def g() -> None: pass
+    def foo(self) -> int: return 12
+[file b.py.2]
+[file b.py.3]
+2
+[out]
+a.py:3: error: Method must have at least one argument
+==
+a.py:3: error: Method must have at least one argument
+==
+a.py:3: error: Method must have at least one argument
 
 [case testBaseClassDeleted]
 import m
@@ -1149,8 +1191,8 @@ def g() -> None:
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [triggered]
-2: <b.h>, <b>, a.g
-3: <b.h>, <b>, a
+2: <b.h>, <b>, <b[wildcard]>, a.g
+3: <b.h>, <b>, <b[wildcard]>, a
 4: a.g
 [out]
 a.py:11: error: Too many arguments for "h"
@@ -1227,6 +1269,221 @@ a.py:9: error: Unsupported operand types for + ("int" and "str")
 a.py:9: error: Unsupported operand types for + ("int" and "str")
 ==
 a.py:9: error: Unsupported operand types for + ("int" and "str")
+==
+
+[case testPreviousErrorInDecoratedMethodOverride]
+import a
+[file a.py]
+from typing import Callable
+from b import B
+
+def dec(x: Callable[['A'], int]) -> Callable[['A'], int]:
+    return x
+
+class A(B):
+    @dec
+    def foo(self) -> int: return 12
+
+[file b.py]
+class B:
+    def foo(self) -> str: return 'hi'
+[file c.py.2]
+[file c.py.3]
+1
+[file b.py.4]
+class B:
+    def foo(self) -> int: return 12
+[out]
+a.py:9: error: Return type of "foo" incompatible with supertype "B"
+==
+a.py:9: error: Return type of "foo" incompatible with supertype "B"
+==
+a.py:9: error: Return type of "foo" incompatible with supertype "B"
+==
+
+[case testPreviousErrorInMethodSemanal1]
+import a
+[file a.py]
+class A:
+    def foo() -> int: pass
+[file c.py.2]
+[file c.py.3]
+1
+[file a.py.4]
+class A:
+    def foo(self) -> int: pass
+[out]
+a.py:2: error: Method must have at least one argument
+==
+a.py:2: error: Method must have at least one argument
+==
+a.py:2: error: Method must have at least one argument
+==
+
+[case testPreviousErrorInMethodSemanal2]
+import a
+[file a.py]
+class A:
+    def foo(self) -> None:
+        nothing
+[file c.py.2]
+[file c.py.3]
+1
+[file a.py.4]
+class A:
+    def foo(self) -> int: pass
+[out]
+a.py:3: error: Name 'nothing' is not defined
+==
+a.py:3: error: Name 'nothing' is not defined
+==
+a.py:3: error: Name 'nothing' is not defined
+==
+
+[case testPreviousErrorInMethodSemanalPass3]
+import a
+[file a.py]
+from typing import List
+class A:
+    def __init__(self) -> None:
+        self.x = []  # type: List[int, str]
+[file c.py.2]
+[file c.py.3]
+1
+[file a.py.4]
+from typing import List
+class A:
+    def __init__(self) -> None:
+        self.x = []  # type: List[int]
+[builtins fixtures/list.pyi]
+[out]
+a.py:4: error: "list" expects 1 type argument, but 2 given
+==
+a.py:4: error: "list" expects 1 type argument, but 2 given
+==
+a.py:4: error: "list" expects 1 type argument, but 2 given
+==
+
+[case testPreviousErrorInOverloadedFunctionSemanalPass3]
+import a
+[file a.py]
+from typing import overload, List
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> List[int, str]: ...
+def f(x: object) -> object:
+    pass
+[file c.py.2]
+[file c.py.3]
+1
+[file a.py.4]
+from typing import overload, List
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> List[int]: ...
+def f(x: object) -> object:
+    pass
+[builtins fixtures/list.pyi]
+[out]
+a.py:5: error: "list" expects 1 type argument, but 2 given
+==
+a.py:5: error: "list" expects 1 type argument, but 2 given
+==
+a.py:5: error: "list" expects 1 type argument, but 2 given
+==
+
+[case testPreviousErrorInOverloadedFunction]
+import a
+[file a.py]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> int: ...
+def f(x: object) -> None:
+	pass
+[file b.py]
+[file b.py.2]
+1
+[file b.py.3]
+2
+[file a.py.4]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> None: ...
+def f(x: object) -> None:
+	pass
+[out]
+a.py:6: error: Overloaded function implementation cannot produce return type of signature 2
+==
+a.py:6: error: Overloaded function implementation cannot produce return type of signature 2
+==
+a.py:6: error: Overloaded function implementation cannot produce return type of signature 2
+==
+
+[case testPreviousErrorInOverloadedFunctionSemanal]
+import a
+[file a.py]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> None: ...
+[file b.py]
+[file b.py.2]
+1
+[file b.py.3]
+2
+[file a.py.4]
+from typing import overload
+@overload
+def f(x: str) -> None: ...
+@overload
+def f(x: int) -> None: ...
+def f(x: object) -> None:
+	pass
+[out]
+a.py:2: error: An overloaded function outside a stub file must have an implementation
+==
+a.py:2: error: An overloaded function outside a stub file must have an implementation
+==
+a.py:2: error: An overloaded function outside a stub file must have an implementation
+==
+
+[case testPreviousErrorInDecoratedMethodSemanalPass3]
+import a
+[file a.py]
+from typing import Callable, TypeVar, Any, List
+
+T = TypeVar('T', bound=Callable)
+def dec(x: T) -> T:
+    return x
+
+@dec
+def foo(self) -> List[str, int]: return []
+
+[file c.py.2]
+[file c.py.3]
+[file a.py.4]
+from typing import Callable, TypeVar, Any, List
+
+T = TypeVar('T', bound=Callable[..., Any])
+def dec(x: T) -> T:
+    return x
+
+@dec
+def foo(self) -> List[str]: return []
+[builtins fixtures/list.pyi]
+[out]
+a.py:8: error: "list" expects 1 type argument, but 2 given
+==
+a.py:8: error: "list" expects 1 type argument, but 2 given
+==
+a.py:8: error: "list" expects 1 type argument, but 2 given
 ==
 
 [case testOverloadRefresh]
@@ -2956,3 +3213,220 @@ class C(Enum):
 ==
 a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
+
+[case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+f = 1
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeVarAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from typing import TypeVar
+f = TypeVar('f')
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToModuleAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+import c as f
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeAliasAndRefreshUsingStaleDependency1]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+f = int
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testChangeFunctionToTypeAliasAndRefreshUsingStaleDependency2]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from typing import List
+f = List[int]
+[file c.py]
+class A: pass
+[file c.py.3]
+[builtins fixtures/list.pyi]
+[out]
+==
+==
+
+[case testChangeFunctionToClassAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+class f: pass
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testClassToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+class A:
+    def f(self) -> c.A: pass
+[file a.py.2]
+A = 0
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testFunctionToImportedFunctionAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+def f() -> c.A: pass
+[file a.py.2]
+from d import f
+[file c.py]
+class A: pass
+[file c.py.3]
+[file d.py]
+def g() -> None: pass
+def f() -> None:
+    g()
+[out]
+==
+==
+
+[case testMethodToVariableAndRefreshUsingStaleDependency]
+import a
+import c
+[file a.py]
+import c
+class B:
+    def f(self) -> c.A: pass
+[file a.py.2]
+class B:
+    f = 0
+[file c.py]
+class A: pass
+[file c.py.3]
+[out]
+==
+==
+
+[case testRefreshNestedClassWithSelfReference]
+import a
+[file a.py]
+import b
+
+def f(self) -> None:
+    b.y
+    class C:
+        z: C
+[file b.py]
+y = 0
+[file b.py.2]
+y = ''
+[file b.py.3]
+y = 0
+[out]
+==
+==
+
+[case testMultipleAssignment]
+import a
+[file a.py]
+from b import f
+
+def h(x: str) -> None: pass
+
+class C:
+    def __init__(self) -> None:
+        self.a, self.b = f()
+
+    def g(self) -> None:
+        h(self.a)
+[file b.py]
+from typing import Tuple
+def f() -> Tuple[str, int]: pass
+[file b.py.2]
+from typing import Tuple
+def f() -> Tuple[int, object]: pass
+[file b.py.3]
+from typing import Tuple
+def f() -> Tuple[str, int]: pass
+[out]
+==
+a.py:10: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+==
+
+[case testMultipleLvalues]
+import a
+[file a.py]
+from b import f
+
+def h(x: str) -> None: pass
+
+class C:
+    def __init__(self) -> None:
+        self.a = self.b = f()
+
+    def g(self) -> None:
+        h(self.a)
+        h(self.b)
+[file b.py]
+def f() -> str: pass
+[file b.py.2]
+def f() -> int: pass
+[file b.py.3]
+def f() -> str: pass
+[out]
+==
+a.py:10: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+a.py:11: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+==

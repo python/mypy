@@ -92,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -101,7 +101,7 @@ from mypy.types import (
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, ForwardRef, Overloaded
 )
-from mypy.server.trigger import make_trigger
+from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
 
@@ -262,6 +262,15 @@ class DependencyVisitor(TraverserVisitor):
                                                self.is_package_init_file)
         for name, as_name in o.names:
             self.add_dependency(make_trigger(module_id + '.' + name))
+
+    def visit_import_all(self, o: ImportAll) -> None:
+        module_id, _ = correct_relative_import(self.scope.current_module_id(),
+                                               o.relative,
+                                               o.id,
+                                               self.is_package_init_file)
+        # The current target needs to be rechecked if anything "significant" changes in the
+        # target module namespace (as the imported definitions will need to be updated).
+        self.add_dependency(make_wildcard_trigger(module_id))
 
     def visit_block(self, o: Block) -> None:
         if not o.is_unreachable:

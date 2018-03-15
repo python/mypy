@@ -315,11 +315,13 @@ class ImportAll(ImportBase):
     """from m import *"""
     id = None  # type: str
     relative = None  # type: int
+    imported_names = None  # type: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
+        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
@@ -456,7 +458,7 @@ class Argument(Node):
 
 
 class FuncItem(FuncBase):
-    arguments = []  # type: List[Argument]
+    arguments = []  # type: List[Argument]  # Note: Can be None if deserialized (type is a lie!)
     arg_names = []  # type: List[str]
     arg_kinds = []  # type: List[int]
     # Minimum number of arguments

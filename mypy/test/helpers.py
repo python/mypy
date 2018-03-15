@@ -5,7 +5,7 @@ import sys
 import time
 import shutil
 
-from typing import List, Dict, Tuple, Callable, Any, Optional
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
 from mypy.test.config import test_temp_dir
@@ -96,6 +96,21 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
             show_align_message(expected[first_diff], actual[first_diff])
 
         raise AssertionError(msg)
+
+
+def assert_module_equivalence(name: str,
+                              expected: Optional[Iterable[str]], actual: Iterable[str]) -> None:
+    if expected is not None:
+        expected_normalized = sorted(expected)
+        actual_normalized = sorted(set(actual).difference({"__main__"}))
+        assert_string_arrays_equal(
+            expected_normalized,
+            actual_normalized,
+            ('Actual modules ({}) do not match expected modules ({}) '
+             'for "[{} ...]"').format(
+                 ', '.join(actual_normalized),
+                 ', '.join(expected_normalized),
+                 name))
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:

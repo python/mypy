@@ -10,10 +10,10 @@ information.
 import os
 import re
 
-from typing import List, Tuple, Optional, cast
+from typing import List, Set, Tuple, Optional, cast
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource, Graph
+from mypy.build import BuildManager, BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.server.update import FineGrainedBuildManager
@@ -21,7 +21,9 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
 )
-from mypy.test.helpers import assert_string_arrays_equal, parse_options, copy_and_fudge_mtime
+from mypy.test.helpers import (
+    assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
+)
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
 from mypy.main import expand_dir
@@ -96,6 +98,7 @@ class FineGrainedSuite(DataSuite):
 
         steps = testcase.find_steps()
         all_triggered = []
+
         for operations in steps:
             step += 1
             for op in operations:
@@ -108,10 +111,25 @@ class FineGrainedSuite(DataSuite):
             sources = self.parse_sources(main_src, step)
             new_messages = self.run_check(server, sources)
 
+            updated = []  # type: List[str]
+            changed = []  # type: List[str]
             if server.fine_grained_manager:
                 if CHECK_CONSISTENCY:
                     check_consistency(server.fine_grained_manager)
                 all_triggered.append(server.fine_grained_manager.triggered)
+
+                updated = server.fine_grained_manager.updated_modules
+                changed = [mod for mod, file in server.fine_grained_manager.changed_modules]
+
+            assert_module_equivalence(
+                'stale' + str(step - 1),
+                testcase.expected_stale_modules.get(step - 1),
+                changed)
+            assert_module_equivalence(
+                'rechecked' + str(step - 1),
+                testcase.expected_rechecked_modules.get(step - 1),
+                updated)
+
             new_messages = normalize_messages(new_messages)
 
             a.append('==')

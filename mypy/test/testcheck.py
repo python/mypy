@@ -7,11 +7,11 @@ import shutil
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.build import BuildSource, find_module_clear_caches
+from mypy.build import BuildSource
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages,
+    assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
     copy_and_fudge_mtime
 )
@@ -114,7 +114,6 @@ class TypeCheckSuite(DataSuite):
             shutil.rmtree(dn)
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
-        find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
@@ -190,28 +189,14 @@ class TypeCheckSuite(DataSuite):
                 self.verify_cache(module_data, a, res.manager)
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'rechecked' + suffix,
                     testcase.expected_rechecked_modules.get(incremental_step - 1),
                     res.manager.rechecked_modules)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'stale' + suffix,
                     testcase.expected_stale_modules.get(incremental_step - 1),
                     res.manager.stale_modules)
-
-    def check_module_equivalence(self, name: str,
-                                 expected: Optional[Set[str]], actual: Set[str]) -> None:
-        if expected is not None:
-            expected_normalized = sorted(expected)
-            actual_normalized = sorted(actual.difference({"__main__"}))
-            assert_string_arrays_equal(
-                expected_normalized,
-                actual_normalized,
-                ('Actual modules ({}) do not match expected modules ({}) '
-                 'for "[{} ...]"').format(
-                    ', '.join(actual_normalized),
-                    ', '.join(expected_normalized),
-                    name))
 
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
                      manager: build.BuildManager) -> None:
@@ -306,7 +291,7 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                path = build.FindModuleCache().find_module(module_name, [test_temp_dir])
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()
