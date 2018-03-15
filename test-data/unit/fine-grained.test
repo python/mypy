@@ -2740,6 +2740,8 @@ class A:
 class B:
     x: str
 [out]
+==
+a.py:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testTypeVarValuesClass]
 import a
@@ -2764,6 +2766,8 @@ T = TypeVar('T', B, C)
 class D(Generic[T]):
     pass
 [out]
+==
+a.py:3: error: Value of type variable "T" of "D" cannot be "A"
 
 [case testTypeVarBoundFunction]
 import a
@@ -2782,6 +2786,8 @@ class B:
 class B:
     x: str
 [out]
+==
+a.py:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testTypeVarBoundClass]
 import a
@@ -2803,6 +2809,51 @@ class B: pass
 T = TypeVar('T', bound=B)
 class D(Generic[T]):
     pass
+[out]
+==
+a.py:3: error: Type argument "c.A" of "D" must be a subtype of "c.B"
+
+[case testTypeVarValuesRuntime]
+from mod import I, S, D
+A = I
+x = D[S, A]()
+[file mod.py]
+import submod
+from typing import Generic
+class D(Generic[submod.T, submod.U]): pass
+class I: pass
+class S: pass
+[file submod.py]
+from typing import TypeVar
+T = TypeVar('T')
+U = TypeVar('U')
+[file submod.py.2]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+U = TypeVar('U', int, str)
+[out]
+==
+main:3: error: Value of type variable "submod.T" of "D" cannot be "S"
+main:3: error: Value of type variable "submod.U" of "D" cannot be "I"
+
+[case testTypeVarBoundRuntime]
+from mod import I, S, D
+A = I
+x = D[S, A]()
+[file mod.py]
+import submod
+from typing import Generic
+class D(Generic[submod.T, submod.U]): pass
+class I: pass
+class S: pass
+[file submod.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+U = TypeVar('U', bound=int)
+[file submod.py.2]
+from typing import TypeVar
+T = TypeVar('T')
+U = TypeVar('U')
 [out]
 
 [case testRefreshClassBasedEnum]

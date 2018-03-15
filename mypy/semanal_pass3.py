@@ -276,6 +276,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         super().visit_reveal_type_expr(e)
 
     def visit_type_application(self, e: TypeApplication) -> None:
+        print('was here', e)
         for type in e.types:
             self.analyze(type, e)
         super().visit_type_application(e)
@@ -408,6 +409,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
             self.patches.append((PRIORITY_FORWARD_REF, patch))
         if indicator.get('typevar'):
             def patch() -> None:
+                print('checking', node)
                 self.perform_transform(node,
                     lambda tp: tp.accept(TypeVariableChecker(self.fail)))
 
@@ -696,6 +698,7 @@ class TypeVariableChecker(TypeTranslator):
                         continue
                 else:
                     arg_values = [arg]
+                print(t, t.line, t.column)
                 self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
             if not is_subtype(arg, tvar.upper_bound):
                 self.fail('Type argument "{}" of "{}" must be '

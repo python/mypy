@@ -194,7 +194,7 @@ def snapshot_definition(node: Optional[SymbolNode],
                  snapshot_optional_type(node.tuple_type),
                  snapshot_optional_type(node.typeddict_type),
                  [base.fullname() for base in node.mro],
-                 node.type_vars,
+                 tuple(snapshot_type(TypeVarType(tdef)) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
                  snapshot_optional_type(node._promote))
         prefix = node.fullname()

@@ -196,6 +196,10 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         self.add_type_alias_deps(self.scope.current_target())
         super().visit_func_def(o)
+        variants = set(o.expanded) - {o}
+        for ex in variants:
+            if isinstance(ex, FuncDef):
+                super().visit_func_def(ex)
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
@@ -268,10 +272,11 @@ class DependencyVisitor(TraverserVisitor):
         #   Enum
         rvalue = o.rvalue
         if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
-            # TODO: Support type variable value restriction
             analyzed = rvalue.analyzed
             self.add_type_dependencies(analyzed.upper_bound,
                                        target=make_trigger(analyzed.fullname()))
+            for val in analyzed.values:
+                self.add_type_dependencies(val, target=make_trigger(analyzed.fullname()))
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
@@ -631,9 +636,6 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers = [trigger]
         for arg in typ.args:
             triggers.extend(get_type_triggers(arg))
-        # TODO: process this separately.
-        for tvar in typ.type.defn.type_vars:
-            triggers.append(make_trigger(tvar.fullname))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:

@@ -155,9 +155,9 @@ S = TypeVar('S', C, D)
 def f(x: T) -> S:
     pass
 [out]
-<m.A> -> <m.f>, m.A, m.f
-<m.B> -> <m.f>, m.B, m.f
-<m.C> -> <m.f>, m.C, m.f
-<m.D> -> <m.f>, m.D, m.f
+<m.A> -> <m.T>, <m.f>, m.A, m.f
+<m.B> -> <m.T>, <m.f>, m.B, m.f
+<m.C> -> <m.S>, <m.f>, m.C, m.f
+<m.D> -> <m.S>, <m.f>, m.D, m.f
 <m.S> -> <m.f>, m.f
 <m.T> -> <m.f>, m.f
