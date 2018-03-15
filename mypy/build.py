@@ -884,7 +884,7 @@ class FindModuleCache:
             except subprocess.CalledProcessError:
                 # if no paths are found (raising a CalledProcessError), we fall back on sysconfig,
                 # the python executable is likely in a virtual environment, thus lacking
-                # needed site methods
+                # the needed site methods
                 output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
         return ast.literal_eval(output)
 
