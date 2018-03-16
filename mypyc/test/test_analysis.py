@@ -6,8 +6,8 @@ import shutil
 from typing import List
 
 from mypy import build
-from mypy.test.helpers import assert_string_arrays_equal_wildcards
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -16,31 +16,22 @@ from mypy import experiments
 from mypyc import analysis
 from mypyc import genops
 from mypyc.ops import format_func, Register
-from mypyc.test.config import test_data_prefix
-from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins
+from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite
 
 files = [
     'analysis.test'
 ]
 
 
-class TestAnalysis(DataSuite):
-    def __init__(self, *, update_data: bool) -> None:
-        pass
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(
-                os.path.join(test_data_prefix, f),
-                None, test_temp_dir, True)
-        return c
+class TestAnalysis(MypycDataSuite):
+    files = files
+    base_path = test_temp_dir
+    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a data-flow analysis test case."""
 
-        with use_custom_builtins(os.path.join(test_data_prefix, ICODE_GEN_BUILTINS), testcase):
+        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = testcase.output
             program_text = '\n'.join(testcase.input)
 
@@ -93,7 +84,7 @@ class TestAnalysis(DataSuite):
                         pre = ', '.join(fn.env.names[reg] for reg in analysis_result.before[key])
                         post = ', '.join(fn.env.names[reg] for reg in analysis_result.after[key])
                         actual.append('%-8s %-23s %s' % (key, '{%s}' % pre, '{%s}' % post))
-            assert_string_arrays_equal_wildcards(
+            assert_string_arrays_equal(
                 expected_output, actual,
                 'Invalid source code output ({}, line {})'.format(testcase.file,
                                                                   testcase.line))

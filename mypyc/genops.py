@@ -282,7 +282,7 @@ class IRBuilder(NodeVisitor[Register]):
         if isinstance(lvalue, NameExpr):
             # Assign to local variable.
             assert lvalue.kind == LDEF
-            if lvalue.is_def or declare_new:
+            if lvalue.is_new_def or declare_new:
                 # Define a new variable.
                 assert isinstance(lvalue.node, Var)  # TODO: Can this fail?
                 lvalue_num = self.environment.add_local(lvalue.node, self.node_type(lvalue))
