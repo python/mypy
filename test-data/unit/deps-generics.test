@@ -161,3 +161,37 @@ def f(x: T) -> S:
 <m.D> -> <m.S>, <m.f>, m.D, m.f
 <m.S> -> <m.f>, m.f
 <m.T> -> <m.f>, m.f
+
+[case testTypeVarValuesMethod]
+from typing import TypeVar, Generic
+class C: pass
+class D: pass
+S = TypeVar('S', C, D)
+
+class G(Generic[S]):
+    def f(self) -> S:
+        pass
+[out]
+<m.C> -> <m.G.f>, <m.S>, m.C, m.G.f
+<m.D> -> <m.G.f>, <m.S>, m.D, m.G.f
+<m.G> -> m.G
+<m.S> -> <m.G.f>, m.G, m.G.f
+
+[case testTypeVarValuesMethodAttr]
+from typing import TypeVar, Generic
+class A:
+    x: int
+class B:
+    x: int
+T = TypeVar('T', A, B)
+
+class G(Generic[T]):
+    def f(self, x: T) -> None:
+        x.x
+[out]
+<m.A.x> -> m.G.f
+<m.A> -> <m.G.f>, <m.T>, m.A, m.G.f
+<m.B.x> -> m.G.f
+<m.B> -> <m.G.f>, <m.T>, m.B, m.G.f
+<m.G> -> m.G
+<m.T> -> <m.G.f>, m.G, m.G.f

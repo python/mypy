@@ -3026,6 +3026,62 @@ class D(Generic[T]):
 ==
 a.py:3: error: Value of type variable "T" of "D" cannot be "A"
 
+[case testTypeVarValuesMethod1]
+import a
+[file a.py]
+from typing import Generic
+import c
+class G(Generic[c.T]):
+    def f(self, x: c.T) -> None:
+        x.x = int()
+[file c.py]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: int
+class C:
+    x: str
+T = TypeVar('T', A, B, C)
+[file c.py.2]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: int
+class C:
+    x: str
+T = TypeVar('T', A, B)
+[out]
+a.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+
+[case testTypeVarValuesMethod2]
+import a
+[file a.py]
+from typing import Generic
+import c
+class G(Generic[c.T]):
+    def f(self, x: c.T) -> None:
+        x.x = int()
+[file c.py]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: int
+T = TypeVar('T', A, B)
+[file c.py.2]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: str
+T = TypeVar('T', A, B)
+[out]
+==
+a.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
 [case testTypeVarBoundFunction]
 import a
 [file a.py]
