@@ -969,19 +969,16 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
-    if manager.options.bazel:
-        # For Bazel we put the cache files alongside the source files.
-        # The reason is that Bazel output files cannot live outside
-        # the package, and the repo root is often higher up.
-        path = relpath(path)
-        prefix, _ = os.path.splitext(path)
-    else:
-        cache_dir = manager.options.cache_dir
+    cache_dir = manager.options.cache_dir
+    prefix = cache_dir
+    # For Bazel we omit the Python version from the cache name.
+    if not manager.options.bazel:
         pyversion = manager.options.python_version
-        prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
-        is_package = os.path.basename(path).startswith('__init__.py')
-        if is_package:
-            prefix = os.path.join(prefix, '__init__')
+        prefix = os.path.join(prefix, '%d.%d' % pyversion)
+    prefix = os.path.join(prefix, *id.split('.'))
+    is_package = os.path.basename(path).startswith('__init__.py')
+    if is_package:
+        prefix = os.path.join(prefix, '__init__')
     return (prefix + '.meta.json', prefix + '.data.json')
 
 
