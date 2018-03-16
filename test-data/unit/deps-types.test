@@ -214,7 +214,6 @@ class C(metaclass=M):
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
 
-
 [case testMetaclassAttributes_python2]
 # flags: --py2
 from mod import C

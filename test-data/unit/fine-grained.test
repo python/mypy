@@ -1743,6 +1743,84 @@ def f(x=1): pass
 [out]
 ==
 
+[case testMetaclassAttributes]
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg.x = int()
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+
+[case testMetaclassAttributesDirect]
+import a
+[file a.py]
+from mod import C
+def f() -> None:
+    C.x = int()
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+
+[case testMetaclassOperators]
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg + arg
+[file mod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+class C(metaclass=M):
+    pass
+[out]
+
+[case testMetaclassOperatorsDirect]
+import a
+[file a.py]
+from mod import C
+def f() -> None:
+    C + C
+[file mod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+class C(metaclass=M):
+    pass
+[out]
+
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
 import m
