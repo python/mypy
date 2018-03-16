@@ -552,16 +552,22 @@ class B:
 __main__.B.x
 
 [case testFunctionalEnum]
-from enum import Enum
+from enum import Enum, IntEnum
 A = Enum('A', 'x')
 B = Enum('B', 'x')
+C = Enum('C', 'x')
+D = IntEnum('D', 'x')
 [file next.py]
-from enum import Enum
+from enum import Enum, IntEnum
 A = Enum('A', 'x')
 B = Enum('B', 'y')
+C = IntEnum('C', 'x')
+D = IntEnum('D', 'x y')
 [out]
 __main__.B.x
 __main__.B.y
+__main__.C
+__main__.D.y
 
 [case testClassBasedEnum]
 from enum import Enum

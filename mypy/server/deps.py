@@ -92,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -170,7 +170,6 @@ class DependencyVisitor(TraverserVisitor):
     #   await
     #   protocols
     #   metaclasses
-    #   functional enum
     #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
@@ -273,8 +272,6 @@ class DependencyVisitor(TraverserVisitor):
             super().visit_block(o)
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-        # TODO: Implement all assignment special forms, including these:
-        #   Enum
         rvalue = o.rvalue
         if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
             # TODO: Support type variable value restriction
@@ -299,6 +296,11 @@ class DependencyVisitor(TraverserVisitor):
             assert info.typeddict_type is not None
             prefix = '%s.%s' % (self.scope.current_full_target(), info.name())
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
+        elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, EnumCallExpr):
+            # Enum values are currently not checked, but for future we add the deps on them
+            for name, symnode in rvalue.analyzed.info.names.items():
+                if isinstance(symnode.node, Var) and symnode.node.type:
+                    self.add_type_dependencies(symnode.node.type)
         elif o.is_alias_def:
             assert len(o.lvalues) == 1
             lvalue = o.lvalues[0]
