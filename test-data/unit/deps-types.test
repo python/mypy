@@ -152,6 +152,36 @@ def h() -> None:
 <m.ff> -> m, m.h
 <m.g> -> m.f
 
+[case testMetaclassAttributes]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg.x
+[file mod.py]
+class M(type):
+    x: int
+class C(metaclass=M):
+    pass
+[out]
+<mod.C.x> -> m.f
+<mod.C> -> <m.f>, m, m.f
+<mod.M.x> -> m.f
+
+[case testMetaclassAttributesDirect]
+from mod import C
+def f() -> None:
+    C.x
+[file mod.py]
+class M(type):
+    x: int
+class C(metaclass=M):
+    pass
+[out]
+<mod.C.__init__> -> m.f
+<mod.C.x> -> m.f
+<mod.C> -> m, m.f
+<mod.M.x> -> m.f
+
 -- Type aliases
 
 [case testAliasDepsNormalMod]
