@@ -834,3 +834,21 @@ class I: pass
 <m.f> -> m.f
 <mod.I.__init__> -> m
 <mod.I> -> <m.f.x>, m, m.f
+
+[case testFuncBasedEnum]
+from enum import Enum
+from mod import B
+
+A = Enum('A', [('X', B())])
+
+def f(a: A) -> None:
+    pass
+def g() -> None:
+    A.X
+[file mod.py]
+class B: pass
+[out]
+<m.A.X> -> m.g
+<m.A.__init__> -> m.g
+<m.A> -> <m.f>, m.f, m.g
+<mod.B> -> m
