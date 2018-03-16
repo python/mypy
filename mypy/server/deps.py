@@ -170,7 +170,6 @@ class DependencyVisitor(TraverserVisitor):
     #   await
     #   protocols
     #   metaclasses
-    #   functional enum
     #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
