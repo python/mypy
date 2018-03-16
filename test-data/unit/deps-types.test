@@ -182,6 +182,111 @@ class C(metaclass=M):
 <mod.C> -> m, m.f
 <mod.M.x> -> m.f
 
+[case testMetaclassOperators]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg + arg
+[file mod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+class C(metaclass=M):
+    pass
+[out]
+<mod.C> -> <m.f>, m, m.f
+<mod.M.__add__> -> m.f
+<mod.M.__radd__> -> m.f
+
+[case testMetaclassOperatorsDirect]
+from mod import C
+def f() -> None:
+    C + C
+[file mod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+class C(metaclass=M):
+    pass
+[out]
+<mod.C.__init__> -> m.f
+<mod.C> -> m, m.f
+<mod.M.__add__> -> m.f
+<mod.M.__radd__> -> m.f
+
+
+[case testMetaclassAttributes_python2]
+# flags: --py2
+from mod import C
+from typing import Type
+def f(arg):
+    # type: (Type[C]) -> None
+    arg.x
+[file mod.py]
+class M(type):
+    x = None  # type: int
+class C:
+    __metaclass__ = M
+[out]
+<mod.C.x> -> m.f
+<mod.C> -> <m.f>, m, m.f
+<mod.M.x> -> m.f
+
+[case testMetaclassAttributesDirect_python2]
+# flags: --py2
+from mod import C
+def f():
+    # type: () -> None
+    C.x
+[file mod.py]
+class M(type):
+    x = None  # type: int
+class C:
+    __metaclass__ = M
+[out]
+<mod.C.__init__> -> m.f
+<mod.C.x> -> m.f
+<mod.C> -> m, m.f
+<mod.M.x> -> m.f
+
+[case testMetaclassOperators_python2]
+# flags: --py2
+from mod import C
+from typing import Type
+def f(arg):
+    # type: (Type[C]) -> None
+    arg + arg
+[file mod.py]
+class M(type):
+    def __add__(self, other):
+        # type: (M) -> M
+        pass
+class C:
+    __metaclass__ = M
+[out]
+<mod.C> -> <m.f>, m, m.f
+<mod.M.__add__> -> m.f
+<mod.M.__radd__> -> m.f
+
+[case testMetaclassOperatorsDirect_python2]
+# flags: --py2
+from mod import C
+def f():
+    # type: () -> None
+    C + C
+[file mod.py]
+class M(type):
+    def __add__(self, other):
+        # type: (M) -> M
+        pass
+class C:
+    __metaclass__ = M
+[out]
+<mod.C.__init__> -> m.f
+<mod.C> -> m, m.f
+<mod.M.__add__> -> m.f
+<mod.M.__radd__> -> m.f
+
 -- Type aliases
 
 [case testAliasDepsNormalMod]
