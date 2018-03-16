@@ -540,8 +540,8 @@ def find_relative_leaf_module(modules: List[Tuple[str, str]], graph: Graph) -> T
 
 
 def assert_equivalent_paths(path1: str, path2: str) -> None:
-    path1 = os.path.normpath(path1)
-    path2 = os.path.normpath(path2)
+    path1 = os.path.normpath(os.path.abspath(path1))
+    path2 = os.path.normpath(os.path.abspath(path2))
     assert path1 == path2, '%s != %s' % (path1, path2)
 
 
