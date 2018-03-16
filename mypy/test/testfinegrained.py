@@ -30,10 +30,6 @@ from mypy.main import expand_dir
 
 import pytest  # type: ignore  # no pytest in typeshed
 
-# TODO: This entire thing is a weird semi-duplication of testdmypy.
-# One of them should be eliminated and its remaining useful features
-# merged into the other.
-
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
 CHECK_CONSISTENCY = False
 

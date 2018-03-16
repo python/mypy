@@ -176,7 +176,6 @@ class FineGrainedBuildManager:
         # Disable the cache so that load_graph doesn't try going back to disk
         # for the cache.
         self.manager.cache_enabled = False
-        manager.saved_cache = {}
 
         # Some hints to the test suite about what is going on:
         # Active triggers during the last update
@@ -556,8 +555,6 @@ def delete_module(module_id: str,
         del graph[module_id]
     if module_id in manager.modules:
         del manager.modules[module_id]
-    if module_id in manager.saved_cache:
-        del manager.saved_cache[module_id]
     components = module_id.split('.')
     if len(components) > 1:
         # Delete reference to module in parent module.
