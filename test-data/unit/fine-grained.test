@@ -1984,6 +1984,51 @@ class M(type):
 ==
 a.py:2: error: "Type[B]" has no attribute "x"
 
+[case testFineMetaclassUpdate2]
+import a
+[file a.py]
+from c import M
+import b
+def f(arg: M) -> None:
+    pass
+
+f(b.B)
+[file b.py]
+import c
+class B: pass
+
+[file b.py.2]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    pass
+[out]
+a.py:6: error: Argument 1 to "f" has incompatible type "Type[B]"; expected "M"
+==
+
+[case testFineMetaclassRecalculation]
+import a
+[file a.py]
+from b import B
+class M2(type): pass
+class D(B, metaclass=M2): pass
+[file b.py]
+import c
+class B: pass
+
+[file b.py.2]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    pass
+[out]
+==
+a.py:3: error: Inconsistent metaclass structure for 'D'
+
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
 import m

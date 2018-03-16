@@ -193,6 +193,8 @@ def snapshot_definition(node: Optional[SymbolNode],
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,
+                 # We need this to e.g. trigger metaclass calculation in subclasses.
+                 snapshot_optional_type(node.metaclass_type),
                  snapshot_optional_type(node.tuple_type),
                  snapshot_optional_type(node.typeddict_type),
                  [base.fullname() for base in node.mro],
