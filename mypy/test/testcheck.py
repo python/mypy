@@ -182,7 +182,7 @@ class TypeCheckSuite(DataSuite):
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
-            self.verify_cache(module_data, a, res.manager, res.graph)
+            self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
