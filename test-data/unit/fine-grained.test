@@ -1767,6 +1767,11 @@ class M(type):
 class M(type):
     x: int
 [out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:4: error: "Type[C]" has no attribute "x"
+==
 
 [case testMetaclassAttributesDirect]
 import a
@@ -1791,6 +1796,11 @@ class M(type):
 class M(type):
     x: int
 [out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:3: error: "Type[C]" has no attribute "x"
+==
 
 [case testMetaclassOperators]
 import a
@@ -1800,12 +1810,20 @@ from typing import Type
 def f(arg: Type[C]) -> None:
     arg + arg
 [file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
 class M(type):
     def __add__(self, other: M) -> M:
         pass
-class C(metaclass=M):
-    pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other: int) -> M:
+        pass
 [out]
+==
+a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
 
 [case testMetaclassOperatorsDirect]
 import a
@@ -1814,12 +1832,136 @@ from mod import C
 def f() -> None:
     C + C
 [file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    def __add__(self, other: int) -> M:
+        pass
+[file submod.py.2]
 class M(type):
     def __add__(self, other: M) -> M:
         pass
-class C(metaclass=M):
-    pass
 [out]
+a.py:3: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+==
+
+[case testMetaclassAttributes_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg):
+    # type: (Type[C]) -> None
+    arg.x = int()
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    x = None  # type: int
+[file submod.py.2]
+class M(type):
+    x = None  # type: str
+[file submod.py.3]
+class M(type):
+    y = None  # type: str
+[file submod.py.4]
+class M(type):
+    x = None  # type: int
+[out]
+==
+a.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:5: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassAttributesDirect_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+def f():
+    # type: () -> None
+    C.x = int()
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    x = None  # type: int
+[file submod.py.2]
+class M(type):
+    x = None  # type: str
+[file submod.py.3]
+class M(type):
+    y = None  # type: str
+[file submod.py.4]
+class M(type):
+    x = None  # type: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:4: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassOperators_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg):
+    # type: (Type[C]) -> None
+    arg + arg
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    def __add__(self, other):
+        # type: (M) -> M
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other):
+        # type: (int) -> M
+        pass
+[out]
+==
+a.py:5: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+
+[case testMetaclassOperatorsDirect_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+def f():
+    # type: () -> None
+    C + C
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    def __add__(self, other):
+        # type: (int) -> M
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other):
+        # type: (M) -> M
+        pass
+[out]
+a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+==
 
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
