@@ -81,7 +81,7 @@ class BuildResult:
       manager: The build manager.
       files:   Dictionary from module name to related AST node.
       types:   Dictionary from parse tree node to its inferred type.
-      used_cache: Whether the build took advantage of a cache
+      used_cache: Whether the build took advantage of a pre-existing cache
       errors:  List of error messages.
     """
 
@@ -565,9 +565,10 @@ class BuildManager:
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
       flush_errors:    A function for processing errors after each SCC
-      cache_enabled:   Whether cache usage is enabled. This is set based on options,
+      cache_enabled:   Whether cache is being read. This is set based on options,
                        but is disabled if fine-grained cache loading fails
-                       and after an initial fine-grained load.
+                       and after an initial fine-grained load. This doesn't
+                       determine whether we write cache files or not.
       stats:           Dict with various instrumentation numbers
       fscache:         A file system cacher
     """
@@ -1975,7 +1976,7 @@ class State:
 
     def write_cache(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        if not self.path or not self.manager.cache_enabled:
+        if not self.path or self.options.cache_dir == os.devnull:
             return
         if self.manager.options.quick_and_dirty:
             is_errors = self.manager.errors.is_errors_for_file(self.path)
