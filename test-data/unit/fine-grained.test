@@ -1963,6 +1963,27 @@ class M(type):
 a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
 ==
 
+[case testFineMetaclassUpdate]
+import a
+[file a.py]
+from b import B
+B.x
+
+[file b.py]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    x: int
+
+[file c.py.2]
+class M(type):
+    y: int
+[out]
+==
+a.py:2: error: "Type[B]" has no attribute "x"
+
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
 import m
