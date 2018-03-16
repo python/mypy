@@ -38,6 +38,7 @@ TODO:
 import glob
 import importlib
 import json
+import os
 import os.path
 import pkgutil
 import subprocess
@@ -149,6 +150,15 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             try:
                 mod = importlib.import_module(module)
             except Exception:
+                # Print some debugging output that might help diagnose problems.
+                print('=== debug dump follows ===')
+                traceback.print_exc()
+                print('sys.path:')
+                for entry in sys.path:
+                    print('    %r' % entry)
+                print('PYTHONPATH: %s' % os.getenv("PYTHONPATH"))
+                dump_dir(os.getcwd())
+                print('=== end of debug dump ===')
                 raise CantImport(module)
             if is_c_module(mod):
                 return None
@@ -162,6 +172,18 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
                 "Can't find module '{}' (consider using --search-path)".format(module))
         module_all = None
     return module_path, module_all
+
+
+def dump_dir(path: str) -> None:
+    for root, dirs, files in os.walk(os.getcwd()):
+        print('%s:' % root)
+        for d in dirs:
+            print('    %s/' % d)
+        for f in files:
+            path = os.path.join(root, f)
+            print('    %s (%d bytes)' % (f, os.path.getsize(path)))
+        if not dirs and not files:
+            print('    (empty)')
 
 
 def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optional[List[str]]]:
