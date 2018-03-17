@@ -969,16 +969,17 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
-    cache_dir = manager.options.cache_dir
-    prefix = cache_dir
-    # For Bazel we omit the Python version from the cache name.
-    if not manager.options.bazel:
+    if manager.options.cache_map and id in manager.options.cache_map:
+        meta_file = manager.options.cache_map[id]
+        assert meta_file.endswith('.meta.json'), (id, meta_file)
+        prefix = meta_file[:-len('.meta.json')]
+    else:
+        cache_dir = manager.options.cache_dir
         pyversion = manager.options.python_version
-        prefix = os.path.join(prefix, '%d.%d' % pyversion)
-    prefix = os.path.join(prefix, *id.split('.'))
-    is_package = os.path.basename(path).startswith('__init__.py')
-    if is_package:
-        prefix = os.path.join(prefix, '__init__')
+        prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
+        is_package = os.path.basename(path).startswith('__init__.py')
+        if is_package:
+            prefix = os.path.join(prefix, '__init__')
     return (prefix + '.meta.json', prefix + '.data.json')
 
 

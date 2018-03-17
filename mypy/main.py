@@ -384,6 +384,14 @@ def process_options(args: List[str],
     parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
     # --bazel changes some behaviors for use with Bazel (https://bazel.build).
     parser.add_argument('--bazel', action='store_true', help=argparse.SUPPRESS)
+    # --cache-map is a file mapping module ID to cache files.
+    # Each non-comment, non-blank line in the file is a module ID,
+    # a space, and the name of the corresponding .meta.json file.
+    # The corresponding .data.json file is implied.
+    # For modules the file should be .../__init__.meta.json.
+    # Modules not mentioned in the file will go through cache_dir.
+    parser.add_argument('--cache-map', action='store', dest='special-opts:cache_map',
+                        help=argparse.SUPPRESS)
 
     # deprecated options
     parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
@@ -526,6 +534,18 @@ def process_options(args: List[str],
             report_type = flag[:-7].replace('_', '-')
             report_dir = val
             options.report_dirs[report_type] = report_dir
+
+    # Parse bazel cache map.  If it crashes, the file is missing or
+    # its contents invalid.
+    if special_opts.cache_map:
+        cache_map = {}
+        with open(special_opts.cache_map) as f:
+            for line in f:
+                parts = line.split()
+                if parts and not parts[0].startswith('#'):
+                    assert len(parts) == 2 and parts[1].endswith('.meta.json'), parts
+                    cache_map[parts[0]] = parts[1]
+        options.cache_map = cache_map
 
     # Let quick_and_dirty imply incremental.
     if options.quick_and_dirty:
