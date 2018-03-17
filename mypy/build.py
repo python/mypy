@@ -1811,7 +1811,9 @@ class State:
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
-            assert source is not None
+            else:
+                assert source is not None
+                self.source_hash = compute_hash(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
                                            self.ignore_all or self.options.ignore_errors)
 
@@ -2471,6 +2473,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             if graph[id].type_check_second_pass():
                 more = True
+    for id in stale:
+        graph[id].generate_unused_ignore_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
@@ -2478,7 +2482,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].finish_passes()
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
             graph[id].compute_fine_grained_deps()
-        graph[id].generate_unused_ignore_notes()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
