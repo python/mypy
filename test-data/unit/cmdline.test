@@ -449,6 +449,17 @@ main.py:2: error: Revealed type is 'Any'
 x_bad = 0
 [out]
 
+[case testConfigNormalizedFlag]
+# cmd: mypy a.py
+[file mypy.ini]
+[[mypy]
+disallow-untyped-defs = True
+[file a.py]
+def f():
+    pass
+[out]
+a.py:1: error: Function is missing a type annotation
+
 [case testDotInFilenameOKScript]
 # cmd: mypy a.b.py c.d.pyi
 [file a.b.py]

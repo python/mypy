@@ -789,18 +789,19 @@ def parse_section(prefix: str, template: Options,
         v = None  # type: Any
         try:
             if ct is bool:
-                v = section.getboolean(key)  # type: ignore  # Until better stub
+                v = section.getboolean(orig_key)  # type: ignore  # Until better stub
             elif callable(ct):
                 try:
-                    v = ct(section.get(key))
+                    v = ct(section.get(orig_key))
                 except argparse.ArgumentTypeError as err:
-                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+                    print("%s: %s: %s" % (prefix, orig_key, err), file=sys.stderr)
                     continue
             else:
-                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
+                print("%s: Don't know what type %s should have" % (prefix, orig_key),
+                      file=sys.stderr)
                 continue
         except ValueError as err:
-            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
+            print("%s: %s: %s" % (prefix, orig_key, err), file=sys.stderr)
             continue
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
