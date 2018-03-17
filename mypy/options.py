@@ -178,7 +178,7 @@ class Options:
         self.local_partial_types = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
-        self.cache_map = None  # type: Optional[Dict[str, str]]
+        self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
 
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__

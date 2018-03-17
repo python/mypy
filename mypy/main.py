@@ -384,13 +384,11 @@ def process_options(args: List[str],
     parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
     # --bazel changes some behaviors for use with Bazel (https://bazel.build).
     parser.add_argument('--bazel', action='store_true', help=argparse.SUPPRESS)
-    # --cache-map is a file mapping module ID to cache files.
-    # Each non-comment, non-blank line in the file is a module ID,
-    # a space, and the name of the corresponding .meta.json file.
-    # The corresponding .data.json file is implied.
-    # For modules the file should be .../__init__.meta.json.
+    # --cache-map FILE ... gives a mapping from source files to cache files.
+    # Each triple of arguments is a source file, a cache meta file, and a cache data file.
     # Modules not mentioned in the file will go through cache_dir.
-    parser.add_argument('--cache-map', action='store', dest='special-opts:cache_map',
+    # Must be followed by another flag or by '--' (and then only file args may follow).
+    parser.add_argument('--cache-map', nargs='*', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
 
     # deprecated options
@@ -538,14 +536,15 @@ def process_options(args: List[str],
     # Parse bazel cache map.  If it crashes, the file is missing or
     # its contents invalid.
     if special_opts.cache_map:
-        cache_map = {}
-        with open(special_opts.cache_map) as f:
-            for line in f:
-                parts = line.split()
-                if parts and not parts[0].startswith('#'):
-                    assert len(parts) == 2 and parts[1].endswith('.meta.json'), parts
-                    cache_map[parts[0]] = parts[1]
-        options.cache_map = cache_map
+        n = len(special_opts.cache_map)
+        assert n % 3 == 0, n
+        for i in range(0, n, 3):
+            source, meta_file, data_file = special_opts.cache_map[i : i + 3]
+            assert source not in options.cache_map
+            assert source.endswith('.py') or source.endswith('.pyi'), source
+            assert meta_file.endswith('.meta.json'), meta_file
+            assert data_file.endswith('.data.json'), data_file
+            options.cache_map[source] = (meta_file, data_file)
 
     # Let quick_and_dirty imply incremental.
     if options.quick_and_dirty:

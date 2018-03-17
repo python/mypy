@@ -961,7 +961,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
 
     Args:
       id: module ID
-      path: module path (used to recognize packages)
+      path: module path
       cache_dir: cache directory
       pyversion: Python version (major, minor)
 
@@ -969,17 +969,15 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
-    if manager.options.cache_map and id in manager.options.cache_map:
-        meta_file = manager.options.cache_map[id]
-        assert meta_file.endswith('.meta.json'), (id, meta_file)
-        prefix = meta_file[:-len('.meta.json')]
-    else:
-        cache_dir = manager.options.cache_dir
-        pyversion = manager.options.python_version
-        prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
-        is_package = os.path.basename(path).startswith('__init__.py')
-        if is_package:
-            prefix = os.path.join(prefix, '__init__')
+    pair = manager.options.cache_map.get(path)
+    if pair is not None:
+        return pair
+    cache_dir = manager.options.cache_dir
+    pyversion = manager.options.python_version
+    prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
+    is_package = os.path.basename(path).startswith('__init__.py')
+    if is_package:
+        prefix = os.path.join(prefix, '__init__')
     return (prefix + '.meta.json', prefix + '.data.json')
 
 
@@ -1216,6 +1214,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         path = os.path.abspath(path)
     else:
         # For Bazel, make all paths relative (else Bazel caching is thwarted).
+        # And also patch tree.path, which might have been made absolute earlier.
         tree.path = path = relpath(path)
 
     meta_json, data_json = get_cache_names(id, path, manager)
@@ -1318,7 +1317,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     This avoids inconsistent states with cache files from different mypy runs,
     see #4043 for an example.
     """
-    path = os.path.abspath(path)
+    path = relpath(path) if manager.options.bazel else os.path.abspath(path)
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
 
