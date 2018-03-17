@@ -760,8 +760,6 @@ def parse_section(prefix: str, template: Options,
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
-        orig_key = key
-        key = key.replace('-', '_')
         if key in config_types:
             ct = config_types[key]
         else:
@@ -770,9 +768,9 @@ def parse_section(prefix: str, template: Options,
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
                     if report_type in reporter_classes:
-                        report_dirs[report_type] = section[orig_key]
+                        report_dirs[report_type] = section[key]
                     else:
-                        print("%s: Unrecognized report type: %s" % (prefix, orig_key),
+                        print("%s: Unrecognized report type: %s" % (prefix, key),
                               file=sys.stderr)
                     continue
                 if key.startswith('x_'):
@@ -782,26 +780,25 @@ def parse_section(prefix: str, template: Options,
                           "individual flags instead (see 'mypy -h' for the list of flags enabled "
                           "in strict mode)" % prefix, file=sys.stderr)
                 else:
-                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
+                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=sys.stderr)
                 continue
             ct = type(dv)
         v = None  # type: Any
         try:
             if ct is bool:
-                v = section.getboolean(orig_key)  # type: ignore  # Until better stub
+                v = section.getboolean(key)  # type: ignore  # Until better stub
             elif callable(ct):
                 try:
-                    v = ct(section.get(orig_key))
+                    v = ct(section.get(key))
                 except argparse.ArgumentTypeError as err:
-                    print("%s: %s: %s" % (prefix, orig_key, err), file=sys.stderr)
+                    print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
                     continue
             else:
-                print("%s: Don't know what type %s should have" % (prefix, orig_key),
-                      file=sys.stderr)
+                print("%s: Don't know what type %s should have" % (prefix, key), file=sys.stderr)
                 continue
         except ValueError as err:
-            print("%s: %s: %s" % (prefix, orig_key, err), file=sys.stderr)
+            print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
