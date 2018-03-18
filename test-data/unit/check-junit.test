@@ -1,0 +1,62 @@
+-- Tests for JUnit XML output
+-- ------------------------------
+--  First line of test case must look like this, listing the file arguments passed to the mypy invocation:
+--  # files: file1 [file2 ...]
+--
+--  Do not include `--junit-xml` in your options.
+--  `--junit-xml expected-junit.xml` will be provided for you.
+
+[case testJUnitXMLIncludesOtherFiles]
+# files: pkg/foo.py pkg/baz.py pkg/__init__.py
+[file pkg/__init__.py]
+[file pkg/bar.py]
+class Bar:
+    def __init__(self) -> int:
+        pass
+[file pkg/foo.py]
+from pkg import bar
+class Foo:
+    def modify(my_bar: 'bar.Bar') -> int:
+        return 'invalid'
+[file pkg/baz.py]
+def addition(left: int, right: int) -> int:
+    return left + right
+[outfile expected-junit.xml]
+<?xml version="1.0" ?>
+<testsuites disabled="0" errors="0" failures="2" tests="4" time="0.875826">
+	<testsuite disabled="0" errors="0" failures="2" file="None" log="None" name="mypy" skipped="0" tests="4" time="0.875826" timestamp="2017-11-01T01:23:45.000000" url="None">
+		<testcase classname="pkg/__init__.py" name="pkg/__init__.py" time="0.218956"/>
+		<testcase classname="pkg/bar.py" name="pkg/bar.py" time="0.218956">
+			<failure message="mypy produced messages" type="failure">
+pkg/bar.py:2: error: The return type of &quot;__init__&quot; must be None</failure>
+		</testcase>
+		<testcase classname="pkg/baz.py" name="pkg/baz.py" time="0.218956"/>
+		<testcase classname="pkg/foo.py" name="pkg/foo.py" time="0.218956">
+			<failure message="mypy produced messages" type="failure">
+pkg/foo.py:3: error: Self argument missing for a non-static method (or an invalid type for self)
+pkg/foo.py:4: error: Incompatible return value type (got &quot;str&quot;, expected &quot;int&quot;)</failure>
+		</testcase>
+	</testsuite>
+</testsuites>
+
+[case testJUnitXMLIncludesModulesOfUnmentionedTestObjects]
+# files: pkg
+[file pkg/__init__.py]
+[file pkg/bar.py]
+class Bar:
+    def __init__(self) -> None:
+        pass
+[file pkg/foo.py]
+from pkg import bar
+class Foo:
+    def modify(self, my_bar: 'bar.Bar') -> None:
+        return None
+[outfile expected-junit.xml]
+<?xml version="1.0" ?>
+<testsuites disabled="0" errors="0" failures="0" tests="3" time="0.803369">
+	<testsuite disabled="0" errors="0" failures="0" file="None" log="None" name="mypy" skipped="0" tests="3" time="0.803369" timestamp="2017-11-18T01:23:45.000000" url="None">
+		<testcase classname="pkg/__init__.py" name="pkg/__init__.py" time="0.267790"/>
+		<testcase classname="pkg/bar.py" name="pkg/bar.py" time="0.267790"/>
+		<testcase classname="pkg/foo.py" name="pkg/foo.py" time="0.267790"/>
+	</testsuite>
+</testsuites>

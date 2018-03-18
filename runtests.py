@@ -131,6 +131,7 @@ PYTEST_FILES = test_path(
     'testdiff',
     'testfinegrained',
     'testfinegrainedcache',
+    'testjunit',
     'testmerge',
     'testtransform',
     'testtypegen',

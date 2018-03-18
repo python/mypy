@@ -3,22 +3,22 @@
 import argparse
 import ast
 import configparser
+import datetime
 import os
 import re
 import subprocess
 import sys
-import time
 
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Callable
 
 from mypy import build
 from mypy import defaults
 from mypy import experiments
-from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
+from mypy.junit import JunitXMLDocument
 from mypy.options import Options, BuildType
 from mypy.report import reporter_classes
 
@@ -58,7 +58,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         sys.exit("Running mypy with Python 3.5.0 is not supported; "
                  "please upgrade to 3.5.1 or newer")
 
-    t0 = time.time()
+    started_at = datetime.datetime.utcnow()
     # To log stat() calls: os.stat = stat_proxy
     if script_path:
         bin_dir = find_bin_directory(script_path)  # type: Optional[str]
@@ -99,9 +99,11 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
                ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
                          if glob in options.unused_configs)),
               file=sys.stderr)
+
     if options.junit_xml:
-        t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+        finished_at = datetime.datetime.utcnow()
+        document = JunitXMLDocument(started_at, finished_at, sources, messages, serious)
+        document.write_to_file(options.junit_xml)
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile

@@ -103,8 +103,10 @@ setup(name='mypy',
       data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
-      install_requires = ['typed-ast >= 1.1.0, < 1.2.0',
-                          ],
+      install_requires=[
+          'junit-xml >= 1.8, < 1.9',
+          'typed-ast >= 1.1.0, < 1.2.0',
+      ],
       extras_require = {
           ':python_version < "3.5"': 'typing >= 3.5.3',
           'dmypy': 'psutil >= 5.4.0, < 5.5.0; sys_platform!="win32"',

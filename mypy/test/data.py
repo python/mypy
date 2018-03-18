@@ -130,7 +130,7 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                     tcout = p[i].data
                     tcout = [expand_variables(line) for line in tcout]
                     if os.path.sep == '\\':
-                        tcout = [fix_win_path(line) for line in tcout]
+                        tcout = [fix_win_path_in_message(line) for line in tcout]
                     ok = True
                 elif re.match(r'out[0-9]*$', p[i].id):
                     passnum = int(p[i].id[3:])
@@ -138,7 +138,7 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                     output = p[i].data
                     output = [expand_variables(line) for line in output]
                     if suite.native_sep and os.path.sep == '\\':
-                        output = [fix_win_path(line) for line in output]
+                        output = [fix_win_path_in_message(line) for line in output]
                     tcout2[passnum] = output
                     ok = True
                 elif p[i].id == 'triggered' and p[i].arg is None:
@@ -536,7 +536,7 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
                         fnam, i + 1, col, severity, m.group('message')))
 
 
-def fix_win_path(line: str) -> str:
+def fix_win_path_in_message(line: str) -> str:
     r"""Changes Windows paths to Linux paths in error messages.
 
     E.g. foo\bar.py -> foo/bar.py.
