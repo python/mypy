@@ -748,3 +748,26 @@ c.a = 17  # E: Property "a" defined in "NonFrozenFrozen" is read-only
 c.b = 17  # E: Property "b" defined in "NonFrozenFrozen" is read-only
 
 [builtins fixtures/bool.pyi]
+[case testAttrsCallableAttributes]
+from typing import Callable
+import attr
+def blah(a: int, b: int) -> bool:
+    return True
+
+@attr.s(auto_attribs=True)
+class F:
+    _cb: Callable[[int, int], bool] = blah
+    def foo(self) -> bool:
+        return self._cb(5, 6)
+
+@attr.s
+class G:
+    _cb: Callable[[int, int], bool] = attr.ib(blah)
+    def foo(self) -> bool:
+        return self._cb(5, 6)
+
+@attr.s(auto_attribs=True, frozen=True)
+class FFrozen(F):
+    def bar(self) -> bool:
+        return self._cb(5, 6)
+[builtins fixtures/callable.pyi]

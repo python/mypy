@@ -189,6 +189,14 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
         elif isinstance(stmt, Decorator):
             _cleanup_decorator(stmt, own_attrs)
 
+    for attribute in own_attrs.values():
+        # Even though these look like class level assignments we want them to look like
+        # instance level assignments.
+        if attribute.name in ctx.cls.info.names:
+            node = ctx.cls.info.names[attribute.name].node
+            assert isinstance(node, Var)
+            node.is_initialized_in_class = False
+
     # Traverse the MRO and collect attributes from the parents.
     taken_attr_names = set(own_attrs)
     super_attrs = []
@@ -403,7 +411,6 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
             # This variable belongs to this class so we can modify it.
             node = ctx.cls.info.names[attribute.name].node
             assert isinstance(node, Var)
-            node.is_initialized_in_class = False
             node.is_property = True
         else:
             # This variable belongs to a super class so create new Var so we
@@ -412,7 +419,6 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
             var.info = ctx.cls.info
             var._fullname = '%s.%s' % (ctx.cls.info.fullname(), var.name())
             ctx.cls.info.names[var.name()] = SymbolTableNode(MDEF, var)
-            var.is_initialized_in_class = False
             var.is_property = True
 
 
