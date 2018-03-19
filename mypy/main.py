@@ -510,9 +510,6 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
-    if options.bazel:
-        if not options.incremental:
-            fail("--bazel requires --incremental")
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
