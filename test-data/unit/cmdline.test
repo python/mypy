@@ -241,6 +241,18 @@ bad = 0
 mypy.ini: [mypy]: Unrecognized option: bad = 0
 == Return code: 0
 
+[case testConfigErrorBadFlag]
+# cmd: mypy a.py
+[file mypy.ini]
+[[mypy]
+disallow-untyped-defs = True
+[file a.py]
+def f():
+    pass
+[out]
+mypy.ini: [mypy]: Unrecognized option: disallow-untyped-defs = True
+== Return code: 0
+
 [case testConfigErrorBadBoolean]
 # cmd: mypy -c pass
 [file mypy.ini]
