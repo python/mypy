@@ -919,3 +919,69 @@ class C:
     def f(self) -> None:
         g: Callable[[], int] = lambda: 1 or self.x
         self.x = int()
+
+[case testInferTypeVariableFromTwoGenericTypes1]
+from typing import TypeVar, List, Sequence
+
+T = TypeVar('T')
+
+class C: ...
+class D(C): ...
+
+def f(x: Sequence[T], y: Sequence[T]) -> List[T]: ...
+
+reveal_type(f([C()], [D()])) # E: Revealed type is 'builtins.list[__main__.C*]'
+[builtins fixtures/list.pyi]
+
+[case testInferTypeVariableFromTwoGenericTypes2]
+from typing import TypeVar, List
+
+T = TypeVar('T')
+
+class C: ...
+class D(C): ...
+
+def f(x: List[T], y: List[T]) -> List[T]: ...
+
+f([C()], [D()]) # E: Cannot infer type argument 1 of "f"
+[builtins fixtures/list.pyi]
+
+[case testInferTypeVariableFromTwoGenericTypes3]
+from typing import Generic, TypeVar, List, Sequence
+
+T = TypeVar('T')
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class A(Generic[T_contra]): pass
+class B(A[T]): pass
+
+class C: ...
+class D(C): ...
+
+def f(x: A[T], y: A[T]) -> B[T]: ...
+
+c: B[C]
+d: B[D]
+reveal_type(f(c, d)) # E: Revealed type is '__main__.B[__main__.D*]'
+[builtins fixtures/list.pyi]
+
+[case testInferTypeVariableFromTwoGenericTypes4]
+from typing import Generic, TypeVar, List, Sequence, Callable
+
+T = TypeVar('T')
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class A(Generic[T_contra]): pass
+class B(A[T_contra]): pass
+
+class C: ...
+class D(C): ...
+
+def f(x: Callable[[B[T]], None],
+      y: Callable[[B[T]], None]) -> List[T]: ...
+
+def gc(x: A[C]) -> None: pass  # B[C]
+def gd(x: A[D]) -> None: pass  # B[C]
+
+reveal_type(f(gc, gd)) # E: Revealed type is 'builtins.list[__main__.C*]'
+[builtins fixtures/list.pyi]

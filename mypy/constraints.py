@@ -13,6 +13,7 @@ from mypy import nodes
 import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
+from mypy.nodes import COVARIANT, CONTRAVARIANT
 
 
 SUBTYPE_OF = 0  # type: int
@@ -318,25 +319,30 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if (self.direction == SUBTYPE_OF and
                     template.type.has_base(instance.type.fullname())):
                 mapped = map_instance_to_supertype(template, instance.type)
+                tvars = mapped.type.defn.type_vars
                 for i in range(len(instance.args)):
-                    # The constraints for generic type parameters are
-                    # invariant. Include constraints from both directions
-                    # to achieve the effect.
-                    res.extend(infer_constraints(
-                        mapped.args[i], instance.args[i], self.direction))
-                    res.extend(infer_constraints(
-                        mapped.args[i], instance.args[i], neg_op(self.direction)))
+                    # The constraints for generic type parameters depend on variance.
+                    # Include constraints from both directions if invariant.
+                    if tvars[i].variance != CONTRAVARIANT:
+                        res.extend(infer_constraints(
+                            mapped.args[i], instance.args[i], self.direction))
+                    if tvars[i].variance != COVARIANT:
+                        res.extend(infer_constraints(
+                            mapped.args[i], instance.args[i], neg_op(self.direction)))
                 return res
             elif (self.direction == SUPERTYPE_OF and
                     instance.type.has_base(template.type.fullname())):
                 mapped = map_instance_to_supertype(instance, template.type)
+                tvars = template.type.defn.type_vars
                 for j in range(len(template.args)):
-                    # The constraints for generic type parameters are
-                    # invariant.
-                    res.extend(infer_constraints(
-                        template.args[j], mapped.args[j], self.direction))
-                    res.extend(infer_constraints(
-                        template.args[j], mapped.args[j], neg_op(self.direction)))
+                    # The constraints for generic type parameters depend on variance.
+                    # Include constraints from both directions if invariant.
+                    if tvars[j].variance != CONTRAVARIANT:
+                        res.extend(infer_constraints(
+                            template.args[j], mapped.args[j], self.direction))
+                    if tvars[j].variance != COVARIANT:
+                        res.extend(infer_constraints(
+                            template.args[j], mapped.args[j], neg_op(self.direction)))
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
