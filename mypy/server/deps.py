@@ -244,6 +244,8 @@ class DependencyVisitor(TraverserVisitor):
                                     target=make_trigger(info.fullname() + '.' + name))
             self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
+            self.add_dependency(make_trigger(base_info.fullname() + '.__new__'),
+                                target=make_trigger(info.fullname() + '.__new__'))
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
@@ -310,6 +312,7 @@ class DependencyVisitor(TraverserVisitor):
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
                 class_name = typ.type_object().fullname()
                 self.add_dependency(make_trigger(class_name + '.__init__'))
+                self.add_dependency(make_trigger(class_name + '.__new__'))
             if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
                 self.add_type_dependencies(rvalue.analyzed.type)
         else:
@@ -434,6 +437,7 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname()
             self.add_dependency(make_trigger(class_name + '.__init__'))
+            self.add_dependency(make_trigger(class_name + '.__new__'))
 
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.kind == LDEF:
