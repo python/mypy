@@ -173,7 +173,7 @@ def g() -> None:
         f3()
 [builtins fixtures/exception.pyi]
 [out]
--- The dependencies on the ctor is basically spurious but not a problem
+-- The dependencies on the ctor are basically spurious but not a problem
 <m.A.__init__> -> m.g
 <m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
@@ -200,7 +200,7 @@ def g() -> None:
         f2()
 [builtins fixtures/exception.pyi]
 [out]
--- The dependencies on the ctor is basically spurious but not a problem
+-- The dependencies on the ctor are basically spurious but not a problem
 <m.A.__init__> -> m.g
 <m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
