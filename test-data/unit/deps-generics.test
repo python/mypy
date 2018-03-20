@@ -121,8 +121,8 @@ T = TypeVar('T', bound=Tuple[A, B])
 def f(x: T) -> T:
     return x
 [out]
-<m.A> -> <m.T>, m.A
-<m.B> -> <m.T>, m.B
+<m.A> -> <m.T>, <m.f>, m.A, m.f
+<m.B> -> <m.T>, <m.f>, m.B, m.f
 <m.T> -> <m.f>, m.f
 
 [case testTypeVarBoundOperations]
@@ -140,5 +140,58 @@ def f(x: T) -> None:
 [out]
 <m.A.__add__> -> m.f
 <m.A.f> -> m.f
-<m.A> -> <m.T>, m.A
+<m.A> -> <m.T>, <m.f>, m.A, m.f
 <m.T> -> <m.f>, m.f
+
+[case testTypeVarValues]
+from typing import TypeVar
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+T = TypeVar('T', A, B)
+S = TypeVar('S', C, D)
+
+def f(x: T) -> S:
+    pass
+[out]
+<m.A> -> <m.T>, <m.f>, m.A, m.f
+<m.B> -> <m.T>, <m.f>, m.B, m.f
+<m.C> -> <m.S>, <m.f>, m.C, m.f
+<m.D> -> <m.S>, <m.f>, m.D, m.f
+<m.S> -> <m.f>, m.f
+<m.T> -> <m.f>, m.f
+
+[case testTypeVarValuesMethod]
+from typing import TypeVar, Generic
+class C: pass
+class D: pass
+S = TypeVar('S', C, D)
+
+class G(Generic[S]):
+    def f(self) -> S:
+        pass
+[out]
+<m.C> -> <m.G.f>, <m.S>, m.C, m.G.f
+<m.D> -> <m.G.f>, <m.S>, m.D, m.G.f
+<m.G> -> m.G
+<m.S> -> <m.G.f>, m.G, m.G.f
+
+[case testTypeVarValuesMethodAttr]
+from typing import TypeVar, Generic
+class A:
+    x: int
+class B:
+    x: int
+T = TypeVar('T', A, B)
+
+class G(Generic[T]):
+    def f(self, x: T) -> None:
+        x.x
+[out]
+<m.A.x> -> m.G.f
+<m.A> -> <m.G.f>, <m.T>, m.A, m.G.f
+<m.B.x> -> m.G.f
+<m.B> -> <m.G.f>, <m.T>, m.B, m.G.f
+<m.G> -> m.G
+<m.T> -> <m.G.f>, m.G, m.G.f
