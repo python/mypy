@@ -603,3 +603,81 @@ from a import *
 x = 0
 [out]
 <a[wildcard]> -> m
+
+[case testDecoratorDepsMod]
+import mod
+
+@mod.deca
+@mod.decb(mod.C())
+def func(x: int) -> int:
+    pass
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[int], int]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+[out]
+<m.func> -> m
+<mod.C.__init__> -> m
+<mod.C> -> m
+<mod.deca> -> m
+<mod.decb> -> m
+<mod> -> m
+
+[case testDecoratorDepsFunc]
+import mod
+
+def outer() -> None:
+    @mod.deca
+    @mod.decb(mod.C())
+    def func(x: int) -> int:
+        pass
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[int], int]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+[out]
+<m.func> -> m.outer
+<mod.C.__init__> -> m.outer
+<mod.C> -> m.outer
+<mod.deca> -> m.outer
+<mod.decb> -> m.outer
+<mod> -> m, m.outer
+
+[case DecoratorDepsMethod]
+import mod
+
+class D:
+    @mod.deca
+    @mod.decb(mod.C())
+    def func(self, x: int) -> int:
+        pass
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., int]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+[out]
+<m.D.func> -> m
+<m.D> -> m.D
+<mod.C.__init__> -> m
+<mod.C> -> m
+<mod.deca> -> m
+<mod.decb> -> m
+<mod> -> m
