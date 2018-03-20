@@ -164,7 +164,7 @@ class Server:
                             command = data.pop('command')
                         try:
                             resp = self.run_command(command, data)
-                        except:
+                        except Exception:
                             # If we are crashing, report the crash to the client
                             tb = "".join(traceback.format_exception(*sys.exc_info()))
                             resp = {'error': "Daemon crashed!\n" + tb}
