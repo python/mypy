@@ -91,7 +91,7 @@ def relpath(path: str) -> str:
     for i in range(10):
         if path.startswith(cwd + os.sep):
             # The .lstrip(os.sep) call strips duplicate leading slashes.
-            return '../'*i + path[len(cwd) + 1:].lstrip(os.sep)
+            return '../' * i + path[len(cwd) + 1:].lstrip(os.sep)
         cwd = os.path.dirname(cwd)
         if all(c == os.sep for c in cwd):
             break

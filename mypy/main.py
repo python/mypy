@@ -535,7 +535,7 @@ def process_options(args: List[str],
         n = len(special_opts.cache_map)
         assert n % 3 == 0, "--cache-map requires one or more triples (see source)"
         for i in range(0, n, 3):
-            source, meta_file, data_file = special_opts.cache_map[i : i + 3]
+            source, meta_file, data_file = special_opts.cache_map[i:i + 3]
             assert source not in options.cache_map
             assert source.endswith('.py') or source.endswith('.pyi'), source
             assert meta_file.endswith('.meta.json'), meta_file
