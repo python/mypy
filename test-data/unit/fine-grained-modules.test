@@ -1404,3 +1404,43 @@ class Foo:
 ==
 ==
 a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass4]
+[file a.py]
+[file a.py.2]
+from b import *
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass4]
+[file a.py]
+[file a.py.2]
+from p.b import *
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file p/__init__.py]
+[file p/b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass5]
+[file a.py]
+[file a.py.2]
+from b import *
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
