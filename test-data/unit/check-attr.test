@@ -705,3 +705,69 @@ import attr
 class A(object):
     x = attr.ib()
 [builtins_py2 fixtures/bool.pyi]
+
+[case testAttrsFrozenSubclass]
+import attr
+
+@attr.dataclass
+class NonFrozenBase:
+    a: int
+
+@attr.dataclass(frozen=True)
+class FrozenBase:
+    a: int
+
+@attr.dataclass(frozen=True)
+class FrozenNonFrozen(NonFrozenBase):
+    b: int
+
+@attr.dataclass(frozen=True)
+class FrozenFrozen(FrozenBase):
+    b: int
+
+@attr.dataclass
+class NonFrozenFrozen(FrozenBase):
+    b: int
+
+# Make sure these are untouched
+non_frozen_base = NonFrozenBase(1)
+non_frozen_base.a = 17
+frozen_base = FrozenBase(1)
+frozen_base.a = 17  # E: Property "a" defined in "FrozenBase" is read-only
+
+a = FrozenNonFrozen(1, 2)
+a.a = 17  # E: Property "a" defined in "FrozenNonFrozen" is read-only
+a.b = 17  # E: Property "b" defined in "FrozenNonFrozen" is read-only
+
+b = FrozenFrozen(1, 2)
+b.a = 17  # E: Property "a" defined in "FrozenFrozen" is read-only
+b.b = 17  # E: Property "b" defined in "FrozenFrozen" is read-only
+
+c = NonFrozenFrozen(1, 2)
+c.a = 17  # E: Property "a" defined in "NonFrozenFrozen" is read-only
+c.b = 17  # E: Property "b" defined in "NonFrozenFrozen" is read-only
+
+[builtins fixtures/bool.pyi]
+[case testAttrsCallableAttributes]
+from typing import Callable
+import attr
+def blah(a: int, b: int) -> bool:
+    return True
+
+@attr.s(auto_attribs=True)
+class F:
+    _cb: Callable[[int, int], bool] = blah
+    def foo(self) -> bool:
+        return self._cb(5, 6)
+
+@attr.s
+class G:
+    _cb: Callable[[int, int], bool] = attr.ib(blah)
+    def foo(self) -> bool:
+        return self._cb(5, 6)
+
+@attr.s(auto_attribs=True, frozen=True)
+class FFrozen(F):
+    def bar(self) -> bool:
+        return self._cb(5, 6)
+[builtins fixtures/callable.pyi]

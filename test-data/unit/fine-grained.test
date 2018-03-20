@@ -3262,6 +3262,202 @@ class User:
 [out]
 ==
 
+[case testTypeVarValuesFunction]
+import a
+[file a.py]
+from typing import TypeVar
+from c import A, B
+T = TypeVar('T', A, B)
+
+def f(x: T) -> T:
+    x.x = int()
+    return x
+[file c.py]
+class A:
+    x: int
+class B:
+    x: int
+[file c.py.2]
+class A:
+    x: int
+class B:
+    x: str
+[out]
+==
+a.py:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testTypeVarValuesClass]
+import a
+[file a.py]
+import c
+class C:
+    x: c.D[c.A]
+[file c.py]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+class C: pass
+T = TypeVar('T', A, B, C)
+class D(Generic[T]):
+    pass
+[file c.py.2]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+class C: pass
+T = TypeVar('T', B, C)
+class D(Generic[T]):
+    pass
+[out]
+==
+a.py:3: error: Value of type variable "T" of "D" cannot be "A"
+
+[case testTypeVarValuesMethod1]
+import a
+[file a.py]
+from typing import Generic
+import c
+class G(Generic[c.T]):
+    def f(self, x: c.T) -> None:
+        x.x = int()
+[file c.py]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: int
+class C:
+    x: str
+T = TypeVar('T', A, B, C)
+[file c.py.2]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: int
+class C:
+    x: str
+T = TypeVar('T', A, B)
+[out]
+a.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+
+[case testTypeVarValuesMethod2]
+import a
+[file a.py]
+from typing import Generic
+import c
+class G(Generic[c.T]):
+    def f(self, x: c.T) -> None:
+        x.x = int()
+[file c.py]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: int
+T = TypeVar('T', A, B)
+[file c.py.2]
+from typing import TypeVar
+class A:
+    x: int
+class B:
+    x: str
+T = TypeVar('T', A, B)
+[out]
+==
+a.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testTypeVarBoundFunction]
+import a
+[file a.py]
+from typing import TypeVar
+from c import B
+T = TypeVar('T', bound=B)
+
+def f(x: T) -> T:
+    x.x = int()
+    return x
+[file c.py]
+class B:
+    x: int
+[file c.py.2]
+class B:
+    x: str
+[out]
+==
+a.py:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testTypeVarBoundClass]
+import a
+[file a.py]
+import c
+class C:
+    x: c.D[c.A]
+[file c.py]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+T = TypeVar('T', bound=A)
+class D(Generic[T]):
+    pass
+[file c.py.2]
+from typing import TypeVar, Generic
+class A: pass
+class B: pass
+T = TypeVar('T', bound=B)
+class D(Generic[T]):
+    pass
+[out]
+==
+a.py:3: error: Type argument "c.A" of "D" must be a subtype of "c.B"
+
+[case testTypeVarValuesRuntime]
+from mod import I, S, D
+A = I
+x = D[S, A]()
+[file mod.py]
+import submod
+from typing import Generic
+class D(Generic[submod.T, submod.U]): pass
+class I: pass
+class S: pass
+[file submod.py]
+from typing import TypeVar
+T = TypeVar('T')
+U = TypeVar('U')
+[file submod.py.2]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+U = TypeVar('U', int, str)
+[out]
+==
+main:3: error: Value of type variable "submod.T" of "D" cannot be "S"
+main:3: error: Value of type variable "submod.U" of "D" cannot be "I"
+
+[case testTypeVarBoundRuntime]
+from mod import I, S, D
+A = I
+x = D[S, A]()
+[file mod.py]
+import submod
+from typing import Generic
+class D(Generic[submod.T, submod.U]): pass
+class I: pass
+class S: pass
+[file submod.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+U = TypeVar('U', bound=int)
+[file submod.py.2]
+from typing import TypeVar
+T = TypeVar('T')
+U = TypeVar('U')
+[out]
+main:3: error: Value of type variable "submod.T" of "D" cannot be "S"
+main:3: error: Value of type variable "submod.U" of "D" cannot be "I"
+==
+
 [case testRefreshClassBasedEnum]
 import aa
 [file aa.py]
@@ -3666,4 +3862,81 @@ def f() -> str: pass
 ==
 a.py:10: error: Argument 1 to "h" has incompatible type "int"; expected "str"
 a.py:11: error: Argument 1 to "h" has incompatible type "int"; expected "str"
+==
+
+[case testNoOpUpdateFineGrainedIncremental1]
+# cmd: mypy a.py
+[file a.py]
+1()
+[file b.py.2]
+# Note: this file is not part of the build
+[file a.py.3]
+x = 1
+[out]
+a.py:1: error: "int" not callable
+==
+a.py:1: error: "int" not callable
+==
+
+[case testNoOpUpdateFineGrainedIncremental2]
+# cmd: mypy a.py
+[file a.py]
+1()
+[file a.py.2]
+1()
+[file a.py.3]
+x = 1
+[file a.py.4]
+x = 1
+[out]
+a.py:1: error: "int" not callable
+==
+a.py:1: error: "int" not callable
+==
+==
+
+[case testNonExistentFileOnCommandLine1]
+# cmd: mypy a.py nonexistent.py
+[file a.py]
+[file a.py.2]
+1()
+[out]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+==
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+
+[case testNonExistentFileOnCommandLine2]
+# cmd: mypy a.py
+# cmd2: mypy a.py nonexistent.py
+[file a.py]
+[file a.py.2]
+1()
+[out]
+==
+a.py:1: error: "int" not callable
+
+[case testNonExistentFileOnCommandLine3]
+# cmd: mypy a.py
+# cmd2: mypy a.py nonexistent.py
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+==
+
+[case testNonExistentFileOnCommandLine4]
+# cmd: mypy a.py nonexistent.py
+[file a.py]
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+==
+
+[case testNonExistentFileOnCommandLine5]
+# cmd: mypy a.py nonexistent_stub.pyi
+# TODO: Should generate an error for missing file
+[file a.py]
+[file nonexistent_stub.pyi]
+[delete nonexistent_stub.pyi.2]
+[out]
 ==

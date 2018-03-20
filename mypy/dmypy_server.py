@@ -3,7 +3,7 @@
 Highly experimental!  Only supports UNIX-like systems.
 
 This manages a daemon process which keeps useful state in memory
-rather than having to read it back from disk on each run.
+to enable fine-grained incremental reprocessing of changes.
 """
 
 import gc
@@ -113,8 +113,6 @@ class Server:
                  timeout: Optional[int] = None,
                  alt_lib_path: Optional[str] = None) -> None:
         """Initialize the server with the desired mypy flags."""
-        self.saved_cache = {}  # type: mypy.build.SavedCache
-        self.fine_grained = options.fine_grained_incremental
         self.options = options
         self.timeout = timeout
         self.alt_lib_path = alt_lib_path
@@ -122,16 +120,17 @@ class Server:
 
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
-        if self.fine_grained:
-            options.incremental = True
-            options.show_traceback = True
-            if options.use_fine_grained_cache:
-                options.cache_fine_grained = True  # set this so that cache options match
-            else:
-                options.cache_dir = os.devnull
-            # Fine-grained incremental doesn't support general partial types
-            # (details in https://github.com/python/mypy/issues/4492)
-            options.local_partial_types = True
+
+        options.incremental = True
+        options.fine_grained_incremental = True
+        options.show_traceback = True
+        if options.use_fine_grained_cache:
+            options.cache_fine_grained = True  # set this so that cache options match
+        else:
+            options.cache_dir = os.devnull
+        # Fine-grained incremental doesn't support general partial types
+        # (details in https://github.com/python/mypy/issues/4492)
+        options.local_partial_types = True
 
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
@@ -236,46 +235,7 @@ class Server:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
         return self.check(self.last_sources)
 
-    # Needed by tests.
-    last_manager = None  # type: Optional[mypy.build.BuildManager]
-
     def check(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
-        if self.fine_grained:
-            return self.check_fine_grained(sources)
-        else:
-            return self.check_default(sources)
-
-    def check_default(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
-        """Check using the default (per-file) incremental mode."""
-        self.last_manager = None
-        blockers = False
-        with GcLogger() as gc_result:
-            try:
-                # saved_cache is mutated in place.
-                res = mypy.build.build(sources, self.options,
-                                       saved_cache=self.saved_cache,
-                                       alt_lib_path=self.alt_lib_path)
-                msgs = res.errors
-                self.last_manager = res.manager  # type: Optional[mypy.build.BuildManager]
-            except mypy.errors.CompileError as err:
-                blockers = True
-                msgs = err.messages
-        if msgs:
-            msgs.append("")
-            text = "\n".join(msgs)
-            if blockers:
-                response = {'out': "", 'err': text, 'status': 2}
-            else:
-                response = {'out': text, 'err': "", 'status': 1}
-        else:
-            response = {'out': "", 'err': "", 'status': 0}
-        response.update(gc_result.get_stats())
-        response.update(get_meminfo())
-        if self.last_manager is not None:
-            response.update(self.last_manager.stats_summary())
-        return response
-
-    def check_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
         if not self.fine_grained_manager:
             return self.initialize_fine_grained(sources)

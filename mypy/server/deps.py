@@ -169,7 +169,6 @@ class DependencyVisitor(TraverserVisitor):
     #   from m import *
     #   await
     #   protocols
-    #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
@@ -194,6 +193,10 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         self.add_type_alias_deps(self.scope.current_target())
         super().visit_func_def(o)
+        variants = set(o.expanded) - {o}
+        for ex in variants:
+            if isinstance(ex, FuncDef):
+                super().visit_func_def(ex)
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
@@ -273,10 +276,11 @@ class DependencyVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         rvalue = o.rvalue
         if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
-            # TODO: Support type variable value restriction
             analyzed = rvalue.analyzed
             self.add_type_dependencies(analyzed.upper_bound,
                                        target=make_trigger(analyzed.fullname()))
+            for val in analyzed.values:
+                self.add_type_dependencies(val, target=make_trigger(analyzed.fullname()))
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
@@ -694,10 +698,13 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
-        # TODO: bound (values?)
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
+        if typ.upper_bound:
+            triggers.extend(get_type_triggers(typ.upper_bound))
+        for val in typ.values:
+            triggers.extend(get_type_triggers(val))
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:

@@ -134,16 +134,10 @@ class BuildSourceSet:
             return False
 
 
-# A dict containing saved cache data from a previous run.  This will
-# be updated in place with newly computed cache data.  See dmypy.py.
-SavedCache = Dict[str, Tuple['CacheMeta', MypyFile, Dict[Expression, Type]]]
-
-
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: Optional[str] = None,
           bin_dir: Optional[str] = None,
-          saved_cache: Optional[SavedCache] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           fscache: Optional[FileSystemCache] = None,
           ) -> BuildResult:
@@ -167,7 +161,6 @@ def build(sources: List[BuildSource],
         (takes precedence over other directories)
       bin_dir: directory containing the mypy script, used for finding data
         directories; if omitted, use '.' as the data directory
-      saved_cache: optional dict with saved cache state for dmypy (read-write!)
       flush_errors: optional function to flush errors after a file is processed
       fscache: optionally a file-system cacher
 
@@ -183,7 +176,7 @@ def build(sources: List[BuildSource],
 
     try:
         result = _build(sources, options, alt_lib_path, bin_dir,
-                        saved_cache, flush_errors, fscache)
+                        flush_errors, fscache)
         result.errors = messages
         return result
     except CompileError as e:
@@ -201,7 +194,6 @@ def _build(sources: List[BuildSource],
            options: Options,
            alt_lib_path: Optional[str],
            bin_dir: Optional[str],
-           saved_cache: Optional[SavedCache],
            flush_errors: Callable[[List[str], bool], None],
            fscache: Optional[FileSystemCache],
            ) -> BuildResult:
@@ -265,7 +257,6 @@ def _build(sources: List[BuildSource],
                            version_id=__version__,
                            plugin=plugin,
                            errors=errors,
-                           saved_cache=saved_cache,
                            flush_errors=flush_errors,
                            fscache=fscache)
 
@@ -574,8 +565,6 @@ class BuildManager:
       plugin:          Active mypy plugin(s)
       errors:          Used for reporting all errors
       flush_errors:    A function for processing errors after each SCC
-      saved_cache:     Dict with saved cache state for coarse-grained dmypy
-                       (read-write!)
       cache_enabled:   Whether cache is being read. This is set based on options,
                        but is disabled if fine-grained cache loading fails
                        and after an initial fine-grained load. This doesn't
@@ -595,7 +584,6 @@ class BuildManager:
                  errors: Errors,
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
-                 saved_cache: Optional[SavedCache] = None,
                  ) -> None:
         self.start_time = time.time()
         self.data_dir = data_dir
@@ -621,7 +609,6 @@ class BuildManager:
         self.flush_errors = flush_errors
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
-        self.saved_cache = saved_cache if saved_cache is not None else {}  # type: SavedCache
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
@@ -973,14 +960,6 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       A CacheMeta instance if the cache data was found and appears
       valid; otherwise None.
     """
-    saved_cache = manager.saved_cache
-    if id in saved_cache:
-        m, t, types = saved_cache[id]
-        manager.add_stats(reused_metas=1)
-        manager.trace("Reusing saved metadata for %s" % id)
-        # Note: it could still be skipped if the mtime/size/hash mismatches.
-        return m
-
     # TODO: May need to take more build options into account
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
@@ -1295,8 +1274,6 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     path = os.path.abspath(path)
     meta_json, data_json = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
-    if id in manager.saved_cache:
-        del manager.saved_cache[id]
 
     for filename in [data_json, meta_json]:
         try:
@@ -1465,7 +1442,6 @@ class State:
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
-    is_from_saved_cache = False  # True if the tree came from the in-memory cache
     dependencies = None  # type: List[str]  # Modules directly imported by the module
     suppressed = None  # type: List[str]  # Suppressed/missing dependencies
     priorities = None  # type: Dict[str, int]
@@ -1835,7 +1811,9 @@ class State:
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     raise CompileError([
                         "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))])
-            assert source is not None
+            else:
+                assert source is not None
+                self.source_hash = compute_hash(source)
             self.tree = manager.parse_file(self.id, self.xpath, source,
                                            self.ignore_all or self.options.ignore_errors)
 
@@ -2038,7 +2016,6 @@ class State:
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
-    set_orig = set(manager.saved_cache)
     manager.log()
     manager.log("Mypy version %s" % __version__)
     t0 = time.time()
@@ -2077,31 +2054,12 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         process_fine_grained_cache_graph(graph, manager)
     else:
         process_graph(graph, manager)
-    updated = preserve_cache(graph)
-    set_updated = set(updated)
-    manager.saved_cache.clear()
-    manager.saved_cache.update(updated)
-    set_final = set(manager.saved_cache)
-    # These keys have numbers in them to force a sort order.
-    manager.add_stats(saved_cache_1orig=len(set_orig),
-                      saved_cache_2updated=len(set_updated & set_orig),
-                      saved_cache_3added=len(set_final - set_orig),
-                      saved_cache_4removed=len(set_orig - set_final),
-                      saved_cache_5final=len(set_final))
+
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
         dump_all_dependencies(manager.modules, manager.all_types, manager.options.python_version)
     return graph
-
-
-def preserve_cache(graph: Graph) -> SavedCache:
-    saved_cache = {}
-    for id, state in graph.items():
-        assert state.id == id
-        if state.meta is not None and state.tree is not None:
-            saved_cache[id] = (state.meta, state.tree, state.type_map())
-    return saved_cache
 
 
 class NodeInfo:
@@ -2353,11 +2311,8 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            if maybe_reuse_in_memory_tree(graph, scc, manager):
-                manager.add_stats(sccs_kept=1, nodes_kept=len(scc))
-            else:
-                manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
-                fresh_scc_queue.append(scc)
+            manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
+            fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
                 manager.log("Processing {} queued fresh SCCs".format(len(fresh_scc_queue)))
@@ -2466,8 +2421,6 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
     """Process the modules in one SCC from their cached data.
 
     This involves loading the tree from JSON and then doing various cleanups.
-
-    If the tree is loaded from memory ('saved_cache') it's even quicker.
     """
     for id in scc:
         graph[id].load_tree()
@@ -2477,71 +2430,6 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].calculate_mros()
     for id in scc:
         graph[id].patch_dependency_parents()
-
-
-def maybe_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
-    """Set the trees for the given SCC from the in-memory cache, if all valid.
-
-    If any saved tree for this SCC is invalid, set the trees for all
-    SCC members to None and mark as not-from-cache.
-    """
-    if not can_reuse_in_memory_tree(graph, scc, manager):
-        for id in scc:
-            manager.add_stats(cleared_trees=1)
-            manager.trace("Clearing tree %s" % id)
-            st = graph[id]
-            st.tree = None
-            st.is_from_saved_cache = False
-            if id in manager.modules:
-                del manager.modules[id]
-        return False
-    trees = {id: manager.saved_cache[id][1] for id in scc}
-    for id, tree in trees.items():
-        manager.add_stats(reused_trees=1)
-        manager.trace("Reusing saved tree %s" % id)
-        st = graph[id]
-        st.tree = tree
-        st.is_from_saved_cache = True
-        manager.modules[id] = tree
-        # Delete any submodules from the module that aren't
-        # dependencies of the module; they will be re-added once
-        # imported.  It's possible that the parent module is reused
-        # but a submodule isn't; we don't want to accidentally link
-        # into the old submodule's tree.  See also
-        # patch_dependency_parents() above.  The exception for subname
-        # in st.dependencies handles the case where 'import m'
-        # guarantees that some submodule of m is also available
-        # (e.g. 'os.path'); in those cases the submodule is an
-        # explicit dependency of the parent.
-        for name in list(tree.names):
-            sym = tree.names[name]
-            subname = id + '.' + name
-            if (sym.kind == MODULE_REF
-                    and sym.node is not None
-                    and sym.node.fullname() == subname
-                    and subname not in st.dependencies):
-                manager.trace("Purging %s" % subname)
-                del tree.names[name]
-    return True
-
-
-def can_reuse_in_memory_tree(graph: Graph, scc: List[str], manager: BuildManager) -> bool:
-    """Check whether the given SCC can safely reuse the trees from saved_cache.
-
-    Assumes the SCC is already considered fresh.
-    """
-    saved_cache = manager.saved_cache
-    # Check that all nodes are available for loading from memory.
-    if all(id in saved_cache for id in scc):
-        # Check that all dependencies were loaded from memory.
-        # If not, some dependency was reparsed but the interface hash
-        # wasn't changed -- in that case we can't reuse the tree.
-        # TODO: Pass deps in from process_graph(), via maybe_reuse_in_memory_tree()?
-        deps = set(dep for id in scc for dep in graph[id].dependencies if dep in graph)
-        deps -= set(scc)  # Subtract the SCC itself (else nothing will be safe)
-        if all(graph[dep].is_from_saved_cache for dep in deps):
-            return True
-    return False
 
 
 def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
@@ -2585,6 +2473,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             if graph[id].type_check_second_pass():
                 more = True
+    for id in stale:
+        graph[id].generate_unused_ignore_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True
@@ -2592,7 +2482,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].finish_passes()
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
             graph[id].compute_fine_grained_deps()
-        graph[id].generate_unused_ignore_notes()
         manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
