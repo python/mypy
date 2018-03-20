@@ -148,26 +148,26 @@ main:4: warning: Returning Any from function declared to return "int"
 from typing import Any
 class A:
     def __init__(self, x: Any) -> None:
-      self.x = x
+        self.x = x
     def __eq__(self, other: Any) -> bool:
-      if self.__class__ is other.__class__:
-        return bool(self.x == other.x)
-      return NotImplemented
+        if self.__class__ is other.__class__:
+            return bool(self.x == other.x)
+        return NotImplemented
     def __lt__(self, other: Any) -> bool: return NotImplemented
     def __gt__(self, other: Any) -> bool: return NotImplemented
     def __le__(self, other: Any) -> bool: return NotImplemented
     def __ge__(self, other: Any) -> bool: return NotImplemented
     def __ne__(self, other: Any) -> bool:
-      if self.__class__ is other.__class__:
-        return bool(self.x != other.x)
-      else:
-        # pylint will complain about this return not needing
-        # an "else", but want to check that Union[bool, NotImplemented]
-        # works as the inferred return typ
-        return NotImplemented
-    # TODO: If the programmer specifies "-> Union[bool, type(NotImplemented)]",
-    #       mypy suggests changing this to "-> Union[bool, type[NotImplemented]]",
-    #       which gives a run-time error (issue #4767)
+        if self.__class__ is other.__class__:
+            return bool(self.x != other.x)
+        else:
+            # pylint will complain about this return not needing
+            # an "else", but want to check that Union[bool, NotImplemented]
+            # works as the inferred return typ
+            return NotImplemented
+# TODO: If the programmer specifies "-> Union[bool, type(NotImplemented)]",
+#       mypy suggests changing this to "-> Union[bool, type[NotImplemented]]",
+#       which gives a run-time error (issue #4767)
 [builtins fixtures/notimplemented.pyi]
 [out]
 
