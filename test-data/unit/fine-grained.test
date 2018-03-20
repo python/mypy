@@ -1486,6 +1486,209 @@ a.py:8: error: "list" expects 1 type argument, but 2 given
 a.py:8: error: "list" expects 1 type argument, but 2 given
 ==
 
+[case testDecoratorUpdateMod]
+import a
+[file a.py]
+import mod
+
+@mod.deca
+@mod.decb(mod.C())
+def func(x: mod.B) -> mod.B:
+    x.x
+    return x
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.2]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[str], str]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.3]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    y: int
+[file mod.py.4]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    def __init__(self, x: int) -> None:
+        pass
+class B:
+    x: int
+[out]
+==
+a.py:3: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; expected "Callable[[str], str]"
+==
+a.py:6: error: "B" has no attribute "x"
+==
+a.py:4: error: Too few arguments for "C"
+
+[case testDecoratorUpdateFunc]
+import a
+[file a.py]
+import mod
+
+def outer() -> None:
+    @mod.deca
+    @mod.decb(mod.C())
+    def func(x: mod.B) -> mod.B:
+        x.x
+        return x
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.2]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[str], str]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.3]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    y: int
+[file mod.py.4]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    def __init__(self, x: int) -> None:
+        pass
+class B:
+    x: int
+[out]
+==
+a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; expected "Callable[[str], str]"
+==
+a.py:7: error: "B" has no attribute "x"
+==
+a.py:5: error: Too few arguments for "C"
+
+[case DecoratorUpdateMethod]
+import a
+[file a.py]
+import mod
+
+class D:
+    @mod.deca
+    @mod.decb(mod.C())
+    def func(self, x: mod.B) -> mod.B:
+        x.x
+        return x
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., B]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.2]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., str]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.3]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., B]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    y: int
+[file mod.py.4]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., B]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    def __init__(self, x: int) -> None:
+        pass
+class B:
+    x: int
+[out]
+==
+a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[D, B], B]"; expected "Callable[..., str]"
+==
+a.py:7: error: "B" has no attribute "x"
+==
+a.py:5: error: Too few arguments for "C"
+
 [case testOverloadRefresh]
 from typing import overload
 import m
