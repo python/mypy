@@ -3555,3 +3555,24 @@ class C:
 [out]
 ==
 a.py:3: error: Argument 1 to "C" has incompatible type "int"; expected "str"
+
+[case testDunderNewUpdatedCallable]
+import a
+[file a.py]
+from typing import Callable, Any
+import b
+
+def func(arg: Callable[[int], Any]) -> None:
+    pass
+func(b.C)
+[file b.py]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[file b.py.2]
+class C:
+    def __new__(cls, x: str) -> C:
+        pass
+[out]
+==
+a.py:6: error: Argument 1 to "func" has incompatible type "Type[C]"; expected "Callable[[int], Any]"
