@@ -166,7 +166,7 @@ class Server:
                             resp = self.run_command(command, data)
                         except Exception:
                             # If we are crashing, report the crash to the client
-                            tb = "".join(traceback.format_exception(*sys.exc_info()))
+                            tb = "".join(traceback.format_exception(*sys.exc_info()))  # type: ignore
                             resp = {'error': "Daemon crashed!\n" + tb}
                             conn.sendall(json.dumps(resp).encode('utf8'))
                             raise
