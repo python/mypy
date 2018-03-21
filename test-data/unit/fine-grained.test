@@ -1966,6 +1966,25 @@ class M2(type): pass
 ==
 a.py:3: error: Inconsistent metaclass structure for 'D'
 
+[case testFineMetaclassRemoveFromClass]
+import a
+[file a.py]
+import b
+def func() -> int:
+    return b.B.x
+[file b.py]
+from c import M
+class B(metaclass=M):
+    pass
+[file b.py.2]
+from c import M
+class B:
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
 import m
