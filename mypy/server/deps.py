@@ -284,7 +284,7 @@ class DependencyVisitor(TraverserVisitor):
                                        target=make_trigger(analyzed.fullname()))
             for val in analyzed.values:
                 self.add_type_dependencies(val, target=make_trigger(analyzed.fullname()))
-            # We need to add re-analyze the definition if bound or value is deleted.
+            # We need to re-analyze the definition if bound or value is deleted.
             super().visit_call_expr(rvalue)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
