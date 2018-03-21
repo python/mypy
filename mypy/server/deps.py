@@ -166,10 +166,8 @@ class DependencyVisitor(TraverserVisitor):
         self.is_package_init_file = False
 
     # TODO (incomplete):
-    #   from m import *
     #   await
     #   protocols
-    #   metaclasses
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
@@ -232,6 +230,8 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(info.tuple_type, target=make_trigger(target))
         if info.typeddict_type:
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(target))
+        if info.declared_metaclass:
+            self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
@@ -530,7 +530,6 @@ class DependencyVisitor(TraverserVisitor):
         # Note that operator methods can't be (non-metaclass) methods of type objects
         # (that is, TypeType objects or Callables representing a type).
         # TODO: TypedDict
-        # TODO: metaclasses
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -541,6 +540,11 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(typ, UnionType):
             for item in typ.items:
                 self.add_operator_method_dependency_for_type(item, method)
+        elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+            self.add_operator_method_dependency_for_type(typ.fallback, method)
+        elif isinstance(typ, TypeType):
+            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
+                self.add_operator_method_dependency_for_type(typ.item.type.metaclass_type, method)
 
     def visit_generator_expr(self, e: GeneratorExpr) -> None:
         super().visit_generator_expr(e)
@@ -613,15 +617,21 @@ class DependencyVisitor(TraverserVisitor):
             return [make_trigger(member)]
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
             member = '%s.%s' % (typ.type_object().fullname(), name)
-            return [make_trigger(member)]
+            triggers = [make_trigger(member)]
+            triggers.extend(self.attribute_triggers(typ.fallback, name))
+            return triggers
         elif isinstance(typ, UnionType):
             targets = []
             for item in typ.items:
                 targets.extend(self.attribute_triggers(item, name))
             return targets
         elif isinstance(typ, TypeType):
-            # TODO: Metaclass attribute lookup
-            return self.attribute_triggers(typ.item, name)
+            triggers = self.attribute_triggers(typ.item, name)
+            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
+                triggers.append(make_trigger('%s.%s' %
+                                             (typ.item.type.metaclass_type.type.fullname(),
+                                              name)))
+            return triggers
         else:
             return []
 

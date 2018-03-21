@@ -2059,6 +2059,404 @@ def f(x=1): pass
 [out]
 ==
 
+[case testMetaclassAttributes]
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg.x = int()
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:4: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassAttributesDirect]
+import a
+[file a.py]
+from mod import C
+def f() -> None:
+    C.x = int()
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:3: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassOperators]
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg + arg
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other: int) -> M:
+        pass
+[out]
+==
+a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+
+[case testMetaclassOperatorsDirect]
+import a
+[file a.py]
+from mod import C
+def f() -> None:
+    C + C
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    def __add__(self, other: int) -> M:
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+[out]
+a.py:3: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+==
+
+[case testMetaclassAttributesDirect_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+def f():
+    # type: () -> None
+    C.x = int()
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    x = None  # type: int
+[file submod.py.2]
+class M(type):
+    x = None  # type: str
+[file submod.py.3]
+class M(type):
+    y = None  # type: str
+[file submod.py.4]
+class M(type):
+    x = None  # type: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:4: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassOperators_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg):
+    # type: (Type[C]) -> None
+    arg + arg
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    def __add__(self, other):
+        # type: (M) -> M
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other):
+        # type: (int) -> M
+        pass
+[out]
+==
+a.py:5: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+
+[case testFineMetaclassUpdate]
+import a
+[file a.py]
+from c import M
+import b
+def f(arg: M) -> None:
+    pass
+
+f(b.B)
+[file b.py]
+import c
+class B: pass
+
+[file b.py.2]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    pass
+[out]
+a.py:6: error: Argument 1 to "f" has incompatible type "Type[B]"; expected "M"
+==
+
+[case testFineMetaclassRecalculation]
+import a
+[file a.py]
+from b import B
+class M2(type): pass
+class D(B, metaclass=M2): pass
+[file b.py]
+import c
+class B: pass
+
+[file b.py.2]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    pass
+[out]
+==
+a.py:3: error: Inconsistent metaclass structure for 'D'
+
+[case testFineMetaclassDeclaredUpdate]
+import a
+[file a.py]
+import b
+class B(metaclass=b.M): pass
+class D(B, metaclass=b.M2): pass
+[file b.py]
+class M(type): pass
+class M2(M): pass
+[file b.py.2]
+class M(type): pass
+class M2(type): pass
+[out]
+==
+a.py:3: error: Inconsistent metaclass structure for 'D'
+
+[case testFineMetaclassRemoveFromClass]
+import a
+[file a.py]
+import b
+def func() -> int:
+    return b.B.x
+[file b.py]
+from c import M
+class B(metaclass=M):
+    pass
+[file b.py.2]
+from c import M
+class B:
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: "Type[B]" has no attribute "x"
+
+[case testFineMetaclassRemoveFromClass2]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.test(b.B)
+[file b.py]
+import c
+def test(cls: c.M) -> None:
+    pass
+class B(metaclass=c.M):
+    pass
+[file b.py.2]
+import c
+def test(cls: c.M) -> None:
+    pass
+class B:
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Argument 1 to "test" has incompatible type "Type[B]"; expected "M"
+
+[case testBadMetaclassCorrected]
+import a
+[file a.py]
+import b
+class C(metaclass=b.M):
+    pass
+[file b.py]
+from c import M
+[file c.py]
+M = 1
+[file c.py.2]
+class M(type):
+    pass
+[out]
+a.py:2: error: Invalid metaclass 'b.M'
+==
+
+[case testFixedAttrOnAddedMetaclass]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x: int = b.C.x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+a.py:3: error: "Type[C]" has no attribute "x"
+==
+
+[case testIndirectSubclassReferenceMetaclass]
+import a
+[file a.py]
+import b
+def f() -> None:
+    b.x = int()
+[file b.py]
+import bb
+x = bb.D.x
+[file bb.py]
+import mod
+class D(mod.C):
+    pass
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+b.py:2: error: "Type[D]" has no attribute "x"
+==
+
+[case testMetaclassDeletion]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.B.x
+[file b.py]
+import c
+class B(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: int
+[file c.py.2]
+whatever: int
+[out]
+==
+b.py:2: error: Name 'c.M' is not defined
+a.py:3: error: "Type[B]" has no attribute "x"
+
+[case testFixMissingMetaclass]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.B.x
+[file b.py]
+import c
+class B(metaclass=c.M):
+    pass
+[file c.py]
+whatever: int
+[file c.py.2]
+class M(type):
+    x: int
+[out]
+b.py:2: error: Name 'c.M' is not defined
+a.py:3: error: "Type[B]" has no attribute "x"
+==
+
+[case testGoodMetaclassSpoiled]
+import a
+[file a.py]
+import b
+class C(metaclass=b.M):
+    pass
+[file b.py]
+class M(type):
+    pass
+[file b.py.2]
+M = 1
+[out]
+==
+a.py:2: error: Invalid metaclass 'b.M'
+
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
 import m

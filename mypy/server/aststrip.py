@@ -100,6 +100,8 @@ class NodeStripVisitor(TraverserVisitor):
         info.tuple_type = None
         info._cache = set()
         info._cache_proper = set()
+        info.declared_metaclass = None
+        info.metaclass_type = None
 
     def visit_func_def(self, node: FuncDef) -> None:
         if not self.recurse_into_functions:
