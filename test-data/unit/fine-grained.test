@@ -426,6 +426,200 @@ main:3: error: Module has no attribute "g"
 ==
 main:3: error: Module has no attribute "g"
 
+[case testIgnoreWorksAfterUpdate]
+import a
+[file a.py]
+import b
+int() + str()  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 2
+[file b.py.3]
+x = 3
+[delete b.py.4]
+[out]
+==
+==
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIgnoreWorksWithMissingImports]
+import a
+[file a.py]
+import b
+import xyz  # type: ignore
+xyz.whatever
+[file b.py]
+x = 1
+[file b.py.2]
+x = 2
+[file b.py.3]
+x = 3
+[file xyz.py.4]
+[out]
+==
+==
+==
+a.py:3: error: "object" has no attribute "whatever"
+
+[case testAddedIgnoreWithMissingImports]
+import a
+[file a.py]
+from b import x
+y: int = x
+[file b.py]
+from xyz import x
+[file b.py.2]
+from xyz import x  # type: ignore
+[file xyz.py.3]
+x = str()
+[out]
+b.py:1: error: Cannot find module named 'xyz'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedIgnoreWithMissingImport]
+import a
+[file a.py]
+from b import x
+y: int = x
+[file b.py]
+from xyz import x  # type: ignore
+[file b.py.2]
+from xyz import x
+[file xyz.py.3]
+x = str()
+[out]
+==
+b.py:1: error: Cannot find module named 'xyz'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedModuleUnderIgnore]
+import a
+[file a.py]
+import c
+from b import x  # type: ignore
+y: int = x
+[file b.py]
+x = str()
+[file c.py]
+x = 1
+[delete b.py.2]
+[file c.py.3]
+x = 3
+[out]
+a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+==
+==
+
+[case AddedModuleUnderIgnore]
+import a
+[file a.py]
+import c
+from b import x  # type: ignore
+y: int = x
+[file c.py]
+x = 1
+[file c.py.2]
+x = 2
+[file b.py.3]
+# empty
+[out]
+==
+==
+
+[case testIgnoreInBetween]
+import a
+[file a.py]
+import b
+x: int = b.x
+[file b.py]
+import c
+x = c.C.x  # type: ignore
+[file c.py]
+class C:
+    pass
+[file c.py.2]
+class C:
+    x: int
+[file c.py.3]
+# empty
+[file c.py.4]
+class C:
+    x: str
+[out]
+==
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedModule-skip-cache]
+import a
+[file a.py]
+import b
+x = b.x  # type: ignore
+y: int = x
+[file b.py]
+import c
+[file b.py.2]
+import c
+x = c.x
+[file c.py]
+x: str
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedBase]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x = b.C.x  # type: ignore
+    y: int = x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(c.B):
+    pass
+[file c.py]
+class B:
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedMeta]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x = b.C.x  # type: ignore
+    y: int = x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testAddBaseClassMethodCausingInvalidOverride]
 import m
 class B(m.A):
