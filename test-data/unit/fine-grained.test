@@ -3459,42 +3459,6 @@ a.py:1: error: "int" not callable
 [out]
 ==
 
-[case testDunderNewUpdatedMod]
-import a
-[file a.py]
-import b
-
-b.C(int())
-[file b.py]
-class C:
-    def __new__(cls, x: int) -> C:
-        pass
-[file b.py.2]
-class C:
-    def __new__(cls, x: str) -> C:
-        pass
-[out]
-==
-a.py:3: error: Argument 1 to "C" has incompatible type "int"; expected "str"
-
-[case testDunderNewUpdatedFunc]
-import a
-[file a.py]
-import b
-def func() -> None:
-    b.C(int())
-[file b.py]
-class C:
-    def __new__(cls, x: int) -> C:
-        pass
-[file b.py.2]
-class C:
-    def __new__(cls, x: str) -> C:
-        pass
-[out]
-==
-a.py:3: error: Argument 1 to "C" has incompatible type "int"; expected "str"
-
 [case testDunderNewUpdatedMethod]
 import a
 [file a.py]
@@ -3576,3 +3540,44 @@ class C:
 [out]
 ==
 a.py:6: error: Argument 1 to "func" has incompatible type "Type[C]"; expected "Callable[[int], Any]"
+
+[case testDunderNewDefine]
+import a
+[file a.py]
+import b
+class A:
+    def func(self) -> None:
+        b.C()
+[file b.py]
+class C:
+    pass
+[file b.py.2]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[out]
+==
+a.py:4: error: Too few arguments for "C"
+
+[case testDunderNewInsteadOfInit]
+import a
+[file a.py]
+import b
+class A:
+    def func(self) -> None:
+        b.C(int())
+[file b.py]
+class C:
+    def __init__(cls, x: int) -> None:
+        pass
+[file b.py.2]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[file b.py.3]
+class C:
+    pass
+[out]
+==
+==
+a.py:4: error: Too many arguments for "C"
