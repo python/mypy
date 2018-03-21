@@ -472,8 +472,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             kind = arg_.kind
             name = var.name()
             annotated_type = o.type.arg_types[i] if isinstance(o.type, CallableType) else None
-            if annotated_type and not (
-                    i == 0 and name == 'self' and isinstance(annotated_type, AnyType)):
+            is_self_arg = i == 0 and name == 'self'
+            is_cls_arg = i == 0 and name == 'cls'
+            if (annotated_type is None
+                    and not arg_.initializer
+                    and not is_self_arg
+                    and not is_cls_arg):
+                self.add_typing_import("Any")
+                annotation = ": Any"
+            elif annotated_type and not is_self_arg:
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
                 annotation = ""
