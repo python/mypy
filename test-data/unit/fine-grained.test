@@ -1847,38 +1847,6 @@ class M(type):
 a.py:3: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
 ==
 
-[case testMetaclassAttributes_python2]
-# flags: --py2
-import a
-[file a.py]
-from mod import C
-from typing import Type
-def f(arg):
-    # type: (Type[C]) -> None
-    arg.x = int()
-[file mod.py]
-import submod
-class C:
-    __metaclass__ = submod.M
-[file submod.py]
-class M(type):
-    x = None  # type: int
-[file submod.py.2]
-class M(type):
-    x = None  # type: str
-[file submod.py.3]
-class M(type):
-    y = None  # type: str
-[file submod.py.4]
-class M(type):
-    x = None  # type: int
-[out]
-==
-a.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-==
-a.py:5: error: "Type[C]" has no attribute "x"
-==
-
 [case testMetaclassAttributesDirect_python2]
 # flags: --py2
 import a
@@ -1937,54 +1905,7 @@ class M(type):
 ==
 a.py:5: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
 
-[case testMetaclassOperatorsDirect_python2]
-# flags: --py2
-import a
-[file a.py]
-from mod import C
-def f():
-    # type: () -> None
-    C + C
-[file mod.py]
-import submod
-class C:
-    __metaclass__ = submod.M
-[file submod.py]
-class M(type):
-    def __add__(self, other):
-        # type: (int) -> M
-        pass
-[file submod.py.2]
-class M(type):
-    def __add__(self, other):
-        # type: (M) -> M
-        pass
-[out]
-a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
-==
-
 [case testFineMetaclassUpdate]
-import a
-[file a.py]
-from b import B
-B.x
-
-[file b.py]
-import c
-class B(metaclass=c.M): pass
-
-[file c.py]
-class M(type):
-    x: int
-
-[file c.py.2]
-class M(type):
-    y: int
-[out]
-==
-a.py:2: error: "Type[B]" has no attribute "x"
-
-[case testFineMetaclassUpdate2]
 import a
 [file a.py]
 from c import M
@@ -2025,6 +1946,22 @@ class B(metaclass=c.M): pass
 [file c.py]
 class M(type):
     pass
+[out]
+==
+a.py:3: error: Inconsistent metaclass structure for 'D'
+
+[case testFineMetaclassDeclaredUpdate]
+import a
+[file a.py]
+import b
+class B(metaclass=b.M): pass
+class D(B, metaclass=b.M2): pass
+[file b.py]
+class M(type): pass
+class M2(M): pass
+[file b.py.2]
+class M(type): pass
+class M2(type): pass
 [out]
 ==
 a.py:3: error: Inconsistent metaclass structure for 'D'

@@ -214,6 +214,46 @@ class C(metaclass=M):
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
 
+[case testMetaclassDepsDeclared]
+import mod
+class C(metaclass=mod.M):
+    pass
+[file mod.py]
+class M(type):
+    pass
+[out]
+<m.C> -> m.C
+<mod.M> -> <m.C>
+<mod> -> m
+
+[case testMetaclassDepsDeclared_python2]
+# flags: --py2
+import mod
+class C:
+    __metaclass__ = mod.M
+[file mod.py]
+class M(type):
+    pass
+[out]
+<m.C> -> m.C
+<mod.M.__init__> -> m
+<mod.M> -> <m.C>, m
+<mod> -> m
+
+[case testMetaclassDepsDeclaredNested]
+import mod
+
+def func() -> None:
+    class C(metaclass=mod.M):
+        pass
+[file mod.py]
+class M(type):
+    pass
+[out]
+<m.func> -> m.func
+<mod.M> -> <m.func>
+<mod> -> m
+
 [case testMetaclassAttributes_python2]
 # flags: --py2
 from mod import C
@@ -230,42 +270,6 @@ class C:
 <mod.C.x> -> m.f
 <mod.C> -> <m.f>, m, m.f
 <mod.M.x> -> m.f
-
-[case testMetaclassAttributesDirect_python2]
-# flags: --py2
-from mod import C
-def f():
-    # type: () -> None
-    C.x
-[file mod.py]
-class M(type):
-    x = None  # type: int
-class C:
-    __metaclass__ = M
-[out]
-<mod.C.__init__> -> m.f
-<mod.C.x> -> m.f
-<mod.C> -> m, m.f
-<mod.M.x> -> m.f
-
-[case testMetaclassOperators_python2]
-# flags: --py2
-from mod import C
-from typing import Type
-def f(arg):
-    # type: (Type[C]) -> None
-    arg + arg
-[file mod.py]
-class M(type):
-    def __add__(self, other):
-        # type: (M) -> M
-        pass
-class C:
-    __metaclass__ = M
-[out]
-<mod.C> -> <m.f>, m, m.f
-<mod.M.__add__> -> m.f
-<mod.M.__radd__> -> m.f
 
 [case testMetaclassOperatorsDirect_python2]
 # flags: --py2
