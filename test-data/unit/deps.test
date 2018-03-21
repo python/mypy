@@ -45,6 +45,7 @@ def f() -> None:
 class A: pass
 [out]
 <m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 
 [case testAccessModuleAttribute]
@@ -54,6 +55,7 @@ def f() -> None:
     x
 [out]
 <m.A.__init__> -> m
+<m.A.__new__> -> m
 <m.A> -> <m.x>, m, m.A
 <m.x> -> m, m.f
 
@@ -109,6 +111,7 @@ class B(A):
     pass
 [out]
 <m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
 <m.A> -> m, m.A, m.B
 <m.B> -> m.B
 
@@ -120,6 +123,7 @@ class B(A):
         self.x = 1
 [out]
 <m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
 <m.A.f> -> m.B.f
 <m.A.x> -> <m.B.x>
 <m.A> -> m, m.A, m.B
@@ -136,10 +140,12 @@ class C(B):
         self.x = 1
 [out]
 <m.A.__init__> -> <m.B.__init__>, <m.C.__init__>
+<m.A.__new__> -> <m.B.__new__>, <m.C.__new__>
 <m.A.f> -> m.C.f
 <m.A.x> -> <m.C.x>
 <m.A> -> m, m.A, m.B
 <m.B.__init__> -> <m.C.__init__>
+<m.B.__new__> -> <m.C.__new__>
 <m.B.f> -> m.C.f
 <m.B.x> -> <m.C.x>
 <m.B> -> m, m.B, m.C
@@ -160,6 +166,7 @@ class A:
 <m.B.x> -> m.B.f
 <m.B> -> m.B
 <n.A.__init__> -> <m.B.__init__>
+<n.A.__new__> -> <m.B.__new__>
 <n.A.f> -> m.B.f
 <n.A.g> -> <m.B.g>
 <n.A.x> -> <m.B.x>
@@ -174,6 +181,7 @@ class B(A):
         self.g()
 [out]
 <m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
 <m.A.f> -> m.B.f
 <m.A.g> -> <m.B.g>
 <m.A> -> m, m.A, m.B
@@ -241,8 +249,10 @@ def f() -> None:
     A(C())
 [out]
 <m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 <m.C.__init__> -> m.f
+<m.C.__new__> -> m.f
 <m.C> -> <m.A.__init__>, m.A.__init__, m.C, m.f
 
 [case testNonTrivialConstructor]
@@ -282,6 +292,7 @@ class A:
         def f(self) -> None: pass
 [out]
 <m.A.B.__init__> -> m.f
+<m.A.B.__new__> -> m.f
 <m.A.B.f> -> m.f
 <m.A.B> -> m.A.B, m.f
 <m.A> -> m.A, m.f
@@ -296,6 +307,7 @@ class A:
             self.x = 1
 [out]
 <m.A.B.__init__> -> m.f
+<m.A.B.__new__> -> m.f
 <m.A.B.x> -> m.A.B.f, m.f
 <m.A.B> -> m.A.B, m.f
 <m.A> -> m.A, m.f
@@ -337,8 +349,9 @@ def f(x: object) -> None:
         x.g()
 [builtins fixtures/isinstancelist.pyi]
 [out]
--- The dependency on the ctor is basically spurious but not a problem
+-- The dependencies on the ctor are basically spurious but not a problem
 <m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
 <m.A.g> -> m.f
 <m.A> -> m.A, m.f
 
@@ -355,8 +368,9 @@ def f(x: A) -> None:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A> -> <m.f>, m.A, m.f
--- The dependency on the ctor is basically spurious but not a problem
+-- The dependencies on the ctor are basically spurious but not a problem
 <m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
 <m.B> -> m.B, m.f
 
 [case testAttributeWithClassType1]
@@ -384,6 +398,7 @@ class A: pass
 <m.B.x> -> m.B.f
 <m.B> -> m.B
 <m.A.__init__> -> m.B.f
+<m.A.__new__> -> m.B.f
 <m.A> -> <m.B.x>, m, m.B.f
 
 [case testAttributeWithClassType3]
@@ -465,6 +480,7 @@ class A: pass
 [out]
 <m.x> -> m
 <n.A.__init__> -> m
+<n.A.__new__> -> m
 <n.A> -> <m.x>, m
 
 [case testGlobalVariableAnnotation]
@@ -521,6 +537,7 @@ class A:
 <m.A.x> -> m.A.f
 <m.A> -> m.A
 <m.C.__init__> -> m.A.f
+<m.C.__new__> -> m.A.f
 <m.C> -> <m.A.x>, m.A.f, m.C
 
 [case testPartialNoneTypeAttributeCrash2]
@@ -536,6 +553,7 @@ class A:
 <m.A.x> -> m.A.f
 <m.A> -> m.A
 <m.C.__init__> -> m.A.f
+<m.C.__new__> -> m.A.f
 <m.C> -> <m.A.x>, m.A.f, m.C
 
 [case testRelativeImport]
@@ -575,6 +593,7 @@ def foo(x: Point) -> int:
 [builtins fixtures/dict.pyi]
 [out]
 <m.A.__init__> -> m
+<m.A.__new__> -> m
 <m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.foo
 <m.Point> -> <m.foo>, <m.p>, m, m.foo
 <m.p> -> m
@@ -592,6 +611,7 @@ def foo(x: Point) -> int:
 [builtins fixtures/dict.pyi]
 [out]
 <m.A.__init__> -> m
+<m.A.__new__> -> m
 <m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.foo
 <m.Point> -> <m.foo>, <m.p>, m, m.Point, m.foo
 <m.p> -> m
