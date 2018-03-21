@@ -649,6 +649,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:
+        if typ.missing_import_name is not None:
+            return [make_trigger(typ.missing_import_name)]
         return []
 
     def visit_none_type(self, typ: NoneTyp) -> List[str]:

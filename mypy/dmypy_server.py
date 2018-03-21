@@ -162,7 +162,14 @@ class Server:
                             resp = {'error': "Command is not a string"}
                         else:
                             command = data.pop('command')
-                        resp = self.run_command(command, data)
+                        try:
+                            resp = self.run_command(command, data)
+                        except Exception:
+                            # If we are crashing, report the crash to the client
+                            tb = traceback.format_exception(*sys.exc_info())  # type: ignore
+                            resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                            conn.sendall(json.dumps(resp).encode('utf8'))
+                            raise
                     try:
                         conn.sendall(json.dumps(resp).encode('utf8'))
                     except OSError as err:
