@@ -2029,6 +2029,103 @@ class M(type):
 a.py:2: error: Invalid metaclass 'b.M'
 ==
 
+[case testFixedAttrOnAddedMetaclass]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x: int = b.C.x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+a.py:3: error: "Type[C]" has no attribute "x"
+==
+
+[case testIndirectSubclassReferenceMetaclass]
+import a
+[file a.py]
+import b
+def f() -> None:
+    b.x = int()
+[file b.py]
+import bb
+x = bb.D.x
+[file bb.py]
+import mod
+class D(mod.C):
+    pass
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+b.py:2: error: "Type[D]" has no attribute "x"
+==
+
+[case testMetaclassDeletion]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.B.x
+[file b.py]
+import c
+class B(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: int
+[file c.py.2]
+whatever: int
+[out]
+==
+b.py:2: error: Name 'c.M' is not defined
+a.py:3: error: "Type[B]" has no attribute "x"
+
+[case testFixMissingMetaclass]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.B.x
+[file b.py]
+import c
+class B(metaclass=c.M):
+    pass
+[file c.py]
+whatever: int
+[file c.py.2]
+class M(type):
+    x: int
+[out]
+b.py:2: error: Name 'c.M' is not defined
+a.py:3: error: "Type[B]" has no attribute "x"
+==
+
 [case testGoodMetaclassSpoiled]
 import a
 [file a.py]

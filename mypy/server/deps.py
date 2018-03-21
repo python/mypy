@@ -166,7 +166,6 @@ class DependencyVisitor(TraverserVisitor):
         self.is_package_init_file = False
 
     # TODO (incomplete):
-    #   from m import *
     #   await
     #   protocols
 
