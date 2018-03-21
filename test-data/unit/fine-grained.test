@@ -1984,6 +1984,65 @@ class B:
 class M(type):
     x: int
 [out]
+==
+a.py:3: error: "Type[B]" has no attribute "x"
+
+[case testFineMetaclassRemoveFromClass2]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.test(b.B)
+[file b.py]
+import c
+def test(cls: c.M) -> None:
+    pass
+class B(metaclass=c.M):
+    pass
+[file b.py.2]
+import c
+def test(cls: c.M) -> None:
+    pass
+class B:
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Argument 1 to "test" has incompatible type "Type[B]"; expected "M"
+
+[case testBadMetaclassCorrected]
+import a
+[file a.py]
+import b
+class C(metaclass=b.M):
+    pass
+[file b.py]
+from c import M
+[file c.py]
+M = 1
+[file c.py.2]
+class M(type):
+    pass
+[out]
+a.py:2: error: Invalid metaclass 'b.M'
+==
+
+[case testGoodMetaclassSpoiled]
+import a
+[file a.py]
+import b
+class C(metaclass=b.M):
+    pass
+[file b.py]
+class M(type):
+    pass
+[file b.py.2]
+M = 1
+[out]
+==
+a.py:2: error: Invalid metaclass 'b.M'
 
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
