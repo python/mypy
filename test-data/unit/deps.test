@@ -644,6 +644,7 @@ class C:
 [out]
 <m.func> -> m
 <mod.C.__init__> -> m
+<mod.C.__new__> -> m
 <mod.C> -> m
 <mod.deca> -> m
 <mod.decb> -> m
@@ -670,6 +671,7 @@ class C:
 [out]
 <m.func> -> m.outer
 <mod.C.__init__> -> m.outer
+<mod.C.__new__> -> m.outer
 <mod.C> -> m.outer
 <mod.deca> -> m.outer
 <mod.decb> -> m.outer
@@ -711,6 +713,7 @@ class C:
 <m.Outer.Inner> -> m.Outer.Inner
 <m.Outer> -> m.Outer
 <mod.C.__init__> -> m
+<mod.C.__new__> -> m
 <mod.C.dec> -> m
 <mod.C> -> <m.Outer.Inner.c>, m
 <mod> -> m
@@ -733,6 +736,7 @@ class C:
 <m.Inner@4.func> -> m.outer
 <m.outer> -> m.outer
 <mod.C.__init__> -> m.outer
+<mod.C.__new__> -> m.outer
 <mod.C.dec> -> m.outer
 <mod.C> -> <m.outer.c>, m.outer
 <mod> -> m, m.outer
@@ -759,6 +763,7 @@ class C:
 <m.D.func> -> m
 <m.D> -> m.D
 <mod.C.__init__> -> m
+<mod.C.__new__> -> m
 <mod.C> -> m
 <mod.deca> -> m
 <mod.decb> -> m
