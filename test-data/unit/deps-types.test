@@ -179,6 +179,7 @@ class C(metaclass=M):
     pass
 [out]
 <mod.C.__init__> -> m.f
+<mod.C.__new__> -> m.f
 <mod.C.x> -> m.f
 <mod.C> -> m, m.f
 <mod.M.x> -> m.f
@@ -211,6 +212,7 @@ class C(metaclass=M):
     pass
 [out]
 <mod.C.__init__> -> m.f
+<mod.C.__new__> -> m.f
 <mod.C> -> m, m.f
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
@@ -238,6 +240,7 @@ class M(type):
 [out]
 <m.C> -> m.C
 <mod.M.__init__> -> m
+<mod.M.__new__> -> m
 <mod.M> -> <m.C>, m
 <mod> -> m
 
@@ -287,6 +290,7 @@ class C:
     __metaclass__ = M
 [out]
 <mod.C.__init__> -> m.f
+<mod.C.__new__> -> m.f
 <mod.C> -> m, m.f
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
