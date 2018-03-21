@@ -603,3 +603,19 @@ from a import *
 x = 0
 [out]
 <a[wildcard]> -> m
+
+[case testMissingModuleClass1]
+from b import A  # type: ignore
+def f(x: A) -> None:
+    x.foo()
+[out]
+<m.A> -> <m.f>, m.f
+<b.A> -> m
+
+[case testMissingModuleClass2]
+from p.b import A  # type: ignore
+def f(x: A) -> None:
+    x.foo()
+[out]
+<m.A> -> <m.f>, m.f
+<p.b.A> -> m

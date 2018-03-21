@@ -315,7 +315,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # context. This is slightly problematic as it allows using the type 'Any'
                     # as a base class -- however, this will fail soon at runtime so the problem
                     # is pretty minor.
-                    return AnyType(TypeOfAny.from_unimported_type)
+                    return AnyType(TypeOfAny.from_unimported_type,
+                                   missing_import_name=sym.node.type.missing_import_name)
                 # Allow unbound type variables when defining an alias
                 if not (self.aliasing and sym.kind == TVAR and
                         (not self.tvar_scope or self.tvar_scope.get_binding(sym) is None)):
