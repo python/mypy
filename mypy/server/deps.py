@@ -284,6 +284,8 @@ class DependencyVisitor(TraverserVisitor):
                                        target=make_trigger(analyzed.fullname()))
             for val in analyzed.values:
                 self.add_type_dependencies(val, target=make_trigger(analyzed.fullname()))
+            # We need to add re-analyze the definition if bound or value is deleted.
+            super().visit_call_expr(rvalue)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
@@ -671,12 +673,12 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return []
 
     def visit_callable_type(self, typ: CallableType) -> List[str]:
-        # TODO: generic callables
-        # TODO: fallback?
         triggers = []
         for arg in typ.arg_types:
             triggers.extend(get_type_triggers(arg))
         triggers.extend(get_type_triggers(typ.ret_type))
+        # fallback is a metaclass type for class objects, and is
+        # processed separately.
         return triggers
 
     def visit_overloaded(self, typ: Overloaded) -> List[str]:

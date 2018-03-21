@@ -3886,6 +3886,173 @@ main:3: error: Value of type variable "submod.T" of "D" cannot be "S"
 main:3: error: Value of type variable "submod.U" of "D" cannot be "I"
 ==
 
+[case testGenericFineCallableNormal]
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T', str, B)
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableNamed]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(y: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Unexpected keyword argument "x"
+c.py:4: note: called function defined here
+
+[case testGenericFineCallableInBound]
+import a
+[file a.py]
+import b
+x: int = b.f()(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import Callable, TypeVar
+class B: pass
+T = TypeVar('T')
+def g() -> Callable[[T], T]:
+    pass
+[file c.py.2]
+from typing import Callable, TypeVar
+class B: pass
+T = TypeVar('T', str, B)
+def g() -> Callable[[T], T]:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableAddedBound]
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T', bound=B)
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableBoundDeleted-skip-nocache]
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+import d
+T = TypeVar('T', bound=d.B)
+def g(x: T) -> T:
+    pass
+[file d.py]
+class B:
+    pass
+[file d.py.2]
+# empty
+[out]
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+==
+c.py:3: error: Name 'd.B' is not defined
+
+[case testGenericFineCallableToNonGeneric]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class T: pass
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "T", variable has type "int")
+a.py:2: error: Argument "x" has incompatible type "int"; expected "T"
+
+[case testGenericFineCallableToGenericClass]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class g(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "g[int]", variable has type "int")
+
 [case testRefreshClassBasedEnum]
 import aa
 [file aa.py]

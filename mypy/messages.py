@@ -696,7 +696,10 @@ class MessageBuilder:
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None
-            self.note('{} defined here'.format(callable_name(callee)), callee.definition,
+            fname = callable_name(callee)
+            if not fname:  # an alias to function with a different name
+                fname = 'called function'
+            self.note('{} defined here'.format(fname), callee.definition,
                       file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
