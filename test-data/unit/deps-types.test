@@ -894,7 +894,7 @@ class B: pass
 <m.A> -> <m.f>, m.f, m.g
 <mod.B> -> m
 
-[case testProtocolDepsBasic]
+[case testProtocolDepsWildcard]
 # __dump_all__
 import mod
 x: mod.P
@@ -905,5 +905,53 @@ class P(Protocol):
 [out]
 <m.x> -> m
 <mod.P> -> <m.x>, m, mod.P
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
+
+[case testProtocolDepsPositive]
+# __dump_all__
+import mod
+class C:
+    x: int
+x: mod.P = C()
+[file mod.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+<m.C.__init__> -> m
+<m.C.__new__> -> m
+<m.C.x> -> <m.C>
+<m.C> -> m, m.C
+<m.x> -> m
+<mod.P> -> <m.x>, m, mod.P
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
+
+[case testProtocolDepsNegative]
+# __dump_all__
+import mod
+from typing import overload
+class C:
+    y: int
+@overload
+def func(x: C) -> int: ...
+@overload
+def func(x: mod.P) -> str: ...
+def func(x):
+    pass
+
+func(C())
+[file mod.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+<m.C.__init__> -> m
+<m.C.__new__> -> m
+<m.C.x> -> <m.C>
+<m.C> -> <m.func>, m, m.C, m.func
+<m.func> -> m
+<mod.P> -> <m.func>, m.func, mod.P
 <mod.P[wildcard]> -> <mod.P>
 <mod> -> m
