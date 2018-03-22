@@ -4491,3 +4491,125 @@ class C:
 ==
 ==
 a.py:4: error: Too many arguments for "C"
+
+-- Protocol tests
+
+[case testProtocolUpdateTypeInVariable]
+
+[out]
+
+[case testProtocolUpdateTypeInFunction]
+
+[out]
+
+[case testProtocolUpdateTypeInClass]
+
+[out]
+
+[case testProtocolAddAttrInVariable]
+
+[out]
+
+[case testProtocolAddAttrInFunction]
+
+[out]
+
+[case testProtocolRemoveAttrInClass]
+
+[out]
+
+[case testProtocolRemoveAttrInVariable]
+
+[out]
+
+[case testProtocolRemoveAttrInFunction]
+
+[out]
+
+[case testProtocolRemoveAttrInClass]
+
+[out]
+
+[case testProtocolConcreteUpdateTypeFunction]
+
+[out]
+
+[case testProtocolConcreteUpdateTypeMetod]
+
+[out]
+
+[case testProtocolConcreteAddAttrFunction]
+
+[out]
+
+[case testProtocolConcreteAddAttrMethod]
+
+[out]
+
+[case testProtocolConcreteRemoveAttrFunction]
+
+[out]
+
+[case testProtocolConcreteRemoveAttrMethod]
+
+[out]
+
+[case testProtocolToNonProtocol]
+
+[out]
+
+[case testNonProtocolToProtocol]
+
+[out]
+
+[case testInvalidateProtocolViaSuperClass]
+
+[out]
+
+[case testProtocolInvalidateConcreteViaSuperClassUpdateType]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+class C:
+    x: int
+[file c.py.2]
+class C:
+    x: str
+[out]
+
+[case testProtocolInvalidateConcreteViaSuperClassAddAttr]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+class C:
+    pass
+[file c.py.2]
+class C:
+    x: int
+[out]
+
+[case testProtocolInvalidateConcreteViaSuperClassRemoveAttr]
+
+[out]
