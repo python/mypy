@@ -13,7 +13,9 @@ def attr(default: Optional[_T] = ...,
          convert: Optional[Callable[[Any], _T]] = ...,
          metadata: Any = ...,
          type: Optional[Type[_T]] = ...,
-         converter: Optional[Callable[[Any], _T]] = ...) -> _T: ...
+         converter: Optional[Callable[[Any], _T]] = ...,
+         factory: Optional[Callable[[], _T]] = ...,
+         ) -> _T: ...
 @overload
 def attr(default: None = ...,
          validator: None = ...,
@@ -24,7 +26,9 @@ def attr(default: None = ...,
          convert: Optional[Callable[[Any], _T]] = ...,
          metadata: Any = ...,
          type: None = ...,
-         converter: None = ...) -> Any: ...
+         converter: None = ...,
+         factory: Optional[Callable[[], _T]] = ...,
+         ) -> Any: ...
 
 @overload
 def attributes(maybe_cls: _C,
