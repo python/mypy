@@ -80,6 +80,7 @@ def getmtime(name: str) -> int:
 
 
 def relpath(path: str) -> str:
+    """Returns the path relative to the current working directory."""
     if not path or path[0] not in SEPARATORS:
         # Relative path, or has drive letter prefix (C: etc.) on Windows.
         assert not os.path.isabs(path), "%s is neither rel nor abs" % (path,)
