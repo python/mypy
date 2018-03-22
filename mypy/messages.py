@@ -698,7 +698,7 @@ class MessageBuilder:
             assert callee.definition is not None
             fname = callable_name(callee)
             if not fname:  # an alias to function with a different name
-                fname = 'called function'
+                fname = 'Called function'
             self.note('{} defined here'.format(fname), callee.definition,
                       file=module.path, origin=context)
 

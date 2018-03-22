@@ -3933,7 +3933,7 @@ def g(y: T) -> T:
 [out]
 ==
 a.py:2: error: Unexpected keyword argument "x"
-c.py:4: note: called function defined here
+c.py:4: note: Called function defined here
 
 [case testGenericFineCallableInBound]
 import a
@@ -3984,6 +3984,7 @@ def g(x: T) -> T:
 a.py:2: error: Value of type variable "T" of function cannot be "int"
 
 [case testGenericFineCallableBoundDeleted-skip-nocache]
+# See https://github.com/python/mypy/issues/4783
 import a
 [file a.py]
 import b
