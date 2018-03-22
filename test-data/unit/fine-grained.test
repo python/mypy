@@ -559,7 +559,8 @@ class C:
 ==
 a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testIgnoredAttrReprocessedModule-skip-cache]
+[case testIgnoredAttrReprocessedModule-skip]
+# See https://github.com/python/mypy/issues/4782
 import a
 [file a.py]
 import b

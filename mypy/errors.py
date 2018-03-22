@@ -133,7 +133,6 @@ class Errors:
     # (See mypy.server.update for more about targets.)
     # Current module id.
     target_module = None  # type: Optional[str]
-    ignored_targets = None  # type: Set[str]
     scope = None  # type: Optional[Scope]
 
     def __init__(self, show_error_context: bool = False,
@@ -154,7 +153,6 @@ class Errors:
         self.only_once_messages = set()
         self.scope = None
         self.target_module = None
-        self.ignored_targets = set()
 
     def reset(self) -> None:
         self.initialize()
@@ -274,8 +272,6 @@ class Errors:
             if file in self.ignored_lines and line in self.ignored_lines[file]:
                 # Annotation requests us to ignore all errors on this line.
                 self.used_ignored_lines[file].add(line)
-                if info.target:
-                    self.ignored_targets.add(info.target)
                 return
             if file in self.ignored_files:
                 return
@@ -393,13 +389,13 @@ class Errors:
         return msgs
 
     def targets(self) -> Set[str]:
-        """Return a set of all targets that contain errors including ignored ones."""
+        """Return a set of all targets that contain errors."""
         # TODO: Make sure that either target is always defined or that not being defined
         #       is okay for fine-grained incremental checking.
         return set(info.target
                    for errs in self.error_info_map.values()
                    for info in errs
-                   if info.target) | self.ignored_targets
+                   if info.target)
 
     def render_messages(self, errors: List[ErrorInfo]) -> List[Tuple[Optional[str], int, int,
                                                                      str, str]]:
