@@ -170,8 +170,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if nominal:
                     right.type.record_subtype_cache_entry(left, right)
                 return nominal
-            if right.type.is_protocol and is_protocol_implementation(left, right):
-                return True
+            if right.type.is_protocol:
+                if not left.type.is_protocol:
+                    left.type.checked_against_members.update(right.type.protocol_members)
+                if is_protocol_implementation(left, right):
+                    return True
             return False
         if isinstance(right, TypeType):
             item = right.item
@@ -891,9 +894,11 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 if nominal:
                     right.type.record_subtype_cache_entry(left, right, proper_subtype=True)
                 return nominal
-            if (right.type.is_protocol and
-                    is_protocol_implementation(left, right, proper_subtype=True)):
-                return True
+            if right.type.is_protocol:
+                if not left.type.is_protocol:
+                    left.type.checked_against_members.update(right.type.protocol_members)
+                if is_protocol_implementation(left, right, proper_subtype=True):
+                    return True
             return False
         if isinstance(right, CallableType):
             call = find_member('__call__', left, left)

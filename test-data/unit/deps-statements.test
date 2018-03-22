@@ -148,7 +148,7 @@ def g() -> None:
 [builtins fixtures/list.pyi]
 [out]
 <m.A.__getitem__> -> m.g
-<m.A.__iter__> -> m.g
+<m.A.__iter__> -> <m.A>, m.g
 <m.A> -> m.A, m.g
 <m.f1> -> m.g
 <m.f2> -> m.g
@@ -292,7 +292,7 @@ def g() -> None:
 [builtins fixtures/list.pyi]
 [out]
 <m.A.__getitem__> -> m.g
-<m.A.__iter__> -> m.g
+<m.A.__iter__> -> <m.A>, m.g
 <m.A> -> m.A, m.g
 <m.B.f> -> m.g
 <m.B> -> m.B, m.g
@@ -306,7 +306,7 @@ def f() -> None:
     a: A
     x, y = a
 [out]
-<m.A.__iter__> -> m.f
+<m.A.__iter__> -> <m.A>, m.f
 <m.A> -> m.A, m.f
 
 [case testMultipleLvalues]
@@ -377,7 +377,7 @@ def g() -> None:
 <m.A.y> -> m.A.f, m.g
 <m.A> -> m.A, m.g
 <m.B.__getitem__> -> m.g
-<m.B.__iter__> -> m.g
+<m.B.__iter__> -> <m.B>, m.g
 <m.B> -> <m.f>, m.B, m.f
 <m.f> -> m.g
 
@@ -499,7 +499,7 @@ def f() -> Iterator[int]:
     yield from A()
 [out]
 <m.A.__init__> -> m.f
-<m.A.__iter__> -> m.f
+<m.A.__iter__> -> <m.A>, m.f
 <m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 

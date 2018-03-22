@@ -893,3 +893,17 @@ class B: pass
 <m.A.__new__> -> m.g
 <m.A> -> <m.f>, m.f, m.g
 <mod.B> -> m
+
+[case testProtocolDepsBasic]
+# __dump_all__
+import mod
+x: mod.P
+[file mod.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+<m.x> -> m
+<mod.P> -> <m.x>, m, mod.P
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
