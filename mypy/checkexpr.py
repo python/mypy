@@ -199,6 +199,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
+        print('visit_call', e)
         if e.analyzed:
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed, self.type_context[-1])

@@ -2261,6 +2261,7 @@ class TypeInfo(SymbolNode):
             str_conv=str_conv)
 
     def serialize(self) -> JsonDict:
+        print('serializing', self.fullname(), 'checked', self.checked_against_members)
         # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
@@ -2269,6 +2270,7 @@ class TypeInfo(SymbolNode):
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
                 'protocol_members': self.protocol_members,
+                'checked_against_members': list(self.checked_against_members),
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 '_promote': None if self._promote is None else self._promote.serialize(),
@@ -2294,6 +2296,7 @@ class TypeInfo(SymbolNode):
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
         ti.protocol_members = data['protocol_members']
+        ti.checked_against_members = set(data['checked_against_members'])
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
@@ -2309,6 +2312,7 @@ class TypeInfo(SymbolNode):
                             else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
         ti.metadata = data['metadata']
         set_flags(ti, data['flags'])
+        print('deserializing', ti.fullname(), 'checked', ti.checked_against_members)
         return ti
 
 

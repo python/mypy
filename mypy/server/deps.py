@@ -93,7 +93,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
     LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr,
-    op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
+    op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods, SymbolTable
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
@@ -104,6 +104,8 @@ from mypy.types import (
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
+
+from collections import defaultdict
 
 
 def get_dependencies(target: MypyFile,
@@ -167,7 +169,6 @@ class DependencyVisitor(TraverserVisitor):
 
     # TODO (incomplete):
     #   await
-    #   protocols
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
@@ -234,9 +235,6 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
         if info.is_protocol:
             self.add_dependency(make_wildcard_trigger(target), target=make_trigger(target))
-        for attr in info.checked_against_members:
-            self.add_dependency(make_trigger('%s.%s' % (target, attr)),
-                                target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
@@ -737,6 +735,24 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         for item in typ.items:
             triggers.extend(get_type_triggers(item))
         return triggers
+
+
+def collect_protocol_attr_deps(names: SymbolTable) -> Dict[str, Set[str]]:
+    """Recursively collect protocol attribute dependencies for classes in 'names'."""
+    # Currently there can be at most one target per trigger, but we might
+    # add more deps in future so we are using defaultdict.
+    deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
+    for node in names.values():
+        if isinstance(node.node, TypeInfo):
+            info = node.node
+            print('processing', info.fullname(), info.checked_against_members)
+            for attr in info.checked_against_members:
+                trigger = make_trigger('%s.%s' % (info.fullname(), attr))
+                deps[trigger].add(make_trigger(info.fullname()))
+            sub_deps = collect_protocol_attr_deps(info.names)  # nested classes
+            for trigger, targets in sub_deps.items():
+                deps[trigger] |= targets
+    return dict(deps)
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:

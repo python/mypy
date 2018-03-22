@@ -686,6 +686,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.fail('Type signature has too many arguments', fdef, blocker=True)
 
     def visit_class_def(self, defn: ClassDef) -> None:
+        print('visiting', defn.fullname)
         with self.scope.class_scope(defn.info):
             with self.analyze_class_body(defn) as should_continue:
                 if should_continue:
