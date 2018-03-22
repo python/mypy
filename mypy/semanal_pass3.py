@@ -430,17 +430,21 @@ class SemanticAnalyzerPass3(TraverserVisitor,
         return TypeAnalyserPass3(self,
                                  self.sem.plugin,
                                  self.options,
-                                 self.is_typeshed_file,
+                                 self.errors,
                                  indicator,
                                  self.patches)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
-        if not self.options.disallow_any_generics or self.is_typeshed_file:
+        if self.is_typeshed_file:
             return
 
         for t in collect_any_types(typ):
             if t.type_of_any == TypeOfAny.from_omitted_generics:
-                self.fail(messages.BARE_GENERIC, t)
+                if self.options.disallow_any_generics:
+                    self.fail(messages.BARE_GENERIC, t)
+                else:
+                    self.options.remove_from_whitelist("disallow_any_generics",
+                                                       self.errors.current_module())
 
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:

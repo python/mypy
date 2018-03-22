@@ -1576,6 +1576,10 @@ class State:
             # TODO: Get mtime if not cached.
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
+        for option in Options.WARN_UNUSED_STRICTNESS_OPTIONS:
+            if (option in self.options.unused_strictness_whitelist and
+                    not getattr(self.options, option)):
+                self.options.unused_strictness_whitelist[option].add(self.id)
         self.add_ancestors()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
         if self.meta:
@@ -2055,6 +2059,12 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     else:
         process_graph(graph, manager)
 
+    if manager.options.warn_unused_strictness_exceptions:
+        for option in manager.options.unused_strictness_whitelist:
+            for file in manager.options.unused_strictness_whitelist[option]:
+                message = "Flag {} can be enabled for module '{}'".format(option, file)
+                manager.errors.report(-1, -1, message, blocker=False, severity='warning',
+                                      file=file)
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies

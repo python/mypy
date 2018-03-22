@@ -313,6 +313,9 @@ def process_options(args: List[str],
                         help="warn about unneeded '# type: ignore' comments")
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
                         help="warn about unused '[mypy-<pattern>]' config sections")
+    add_invertible_flag('--warn-unused-strictness-exceptions', default=False, strict_flag=True,
+                        help="warn about strictness flags unnecessarily disabled for particular "
+                             "modules")
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
@@ -523,6 +526,10 @@ def process_options(args: List[str],
     # Let quick_and_dirty imply incremental.
     if options.quick_and_dirty:
         options.incremental = True
+
+    for option in Options.WARN_UNUSED_STRICTNESS_OPTIONS:
+        if getattr(options, option):
+            options.unused_strictness_whitelist[option] = set()
 
     # Set target.
     if special_opts.modules + special_opts.packages:
