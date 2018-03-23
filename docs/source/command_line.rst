@@ -104,7 +104,7 @@ and anything imported from there.)  For example::
   $ mypy -p html
 
 will type check the entire ``html`` package (of library stubs). One can
-specify multiple packages on the command line, for example::
+specify multiple packages and modules on the command line, for example::
 
   $ mypy --package p.a --package p.b --module c
 

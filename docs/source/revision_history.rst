@@ -6,7 +6,7 @@ List of major changes:
 - March 2018
     * Publish ``mypy`` version 0.580 on PyPI.
 
-      * Allow specifying multiple packages on the command line with ``-p`` flag.
+      * Allow specifying multiple packages on the command line with ``-p`` and ``-m`` flags.
 
       * Clarify that ``SupportsInt`` etc. don't support arithmetic operations.
 
