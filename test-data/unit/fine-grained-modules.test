@@ -207,15 +207,36 @@ main:2: error: Module has no attribute "a"
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 [builtins fixtures/module.pyi]
 
-[case testAddPackage4-skip]
-# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+[case testAddPackage4]
 import p.a
 p.a.f(1)
 [file p/a.py.2]
 def f(x: str) -> None: pass
 [file p/__init__.py.3]
 [out]
-TODO
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddNonPackageSubdir]
+# cmd: mypy x.py
+# cmd2: mypy x.py foo/a.py foo/b.py
+[file x.py]
+[file foo/a.py.2]
+import b
+b.foo(5)
+[file foo/b.py.2]
+def foo(x: str) -> None: pass
+[out]
+==
+foo/a.py:2: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
 
 
 -- Delete file

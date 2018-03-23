@@ -221,19 +221,10 @@ class Server:
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
-        # TODO: Move this into check(), in case one of the args is a directory.
-        # Capture stdout/stderr and catch SystemExit while processing the source list.
-        save_stdout = sys.stdout
-        save_stderr = sys.stderr
         try:
-            sys.stdout = stdout = io.StringIO()
-            sys.stderr = stderr = io.StringIO()
             self.last_sources = mypy.main.create_source_list(files, self.options)
-        except SystemExit as err:
-            return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': err.code}
-        finally:
-            sys.stdout = save_stdout
-            sys.stderr = save_stderr
+        except mypy.main.InvalidSourceList as err:
+            return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)
 
     def cmd_recheck(self) -> Dict[str, object]:
