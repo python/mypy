@@ -60,7 +60,7 @@ from mypy.fscache import FileSystemCache, FileSystemMetaCache
 # mode only that is useful during development. This produces only a subset of
 # output compared to --verbose output. We use a global flag to enable this so
 # that it's easy to enable this when running tests.
-DEBUG_FINE_GRAINED = True
+DEBUG_FINE_GRAINED = False
 
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']

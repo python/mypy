@@ -142,7 +142,10 @@ from mypy.server.astdiff import (
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import get_dependencies, get_dependencies_of_target, collect_protocol_attr_deps
+from mypy.server.deps import (
+    get_dependencies, get_dependencies_of_target, collect_protocol_attr_deps,
+    reset_protocol_caches
+)
 from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 
@@ -185,15 +188,16 @@ class FineGrainedBuildManager:
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
         self.update_protocol_deps()
-        print('DEPS', self.deps)
+        for id in self.graph:
+            reset_protocol_caches(self.graph[id].tree.names)
 
     def update_protocol_deps(self) -> None:
         for id in self.graph:
             names = self.graph[id].tree.names
-            deps = collect_protocol_attr_deps(names)
-            print('collected', deps)
-            for trigger, targets in deps.items():
-                self.deps.setdefault(trigger, set()).update(targets)
+            if '/typeshed/' not in self.graph[id].tree.path:
+                deps = collect_protocol_attr_deps(names)
+                for trigger, targets in deps.items():
+                    self.deps.setdefault(trigger, set()).update(targets)
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -277,6 +281,8 @@ class FineGrainedBuildManager:
         self.manager.fscache.flush()
         self.previous_messages = messages[:]
         self.update_protocol_deps()
+        for id in self.graph:
+            reset_protocol_caches(self.graph[id].tree.names)
         return messages
 
     def update_one(self,

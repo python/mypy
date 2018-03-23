@@ -4494,75 +4494,75 @@ a.py:4: error: Too many arguments for "C"
 
 -- Protocol tests
 
-[case testProtocolUpdateTypeInVariable]
+[case testProtocolUpdateTypeInVariable-skip]
 
 [out]
 
-[case testProtocolUpdateTypeInFunction]
+[case testProtocolUpdateTypeInFunction-skip]
 
 [out]
 
-[case testProtocolUpdateTypeInClass]
+[case testProtocolUpdateTypeInClass-skip]
 
 [out]
 
-[case testProtocolAddAttrInVariable]
+[case testProtocolAddAttrInVariable-skip]
 
 [out]
 
-[case testProtocolAddAttrInFunction]
+[case testProtocolAddAttrInFunction-skip]
 
 [out]
 
-[case testProtocolRemoveAttrInClass]
+[case testProtocolRemoveAttrInClass-skip]
 
 [out]
 
-[case testProtocolRemoveAttrInVariable]
+[case testProtocolRemoveAttrInVariable-skip]
 
 [out]
 
-[case testProtocolRemoveAttrInFunction]
+[case testProtocolRemoveAttrInFunction-skip]
 
 [out]
 
-[case testProtocolRemoveAttrInClass]
+[case testProtocolRemoveAttrInClass-skip]
 
 [out]
 
-[case testProtocolConcreteUpdateTypeFunction]
+[case testProtocolConcreteUpdateTypeFunction-skip]
 
 [out]
 
-[case testProtocolConcreteUpdateTypeMetod]
+[case testProtocolConcreteUpdateTypeMetod-skip]
 
 [out]
 
-[case testProtocolConcreteAddAttrFunction]
+[case testProtocolConcreteAddAttrFunction-skip]
 
 [out]
 
-[case testProtocolConcreteAddAttrMethod]
+[case testProtocolConcreteAddAttrMethod-skip]
 
 [out]
 
-[case testProtocolConcreteRemoveAttrFunction]
+[case testProtocolConcreteRemoveAttrFunction-skip]
 
 [out]
 
-[case testProtocolConcreteRemoveAttrMethod]
+[case testProtocolConcreteRemoveAttrMethod-skip]
 
 [out]
 
-[case testProtocolToNonProtocol]
+[case testProtocolToNonProtocol-skip]
 
 [out]
 
-[case testNonProtocolToProtocol]
+[case testNonProtocolToProtocol-skip]
 
 [out]
 
-[case testInvalidateProtocolViaSuperClass]
+[case testInvalidateProtocolViaSuperClass-skip]
 
 [out]
 
@@ -4587,6 +4587,10 @@ class C:
 class C:
     x: str
 [out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+a.py:4: note: Following member(s) of "B" have conflicts:
+a.py:4: note:     x: expected "int", got "str"
 
 [case testProtocolInvalidateConcreteViaSuperClassAddAttr]
 import a
@@ -4609,7 +4613,29 @@ class C:
 class C:
     x: int
 [out]
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+==
 
 [case testProtocolInvalidateConcreteViaSuperClassRemoveAttr]
-
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+class C:
+    x: int
+[file c.py.2]
+class C:
+    pass
 [out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"

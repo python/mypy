@@ -190,6 +190,7 @@ def snapshot_definition(node: Optional[SymbolNode],
     elif isinstance(node, TypeInfo):
         attrs = (node.is_abstract,
                  node.is_enum,
+                 node.is_protocol,
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,

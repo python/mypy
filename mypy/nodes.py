@@ -2261,7 +2261,6 @@ class TypeInfo(SymbolNode):
             str_conv=str_conv)
 
     def serialize(self) -> JsonDict:
-        print('serializing', self.fullname(), 'checked', self.checked_against_members)
         # NOTE: This is where all ClassDefs originate, so there shouldn't be duplicates.
         data = {'.class': 'TypeInfo',
                 'module_name': self.module_name,
@@ -2312,7 +2311,6 @@ class TypeInfo(SymbolNode):
                             else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
         ti.metadata = data['metadata']
         set_flags(ti, data['flags'])
-        print('deserializing', ti.fullname(), 'checked', ti.checked_against_members)
         return ti
 
 
