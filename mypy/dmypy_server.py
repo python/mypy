@@ -223,7 +223,7 @@ class Server:
         """Check a list of files."""
         try:
             self.last_sources = mypy.main.create_source_list(files, self.options)
-        except Exception as err:
+        except mypy.main.InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)
 

@@ -24,8 +24,8 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
-class InvalidPackageName(Exception):
-    """Exception indicating that a package name was invalid."""
+class InvalidSourceList(Exception):
+    """Exception indicating a problem in the list of sources given to mypy."""
 
 
 orig_stat = os.stat
@@ -548,22 +548,27 @@ def process_options(args: List[str],
     else:
         try:
             targets = create_source_list(special_opts.files, options)
-        except Exception as e:
+        except InvalidSourceList as e:
             fail(str(e))
         return targets, options
 
 
 # TODO: use a FileSystemCache for this
 def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
+    """From a list of source files/directories, makes a list of BuildSources.
+
+    Raises InvalidSourceList on errors.
+    """
     targets = []
     for f in files:
         if f.endswith(PY_EXTENSIONS):
+            # Can raise InvalidSourceList if a directory doesn't have a valid module name.
             targets.append(BuildSource(f, crawl_up(f)[1], None))
         elif os.path.isdir(f):
             sub_targets = expand_dir(f)
             if not sub_targets:
-                raise Exception("There are no .py[i] files in directory '{}'"
-                                .format(f))
+                raise InvalidSourceList("There are no .py[i] files in directory '{}'"
+                                        .format(f))
             targets.extend(sub_targets)
         else:
             mod = os.path.basename(f) if options.scripts_are_modules else None
@@ -629,7 +634,7 @@ def crawl_up(arg: str) -> Tuple[str, str]:
             break
         # Ensure that base is a valid python module name
         if not base.isidentifier():
-            raise InvalidPackageName('{} is not a valid Python package name'.format(base))
+            raise InvalidSourceList('{} is not a valid Python package name'.format(base))
         if mod == '__init__' or not mod:
             mod = base
         else:
