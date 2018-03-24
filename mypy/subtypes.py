@@ -145,6 +145,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
+            print('CHECK', left, right)
             if right.type.is_cached_subtype_check(left, right):
                 return True
             # NOTE: left.type.mro may be None in quick mode if there
@@ -398,6 +399,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
     as well.
     """
     assert right.type.is_protocol
+    right.type.attempted_implementations.add(left.type.fullname())
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):

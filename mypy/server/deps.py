@@ -115,7 +115,8 @@ def get_dependencies(target: MypyFile,
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     deps = visitor.map
-    if '/typeshed/' not in target.path:
+    if ('/typeshed/' not in target.path and
+            target.fullname() not in ('typing', 'builtins')):
         new_deps = collect_protocol_attr_deps(target.names)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
@@ -742,21 +743,6 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
 
-def reset_protocol_caches(names: SymbolTable,
-                          processed: Optional[Set[TypeInfo]] = None) -> None:
-    """Reset subtype caches in all protocols that overlap with triggered attributes."""
-    if processed is None:
-        processed = set()
-    for node in names.values():
-        if isinstance(node.node, TypeInfo) and node.node not in processed:
-            info = node.node
-            if not info.is_protocol:
-                continue
-            info.reset_subtype_cache()
-            processed.add(info)
-            reset_protocol_caches(info.names, processed)  # nested classes
-
-
 def collect_protocol_attr_deps(names: SymbolTable,
                                processed: Optional[Set[TypeInfo]] = None) -> Dict[str, Set[str]]:
     """Recursively collect protocol attribute dependencies for classes in 'names'."""
@@ -769,9 +755,13 @@ def collect_protocol_attr_deps(names: SymbolTable,
         if isinstance(node.node, TypeInfo) and node.node not in processed:
             info = node.node
             processed.add(info)
+            print('processing', info.fullname(), info.checked_against_members)
             for attr in info.checked_against_members:
                 trigger = make_trigger('%s.%s' % (info.fullname(), attr))
                 deps[trigger].add(make_trigger(info.fullname()))
+            for impl in info.attempted_implementations:
+                trigger = make_trigger(impl)
+                deps[trigger].add(info.fullname() + '*')
             sub_deps = collect_protocol_attr_deps(info.names, processed)  # nested classes
             for trigger, targets in sub_deps.items():
                 deps[trigger] |= targets

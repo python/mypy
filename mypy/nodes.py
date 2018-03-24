@@ -1994,6 +1994,7 @@ class TypeInfo(SymbolNode):
     # Members of protocols, instances of this TypeInfo were checked against.
     # Used to optimize dependencies in fine grained mode.
     checked_against_members = None  # type: Set[str]
+    attempted_implementations = None  # type: Set[str]
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
@@ -2069,6 +2070,7 @@ class TypeInfo(SymbolNode):
         self._cache = set()
         self._cache_proper = set()
         self.checked_against_members = set()
+        self.attempted_implementations = set()
         self.add_type_vars()
         self.metadata = {}
 

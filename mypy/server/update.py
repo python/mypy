@@ -142,10 +142,7 @@ from mypy.server.astdiff import (
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import (
-    get_dependencies, get_dependencies_of_target, collect_protocol_attr_deps,
-    reset_protocol_caches
-)
+from mypy.server.deps import get_dependencies_of_target, collect_protocol_attr_deps
 from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 
@@ -188,14 +185,15 @@ class FineGrainedBuildManager:
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
         self.update_protocol_deps()
-        for id in self.graph:
-            reset_protocol_caches(self.graph[id].tree.names)
+        print('DEPS', self.deps)
 
     def update_protocol_deps(self) -> None:
         for id in self.graph:
             names = self.graph[id].tree.names
-            if '/typeshed/' not in self.graph[id].tree.path:
+            if ('/typeshed/' not in self.graph[id].tree.path and
+                    id not in ('typing', 'builtins')):
                 deps = collect_protocol_attr_deps(names)
+                print(id, 'added', deps)
                 for trigger, targets in deps.items():
                     self.deps.setdefault(trigger, set()).update(targets)
 
@@ -281,8 +279,6 @@ class FineGrainedBuildManager:
         self.manager.fscache.flush()
         self.previous_messages = messages[:]
         self.update_protocol_deps()
-        for id in self.graph:
-            reset_protocol_caches(self.graph[id].tree.names)
         return messages
 
     def update_one(self,
@@ -750,7 +746,7 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo = find_targets_recursive(manager, triggered, deps, up_to_date_modules)
+        todo, stale_protos = find_targets_recursive(manager, triggered, deps, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
@@ -762,6 +758,10 @@ def propagate_changes_using_dependencies(
                 todo[id].update(lookup_target(manager, target))
         triggered = set()
         # TODO: Preserve order (set is not optimal)
+        # First briefly reprocess high priority nodes, to invalidate
+        # stale protocols.
+        for info in stale_protos:
+            info.reset_subtype_cache()
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
             if manager.modules[id].is_cache_skeleton:
@@ -786,14 +786,15 @@ def find_targets_recursive(
         manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        up_to_date_modules: Set[str]) -> Dict[str, Set[DeferredNode]]:
+        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]], Set[DeferredNode]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
     Returns: Dictionary from module id to a set of stale targets.
     """
-    result = {}  # type: Dict[str, Set[DeferredNode]]
+    result = {}  # type:
     worklist = triggers
     processed = set()  # type: Set[str]
+    high_prio_nodes = set()  # type: Set[DeferredNode]
 
     # Find AST nodes corresponding to each target.
     #
@@ -816,10 +817,15 @@ def find_targets_recursive(
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained('process: %s' % target)
+                if '*' in target:
+                    target = target.strip('*')
+                    deferred = lookup_target(manager, target, exact=True)
+                    high_prio_nodes.add(deferred)
+                    continue
                 deferred = lookup_target(manager, target)
                 result[module_id].update(deferred)
 
-    return result
+    return result, high_prio_nodes
 
 
 def reprocess_nodes(manager: BuildManager,
@@ -965,7 +971,7 @@ def update_deps(module_id: str,
 
 
 def lookup_target(manager: BuildManager,
-                  target: str) -> List[DeferredNode]:
+                  target: str, exact: bool = False) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
 
     def not_found() -> None:
@@ -1009,6 +1015,8 @@ def lookup_target(manager: BuildManager,
             # a deserialized TypeInfo with missing attributes.
             not_found()
             return []
+        if exact:
+            return node
         result = [DeferredNode(file, None, None)]
         for name, symnode in node.names.items():
             node = symnode.node
