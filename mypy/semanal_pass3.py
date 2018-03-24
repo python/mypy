@@ -58,7 +58,7 @@ class SemanticAnalyzerPass3(TraverserVisitor,
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
         self.recurse_into_functions = True
-        self.errors.set_file(fnam, file_node.fullname())
+        self.errors.set_file(fnam, file_node.fullname(), scope=self.scope)
         self.options = options
         self.sem.options = options
         self.patches = patches
@@ -78,14 +78,12 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
-        self.scope.enter_file(self.sem.cur_mod_id)
         if isinstance(node, MypyFile):
             self.recurse_into_functions = False
             self.refresh_top_level(node)
         else:
             self.recurse_into_functions = True
             self.accept(node)
-        self.scope.leave()
         self.patches = []
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
@@ -107,18 +105,16 @@ class SemanticAnalyzerPass3(TraverserVisitor,
     def visit_func_def(self, fdef: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        self.scope.enter_function(fdef)
-        self.errors.push_function(fdef.name())
-        self.analyze(fdef.type, fdef)
-        super().visit_func_def(fdef)
-        self.errors.pop_function()
-        self.scope.leave()
+        with self.scope.function_scope(fdef):
+            self.analyze(fdef.type, fdef)
+            super().visit_func_def(fdef)
 
     def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        self.analyze(fdef.type, fdef)
-        super().visit_overloaded_func_def(fdef)
+        with self.scope.function_scope(fdef):
+            self.analyze(fdef.type, fdef)
+            super().visit_overloaded_func_def(fdef)
 
     def visit_class_def(self, tdef: ClassDef) -> None:
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
@@ -396,6 +392,14 @@ class SemanticAnalyzerPass3(TraverserVisitor,
             if node.type_override:
                 self.analyze(node.type_override, node)
 
+    def make_scoped_patch(self, fn: Callable[[], None]) -> Callable[[], None]:
+        saved_scope = self.scope.save()
+
+        def patch() -> None:
+            with self.scope.saved_scope(saved_scope):
+                fn()
+        return patch
+
     def generate_type_patches(self,
                               node: Union[Node, SymbolTableNode],
                               indicator: Dict[str, bool],
@@ -405,13 +409,13 @@ class SemanticAnalyzerPass3(TraverserVisitor,
                 self.perform_transform(node,
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
                                                                   node, warn)))
-            self.patches.append((PRIORITY_FORWARD_REF, patch))
+            self.patches.append((PRIORITY_FORWARD_REF, self.make_scoped_patch(patch)))
         if indicator.get('typevar'):
             def patch() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(TypeVariableChecker(self.fail)))
 
-            self.patches.append((PRIORITY_TYPEVAR_VALUES, patch))
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch)))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).

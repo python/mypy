@@ -26,8 +26,8 @@ from mypy.version import __version__
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
 
 
-class InvalidPackageName(Exception):
-    """Exception indicating that a package name was invalid."""
+class InvalidSourceList(Exception):
+    """Exception indicating a problem in the list of sources given to mypy."""
 
 
 orig_stat = os.stat
@@ -476,6 +476,7 @@ def process_options(args: List[str],
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
     if server_options:
+        # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
         parser.add_argument('--experimental', action='store_true', dest='fine_grained_incremental',
                             help="enable fine-grained incremental mode")
         parser.add_argument('--use-fine-grained-cache', action='store_true',
@@ -491,16 +492,16 @@ def process_options(args: List[str],
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
+                            default=[],
                             dest='special-opts:modules',
                             help="type-check module; can repeat for more modules")
-    # TODO: `mypy -p A -p B` currently silently ignores A
-    # (last option wins).  Perhaps -c, -m and -p could just be
-    # command-line flags that modify how we interpret self.files?
+    code_group.add_argument('-p', '--package', action='append', metavar='PACKAGE',
+                            default=[],
+                            dest='special-opts:packages',
+                            help="type-check package recursively; can be repeated")
     code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
                             dest='special-opts:command',
                             help="type-check program passed in as string")
-    code_group.add_argument('-p', '--package', metavar='PACKAGE', dest='special-opts:package',
-                            help="type-check all files in a directory")
     code_group.add_argument(metavar='files', nargs='*', dest='special-opts:files',
                             help="type-check given files or directories")
 
@@ -572,14 +573,13 @@ def process_options(args: List[str],
 
     # Check for invalid argument combinations.
     if require_targets:
-        code_methods = sum(bool(c) for c in [special_opts.modules,
+        code_methods = sum(bool(c) for c in [special_opts.modules + special_opts.packages,
                                              special_opts.command,
-                                             special_opts.package,
                                              special_opts.files])
         if code_methods == 0:
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
-            parser.error("May only specify one of: module, package, files, or command.")
+            parser.error("May only specify one of: module/package, files, or command.")
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
@@ -605,48 +605,50 @@ def process_options(args: List[str],
         options.incremental = True
 
     # Set target.
-    if special_opts.modules:
-        options.build_type = BuildType.MODULE
-        targets = [BuildSource(None, m, None) for m in special_opts.modules]
-        return targets, options
-    elif special_opts.package:
-        if os.sep in special_opts.package or os.altsep and os.altsep in special_opts.package:
-            fail("Package name '{}' cannot have a slash in it."
-                 .format(special_opts.package))
+    if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
+        targets = []
         # TODO: use the same cache as the BuildManager will
-        targets = build.FindModuleCache().find_modules_recursive(special_opts.package, lib_path,
-                                                                 options.python_executable)
-        if not targets:
-            fail("Can't find package '{}'".format(special_opts.package))
+        cache = build.FindModuleCache()
+        for p in special_opts.packages:
+            if os.sep in p or os.altsep and os.altsep in p:
+                fail("Package name '{}' cannot have a slash in it.".format(p))
+            p_targets = cache.find_modules_recursive(p, lib_path, options.python_executable)
+            if not p_targets:
+                fail("Can't find package '{}'".format(p))
+            targets.extend(p_targets)
+        for m in special_opts.modules:
+            targets.append(BuildSource(None, m, None))
         return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
         return targets, options
     else:
-        targets = create_source_list(special_opts.files, options)
+        try:
+            targets = create_source_list(special_opts.files, options)
+        except InvalidSourceList as e:
+            fail(str(e))
         return targets, options
 
 
 # TODO: use a FileSystemCache for this
 def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
+    """From a list of source files/directories, makes a list of BuildSources.
+
+    Raises InvalidSourceList on errors.
+    """
     targets = []
     for f in files:
         if f.endswith(PY_EXTENSIONS):
-            try:
-                targets.append(BuildSource(f, crawl_up(f)[1], None))
-            except InvalidPackageName as e:
-                fail(str(e))
+            # Can raise InvalidSourceList if a directory doesn't have a valid module name.
+            targets.append(BuildSource(f, crawl_up(f)[1], None))
         elif os.path.isdir(f):
-            try:
-                sub_targets = expand_dir(f)
-            except InvalidPackageName as e:
-                fail(str(e))
+            sub_targets = expand_dir(f)
             if not sub_targets:
-                fail("There are no .py[i] files in directory '{}'"
-                     .format(f))
+                raise InvalidSourceList("There are no .py[i] files in directory '{}'"
+                                        .format(f))
             targets.extend(sub_targets)
         else:
             mod = os.path.basename(f) if options.scripts_are_modules else None
@@ -712,7 +714,7 @@ def crawl_up(arg: str) -> Tuple[str, str]:
             break
         # Ensure that base is a valid python module name
         if not base.isidentifier():
-            raise InvalidPackageName('{} is not a valid Python package name'.format(base))
+            raise InvalidSourceList('{} is not a valid Python package name'.format(base))
         if mod == '__init__' or not mod:
             mod = base
         else:
@@ -840,8 +842,6 @@ def parse_section(prefix: str, template: Options,
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
-        orig_key = key
-        key = key.replace('-', '_')
         if key in config_types:
             ct = config_types[key]
         else:
@@ -850,9 +850,9 @@ def parse_section(prefix: str, template: Options,
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
                     if report_type in reporter_classes:
-                        report_dirs[report_type] = section[orig_key]
+                        report_dirs[report_type] = section[key]
                     else:
-                        print("%s: Unrecognized report type: %s" % (prefix, orig_key),
+                        print("%s: Unrecognized report type: %s" % (prefix, key),
                               file=sys.stderr)
                     continue
                 if key.startswith('x_'):
@@ -862,7 +862,7 @@ def parse_section(prefix: str, template: Options,
                           "individual flags instead (see 'mypy -h' for the list of flags enabled "
                           "in strict mode)" % prefix, file=sys.stderr)
                 else:
-                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
+                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
                           file=sys.stderr)
                 continue
             ct = type(dv)

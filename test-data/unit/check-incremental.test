@@ -2876,6 +2876,15 @@ tmp/c.py:1: error: Module 'd' has no attribute 'x'
 [out3]
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
 
+[case testNoCrashOnDeletedWithCacheOnCmdline]
+# cmd: mypy -m nonexistent
+# cmd2: mypy -m nonexistent
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+[out2]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
+
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
 # cmd2: mypy -m c
@@ -4011,6 +4020,26 @@ class Baz:
 [out2]
 tmp/a.py:3: error: Unsupported operand types for + ("int" and "Optional[int]")
 
+[case testIncrementalMetaclassUpdate]
+import a
+[file a.py]
+from b import B
+B.x
+
+[file b.py]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    x: int
+
+[file c.py.2]
+class M(type):
+    y: int
+[out]
+[out2]
+tmp/a.py:2: error: "Type[B]" has no attribute "x"
 
 [case testIncrementalLotsOfInheritance]
 import a

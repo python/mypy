@@ -161,6 +161,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type(node, self.named_type)
+            if isinstance(result, CallableType) and isinstance(result.ret_type, Instance):
+                # We need to set correct line and column
+                # TODO: always do this in type_object_type by passing the original context
+                result.ret_type.line = e.line
+                result.ret_type.column = e.column
             if isinstance(self.type_context[-1], TypeType):
                 # This is the type in a Type[] expression, so substitute type
                 # variables with Any.

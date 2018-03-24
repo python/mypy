@@ -207,15 +207,36 @@ main:2: error: Module has no attribute "a"
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 [builtins fixtures/module.pyi]
 
-[case testAddPackage4-skip]
-# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+[case testAddPackage4]
 import p.a
 p.a.f(1)
 [file p/a.py.2]
 def f(x: str) -> None: pass
 [file p/__init__.py.3]
 [out]
-TODO
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddNonPackageSubdir]
+# cmd: mypy x.py
+# cmd2: mypy x.py foo/a.py foo/b.py
+[file x.py]
+[file foo/a.py.2]
+import b
+b.foo(5)
+[file foo/b.py.2]
+def foo(x: str) -> None: pass
+[out]
+==
+foo/a.py:2: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
 
 
 -- Delete file
@@ -1362,3 +1383,85 @@ def f() -> None:
 a.py:2: error: "int" not callable
 a.py:3: error: "str" not callable
 ==
+
+[case testAddAndUseClass1]
+[file a.py]
+[file a.py.2]
+from b import Foo
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass2]
+[file a.py]
+[file a.py.3]
+from b import Foo
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass3]
+# flags: --ignore-missing-imports
+[file a.py]
+[file a.py.2]
+from b import Foo
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file b.py.3]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass4]
+[file a.py]
+[file a.py.2]
+from b import *
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass4]
+[file a.py]
+[file a.py.2]
+from p.b import *
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file p/__init__.py]
+[file p/b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testAddAndUseClass5]
+[file a.py]
+[file a.py.2]
+from b import *
+def bar(f: Foo) -> None:
+    f.foo(12)
+[file b.py.2]
+class Foo:
+    def foo(self, s: str) -> None: pass
+[out]
+==
+a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"

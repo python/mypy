@@ -74,6 +74,8 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
             # change property types, change the MRO itself, etc.
             for s in t.type.mro:
                 out.update(split_module_names(s.module_name))
+            if t.type.metaclass_type is not None:
+                out.update(split_module_names(t.type.metaclass_type.type.module_name))
         return out
 
     def visit_callable_type(self, t: types.CallableType) -> Set[str]:

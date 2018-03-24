@@ -43,7 +43,8 @@ from typing import Union, Iterator, Optional
 from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
-    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll
+    SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
+    ListExpr
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -99,6 +100,8 @@ class NodeStripVisitor(TraverserVisitor):
         info.tuple_type = None
         info._cache = set()
         info._cache_proper = set()
+        info.declared_metaclass = None
+        info.metaclass_type = None
 
     def visit_func_def(self, node: FuncDef) -> None:
         if not self.recurse_into_functions:
@@ -151,15 +154,21 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
         if self.type and not self.is_class_body:
-            # TODO: Handle multiple assignment
-            if len(node.lvalues) == 1:
-                lvalue = node.lvalues[0]
-                if isinstance(lvalue, MemberExpr) and lvalue.is_new_def:
-                    # Remove defined attribute from the class symbol table. If is_new_def is
-                    # true for a MemberExpr, we know that it must be an assignment through
-                    # self, since only those can define new attributes.
-                    del self.type.names[lvalue.name]
+            for lvalue in node.lvalues:
+                self.process_lvalue_in_method(lvalue)
         super().visit_assignment_stmt(node)
+
+    def process_lvalue_in_method(self, lvalue: Node) -> None:
+        if isinstance(lvalue, MemberExpr):
+            if lvalue.is_new_def:
+                # Remove defined attribute from the class symbol table. If is_new_def is
+                # true for a MemberExpr, we know that it must be an assignment through
+                # self, since only those can define new attributes.
+                assert self.type is not None
+                del self.type.names[lvalue.name]
+        elif isinstance(lvalue, (TupleExpr, ListExpr)):
+            for item in lvalue.items:
+                self.process_lvalue_in_method(item)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         if node.assignments:
