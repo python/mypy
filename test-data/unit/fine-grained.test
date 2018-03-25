@@ -4562,9 +4562,35 @@ a.py:4: error: Too many arguments for "C"
 
 [out]
 
-[case testInvalidateProtocolViaSuperClass-skip]
-
+[case testInvalidateProtocolViaSuperClass]
+import a
+[file a.py]
+import b, c
+def func(x: c.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+class B:
+    x: int
+    y: str
+[file c.py]
+from typing import Protocol
+import d
+class P(d.PBase, Protocol):
+    x: int
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    y: str
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
 [out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+a.py:4: note: Following member(s) of "B" have conflicts:
+a.py:4: note:     y: expected "int", got "str"
 
 [case testProtocolInvalidateConcreteViaSuperClassUpdateType]
 import a
@@ -4648,10 +4674,60 @@ a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
 
 [out]
 
-[case testProtocolsInvalidateByRemovingBase-skip]
-
+[case testProtocolsInvalidateByRemovingBase]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+import d
+class C(d.D):
+    pass
+[file c.py.2]
+import d
+class C:
+    pass
+[file d.py]
+class D:
+    x: int
 [out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
 
-[case testProtocolsInvalidateByRemovingMetaclass-skip]
-
+[case testProtocolsInvalidateByRemovingMetaclass]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B)
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+import d
+class C(metaclass=d.M):
+    pass
+[file c.py.2]
+import d
+class C:
+    pass
+[file d.py]
+class M(type):
+    x: int
 [out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "Type[B]"; expected "P"

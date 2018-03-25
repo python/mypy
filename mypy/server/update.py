@@ -675,7 +675,7 @@ def calculate_active_triggers(manager: BuildManager,
             snapshot2 = snapshot_symbol_table(id, new.names)
         diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
         package_nesting_level = id.count('.')
-        for item in diff:
+        for item in diff.copy():
             if (item.count('.') <= package_nesting_level + 1
                     and item.split('.')[-1] not in ('__builtins__',
                                                     '__file__',
@@ -685,12 +685,14 @@ def calculate_active_triggers(manager: BuildManager,
                 # Activate catch-all wildcard trigger for top-level module changes (used for
                 # "from m import *"). This also gets triggered by changes to module-private
                 # entries, but as these unneeded dependencies only result in extra processing,
-                # it's a minor problem.
+                # it's a minor problem. Also used by protocols.
                 #
                 # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
                 #     special casing them here.
                 diff.add(id + WILDCARD_TAG)
-                break
+            if item.count('.') > package_nesting_level + 1:
+                diff.add(item.rsplit('.', 1)[0] + WILDCARD_TAG)
+
         names |= diff
     return {make_trigger(name) for name in names}
 

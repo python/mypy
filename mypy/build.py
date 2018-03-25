@@ -2108,7 +2108,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.proto_deps = proto_deps
             write_protocol_deps_cache(proto_deps, manager)
 
-    if manager.options.dump_deps:
+    if manager.options.dump_deps or True:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
         dump_all_dependencies(manager.modules, manager.all_types, manager.options.python_version)

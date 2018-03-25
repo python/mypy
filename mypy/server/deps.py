@@ -239,7 +239,9 @@ class DependencyVisitor(TraverserVisitor):
         if info.declared_metaclass:
             self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
         if info.is_protocol:
-            self.add_dependency(make_wildcard_trigger(target), target=make_trigger(target))
+            for base_info in info.mro[:-1]:
+                self.add_dependency(make_wildcard_trigger(base_info.fullname()),
+                                    target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
