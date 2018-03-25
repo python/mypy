@@ -115,8 +115,7 @@ def get_dependencies(target: MypyFile,
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     deps = visitor.map
-    if ('/typeshed/' not in target.path and
-            target.fullname() not in ('typing', 'builtins')):
+    if '/typeshed/' not in target.path and target.fullname() not in ('typing', 'builtins'):
         new_deps = collect_protocol_attr_deps(target.names)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
@@ -755,12 +754,24 @@ def collect_protocol_attr_deps(names: SymbolTable,
         if isinstance(node.node, TypeInfo) and node.node not in processed:
             info = node.node
             processed.add(info)
-            print('processing', info.fullname(), info.checked_against_members)
             for attr in info.checked_against_members:
                 trigger = make_trigger('%s.%s' % (info.fullname(), attr))
+                if 'typing' in trigger or 'builtins' in trigger:
+                    # TODO: avoid everything from typeshed
+                    # e.g. after x: MyProto = array() or x: Iterable = array()
+                    continue
                 deps[trigger].add(make_trigger(info.fullname()))
             for impl in info.attempted_implementations:
                 trigger = make_trigger(impl)
+                if 'typing' in trigger or 'builtins' in trigger:
+                    continue
+                # If any class that was checked against a protocol changes,
+                # we need to reset the subtype cache for the protocol.
+                # This however creates a "weak" dependency, the protocol doesn't
+                # need to be re-checked, and its uses elsewhere are still valid
+                # (unless invalidated by other deps). We mark this kind of deps
+                # by a star, since they are higher priority, i.e., they need
+                # to be processed before any other deps.
                 deps[trigger].add(info.fullname() + '*')
             sub_deps = collect_protocol_attr_deps(info.names, processed)  # nested classes
             for trigger, targets in sub_deps.items():

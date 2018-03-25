@@ -4639,3 +4639,19 @@ class C:
 [out]
 ==
 a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+
+[case testTwoProtocolsTwoFilesCrossedUpdateType-skip]
+
+[out]
+
+[case testTwoProtocolsTwoFilesCrossedDeleteAttr-skip]
+
+[out]
+
+[case testProtocolsInvalidateByRemovingBase-skip]
+
+[out]
+
+[case testProtocolsInvalidateByRemovingMetaclass-skip]
+
+[out]

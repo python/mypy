@@ -922,7 +922,7 @@ class P(Protocol):
 <m.C.__init__> -> m
 <m.C.__new__> -> m
 <m.C.x> -> <m.C>
-<m.C> -> m, m.C
+<m.C> -> m, m.C, mod.P*
 <m.x> -> m
 <mod.P> -> <m.x>, m, mod.P
 <mod.P[wildcard]> -> <mod.P>
@@ -950,7 +950,7 @@ class P(Protocol):
 <m.C.__init__> -> m
 <m.C.__new__> -> m
 <m.C.x> -> <m.C>
-<m.C> -> <m.func>, m, m.C, m.func
+<m.C> -> <m.func>, m, m.C, m.func, mod.P*
 <m.func> -> m
 <mod.P> -> <m.func>, m.func, mod.P
 <mod.P[wildcard]> -> <mod.P>

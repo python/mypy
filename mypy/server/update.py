@@ -120,7 +120,8 @@ import os
 import time
 import os.path
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable
+    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple,
+    Callable, overload
 )
 
 from mypy.build import (
@@ -185,17 +186,12 @@ class FineGrainedBuildManager:
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
         self.update_protocol_deps()
-        print('DEPS', self.deps)
 
     def update_protocol_deps(self) -> None:
-        for id in self.graph:
-            names = self.graph[id].tree.names
-            if ('/typeshed/' not in self.graph[id].tree.path and
-                    id not in ('typing', 'builtins')):
-                deps = collect_protocol_attr_deps(names)
-                print(id, 'added', deps)
-                for trigger, targets in deps.items():
-                    self.deps.setdefault(trigger, set()).update(targets)
+        # TODO: fail gracefully if cache doesn't contain protocol deps data.
+        assert self.manager.proto_deps is not None
+        for trigger, targets in self.manager.proto_deps.items():
+            self.deps.setdefault(trigger, set()).update(targets)
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -760,8 +756,9 @@ def propagate_changes_using_dependencies(
         # TODO: Preserve order (set is not optimal)
         # First briefly reprocess high priority nodes, to invalidate
         # stale protocols.
-        for info in stale_protos:
-            info.reset_subtype_cache()
+        for deferred in stale_protos:
+            if deferred.is_protocol:
+                deferred.reset_subtype_cache()
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
             if manager.modules[id].is_cache_skeleton:
@@ -786,15 +783,15 @@ def find_targets_recursive(
         manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]], Set[DeferredNode]]:
+        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
     Returns: Dictionary from module id to a set of stale targets.
     """
-    result = {}  # type:
+    result = {}  # type: Dict[str, Set[DeferredNode]]
     worklist = triggers
     processed = set()  # type: Set[str]
-    high_prio_nodes = set()  # type: Set[DeferredNode]
+    stale_protos = set()  # type: Set[TypeInfo]
 
     # Find AST nodes corresponding to each target.
     #
@@ -819,13 +816,14 @@ def find_targets_recursive(
                 manager.log_fine_grained('process: %s' % target)
                 if '*' in target:
                     target = target.strip('*')
-                    deferred = lookup_target(manager, target, exact=True)
-                    high_prio_nodes.add(deferred)
+                    info = lookup_typeinfo(manager, target)
+                    if info is not None:
+                        stale_protos.add(info)
                     continue
                 deferred = lookup_target(manager, target)
                 result[module_id].update(deferred)
 
-    return result, high_prio_nodes
+    return result, stale_protos
 
 
 def reprocess_nodes(manager: BuildManager,
@@ -970,8 +968,30 @@ def update_deps(module_id: str,
             deps.setdefault(trigger, set()).update(targets)
 
 
-def lookup_target(manager: BuildManager,
-                  target: str, exact: bool = False) -> List[DeferredNode]:
+def lookup_typeinfo(manager: BuildManager, target: str) -> Optional[TypeInfo]:
+    modules = manager.modules
+    items = split_target(modules, target)
+    if items is None:
+        return None
+    module, rest = items
+    if rest:
+        components = rest.split('.')
+    else:
+        components = []
+    node = modules[module]  # type: Optional[SymbolNode]
+    for c in components:
+        if (not isinstance(node, (MypyFile, TypeInfo))
+                or c not in node.names):
+            return None  # Stale dependency
+        node = node.names[c].node
+    if isinstance(node, TypeInfo):
+        if node.fullname() != target:
+            return None
+        return node
+    return None
+
+
+def lookup_target(manager: BuildManager, target: str) -> List[DeferredNode]:
     """Look up a target by fully-qualified name."""
 
     def not_found() -> None:
@@ -1015,8 +1035,6 @@ def lookup_target(manager: BuildManager,
             # a deserialized TypeInfo with missing attributes.
             not_found()
             return []
-        if exact:
-            return node
         result = [DeferredNode(file, None, None)]
         for name, symnode in node.names.items():
             node = symnode.node

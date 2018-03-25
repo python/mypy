@@ -145,7 +145,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
-            print('CHECK', left, right)
             if right.type.is_cached_subtype_check(left, right):
                 return True
             # NOTE: left.type.mro may be None in quick mode if there

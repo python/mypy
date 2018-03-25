@@ -612,6 +612,7 @@ class BuildManager:
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
+        self.proto_deps = None  # type: Optional[Dict[str, Set[str]]]
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -924,6 +925,53 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
                    for extension in PYTHON_EXTENSIONS):
             return False
     return True
+
+
+def read_protocol_cache(manager: BuildManager) -> Optional[Dict[str, Set[str]]]:
+    proto_cache = get_protocol_deps_cache_name(manager)
+    try:
+        with open(proto_cache, 'r') as f:
+            data = f.read()
+            manager.trace('Proto deps {}'.format(id, data.rstrip()))
+            deps = json.loads(data)  # TODO: Errors
+    except IOError:
+        manager.log('Could not load protocol cache: could not find {}'.format(proto_cache))
+        return None
+    if not isinstance(deps, dict):
+        manager.log('Could not load protocol cache: cache is not a dict: {}'
+                    .format(repr(deps)))
+        return None
+    return {k: set(v) for (k, v) in deps.items()}
+
+
+def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
+    from mypy.server.deps import collect_protocol_attr_deps
+    result = {}  # type: Dict[str, Set[str]]
+    for id in graph:
+        file = graph[id].tree
+        assert file is not None, "Should call this only when all files are processed"
+        names = file.names
+        if '/typeshed/' not in file.path and id not in ('typing', 'builtins'):
+            deps = collect_protocol_attr_deps(names)
+            for trigger, targets in deps.items():
+                result.setdefault(trigger, set()).update(targets)
+    return result
+
+
+def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
+                              manager: BuildManager) -> None:
+    proto_cache = get_protocol_deps_cache_name(manager)
+    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
+    if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
+        manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
+
+
+def get_protocol_deps_cache_name(manager: BuildManager) -> str:
+    cache_dir = manager.options.cache_dir
+    pyversion = manager.options.python_version
+    # TODO: invalidate protocol deps cache if program (==command line?) changes.
+    # This would likely require .meta file.
+    return os.path.join(cache_dir, '%d.%d' % pyversion, 'proto_deps.data.json')
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:
@@ -2052,8 +2100,13 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # just want to load in all of the cache information.
     if manager.use_fine_grained_cache():
         process_fine_grained_cache_graph(graph, manager)
+        manager.proto_deps = read_protocol_cache(manager)
     else:
         process_graph(graph, manager)
+        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
+            proto_deps = collect_protocol_deps(graph)
+            manager.proto_deps = proto_deps
+            write_protocol_deps_cache(proto_deps, manager)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
