@@ -30,8 +30,21 @@ advantage of the benefits.
 
 import os
 import stat
-from typing import Tuple, Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, TypeVar
 from mypy.util import read_with_python_encoding
+
+
+T = TypeVar('T')
+
+
+class CacheDict(Dict[str, T]):
+    def __init__(self, max_size: int = 100) -> None:
+        self.max_size = max_size
+
+    def __set_item__(self, key: str, item: T) -> None:
+        if len(self) > self.max_size:
+            self.clear()
+        dict.__set_item__(self, key, item)  # type: ignore  
 
 
 class FileSystemMetaCache:
@@ -40,11 +53,11 @@ class FileSystemMetaCache:
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat_cache = {}  # type: Dict[str, os.stat_result]
-        self.stat_error_cache = {}  # type: Dict[str, Exception]
-        self.listdir_cache = {}  # type: Dict[str, List[str]]
-        self.listdir_error_cache = {}  # type: Dict[str, Exception]
-        self.isfile_case_cache = {}  # type: Dict[str, bool]
+        self.stat_cache = CacheDict()  # type: CacheDict[os.stat_result]
+        self.stat_error_cache = CacheDict()  # type: CacheDict[Exception]
+        self.listdir_cache = CacheDict()  # type: CacheDict[List[str]]
+        self.listdir_error_cache = CacheDict()  # type: CacheDict[Exception]
+        self.isfile_case_cache = CacheDict()  # type: CacheDict[bool]
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
