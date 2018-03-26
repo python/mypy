@@ -16,6 +16,6 @@ install:
   - pip install .
 
 script:
-  - python runtests.py -j1 -x lint -x package
+  - python runtests.py -j12 -x lint -x package
   - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3.5.1' ]]; then python runtests.py package; fi
