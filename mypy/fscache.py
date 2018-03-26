@@ -41,11 +41,9 @@ class FileSystemMetaCache:
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat_cache = {}  # type: Dict[str, os.stat_result]
-        self.stat_error_cache = {}  # type: Dict[str, Exception]
-        self.listdir_cache = {}  # type: Dict[str, List[str]]
-        self.listdir_error_cache = {}  # type: Dict[str, Exception]
-        self.isfile_case_cache = {}  # type: Dict[str, bool]
+        self.stat.cache_clear()
+        self.listdir.cache_clear()
+        self.isfile_case.cache_clear()
 
     @functools.lru_cache(maxsize=0)
     def stat(self, path: str) -> os.stat_result:
