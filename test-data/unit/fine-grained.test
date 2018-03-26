@@ -4564,31 +4564,106 @@ a.py:8: error: Incompatible types in assignment (expression has type "C", variab
 a.py:8: note: Following member(s) of "C" have conflicts:
 a.py:8: note:     x: expected "str", got "int"
 
-[case testProtocolAddAttrInFunction-skip]
-
+[case testProtocolAddAttrInFunction]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+def f() -> None:
+    def g(x: b.P) -> None:
+        pass
+    g(C())
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: int
+    y: str
 [out]
+==
+a.py:7: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:7: note: 'C' is missing following 'P' protocol member:
+a.py:7: note:     y
 
-[case testProtocolRemoveAttrInClass-skip]
-
+[case testProtocolRemoveAttrInClass]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+class A:
+    class B:
+        x: b.P
+    y: B
+A().y.x = C()
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+    y: str
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: int
 [out]
+a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:8: note: 'C' is missing following 'P' protocol member:
+a.py:8: note:     y
+==
 
-[case testProtocolConcreteUpdateTypeFunction-skip]
-
+[case testProtocolConcreteUpdateTypeFunction]
+import a
+[file a.py]
+import b
+from typing import Protocol
+class P(Protocol):
+    x: int
+def f() -> None:
+    def g(x: P) -> None:
+        pass
+    g(b.C())
+[file b.py]
+class C:
+    x: int
+[file b.py.2]
+class C:
+    x: str
 [out]
+==
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "int", got "str"
 
-[case testProtocolConcreteUpdateTypeMetod-skip]
-
+[case testProtocolConcreteUpdateTypeMetodGeneric]
+import a
+[file a.py]
+import b
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P(Protocol[T]):
+    x: T
+class C:
+    def g(self, x: P[int]) -> None:
+        pass
+    def do(self) -> None:
+        self.g(b.C())
+[file b.py]
+class C:
+    x: int
+[file b.py.2]
+class C:
+    x: str
 [out]
+==
+a.py:10: error: Argument 1 to "g" of "C" has incompatible type "C"; expected "P[int]"
+a.py:10: note: Following member(s) of "C" have conflicts:
+a.py:10: note:     x: expected "int", got "str"
 
 [case testProtocolConcreteAddAttrFunction-skip]
-
-[out]
-
-[case testProtocolConcreteAddAttrMethod-skip]
-
-[out]
-
-[case testProtocolConcreteRemoveAttrFunction-skip]
 
 [out]
 
@@ -4596,13 +4671,131 @@ a.py:8: note:     x: expected "str", got "int"
 
 [out]
 
-[case testProtocolToNonProtocol-skip]
+[case testProtocolUpdateBaseGeneric]
+import a
+[file a.py]
+import b, c
+def g(x: c.P) -> None:
+    pass
+g(b.C())
+[file b.py]
+class C:
+    x: int
+[file c.py]
+from typing import Protocol
+import d
+class P(d.PBase[int], Protocol):
+    pass
+[file c.py.2]
+from typing import Protocol
+import d
+class P(d.PBase[str], Protocol):
+    pass
+[file d.py]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class PBase(Protocol[T]):
+    x: T
+[out]
+==
+a.py:4: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:4: note: Following member(s) of "C" have conflicts:
+a.py:4: note:     x: expected "str", got "int"
+
+[case testProtocolConcreteUpdateBaseGeneric]
+import a
+[file a.py]
+import b
+from typing import Protocol
+class P(Protocol):
+    x: int
+def f(x: P) -> None:
+    pass
+f(b.B())
+[file b.py]
+import c
+class B(c.C[int]):
+    pass
+[file b.py.2]
+import c
+class B(c.C[str]):
+    pass
+[file c.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]):
+    x: T
+[out]
+==
+a.py:7: error: Argument 1 to "f" has incompatible type "B"; expected "P"
+a.py:7: note: Following member(s) of "B" have conflicts:
+a.py:7: note:     x: expected "int", got "str"
+
+[case testProtocolChangeGeneric-skip]
 
 [out]
 
-[case testNonProtocolToProtocol-skip]
+[case testProtocolChangeGeneric2-skip]
 
 [out]
+
+[case testProtocolToNonProtocol]
+import a
+[file a.py]
+import b, c
+b.f(c.C())
+[file b.py]
+import d
+def f(x: d.D) -> None:
+    pass
+[file c.py]
+import d
+class C:
+    x: int
+[file d.py]
+from typing import Protocol
+class D(Protocol):
+    x: int
+[file d.py.2]
+class D:
+    x: int
+[file c.py.3]
+import d
+class C(d.D):
+    pass
+[out]
+==
+a.py:2: error: Argument 1 to "f" has incompatible type "C"; expected "D"
+==
+
+[case testNonProtocolToProtocol]
+import a
+[file a.py]
+import b, c
+b.f(c.C())
+[file b.py]
+import d
+def f(x: d.D) -> None:
+    pass
+[file c.py]
+import d
+class C(d.D):
+    pass
+[file d.py]
+class D:
+    x: int
+[file d.py.2]
+from typing import Protocol
+class D(Protocol):
+    x: int
+[file c.py.3]
+import d
+class C:
+    x: int
+[out]
+==
+a.py:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'x'
+==
 
 [case testInvalidateProtocolViaSuperClass]
 import a
