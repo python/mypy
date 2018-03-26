@@ -943,7 +943,8 @@ def read_protocol_cache(manager: BuildManager, graph: Graph) -> Optional[Dict[st
         meta = graph[id].meta
         assert meta is not None, 'Protocol cache should be read after all other.'
         current_meta_snapshot[id] = meta.hash
-    if meta_snapshot != current_meta_snapshot:
+    common = set(meta_snapshot.keys()) & set(current_meta_snapshot.keys())
+    if any(meta_snapshot[id] != current_meta_snapshot[id] for id in common):
         # TODO: invalidate also if options changed (like --strict-optional)?
         manager.log('Protocol cache inconsistent, ignoring.')
         return None
