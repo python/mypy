@@ -193,10 +193,20 @@ def snapshot_definition(node: Optional[SymbolNode],
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,
+                 # We need this to e.g. trigger metaclass calculation in subclasses.
+                 snapshot_optional_type(node.metaclass_type),
                  snapshot_optional_type(node.tuple_type),
                  snapshot_optional_type(node.typeddict_type),
                  [base.fullname() for base in node.mro],
-                 node.type_vars,
+                 # Note that the structure of type variables is a part of the external interface,
+                 # since creating instances might fail, for example:
+                 #     T = TypeVar('T', bound=int)
+                 #     class C(Generic[T]):
+                 #         ...
+                 #     x: C[str] <- this is invalid, and needs to be re-checked if `T` changes.
+                 # An alternative would be to create both deps: <...> -> C, and <...> -> <C>,
+                 # but this currently seems a bit ad hoc.
+                 tuple(snapshot_type(TypeVarType(tdef)) for tdef in node.defn.type_vars),
                  [snapshot_type(base) for base in node.bases],
                  snapshot_optional_type(node._promote))
         prefix = node.fullname()

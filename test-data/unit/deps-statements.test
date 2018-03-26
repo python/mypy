@@ -173,10 +173,12 @@ def g() -> None:
         f3()
 [builtins fixtures/exception.pyi]
 [out]
--- The dependency on the ctor is basically spurious but not a problem
+-- The dependencies on the ctor are basically spurious but not a problem
 <m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
 <m.B.__init__> -> m.g
+<m.B.__new__> -> m.g
 <m.B.f> -> m.g
 <m.B> -> m.B, m.g
 <m.f1> -> m.g
@@ -198,10 +200,12 @@ def g() -> None:
         f2()
 [builtins fixtures/exception.pyi]
 [out]
--- The dependency on the ctor is basically spurious but not a problem
+-- The dependencies on the ctor are basically spurious but not a problem
 <m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
 <m.B.__init__> -> m.g
+<m.B.__new__> -> m.g
 <m.B> -> m.B, m.g
 <m.f1> -> m.g
 <m.f2> -> m.g
@@ -496,6 +500,7 @@ def f() -> Iterator[int]:
 [out]
 <m.A.__init__> -> m.f
 <m.A.__iter__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 
 [case testFunctionDecorator]
@@ -577,6 +582,7 @@ def g() -> None: pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.f>, m, m.A, m.B, m.f
 <m.B> -> <m.f>, m.B, m.f
 <m.f> -> m
@@ -602,6 +608,7 @@ class C:
 [builtins fixtures/isinstancelist.pyi]
 [out]
 <m.A.__init__> -> <m.B.__init__>
+<m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.C.f>, m, m.A, m.B, m.C.f
 <m.B> -> <m.C.f>, m.B, m.C.f
 <m.C.f> -> m
@@ -670,5 +677,6 @@ class C:
 [out]
 <m.N> -> <m.f>, m, m.f
 <m.C.__init__> -> <m.N.__init__>
+<m.C.__new__> -> <m.N.__new__>
 <m.C.x> -> <m.N.x>
 <m.C> -> m, m.N

@@ -869,7 +869,12 @@ def reprocess_nodes(manager: BuildManager,
                 scope=manager.semantic_analyzer_pass3.scope):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
 
-    apply_semantic_analyzer_patches(patches)
+    with semantic_analyzer.file_context(
+            file_node=file_node,
+            fnam=file_node.path,
+            options=manager.options,
+            active_type=None):
+        apply_semantic_analyzer_patches(patches)
 
     # Merge symbol tables to preserve identities of AST nodes. The file node will remain
     # the same, but other nodes may have been recreated with different identities, such as

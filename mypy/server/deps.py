@@ -166,11 +166,8 @@ class DependencyVisitor(TraverserVisitor):
         self.is_package_init_file = False
 
     # TODO (incomplete):
-    #   from m import *
     #   await
     #   protocols
-    #   metaclasses
-    #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
@@ -195,6 +192,10 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         self.add_type_alias_deps(self.scope.current_target())
         super().visit_func_def(o)
+        variants = set(o.expanded) - {o}
+        for ex in variants:
+            if isinstance(ex, FuncDef):
+                super().visit_func_def(ex)
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
@@ -229,6 +230,8 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(info.tuple_type, target=make_trigger(target))
         if info.typeddict_type:
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(target))
+        if info.declared_metaclass:
+            self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
@@ -244,6 +247,8 @@ class DependencyVisitor(TraverserVisitor):
                                     target=make_trigger(info.fullname() + '.' + name))
             self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
+            self.add_dependency(make_trigger(base_info.fullname() + '.__new__'),
+                                target=make_trigger(info.fullname() + '.__new__'))
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
@@ -274,10 +279,13 @@ class DependencyVisitor(TraverserVisitor):
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
         rvalue = o.rvalue
         if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
-            # TODO: Support type variable value restriction
             analyzed = rvalue.analyzed
             self.add_type_dependencies(analyzed.upper_bound,
                                        target=make_trigger(analyzed.fullname()))
+            for val in analyzed.values:
+                self.add_type_dependencies(val, target=make_trigger(analyzed.fullname()))
+            # We need to re-analyze the definition if bound or value is deleted.
+            super().visit_call_expr(rvalue)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
@@ -310,6 +318,7 @@ class DependencyVisitor(TraverserVisitor):
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
                 class_name = typ.type_object().fullname()
                 self.add_dependency(make_trigger(class_name + '.__init__'))
+                self.add_dependency(make_trigger(class_name + '.__new__'))
             if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
                 self.add_type_dependencies(rvalue.analyzed.type)
         else:
@@ -434,6 +443,7 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname()
             self.add_dependency(make_trigger(class_name + '.__init__'))
+            self.add_dependency(make_trigger(class_name + '.__new__'))
 
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.kind == LDEF:
@@ -522,7 +532,6 @@ class DependencyVisitor(TraverserVisitor):
         # Note that operator methods can't be (non-metaclass) methods of type objects
         # (that is, TypeType objects or Callables representing a type).
         # TODO: TypedDict
-        # TODO: metaclasses
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -533,6 +542,11 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(typ, UnionType):
             for item in typ.items:
                 self.add_operator_method_dependency_for_type(item, method)
+        elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+            self.add_operator_method_dependency_for_type(typ.fallback, method)
+        elif isinstance(typ, TypeType):
+            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
+                self.add_operator_method_dependency_for_type(typ.item.type.metaclass_type, method)
 
     def visit_generator_expr(self, e: GeneratorExpr) -> None:
         super().visit_generator_expr(e)
@@ -605,15 +619,21 @@ class DependencyVisitor(TraverserVisitor):
             return [make_trigger(member)]
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
             member = '%s.%s' % (typ.type_object().fullname(), name)
-            return [make_trigger(member)]
+            triggers = [make_trigger(member)]
+            triggers.extend(self.attribute_triggers(typ.fallback, name))
+            return triggers
         elif isinstance(typ, UnionType):
             targets = []
             for item in typ.items:
                 targets.extend(self.attribute_triggers(item, name))
             return targets
         elif isinstance(typ, TypeType):
-            # TODO: Metaclass attribute lookup
-            return self.attribute_triggers(typ.item, name)
+            triggers = self.attribute_triggers(typ.item, name)
+            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
+                triggers.append(make_trigger('%s.%s' %
+                                             (typ.item.type.metaclass_type.type.fullname(),
+                                              name)))
+            return triggers
         else:
             return []
 
@@ -645,18 +665,20 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:
+        if typ.missing_import_name is not None:
+            return [make_trigger(typ.missing_import_name)]
         return []
 
     def visit_none_type(self, typ: NoneTyp) -> List[str]:
         return []
 
     def visit_callable_type(self, typ: CallableType) -> List[str]:
-        # TODO: generic callables
-        # TODO: fallback?
         triggers = []
         for arg in typ.arg_types:
             triggers.extend(get_type_triggers(arg))
         triggers.extend(get_type_triggers(typ.ret_type))
+        # fallback is a metaclass type for class objects, and is
+        # processed separately.
         return triggers
 
     def visit_overloaded(self, typ: Overloaded) -> List[str]:
@@ -685,10 +707,13 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
-        # TODO: bound (values?)
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
+        if typ.upper_bound:
+            triggers.extend(get_type_triggers(typ.upper_bound))
+        for val in typ.values:
+            triggers.extend(get_type_triggers(val))
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
