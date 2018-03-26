@@ -1994,6 +1994,8 @@ class TypeInfo(SymbolNode):
     # Members of protocols, instances of this TypeInfo were checked against.
     # Used to optimize dependencies in fine grained mode.
     checked_against_members = None  # type: Set[str]
+    # Classes that attempted to implement this protocol.
+    # Used to optimize protocol subtype cache invalidation in fine grained mode.
     attempted_implementations = None  # type: Set[str]
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we

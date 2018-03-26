@@ -5060,3 +5060,6 @@ class M(type):
 [out]
 ==
 a.py:4: error: Argument 1 to "func" has incompatible type "Type[B]"; expected "P"
+
+-- TODO: add tests where (sub)protocol is used where a protocol is expected: x: P1; y: P2 = x.
+
