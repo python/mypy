@@ -4679,10 +4679,8 @@ class C:
 class C:
     pass
 [out]
-
-[case testProtocolInvalidTypeVarValue]
-
-[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
 
 [case testProtocolUpdateBaseGeneric]
 import a
@@ -4744,13 +4742,35 @@ a.py:7: error: Argument 1 to "f" has incompatible type "B"; expected "P"
 a.py:7: note: Following member(s) of "B" have conflicts:
 a.py:7: note:     x: expected "int", got "str"
 
-[case testProtocolChangeGeneric-skip]
-
+[case testProtocolChangeGeneric]
+import a
+[file a.py]
+import b, c
+x: b.P = c.C()
+[file b.py]
+import b2
+from typing import Protocol
+class P(b2.P2[str], Protocol):
+    pass
+[file b2.py]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P2(Protocol[T]):
+    x: T
+[file b2.py.2]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P2(Protocol):
+    x: int
+[file c.py]
+class C:
+    x: int
 [out]
-
-[case testProtocolChangeGeneric2-skip]
-
-[out]
+a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:2: note: Following member(s) of "C" have conflicts:
+a.py:2: note:     x: expected "str", got "int"
+==
+b.py:3: error: "P2" expects no type arguments, but 1 given
 
 [case testProtocolToNonProtocol]
 import a
