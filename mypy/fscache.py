@@ -28,23 +28,11 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+import functools
 import os
 import stat
 from typing import Dict, List, Optional, Tuple, TypeVar
 from mypy.util import read_with_python_encoding
-
-
-T = TypeVar('T')
-
-
-class CacheDict(Dict[str, T]):
-    def __init__(self, max_size: int = 100) -> None:
-        self.max_size = max_size
-
-    def __set_item__(self, key: str, item: T) -> None:
-        if len(self) > self.max_size:
-            self.clear()
-        dict.__set_item__(self, key, item)  # type: ignore  
 
 
 class FileSystemMetaCache:
@@ -53,37 +41,19 @@ class FileSystemMetaCache:
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat_cache = CacheDict()  # type: CacheDict[os.stat_result]
-        self.stat_error_cache = CacheDict()  # type: CacheDict[Exception]
-        self.listdir_cache = CacheDict()  # type: CacheDict[List[str]]
-        self.listdir_error_cache = CacheDict()  # type: CacheDict[Exception]
-        self.isfile_case_cache = CacheDict()  # type: CacheDict[bool]
+        self.stat_cache = {}  # type: Dict[str, os.stat_result]
+        self.stat_error_cache = {}  # type: Dict[str, Exception]
+        self.listdir_cache = {}  # type: Dict[str, List[str]]
+        self.listdir_error_cache = {}  # type: Dict[str, Exception]
+        self.isfile_case_cache = {}  # type: Dict[str, bool]
 
+    @functools.lru_cache(maxsize=0)
     def stat(self, path: str) -> os.stat_result:
-        if path in self.stat_cache:
-            return self.stat_cache[path]
-        if path in self.stat_error_cache:
-            raise self.stat_error_cache[path]
-        try:
-            st = os.stat(path)
-        except Exception as err:
-            self.stat_error_cache[path] = err
-            raise
-        self.stat_cache[path] = st
-        return st
+        return os.stat(path)
 
+    @functools.lru_cache(maxsize=0)
     def listdir(self, path: str) -> List[str]:
-        if path in self.listdir_cache:
-            return self.listdir_cache[path]
-        if path in self.listdir_error_cache:
-            raise self.listdir_error_cache[path]
-        try:
-            results = os.listdir(path)
-        except Exception as err:
-            self.listdir_error_cache[path] = err
-            raise err
-        self.listdir_cache[path] = results
-        return results
+        return os.listdir(path)
 
     def isfile(self, path: str) -> bool:
         try:
@@ -92,6 +62,7 @@ class FileSystemMetaCache:
             return False
         return stat.S_ISREG(st.st_mode)
 
+    @functools.lru_cache(maxsize=0)
     def isfile_case(self, path: str) -> bool:
         """Return whether path exists and is a file.
 
@@ -101,8 +72,6 @@ class FileSystemMetaCache:
         TODO: We should maybe check the case for some directory components also,
         to avoid permitting wrongly-cased *packages*.
         """
-        if path in self.isfile_case_cache:
-            return self.isfile_case_cache[path]
         head, tail = os.path.split(path)
         if not tail:
             res = False
@@ -112,7 +81,6 @@ class FileSystemMetaCache:
                 res = tail in names and self.isfile(path)
             except OSError:
                 res = False
-        self.isfile_case_cache[path] = res
         return res
 
     def isdir(self, path: str) -> bool:
