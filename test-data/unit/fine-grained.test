@@ -4663,11 +4663,24 @@ a.py:10: error: Argument 1 to "g" of "C" has incompatible type "C"; expected "P[
 a.py:10: note: Following member(s) of "C" have conflicts:
 a.py:10: note:     x: expected "int", got "str"
 
-[case testProtocolConcreteAddAttrFunction-skip]
-
+[case testProtocolConcreteRemoveAttrVariable]
+import a
+[file a.py]
+import b, c
+x: b.P = c.C()
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file c.py]
+class C:
+    x: int
+[file c.py.2]
+class C:
+    pass
 [out]
 
-[case testProtocolConcreteRemoveAttrMethod-skip]
+[case testProtocolInvalidTypeVarValue]
 
 [out]
 
