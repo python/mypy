@@ -927,12 +927,30 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
     return True
 
 
-def read_protocol_cache(manager: BuildManager) -> Optional[Dict[str, Set[str]]]:
-    proto_cache = get_protocol_deps_cache_name(manager)
+def read_protocol_cache(manager: BuildManager, graph: Graph) -> Optional[Dict[str, Set[str]]]:
+    """Read and validate protocol dependencies cache."""
+    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    try:
+        with open(proto_meta, 'r') as f:
+            data = f.read()
+            manager.trace('Proto meta {}'.format(data.rstrip()))
+            meta_snapshot = json.loads(data)
+    except IOError:
+        manager.log('Could not load protocol meta: could not find {}'.format(proto_meta))
+        return None
+    current_meta_snapshot = {}  # type: Dict[str, str]
+    for id in graph:
+        meta = graph[id].meta
+        assert meta is not None, 'Protocol cache should be read after all other.'
+        current_meta_snapshot[id] = meta.hash
+    if meta_snapshot != current_meta_snapshot:
+        # TODO: invalidate also if options changed (like --strict-optional)?
+        manager.log('Protocol cache inconsistent, ignoring.')
+        return None
     try:
         with open(proto_cache, 'r') as f:
             data = f.read()
-            manager.trace('Proto deps {}'.format(id, data.rstrip()))
+            manager.trace('Proto deps {}'.format(data.rstrip()))
             deps = json.loads(data)  # TODO: Errors
     except IOError:
         manager.log('Could not load protocol cache: could not find {}'.format(proto_cache))
@@ -945,6 +963,7 @@ def read_protocol_cache(manager: BuildManager) -> Optional[Dict[str, Set[str]]]:
 
 
 def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
+    """Collect protocol dependency map for fine grained incremental mode."""
     from mypy.server.deps import collect_protocol_attr_deps
     result = {}  # type: Dict[str, Set[str]]
     for id in graph:
@@ -959,19 +978,30 @@ def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
 
 
 def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
-                              manager: BuildManager) -> None:
-    proto_cache = get_protocol_deps_cache_name(manager)
+                              manager: BuildManager, graph: Graph) -> None:
+    """Write cache files for protocol dependencies.
+
+    Serialize protocol dependencies map for fine grained mode. Also take the snapshot
+    of current sources to later check consistency between protocol cache and individual
+    cache files.
+    """
+    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    meta_snapshot = {}  # type: Dict[str, str]
+    for id in graph:
+        meta_snapshot[id] = graph[id].source_hash
+    if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
+        manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
     listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
     if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
         manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
 
 
-def get_protocol_deps_cache_name(manager: BuildManager) -> str:
+def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
-    # TODO: invalidate protocol deps cache if program (==command line?) changes.
-    # This would likely require .meta file.
-    return os.path.join(cache_dir, '%d.%d' % pyversion, 'proto_deps.data.json')
+    prefix = os.path.join(cache_dir, '%d.%d' % pyversion)
+    return (os.path.join(prefix, 'proto_deps.meta.json'),
+            os.path.join(prefix, 'proto_deps.data.json'))
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:
@@ -2100,13 +2130,13 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # just want to load in all of the cache information.
     if manager.use_fine_grained_cache():
         process_fine_grained_cache_graph(graph, manager)
-        manager.proto_deps = read_protocol_cache(manager)
+        manager.proto_deps = read_protocol_cache(manager, graph)
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
             proto_deps = collect_protocol_deps(graph)
             manager.proto_deps = proto_deps
-            write_protocol_deps_cache(proto_deps, manager)
+            write_protocol_deps_cache(proto_deps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
