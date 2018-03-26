@@ -762,12 +762,16 @@ def collect_protocol_attr_deps(names: SymbolTable,
             info = node.node
             processed.add(info)
             for attr in info.checked_against_members:
-                trigger = make_trigger('%s.%s' % (info.fullname(), attr))
-                if 'typing' in trigger or 'builtins' in trigger:
-                    # TODO: avoid everything from typeshed
-                    # e.g. after x: MyProto = array() or x: Iterable = array()
-                    continue
-                deps[trigger].add(make_trigger(info.fullname()))
+                # The need for full MRO here is subtle, during an update, base classes of
+                # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
+                # are added.
+                for base_info in info.mro[:-1]:
+                    trigger = make_trigger('%s.%s' % (base_info.fullname(), attr))
+                    if 'typing' in trigger or 'builtins' in trigger:
+                        # TODO: avoid everything from typeshed
+                        # e.g. after x: MyProto = array() or x: Iterable = array()
+                        continue
+                    deps[trigger].add(make_trigger(info.fullname()))
             for impl in info.attempted_implementations:
                 trigger = make_trigger(impl)
                 if 'typing' in trigger or 'builtins' in trigger:

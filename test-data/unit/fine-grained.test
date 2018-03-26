@@ -5061,5 +5061,174 @@ class M(type):
 ==
 a.py:4: error: Argument 1 to "func" has incompatible type "Type[B]"; expected "P"
 
--- TODO: add tests where (sub)protocol is used where a protocol is expected: x: P1; y: P2 = x.
+[case testProtocolVsProtocolSubUpdated]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+class SuperP(Protocol):
+    x: int
+[file c.py]
+from typing import Protocol
+import d
+class SubP(d.PBase, Protocol):
+    y: str
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    x: int
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+a.py:4: note: Following member(s) of "SubP" have conflicts:
+a.py:4: note:     x: expected "int", got "str"
 
+[case testProtocolVsProtocolSuperUpdated]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+import d
+class SuperP(d.PBase, Protocol):
+    pass
+[file c.py]
+from typing import Protocol
+class SubP(Protocol):
+    x: int
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    x: int
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+
+[case testProtocolVsProtocolSuperUpdated2]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+import d
+class SuperP(d.PBase, Protocol):
+    x: int
+[file c.py]
+from typing import Protocol
+class SubP(Protocol):
+    x: int
+    y: int
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
+    z: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+a.py:4: note: 'SubP' is missing following 'SuperP' protocol member:
+a.py:4: note:     z
+
+[case testProtocolVsProtocolSuperUpdated3]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+import d
+class SuperP(d.PBase, Protocol):
+    x: int
+[file c.py]
+from typing import Protocol
+class SubP(Protocol):
+    x: int
+    y: int
+[file d.py]
+from typing import Protocol
+import e
+class PBase(Protocol):
+    y: int
+[file d.py.2]
+from typing import Protocol
+import e
+class PBase(e.NewP, Protocol):
+    y: int
+[file e.py]
+from typing import Protocol
+class NewP(Protocol):
+    z: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+a.py:4: note: 'SubP' is missing following 'SuperP' protocol member:
+a.py:4: note:     z
+
+[case testProtocolMultipleUpdates]
+import a
+[file a.py]
+import b, c
+x: b.P = c.C()
+[file b.py]
+from typing import Protocol
+import b2
+class P(b2.P2, Protocol):
+    x: int
+[file b2.py]
+from typing import Protocol
+class P2(Protocol):
+    y: int
+[file c.py]
+import c2
+class C(c2.C2):
+    x: int
+[file c2.py]
+class C2:
+    y: int
+[file b2.py.2]
+from typing import Protocol
+class P2(Protocol):
+    y: int
+    z: int
+[file c2.py.3]
+class C2:
+    y: int
+    z: int
+[file c2.py.4]
+class C2:
+    y: int
+    z: str
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:2: note: 'C' is missing following 'P' protocol member:
+a.py:2: note:     z
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:2: note: Following member(s) of "C" have conflicts:
+a.py:2: note:     z: expected "int", got "str"

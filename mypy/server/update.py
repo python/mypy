@@ -126,7 +126,7 @@ from typing import (
 
 from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
-    PRI_INDIRECT, DEBUG_FINE_GRAINED,
+    PRI_INDIRECT, DEBUG_FINE_GRAINED, collect_protocol_deps
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -138,6 +138,7 @@ from mypy.options import Options
 from mypy.types import Type
 from mypy.fscache import FileSystemCache
 from mypy.semanal import apply_semantic_analyzer_patches
+from mypy.semanal_pass3 import add_protocol_members
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
@@ -274,6 +275,7 @@ class FineGrainedBuildManager:
 
         self.manager.fscache.flush()
         self.previous_messages = messages[:]
+        self.manager.proto_deps = collect_protocol_deps(self.graph)
         self.update_protocol_deps()
         return messages
 
@@ -758,9 +760,12 @@ def propagate_changes_using_dependencies(
         # TODO: Preserve order (set is not optimal)
         # First briefly reprocess high priority nodes, to invalidate
         # stale protocols.
-        for deferred in stale_protos:
-            if deferred.is_protocol:
-                deferred.reset_subtype_cache()
+        for info in stale_protos:
+            if info.is_protocol:
+                info.reset_subtype_cache()
+                # Strictly speaking we need to do this only if super-protocol changes,
+                # but the performance implications are negligible.
+                add_protocol_members(info)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
             if manager.modules[id].is_cache_skeleton:
