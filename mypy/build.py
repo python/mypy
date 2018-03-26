@@ -227,7 +227,7 @@ def _build(sources: List[BuildSource],
     gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
-    fscache = fscache or FileSystemCache(options.python_version)
+    fscache = fscache or FileSystemCache(options.python_version, package_root=options.bazel)
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,

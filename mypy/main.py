@@ -581,13 +581,14 @@ def create_source_list(files: Sequence[str], options: Options) -> List[BuildSour
 
     Raises InvalidSourceList on errors.
     """
+    package_root = options.bazel
     targets = []
     for f in files:
         if f.endswith(PY_EXTENSIONS):
             # Can raise InvalidSourceList if a directory doesn't have a valid module name.
-            targets.append(BuildSource(f, crawl_up(f)[1], None))
+            targets.append(BuildSource(f, crawl_up(f, package_root)[1], None))
         elif os.path.isdir(f):
-            sub_targets = expand_dir(f)
+            sub_targets = expand_dir(f, '', package_root)
             if not sub_targets:
                 raise InvalidSourceList("There are no .py[i] files in directory '{}'"
                                         .format(f))
@@ -610,15 +611,15 @@ def keyfunc(name: str) -> Tuple[int, str]:
     return (-1, name)
 
 
-def expand_dir(arg: str, mod_prefix: str = '') -> List[BuildSource]:
+def expand_dir(arg: str, mod_prefix: str, package_root: bool) -> List[BuildSource]:
     """Convert a directory name to a list of sources to build."""
-    f = get_init_file(arg)
+    f = get_init_file(arg, package_root=package_root)
     if mod_prefix and not f:
         return []
     seen = set()  # type: Set[str]
     sources = []
     if f and not mod_prefix:
-        top_dir, top_mod = crawl_up(f)
+        top_dir, top_mod = crawl_up(f, package_root)
         mod_prefix = top_mod + '.'
     if mod_prefix:
         sources.append(BuildSource(f, mod_prefix.rstrip('.'), None))
@@ -627,7 +628,7 @@ def expand_dir(arg: str, mod_prefix: str = '') -> List[BuildSource]:
     for name in names:
         path = os.path.join(arg, name)
         if os.path.isdir(path):
-            sub_sources = expand_dir(path, mod_prefix + name + '.')
+            sub_sources = expand_dir(path, mod_prefix + name + '.', package_root)
             if sub_sources:
                 seen.add(name)
                 sources.extend(sub_sources)
@@ -642,7 +643,7 @@ def expand_dir(arg: str, mod_prefix: str = '') -> List[BuildSource]:
     return sources
 
 
-def crawl_up(arg: str) -> Tuple[str, str]:
+def crawl_up(arg: str, package_root: bool) -> Tuple[str, str]:
     """Given a .py[i] filename, return (root directory, module).
 
     We crawl up the path until we find a directory without
@@ -650,7 +651,7 @@ def crawl_up(arg: str) -> Tuple[str, str]:
     """
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
-    while dir and get_init_file(dir):
+    while dir and get_init_file(dir, package_root=package_root):
         dir, base = os.path.split(dir)
         if not base:
             break
@@ -676,7 +677,7 @@ def strip_py(arg: str) -> Optional[str]:
     return None
 
 
-def get_init_file(dir: str) -> Optional[str]:
+def get_init_file(dir: str, package_root: bool) -> Optional[str]:
     """Check whether a directory contains a file named __init__.py[i].
 
     If so, return the file's name (with dir prefixed).  If not, return
@@ -687,6 +688,8 @@ def get_init_file(dir: str) -> Optional[str]:
     for ext in PY_EXTENSIONS:
         f = os.path.join(dir, '__init__' + ext)
         if os.path.isfile(f):
+            return f
+        if package_root and ext == '.py' and not os.path.isabs(dir):
             return f
     return None
 

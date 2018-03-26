@@ -28,6 +28,7 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+import hashlib
 import os
 import stat
 from typing import Tuple, Dict, List, Optional
@@ -35,7 +36,8 @@ from mypy.util import read_with_python_encoding
 
 
 class FileSystemMetaCache:
-    def __init__(self) -> None:
+    def __init__(self, package_root: bool = False) -> None:
+        self.package_root = package_root
         self.flush()
 
     def flush(self) -> None:
@@ -45,6 +47,7 @@ class FileSystemMetaCache:
         self.listdir_cache = {}  # type: Dict[str, List[str]]
         self.listdir_error_cache = {}  # type: Dict[str, Exception]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
+        self.fake_package_cache = set()  # type: Set[str]
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -54,14 +57,35 @@ class FileSystemMetaCache:
         try:
             st = os.stat(path)
         except Exception as err:
+            if self.package_root and not os.path.isabs(path) and os.path.basename(path) == '__init__.py':
+                try:
+                    return self._fake_init(path)
+                except OSError:
+                    pass
             self.stat_error_cache[path] = err
-            raise
+            raise err
         self.stat_cache[path] = st
+        return st
+
+    def _fake_init(self, path: str) -> os.stat_result:
+        dirname = os.path.dirname(path) or os.curdir
+        st = self.stat(dirname)  # May raise OSError
+        seq = list(st)  # Stat result as a sequence so we can modify it
+        seq[stat.ST_MODE] = stat.S_IFREG | 0o444
+        seq[stat.ST_INO] = 1
+        seq[stat.ST_NLINK] = 1
+        seq[stat.ST_SIZE] = 0
+        st = os.stat_result(seq)
+        self.stat_cache[path] = st
+        self.fake_package_cache.add(dirname)
         return st
 
     def listdir(self, path: str) -> List[str]:
         if path in self.listdir_cache:
-            return self.listdir_cache[path]
+            res = self.listdir_cache[path]
+            if os.path.normpath(path) in self.fake_package_cache and '__init__.py' not in res:
+                res.append('__init__.py')  # Updates the result as well as the cache
+            return res
         if path in self.listdir_error_cache:
             raise self.listdir_error_cache[path]
         try:
@@ -70,6 +94,8 @@ class FileSystemMetaCache:
             self.listdir_error_cache[path] = err
             raise err
         self.listdir_cache[path] = results
+        if path in self.fake_package_cache and '__init__.py' not in results:
+            results.append('__init__.py')
         return results
 
     def isfile(self, path: str) -> bool:
@@ -118,9 +144,9 @@ class FileSystemMetaCache:
 
 
 class FileSystemCache(FileSystemMetaCache):
-    def __init__(self, pyversion: Tuple[int, int]) -> None:
+    def __init__(self, pyversion: Tuple[int, int], package_root: bool = False) -> None:
         self.pyversion = pyversion
-        self.flush()
+        super().__init__(package_root=package_root)
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
@@ -138,12 +164,15 @@ class FileSystemCache(FileSystemMetaCache):
         # Need to stat first so that the contents of file are from no
         # earlier instant than the mtime reported by self.stat().
         self.stat(path)
-
-        try:
-            data, md5hash = read_with_python_encoding(path, self.pyversion)
-        except Exception as err:
-            self.read_error_cache[path] = err
-            raise
+        if os.path.basename(path) == '__init__.py' and os.path.dirname(path) in self.fake_package_cache:
+            data = ''
+            md5hash = hashlib.md5(b'').hexdigest()
+        else:
+            try:
+                data, md5hash = read_with_python_encoding(path, self.pyversion)
+            except Exception as err:
+                self.read_error_cache[path] = err
+                raise
         self.read_cache[path] = data
         self.hash_cache[path] = md5hash
         return data
