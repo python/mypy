@@ -239,13 +239,13 @@ class DependencyVisitor(TraverserVisitor):
         if info.declared_metaclass:
             self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
         if info.is_protocol:
-            for base_info in info.mro[:-1]:
+            self.add_dependency(make_wildcard_trigger(target), target=make_trigger(target))
+            for base_info in info.mro[1:-1]:
                 self.add_dependency(make_wildcard_trigger(base_info.fullname()),
                                     target=make_trigger(target))
-            for base_info in info.mro[1:-1]:
-                # Add high-prio subtype cache invalidation deps
+                # Add high-prio subtype cache invalidation deps from super-protocols.
                 self.add_dependency(make_wildcard_trigger(base_info.fullname()),
-                                      # see comment in collect_protocol_attr_deps about '*'
+                                    # see comment in collect_protocol_attr_deps about '*'
                                     target=target + '*')
         # TODO: Add dependencies based on remaining TypeInfo attributes.
         self.add_type_alias_deps(self.scope.current_target())

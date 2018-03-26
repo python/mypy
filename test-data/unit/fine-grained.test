@@ -4494,35 +4494,77 @@ a.py:4: error: Too many arguments for "C"
 
 -- Protocol tests
 
-[case testProtocolUpdateTypeInVariable-skip]
-
+[case testProtocolUpdateTypeInVariable]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+x: b.P = C()
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: str
 [out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:4: note: Following member(s) of "C" have conflicts:
+a.py:4: note:     x: expected "str", got "int"
 
-[case testProtocolUpdateTypeInFunction-skip]
-
+[case testProtocolUpdateTypeInFunction]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+def f() -> None:
+    def g(x: b.P) -> None:
+        pass
+    g(C())
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: str
 [out]
+==
+a.py:7: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:7: note: Following member(s) of "C" have conflicts:
+a.py:7: note:     x: expected "str", got "int"
 
-[case testProtocolUpdateTypeInClass-skip]
-
+[case testProtocolUpdateTypeInClass]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+class A:
+    class B:
+        x: b.P
+    y: B
+A().y.x = C()
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: str
 [out]
-
-[case testProtocolAddAttrInVariable-skip]
-
-[out]
+==
+a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "str", got "int"
 
 [case testProtocolAddAttrInFunction-skip]
-
-[out]
-
-[case testProtocolRemoveAttrInClass-skip]
-
-[out]
-
-[case testProtocolRemoveAttrInVariable-skip]
-
-[out]
-
-[case testProtocolRemoveAttrInFunction-skip]
 
 [out]
 
@@ -4666,13 +4708,74 @@ class C:
 ==
 a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
 
-[case testTwoProtocolsTwoFilesCrossedUpdateType-skip]
-
+[case testTwoProtocolsTwoFilesCrossedUpdateType-skip-cache]
+# this test and the next one (TwoProtocolsTwoFilesCrossedDeleteAttr) has errors ordered
+# opposite way with and without cache, therefore skip one of each.
+import a
+[file a.py]
+import b1
+import b2
+[file b1.py]
+import b2, d
+from typing import Protocol
+class P1(Protocol):
+    x: int
+def f(x: b2.P2) -> None:
+    pass
+f(d.D())
+[file b2.py]
+import b1, d
+from typing import Protocol
+class P2(Protocol):
+    x: int
+def f(x: b1.P1) -> None:
+    pass
+f(d.D())
+[file d.py]
+class D:
+    x: int
+[file d.py.2]
+class D:
+    x: str
 [out]
+==
+b1.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P2"
+b1.py:7: note: Following member(s) of "D" have conflicts:
+b1.py:7: note:     x: expected "int", got "str"
+b2.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P1"
+b2.py:7: note: Following member(s) of "D" have conflicts:
+b2.py:7: note:     x: expected "int", got "str"
 
-[case testTwoProtocolsTwoFilesCrossedDeleteAttr-skip]
-
+[case testTwoProtocolsTwoFilesCrossedDeleteAttr-skip-nocache]
+import a
+[file a.py]
+import b1
+import b2
+[file b1.py]
+import b2, d
+from typing import Protocol
+class P1(Protocol):
+    x: int
+def f(x: b2.P2) -> None:
+    pass
+f(d.D())
+[file b2.py]
+import b1, d
+from typing import Protocol
+class P2(Protocol):
+    x: int
+def f(x: b1.P1) -> None:
+    pass
+f(d.D())
+[file d.py]
+class D:
+    x: int
+[file d.py.2]
+class D:
+    y: int
 [out]
+b2.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P2" (diff)
+b1.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P1"
 
 [case testProtocolsInvalidateByRemovingBase]
 import a
