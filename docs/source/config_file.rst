@@ -107,7 +107,7 @@ The following global flags may only be set in the global section
 - ``dump_inference_stats`` (Boolean, default False) dumps stats about
   type inference.
 
-- ``incremental`` (Boolean, default False) enables :ref:`incremental
+- ``incremental`` (Boolean, default True) enables :ref:`incremental
   mode <incremental>`.
 
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache

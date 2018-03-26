@@ -149,7 +149,7 @@ class Options:
         self.junit_xml = None  # type: Optional[str]
 
         # Caching and incremental checking options
-        self.incremental = False
+        self.incremental = True
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.quick_and_dirty = False

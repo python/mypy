@@ -344,6 +344,9 @@ Here are some more useful flags:
   when most parts of your program haven't changed since the previous
   mypy run.
 
+  Incremental mode is now the default and may be disabled with
+  ``--no-incremental``.
+
 - ``--cache-dir DIR`` is a companion flag to ``-incremental``, which
   specifies where the cache files are written.  By default this is
   ``.mypy_cache`` in the current directory.  While the cache is only
