@@ -825,6 +825,32 @@ def call_python(python_executable: str, command: str) -> str:
                                    stderr=subprocess.PIPE).decode()
 
 
+@functools.lru_cache(maxsize=None)
+def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
+    """Find package directories for given python."""
+    if python_executable is None:
+        return []
+    if python_executable == sys.executable:
+        # Use running Python's package dirs
+        if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
+            user_dir = site.getusersitepackages()
+            return site.getsitepackages() + [user_dir]
+        # If site doesn't have get(user)sitepackages, we are running in a
+        # virtualenv, and should fall back to get_python_lib
+        return [get_python_lib()]
+    else:
+        # Use subprocess to get the package directory of given Python
+        # executable
+        try:
+            output = call_python(python_executable, USER_SITE_PACKAGES)
+        except subprocess.CalledProcessError:
+            # if no paths are found (raising a CalledProcessError), we fall back on sysconfig,
+            # the python executable is likely in a virtual environment, thus lacking
+            # the needed site methods
+            output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
+    return ast.literal_eval(output)
+
+
 class FindModuleCache:
     """Module finder with integrated cache.
 
@@ -842,31 +868,6 @@ class FindModuleCache:
     def clear(self) -> None:
         self._find_module.cache_clear()
         self._find_lib_path_dirs.cache_clear()
-
-    @functools.lru_cache(maxsize=None)
-    def _get_site_packages_dirs(self, python_executable: Optional[str]) -> List[str]:
-        """Find package directories for given python."""
-        if python_executable is None:
-            return []
-        if python_executable == sys.executable:
-            # Use running Python's package dirs
-            if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
-                user_dir = site.getusersitepackages()
-                return site.getsitepackages() + [user_dir]
-            # If site doesn't have get(user)sitepackages, we are running in a
-            # virtualenv, and should fall back to get_python_lib
-            return [get_python_lib()]
-        else:
-            # Use subprocess to get the package directory of given Python
-            # executable
-            try:
-                output = call_python(python_executable, USER_SITE_PACKAGES)
-            except subprocess.CalledProcessError:
-                # if no paths are found (raising a CalledProcessError), we fall back on sysconfig,
-                # the python executable is likely in a virtual environment, thus lacking
-                # the needed site methods
-                output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
-        return ast.literal_eval(output)
 
     @functools.lru_cache(maxsize=None)
     def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...],
@@ -898,7 +899,7 @@ class FindModuleCache:
 
         third_party_dirs = []
         # Third-party stub/typed packages
-        for pkg_dir in self._get_site_packages_dirs(python_executable):
+        for pkg_dir in _get_site_packages_dirs(python_executable):
             stub_name = components[0] + '-stubs'
             typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_dir = os.path.join(pkg_dir, stub_name)
