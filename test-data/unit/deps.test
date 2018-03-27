@@ -784,3 +784,170 @@ def f(x: A) -> None:
 [out]
 <m.A> -> <m.f>, m.f
 <p.b.A> -> m
+
+[case testDepsFromOverloadMod]
+import mod
+x = mod.f
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[out]
+<m.x> -> m
+<mod.f> -> m
+<mod> -> m
+
+[case testDepsFromOverloadFunc]
+import mod
+def f() -> None:
+    x = mod.f
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[out]
+<mod.f> -> m.f
+<mod> -> m, m.f
+
+[case testDepsToOverloadMod]
+from typing import overload, Any
+import mod
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x: Any) -> Any:
+    mod.f()
+[file mod.py]
+def f() -> int:
+    pass
+[out]
+<m.f> -> m
+<mod.f> -> m.f
+<mod> -> m, m.f
+
+[case testDepsToOverloadFunc]
+from typing import overload, Any
+import mod
+def outer() -> None:
+    @overload
+    def f(x: int) -> None: pass
+    @overload
+    def f(x: str) -> str: pass
+    def f(x: Any) -> Any:
+        mod.f()
+[file mod.py]
+def f() -> int:
+    pass
+[out]
+<m.f> -> m.outer
+<mod.f> -> m.outer
+<mod> -> m, m.outer
+
+[case testDepsFromOverloadToOverload]
+from typing import overload, Any
+import mod
+def outer() -> None:
+    @overload
+    def f(x: int) -> None: pass
+    @overload
+    def f(x: str) -> str: pass
+    def f(x: Any) -> Any:
+        mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[out]
+<m.f> -> m.outer
+<mod.f> -> m.outer
+<mod> -> m, m.outer
+
+[case testDepsFromOverloadToOverloadDefault]
+from typing import overload, Any
+import mod
+def outer() -> None:
+    @overload
+    def f(x: int) -> None: pass
+    @overload
+    def f(x: str, cb=mod.f) -> str: pass
+    def f(*args: Any, **kwargs: Any) -> Any:
+        pass
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+<m.f> -> m.outer
+<mod.f> -> m.outer
+<mod> -> m, m.outer
+
+[case testDepsToOverloadGeneric]
+# __dump_all__
+import mod
+from typing import overload, Any
+@overload
+def f(x: mod.TA) -> mod.TA: pass
+@overload
+def f(x: mod.TB, y: int) -> mod.TB: pass
+def f(*args: Any, **kwargs: Any) -> Any:
+    pass
+[file mod.py]
+from typing import TypeVar
+import submod
+TA = TypeVar('TA', submod.A, submod.B)
+TB = TypeVar('TB', bound=submod.C)
+[file submod.py]
+class A: pass
+class B: pass
+class C: pass
+[builtins fixtures/dict.pyi]
+[out]
+<m.f> -> m
+<mod.TA> -> <m.f>, m.f
+<mod.TB> -> <m.f>, m.f
+<mod> -> m
+<submod.A> -> <m.f>, <mod.TA>, m.f, mod, submod.A
+<submod.B> -> <m.f>, <mod.TA>, m.f, mod, submod.B
+<submod.C> -> <m.f>, <mod.TB>, m.f, mod, submod.C
+<submod> -> mod
+
+[case testDepsOverloadExternalVsImplementationType]
+import mod
+from typing import overload
+@overload
+def f(x: mod.A) -> mod.A: pass
+@overload
+def f(x: mod.B) -> mod.B: pass
+def f(x: mod.Base) -> mod.Base:
+    pass
+[file mod.py]
+class Base:
+    pass
+class A(Base):
+    pass
+class B(Base):
+    pass
+[out]
+<m.f> -> m
+<mod.A> -> <m.f>, m.f
+<mod.B> -> <m.f>, m.f
+<mod.Base> -> <m.f>, m.f
+<mod> -> m
