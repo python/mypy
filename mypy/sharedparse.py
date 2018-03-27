@@ -2,8 +2,46 @@ from typing import Optional
 
 """Shared logic between our three mypy parser files."""
 
+MAGIC_METHODS_ALLOWING_KWARGS = frozenset([
+    "__init__",
+    "__init_subclass__",
+    "__new__",
+    "__call__",
+])
 
-BINARY_MAGIC_METHODS = {
+
+_MAGIC_NONBINARY_METHODS = frozenset([
+    "__abs__",
+    "__complex__",
+    "__del__",
+    "__delattr__",
+    "__enter__",
+    "__exit__",
+    "__float__",
+    "__getattr__",
+    "__getattribute__",
+    "__hex__",
+    "__index__",
+    "__int__",
+    "__inv__",
+    "__invert__",
+    "__iter__",
+    "__len__",
+    "__long__",
+    "__neg__",
+    "__nonzero__",
+    "__not__",
+    "__oct__",
+    "__pos__",
+    "__repr__",
+    "__reversed__",
+    "__setattr__",
+    "__str__",
+    "__unicode__",
+])
+
+
+BINARY_MAGIC_METHODS = frozenset([
     "__add__",
     "__and__",
     "__cmp__",
@@ -61,49 +99,10 @@ BINARY_MAGIC_METHODS = {
     "__sub__",
     "__truediv__",
     "__xor__",
-}
+])
 
-
-MAGIC_METHODS = {
-    "__abs__",
-    "__call__",
-    "__complex__",
-    "__del__",
-    "__delattr__",
-    "__enter__",
-    "__exit__",
-    "__float__",
-    "__getattr__",
-    "__getattribute__",
-    "__hex__",
-    "__index__",
-    "__init__",
-    "__init_subclass__",
-    "__int__",
-    "__inv__",
-    "__invert__",
-    "__iter__",
-    "__len__",
-    "__long__",
-    "__neg__",
-    "__new__",
-    "__nonzero__",
-    "__not__",
-    "__oct__",
-    "__pos__",
-    "__repr__",
-    "__reversed__",
-    "__setattr__",
-    "__str__",
-    "__unicode__",
-}.union(BINARY_MAGIC_METHODS)
-
-MAGIC_METHODS_ALLOWING_KWARGS = {
-    "__init__",
-    "__init_subclass__",
-    "__new__",
-    "__call__",
-}
+MAGIC_METHODS = (_MAGIC_NONBINARY_METHODS | BINARY_MAGIC_METHODS |
+                 MAGIC_METHODS_ALLOWING_KWARGS)
 
 MAGIC_METHODS_POS_ARGS_ONLY = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS
 
