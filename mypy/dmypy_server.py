@@ -95,8 +95,6 @@ def process_start_options(flags: List[str]) -> Options:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.quick_and_dirty:
         sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
-    if options.use_fine_grained_cache and not options.fine_grained_incremental:
-        sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
     # Our file change tracking can't yet handle changes to files that aren't
     # specified in the sources list.
     if options.follow_imports not in ('skip', 'error'):
