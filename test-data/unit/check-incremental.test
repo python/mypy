@@ -2502,7 +2502,7 @@ a.f()
 import a
 reveal_type(a.f)
 [out2]
-tmp/b.py:2: error: Revealed type is 'Any'
+tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
 
 [case testQuickAndDirtyDeleteClassUsedInAnnotation]
 # flags: --quick-and-dirty
@@ -2521,6 +2521,32 @@ a.f().x
 tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
 tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
 
+[case testQuickAndDirtyDeleteSuperClass]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+from b import Foo
+z = (1, Foo())
+
+class Bar:
+    pass
+[file b.py]
+from e import Quux
+class Baz:
+    pass
+class Foo(Baz, Quux):
+    pass
+[file e.py]
+from a import Bar
+class Quux(Bar):
+    pass
+
+[file a.py.2]
+from b import Foo
+z = (1, Foo())
+[out]
+[out2]
+
 [case testQuickAndDirtyDeleteClassUsedAsBase]
 # flags: --quick-and-dirty
 import a
@@ -2535,7 +2561,8 @@ import a
 reveal_type(a.D)
 a.D().x
 [out2]
-tmp/b.py:2: error: Revealed type is 'Any'
+tmp/b.py:2: error: Revealed type is 'def () -> a.D'
+tmp/b.py:3: error: "D" has no attribute "x"
 
 [case testQuickAndDirtyDeleteNestedClassUsedInAnnotation]
 # flags: --quick-and-dirty
