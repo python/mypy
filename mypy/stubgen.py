@@ -156,9 +156,7 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
                 # Print some debugging output that might help diagnose problems.
                 print('=== debug dump follows ===')
                 traceback.print_exc()
-                print('sys.path:')
-                for entry in sys.path:
-                    print('    %r' % entry)
+                dump_sys_path()
                 print('PYTHONPATH: %s' % os.getenv("PYTHONPATH"))
                 dump_dir(os.getcwd())
                 print('=== end of debug dump ===')
@@ -175,6 +173,19 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
                 "Can't find module '{}' (consider using --search-path)".format(module))
         module_all = None
     return module_path, module_all
+
+
+def dump_sys_path() -> None:
+    print('sys.path:')
+    for entry in sys.path:
+        print('    %r' % entry)
+        if entry in sys.path_importer_cache:
+            x = sys.path_importer_cache[entry]
+            print('      path_importer: %r / %r' % (x, getattr(x, '__dict__', None)))
+            try:
+                print('      stat: %s ' % str(os.stat(entry)))
+            except Exception as e:
+                pass
 
 
 def dump_dir(path: str) -> None:
