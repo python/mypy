@@ -57,7 +57,8 @@ class FileSystemMetaCache:
         try:
             st = os.stat(path)
         except Exception as err:
-            if self.package_root and not os.path.isabs(path) and os.path.basename(path) == '__init__.py':
+            if (self.package_root and not os.path.isabs(path)
+                    and os.path.basename(path) == '__init__.py'):
                 try:
                     return self._fake_init(path)
                 except OSError:
@@ -168,7 +169,8 @@ class FileSystemCache(FileSystemMetaCache):
         # Need to stat first so that the contents of file are from no
         # earlier instant than the mtime reported by self.stat().
         self.stat(path)
-        if os.path.basename(path) == '__init__.py' and os.path.dirname(path) in self.fake_package_cache:
+        if (os.path.basename(path) == '__init__.py'
+                and os.path.dirname(path) in self.fake_package_cache):
             data = ''
             md5hash = hashlib.md5(b'').hexdigest()
         else:
