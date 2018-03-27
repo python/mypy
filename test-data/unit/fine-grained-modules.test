@@ -712,6 +712,32 @@ c.f(1)
 ==
 a.py:2: error: Too many arguments for "f"
 
+[case testDeleteFileWSuperClass]
+# flags: --ignore-missing-imports
+[file a.py]
+from c import Bar
+from b import Foo
+z = (1, Foo())
+[file b.py]
+from e import Quux
+from d import Baz
+class Foo(Baz, Quux):
+    pass
+
+[file e.py]
+from c import Bar
+class Quux(Bar):
+    pass
+[file c.py]
+class Bar:
+    pass
+[file d.py]
+class Baz:
+    pass
+[delete c.py.2]
+[out]
+==
+
 [case testDeleteFileWithinPackage]
 import a
 [file a.py]
