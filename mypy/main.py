@@ -611,7 +611,7 @@ def keyfunc(name: str) -> Tuple[int, str]:
     return (-1, name)
 
 
-def expand_dir(arg: str, mod_prefix: str, package_root: bool) -> List[BuildSource]:
+def expand_dir(arg: str, mod_prefix: str = '', package_root: bool = False) -> List[BuildSource]:
     """Convert a directory name to a list of sources to build."""
     f = get_init_file(arg, package_root=package_root)
     if mod_prefix and not f:
