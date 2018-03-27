@@ -31,7 +31,7 @@ advantage of the benefits.
 import hashlib
 import os
 import stat
-from typing import Tuple, Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 from mypy.util import read_with_python_encoding
 
 
@@ -70,12 +70,16 @@ class FileSystemMetaCache:
     def _fake_init(self, path: str) -> os.stat_result:
         dirname = os.path.dirname(path) or os.curdir
         st = self.stat(dirname)  # May raise OSError
-        seq = list(st)  # Stat result as a sequence so we can modify it
+        # Get stat result as a sequence so we can modify it.
+        # (Alas, typeshed's os.stat_result is not a sequence yet.)
+        tpl = tuple(st)  # type: ignore
+        seq = list(tpl)  # type: List[float]
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1
         seq[stat.ST_SIZE] = 0
-        st = os.stat_result(seq)
+        tpl = tuple(seq)
+        st = os.stat_result(tpl)
         self.stat_cache[path] = st
         self.fake_package_cache.add(dirname)
         return st
