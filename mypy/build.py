@@ -471,7 +471,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         errors.report(line, 0, message)
         errors.raise_error()
 
-    custom_plugins = []  # type: List[Plugin]
+    custom_plugin_loaders = []  # type: List[Tuple[str, Any]]
     errors.set_file(options.config_file, None)
     for plugin_path in options.plugins:
         # Plugin paths are relative to the config file location.
@@ -497,24 +497,42 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         if not hasattr(m, 'plugin'):
             plugin_error('Plugin \'{}\' does not define entry point function "plugin"'.format(
                 plugin_path))
+        custom_plugin_loaders.append((plugin_path, getattr(m, 'plugin')))
+
+    try:
+        from pkg_resources import iter_entry_points
+    except ImportError:
+        pass
+    else:
+        for ep in iter_entry_points('mypy.plugins'):
+            try:
+                custom_plugin_loaders.append((ep.name, ep.load()))
+            except Exception:
+                print('Error loading plugin {}\n'.format(ep.name))
+                raise  # Propagate to display traceback
+
+    custom_plugins = []  # type: List[Plugin]
+    # shared validation for plugins loaded via config and entry_points:
+    for plug_id, loader in custom_plugin_loaders:
         try:
-            plugin_type = getattr(m, 'plugin')(__version__)
+            plugin_type = loader(__version__)
         except Exception:
-            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path))
+            print('Error calling the plugin(version) entry point of {}\n'.format(plug_id))
             raise  # Propagate to display traceback
         if not isinstance(plugin_type, type):
             plugin_error(
                 'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
-                    plugin_type, plugin_path))
+                    plugin_type, plug_id))
         if not issubclass(plugin_type, Plugin):
             plugin_error(
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
-                '(in {})'.format(plugin_path))
+                '(in {})'.format(plug_id))
         try:
             custom_plugins.append(plugin_type(options))
         except Exception:
             print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__))
             raise  # Propagate to display traceback
+
     # Custom plugins take precedence over the default plugin.
     return ChainedPlugin(options, custom_plugins + [default_plugin])
 
