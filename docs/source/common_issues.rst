@@ -85,7 +85,7 @@ flagged as an error.
   clarity about the latter use ``--follow-imports=error``.  You can
   read up about these and other useful flags in :ref:`command-line`.
 
-- **A function annotated as returning non-optional type but returns ``None``
+- **A function annotated as returning a non-optional type returns ``None``
   and mypy doesn't complain**.
 
   .. code-block:: python
