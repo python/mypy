@@ -868,7 +868,7 @@ class FindModuleCache:
                 output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
         return ast.literal_eval(output)
 
-    @functools.lru_cache(maxsize=10)
+    @functools.lru_cache(maxsize=None)
     def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...],
                             python_executable: str) -> List[str]:
         # Cache some repeated work within distinct find_module calls: finding which

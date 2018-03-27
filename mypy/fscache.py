@@ -43,13 +43,12 @@ class FileSystemMetaCache:
         """Start another transaction and empty all caches."""
         self.stat.cache_clear()
         self.listdir.cache_clear()
-        self.isfile_case.cache_clear()
 
-    @functools.lru_cache(maxsize=0)
+    @functools.lru_cache(maxsize=None)
     def stat(self, path: str) -> os.stat_result:
         return os.stat(path)
 
-    @functools.lru_cache(maxsize=0)
+    @functools.lru_cache(maxsize=None)
     def listdir(self, path: str) -> List[str]:
         return os.listdir(path)
 
@@ -60,7 +59,7 @@ class FileSystemMetaCache:
             return False
         return stat.S_ISREG(st.st_mode)
 
-    @functools.lru_cache(maxsize=0)
+    @functools.lru_cache(maxsize=None)
     def isfile_case(self, path: str) -> bool:
         """Return whether path exists and is a file.
 
