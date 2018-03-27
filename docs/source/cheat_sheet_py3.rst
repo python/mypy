@@ -115,8 +115,8 @@ See :ref:`async-and-await` for the full detail on typing coroutines and asynchro
    import asyncio
    from typing import Generator, Any
 
-   # A Python 3.4 coroutine should have a return type of
-   # Generator[Any, None, T], where T is the type it returns.
+   # A generator-based coroutine created with @asyncio.coroutine should have a
+   # return type of Generator[Any, None, T], where T is the type it returns.
    @asyncio.coroutine
    def countdown34(tag: str, count: int) -> Generator[Any, None, str]:
        while count > 0:
@@ -125,16 +125,15 @@ See :ref:`async-and-await` for the full detail on typing coroutines and asynchro
            count -= 1
        return "Blastoff!"
 
-   # mypy currently does not support converting functions into coroutines in
-   # Python 3.4, so you need to add a 'yield' to make it typecheck.
+   # mypy currently does not support converting functions into async generators
+   # in Python 3.4, so you need to add a 'yield' to make it typecheck.
    @asyncio.coroutine
    def async1(obj: object) -> Generator[None, None, str]:
        if False:
            yield
        return "placeholder"
 
-   # A Python 3.5+ coroutine is typed like a normal function, and doesn't need
-   # a 'yield' to make it typecheck.
+   # A Python 3.5+ coroutine is typed like a normal function.
    async def countdown35(tag: str, count: int) -> str:
        while count > 0:
            print('T-minus {} ({})'.format(count, tag))
