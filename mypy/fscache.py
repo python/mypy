@@ -59,7 +59,6 @@ class FileSystemMetaCache:
             return False
         return stat.S_ISREG(st.st_mode)
 
-    @functools.lru_cache(maxsize=None)
     def isfile_case(self, path: str) -> bool:
         """Return whether path exists and is a file.
 
