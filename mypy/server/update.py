@@ -428,6 +428,10 @@ def update_module_isolated(module: str,
     else:
         manager.log_fine_grained('new module %r' % module)
 
+    if not manager.fscache.isfile(path) or force_removed:
+        delete_module(module, graph, manager)
+        return NormalUpdate(module, path, [], None)
+
     old_modules = dict(manager.modules)
     sources = get_sources(manager.fscache, previous_modules, [(module, path)])
 
@@ -452,10 +456,6 @@ def update_module_isolated(module: str,
         else:
             remaining_modules = []
         return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
-
-    if not manager.fscache.isfile(path) or force_removed:
-        delete_module(module, graph, manager)
-        return NormalUpdate(module, path, [], None)
 
     # Find any other modules brought in by imports.
     changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
@@ -612,26 +612,9 @@ def verify_dependencies(state: State, manager: BuildManager) -> None:
     for dep in dependencies + state.suppressed:  # TODO: ancestors?
         if dep not in manager.modules and not manager.options.ignore_missing_imports:
             assert state.tree
-            line = find_import_line(state.tree, dep) or 1
+            line = state.dep_line_map.get(dep, 1)
             assert state.path
             manager.module_not_found(state.path, state.id, line, dep)
-
-
-def find_import_line(node: MypyFile, target: str) -> Optional[int]:
-    for imp in node.imports:
-        if isinstance(imp, Import):
-            for name, _ in imp.ids:
-                if name == target:
-                    return imp.line
-        if isinstance(imp, ImportFrom):
-            if imp.id == target:
-                return imp.line
-            # TODO: Relative imports
-            for name, _ in imp.names:
-                if '%s.%s' % (imp.id, name) == target:
-                    return imp.line
-        # TODO: ImportAll
-    return None
 
 
 def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
