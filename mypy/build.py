@@ -1978,7 +1978,10 @@ class State:
 
     def write_cache(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        if not self.path or self.options.cache_dir == os.devnull:
+        # We don't support writing cache files in fine-grained incremental mode.
+        if (not self.path
+                or self.options.cache_dir == os.devnull
+                or self.options.fine_grained_incremental):
             return
         if self.manager.options.quick_and_dirty:
             is_errors = self.manager.errors.is_errors_for_file(self.path)
