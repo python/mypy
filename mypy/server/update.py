@@ -504,7 +504,6 @@ def update_module_isolated(module: str,
     state.type_check_second_pass()
     state.compute_fine_grained_deps()
     state.finish_passes()
-    # TODO: state.write_cache()?
     # TODO: state.mark_as_rechecked()?
 
     graph[module] = state
