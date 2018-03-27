@@ -187,6 +187,7 @@ def dump_sys_path() -> None:
             except Exception as e:
                 pass
 
+
 def dump_dir(path: str) -> None:
     for root, dirs, files in os.walk(os.getcwd()):
         print('%s:' % root)
