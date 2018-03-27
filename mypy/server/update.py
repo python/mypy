@@ -120,7 +120,7 @@ from typing import (
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
@@ -603,7 +603,7 @@ def verify_dependencies(state: State, manager: BuildManager) -> None:
             assert state.tree
             line = state.dep_line_map.get(dep, 1)
             assert state.path
-            manager.module_not_found(state.path, state.id, line, dep)
+            module_not_found(manager, line, state, dep)
 
 
 def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
