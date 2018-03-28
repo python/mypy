@@ -286,6 +286,11 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
         if not rest:
             return stnode
         node = stnode.node
+        # In fine-grained mode, could be a cross-reference to a deleted module
+        if node is None:
+            if not quick_and_dirty:
+                assert rest, "Cannot find %s" % (name,)
+            return None
         assert isinstance(node, TypeInfo)
         names = node.names
 
