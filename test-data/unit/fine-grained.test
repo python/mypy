@@ -4881,9 +4881,7 @@ def f(x):
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadsSimpleTo]
-import a
-[file a.py]
+[case testOverloadsSimpleToNested]
 from typing import overload, Any
 import mod
 def outer() -> None:
@@ -4904,8 +4902,6 @@ def f() -> str:
 a.py:9: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testOverloadsRemovedOverload]
-import a
-[file a.py]
 import mod
 def f() -> None:
     x: str = mod.f(str())
@@ -4934,8 +4930,6 @@ def f(x):
 a.py:3: error: No overload variant of "f" matches argument types [builtins.str]
 
 [case testOverloadsDeleted]
-import a
-[file a.py]
 import mod
 def f() -> None:
     x: str = mod.f(str())
@@ -4949,21 +4943,20 @@ def f(x):
     pass
 [file mod.py.2]
 from typing import overload
+[builtins fixtures/module.pyi]
 [out]
 ==
 a.py:3: error: "object" has no attribute "f"
 
 [case testOverloadsUpdatedTypeRecheckImplementation]
-import a
-[file a.py]
 from typing import overload
 import mod
-def outer() -> None:
+class Outer:
     @overload
-    def f(x: mod.D) -> mod.D: pass
+    def f(self, x: mod.D) -> mod.D: pass
     @overload
-    def f(x: mod.E) -> mod.E: pass
-    def f(x: mod.C) -> mod.C:
+    def f(self, x: mod.E) -> mod.E: pass
+    def f(self, x: mod.C) -> mod.C:
         x.x = int()
         return x
 [file mod.py]
@@ -4992,16 +4985,14 @@ class AS:
 a.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testOverloadsUpdatedTypeRechekConsistency]
-import a
-[file a.py]
 from typing import overload
 import mod
-def outer() -> None:
+class Outer:
     @overload
-    def f(x: mod.D) -> mod.D: pass
+    def f(self, x: mod.D) -> mod.D: pass
     @overload
-    def f(x: mod.E) -> mod.E: pass
-    def f(x: mod.C) -> mod.C:
+    def f(self, x: mod.E) -> mod.E: pass
+    def f(self, x: mod.C) -> mod.C:
         pass
 [file mod.py]
 class C:
@@ -5095,7 +5086,7 @@ def f(x: int) -> int:
 a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
-[case testOverloadsToOverloaded]
+[case testOverloadsUpdateFunctionToOverloaded]
 import a
 [file a.py]
 import mod
@@ -5117,7 +5108,7 @@ def f(x):
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadedToClass]
+[case testOverloadedUpdateToClass]
 import a
 [file a.py]
 import mod
