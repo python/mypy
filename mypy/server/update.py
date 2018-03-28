@@ -110,10 +110,6 @@ Here's a summary of how a fine-grained incremental program update happens:
 
 This is module is tested using end-to-end fine-grained incremental mode
 test cases (test-data/unit/fine-grained*.test).
-
-Major todo items:
-
-- Fully support multiple type checking passes
 """
 
 import os
@@ -169,7 +165,6 @@ class FineGrainedBuildManager:
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
-        # TODO: Handle blocking errors in the initial build
         self.blocking_error = None  # type: Optional[Tuple[str, str]]
         # Module that we haven't processed yet but that are known to be stale.
         self.stale = []  # type: List[Tuple[str, str]]
@@ -328,7 +323,6 @@ class FineGrainedBuildManager:
         self.manager.log_fine_grained('--- update single %r ---' % module)
         self.updated_modules.append(module)
 
-        # TODO: If new module brings in other modules, we parse some files multiple times.
         manager = self.manager
         previous_modules = self.previous_modules
         graph = self.graph
@@ -504,7 +498,6 @@ def update_module_isolated(module: str,
     state.type_check_second_pass()
     state.compute_fine_grained_deps()
     state.finish_passes()
-    # TODO: state.mark_as_rechecked()?
 
     graph[module] = state
 
@@ -548,7 +541,6 @@ def delete_module(module_id: str,
                   graph: Graph,
                   manager: BuildManager) -> None:
     manager.log_fine_grained('delete module %r' % module_id)
-    # TODO: Deletion of a package
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     if module_id in graph:
         del graph[module_id]
@@ -704,7 +696,6 @@ def propagate_changes_using_dependencies(
     Returns a list (module id, path) tuples representing modules that contain
     a target that needs to be reprocessed but that has not been parsed yet."""
 
-    # TODO: Multiple type checking passes
     num_iter = 0
     remaining_modules = []
 
