@@ -1490,60 +1490,15 @@ class State:
         self.fine_grained_deps = {}
         if not path and source is None:
             assert id is not None
-            file_id = id
-            if id == 'builtins' and self.options.python_version[0] == 2:
-                # The __builtin__ module is called internally by mypy
-                # 'builtins' in Python 2 mode (similar to Python 3),
-                # but the stub file is __builtin__.pyi.  The reason is
-                # that a lot of code hard-codes 'builtins.x' and it's
-                # easier to work it around like this.  It also means
-                # that the implementation can mostly ignore the
-                # difference and just assume 'builtins' everywhere,
-                # which simplifies code.
-                file_id = '__builtin__'
-            path = manager.find_module_cache.find_module(file_id, manager.lib_path)
-            if path:
-                # For non-stubs, look at options.follow_imports:
-                # - normal (default) -> fully analyze
-                # - silent -> analyze but silence errors
-                # - skip -> don't analyze, make the type Any
-                follow_imports = self.options.follow_imports
-                if (follow_imports != 'normal'
-                        and not root_source  # Honor top-level modules
-                        and (path.endswith('.py')  # Stubs are always normal
-                             or self.options.follow_imports_for_stubs)  # except when they aren't
-                        and id != 'builtins'):  # Builtins is always normal
-                    if follow_imports == 'silent':
-                        # Still import it, but silence non-blocker errors.
-                        manager.log("Silencing %s (%s)" % (path, id))
-                        self.ignore_all = True
-                    else:
-                        # In 'error' mode, produce special error messages.
-                        if id not in manager.missing_modules:
-                            manager.log("Skipping %s (%s)" % (path, id))
-                        if follow_imports == 'error':
-                            if ancestor_for:
-                                skipping_ancestor(self.manager, id, path, ancestor_for)
-                            else:
-                                skipping_module(self.manager, caller_line, caller_state,
-                                                id, path)
-                        path = None
-                        manager.missing_modules.add(id)
-                        raise ModuleNotFound
-            else:
-                # Could not find a module.  Typically the reason is a
-                # misspelled module name, missing stub, module not in
-                # search path or the module has not been installed.
-                if caller_state:
-                    if not self.options.ignore_missing_imports:
-                        module_not_found(manager, caller_line, caller_state, id)
-                    manager.missing_modules.add(id)
-                    raise ModuleNotFound
-                else:
-                    # If we can't find a root source it's always fatal.
-                    # TODO: This might hide non-fatal errors from
-                    # root sources processed earlier.
-                    raise CompileError(["mypy: can't find module '%s'" % id])
+            try:
+                path, follow_imports = find_module_and_diagnose(
+                    manager, self.options, id, caller_state, caller_line,
+                    ancestor_for, root_source)
+            except ModuleNotFound:
+                manager.missing_modules.add(id)
+                raise
+            if follow_imports == 'silent':
+                self.ignore_all = True
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
@@ -1964,6 +1919,73 @@ class State:
         if self.options.warn_unused_ignores:
             self.manager.errors.generate_unused_ignore_notes(self.xpath)
 
+# Module import and diagnostic glue
+
+
+def find_module_and_diagnose(manager: BuildManager,
+                             options: Options,
+                             id: str,
+                             caller_state: 'Optional[State]' = None,
+                             caller_line: int = 0,
+                             ancestor_for: 'Optional[State]' = None,
+                             root_source: bool = False) -> Tuple[str, str]:
+    """Find a module by name, respecting follow_imports and producing diagnostics.
+
+    """
+    file_id = id
+    if id == 'builtins' and options.python_version[0] == 2:
+        # The __builtin__ module is called internally by mypy
+        # 'builtins' in Python 2 mode (similar to Python 3),
+        # but the stub file is __builtin__.pyi.  The reason is
+        # that a lot of code hard-codes 'builtins.x' and it's
+        # easier to work it around like this.  It also means
+        # that the implementation can mostly ignore the
+        # difference and just assume 'builtins' everywhere,
+        # which simplifies code.
+        file_id = '__builtin__'
+    path = manager.find_module_cache.find_module(file_id, manager.lib_path)
+    if path:
+        # For non-stubs, look at options.follow_imports:
+        # - normal (default) -> fully analyze
+        # - silent -> analyze but silence errors
+        # - skip -> don't analyze, make the type Any
+        follow_imports = options.follow_imports
+        if (root_source  # Honor top-level modules
+            or not (path.endswith('.py')  # Stubs are always normal
+                    or options.follow_imports_for_stubs)  # except when they aren't
+                or id == 'builtins'):  # Builtins is always normal
+            follow_imports = 'normal'
+
+        if follow_imports == 'silent':
+            # Still import it, but silence non-blocker errors.
+            manager.log("Silencing %s (%s)" % (path, id))
+        elif follow_imports == 'skip' or follow_imports == 'error':
+            # In 'error' mode, produce special error messages.
+            if id not in manager.missing_modules:
+                manager.log("Skipping %s (%s)" % (path, id))
+            if follow_imports == 'error':
+                if ancestor_for:
+                    skipping_ancestor(manager, id, path, ancestor_for)
+                else:
+                    skipping_module(manager, caller_line, caller_state,
+                                    id, path)
+            raise ModuleNotFound
+
+        return (path, follow_imports)
+    else:
+        # Could not find a module.  Typically the reason is a
+        # misspelled module name, missing stub, module not in
+        # search path or the module has not been installed.
+        if caller_state:
+            if not options.ignore_missing_imports:
+                module_not_found(manager, caller_line, caller_state, id)
+            raise ModuleNotFound
+        else:
+            # If we can't find a root source it's always fatal.
+            # TODO: This might hide non-fatal errors from
+            # root sources processed earlier.
+            raise CompileError(["mypy: can't find module '%s'" % id])
+
 
 def module_not_found(manager: BuildManager, line: int, caller_state: State,
                      target: str) -> None:
@@ -1991,6 +2013,7 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
                       'or using the "--ignore-missing-imports" flag would help)',
                       severity='note', only_once=True)
     errors.set_import_context(save_import_context)
+
 
 def skipping_module(manager: BuildManager, line: int, caller_state: Optional[State],
                     id: str, path: str) -> None:
@@ -2020,6 +2043,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
                           "(Using --follow-imports=error, submodule passed on command line)",
                           severity='note', only_once=True)
 
+# The driver
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
