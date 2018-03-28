@@ -4854,3 +4854,236 @@ class C:
 ==
 ==
 a.py:4: error: Too many arguments for "C"
+
+[case testOverloadsSimpleFrom]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> int: pass
+def f(x):
+    pass
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testOverloadsSimpleTo]
+import a
+[file a.py]
+from typing import overload, Any
+import mod
+def outer() -> None:
+    @overload
+    def f(x: int) -> None: pass
+    @overload
+    def f(x: str) -> str: pass
+    def f(x: Any) -> Any:
+        y: int = mod.f()
+[file mod.py]
+def f() -> int:
+    pass
+[file mod.py.2]
+def f() -> str:
+    pass
+[out]
+==
+a.py:9: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testOverloadsRemovedOverload]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+class C: pass
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+@overload
+def f(x: C) -> int: pass
+def f(x):
+    pass
+[file mod.py.2]
+class C: pass
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: C) -> int: pass
+def f(x):
+    pass
+[out]
+==
+a.py:3: error: No overload variant of "f" matches argument types [builtins.str]
+
+[case testOverloadsDeleted]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+[out]
+==
+a.py:3: error: "object" has no attribute "f"
+
+[case testOverloadsUpdatedTypeRecheckImplementation]
+import a
+[file a.py]
+from typing import overload
+import mod
+def outer() -> None:
+    @overload
+    def f(x: mod.D) -> mod.D: pass
+    @overload
+    def f(x: mod.E) -> mod.E: pass
+    def f(x: mod.C) -> mod.C:
+        x.x = int()
+        return x
+[file mod.py]
+import submod
+class C(submod.B):
+    pass
+class D(C):
+    pass
+class E(C):
+    pass
+[file submod.py]
+import base
+class B(base.AI):
+    pass
+[file submod.py.2]
+import base
+class B(base.AS):
+    pass
+[file base.py]
+class AI:
+    x: int
+class AS:
+    x: str
+[out]
+==
+a.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testOverloadsUpdatedTypeRechekConsistency]
+import a
+[file a.py]
+from typing import overload
+import mod
+def outer() -> None:
+    @overload
+    def f(x: mod.D) -> mod.D: pass
+    @overload
+    def f(x: mod.E) -> mod.E: pass
+    def f(x: mod.C) -> mod.C:
+        pass
+[file mod.py]
+class C:
+    pass
+class D(C):
+    pass
+class E(C):
+    pass
+[file mod.py.2]
+class C:
+    pass
+class D(C):
+    pass
+class E:
+    pass
+[out]
+==
+a.py:8: error: Overloaded function implementation does not accept all possible arguments of signature 2
+a.py:8: error: Overloaded function implementation cannot produce return type of signature 2
+
+[case testOverloadsGenericTypevarUpdated]
+import a
+[file a.py]
+import b
+b.f(int())
+[file b.py]
+from typing import overload
+import c
+class C: pass
+@overload
+def f(x: C) -> None: pass
+@overload
+def f(x: c.T) -> c.T: pass
+def f(x):
+    pass
+[file c.py]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+[file c.py.2]
+from typing import TypeVar
+T = TypeVar('T', bound=str)
+[out]
+==
+a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+
+[case testOverloadsGenericToNonGeneric]
+import a
+[file a.py]
+import b
+b.f(int())
+[file b.py]
+from typing import overload
+import c
+class C: pass
+@overload
+def f(x: C) -> None: pass
+@overload
+def f(x: c.T) -> c.T: pass
+def f(x):
+    pass
+[file c.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+[file c.py.2]
+from typing import TypeVar
+class T: pass
+[out]
+==
+a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+
+[case testOverloadsToNonOverloaded-skip]
+
+[out]
+
+[case testOverloadsToOverloaded-skip]
+
+[out]
+
+[case testOverloadedToClass-skip]
+
+[out]
+
+[case testOverloadedInitSupertype-skip]
+
+[out]

@@ -929,7 +929,7 @@ class C: pass
 <submod.C> -> <m.f>, <mod.TB>, m.f, mod, submod.C
 <submod> -> mod
 
-[case testDepsOverloadExternalVsImplementationType]
+[case testDepsOverloadBothExternalAndImplementationType]
 import mod
 from typing import overload
 @overload

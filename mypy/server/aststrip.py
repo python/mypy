@@ -107,7 +107,12 @@ class NodeStripVisitor(TraverserVisitor):
         if not self.recurse_into_functions:
             return
         node.expanded = []
+        print('func', node.type, node.unanalyzed_type)
         node.type = node.unanalyzed_type
+        # Type variable binder binds tvars before the type is analized.
+        # It should be refactored, before that we just undo this change here.
+        if node.type:
+            node.type.variables = []
         with self.enter_method(node.info) if node.info else nothing():
             super().visit_func_def(node)
 

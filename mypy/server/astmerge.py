@@ -360,7 +360,8 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_overloaded(self, t: Overloaded) -> None:
         for item in t.items():
             item.accept(self)
-        t.fallback.accept(self)
+        if t.fallback is not None:
+            t.fallback.accept(self)
 
     def visit_deleted_type(self, typ: DeletedType) -> None:
         pass
