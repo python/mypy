@@ -1909,6 +1909,34 @@ class State:
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
 
+    def verify_dependencies(self) -> None:
+        """Report errors for import targets in module that don't exist."""
+        # Strip out indirect dependencies. See comment in build.load_graph().
+        manager = self.manager
+        dependencies = [dep for dep in self.dependencies
+                        if self.priorities.get(dep) != PRI_INDIRECT]
+        assert self.ancestors is not None
+        for dep in dependencies + self.suppressed + self.ancestors:
+            if dep not in manager.modules and not manager.options.ignore_missing_imports:
+                line = self.dep_line_map.get(dep, 1)
+                try:
+                    if dep in self.ancestors:
+                        state, ancestor = None, self  # type: (Optional[State], Optional[State])
+                    else:
+                        state, ancestor = self, None
+                    # Called just for its side effects of producing diagnostics.
+                    find_module_and_diagnose(
+                        manager, self.options, dep,
+                        caller_state=state, caller_line=line,
+                        ancestor_for=ancestor)
+                except Exception:
+                    # Swallow up any exception while generating a diagnostic.
+                    # This can actually include CompileErrors that get generated in
+                    # fine-grained mode when an __init__.py is deleted, if a module
+                    # that was in that package has targets reprocessed before
+                    # it is renamed.
+                    pass
+
     def dependency_priorities(self) -> List[int]:
         return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
 
