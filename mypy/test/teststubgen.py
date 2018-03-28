@@ -146,9 +146,12 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
 
 def reset_importlib_cache(entry: str) -> None:
     # importlib.invalidate_caches() is insufficient, since it doesn't
-    # clear cache entries indicate that a directory on the path does
-    # not exist, which can cause failures.
-    # Just directly clear the sys.path_importer_cache entry ourselves.
+    # clear cache entries that indicate that a directory on the path
+    # does not exist, which can cause failures.  Just directly clear
+    # the sys.path_importer_cache entry ourselves.  Other possible
+    # workarounds include always using different paths in the sys.path
+    # (perhaps by using the full path name) or removing the entry from
+    # sys.path after each run.
     if entry in sys.path_importer_cache:
         del sys.path_importer_cache[entry]
 
