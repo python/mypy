@@ -125,8 +125,9 @@ See :ref:`async-and-await` for the full detail on typing coroutines and asynchro
            count -= 1
        return "Blastoff!"
 
-   # mypy currently does not support converting functions into async generators
-   # in Python 3.4, so you need to add a 'yield' to make it typecheck.
+   # mypy currently does not support converting functions into generator-based
+   # coroutines in Python 3.4, so you need to add a 'yield' to make it
+   # typecheck.
    @asyncio.coroutine
    def async1(obj: object) -> Generator[None, None, str]:
        if False:
