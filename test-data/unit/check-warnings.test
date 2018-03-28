@@ -145,70 +145,8 @@ main:4: warning: Returning Any from function declared to return "int"
 
 [case testReturnAnyForNotImplementedInBinaryMagicMethods]
 # flags: --warn-return-any
-from typing import Any
 class A:
-    def __init__(self, x: Any) -> None:
-        self.x = x
-    def __eq__(self, other: Any) -> bool:
-        if self.__class__ is other.__class__:
-            return bool(self.x == other.x)
-        return NotImplemented
-    def __lt__(self, other: Any) -> bool: return NotImplemented
-    def __gt__(self, other: Any) -> bool: return NotImplemented
-    def __le__(self, other: Any) -> bool: return NotImplemented
-    def __ge__(self, other: Any) -> bool: return NotImplemented
-    def __ne__(self, other: Any) -> bool:
-        # The logic here is similar to __eq__, except the
-        # "return" is inside the if-then-else, to verify both
-        # ways of inferring Union[bool, type(NotImplemented)].
-        if self.__class__ is other.__class__:
-            return bool(self.x != other.x)
-        else:
-            return NotImplemented
-[builtins fixtures/notimplemented.pyi]
-[out]
-
-[case testReturnNotImplementedAllMagicMethods]
-# flags: --warn-return-any
-from typing import Any
-class A:
-    def __add__(self, other: Any) -> 'A': return NotImplemented
-    def __and__(self, other: Any) -> 'A': return NotImplemented
-    def __eq__(self, other: Any) -> bool: return NotImplemented
-    def __floordiv__(self, other: Any) -> 'A': return NotImplemented
-    def __ge__(self, other: Any) -> bool: return NotImplemented
-    def __gt__(self, other: Any) -> bool: return NotImplemented
-    def __iadd__(self, other: Any) -> 'A': return NotImplemented
-    def __iand__(self, other: Any) -> 'A': return NotImplemented
-    def __ifloordiv__(self, other: Any) -> 'A': return NotImplemented
-    def __ilshift__(self, other: Any) -> 'A': return NotImplemented
-    def __imul__(self, other: Any) -> 'A': return NotImplemented
-    def __ior__(self, other: Any) -> 'A': return NotImplemented
-    def __ipow__(self, other: Any) -> 'A': return NotImplemented
-    def __irshift__(self, other: Any) -> 'A': return NotImplemented
-    def __isub__(self, other: Any) -> 'A': return NotImplemented
-    def __ixor__(self, other: Any) -> 'A': return NotImplemented
-    def __le__(self, other: Any) -> bool: return NotImplemented
-    def __lshift__(self, other: Any) -> 'A': return NotImplemented
-    def __lt__(self, other: Any) -> bool: return NotImplemented
-    def __mul__(self, other: Any) -> 'A': return NotImplemented
-    def __ne__(self, other: Any) -> bool: return NotImplemented
-    def __or__(self, other: Any) -> 'A': return NotImplemented
-    def __pow__(self, other: Any) -> 'A': return NotImplemented
-    def __rshift__(self, other: Any) -> 'A': return NotImplemented
-    def __sub__(self, other: Any) -> 'A': return NotImplemented
-    def __xor__(self, other: Any) -> 'A': return NotImplemented
-    def __radd__(self, other: Any) -> 'A': return NotImplemented
-    def __rsub__(self, other: Any) -> 'A': return NotImplemented
-    def __rmul__(self, other: Any) -> 'A': return NotImplemented
-    def __rfloordiv__(self, other: Any) -> 'A': return NotImplemented
-    def __rmod__(self, other: Any) -> 'A': return NotImplemented
-    def __rpow__(self, other: Any) -> 'A': return NotImplemented
-    def __rlshift__(self, other: Any) -> 'A': return NotImplemented
-    def __rrshift__(self, other: Any) -> 'A': return NotImplemented
-    def __rand__(self, other: Any) -> 'A': return NotImplemented
-    def __rxor__(self, other: Any) -> 'A': return NotImplemented
-    def __ror__(self, other: Any) -> 'A': return NotImplemented
+    def __eq__(self, other: object) -> bool: return NotImplemented
 [builtins fixtures/notimplemented.pyi]
 [out]
 
