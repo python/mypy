@@ -39,17 +39,34 @@ class FileSystemMetaCache:
     def __init__(self) -> None:
         self.stat = functools.lru_cache(maxsize=None)(self._stat)
         self.listdir = functools.lru_cache(maxsize=None)(self._listdir)
+        # lru_cache doesn't handle exceptions, so we need special caches for them.
+        self.stat_error_cache = {}  # type: Dict[str, Exception]
+        self.listdir_error_cache = {}  # type: Dict[str, Exception]
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         self.stat.cache_clear()
         self.listdir.cache_clear()
+        self.stat_error_cache.clear()
+        self.listdir_error_cache.clear()
 
     def _stat(self, path: str) -> os.stat_result:
-        return os.stat(path)
+        if path in self.stat_error_cache:
+            raise self.stat_error_cache[path]
+        try:
+            return os.stat(path)
+        except Exception as err:
+            self.stat_error_cache[path] = err
+            raise
 
     def _listdir(self, path: str) -> List[str]:
-        return os.listdir(path)
+        if path in self.listdir_error_cache:
+            raise self.listdir_error_cache[path]
+        try:
+            return os.listdir(path)
+        except Exception as err:
+            self.listdir_error_cache[path] = err
+            raise err
 
     def isfile(self, path: str) -> bool:
         try:
