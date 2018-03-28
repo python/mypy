@@ -31,6 +31,9 @@
 -- [stale ...].
 --
 -- Specifications for later runs can be given with [stale2 ...], [stale3 ...], etc.
+--
+-- Test runner can parse options from mypy.ini file. Updating this file in between
+-- incremental runs is not yet supported.
 
 [case testReprocessFunction]
 import m
@@ -4011,6 +4014,113 @@ class B:
 [out]
 ==
 main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
+
+[case testPerFileStrictOptionalModule]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-a.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+x: int
+y: int = x
+[file b.py]
+from typing import Optional
+x: int
+y: int = x
+[file b.py.2]
+from typing import Optional
+x: Optional[int]
+y: int = x
+[file a.py.3]
+from typing import Optional
+import b
+x: Optional[int]
+y: int = x
+[out]
+==
+==
+a.py:4: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+
+[case testPerFileStrictOptionalFunction]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-b.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+def f() -> None:
+    x: int
+    x = b.g(x)
+[file b.py]
+from typing import Optional
+import c
+def g(x: Optional[int]) -> Optional[int]:
+    return c.h(x)
+[file c.py]
+from typing import Optional
+def h(x: Optional[int]) -> int:
+    pass
+[file c.py.2]
+from typing import Optional
+def h(x: int) -> int:
+    pass
+[file b.py.3]
+from typing import Optional
+import c
+def g(x: int) -> Optional[int]:
+    return c.h(x)
+[out]
+==
+b.py:4: error: Argument 1 to "h" has incompatible type "Optional[int]"; expected "int"
+==
+
+[case testPerFileStrictOptionalMethod]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-b.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+class A:
+    def f(self) -> None:
+        x: int
+        x = b.B().g(x)
+[file b.py]
+from typing import Optional
+import c
+class B:
+    def g(self, x: Optional[int]) -> Optional[int]:
+        return c.C().h(x)
+[file c.py]
+from typing import Optional
+class C:
+    def h(self, x: Optional[int]) -> int:
+        pass
+[file c.py.2]
+from typing import Optional
+class C:
+    def h(self, x: int) -> int:
+        pass
+[file b.py.3]
+from typing import Optional
+import c
+class B:
+    def g(self, x: int) -> Optional[int]:
+        return c.C().h(x)
+[out]
+==
+b.py:5: error: Argument 1 to "h" of "C" has incompatible type "Optional[int]"; expected "int"
+==
 
 [case testTypeVarValuesFunction]
 import a
