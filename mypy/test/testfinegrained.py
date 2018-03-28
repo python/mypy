@@ -19,14 +19,14 @@ from mypy.options import Options
 from mypy.server.update import FineGrainedBuildManager
 from mypy.test.config import test_temp_dir
 from mypy.test.data import (
-    DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, UpdateFile
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
-from mypy.main import expand_dir
+from mypy.main import expand_dir, create_source_list
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -74,11 +74,11 @@ class FineGrainedSuite(DataSuite):
         with open(main_path, 'w') as f:
             f.write(main_src)
 
-        server = Server(self.get_options(main_src, testcase, build_cache=False),
-                        alt_lib_path=test_temp_dir)
+        options = self.get_options(main_src, testcase, build_cache=False)
+        server = Server(options, alt_lib_path=test_temp_dir)
 
         step = 1
-        sources = self.parse_sources(main_src, step)
+        sources = self.parse_sources(main_src, step, options)
         if self.use_cache:
             messages = self.build(self.get_options(main_src, testcase, build_cache=True), sources)
         else:
@@ -104,7 +104,7 @@ class FineGrainedSuite(DataSuite):
                 else:
                     # Delete file
                     os.remove(op.path)
-            sources = self.parse_sources(main_src, step)
+            sources = self.parse_sources(main_src, step, options)
             new_messages = self.run_check(server, sources)
 
             updated = []  # type: List[str]
@@ -190,7 +190,8 @@ class FineGrainedSuite(DataSuite):
         return result
 
     def parse_sources(self, program_text: str,
-                      incremental_step: int) -> List[BuildSource]:
+                      incremental_step: int,
+                      options: Options) -> List[BuildSource]:
         """Return target BuildSources for a test case.
 
         Normally, the unit tests will check all files included in the test
@@ -218,17 +219,12 @@ class FineGrainedSuite(DataSuite):
 
         if m:
             # The test case wants to use a non-default set of files.
-            paths = m.group(1).strip().split()
-            result = []
-            for path in paths:
-                path = os.path.join(test_temp_dir, path)
-                module = module_from_path(path)
-                if module == 'main':
-                    module = '__main__'
-                result.append(BuildSource(path, module, None))
-            return result
+            paths = [os.path.join(test_temp_dir, path) for path in m.group(1).strip().split()]
+            return create_source_list(paths, options)
         else:
             base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
+            # Use expand_dir instead of create_source_list to avoid complaints
+            # when there aren't any .py files in an increment
             return [base] + expand_dir(test_temp_dir)
 
 

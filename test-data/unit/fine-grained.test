@@ -426,6 +426,201 @@ main:3: error: Module has no attribute "g"
 ==
 main:3: error: Module has no attribute "g"
 
+[case testIgnoreWorksAfterUpdate]
+import a
+[file a.py]
+import b
+int() + str()  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 2
+[file b.py.3]
+x = 3
+[delete b.py.4]
+[out]
+==
+==
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIgnoreWorksWithMissingImports]
+import a
+[file a.py]
+import b
+import xyz  # type: ignore
+xyz.whatever
+[file b.py]
+x = 1
+[file b.py.2]
+x = 2
+[file b.py.3]
+x = 3
+[file xyz.py.4]
+[out]
+==
+==
+==
+a.py:3: error: "object" has no attribute "whatever"
+
+[case testAddedIgnoreWithMissingImports]
+import a
+[file a.py]
+from b import x
+y: int = x
+[file b.py]
+from xyz import x
+[file b.py.2]
+from xyz import x  # type: ignore
+[file xyz.py.3]
+x = str()
+[out]
+b.py:1: error: Cannot find module named 'xyz'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedIgnoreWithMissingImport]
+import a
+[file a.py]
+from b import x
+y: int = x
+[file b.py]
+from xyz import x  # type: ignore
+[file b.py.2]
+from xyz import x
+[file xyz.py.3]
+x = str()
+[out]
+==
+b.py:1: error: Cannot find module named 'xyz'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedModuleUnderIgnore]
+import a
+[file a.py]
+import c
+from b import x  # type: ignore
+y: int = x
+[file b.py]
+x = str()
+[file c.py]
+x = 1
+[delete b.py.2]
+[file c.py.3]
+x = 3
+[out]
+a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+==
+==
+
+[case AddedModuleUnderIgnore]
+import a
+[file a.py]
+import c
+from b import x  # type: ignore
+y: int = x
+[file c.py]
+x = 1
+[file c.py.2]
+x = 2
+[file b.py.3]
+# empty
+[out]
+==
+==
+
+[case testIgnoreInBetween]
+import a
+[file a.py]
+import b
+x: int = b.x
+[file b.py]
+import c
+x = c.C.x  # type: ignore
+[file c.py]
+class C:
+    pass
+[file c.py.2]
+class C:
+    x: int
+[file c.py.3]
+# empty
+[file c.py.4]
+class C:
+    x: str
+[out]
+==
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedModule-skip]
+# See https://github.com/python/mypy/issues/4782
+import a
+[file a.py]
+import b
+x = b.x  # type: ignore
+y: int = x
+[file b.py]
+import c
+[file b.py.2]
+import c
+x = c.x
+[file c.py]
+x: str
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedBase]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x = b.C.x  # type: ignore
+    y: int = x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(c.B):
+    pass
+[file c.py]
+class B:
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedMeta]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x = b.C.x  # type: ignore
+    y: int = x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testAddBaseClassMethodCausingInvalidOverride]
 import m
 class B(m.A):
@@ -1486,6 +1681,322 @@ a.py:8: error: "list" expects 1 type argument, but 2 given
 a.py:8: error: "list" expects 1 type argument, but 2 given
 ==
 
+[case testDecoratorUpdateMod]
+import a
+[file a.py]
+import mod
+
+@mod.deca
+@mod.decb(mod.C())
+def func(x: mod.B) -> mod.B:
+    x.x
+    return x
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.2]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[str], str]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.3]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    y: int
+[file mod.py.4]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    def __init__(self, x: int) -> None:
+        pass
+class B:
+    x: int
+[out]
+==
+a.py:3: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; expected "Callable[[str], str]"
+==
+a.py:6: error: "B" has no attribute "x"
+==
+a.py:4: error: Too few arguments for "C"
+
+[case testDecoratorUpdateFunc]
+import a
+[file a.py]
+import mod
+
+def outer() -> None:
+    @mod.deca
+    @mod.decb(mod.C())
+    def func(x: mod.B) -> mod.B:
+        x.x
+        return x
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.2]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[str], str]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.3]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    y: int
+[file mod.py.4]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[[B], B]) -> Callable[[str], str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    def __init__(self, x: int) -> None:
+        pass
+class B:
+    x: int
+[out]
+==
+a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[B], B]"; expected "Callable[[str], str]"
+==
+a.py:7: error: "B" has no attribute "x"
+==
+a.py:5: error: Too few arguments for "C"
+
+[case DecoratorUpdateMethod]
+import a
+[file a.py]
+import mod
+
+class D:
+    @mod.deca
+    @mod.decb(mod.C())
+    def func(self, x: mod.B) -> mod.B:
+        x.x
+        return x
+[file mod.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., B]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.2]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., str]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    x: int
+[file mod.py.3]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., B]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    pass
+class B:
+    y: int
+[file mod.py.4]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+
+def deca(func: Callable[..., B]) -> Callable[..., str]:
+    pass
+def decb(arg: C) -> Callable[[F], F]:
+    pass
+class C:
+    def __init__(self, x: int) -> None:
+        pass
+class B:
+    x: int
+[out]
+==
+a.py:4: error: Argument 1 to "deca" has incompatible type "Callable[[D, B], B]"; expected "Callable[..., str]"
+==
+a.py:7: error: "B" has no attribute "x"
+==
+a.py:5: error: Too few arguments for "C"
+
+[case testDecoratorUpdateDeeepNested]
+import a
+[file a.py]
+import mod
+
+def outer() -> None:
+    def inner() -> None:
+        @mod.dec
+        def func(x: int) -> int:
+            pass
+[file mod.py]
+from typing import Callable
+def dec(func: Callable[[int], int]) -> Callable[[str], str]:
+    pass
+[file mod.py.2]
+from typing import Callable
+def dec(func: Callable[[str], str]) -> Callable[[str], str]:
+    pass
+[out]
+==
+a.py:5: error: Argument 1 to "dec" has incompatible type "Callable[[int], int]"; expected "Callable[[str], str]"
+
+[case testDecoratorUpdateNestedClass]
+import a
+[file a.py]
+import mod
+
+class Outer:
+    class Inner:
+        c = mod.C()
+        @c.dec
+        def func(self, x: int) -> int:
+            pass
+[file mod.py]
+from typing import Callable
+class C:
+    def dec(self, func: Callable[..., int]) -> Callable[..., str]:
+        pass
+[file mod.py.2]
+from typing import Callable
+class C:
+    def dec(self, func: Callable[..., str]) -> Callable[..., str]:
+        pass
+[out]
+==
+a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Inner, int], int]"; expected "Callable[..., str]"
+
+[case testDecoratorUpdateClassInFunction]
+import a
+[file a.py]
+import mod
+
+def outer() -> None:
+    class Inner:
+        c = mod.C()
+        @c.dec
+        def func(self, x: mod.B) -> int:
+            return x.x
+[file mod.py]
+from typing import Callable
+class C:
+    def dec(self, func: Callable[..., int]) -> Callable[..., str]:
+        pass
+class B:
+    x: int
+[file mod.py.2]
+from typing import Callable
+class C:
+    def dec(self, func: Callable[..., str]) -> Callable[..., str]:
+        pass
+class B:
+    x: int
+[file mod.py.3]
+from typing import Callable
+class C:
+    def dec(self, func: Callable[..., int]) -> Callable[..., str]:
+        pass
+class B:
+    x: str
+[out]
+==
+a.py:6: error: Argument 1 to "dec" of "C" has incompatible type "Callable[[Inner, B], int]"; expected "Callable[..., str]"
+==
+a.py:8: error: Incompatible return value type (got "str", expected "int")
+
+[case testDecoratorUpdateMROUpdated]
+import a
+[file a.py]
+import mod
+
+@mod.dec
+def func(x: mod.B) -> int:
+    pass
+[file mod.py]
+from typing import Callable
+class B:
+    pass
+class C(B):
+    pass
+def dec(f: Callable[[C], int]) -> Callable[[int], int]:
+    pass
+[file mod.py.2]
+from typing import Callable
+class B:
+    pass
+class C:
+    pass
+def dec(f: Callable[[C], int]) -> Callable[[int], int]:
+    pass
+[out]
+==
+a.py:3: error: Argument 1 to "dec" has incompatible type "Callable[[B], int]"; expected "Callable[[C], int]"
+
 [case testOverloadRefresh]
 from typing import overload
 import m
@@ -1742,6 +2253,404 @@ def f(): pass
 def f(x=1): pass
 [out]
 ==
+
+[case testMetaclassAttributes]
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg.x = int()
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:4: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassAttributesDirect]
+import a
+[file a.py]
+from mod import C
+def f() -> None:
+    C.x = int()
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:3: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassOperators]
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg + arg
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other: int) -> M:
+        pass
+[out]
+==
+a.py:4: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+
+[case testMetaclassOperatorsDirect]
+import a
+[file a.py]
+from mod import C
+def f() -> None:
+    C + C
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    def __add__(self, other: int) -> M:
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+[out]
+a.py:3: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+==
+
+[case testMetaclassAttributesDirect_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+def f():
+    # type: () -> None
+    C.x = int()
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    x = None  # type: int
+[file submod.py.2]
+class M(type):
+    x = None  # type: str
+[file submod.py.3]
+class M(type):
+    y = None  # type: str
+[file submod.py.4]
+class M(type):
+    x = None  # type: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+a.py:4: error: "Type[C]" has no attribute "x"
+==
+
+[case testMetaclassOperators_python2]
+# flags: --py2
+import a
+[file a.py]
+from mod import C
+from typing import Type
+def f(arg):
+    # type: (Type[C]) -> None
+    arg + arg
+[file mod.py]
+import submod
+class C:
+    __metaclass__ = submod.M
+[file submod.py]
+class M(type):
+    def __add__(self, other):
+        # type: (M) -> M
+        pass
+[file submod.py.2]
+class M(type):
+    def __add__(self, other):
+        # type: (int) -> M
+        pass
+[out]
+==
+a.py:5: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
+
+[case testFineMetaclassUpdate]
+import a
+[file a.py]
+from c import M
+import b
+def f(arg: M) -> None:
+    pass
+
+f(b.B)
+[file b.py]
+import c
+class B: pass
+
+[file b.py.2]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    pass
+[out]
+a.py:6: error: Argument 1 to "f" has incompatible type "Type[B]"; expected "M"
+==
+
+[case testFineMetaclassRecalculation]
+import a
+[file a.py]
+from b import B
+class M2(type): pass
+class D(B, metaclass=M2): pass
+[file b.py]
+import c
+class B: pass
+
+[file b.py.2]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    pass
+[out]
+==
+a.py:3: error: Inconsistent metaclass structure for 'D'
+
+[case testFineMetaclassDeclaredUpdate]
+import a
+[file a.py]
+import b
+class B(metaclass=b.M): pass
+class D(B, metaclass=b.M2): pass
+[file b.py]
+class M(type): pass
+class M2(M): pass
+[file b.py.2]
+class M(type): pass
+class M2(type): pass
+[out]
+==
+a.py:3: error: Inconsistent metaclass structure for 'D'
+
+[case testFineMetaclassRemoveFromClass]
+import a
+[file a.py]
+import b
+def func() -> int:
+    return b.B.x
+[file b.py]
+from c import M
+class B(metaclass=M):
+    pass
+[file b.py.2]
+from c import M
+class B:
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: "Type[B]" has no attribute "x"
+
+[case testFineMetaclassRemoveFromClass2]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.test(b.B)
+[file b.py]
+import c
+def test(cls: c.M) -> None:
+    pass
+class B(metaclass=c.M):
+    pass
+[file b.py.2]
+import c
+def test(cls: c.M) -> None:
+    pass
+class B:
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Argument 1 to "test" has incompatible type "Type[B]"; expected "M"
+
+[case testBadMetaclassCorrected]
+import a
+[file a.py]
+import b
+class C(metaclass=b.M):
+    pass
+[file b.py]
+from c import M
+[file c.py]
+M = 1
+[file c.py.2]
+class M(type):
+    pass
+[out]
+a.py:2: error: Invalid metaclass 'b.M'
+==
+
+[case testFixedAttrOnAddedMetaclass]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x: int = b.C.x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: int
+[out]
+a.py:3: error: "Type[C]" has no attribute "x"
+==
+
+[case testIndirectSubclassReferenceMetaclass]
+import a
+[file a.py]
+import b
+def f() -> None:
+    b.x = int()
+[file b.py]
+import bb
+x = bb.D.x
+[file bb.py]
+import mod
+class D(mod.C):
+    pass
+[file mod.py]
+import submod
+class C(metaclass=submod.M):
+    pass
+[file submod.py]
+class M(type):
+    x: int
+[file submod.py.2]
+class M(type):
+    x: str
+[file submod.py.3]
+class M(type):
+    y: str
+[file submod.py.4]
+class M(type):
+    x: int
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+b.py:2: error: "Type[D]" has no attribute "x"
+==
+
+[case testMetaclassDeletion]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.B.x
+[file b.py]
+import c
+class B(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: int
+[file c.py.2]
+whatever: int
+[out]
+==
+b.py:2: error: Name 'c.M' is not defined
+a.py:3: error: "Type[B]" has no attribute "x"
+
+[case testFixMissingMetaclass]
+import a
+[file a.py]
+import b
+def func() -> None:
+    b.B.x
+[file b.py]
+import c
+class B(metaclass=c.M):
+    pass
+[file c.py]
+whatever: int
+[file c.py.2]
+class M(type):
+    x: int
+[out]
+b.py:2: error: Name 'c.M' is not defined
+a.py:3: error: "Type[B]" has no attribute "x"
+==
+
+[case testGoodMetaclassSpoiled]
+import a
+[file a.py]
+import b
+class C(metaclass=b.M):
+    pass
+[file b.py]
+class M(type):
+    pass
+[file b.py.2]
+M = 1
+[out]
+==
+a.py:2: error: Invalid metaclass 'b.M'
 
 [case testRefreshGenericSubclass]
 from typing import Generic, TypeVar
@@ -3172,6 +4081,174 @@ main:3: error: Value of type variable "submod.T" of "D" cannot be "S"
 main:3: error: Value of type variable "submod.U" of "D" cannot be "I"
 ==
 
+[case testGenericFineCallableNormal]
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T', str, B)
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableNamed]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(y: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Unexpected keyword argument "x"
+c.py:4: note: Called function defined here
+
+[case testGenericFineCallableInBound]
+import a
+[file a.py]
+import b
+x: int = b.f()(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import Callable, TypeVar
+class B: pass
+T = TypeVar('T')
+def g() -> Callable[[T], T]:
+    pass
+[file c.py.2]
+from typing import Callable, TypeVar
+class B: pass
+T = TypeVar('T', str, B)
+def g() -> Callable[[T], T]:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableAddedBound]
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T', bound=B)
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableBoundDeleted-skip-nocache]
+# See https://github.com/python/mypy/issues/4783
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+import d
+T = TypeVar('T', bound=d.B)
+def g(x: T) -> T:
+    pass
+[file d.py]
+class B:
+    pass
+[file d.py.2]
+# empty
+[out]
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+==
+c.py:3: error: Name 'd.B' is not defined
+
+[case testGenericFineCallableToNonGeneric]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class T: pass
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "T", variable has type "int")
+a.py:2: error: Argument "x" has incompatible type "int"; expected "T"
+
+[case testGenericFineCallableToGenericClass]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class g(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "g[int]", variable has type "int")
+
 [case testRefreshClassBasedEnum]
 import aa
 [file aa.py]
@@ -3654,3 +4731,126 @@ a.py:1: error: "int" not callable
 [delete nonexistent_stub.pyi.2]
 [out]
 ==
+
+[case testDunderNewUpdatedMethod]
+import a
+[file a.py]
+import b
+class A:
+    def func(self) -> None:
+        b.C(int())
+[file b.py]
+class C:
+    def __new__(cls, x: str) -> C:
+        pass
+[file b.py.2]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[out]
+a.py:4: error: Argument 1 to "C" has incompatible type "int"; expected "str"
+==
+
+[case testDunderNewUpdatedSubclass]
+import a
+[file a.py]
+import b
+
+b.D(int())
+[file b.py]
+from c import C
+class D(C): pass
+[file c.py]
+class C:
+    def __new__(cls, x: str) -> C:
+        pass
+[file c.py.2]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[out]
+a.py:3: error: Argument 1 to "D" has incompatible type "int"; expected "str"
+==
+
+[case testDunderNewUpdatedAlias]
+import a
+[file a.py]
+import b
+
+b.D(int())
+[file b.py]
+from c import C
+D = C
+[file c.py]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[file c.py.2]
+class C:
+    def __new__(cls, x: str) -> C:
+        pass
+[out]
+==
+a.py:3: error: Argument 1 to "C" has incompatible type "int"; expected "str"
+
+[case testDunderNewUpdatedCallable]
+import a
+[file a.py]
+from typing import Callable, Any
+import b
+
+def func(arg: Callable[[int], Any]) -> None:
+    pass
+func(b.C)
+[file b.py]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[file b.py.2]
+class C:
+    def __new__(cls, x: str) -> C:
+        pass
+[out]
+==
+a.py:6: error: Argument 1 to "func" has incompatible type "Type[C]"; expected "Callable[[int], Any]"
+
+[case testDunderNewDefine]
+import a
+[file a.py]
+import b
+class A:
+    def func(self) -> None:
+        b.C()
+[file b.py]
+class C:
+    pass
+[file b.py.2]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[out]
+==
+a.py:4: error: Too few arguments for "C"
+
+[case testDunderNewInsteadOfInit]
+import a
+[file a.py]
+import b
+class A:
+    def func(self) -> None:
+        b.C(int())
+[file b.py]
+class C:
+    def __init__(cls, x: int) -> None:
+        pass
+[file b.py.2]
+class C:
+    def __new__(cls, x: int) -> C:
+        pass
+[file b.py.3]
+class C:
+    pass
+[out]
+==
+==
+a.py:4: error: Too many arguments for "C"

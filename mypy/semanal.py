@@ -1698,7 +1698,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             var._fullname = self.qualified_name(name)
         var.is_ready = True
         if is_import:
-            any_type = AnyType(TypeOfAny.from_unimported_type)
+            any_type = AnyType(TypeOfAny.from_unimported_type, missing_import_name=var._fullname)
         else:
             any_type = AnyType(TypeOfAny.from_error)
         var.type = any_type
