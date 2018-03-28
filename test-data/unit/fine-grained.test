@@ -3885,6 +3885,133 @@ class User:
 [out]
 ==
 
+[case testNoStrictOptionalModule]
+import a
+a.y = a.x
+[file a.py]
+from typing import Optional
+x: int
+y: int
+[file a.py.2]
+from typing import Optional
+x: Optional[int]
+y: int
+[file a.py.3]
+from typing import Optional
+x: Optional[str]
+y: int
+[out]
+==
+==
+main:2: error: Incompatible types in assignment (expression has type "Optional[str]", variable has type "int")
+
+[case testNoStrictOptionalFunction]
+import a
+from typing import Optional
+def f() -> None:
+    x: Optional[int]
+    a.g(x)
+[file a.py]
+from typing import Optional
+def g(x: Optional[int]) -> None:
+    pass
+[file a.py.2]
+from typing import Optional
+def g(x: int) -> None:
+    pass
+[file a.py.3]
+from typing import Optional
+def g(x: str) -> None:
+    pass
+[out]
+==
+==
+main:5: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "str"
+
+[case testNoStrictOptionalMethod]
+import a
+from typing import Optional
+class C:
+    def f(self) -> None:
+        x: Optional[int]
+        a.B().g(x)
+[file a.py]
+from typing import Optional
+class B:
+    def g(self, x: Optional[int]) -> None:
+        pass
+[file a.py.2]
+from typing import Optional
+class B:
+    def g(self, x: int) -> None:
+        pass
+[file a.py.3]
+from typing import Optional
+class B:
+    def g(self, x: str) -> None:
+        pass
+[out]
+==
+==
+main:6: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "str"
+
+[case testStrictOptionalModule]
+# flags: --strict-optional
+import a
+a.y = a.x
+[file a.py]
+from typing import Optional
+x: int
+y: int
+[file a.py.2]
+from typing import Optional
+x: Optional[int]
+y: int
+[out]
+==
+main:3: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+
+[case testStrictOptionalFunction]
+# flags: --strict-optional
+import a
+from typing import Optional
+def f() -> None:
+    x: Optional[int]
+    a.g(x)
+[file a.py]
+from typing import Optional
+def g(x: Optional[int]) -> None:
+    pass
+[file a.py.2]
+from typing import Optional
+def g(x: int) -> None:
+    pass
+[out]
+==
+main:6: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "int"
+
+[case testStrictOptionalMethod]
+# flags: --strict-optional
+import a
+from typing import Optional
+class C:
+    def f(self) -> None:
+        x: Optional[int]
+        a.B().g(x)
+[file a.py]
+from typing import Optional
+class B:
+    def g(self, x: Optional[int]) -> None:
+        pass
+[file a.py.2]
+from typing import Optional
+class B:
+    def g(self, x: int) -> None:
+        pass
+[out]
+==
+main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
+
 [case testTypeVarValuesFunction]
 import a
 [file a.py]
