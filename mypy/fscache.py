@@ -54,6 +54,7 @@ class FileSystemMetaCache:
         try:
             st = os.stat(path)
         except Exception as err:
+            err.__traceback__ = None
             self.stat_error_cache[path] = err
             raise
         self.stat_cache[path] = st
@@ -67,6 +68,7 @@ class FileSystemMetaCache:
         try:
             results = os.listdir(path)
         except Exception as err:
+            err.__traceback__ = None
             self.listdir_error_cache[path] = err
             raise err
         self.listdir_cache[path] = results
