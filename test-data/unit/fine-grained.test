@@ -5072,18 +5072,103 @@ class T: pass
 ==
 a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
 
-[case testOverloadsToNonOverloaded-skip]
-
+[case testOverloadsToNonOverloaded]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+def f(x: int) -> int:
+    pass
 [out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
 
-[case testOverloadsToOverloaded-skip]
-
+[case testOverloadsToOverloaded]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+def f(x: str) -> str:
+    pass
+[file mod.py.2]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> int: pass
+def f(x):
+    pass
 [out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
-[case testOverloadedToClass-skip]
-
+[case testOverloadedToClass]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+class f:
+    def __init__(self, x: str) -> None:
+        pass
 [out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "f", variable has type "str")
 
-[case testOverloadedInitSupertype-skip]
-
+[case testOverloadedMethodSupertype]
+import a
+[file a.py]
+from typing import overload, Any
+import b
+class Child(b.Parent):
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py.2]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> C: ...
+    def f(self, arg: Any) -> Any: ...
 [out]
+==
+a.py:4: error: Signature of "f" incompatible with supertype "Parent"
