@@ -669,7 +669,6 @@ def decb(arg: C) -> Callable[[F], F]:
 class C:
     pass
 [out]
-<m.func> -> m.outer
 <mod.C.__init__> -> m.outer
 <mod.C.__new__> -> m.outer
 <mod.C> -> m.outer
@@ -690,7 +689,6 @@ from typing import Callable
 def dec(func: Callable[[int], int]) -> Callable[[str], str]:
     pass
 [out]
-<m.func> -> m.outer
 <mod.dec> -> m.outer
 <mod> -> m, m.outer
 
@@ -733,7 +731,6 @@ class C:
     def dec(self, func: Callable[..., int]) -> Callable[..., str]:
         pass
 [out]
-<m.Inner@4.func> -> m.outer
 <m.outer> -> m.outer
 <mod.C.__init__> -> m.outer
 <mod.C.__new__> -> m.outer
@@ -786,20 +783,35 @@ def f(x: A) -> None:
 <p.b.A> -> m
 
 [case testDepsFromOverloadMod]
+# __dump_all__
 import mod
 x = mod.f
 [file mod.py]
-from typing import overload
+from typing import overload, Any
+import submod
 @overload
-def f(x: int) -> None: pass
+def f(x: int) -> submod.A: pass
 @overload
-def f(x: str) -> str: pass
-def f(x):
-    pass
+def f(x: str) -> submod.B: pass
+def f(x) -> Any:
+    y: submod.C
+    y.x
+[file submod.py]
+class A: pass
+class B: pass
+class C:
+    x: D
+class D: pass
 [out]
 <m.x> -> m
 <mod.f> -> m
 <mod> -> m
+<submod.A> -> <m.x>, <mod.f>, mod.f, submod.A
+<submod.B> -> <m.x>, <mod.f>, mod.f, submod.B
+<submod.C.x> -> mod.f
+<submod.C> -> mod.f, submod.C
+<submod.D> -> <submod.C.x>, submod, submod.D
+<submod> -> mod
 
 [case testDepsFromOverloadFunc]
 import mod
@@ -825,13 +837,12 @@ def f(x: int) -> None: pass
 @overload
 def f(x: str) -> str: pass
 def f(x: Any) -> Any:
-    mod.f()
+    mod.g()
 [file mod.py]
-def f() -> int:
+def g() -> int:
     pass
 [out]
-<m.f> -> m
-<mod.f> -> m.f
+<mod.g> -> m.f
 <mod> -> m, m.f
 
 [case testDepsToOverloadFunc]
@@ -839,17 +850,20 @@ from typing import overload, Any
 import mod
 def outer() -> None:
     @overload
-    def f(x: int) -> None: pass
+    def f(x: int) -> mod.A: pass
     @overload
-    def f(x: str) -> str: pass
+    def f(x: str) -> mod.B: pass
     def f(x: Any) -> Any:
-        mod.f()
+        mod.g()
 [file mod.py]
-def f() -> int:
+def g() -> int:
     pass
+class A: pass
+class B: pass
 [out]
-<m.f> -> m.outer
-<mod.f> -> m.outer
+<mod.A> -> <m.outer>, m.outer
+<mod.B> -> <m.outer>, m.outer
+<mod.g> -> m.outer
 <mod> -> m, m.outer
 
 [case testDepsFromOverloadToOverload]
@@ -861,42 +875,64 @@ def outer() -> None:
     @overload
     def f(x: str) -> str: pass
     def f(x: Any) -> Any:
-        mod.f(str())
+        mod.g(str())
 [file mod.py]
 from typing import overload
 @overload
-def f(x: int) -> None: pass
+def g(x: int) -> None: pass
 @overload
-def f(x: str) -> str: pass
-def f(x):
+def g(x: str) -> str: pass
+def g(x):
     pass
 [out]
-<m.f> -> m.outer
-<mod.f> -> m.outer
+<mod.g> -> m.outer
 <mod> -> m, m.outer
 
-[case testDepsFromOverloadToOverloadDefault]
+[case testDepsFromOverloadToOverloadDefaultClass]
+from typing import overload, Any
+import mod
+class Outer:
+    @overload
+    def f(self, x: int) -> None: pass
+    @overload
+    def f(self, x: str, cb=mod.g) -> str: pass
+    def f(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+[file mod.py]
+from typing import overload
+@overload
+def g(x: int) -> None: pass
+@overload
+def g(x: str) -> str: pass
+def g(x):
+    pass
+[builtins fixtures/dict.pyi]
+[out]
+<m.Outer> -> m.Outer
+<mod.g> -> m.Outer.f
+<mod> -> m, m.Outer.f
+
+[case testDepsFromOverloadToOverloadDefaultNested]
 from typing import overload, Any
 import mod
 def outer() -> None:
     @overload
     def f(x: int) -> None: pass
     @overload
-    def f(x: str, cb=mod.f) -> str: pass
+    def f(x: str, cb=mod.g) -> str: pass
     def f(*args: Any, **kwargs: Any) -> Any:
         pass
 [file mod.py]
 from typing import overload
 @overload
-def f(x: int) -> None: pass
+def g(x: int) -> None: pass
 @overload
-def f(x: str) -> str: pass
-def f(x):
+def g(x: str) -> str: pass
+def g(x):
     pass
 [builtins fixtures/dict.pyi]
 [out]
-<m.f> -> m.outer
-<mod.f> -> m.outer
+<mod.g> -> m.outer
 <mod> -> m, m.outer
 
 [case testDepsToOverloadGeneric]
@@ -920,7 +956,6 @@ class B: pass
 class C: pass
 [builtins fixtures/dict.pyi]
 [out]
-<m.f> -> m
 <mod.TA> -> <m.f>, m.f
 <mod.TB> -> <m.f>, m.f
 <mod> -> m
@@ -946,7 +981,6 @@ class A(Base):
 class B(Base):
     pass
 [out]
-<m.f> -> m
 <mod.A> -> <m.f>, m.f
 <mod.B> -> <m.f>, m.f
 <mod.Base> -> <m.f>, m.f

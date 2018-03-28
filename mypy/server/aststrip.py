@@ -109,8 +109,9 @@ class NodeStripVisitor(TraverserVisitor):
             return
         node.expanded = []
         node.type = node.unanalyzed_type
-        # Type variable binder binds tvars before the type is analized.
+        # Type variable binder binds tvars before the type is analyzed.
         # It should be refactored, before that we just undo this change here.
+        # TODO: this will be not necessary when https://github.com/python/mypy/issues/4814 is fixed.
         if node.type:
             assert isinstance(node.type, CallableType)
             node.type.variables = []

@@ -360,6 +360,7 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def visit_overloaded(self, t: Overloaded) -> None:
         for item in t.items():
             item.accept(self)
+        # Fallback can be None for overloaded types that haven't been semantically analyzed.
         if t.fallback is not None:
             t.fallback.accept(self)
 

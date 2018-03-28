@@ -5140,6 +5140,34 @@ class f:
 ==
 a.py:3: error: Incompatible types in assignment (expression has type "f", variable has type "str")
 
+[case testDepsFromOverloadUpdatedAttrRecheckImpl]
+import mod
+x = mod.f
+[file mod.py]
+from typing import overload, Any
+import submod
+@overload
+def f(x: int) -> submod.A: pass
+@overload
+def f(x: str) -> submod.B: pass
+def f(x) -> Any:
+    y: submod.C
+    y.x = int()
+[file submod.py]
+import other
+class A: pass
+class B: pass
+C = other.C
+[file other.py]
+class C:
+    x: int
+[file other.py.2]
+class C:
+    x: str
+[out]
+==
+mod.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
 [case testOverloadedMethodSupertype]
 import a
 [file a.py]

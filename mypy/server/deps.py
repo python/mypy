@@ -199,7 +199,11 @@ class DependencyVisitor(TraverserVisitor):
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
-        self.add_dependency(make_trigger(o.func.fullname()))
+        # We don't need to recheck outer scope for an overload, only overload itself.
+        # Also if any decorator is nested, it is not externally visible, so we don't need to
+        # generate dependency.
+        if not o.func.is_overload and self.scope.current_function_name() is None:
+            self.add_dependency(make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
