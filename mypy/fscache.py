@@ -37,19 +37,18 @@ from mypy.util import read_with_python_encoding
 
 class FileSystemMetaCache:
     def __init__(self) -> None:
-        self.flush()
+        self.stat = functools.lru_cache(maxsize=None)(self._stat)
+        self.listdir = functools.lru_cache(maxsize=None)(self._listdir)
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         self.stat.cache_clear()
         self.listdir.cache_clear()
 
-    @functools.lru_cache(maxsize=None)
-    def stat(self, path: str) -> os.stat_result:
+    def _stat(self, path: str) -> os.stat_result:
         return os.stat(path)
 
-    @functools.lru_cache(maxsize=None)
-    def listdir(self, path: str) -> List[str]:
+    def _listdir(self, path: str) -> List[str]:
         return os.listdir(path)
 
     def isfile(self, path: str) -> bool:
@@ -96,6 +95,7 @@ class FileSystemMetaCache:
 
 class FileSystemCache(FileSystemMetaCache):
     def __init__(self, pyversion: Tuple[int, int]) -> None:
+        super().__init__()
         self.pyversion = pyversion
         self.flush()
 

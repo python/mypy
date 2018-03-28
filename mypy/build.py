@@ -864,12 +864,13 @@ class FindModuleCache:
 
     def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
         self.fscache = fscache or FileSystemMetaCache()
+        self.find_lib_path_dirs = functools.lru_cache(maxsize=None)(self._find_lib_path_dirs)
+        self.find_module = functools.lru_cache(maxsize=None)(self._find_module)
 
     def clear(self) -> None:
-        self._find_module.cache_clear()
-        self._find_lib_path_dirs.cache_clear()
+        self.find_module.cache_clear()
+        self.find_lib_path_dirs.cache_clear()
 
-    @functools.lru_cache(maxsize=None)
     def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...],
                             python_executable: str) -> List[str]:
         # Cache some repeated work within distinct find_module calls: finding which
@@ -884,9 +885,9 @@ class FindModuleCache:
                 dirs.append(dir)
         return dirs
 
-    @functools.lru_cache(maxsize=None)
     def _find_module(self, id: str, lib_path: Tuple[str, ...],
                      python_executable: Optional[str]) -> Optional[str]:
+        """Return the path of the module source file, or None if not found."""
         fscache = self.fscache
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -911,8 +912,8 @@ class FindModuleCache:
             elif os.path.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
                 third_party_dirs.append(path)
-        candidate_base_dirs = self._find_lib_path_dirs(dir_chain, lib_path,
-                                                       python_executable) + third_party_dirs
+        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path,
+                                                      python_executable) + third_party_dirs
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
@@ -937,13 +938,7 @@ class FindModuleCache:
                     return path
         return None
 
-    def find_module(self, id: str, lib_path_arg: Iterable[str],
-                    python_executable: Optional[str]) -> Optional[str]:
-        """Return the path of the module source file, or None if not found."""
-        lib_path = tuple(lib_path_arg)
-        return self._find_module(id, lib_path, python_executable)
-
-    def find_modules_recursive(self, module: str, lib_path: List[str],
+    def find_modules_recursive(self, module: str, lib_path: Tuple[str, ...],
                                python_executable: Optional[str]) -> List[BuildSource]:
         module_path = self.find_module(module, lib_path, python_executable)
         if not module_path:

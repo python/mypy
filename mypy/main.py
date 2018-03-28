@@ -614,7 +614,7 @@ def process_options(args: List[str],
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p))
-            p_targets = cache.find_modules_recursive(p, lib_path, options.python_executable)
+            p_targets = cache.find_modules_recursive(p, tuple(lib_path), options.python_executable)
             if not p_targets:
                 fail("Can't find package '{}'".format(p))
             targets.extend(p_targets)
