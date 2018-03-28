@@ -72,6 +72,7 @@ def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
     options.show_traceback = True
     options.use_builtins_fixtures = True
     options.strict_optional = True
+    options.python_version = (3, 6)
 
     source = build.BuildSource('main', '__main__', program_text)
     # Construct input as a single single.

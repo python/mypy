@@ -46,6 +46,7 @@ class TestRun(DataSuite):
             options.use_builtins_fixtures = True
             options.show_traceback = True
             options.strict_optional = True
+            options.python_version = (3, 6)
             source = build.BuildSource('native.py', 'native', text)
 
             try:

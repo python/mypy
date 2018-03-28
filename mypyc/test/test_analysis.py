@@ -47,6 +47,7 @@ class TestAnalysis(DataSuite):
             options = Options()
             options.use_builtins_fixtures = True
             options.show_traceback = True
+            options.python_version = (3, 6)
 
             source = build.BuildSource('main', '__main__', program_text)
             try:
