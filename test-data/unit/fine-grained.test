@@ -4249,6 +4249,54 @@ class g(Generic[T]):
 ==
 a.py:2: error: Incompatible types in assignment (expression has type "g[int]", variable has type "int")
 
+[case testMakeClassNoLongerAbstract1]
+[file z.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+[file b.py]
+from z import I
+class Foo(I):
+    pass
+def x() -> Foo: return None
+[file z.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    pass
+[file b.py.2]
+from z import I
+class Foo(I):
+    pass
+def x() -> Foo: return Foo()
+[out]
+==
+
+[case testMakeClassNoLongerAbstract2]
+-- this version never failed, but it is just a file-renaming
+-- away from the above test that did
+[file a.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+[file b.py]
+from a import I
+class Foo(I):
+    pass
+def x() -> Foo: return None
+[file a.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    pass
+[file b.py.2]
+from a import I
+class Foo(I):
+    pass
+def x() -> Foo: return Foo()
+[out]
+==
+
 [case testRefreshClassBasedEnum]
 import aa
 [file aa.py]
