@@ -1833,6 +1833,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """Make a dummy Instance with no methods. It is used as a fallback type
         to detect errors for non-Instance aliases (i.e. Unions, Tuples, Callables).
         """
+        # TODO: this has None fullname (and also can't be serialized), fix this.
         kind = (' to Callable' if isinstance(tp, CallableType) else
                 ' to Tuple' if isinstance(tp, TupleType) else
                 ' to Union' if isinstance(tp, UnionType) else '')
@@ -3460,6 +3461,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
+            if n and n.is_aliasing:
+                self.add_type_alias_deps([n.alias_name])
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
@@ -3517,6 +3520,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         type_info = self.type
             if type_info:
                 n = type_info.names.get(expr.name)
+                if n and n.is_aliasing:
+                    self.add_type_alias_deps([n.alias_name])
                 if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
                     n = self.normalize_type_alias(n, expr)
                     if not n:
