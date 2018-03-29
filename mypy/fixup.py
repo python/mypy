@@ -288,7 +288,6 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
         node = stnode.node
         # In fine-grained mode, could be a cross-reference to a deleted module
         if node is None:
-            assert stnode.cross_ref is not None
             if not quick_and_dirty:
                 assert node, "Cannot find %s" % (name,)
             return None
