@@ -610,7 +610,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name())
         if defn.info:
-            if not defn.is_dynamic():
+            if not defn.is_dynamic() and not defn.is_overload:
+                # If the definition is the implementation for an overload, the legality
+                # of the override has already been typechecked.
                 self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
