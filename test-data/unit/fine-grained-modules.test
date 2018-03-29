@@ -322,6 +322,26 @@ def f() -> None: pass
 ==
 ==
 
+[case testDeleteDepOfDunderInit1]
+[file p/__init__.py]
+from .foo import Foo
+[file p/foo.py]
+class Foo: pass
+[file p/__init__.py.2]
+[delete p/foo.py.2]
+[out]
+==
+
+[case testDeleteDepOfDunderInit2]
+[file p/__init__.py]
+from p.foo import Foo
+[file p/foo.py]
+class Foo: pass
+[file p/__init__.py.2]
+[delete p/foo.py.2]
+[out]
+==
+
 [case testDeletionTriggersImportFrom]
 import a
 [file a.py]

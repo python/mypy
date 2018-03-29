@@ -16,6 +16,9 @@ from mypy.types import (
 from mypy.visitor import NodeVisitor
 
 
+# N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
+# when fixing up a fine-grained incremental cache load (since there may
+# be cross-refs into deleted modules)
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
                           quick_and_dirty: bool) -> None:
     node_fixer = NodeFixer(modules, quick_and_dirty)
@@ -286,6 +289,11 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
         if not rest:
             return stnode
         node = stnode.node
+        # In fine-grained mode, could be a cross-reference to a deleted module
+        if node is None:
+            if not quick_and_dirty:
+                assert node, "Cannot find %s" % (name,)
+            return None
         assert isinstance(node, TypeInfo)
         names = node.names
 
