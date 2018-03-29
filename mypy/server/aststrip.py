@@ -48,6 +48,7 @@ from mypy.nodes import (
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
+from mypy.types import CallableType
 
 
 def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
@@ -109,6 +110,12 @@ class NodeStripVisitor(TraverserVisitor):
             return
         node.expanded = []
         node.type = node.unanalyzed_type
+        # Type variable binder binds tvars before the type is analyzed.
+        # It should be refactored, before that we just undo this change here.
+        # TODO: this will be not necessary when #4814 is fixed.
+        if node.type:
+            assert isinstance(node.type, CallableType)
+            node.type.variables = []
         with self.enter_method(node.info) if node.info else nothing():
             super().visit_func_def(node)
 
