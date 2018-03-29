@@ -4045,6 +4045,52 @@ y: int = x
 ==
 a.py:4: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
 
+[case testPerFileStrictOptionalModuleOnly]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-a.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+y: int = b.x
+class Dummy:
+    def f(self) -> None:
+        pass
+[file b.py]
+from typing import Optional
+import c
+x: int
+y: int = c.x
+class Dummy:
+    def f(self) -> None:
+        pass
+[file c.py]
+from typing import Optional
+x: int
+[file c.py.2]
+from typing import Optional
+x: Optional[int]
+[file b.py.3]
+from typing import Optional
+import c
+x: Optional[int]
+y: int = c.x
+[file a.py.4]
+from typing import Optional
+import b
+y: Optional[int] = b.x
+class Dummy:
+    def f(self) -> None:
+        pass
+[out]
+==
+==
+a.py:3: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+==
+
 [case testPerFileStrictOptionalFunction]
 import a
 [file mypy.ini]
