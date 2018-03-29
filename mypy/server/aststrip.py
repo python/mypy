@@ -92,6 +92,7 @@ class NodeStripVisitor(TraverserVisitor):
     def strip_type_info(self, info: TypeInfo) -> None:
         info.type_vars = []
         info.bases = []
+        info.is_abstract = False
         info.abstract_attributes = []
         info.mro = []
         info.add_type_vars()
