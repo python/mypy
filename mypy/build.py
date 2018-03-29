@@ -813,11 +813,14 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     return p
 
 
-USER_SITE_PACKAGES = \
-    'from __future__ import print_function; import site; print(repr(site.getsitepackages()' \
-    ' + [site.getusersitepackages()]))'
-VIRTUALENV_SITE_PACKAGES = \
-    'from distutils.sysconfig import get_python_lib; print(repr([get_python_lib()]))'
+SITE_PACKAGES = \
+    '''from __future__ import print_function
+from distutils.sysconfig import get_python_lib
+import site
+try:
+    print(repr(site.getsitepackages() + [site.getusersitepackages()]))
+except:
+    print(repr([get_python_lib()]))'''
 
 
 def call_python(python_executable: str, command: str) -> str:
@@ -841,13 +844,7 @@ def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
     else:
         # Use subprocess to get the package directory of given Python
         # executable
-        try:
-            output = call_python(python_executable, USER_SITE_PACKAGES)
-        except subprocess.CalledProcessError:
-            # if no paths are found (raising a CalledProcessError), we fall back on sysconfig,
-            # the python executable is likely in a virtual environment, thus lacking
-            # the needed site methods
-            output = call_python(python_executable, VIRTUALENV_SITE_PACKAGES)
+        output = call_python(python_executable, SITE_PACKAGES)
     return ast.literal_eval(output)
 
 
