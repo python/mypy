@@ -16,6 +16,9 @@ from mypy.types import (
 from mypy.visitor import NodeVisitor
 
 
+# N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
+# when fixing up a fine-grained incremental cache load (since there may
+# be cross-refs into deleted modules)
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
                           quick_and_dirty: bool) -> None:
     node_fixer = NodeFixer(modules, quick_and_dirty)
