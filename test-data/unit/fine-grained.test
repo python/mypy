@@ -4898,6 +4898,32 @@ main:2: error: Invalid type "D"
 main:4: error: Module not callable
 main:7: error: Invalid type "D"
 
+[case testChangeTypeAliasToModuleUnqualified]
+from a import C
+x: C
+def f() -> None:
+    C()
+class A:
+    def meth(self) -> None:
+        def inner() -> C:
+            pass
+[file a.py]
+from b import D
+C = D
+[file b.py]
+class D:
+    pass
+[file D.py.2]
+[file b.py.3]
+import D
+[builtins fixtures/module.pyi]
+[out]
+==
+==
+main:2: error: Invalid type "D"
+main:4: error: Module not callable
+main:7: error: Invalid type "D"
+
 [case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
 import a
 import c
