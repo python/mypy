@@ -7,12 +7,40 @@ Using Installed Packages
 a package as supporting type checking. Below is a summary of how to create
 PEP 561 compatible packages and have mypy use them in type checking.
 
+Using PEP 561 compatible packages with mypy
+*******************************************
+
+Generally, you do not need to do anything to use installed packages for the
+Python executable used to run mypy. They should be automatically picked up by
+mypy and used for type checking.
+
+By default, mypy searches for packages installed for the Python executable
+running mypy. It is highly unlikely you want this situation if you have
+installed typed packages in another Python's package directory.
+
+Generally, you can use the ``--python-version`` flag and mypy will try to find
+the correct package directory. If that fails, you can use the
+``--python-executable`` flag to point to the exact executable, and mypy will
+find packages installed for that Python executable.
+
+Note that mypy does not support some more advanced import features, such as zip
+imports, namespace packages, and custom import hooks.
+
+If you do not want to use typed packages, use the ``--no-site-packages`` flag
+to disable searching.
+
 Making PEP 561 compatible packages
 **********************************
 
-Packages that must be imported at runtime and supply type information should
-put a ``py.typed`` in their package directory. For example, with a directory
-structure as follows:
+PEP 561 notes three main ways to distribute type information. The first is a
+package that has only inline type annotations in the code itself. The second is
+a package that ships stub files with type information alongside the runtime
+code. The third method, also known as a "stub only package" is a package that
+ships type information for a package seperately as stub files.
+
+Packages that must be used at runtime and supply type information via type
+comments or annotations in the code should put a ``py.typed`` in their package
+directory. For example, with a directory structure as follows:
 
 .. code-block:: text
 
@@ -36,8 +64,8 @@ the setup.py might look like:
         packages=["package_a"]
     )
 
-Some packages have a mix of stub files and runtime files. These packages also require
-a ``py.typed`` file. An example can be seen below:
+Some packages have a mix of stub files and runtime files. These packages also
+require a ``py.typed`` file. An example can be seen below:
 
 .. code-block:: text
 
@@ -62,8 +90,8 @@ the setup.py might look like:
         packages=["package_b"]
     )
 
-In this example, both ``lib.py`` and ``lib.pyi`` exist. At runtime, ``lib.py``
-will be used, however mypy will use ``lib.pyi``.
+In this example, both ``lib.py`` and ``lib.pyi`` exist. At runtime, the Python
+interpeter will use ``lib.py``, but mypy will use ``lib.pyi`` instead.
 
 If the package is stub-only (not imported at runtime), the package should have
 a prefix of the runtime package name and a suffix of ``-stubs``.
@@ -90,25 +118,3 @@ the setup.py might look like:
         package_data={"package_c-stubs": ["__init__.pyi", "lib.pyi"]},
         packages=["package_c-stubs"]
     )
-
-Using PEP 561 compatible packages with mypy
-*******************************************
-
-Generally, you do not need to do anything to use installed packages for the
-Python executable used to run mypy. They should be automatically picked up by
-mypy and used for type checking.
-
-By default, mypy searches for packages installed for the Python executable
-running mypy. It is highly unlikely you want this situation if you have
-installed typed packages in another Python's package directory.
-
-Generally, you can use the ``--python-version`` flag and mypy will try to find
-the correct package directory. If that fails, you can use the
-``--python-executable`` flag to point to the exact executable, and mypy will
-find packages installed for that Python executable.
-
-Note that mypy does not support some more advanced import features, such as zip
-imports, namespace packages, and custom import hooks.
-
-If you do not want to use typed packages, use the ``--no-site-packages`` flag
-to disable searching.
