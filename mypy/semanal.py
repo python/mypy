@@ -3462,6 +3462,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
             if n and n.is_aliasing:
+                assert n.alias_name is not None
                 self.add_type_alias_deps([n.alias_name])
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
@@ -3521,6 +3522,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if type_info:
                 n = type_info.names.get(expr.name)
                 if n and n.is_aliasing:
+                    assert n.alias_name is not None
                     self.add_type_alias_deps([n.alias_name])
                 if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
                     n = self.normalize_type_alias(n, expr)
