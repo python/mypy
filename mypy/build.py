@@ -813,14 +813,16 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     return p
 
 
-SITE_PACKAGES = \
-    '''from __future__ import print_function
+SITE_PACKAGES = '''
+from __future__ import print_function
 from distutils.sysconfig import get_python_lib
 import site
-try:
-    print(repr(site.getsitepackages() + [site.getusersitepackages()]))
-except:
-    print(repr([get_python_lib()]))'''
+if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
+    user_dir = site.getusersitepackages()
+    print(repr(site.getsitepackages() + [user_dir]))
+else:
+    print(repr([get_python_lib()]))
+'''
 
 
 def call_python(python_executable: str, command: str) -> str:
