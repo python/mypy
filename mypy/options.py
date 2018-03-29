@@ -137,14 +137,16 @@ class Options:
         # Write junit.xml to given file
         self.junit_xml = None  # type: Optional[str]
 
-        # Caching options
+        # Caching and incremental checking options
         self.incremental = False
         self.cache_dir = defaults.CACHE_DIR
         self.debug_cache = False
         self.quick_and_dirty = False
         self.skip_version_check = False
         self.fine_grained_incremental = False
+        # Include fine-grained dependencies in written cache files
         self.cache_fine_grained = False
+        # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
 
         # Paths of user plugins

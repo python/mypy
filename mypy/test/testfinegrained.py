@@ -26,7 +26,7 @@ from mypy.test.helpers import (
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
-from mypy.main import expand_dir, create_source_list
+from mypy.main import expand_dir, create_source_list, parse_config_file
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -75,12 +75,23 @@ class FineGrainedSuite(DataSuite):
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
+        for name, _ in testcase.files:
+            if 'mypy.ini' in name:
+                config = name  # type: Optional[str]
+                break
+        else:
+            config = None
+        if config:
+            parse_config_file(options, config)
         server = Server(options, alt_lib_path=test_temp_dir)
 
         step = 1
         sources = self.parse_sources(main_src, step, options)
         if self.use_cache:
-            messages = self.build(self.get_options(main_src, testcase, build_cache=True), sources)
+            build_options = self.get_options(main_src, testcase, build_cache=True)
+            if config:
+                parse_config_file(build_options, config)
+            messages = self.build(build_options, sources)
         else:
             messages = self.run_check(server, sources)
 

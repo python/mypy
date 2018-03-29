@@ -762,3 +762,106 @@ class C(List[str]): pass
 [builtins fixtures/list.pyi]
 [out]
 __main__.C
+
+[case testOverloads]
+from typing import overload
+class C: pass
+@overload
+def a(x: int) -> None: pass
+@overload
+def a(x: str) -> str: pass
+def a(x):
+    pass
+@overload
+def b(x: int) -> None: pass
+@overload
+def b(x: str) -> str: pass
+def b(x):
+    pass
+@overload
+def c(x: int) -> None: pass
+@overload
+def c(x: str) -> str: pass
+def c(x):
+    pass
+@overload
+def d(x: int) -> None: pass
+@overload
+def d(x: str) -> str: pass
+def d(x):
+    pass
+[file next.py]
+from typing import overload
+class C: pass
+@overload
+def a(x: int) -> None: pass
+@overload
+def a(x: str) -> str: pass
+def a(x):
+    pass
+@overload
+def b(x: str) -> str: pass
+@overload
+def b(x: int) -> None: pass
+def b(x):
+    pass
+@overload
+def c(x: int) -> None: pass
+@overload
+def c(x: str) -> str: pass
+@overload
+def c(x: C) -> C: pass
+def c(x):
+    pass
+def d(x: int) -> None:
+    pass
+@overload
+def e(x: int) -> None: pass
+@overload
+def e(x: str) -> str: pass
+def e(x):
+    pass
+[out]
+__main__.b
+__main__.c
+__main__.d
+__main__.e
+
+[case testOverloadsExternalOnly]
+from typing import overload
+class Base: pass
+class A(Base): pass
+class B(Base): pass
+class C(Base): pass
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+def f(x: Base) -> Base:
+    pass
+@overload
+def g(x: A) -> A: pass
+@overload
+def g(x: B) -> B: pass
+def g(x: Base) -> Base:
+    pass
+[file next.py]
+from typing import overload
+class Base: pass
+class A(Base): pass
+class B(Base): pass
+class C(Base): pass
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+def f(x: object) -> object:
+    pass
+@overload
+def g(x: A) -> A: pass
+@overload
+def g(x: C) -> C: pass
+def g(x: Base) -> Base:
+    pass
+[out]
+__main__.g

@@ -199,7 +199,11 @@ class DependencyVisitor(TraverserVisitor):
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
-        self.add_dependency(make_trigger(o.func.fullname()))
+        # We don't need to recheck outer scope for an overload, only overload itself.
+        # Also if any decorator is nested, it is not externally visible, so we don't need to
+        # generate dependency.
+        if not o.func.is_overload and self.scope.current_function_name() is None:
+            self.add_dependency(make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
@@ -232,7 +236,6 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(target))
         if info.declared_metaclass:
             self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
-        # TODO: Add dependencies based on remaining TypeInfo attributes.
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
@@ -252,7 +255,6 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
-            # TODO: as_id
             self.add_dependency(make_trigger(id), self.scope.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
@@ -531,7 +533,6 @@ class DependencyVisitor(TraverserVisitor):
     def add_operator_method_dependency_for_type(self, typ: Type, method: str) -> None:
         # Note that operator methods can't be (non-metaclass) methods of type objects
         # (that is, TypeType objects or Callables representing a type).
-        # TODO: TypedDict
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):

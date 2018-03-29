@@ -118,6 +118,7 @@ BINARY_MAGIC_METHODS = {
     "__lt__",
     "__mod__",
     "__mul__",
+    "__ne__",
     "__or__",
     "__pow__",
     "__radd__",
