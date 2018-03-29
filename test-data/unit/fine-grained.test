@@ -5043,6 +5043,76 @@ class A: pass
 ==
 ==
 
+[case testChangeGenericFunctionToVariable]
+import a
+x: int
+y: int = a.f(x)
+class Dummy:
+    def g(self) -> None:
+        a.f(x)
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T')
+def f(x: T) -> T:
+    pass
+[file a.py.2]
+from typing import TypeVar
+T = TypeVar('T')
+f = 42
+[out]
+==
+main:3: error: "int" not callable
+main:6: error: "int" not callable
+
+[case testChangeGenericClassToVariable]
+import a
+x: int
+a.A(x)
+class Dummy:
+    def g(self) -> None:
+        a.A(x)
+[file a.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+A = 'no way'
+[out]
+==
+main:3: error: "str" not callable
+main:6: error: "str" not callable
+
+[case testChangeGenericMethodToVariable]
+import a
+x: int
+y: int = a.A(x).f()
+class Dummy:
+    def g(self) -> None:
+        a.A(x).f()
+[file a.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+    def f(self) -> T:
+        pass
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    f: T
+    def __init__(self, x: T) -> None:
+        pass
+[out]
+==
+main:3: error: "int" not callable
+main:6: error: "int" not callable
+
 [case testRefreshNestedClassWithSelfReference]
 import a
 [file a.py]
