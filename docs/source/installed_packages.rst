@@ -3,9 +3,32 @@
 Using Installed Packages
 ========================
 
+One common pattern of modularizing Python code is through packages, which are
+collections of modules (``*.py`` files). Packages usually have ``__init__.py``
+files in them.
+
+Packages can be uploaded to PyPi and installed via ``pip`` as part of
+distributions. Python installations have special directories to place packages
+installed through tools such as ``pip``.
+
 `PEP 561 <https://www.python.org/dev/peps/pep-0561/>`_ specifies how to mark
-a package as supporting type checking. Below is a summary of how to create
-PEP 561 compatible packages and have mypy use them in type checking.
+an installed package as supporting type checking. Supporting type checking
+means that the package can be used as a source of type information for tools
+like mypy.
+
+There are three main kinds of typed packages. The first is a
+package that has only inline type annotations in the code itself. The second is
+a package that ships stub files with type information alongside the runtime
+code. The third method, also known as a "stub only package" is a package that
+ships type information for a package seperately as stub files.
+
+These packages differ from the stubs in typeshed as they are installable
+through, for example ``pip``, instead of tied to a mypy release. In addition,
+they allow for the distribution of type information seperate from the regular
+package itself.
+
+Below is a summary of how to make sure mypy is finding installed typed packages
+and how to create PEP 561 compatible packages of your own.
 
 Using PEP 561 compatible packages with mypy
 *******************************************
@@ -31,12 +54,6 @@ to disable searching.
 
 Making PEP 561 compatible packages
 **********************************
-
-PEP 561 notes three main ways to distribute type information. The first is a
-package that has only inline type annotations in the code itself. The second is
-a package that ships stub files with type information alongside the runtime
-code. The third method, also known as a "stub only package" is a package that
-ships type information for a package seperately as stub files.
 
 Packages that must be used at runtime and supply type information via type
 comments or annotations in the code should put a ``py.typed`` in their package
