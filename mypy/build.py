@@ -36,6 +36,7 @@ MYPY = False
 if MYPY:
     from typing import Deque
 
+from . import sitepkgs
 from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
@@ -813,23 +814,6 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     return p
 
 
-SITE_PACKAGES = '''
-from __future__ import print_function
-from distutils.sysconfig import get_python_lib
-import site
-if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
-    user_dir = site.getusersitepackages()
-    print(repr(site.getsitepackages() + [user_dir]))
-else:
-    print(repr([get_python_lib()]))
-'''
-
-
-def call_python(python_executable: str, command: str) -> str:
-    return subprocess.check_output([python_executable, '-c', command],
-                                   stderr=subprocess.PIPE).decode()
-
-
 @functools.lru_cache(maxsize=None)
 def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
     """Find package directories for given python."""
@@ -837,17 +821,12 @@ def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
         return []
     if python_executable == sys.executable:
         # Use running Python's package dirs
-        if hasattr(site, 'getusersitepackages') and hasattr(site, 'getsitepackages'):
-            user_dir = site.getusersitepackages()
-            return site.getsitepackages() + [user_dir]
-        # If site doesn't have get(user)sitepackages, we are running in a
-        # virtualenv, and should fall back to get_python_lib
-        return [get_python_lib()]
+        return sitepkgs.getsitepackages()
     else:
         # Use subprocess to get the package directory of given Python
         # executable
-        output = call_python(python_executable, SITE_PACKAGES)
-    return ast.literal_eval(output)
+        return ast.literal_eval(subprocess.check_output([python_executable, sitepkgs.__file__],
+                                stderr=subprocess.PIPE).decode())
 
 
 class FindModuleCache:
