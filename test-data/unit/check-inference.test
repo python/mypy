@@ -2303,3 +2303,80 @@ class C:
     def f(self, x) -> None:
         # TODO: It would be better for the type to be Any here
         self.a.y  # E: "None" has no attribute "y"
+
+-- Special case for assignment to '_'
+-- ----------------------------------
+
+[case testUnusedTargetSingle]
+def foo() -> None:
+    _ = 0
+    _ = ''
+    _ = 0
+    _ = ''
+
+[case testUnusedTargetTupleUnpacking]
+def foo() -> None:
+    _, _ = (0, '')
+    _ = 0
+    _ = ''
+def bar() -> None:
+    t = (0, '')
+    _, _ = t
+    _ = 0
+    _ = ''
+
+[case testUnusedTargetMultipleTargets]
+def foo() -> None:
+    _ = x = 0
+    _ = y = ''
+    _ = 0
+    _ = ''
+def bar() -> None:
+    x = _ = 0
+    y = _ = ''
+    _ = 0
+    _ = ''
+    x + 0
+    y + ''
+    x + ''  # E: Unsupported operand types for + ("int" and "str")
+    y + 0  # E: Unsupported operand types for + ("str" and "int")
+
+[case testUnusedTargetNotImport]
+import d, c, b, a
+[file _.py]
+[file m.py]
+def f(): pass
+def _(): pass
+[file a.py]
+import _
+_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+[file b.py]
+import m as _
+_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+[file c.py]
+from m import _
+_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+[file d.py]
+from m import f as _
+_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+[builtins fixtures/module.pyi]
+
+[case testUnusedTargetNotClass]
+class _:
+    pass
+_().method()  # E: "_" has no attribute "method"
+
+[case testUnusedTargetNotDef]
+def _() -> int:
+    pass
+_() + 0
+
+[case testUnusedTargetForLoop]
+def f() -> None:
+    a = [(0, '', 0)]
+    for _, _, x in a:
+        x = 0
+        x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    _ = 0
+    _ = ''
+[builtins fixtures/list.pyi]
