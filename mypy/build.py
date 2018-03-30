@@ -1532,7 +1532,8 @@ class State:
                 follow_imports = self.options.follow_imports
                 if (follow_imports != 'normal'
                         and not root_source  # Honor top-level modules
-                        and path.endswith('.py')  # Stubs are always normal
+                        and (path.endswith('.py')  # Stubs are always normal
+                             or self.options.follow_imports_for_stubs)  # except when they aren't
                         and id != 'builtins'):  # Builtins is always normal
                     if follow_imports == 'silent':
                         # Still import it, but silence non-blocker errors.
