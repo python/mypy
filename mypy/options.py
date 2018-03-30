@@ -20,6 +20,7 @@ class Options:
     PER_MODULE_OPTIONS = {
         "ignore_missing_imports",
         "follow_imports",
+        "follow_imports_for_stubs",
         "disallow_any_generics",
         "disallow_any_unimported",
         "disallow_any_expr",
@@ -60,6 +61,9 @@ class Options:
         self.report_dirs = {}  # type: Dict[str, str]
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
+        # Whether to respect the follow_imports setting even for stub files.
+        # Intended to be used for disabling specific stubs.
+        self.follow_imports_for_stubs = False  # type: bool
 
         # disallow_any options
         self.disallow_any_generics = False
