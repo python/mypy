@@ -4,7 +4,9 @@ from __future__ import print_function
 
 from distutils.sysconfig import get_python_lib
 import site
-from typing import List
+MYPY = False
+if MYPY:
+    from typing import List
 
 
 def getsitepackages():
