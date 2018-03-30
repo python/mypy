@@ -127,6 +127,12 @@ class Options:
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
 
+        # Variable names considered True
+        self.always_true = []  # type: List[str]
+
+        # Variable names considered False
+        self.always_false = []  # type: List[str]
+
         # Use script name instead of __main__
         self.scripts_are_modules = False
 

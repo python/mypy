@@ -339,6 +339,10 @@ def process_options(args: List[str],
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    parser.add_argument('--always-true', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered True (may be repeated)")
+    parser.add_argument('--always-false', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered False (may be repeated)")
     parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
@@ -684,6 +688,8 @@ config_types = {
     'silent_imports': bool,
     'almost_silent': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
+    'always_true': lambda s: [p.strip() for p in s.split(',')],
+    'always_false': lambda s: [p.strip() for p in s.split(',')],
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)
