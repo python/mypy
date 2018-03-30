@@ -299,7 +299,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         self.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d), d)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s, pyversion=self.pyversion, platform=self.platform)
+        infer_reachability_of_if_statement(s, self.sem.options)
         for node in s.body:
             node.accept(self)
         if s.else_body:

@@ -3149,9 +3149,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.fail("'continue' outside loop", s, True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
-        infer_reachability_of_if_statement(s,
-            pyversion=self.options.python_version,
-            platform=self.options.platform)
+        infer_reachability_of_if_statement(s, self.options)
         for i in range(len(s.expr)):
             s.expr[i].accept(self)
             self.visit_block(s.body[i])
@@ -3529,9 +3527,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         expr.left.accept(self)
 
         if expr.op in ('and', 'or'):
-            inferred = infer_condition_value(expr.left,
-                                             pyversion=self.options.python_version,
-                                             platform=self.options.platform)
+            inferred = infer_condition_value(expr.left, self.options)
             if ((inferred == ALWAYS_FALSE and expr.op == 'and') or
                     (inferred == ALWAYS_TRUE and expr.op == 'or')):
                 expr.right_unreachable = True
@@ -4100,11 +4096,9 @@ def remove_imported_names_from_symtable(names: SymbolTable,
         del names[name]
 
 
-def infer_reachability_of_if_statement(s: IfStmt,
-                                       pyversion: Tuple[int, int],
-                                       platform: str) -> None:
+def infer_reachability_of_if_statement(s: IfStmt, options: Options) -> None:
     for i in range(len(s.expr)):
-        result = infer_condition_value(s.expr[i], pyversion, platform)
+        result = infer_condition_value(s.expr[i], options)
         if result in (ALWAYS_FALSE, MYPY_FALSE):
             # The condition is considered always false, so we skip the if/elif body.
             mark_block_unreachable(s.body[i])
@@ -4128,13 +4122,14 @@ def infer_reachability_of_if_statement(s: IfStmt,
             break
 
 
-def infer_condition_value(expr: Expression, pyversion: Tuple[int, int], platform: str) -> int:
+def infer_condition_value(expr: Expression, options: Options) -> int:
     """Infer whether the given condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,
     MYPY_TRUE if true under mypy and false at runtime, MYPY_FALSE if
     false under mypy and true at runtime, else TRUTH_VALUE_UNKNOWN.
     """
+    pyversion = options.python_version
     name = ''
     negated = False
     alias = expr
@@ -4148,12 +4143,12 @@ def infer_condition_value(expr: Expression, pyversion: Tuple[int, int], platform
     elif isinstance(expr, MemberExpr):
         name = expr.name
     elif isinstance(expr, OpExpr) and expr.op in ('and', 'or'):
-        left = infer_condition_value(expr.left, pyversion, platform)
+        left = infer_condition_value(expr.left, options)
         if ((left == ALWAYS_TRUE and expr.op == 'and') or
                 (left == ALWAYS_FALSE and expr.op == 'or')):
             # Either `True and <other>` or `False or <other>`: the result will
             # always be the right-hand-side.
-            return infer_condition_value(expr.right, pyversion, platform)
+            return infer_condition_value(expr.right, options)
         else:
             # The result will always be the left-hand-side (e.g. ALWAYS_* or
             # TRUTH_VALUE_UNKNOWN).
@@ -4161,7 +4156,7 @@ def infer_condition_value(expr: Expression, pyversion: Tuple[int, int], platform
     else:
         result = consider_sys_version_info(expr, pyversion)
         if result == TRUTH_VALUE_UNKNOWN:
-            result = consider_sys_platform(expr, platform)
+            result = consider_sys_platform(expr, options.platform)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == 'PY2':
             result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
@@ -4169,6 +4164,10 @@ def infer_condition_value(expr: Expression, pyversion: Tuple[int, int], platform
             result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
         elif name == 'MYPY' or name == 'TYPE_CHECKING':
             result = MYPY_TRUE
+        elif name in options.always_true:
+            result = MYPY_TRUE
+        elif name in options.always_false:
+            result = MYPY_FALSE
     if negated:
         result = inverted_truth_mapping[result]
     return result

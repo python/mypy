@@ -339,6 +339,10 @@ def process_options(args: List[str],
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    parser.add_argument('--always-true', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered True (may be repeated)")
+    parser.add_argument('--always-false', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered False (may be repeated)")
     parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
@@ -500,6 +504,12 @@ def process_options(args: List[str],
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
+
+    # Check for overlapping `--always-true` and `--always-false` flags.
+    overlap = set(options.always_true) & set(options.always_false)
+    if overlap:
+        parser.error("You can't make a variable always true and always false (%s)" %
+                     ', '.join(sorted(overlap)))
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
@@ -684,6 +694,8 @@ config_types = {
     'silent_imports': bool,
     'almost_silent': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
+    'always_true': lambda s: [p.strip() for p in s.split(',')],
+    'always_false': lambda s: [p.strip() for p in s.split(',')],
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)
