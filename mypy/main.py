@@ -505,6 +505,12 @@ def process_options(args: List[str],
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
 
+    # Check for overlapping `--always-true` and `--always-false` flags.
+    overlap = set(options.always_true) & set(options.always_false)
+    if overlap:
+        parser.error("You can't make a variable always true and always false (%s)" %
+                     ', '.join(sorted(overlap)))
+
     # Set build flags.
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
