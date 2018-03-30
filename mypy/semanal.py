@@ -2204,7 +2204,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
             for rv, *lvs in elementwise_assignments:
-                self.process_module_assignment(lvs, rv, ctx)
+                self.process_module_assignment(list(lvs), rv, ctx)
         elif isinstance(rval, RefExpr):
             rnode = self.lookup_type_node(rval)
             if rnode and rnode.kind == MODULE_REF:

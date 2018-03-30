@@ -632,7 +632,7 @@ n = 1
 m = 1
 n = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 m = 'x' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-f(list_object) # E: Argument 1 to "f" has incompatible type "List[object]"; expected "List[int]"
+f(list_object) # E: Argument 1 to "f" has incompatible type "List[object]"; expected one of "List[int]", "List[str]" based on available overloads
 [builtins fixtures/list.pyi]
 
 [case testOverlappingOverloadSignatures]
@@ -1489,4 +1489,98 @@ class Child4(ParentWithDynamicImpl):
     def f(self, arg: Any) -> Any: ...
 
 [builtins fixtures/tuple.pyi]
+
+[case testOverloadInferUnionReturnBasic]
+from typing import overload, Union
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+@overload
+def f1(x: A) -> B: ...
+@overload
+def f1(x: C) -> D: ...
+def f1(x): ...
+
+arg1: Union[A, C]
+reveal_type(f1(arg1))  # E: Revealed type is 'Union[__main__.B, __main__.D]'
+
+@overload
+def f2(x: A) -> B: ...
+@overload
+def f2(x: C) -> B: ...
+def f2(x): ...
+
+reveal_type(f2(arg1))  # E: Revealed type is '__main__.B'
+
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadInferUnionReturnMultipleArguments]
+from typing import overload, Union
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+@overload
+def f1(x: A, y: C) -> B: ...
+@overload
+def f1(x: C, y: A) -> D: ...
+def f1(x, y): ...
+
+# TODO: Instead of defaulting to picking the first overload, display a nicer error message
+arg1: Union[A, C]
+reveal_type(f1(arg1, arg1))
+
+@overload
+def f2(x: A, y: C) -> B: ...
+@overload
+def f2(x: C, y: C) -> D: ...
+def f2(x, y): ...
+
+reveal_type(f2(arg1, arg1))
+reveal_type(f2(arg1, C()))
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:16: error: Revealed type is '__main__.B'
+main:16: error: Argument 1 to "f1" has incompatible type "Union[A, C]"; expected "A"
+main:16: error: Argument 2 to "f1" has incompatible type "Union[A, C]"; expected "C"
+main:24: error: Revealed type is 'Union[__main__.B, __main__.D]'
+main:24: error: Argument 2 to "f2" has incompatible type "Union[A, C]"; expected "C"
+main:25: error: Revealed type is 'Union[__main__.B, __main__.D]'
+
+[case testOverloadInferUnionReturnFunctionsWithKwargs]
+from typing import overload, Union, Optional
+
+class A: ...
+class B: ...
+class C: ...
+
+@overload
+def f(x: A) -> A: ...
+@overload
+def f(x: A, y: Optional[B] = None) -> C: ...
+@overload
+def f(x: A, z: Optional[C] = None) -> B: ...
+def f(x, y=None, z=None): ...
+
+reveal_type(f(A(), B()))
+reveal_type(f(A(), C()))
+
+arg: Union[B, C]
+reveal_type(f(A(), arg))
+
+reveal_type(f(A()))
+
+[builtins fixtures/tuple.pyi]
+[out]
+main:15: error: Revealed type is '__main__.C'
+main:16: error: Revealed type is '__main__.B'
+main:19: error: Revealed type is '__main__.C'
+main:19: error: Argument 2 to "f" has incompatible type "Union[B, C]"; expected "Optional[B]"
+main:21: error: Revealed type is '__main__.A'
 

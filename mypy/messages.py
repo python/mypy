@@ -629,8 +629,19 @@ class MessageBuilder:
                 expected_type = callee.arg_types[m - 1]
             except IndexError:  # Varargs callees
                 expected_type = callee.arg_types[-1]
+
             arg_type_str, expected_type_str = self.format_distinctly(
                 arg_type, expected_type, bare=True)
+            expected_type_str = self.quote_type_string(expected_type_str)
+
+            if callee.from_overloads and isinstance(expected_type, UnionType):
+                expected_formatted = []
+                for e in expected_type.items:
+                    type_str = self.format_distinctly(arg_type, e, bare=True)[1]
+                    expected_formatted.append(self.quote_type_string(type_str))
+                expected_type_str = 'one of {} based on available overloads'.format(
+                    ', '.join(expected_formatted))
+
             if arg_kind == ARG_STAR:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
@@ -645,8 +656,7 @@ class MessageBuilder:
                     arg_label = '"{}"'.format(arg_name)
 
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                arg_label, target, self.quote_type_string(arg_type_str),
-                self.quote_type_string(expected_type_str))
+                arg_label, target, self.quote_type_string(arg_type_str), expected_type_str)
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)
         self.fail(msg, context)
