@@ -17,12 +17,14 @@ flag (or its long form ``--help``)::
               [--disallow-untyped-defs] [--disallow-incomplete-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--disallow-untyped-decorators]
-              [--warn-redundant-casts] [--no-warn-no-return] [--warn-return-any]
-              [--warn-unused-ignores] [--warn-unused-configs]
-              [--show-error-context] [--no-implicit-optional] [-i]
-              [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
-              [--skip-version-check] [--strict-optional]
+              [--warn-redundant-casts] [--no-warn-no-return]
+              [--warn-return-any] [--warn-unused-ignores]
+              [--warn-unused-configs] [--show-error-context]
+              [--no-implicit-optional] [-i] [--quick-and-dirty]
+              [--cache-dir DIR] [--cache-fine-grained] [--skip-version-check]
+              [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
+              [--always-true NAME] [--always-false NAME]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
@@ -33,7 +35,7 @@ flag (or its long form ``--help``)::
               [--linecount-report DIR] [--linecoverage-report DIR]
               [--memory-xml-report DIR] [--txt-report DIR] [--xml-report DIR]
               [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
-              [-c PROGRAM_TEXT] [-p PACKAGE]
+              [-p PACKAGE] [-c PROGRAM_TEXT]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -373,6 +375,12 @@ Here are some more useful flags:
   run under the the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
+
+- ``--always-true NAME`` will treat all variables named ``NAME`` as
+  compile-time constants that are always true.  May be repeated.
+
+- ``--always-false NAME`` will treat all variables named ``NAME`` as
+  compile-time constants that are always false.  May be repeated.
 
 - ``--show-column-numbers`` will add column offsets to error messages,
   for example, the following indicates an error in line 12, column 9

@@ -55,6 +55,14 @@ The following global flags may only be set in the global section
   Windows, respectively).  The default is the current platform as
   revealed by Python's ``sys.platform`` variable.
 
+- ``always_true`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  true.
+
+- ``always_false`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  false.
+
 - ``custom_typing_module`` (string) specifies the name of an
   alternative module which is to be considered equivalent to the
   ``typing`` module.
