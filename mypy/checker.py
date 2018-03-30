@@ -2016,6 +2016,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Make the type more general (strip away function names etc.).
             init_type = strip_type(init_type)
 
+            # Special case if target is named '_' -- the variable gets type Any.
+            if isinstance(lvalue, NameExpr) and lvalue.name == '_':
+                init_type = AnyType(TypeOfAny.special_form)
+
             self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
