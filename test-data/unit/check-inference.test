@@ -2380,3 +2380,20 @@ def f() -> None:
     _ = 0
     _ = ''
 [builtins fixtures/list.pyi]
+
+[case testUnusedTargetWithClause]
+class C:
+    def __enter__(self) -> int: pass
+    def __exit__(self, *args): pass
+def f() -> None:
+    with C() as _: pass
+    _ = 0
+    _ = ''
+
+[case testUnusedTargetExceptClause]
+def f() -> None:
+    try: pass
+    except BaseException as _:
+        _ = 0
+        _ = ''
+[builtins fixtures/exception.pyi]
