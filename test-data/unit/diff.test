@@ -865,3 +865,17 @@ def g(x: Base) -> Base:
     pass
 [out]
 __main__.g
+
+[case testNestedFunctionDoesntMatter]
+class A: pass
+class B: pass
+def outer() -> None:
+    def inner(x: A) -> B:
+        pass
+[file next.py]
+class A: pass
+class B: pass
+def outer() -> None:
+    def inner(y: B) -> A:
+        pass
+[out]

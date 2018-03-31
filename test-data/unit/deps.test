@@ -332,6 +332,45 @@ class A:
 <m.A.B> -> <m.f>, m.A.B, m.f
 <m.A> -> m.A
 
+[case NestedFunctionType]
+from mod import A, B, C, D
+def outer() -> None:
+    def inner(x: A, *args: B, **kwds: C) -> D:
+        pass
+[file mod.py]
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+[builtins fixtures/dict.pyi]
+[out]
+<mod.A> -> <m.outer>, m, m.outer
+<mod.B> -> <m.outer>, m, m.outer
+<mod.C> -> <m.outer>, m, m.outer
+<mod.D> -> <m.outer>, m, m.outer
+
+[case NestedFunctionBody]
+from mod import A, B, C
+def outer() -> None:
+    def inner() -> None:
+        A()
+        x: B
+        y: C
+        y.x
+[file mod.py]
+class A: pass
+class B: pass
+class C:
+    x: int
+[builtins fixtures/dict.pyi]
+[out]
+<mod.A.__init__> -> m.outer
+<mod.A.__new__> -> m.outer
+<mod.A> -> m, m.outer
+<mod.B> -> m, m.outer
+<mod.C.x> -> m.outer
+<mod.C> -> m, m.outer
+
 [case testDefaultArgValue]
 def f1(x: int) -> int: pass
 def f2() -> int: pass

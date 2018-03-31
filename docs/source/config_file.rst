@@ -55,6 +55,14 @@ The following global flags may only be set in the global section
   Windows, respectively).  The default is the current platform as
   revealed by Python's ``sys.platform`` variable.
 
+- ``always_true`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  true.
+
+- ``always_false`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  false.
+
 - ``custom_typing_module`` (string) specifies the name of an
   alternative module which is to be considered equivalent to the
   ``typing`` module.
@@ -141,6 +149,15 @@ overridden by the pattern sections matching the module name.
   that if pattern matching is used, the pattern should match the name
   of the *imported* module, not the module containing the import
   statement.
+
+- ``follow_imports_for_stubs`` (Boolean, default false) determines
+  whether to respect the ``follow_imports`` setting even for stub
+  (``.pyi``) files.
+  Used in conjunction with ``follow_imports=skip``, this can be used
+  to suppress the import of a module from ``typeshed``, replacing it
+  with `Any`.
+  Used in conjuncation with ``follow_imports=error``, this can be used
+  to make any use of a particular ``typeshed`` module an error.
 
 - ``ignore_missing_imports`` (Boolean, default False) suppress error
   messages about imports that cannot be resolved.  Note that if
