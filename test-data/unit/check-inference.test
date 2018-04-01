@@ -2307,10 +2307,17 @@ class C:
 -- Special case for assignment to '_'
 -- ----------------------------------
 
-[case testUnusedTargetSingle]
+[case testUnusedTargetLocal]
 def foo() -> None:
     _ = 0
     _ = ''
+
+[case testUnusedTargetGlobal]
+_ = 0
+_ = ''
+
+[case testUnusedTargetClass]
+class C:
     _ = 0
     _ = ''
 
@@ -2369,7 +2376,7 @@ _().method()  # E: "_" has no attribute "method"
 [case testUnusedTargetNotDef]
 def _() -> int:
     pass
-_() + 0
+_() + ''  # E: Unsupported operand types for + ("int" and "str")
 
 [case testUnusedTargetForLoop]
 def f() -> None:
