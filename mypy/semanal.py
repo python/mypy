@@ -1607,7 +1607,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
                 if s.lvalues[0].is_inferred_def:
-                    s.type = self.analyze_simple_literal_type(s.rvalue)
+                    # Except if it's an assignment to '_'.
+                    if s.lvalues[0].name != '_':
+                        s.type = self.analyze_simple_literal_type(s.rvalue)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
