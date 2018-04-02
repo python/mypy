@@ -534,7 +534,7 @@ def process_options(args: List[str],
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
         targets = []
-        # TODO: use the same cache as the BuildManager will
+        # TODO: use the same cache that the BuildManager will
         cache = build.FindModuleCache()
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
@@ -552,6 +552,7 @@ def process_options(args: List[str],
         return targets, options
     else:
         try:
+            # TODO: use the same cache that the BuildManager will
             targets = create_source_list(special_opts.files, options)
         except InvalidSourceList as e:
             fail(str(e))
