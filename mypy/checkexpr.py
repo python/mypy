@@ -1211,7 +1211,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Returns None if it is not possible to combine the different callables together in a
         sound manner."""
 
-        new_args: List[List[Type]] = [[] for _ in range(len(callables[0].arg_types))]
+        new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
 
         expected_names = callables[0].arg_names
         expected_kinds = callables[0].arg_kinds
