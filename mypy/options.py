@@ -39,6 +39,8 @@ class Options:
         "ignore_errors",
         "strict_boolean",
         "no_implicit_optional",
+        "always_true",
+        "always_false",
         "strict_optional",
         "disallow_untyped_decorators",
     }
@@ -230,5 +232,5 @@ class Options:
         # that package's __init__.)
         return pattern.match(module) is not None or pattern.match(module + '.') is not None
 
-    def select_options_affecting_cache(self) -> Mapping[str, bool]:
+    def select_options_affecting_cache(self) -> Mapping[str, object]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
