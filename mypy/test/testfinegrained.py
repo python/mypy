@@ -26,7 +26,8 @@ from mypy.test.helpers import (
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
-from mypy.main import expand_dir, create_source_list, parse_config_file
+from mypy.main import parse_config_file
+from mypy.find_sources import expand_dir, create_source_list
 
 import pytest  # type: ignore  # no pytest in typeshed
 

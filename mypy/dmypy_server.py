@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import mypy.build
 import mypy.errors
-import mypy.main
+from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
@@ -220,8 +220,8 @@ class Server:
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
         try:
-            self.last_sources = mypy.main.create_source_list(files, self.options)
-        except mypy.main.InvalidSourceList as err:
+            self.last_sources = create_source_list(files, self.options)
+        except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)
 
