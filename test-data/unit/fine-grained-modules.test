@@ -207,15 +207,103 @@ main:2: error: Module has no attribute "a"
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 [builtins fixtures/module.pyi]
 
-[case testAddPackage4-skip]
-# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+[case testAddPackage4]
 import p.a
 p.a.f(1)
 [file p/a.py.2]
 def f(x: str) -> None: pass
 [file p/__init__.py.3]
 [out]
-TODO
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddNonPackageSubdir]
+# cmd: mypy x.py
+# cmd2: mypy x.py foo/a.py foo/b.py
+[file x.py]
+[file foo/a.py.2]
+import b
+b.foo(5)
+[file foo/b.py.2]
+def foo(x: str) -> None: pass
+[out]
+==
+foo/a.py:2: error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+
+[case testAddPackage5]
+# cmd: mypy main p/a.py
+# cmd2: mypy main p/a.py
+# cmd3: mypy main p/a.py p/__init__.py
+import p.a
+p.a.f(1)
+[file p/a.py]
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[file p/__init__.py.3]
+[out]
+main:4: error: Cannot find module named 'p'
+main:4: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:4: error: Cannot find module named 'p.a'
+==
+main:4: error: Cannot find module named 'p'
+main:4: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:4: error: Cannot find module named 'p.a'
+==
+main:5: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddPackage6]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy x.py
+# cmd2: mypy x.py p/a.py
+[file x.py]
+import p.a
+p.a.f(1)
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[file p/__init__.py.2]
+[out]
+==
+-- It is a bug (#4797) that this isn't an error, but not a fine-grained specific one
+
+[case testAddPackage7]
+# flags: --follow-imports=skip
+# cmd: mypy x.py
+# cmd2: mypy x.py p/a.py
+[file x.py]
+from p.a import f
+f(1)
+[file p/a.py.2]
+def f(x: str) -> None: pass
+[file p/__init__.py.2]
+[out]
+x.py:1: error: Cannot find module named 'p.a'
+x.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+x.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+
+[case testAddPackage8]
+# cmd: mypy x.py p/a.py
+# cmd2: mypy x.py p/a.py p/__init__.py
+# cmd3: mypy x.py p/a.py p/__init__.py
+[file x.py]
+[file p/a.py]
+1+'hi'
+[file p/__init__.py.2]
+[file p/a.py.3]
+'1'+'hi'
+[out]
+p/a.py:1: error: Unsupported operand types for + ("int" and "str")
+==
+p/a.py:1: error: Unsupported operand types for + ("int" and "str")
+==
 
 
 -- Delete file
@@ -232,6 +320,26 @@ def f() -> None: pass
 [delete b.py.3]
 [out]
 ==
+==
+
+[case testDeleteDepOfDunderInit1]
+[file p/__init__.py]
+from .foo import Foo
+[file p/foo.py]
+class Foo: pass
+[file p/__init__.py.2]
+[delete p/foo.py.2]
+[out]
+==
+
+[case testDeleteDepOfDunderInit2]
+[file p/__init__.py]
+from p.foo import Foo
+[file p/foo.py]
+class Foo: pass
+[file p/__init__.py.2]
+[delete p/foo.py.2]
+[out]
 ==
 
 [case testDeletionTriggersImportFrom]
@@ -624,6 +732,32 @@ c.f(1)
 ==
 a.py:2: error: Too many arguments for "f"
 
+[case testDeleteFileWSuperClass]
+# flags: --ignore-missing-imports
+[file a.py]
+from c import Bar
+from b import Foo
+z = (1, Foo())
+[file b.py]
+from e import Quux
+from d import Baz
+class Foo(Baz, Quux):
+    pass
+
+[file e.py]
+from c import Bar
+class Quux(Bar):
+    pass
+[file c.py]
+class Bar:
+    pass
+[file d.py]
+class Baz:
+    pass
+[delete c.py.2]
+[out]
+==
+
 [case testDeleteFileWithinPackage]
 import a
 [file a.py]
@@ -692,8 +826,7 @@ main:1: error: Cannot find module named 'p'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
 
-[case testDeletePackage4-skip]
-# TODO: Currently crashing (https://github.com/python/mypy/issues/4477)
+[case testDeletePackage4]
 import p.a
 p.a.f(1)
 [file p/a.py]
@@ -702,7 +835,62 @@ def f(x: str) -> None: pass
 [delete p/__init__.py.2]
 [delete p/a.py.3]
 [out]
-TODO
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+==
+main:1: error: Cannot find module named 'p'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p.a'
+
+[case testDeletePackage5]
+# cmd1: mypy main p/a.py p/__init__.py
+# cmd2: mypy main p/a.py
+# cmd3: mypy main
+
+import p.a
+p.a.f(1)
+[file p/a.py]
+def f(x: str) -> None: pass
+[file p/__init__.py]
+[delete p/__init__.py.2]
+[delete p/a.py.3]
+[out]
+main:6: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+main:5: error: Cannot find module named 'p'
+main:5: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:5: error: Cannot find module named 'p.a'
+==
+main:5: error: Cannot find module named 'p'
+main:5: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:5: error: Cannot find module named 'p.a'
+
+
+[case testDeletePackage6]
+# cmd1: mypy p/a.py p/b.py p/__init__.py
+# cmd2: mypy p/a.py p/b.py
+# cmd3: mypy p/a.py p/b.py
+[file p/a.py]
+def f(x: str) -> None: pass
+[file p/b.py]
+from p.a import f
+f(12)
+[file p/__init__.py]
+[delete p/__init__.py.2]
+[file p/b.py.3]
+from a import f
+f(12)
+[out]
+p/b.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+==
+p/b.py:1: error: Cannot find module named 'p.a'
+p/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+p/b.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
 
 -- TODO:
 -- - add one file which imports another new file, blocking error in new file

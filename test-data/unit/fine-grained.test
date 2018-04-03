@@ -31,6 +31,9 @@
 -- [stale ...].
 --
 -- Specifications for later runs can be given with [stale2 ...], [stale3 ...], etc.
+--
+-- Test runner can parse options from mypy.ini file. Updating this file in between
+-- incremental runs is not yet supported.
 
 [case testReprocessFunction]
 import m
@@ -425,6 +428,201 @@ main:3: error: Module has no attribute "g"
 ==
 ==
 main:3: error: Module has no attribute "g"
+
+[case testIgnoreWorksAfterUpdate]
+import a
+[file a.py]
+import b
+int() + str()  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 2
+[file b.py.3]
+x = 3
+[delete b.py.4]
+[out]
+==
+==
+==
+a.py:1: error: Cannot find module named 'b'
+a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIgnoreWorksWithMissingImports]
+import a
+[file a.py]
+import b
+import xyz  # type: ignore
+xyz.whatever
+[file b.py]
+x = 1
+[file b.py.2]
+x = 2
+[file b.py.3]
+x = 3
+[file xyz.py.4]
+[out]
+==
+==
+==
+a.py:3: error: "object" has no attribute "whatever"
+
+[case testAddedIgnoreWithMissingImports]
+import a
+[file a.py]
+from b import x
+y: int = x
+[file b.py]
+from xyz import x
+[file b.py.2]
+from xyz import x  # type: ignore
+[file xyz.py.3]
+x = str()
+[out]
+b.py:1: error: Cannot find module named 'xyz'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedIgnoreWithMissingImport]
+import a
+[file a.py]
+from b import x
+y: int = x
+[file b.py]
+from xyz import x  # type: ignore
+[file b.py.2]
+from xyz import x
+[file xyz.py.3]
+x = str()
+[out]
+==
+b.py:1: error: Cannot find module named 'xyz'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRemovedModuleUnderIgnore]
+import a
+[file a.py]
+import c
+from b import x  # type: ignore
+y: int = x
+[file b.py]
+x = str()
+[file c.py]
+x = 1
+[delete b.py.2]
+[file c.py.3]
+x = 3
+[out]
+a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+==
+==
+
+[case AddedModuleUnderIgnore]
+import a
+[file a.py]
+import c
+from b import x  # type: ignore
+y: int = x
+[file c.py]
+x = 1
+[file c.py.2]
+x = 2
+[file b.py.3]
+# empty
+[out]
+==
+==
+
+[case testIgnoreInBetween]
+import a
+[file a.py]
+import b
+x: int = b.x
+[file b.py]
+import c
+x = c.C.x  # type: ignore
+[file c.py]
+class C:
+    pass
+[file c.py.2]
+class C:
+    x: int
+[file c.py.3]
+# empty
+[file c.py.4]
+class C:
+    x: str
+[out]
+==
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedModule-skip]
+# See https://github.com/python/mypy/issues/4782
+import a
+[file a.py]
+import b
+x = b.x  # type: ignore
+y: int = x
+[file b.py]
+import c
+[file b.py.2]
+import c
+x = c.x
+[file c.py]
+x: str
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedBase]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x = b.C.x  # type: ignore
+    y: int = x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(c.B):
+    pass
+[file c.py]
+class B:
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testIgnoredAttrReprocessedMeta]
+import a
+[file a.py]
+import b
+def fun() -> None:
+    x = b.C.x  # type: ignore
+    y: int = x
+[file b.py]
+import c
+class C:
+    pass
+[file b.py.2]
+import c
+class C(metaclass=c.M):
+    pass
+[file c.py]
+class M(type):
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testAddBaseClassMethodCausingInvalidOverride]
 import m
@@ -3690,6 +3888,286 @@ class User:
 [out]
 ==
 
+[case testNoStrictOptionalModule]
+import a
+a.y = a.x
+[file a.py]
+from typing import Optional
+x: int
+y: int
+[file a.py.2]
+from typing import Optional
+x: Optional[int]
+y: int
+[file a.py.3]
+from typing import Optional
+x: Optional[str]
+y: int
+[out]
+==
+==
+main:2: error: Incompatible types in assignment (expression has type "Optional[str]", variable has type "int")
+
+[case testNoStrictOptionalFunction]
+import a
+from typing import Optional
+def f() -> None:
+    x: Optional[int]
+    a.g(x)
+[file a.py]
+from typing import Optional
+def g(x: Optional[int]) -> None:
+    pass
+[file a.py.2]
+from typing import Optional
+def g(x: int) -> None:
+    pass
+[file a.py.3]
+from typing import Optional
+def g(x: str) -> None:
+    pass
+[out]
+==
+==
+main:5: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "str"
+
+[case testNoStrictOptionalMethod]
+import a
+from typing import Optional
+class C:
+    def f(self) -> None:
+        x: Optional[int]
+        a.B().g(x)
+[file a.py]
+from typing import Optional
+class B:
+    def g(self, x: Optional[int]) -> None:
+        pass
+[file a.py.2]
+from typing import Optional
+class B:
+    def g(self, x: int) -> None:
+        pass
+[file a.py.3]
+from typing import Optional
+class B:
+    def g(self, x: str) -> None:
+        pass
+[out]
+==
+==
+main:6: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "str"
+
+[case testStrictOptionalModule]
+# flags: --strict-optional
+import a
+a.y = a.x
+[file a.py]
+from typing import Optional
+x: int
+y: int
+[file a.py.2]
+from typing import Optional
+x: Optional[int]
+y: int
+[out]
+==
+main:3: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+
+[case testStrictOptionalFunction]
+# flags: --strict-optional
+import a
+from typing import Optional
+def f() -> None:
+    x: Optional[int]
+    a.g(x)
+[file a.py]
+from typing import Optional
+def g(x: Optional[int]) -> None:
+    pass
+[file a.py.2]
+from typing import Optional
+def g(x: int) -> None:
+    pass
+[out]
+==
+main:6: error: Argument 1 to "g" has incompatible type "Optional[int]"; expected "int"
+
+[case testStrictOptionalMethod]
+# flags: --strict-optional
+import a
+from typing import Optional
+class C:
+    def f(self) -> None:
+        x: Optional[int]
+        a.B().g(x)
+[file a.py]
+from typing import Optional
+class B:
+    def g(self, x: Optional[int]) -> None:
+        pass
+[file a.py.2]
+from typing import Optional
+class B:
+    def g(self, x: int) -> None:
+        pass
+[out]
+==
+main:7: error: Argument 1 to "g" of "B" has incompatible type "Optional[int]"; expected "int"
+
+[case testPerFileStrictOptionalModule]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-a.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+x: int
+y: int = x
+[file b.py]
+from typing import Optional
+x: int
+y: int = x
+[file b.py.2]
+from typing import Optional
+x: Optional[int]
+y: int = x
+[file a.py.3]
+from typing import Optional
+import b
+x: Optional[int]
+y: int = x
+[out]
+==
+==
+a.py:4: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+
+[case testPerFileStrictOptionalModuleOnly]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-a.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+y: int = b.x
+class Dummy:
+    def f(self) -> None:
+        pass
+[file b.py]
+from typing import Optional
+import c
+x: int
+y: int = c.x
+class Dummy:
+    def f(self) -> None:
+        pass
+[file c.py]
+from typing import Optional
+x: int
+[file c.py.2]
+from typing import Optional
+x: Optional[int]
+[file b.py.3]
+from typing import Optional
+import c
+x: Optional[int]
+y: int = c.x
+[file a.py.4]
+from typing import Optional
+import b
+y: Optional[int] = b.x
+class Dummy:
+    def f(self) -> None:
+        pass
+[out]
+==
+==
+a.py:3: error: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
+==
+
+[case testPerFileStrictOptionalFunction]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-b.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+def f() -> None:
+    x: int
+    x = b.g(x)
+[file b.py]
+from typing import Optional
+import c
+def g(x: Optional[int]) -> Optional[int]:
+    return c.h(x)
+[file c.py]
+from typing import Optional
+def h(x: Optional[int]) -> int:
+    pass
+[file c.py.2]
+from typing import Optional
+def h(x: int) -> int:
+    pass
+[file b.py.3]
+from typing import Optional
+import c
+def g(x: int) -> Optional[int]:
+    return c.h(x)
+[out]
+==
+b.py:4: error: Argument 1 to "h" has incompatible type "Optional[int]"; expected "int"
+==
+
+[case testPerFileStrictOptionalMethod]
+import a
+[file mypy.ini]
+[[mypy]
+strict_optional = False
+[[mypy-b.*]
+strict_optional = True
+[file a.py]
+from typing import Optional
+import b
+class A:
+    def f(self) -> None:
+        x: int
+        x = b.B().g(x)
+[file b.py]
+from typing import Optional
+import c
+class B:
+    def g(self, x: Optional[int]) -> Optional[int]:
+        return c.C().h(x)
+[file c.py]
+from typing import Optional
+class C:
+    def h(self, x: Optional[int]) -> int:
+        pass
+[file c.py.2]
+from typing import Optional
+class C:
+    def h(self, x: int) -> int:
+        pass
+[file b.py.3]
+from typing import Optional
+import c
+class B:
+    def g(self, x: int) -> Optional[int]:
+        return c.C().h(x)
+[out]
+==
+b.py:5: error: Argument 1 to "h" of "C" has incompatible type "Optional[int]"; expected "int"
+==
+
 [case testTypeVarValuesFunction]
 import a
 [file a.py]
@@ -3884,6 +4362,222 @@ U = TypeVar('U')
 [out]
 main:3: error: Value of type variable "submod.T" of "D" cannot be "S"
 main:3: error: Value of type variable "submod.U" of "D" cannot be "I"
+==
+
+[case testGenericFineCallableNormal]
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T', str, B)
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableNamed]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(y: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Unexpected keyword argument "x"
+c.py:4: note: Called function defined here
+
+[case testGenericFineCallableInBound]
+import a
+[file a.py]
+import b
+x: int = b.f()(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import Callable, TypeVar
+class B: pass
+T = TypeVar('T')
+def g() -> Callable[[T], T]:
+    pass
+[file c.py.2]
+from typing import Callable, TypeVar
+class B: pass
+T = TypeVar('T', str, B)
+def g() -> Callable[[T], T]:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableAddedBound]
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class B: pass
+T = TypeVar('T', bound=B)
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+
+[case testGenericFineCallableBoundDeleted-skip-nocache]
+# See https://github.com/python/mypy/issues/4783
+import a
+[file a.py]
+import b
+x: int = b.f(int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+import d
+T = TypeVar('T', bound=d.B)
+def g(x: T) -> T:
+    pass
+[file d.py]
+class B:
+    pass
+[file d.py.2]
+# empty
+[out]
+a.py:2: error: Value of type variable "T" of function cannot be "int"
+==
+c.py:3: error: Name 'd.B' is not defined
+
+[case testGenericFineCallableToNonGeneric]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar
+class T: pass
+def g(x: T) -> T:
+    pass
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "T", variable has type "int")
+a.py:2: error: Argument "x" has incompatible type "int"; expected "T"
+
+[case testGenericFineCallableToGenericClass]
+import a
+[file a.py]
+import b
+x: int = b.f(x=int())
+[file b.py]
+from c import g
+f = g
+[file c.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+def g(x: T) -> T:
+    pass
+[file c.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class g(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "g[int]", variable has type "int")
+
+[case testMakeClassNoLongerAbstract1]
+[file z.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+[file b.py]
+from z import I
+class Foo(I):
+    pass
+def x() -> Foo: return None
+[file z.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    pass
+[file b.py.2]
+from z import I
+class Foo(I):
+    pass
+def x() -> Foo: return Foo()
+[out]
+==
+
+[case testMakeClassNoLongerAbstract2]
+-- this version never failed, but it is just a file-renaming
+-- away from the above test that did
+[file a.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+[file b.py]
+from a import I
+class Foo(I):
+    pass
+def x() -> Foo: return None
+[file a.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    pass
+[file b.py.2]
+from a import I
+class Foo(I):
+    pass
+def x() -> Foo: return Foo()
+[out]
 ==
 
 [case testRefreshClassBasedEnum]
@@ -5232,3 +5926,393 @@ a.py:2: note:     z
 a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
 a.py:2: note: Following member(s) of "C" have conflicts:
 a.py:2: note:     z: expected "int", got "str"
+
+[case testOverloadsSimpleFrom]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> int: pass
+def f(x):
+    pass
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testOverloadsSimpleToNested]
+from typing import overload, Any
+import mod
+def outer() -> None:
+    @overload
+    def f(x: int) -> None: pass
+    @overload
+    def f(x: str) -> str: pass
+    def f(x: Any) -> Any:
+        y: int = mod.f()
+[file mod.py]
+def f() -> int:
+    pass
+[file mod.py.2]
+def f() -> str:
+    pass
+[out]
+==
+main:9: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testOverloadsRemovedOverload]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+class C: pass
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+@overload
+def f(x: C) -> int: pass
+def f(x):
+    pass
+[file mod.py.2]
+class C: pass
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: C) -> int: pass
+def f(x):
+    pass
+[out]
+==
+main:3: error: No overload variant of "f" matches argument types [builtins.str]
+
+[case testOverloadsDeleted]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+[builtins fixtures/module.pyi]
+[out]
+==
+main:3: error: Module has no attribute "f"
+
+[case testOverloadsUpdatedTypeRecheckImplementation]
+from typing import overload
+import mod
+class Outer:
+    @overload
+    def f(self, x: mod.D) -> mod.D: pass
+    @overload
+    def f(self, x: mod.E) -> mod.E: pass
+    def f(self, x: mod.C) -> mod.C:
+        x.x = int()
+        return x
+[file mod.py]
+import submod
+class C(submod.B):
+    pass
+class D(C):
+    pass
+class E(C):
+    pass
+[file submod.py]
+import base
+class B(base.AI):
+    pass
+[file submod.py.2]
+import base
+class B(base.AS):
+    pass
+[file base.py]
+class AI:
+    x: int
+class AS:
+    x: str
+[out]
+==
+main:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testOverloadsUpdatedTypeRechekConsistency]
+from typing import overload
+import mod
+class Outer:
+    @overload
+    def f(self, x: mod.D) -> mod.D: pass
+    @overload
+    def f(self, x: mod.E) -> mod.E: pass
+    def f(self, x: mod.C) -> mod.C:
+        pass
+[file mod.py]
+class C:
+    pass
+class D(C):
+    pass
+class E(C):
+    pass
+[file mod.py.2]
+class C:
+    pass
+class D(C):
+    pass
+class E:
+    pass
+[out]
+==
+main:8: error: Overloaded function implementation does not accept all possible arguments of signature 2
+main:8: error: Overloaded function implementation cannot produce return type of signature 2
+
+[case testOverloadsGenericTypevarUpdated]
+import a
+[file a.py]
+import b
+b.f(int())
+[file b.py]
+from typing import overload
+import c
+class C: pass
+@overload
+def f(x: C) -> None: pass
+@overload
+def f(x: c.T) -> c.T: pass
+def f(x):
+    pass
+[file c.py]
+from typing import TypeVar
+T = TypeVar('T', int, str)
+[file c.py.2]
+from typing import TypeVar
+T = TypeVar('T', bound=str)
+[out]
+==
+a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+
+[case testOverloadsGenericToNonGeneric]
+import a
+[file a.py]
+import b
+b.f(int())
+[file b.py]
+from typing import overload
+import c
+class C: pass
+@overload
+def f(x: C) -> None: pass
+@overload
+def f(x: c.T) -> c.T: pass
+def f(x):
+    pass
+[file c.py]
+from typing import TypeVar
+T = TypeVar('T', bound=int)
+[file c.py.2]
+from typing import TypeVar
+class T: pass
+[out]
+==
+a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+
+[case testOverloadsToNonOverloaded]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+def f(x: int) -> int:
+    pass
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+
+[case testOverloadsUpdateFunctionToOverloaded]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+def f(x: str) -> str:
+    pass
+[file mod.py.2]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> int: pass
+def f(x):
+    pass
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testOverloadedUpdateToClass]
+import a
+[file a.py]
+import mod
+def f() -> None:
+    x: str = mod.f(str())
+[file mod.py]
+from typing import overload
+@overload
+def f(x: int) -> None: pass
+@overload
+def f(x: str) -> str: pass
+def f(x):
+    pass
+[file mod.py.2]
+from typing import overload
+class f:
+    def __init__(self, x: str) -> None:
+        pass
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "f", variable has type "str")
+
+[case testDepsFromOverloadUpdatedAttrRecheckImpl]
+import mod
+x = mod.f
+[file mod.py]
+from typing import overload, Any
+import submod
+@overload
+def f(x: int) -> submod.A: pass
+@overload
+def f(x: str) -> submod.B: pass
+def f(x) -> Any:
+    y: submod.C
+    y.x = int()
+[file submod.py]
+import other
+class A: pass
+class B: pass
+C = other.C
+[file other.py]
+class C:
+    x: int
+[file other.py.2]
+class C:
+    x: str
+[out]
+==
+mod.py:9: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testOverloadedMethodSupertype]
+from typing import overload, Any
+import b
+class Child(b.Parent):
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> str: ...
+    def f(self, arg: Any) -> Any: ...
+[file b.py.2]
+from typing import overload, Any
+class C: pass
+class Parent:
+    @overload
+    def f(self, arg: int) -> int: ...
+    @overload
+    def f(self, arg: str) -> C: ...
+    def f(self, arg: Any) -> Any: ...
+[out]
+==
+main:4: error: Signature of "f" incompatible with supertype "Parent"
+
+[case testOverloadedInitSupertype]
+import a
+[file a.py]
+from b import B
+B(int())
+[file b.py]
+import c
+class B(c.C):
+    pass
+[file c.py]
+from typing import overload
+class C:
+    def __init__(self, x: int) -> None:
+        pass
+[file c.py.2]
+from typing import overload
+class C:
+    @overload
+    def __init__(self, x: str) -> None: pass
+    @overload
+    def __init__(self, x: str, y: int) -> None: pass
+    def __init__(self, *args, **kwargs) -> None:
+        pass
+[builtins fixtures/dict.pyi]
+[out]
+==
+a.py:2: error: No overload variant of "B" matches argument types [builtins.int]
+
+[case testOverloadedToNormalMethodMetaclass]
+import a
+[file a.py]
+import b
+b.B.f(int())
+[file b.py]
+import c
+class B(metaclass=c.M):
+    pass
+[file c.py]
+from typing import overload
+class M(type):
+    @overload
+    def f(cls, x: str) -> str: pass
+    @overload
+    def f(cls, x: int) -> None: pass
+    def f(cls, x):
+        pass
+[file c.py.2]
+from typing import overload
+class M(type):
+    def f(cls, x: str) -> str:
+        pass
+[out]
+==
+a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"

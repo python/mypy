@@ -585,7 +585,6 @@ def g() -> None: pass
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.f>, m, m.A, m.B, m.f
 <m.B> -> <m.f>, m.B, m.f
-<m.f> -> m
 <m.g> -> m.f
 
 [case testOverloadedMethod]
@@ -611,7 +610,6 @@ class C:
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.C.f>, m, m.A, m.B, m.C.f
 <m.B> -> <m.C.f>, m.B, m.C.f
-<m.C.f> -> m
 <m.C.g> -> m.C.f
 <m.C> -> m.C
 

@@ -1611,7 +1611,8 @@ class State:
                 follow_imports = self.options.follow_imports
                 if (follow_imports != 'normal'
                         and not root_source  # Honor top-level modules
-                        and path.endswith('.py')  # Stubs are always normal
+                        and (path.endswith('.py')  # Stubs are always normal
+                             or self.options.follow_imports_for_stubs)  # except when they aren't
                         and id != 'builtins'):  # Builtins is always normal
                     if follow_imports == 'silent':
                         # Still import it, but silence non-blocker errors.
@@ -2057,7 +2058,10 @@ class State:
 
     def write_cache(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        if not self.path or self.options.cache_dir == os.devnull:
+        # We don't support writing cache files in fine-grained incremental mode.
+        if (not self.path
+                or self.options.cache_dir == os.devnull
+                or self.options.fine_grained_incremental):
             return
         if self.manager.options.quick_and_dirty:
             is_errors = self.manager.errors.is_errors_for_file(self.path)

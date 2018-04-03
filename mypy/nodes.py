@@ -2395,7 +2395,7 @@ class SymbolTableNode:
     #  - UNBOUND_IMPORTED: temporary kind for imported names (we don't know the final kind yet)
     kind = None  # type: int
     # AST node of definition (among others, this can be FuncDef/Var/TypeInfo/TypeVarExpr/MypyFile,
-    # or None for a bound type variable).
+    # or None for a bound type variable or a cross_ref that hasn't been fixed up yet).
     node = None  # type: Optional[SymbolNode]
     # If this not None, override the type of the 'node' attribute. This is only used for
     # type aliases.

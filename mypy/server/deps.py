@@ -205,7 +205,11 @@ class DependencyVisitor(TraverserVisitor):
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
-        self.add_dependency(make_trigger(o.func.fullname()))
+        # We don't need to recheck outer scope for an overload, only overload itself.
+        # Also if any decorator is nested, it is not externally visible, so we don't need to
+        # generate dependency.
+        if not o.func.is_overload and self.scope.current_function_name() is None:
+            self.add_dependency(make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
@@ -247,7 +251,7 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_wildcard_trigger(base_info.fullname()),
                                     # see comment in collect_protocol_attr_deps about '*'
                                     target=target + '*')
-        # TODO: Add dependencies based on remaining TypeInfo attributes.
+
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
@@ -267,7 +271,6 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
-            # TODO: as_id
             self.add_dependency(make_trigger(id), self.scope.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
@@ -299,6 +302,8 @@ class DependencyVisitor(TraverserVisitor):
                                        target=make_trigger(analyzed.fullname()))
             for val in analyzed.values:
                 self.add_type_dependencies(val, target=make_trigger(analyzed.fullname()))
+            # We need to re-analyze the definition if bound or value is deleted.
+            super().visit_call_expr(rvalue)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
@@ -544,7 +549,6 @@ class DependencyVisitor(TraverserVisitor):
     def add_operator_method_dependency_for_type(self, typ: Type, method: str) -> None:
         # Note that operator methods can't be (non-metaclass) methods of type objects
         # (that is, TypeType objects or Callables representing a type).
-        # TODO: TypedDict
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -686,12 +690,12 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return []
 
     def visit_callable_type(self, typ: CallableType) -> List[str]:
-        # TODO: generic callables
-        # TODO: fallback?
         triggers = []
         for arg in typ.arg_types:
             triggers.extend(get_type_triggers(arg))
         triggers.extend(get_type_triggers(typ.ret_type))
+        # fallback is a metaclass type for class objects, and is
+        # processed separately.
         return triggers
 
     def visit_overloaded(self, typ: Overloaded) -> List[str]:
@@ -787,7 +791,8 @@ def collect_protocol_attr_deps(names: SymbolTable,
                 # by a star, since they are higher priority, i.e., they need
                 # to be processed before any other deps.
                 deps[trigger].add(info.fullname() + '*')
-            sub_deps = collect_protocol_attr_deps(info.names, module_id, processed)  # nested classes
+            sub_deps = collect_protocol_attr_deps(info.names, module_id,
+                                                  processed)  # nested classes
             for trigger, targets in sub_deps.items():
                 deps[trigger] |= targets
     return dict(deps)

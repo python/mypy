@@ -1088,3 +1088,28 @@ p.b.bar("wrong")
 p/a.py:4: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 p/b/__init__.py:5: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
+
+[case testFollowImportStubs1]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+[[mypy-math.*]
+follow_imports = error
+follow_imports_for_stubs = True
+[file main.py]
+import math
+math.frobnicate()
+[out]
+main.py:1: note: Import of 'math' ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testFollowImportStubs2]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+[[mypy-math.*]
+follow_imports = skip
+follow_imports_for_stubs = True
+[file main.py]
+import math
+math.frobnicate()

@@ -95,8 +95,6 @@ def process_start_options(flags: List[str]) -> Options:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.quick_and_dirty:
         sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
-    if options.use_fine_grained_cache and not options.fine_grained_incremental:
-        sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
     # Our file change tracking can't yet handle changes to files that aren't
     # specified in the sources list.
     if options.follow_imports not in ('skip', 'error'):
@@ -221,19 +219,10 @@ class Server:
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
-        # TODO: Move this into check(), in case one of the args is a directory.
-        # Capture stdout/stderr and catch SystemExit while processing the source list.
-        save_stdout = sys.stdout
-        save_stderr = sys.stderr
         try:
-            sys.stdout = stdout = io.StringIO()
-            sys.stderr = stderr = io.StringIO()
             self.last_sources = mypy.main.create_source_list(files, self.options)
-        except SystemExit as err:
-            return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': err.code}
-        finally:
-            sys.stdout = save_stdout
-            sys.stderr = save_stderr
+        except mypy.main.InvalidSourceList as err:
+            return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)
 
     def cmd_recheck(self) -> Dict[str, object]:
@@ -327,9 +316,12 @@ class Server:
     def find_changed(self, sources: List[mypy.build.BuildSource]) -> Tuple[List[Tuple[str, str]],
                                                                            List[Tuple[str, str]]]:
         changed_paths = self.fswatcher.find_changed()
+        # Find anything that has been added or modified
         changed = [(source.module, source.path)
                    for source in sources
                    if source.path in changed_paths]
+
+        # Now find anything that has been removed from the build
         modules = {source.module for source in sources}
         omitted = [source for source in self.previous_sources if source.module not in modules]
         removed = []
@@ -337,6 +329,16 @@ class Server:
             path = source.path
             assert path
             removed.append((source.module, path))
+
+        # Find anything that has had its module path change because of added or removed __init__s
+        last = {s.path: s.module for s in self.previous_sources}
+        for s in sources:
+            assert s.path
+            if s.path in last and last[s.path] != s.module:
+                # Mark it as removed from its old name and changed at its new name
+                removed.append((last[s.path], s.path))
+                changed.append((s.module, s.path))
+
         return changed, removed
 
     def cmd_hang(self) -> Dict[str, object]:
