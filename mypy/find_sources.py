@@ -1,6 +1,6 @@
 """Routines for finding the sources that mypy will check"""
 
-import os
+import os.path
 
 from typing import List, Sequence, Set, Tuple, Optional
 
@@ -17,7 +17,7 @@ class InvalidSourceList(Exception):
 
 
 def create_source_list(files: Sequence[str], options: Options,
-                       fscache: Optional[FileSystemMetaCache]=None) -> List[BuildSource]:
+                       fscache: Optional[FileSystemMetaCache] = None) -> List[BuildSource]:
     """From a list of source files/directories, makes a list of BuildSources.
 
     Raises InvalidSourceList on errors.
