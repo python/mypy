@@ -205,7 +205,6 @@ class FineGrainedBuildManager:
         self.changed_modules = changed_modules
 
         if not changed_modules:
-            self.manager.fscache.flush()
             return self.previous_messages
 
         # Reset find_module's caches for the new build.
@@ -258,7 +257,6 @@ class FineGrainedBuildManager:
                     messages = self.manager.errors.new_messages()
                     break
 
-        self.manager.fscache.flush()
         self.previous_messages = messages[:]
         return messages
 
