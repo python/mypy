@@ -1640,11 +1640,14 @@ a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expecte
 import b
 from c import x
 [file b.py]
+1+'lol'
 [file c.py]
 x = 1
 [file c.py.2]
 x = '2'
+[file b.py.3]
 [out]
+==
 ==
 
 [case testSkipButDontIgnore2]
@@ -1656,6 +1659,8 @@ import b
 [file b.py]
 [file c.py]
 x = 1
+[file b.py]
+1+'x'
 [file c.py.2]
 x = '2'
 [file c.py.3]
@@ -1702,11 +1707,11 @@ x = '2'
 a.py:2: note: Import of 'b' ignored
 a.py:2: note: (Using --follow-imports=error, module not passed on command line)
 
--- This test fails because p.b doesn't seem to trigger p properly...
+-- TODO: This test fails because p.b does not depend on p (#4847)
 [case testErrorButDontIgnore3-skip]
 # cmd1: mypy a.py c.py p/b.py p/__init__.py
 # cmd2: mypy a.py c.py p/b.py
-# flags: --follow-imports=error --verbose
+# flags: --follow-imports=error
 [file a.py]
 from c import x
 from p.b import y

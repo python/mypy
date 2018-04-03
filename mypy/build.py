@@ -1492,7 +1492,7 @@ class State:
             assert id is not None
             try:
                 path, follow_imports = find_module_and_diagnose(
-                    manager, self.options, id, caller_state, caller_line,
+                    manager, id, self.options, caller_state, caller_line,
                     ancestor_for, root_source)
             except ModuleNotFound:
                 manager.missing_modules.add(id)
@@ -1910,14 +1910,15 @@ class State:
             self.interface_hash = new_interface_hash
 
     def verify_dependencies(self) -> None:
-        """Report errors for import targets in module that don't exist."""
+        """Report errors for import targets in modules that don't exist."""
         # Strip out indirect dependencies. See comment in build.load_graph().
         manager = self.manager
         dependencies = [dep for dep in self.dependencies
                         if self.priorities.get(dep) != PRI_INDIRECT]
         assert self.ancestors is not None
         for dep in dependencies + self.suppressed + self.ancestors:
-            if dep not in manager.modules and not manager.options.ignore_missing_imports:
+            options = manager.options.clone_for_module(dep)
+            if dep not in manager.modules and not options.ignore_missing_imports:
                 line = self.dep_line_map.get(dep, 1)
                 try:
                     if dep in self.ancestors:
@@ -1926,12 +1927,12 @@ class State:
                         state, ancestor = self, None
                     # Called just for its side effects of producing diagnostics.
                     find_module_and_diagnose(
-                        manager, self.options, dep,
+                        manager, dep, options,
                         caller_state=state, caller_line=line,
                         ancestor_for=ancestor)
-                except Exception:
-                    # Swallow up any exception while generating a diagnostic.
-                    # This can actually include CompileErrors that get generated in
+                except (ModuleNotFound, CompileError):
+                    # Swallow up any ModuleNotFounds or CompilerErrors while generating
+                    # a diagnostic. CompileErrors may get generated in
                     # fine-grained mode when an __init__.py is deleted, if a module
                     # that was in that package has targets reprocessed before
                     # it is renamed.
@@ -1947,18 +1948,32 @@ class State:
         if self.options.warn_unused_ignores:
             self.manager.errors.generate_unused_ignore_notes(self.xpath)
 
+
 # Module import and diagnostic glue
 
 
 def find_module_and_diagnose(manager: BuildManager,
-                             options: Options,
                              id: str,
+                             options: Options,
                              caller_state: 'Optional[State]' = None,
                              caller_line: int = 0,
                              ancestor_for: 'Optional[State]' = None,
                              root_source: bool = False) -> Tuple[str, str]:
     """Find a module by name, respecting follow_imports and producing diagnostics.
 
+    Args:
+      id: module to find
+      options: the options for the module being loaded
+      caller_state: the state of the importing module, if applicable
+      caller_line: the line number of the import
+      ancestor_for: the child module this is an ancestor of, if applicable
+      root_source: whether this source was specified on the command line
+
+    The specified value of follow_imports for a module can be overridden
+    if the module is specified on the command line or if it is a stub,
+    so we compute and return the "effective" follow_imports of the module.
+
+    Returns a tuple containing (file path, target's effective follow_imports setting)
     """
     file_id = id
     if id == 'builtins' and options.python_version[0] == 2:
@@ -1979,8 +1994,8 @@ def find_module_and_diagnose(manager: BuildManager,
         # - skip -> don't analyze, make the type Any
         follow_imports = options.follow_imports
         if (root_source  # Honor top-level modules
-            or not (path.endswith('.py')  # Stubs are always normal
-                    or options.follow_imports_for_stubs)  # except when they aren't
+                or (not path.endswith('.py')  # Stubs are always normal
+                    and not options.follow_imports_for_stubs)  # except when they aren't
                 or id == 'builtins'):  # Builtins is always normal
             follow_imports = 'normal'
 
@@ -2045,6 +2060,7 @@ def module_not_found(manager: BuildManager, line: int, caller_state: State,
 
 def skipping_module(manager: BuildManager, line: int, caller_state: Optional[State],
                     id: str, path: str) -> None:
+    """Produce an error for an import ignored due to --follow_imports=error"""
     assert caller_state, (id, path)
     save_import_context = manager.errors.import_context()
     manager.errors.set_import_context(caller_state.import_context)
@@ -2059,6 +2075,7 @@ def skipping_module(manager: BuildManager, line: int, caller_state: Optional[Sta
 
 
 def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: 'State') -> None:
+    """Produce an error for an ancestor ignored due to --follow_imports=error"""
     # TODO: Read the path (the __init__.py file) and return
     # immediately if it's empty or only contains comments.
     # But beware, some package may be the ancestor of many modules,
@@ -2070,6 +2087,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
     manager.errors.report(-1, -1,
                           "(Using --follow-imports=error, submodule passed on command line)",
                           severity='note', only_once=True)
+
 
 # The driver
 
