@@ -543,12 +543,20 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
 
 
 class ProtoDeps:
-    low_prio = None  # type: Dict[str, Set[str]]
-    high_prio = None  # type: Dict[str, Set[str]]
+    """This class holds the state of protocol dependencies.
 
-    def __init__(self, low_prio: Dict[str, Set[str]], high_prio: Dict[str, Set[str]]) -> None:
-        self.low_prio = low_prio
-        self.high_prio = high_prio
+    These are special in two ways:
+      * They should be collected at the very end of build.
+      * They have two priority levels (other dependencies all have the same priority).
+    """
+    prio_normal = None  # type: Dict[str, Set[str]]
+    prio_protocol = None  # type: Dict[str, Set[str]]
+
+    def __init__(self, proto_deps: Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]) -> None:
+        self.prio_normal, self.prio_protocol = proto_deps
+
+    def recollect(self, graph: Graph) -> None:
+        self.prio_normal, self.prio_protocol = collect_protocol_deps(graph)
 
 
 class BuildManager:
@@ -946,7 +954,8 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
 
 
 def read_protocol_cache(manager: BuildManager,
-                        graph: Graph) -> Optional[Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]]:
+                        graph: Graph) -> Optional[Tuple[Dict[str, Set[str]],
+                                                        Dict[str, Set[str]]]]:
     """Read and validate protocol dependencies cache."""
     proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
     try:
@@ -979,7 +988,8 @@ def read_protocol_cache(manager: BuildManager,
         manager.log('Could not load protocol cache: cache is not a dict: {}'
                     .format(repr(deps)))
         return None
-    return {k: set(v) for (k, v) in deps['low_prio'].items()}, {k: set(v) for (k, v) in deps['high_prio'].items()}
+    return ({k: set(v) for (k, v) in deps['prio_normal'].items()},
+            {k: set(v) for (k, v) in deps['prio_protocol'].items()})
 
 
 def collect_protocol_deps(graph: Graph) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
@@ -1011,9 +1021,9 @@ def write_protocol_deps_cache(proto_deps: Tuple[Dict[str, Set[str]], Dict[str, S
         meta_snapshot[id] = graph[id].source_hash
     if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
         manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
-    low_prio, high_prio = proto_deps
-    listed_proto_deps = {'low_prio': {k: list(v) for (k, v) in low_prio.items()},
-                         'high_prio': {k: list(v) for (k, v) in high_prio.items()}}
+    prio_normal, prio_protocol = proto_deps
+    listed_proto_deps = {'prio_normal': {k: list(v) for (k, v) in prio_normal.items()},
+                         'prio_protocol': {k: list(v) for (k, v) in prio_protocol.items()}}
     if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
         manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
 
@@ -2178,8 +2188,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         # Fine grained protocol dependencies are serialized separately, so we read them
         # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
         # the protocol cache against the loaded individual cache files.
-        low_prio, high_prio = read_protocol_cache(manager, graph)
-        manager.proto_deps = ProtoDeps(low_prio, high_prio)
+        proto_deps = read_protocol_cache(manager, graph)
+        if proto_deps:
+            manager.proto_deps = ProtoDeps(proto_deps)
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
@@ -2187,9 +2198,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            low_prio, high_prio = collect_protocol_deps(graph)
-            manager.proto_deps = ProtoDeps(low_prio, high_prio)
-            write_protocol_deps_cache((low_prio, high_prio), manager, graph)
+            proto_deps = collect_protocol_deps(graph)
+            manager.proto_deps = ProtoDeps(proto_deps)
+            write_protocol_deps_cache(proto_deps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.

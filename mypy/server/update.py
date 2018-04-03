@@ -122,7 +122,7 @@ from typing import (
 
 from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
-    PRI_INDIRECT, DEBUG_FINE_GRAINED, collect_protocol_deps
+    PRI_INDIRECT, DEBUG_FINE_GRAINED
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -140,7 +140,7 @@ from mypy.server.astdiff import (
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import get_dependencies_of_target
+from mypy.server.deps import get_dependencies_of_target, merge_deps
 from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 
@@ -180,15 +180,22 @@ class FineGrainedBuildManager:
         self.changed_modules = []  # type: List[Tuple[str, str]]
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
-        self.prio_deps = {}  # type: Dict[str, Set[str]]
+        # These dependencies point to higher priority targets
+        # that should be reprocessed first. Namely, we need to partially
+        # refresh protocol TypeInfos by clearing subtype caches
+        # and recomputing protocol members. The special nature of these
+        # protocol dependencies is that _nothing_ may be changed in a
+        # given protocol (so re-checking it will not trigger anything)
+        # but its mutable state is still stale because of non-local nature
+        # of protocols.
+        self.prio_protocol_deps = {}  # type: Dict[str, Set[str]]
         self.update_protocol_deps()
 
     def update_protocol_deps(self) -> None:
         # TODO: fail gracefully if cache doesn't contain protocol deps data.
         assert self.manager.proto_deps is not None
-        for trigger, targets in self.manager.proto_deps.low_prio.items():
-            self.deps.setdefault(trigger, set()).update(targets)
-        self.prio_deps = self.manager.proto_deps.high_prio.copy()
+        merge_deps(self.deps, self.manager.proto_deps.prio_normal)
+        merge_deps(self.prio_protocol_deps, self.manager.proto_deps.prio_protocol)
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -260,7 +267,7 @@ class FineGrainedBuildManager:
                 # when propagating changes from the errored targets,
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
-                    self.manager, self.graph, self.deps, self.prio_deps,
+                    self.manager, self.graph, self.deps, self.prio_protocol_deps,
                     set(), {next_id}, self.previous_targets_with_errors)
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
@@ -271,7 +278,8 @@ class FineGrainedBuildManager:
 
         self.manager.fscache.flush()
         self.previous_messages = messages[:]
-        self.manager.proto_deps.low_prio, self.manager.proto_deps.high_prio = collect_protocol_deps(self.graph)
+        assert self.manager.proto_deps is not None
+        self.manager.proto_deps.recollect(self.graph)
         self.update_protocol_deps()
         return messages
 
@@ -365,9 +373,8 @@ class FineGrainedBuildManager:
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         collect_dependencies({module: tree}, self.deps, graph)
         remaining += propagate_changes_using_dependencies(
-            manager, graph, self.deps, self.prio_deps, triggered,
-            {module},
-            targets_with_errors=set())
+            manager, graph, self.deps, self.prio_protocol_deps,
+            triggered, {module}, targets_with_errors=set())
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors.update(manager.errors.targets())
@@ -701,7 +708,7 @@ def propagate_changes_using_dependencies(
         manager: BuildManager,
         graph: Dict[str, State],
         deps: Dict[str, Set[str]],
-        prio_deps: Dict[str, Set[str]],
+        prio_protocol_deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
         targets_with_errors: Set[str]) -> List[Tuple[str, str]]:
@@ -721,7 +728,7 @@ def propagate_changes_using_dependencies(
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
         todo, stale_protos = find_targets_recursive(manager, triggered, deps,
-                                                    prio_deps, up_to_date_modules)
+                                                    prio_protocol_deps, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
@@ -765,7 +772,7 @@ def find_targets_recursive(
         manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        prio_deps: Dict[str, Set[str]],
+        prio_protocol_deps: Dict[str, Set[str]],
         up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
@@ -785,9 +792,9 @@ def find_targets_recursive(
         worklist = set()
         for target in current:
             if target.startswith('<'):
-                if target in prio_deps:
+                if target in prio_protocol_deps:
                     # There are only leafs in high priority protocol dependencies.
-                    for proto_name in prio_deps[target]:
+                    for proto_name in prio_protocol_deps[target]:
                         info = lookup_typeinfo(manager, proto_name)
                         if info is not None:
                             stale_protos.add(info)

@@ -107,10 +107,12 @@ from mypy.scope import Scope
 
 from collections import defaultdict
 
+Deps = Dict[str, Set[str]]
+
 
 def get_dependencies(target: MypyFile,
                      type_map: Dict[Expression, Type],
-                     python_version: Tuple[int, int]) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
+                     python_version: Tuple[int, int]) -> Tuple[Deps, Deps]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
@@ -125,7 +127,7 @@ def get_dependencies_of_target(module_id: str,
                                module_tree: MypyFile,
                                target: Node,
                                type_map: Dict[Expression, Type],
-                               python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
+                               python_version: Tuple[int, int]) -> Deps:
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
@@ -167,7 +169,7 @@ class DependencyVisitor(TraverserVisitor):
         # are preserved at alias expansion points in `semanal.py`, stored as an attribute
         # on MypyFile, and then passed here.
         self.alias_deps = alias_deps
-        self.map = {}  # type: Dict[str, Set[str]]
+        self.map = {}  # type: Deps
         self.is_class = False
         self.is_package_init_file = False
 
@@ -749,11 +751,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
 
-Deps = Dict[str, Set[str]]
-
-
 def merge_deps(deps: Deps, new_deps: Deps) -> None:
-    """Merge `new_deps` into existing `deps` in place."""
+    """Merge 'new_deps' into existing 'deps' in place."""
     for trigger, targets in new_deps.items():
         deps.setdefault(trigger, set()).update(targets)
 
@@ -818,7 +817,7 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
                           type_map: Dict[Expression, Type],
                           python_version: Tuple[int, int]) -> None:
     """Generate dependencies for all interesting modules and print them to stdout."""
-    all_deps = {}  # type: Dict[str, Set[str]]
+    all_deps = {}  # type: Deps
     for id, node in modules.items():
         # Uncomment for debugging:
         # print('processing', id)
