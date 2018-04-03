@@ -846,9 +846,13 @@ def get_qualified_name(o: Expression) -> str:
 
 def walk_packages(packages: List[str]) -> Iterator[str]:
     for package_name in packages:
-        package = __import__(package_name)
+        package = importlib.import_module(package_name)
         yield package.__name__
-        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+        path = getattr(package, '__path__', None)
+        if path is None:
+            # It's a module inside a package.  There's nothing else to walk/yield.
+            continue
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
                                                                      prefix=package.__name__ + ".",
                                                                      onerror=lambda r: None):
             yield qualified_name
