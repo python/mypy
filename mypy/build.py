@@ -612,6 +612,15 @@ class BuildManager:
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
+        # This contains protocol dependencies generated after running a full build,
+        # or after an update. These dependencies are special because:
+        #   * They are a global property of the program; i.e. some dependencies for imported
+        #     classes can be generated in the importing modules.
+        #   * Because of the above, they are serialized separately, after a full run,
+        #     or a full update.
+        # `proto_deps` can be None if after deserialization it turns out that they are
+        # inconsistent with the other cache files (or an error occurred during deserialization).
+        # A blocking error will be generated in this case, since we can't proceed safely.
         self.proto_deps = None  # type: Optional[Dict[str, Set[str]]]
 
     def use_fine_grained_cache(self) -> bool:
@@ -996,12 +1005,33 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
         manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
 
 
-def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
+def _get_prefix(manager: BuildManager, id: Optional[str] = None) -> str:
+    """Get current cache directory (or file if id is given)."""
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
-    prefix = os.path.join(cache_dir, '%d.%d' % pyversion)
-    return (os.path.join(prefix, 'proto_deps.meta.json'),
-            os.path.join(prefix, 'proto_deps.data.json'))
+    base = os.path.join(cache_dir, '%d.%d' % pyversion)
+    if id is None:
+        return base
+    return os.path.join(base, *id.split('.'))
+
+
+def _cache_name_pair(name: str) -> Tuple[str, str]:
+    """Return cache name pair given the base name.
+
+    All cache files are stored in pairs. The .data.json file contains the actual
+    cache data, while .meta.json file contains metadata about the first file.
+    """
+    return name + '.meta.json', name + '.data.json'
+
+
+def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
+    """Return file names for fine grained protocol dependencies cache.
+
+    Since these dependencies represent a global state of the program, they
+    are serialized per program, not per module, and the corresponding files
+    live at the root of the cache folder for a given Python version."""
+    prefix = _get_prefix(manager)
+    return _cache_name_pair(os.path.join(prefix, 'proto_deps'))
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:
@@ -1017,13 +1047,11 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON and the
       data JSON, respectively.
     """
-    cache_dir = manager.options.cache_dir
-    pyversion = manager.options.python_version
-    prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
+    prefix = _get_prefix(manager, id)
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
-    return (prefix + '.meta.json', prefix + '.data.json')
+    return _cache_name_pair(prefix)
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
@@ -2134,10 +2162,17 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # just want to load in all of the cache information.
     if manager.use_fine_grained_cache():
         process_fine_grained_cache_graph(graph, manager)
+        # Fine grained protocol dependencies are serialized separately, so we read them
+        # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
+        # the protocol cache against the loaded individual cache files.
         manager.proto_deps = read_protocol_cache(manager, graph)
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
+            # If we are running a daemon or are going to write cache for further fine grained use,
+            # then we need to collect fine grained protocol dependencies.
+            # Since these are a global property of the program, they are calculated after we
+            # processed the whole graph.
             proto_deps = collect_protocol_deps(graph)
             manager.proto_deps = proto_deps
             write_protocol_deps_cache(proto_deps, manager, graph)
