@@ -2116,6 +2116,21 @@ class TypeInfo(SymbolNode):
         else:
             self._cache.add((left, right))
 
+    def record_protocol_subtype_check(self, right_type: 'TypeInfo') -> None:
+        assert right_type.is_protocol
+        if not self.is_protocol:
+            self.checked_against_members.update(right_type.protocol_members)
+        right_type.record_possible_implementation(self.fullname())
+
+    def record_possible_implementation(self, fullname: str) -> None:
+        """We record all classes that appear in a subtype check against this protocol.
+
+        This is needed so that we can reset the subtype cache in fine grained incremental
+        mode if one of the possible implementation is updated.
+        """
+        assert self.is_protocol, "This method should be called only on protocols"
+        self.attempted_implementations.add(fullname)
+
     def is_cached_subtype_check(self, left: 'mypy.types.Instance',
                                 right: 'mypy.types.Instance',
                                 proper_subtype: bool = False) -> bool:

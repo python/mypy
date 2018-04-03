@@ -972,7 +972,7 @@ def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
         assert file is not None, "Should call this only when all files are processed"
         names = file.names
         if '/typeshed/' not in file.path and id not in ('typing', 'builtins'):
-            deps = collect_protocol_attr_deps(names)
+            deps = collect_protocol_attr_deps(names, id)
             for trigger, targets in deps.items():
                 result.setdefault(trigger, set()).update(targets)
     return result

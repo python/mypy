@@ -116,7 +116,7 @@ def get_dependencies(target: MypyFile,
     target.accept(visitor)
     deps = visitor.map
     if '/typeshed/' not in target.path and target.fullname() not in ('typing', 'builtins'):
-        new_deps = collect_protocol_attr_deps(target.names)
+        new_deps = collect_protocol_attr_deps(target.names, target.fullname())
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
     return deps
@@ -750,6 +750,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 
 
 def collect_protocol_attr_deps(names: SymbolTable,
+                               module_id: str,
                                processed: Optional[Set[TypeInfo]] = None) -> Dict[str, Set[str]]:
     """Recursively collect protocol attribute dependencies for classes in 'names'."""
     # Currently there can be at most one target per trigger, but we might
@@ -760,6 +761,8 @@ def collect_protocol_attr_deps(names: SymbolTable,
     for node in names.values():
         if isinstance(node.node, TypeInfo) and node.node not in processed:
             info = node.node
+            if info.module_name != module_id:
+                continue
             processed.add(info)
             for attr in info.checked_against_members:
                 # The need for full MRO here is subtle, during an update, base classes of
@@ -784,7 +787,7 @@ def collect_protocol_attr_deps(names: SymbolTable,
                 # by a star, since they are higher priority, i.e., they need
                 # to be processed before any other deps.
                 deps[trigger].add(info.fullname() + '*')
-            sub_deps = collect_protocol_attr_deps(info.names, processed)  # nested classes
+            sub_deps = collect_protocol_attr_deps(info.names, module_id, processed)  # nested classes
             for trigger, targets in sub_deps.items():
                 deps[trigger] |= targets
     return dict(deps)
