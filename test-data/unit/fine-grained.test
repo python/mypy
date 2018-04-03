@@ -5927,6 +5927,24 @@ a.py:2: error: Incompatible types in assignment (expression has type "C", variab
 a.py:2: note: Following member(s) of "C" have conflicts:
 a.py:2: note:     z: expected "int", got "str"
 
+[case testWeAreCarefullWithBuiltinProtocols]
+import a
+x: a.A
+for i in x:
+    pass
+[file a.py]
+from typing import Iterator
+class A:
+    def __iter__(self) -> Iterator[int]:
+        pass
+[file a.py.2]
+class A:
+    pass
+[out]
+==
+main:3: error: Iterable expected
+main:3: error: "A" has no attribute "__iter__"
+
 [case testOverloadsSimpleFrom]
 import a
 [file a.py]

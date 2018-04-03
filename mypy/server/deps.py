@@ -115,10 +115,9 @@ def get_dependencies(target: MypyFile,
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     deps = visitor.map
-    if '/typeshed/' not in target.path and target.fullname() not in ('typing', 'builtins'):
-        new_deps = collect_protocol_attr_deps(target.names, target.fullname())
-        for trigger, targets in new_deps.items():
-            deps.setdefault(trigger, set()).update(targets)
+    new_deps = collect_protocol_attr_deps(target.names, target.fullname())
+    for trigger, targets in new_deps.items():
+        deps.setdefault(trigger, set()).update(targets)
     return deps
 
 

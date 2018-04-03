@@ -378,7 +378,7 @@ def g() -> None:
 <m.A> -> m.A, m.g
 <m.B.__getitem__> -> m.g
 <m.B.__iter__> -> <m.B>, m.g
-<m.B> -> <m.f>, m.B, m.f, typing.Iterable*
+<m.B> -> <m.f>, m.B, m.f
 <m.f> -> m.g
 
 [case testNestedSetItem]
