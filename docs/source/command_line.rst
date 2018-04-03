@@ -17,25 +17,23 @@ flag (or its long form ``--help``)::
               [--disallow-untyped-defs] [--disallow-incomplete-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--disallow-untyped-decorators]
-              [--warn-redundant-casts] [--no-warn-no-return]
-              [--warn-return-any] [--warn-unused-ignores]
-              [--warn-unused-configs] [--show-error-context]
-              [--no-implicit-optional] [-i] [--quick-and-dirty]
-              [--cache-dir DIR] [--cache-fine-grained] [--skip-version-check]
-              [--strict-optional]
+              [--warn-redundant-casts] [--no-warn-no-return] [--warn-return-any]
+              [--warn-unused-ignores] [--warn-unused-configs]
+              [--show-error-context] [--no-implicit-optional] [--no-incremental]
+              [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
+              [--skip-version-check] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
-              [--always-true NAME] [--always-false NAME]
-              [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
-              [--inferstats] [--custom-typing MODULE]
-              [--custom-typeshed-dir DIR] [--scripts-are-modules]
-              [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--strict]
-              [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
-              [--cobertura-xml-report DIR] [--html-report DIR]
-              [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR] [--txt-report DIR] [--xml-report DIR]
-              [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
-              [-p PACKAGE] [-c PROGRAM_TEXT]
+              [--always-true NAME] [--always-false NAME] [--junit-xml JUNIT_XML]
+              [--pdb] [--show-traceback] [--stats] [--inferstats]
+              [--custom-typing MODULE] [--custom-typeshed-dir DIR]
+              [--scripts-are-modules] [--config-file CONFIG_FILE]
+              [--show-column-numbers] [--find-occurrences CLASS.MEMBER]
+              [--strict] [--shadow-file SOURCE_FILE SHADOW_FILE]
+              [--any-exprs-report DIR] [--cobertura-xml-report DIR]
+              [--html-report DIR] [--linecount-report DIR]
+              [--linecoverage-report DIR] [--memory-xml-report DIR]
+              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
+              [--xslt-txt-report DIR] [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -339,15 +337,15 @@ Here are some more useful flags:
 
 .. _incremental:
 
-- ``--incremental`` enables a module cache, using results from
+- Incremental mode enables a module cache, using results from
   previous runs to speed up type checking. Incremental mode can help
   when most parts of your program haven't changed since the previous
   mypy run.
 
-  Incremental mode is now the default and may be disabled with
+  Incremental mode is the default and may be disabled with
   ``--no-incremental``.
 
-- ``--cache-dir DIR`` is a companion flag to ``-incremental``, which
+- ``--cache-dir DIR`` is a companion flag to incremental mode, which
   specifies where the cache files are written.  By default this is
   ``.mypy_cache`` in the current directory.  While the cache is only
   read in incremental mode, it is written even in non-incremental
