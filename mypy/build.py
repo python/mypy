@@ -542,6 +542,15 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
+class ProtoDeps:
+    low_prio = None  # type: Dict[str, Set[str]]
+    high_prio = None  # type: Dict[str, Set[str]]
+
+    def __init__(self, low_prio: Dict[str, Set[str]], high_prio: Dict[str, Set[str]]) -> None:
+        self.low_prio = low_prio
+        self.high_prio = high_prio
+
+
 class BuildManager:
     """This class holds shared state for building a mypy program.
 
@@ -621,7 +630,7 @@ class BuildManager:
         # `proto_deps` can be None if after deserialization it turns out that they are
         # inconsistent with the other cache files (or an error occurred during deserialization).
         # A blocking error will be generated in this case, since we can't proceed safely.
-        self.proto_deps = None  # type: Optional[Dict[str, Set[str]]]
+        self.proto_deps = None  # type: Optional[ProtoDeps]
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -969,24 +978,25 @@ def read_protocol_cache(manager: BuildManager, graph: Graph) -> Optional[Dict[st
         manager.log('Could not load protocol cache: cache is not a dict: {}'
                     .format(repr(deps)))
         return None
-    return {k: set(v) for (k, v) in deps.items()}
+    return {k: set(v) for (k, v) in deps['low_prio'].items()}, {k: set(v) for (k, v) in deps['high_prio'].items()}
 
 
-def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
+def collect_protocol_deps(graph: Graph) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
     """Collect protocol dependency map for fine grained incremental mode."""
-    from mypy.server.deps import collect_protocol_attr_deps
+    from mypy.server.deps import collect_protocol_attr_deps, merge_deps
     result = {}  # type: Dict[str, Set[str]]
+    prio_result = {}  # type: Dict[str, Set[str]]
     for id in graph:
         file = graph[id].tree
         assert file is not None, "Should call this only when all files are processed"
         names = file.names
-        deps = collect_protocol_attr_deps(names, id)
-        for trigger, targets in deps.items():
-            result.setdefault(trigger, set()).update(targets)
-    return result
+        deps, prio_deps = collect_protocol_attr_deps(names, id)
+        merge_deps(result, deps)
+        merge_deps(prio_result, prio_deps)
+    return result, prio_result
 
 
-def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
+def write_protocol_deps_cache(proto_deps: Tuple[Dict[str, Set[str]], Dict[str, Set[str]]],
                               manager: BuildManager, graph: Graph) -> None:
     """Write cache files for protocol dependencies.
 
@@ -1000,7 +1010,9 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
         meta_snapshot[id] = graph[id].source_hash
     if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
         manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
-    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
+    low_prio, high_prio = proto_deps
+    listed_proto_deps = {'low_prio': {k: list(v) for (k, v) in low_prio.items()},
+                         'high_prio': {k: list(v) for (k, v) in high_prio.items()}}
     if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
         manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
 
@@ -2165,7 +2177,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         # Fine grained protocol dependencies are serialized separately, so we read them
         # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
         # the protocol cache against the loaded individual cache files.
-        manager.proto_deps = read_protocol_cache(manager, graph)
+        low_prio, high_prio = read_protocol_cache(manager, graph)
+        manager.proto_deps = ProtoDeps(low_prio, high_prio)
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
@@ -2173,9 +2186,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            proto_deps = collect_protocol_deps(graph)
-            manager.proto_deps = proto_deps
-            write_protocol_deps_cache(proto_deps, manager, graph)
+            low_prio, high_prio = collect_protocol_deps(graph)
+            manager.proto_deps = ProtoDeps(low_prio, high_prio)
+            write_protocol_deps_cache((low_prio, high_prio), manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.

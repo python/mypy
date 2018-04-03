@@ -5945,6 +5945,28 @@ class A:
 main:3: error: Iterable expected
 main:3: error: "A" has no attribute "__iter__"
 
+[case testWeAreCarefullWithBuiltinProtocolsBase]
+import a
+x: a.A
+for i in x:
+    pass
+[file a.py]
+import b
+class A(B):
+    pass
+[file a.py.2]
+class A:
+    pass
+[file b.py]
+from typing import Iterator
+class B:
+    def __iter__(self) -> Iterator[int]:
+        pass
+[out]
+==
+main:3: error: Iterable expected
+main:3: error: "A" has no attribute "__iter__"
+
 [case testOverloadsSimpleFrom]
 import a
 [file a.py]

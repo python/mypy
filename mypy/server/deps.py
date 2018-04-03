@@ -115,9 +115,9 @@ def get_dependencies(target: MypyFile,
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     deps = visitor.map
-    new_deps = collect_protocol_attr_deps(target.names, target.fullname())
-    for trigger, targets in new_deps.items():
-        deps.setdefault(trigger, set()).update(targets)
+    # new_deps = collect_protocol_attr_deps(target.names, target.fullname())
+    # for trigger, targets in new_deps.items():
+    #     deps.setdefault(trigger, set()).update(targets)
     return deps
 
 
@@ -242,14 +242,11 @@ class DependencyVisitor(TraverserVisitor):
         if info.declared_metaclass:
             self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
         if info.is_protocol:
-            self.add_dependency(make_wildcard_trigger(target), target=make_trigger(target))
-            for base_info in info.mro[1:-1]:
+            for base_info in info.mro[:-1]:
                 self.add_dependency(make_wildcard_trigger(base_info.fullname()),
                                     target=make_trigger(target))
-                # Add high-prio subtype cache invalidation deps from super-protocols.
-                self.add_dependency(make_wildcard_trigger(base_info.fullname()),
-                                    # see comment in collect_protocol_attr_deps about '*'
-                                    target=target + '*')
+                # More protocol dependencies are collected in collect_proto_attr_deps
+                # after a full run or update is finished.
 
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
@@ -752,15 +749,25 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
 
+Deps = Dict[str, Set[str]]
+
+
+def merge_deps(deps: Deps, new_deps: Deps) -> None:
+    """Merge `new_deps` into existing `deps` in place."""
+    for trigger, targets in new_deps.items():
+        deps.setdefault(trigger, set()).update(targets)
+
+
 def collect_protocol_attr_deps(names: SymbolTable,
                                module_id: str,
-                               processed: Optional[Set[TypeInfo]] = None) -> Dict[str, Set[str]]:
+                               processed: Optional[Set[TypeInfo]] = None) -> Tuple[Deps, Deps]:
     """Recursively collect protocol attribute dependencies for classes in 'names'."""
     # Currently there can be at most one target per trigger, but we might
     # add more deps in future so we are using defaultdict.
     if processed is None:
         processed = set()
     deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
+    prio_deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
     for node in names.values():
         if isinstance(node.node, TypeInfo) and node.node not in processed:
             info = node.node
@@ -786,15 +793,19 @@ def collect_protocol_attr_deps(names: SymbolTable,
                 # we need to reset the subtype cache for the protocol.
                 # This however creates a "weak" dependency, the protocol doesn't
                 # need to be re-checked, and its uses elsewhere are still valid
-                # (unless invalidated by other deps). We mark this kind of deps
-                # by a star, since they are higher priority, i.e., they need
+                # (unless invalidated by other deps). We process this kind of deps
+                # separately, since they are higher priority, i.e., they need
                 # to be processed before any other deps.
-                deps[trigger].add(info.fullname() + '*')
-            sub_deps = collect_protocol_attr_deps(info.names, module_id,
-                                                  processed)  # nested classes
-            for trigger, targets in sub_deps.items():
-                deps[trigger] |= targets
-    return dict(deps)
+                prio_deps[trigger].add(info.fullname())
+            for base_info in info.mro[1: -1]:
+                if base_info.module_name in ('typing', 'builtins'):
+                    continue
+                prio_deps[make_wildcard_trigger(base_info.fullname())].add(info.fullname())
+            sub_deps, sub_prio_deps = collect_protocol_attr_deps(info.names, module_id,
+                                                                 processed)  # nested classes
+            merge_deps(deps, sub_deps)
+            merge_deps(prio_deps, sub_prio_deps)
+    return dict(deps), dict(prio_deps)
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:

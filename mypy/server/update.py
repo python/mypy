@@ -180,13 +180,15 @@ class FineGrainedBuildManager:
         self.changed_modules = []  # type: List[Tuple[str, str]]
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
+        self.prio_deps = set()  # type: Dict[str, Set[str]]
         self.update_protocol_deps()
 
     def update_protocol_deps(self) -> None:
         # TODO: fail gracefully if cache doesn't contain protocol deps data.
         assert self.manager.proto_deps is not None
-        for trigger, targets in self.manager.proto_deps.items():
+        for trigger, targets in self.manager.proto_deps.low_prio.items():
             self.deps.setdefault(trigger, set()).update(targets)
+        self.prio_deps = self.manager.proto_deps.high_prio.copy()
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -269,7 +271,7 @@ class FineGrainedBuildManager:
 
         self.manager.fscache.flush()
         self.previous_messages = messages[:]
-        self.manager.proto_deps = collect_protocol_deps(self.graph)
+        self.manager.proto_deps.low_prio, self.manager.proto_deps.low_prio = collect_protocol_deps(self.graph)
         self.update_protocol_deps()
         return messages
 
