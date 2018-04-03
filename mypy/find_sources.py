@@ -2,7 +2,7 @@
 
 import os.path
 
-from typing import List, Sequence, Set, Tuple, Optional
+from typing import List, Sequence, Set, Tuple, Optional, Dict
 
 from mypy.build import BuildSource, PYTHON_EXTENSIONS
 from mypy.fscache import FileSystemMetaCache
@@ -10,6 +10,9 @@ from mypy.options import Options
 
 
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
+
+# A cache for package names, mapping from module id to directory path
+PackageCache = Dict[str, str]
 
 
 class InvalidSourceList(Exception):
@@ -23,13 +26,14 @@ def create_source_list(files: Sequence[str], options: Options,
     Raises InvalidSourceList on errors.
     """
     fscache = fscache or FileSystemMetaCache()
+    package_cache = {}  # type: PackageCache
     targets = []
     for f in files:
         if f.endswith(PY_EXTENSIONS):
             # Can raise InvalidSourceList if a directory doesn't have a valid module name.
-            targets.append(BuildSource(f, crawl_up(fscache, f)[1], None))
+            targets.append(BuildSource(f, crawl_up(package_cache, fscache, f), None))
         elif fscache.isdir(f):
-            sub_targets = expand_dir(fscache, f)
+            sub_targets = expand_dir(package_cache, fscache, f)
             if not sub_targets:
                 raise InvalidSourceList("There are no .py[i] files in directory '{}'"
                                         .format(f))
@@ -52,7 +56,8 @@ def keyfunc(name: str) -> Tuple[int, str]:
     return (-1, name)
 
 
-def expand_dir(fscache: FileSystemMetaCache,
+def expand_dir(package_cache: PackageCache,
+               fscache: FileSystemMetaCache,
                arg: str, mod_prefix: str = '') -> List[BuildSource]:
     """Convert a directory name to a list of sources to build."""
     f = get_init_file(fscache, arg)
@@ -61,7 +66,7 @@ def expand_dir(fscache: FileSystemMetaCache,
     seen = set()  # type: Set[str]
     sources = []
     if f and not mod_prefix:
-        top_dir, top_mod = crawl_up(fscache, f)
+        top_mod = crawl_up(package_cache, fscache, f)
         mod_prefix = top_mod + '.'
     if mod_prefix:
         sources.append(BuildSource(f, mod_prefix.rstrip('.'), None))
@@ -70,7 +75,7 @@ def expand_dir(fscache: FileSystemMetaCache,
     for name in names:
         path = os.path.join(arg, name)
         if fscache.isdir(path):
-            sub_sources = expand_dir(fscache, path, mod_prefix + name + '.')
+            sub_sources = expand_dir(package_cache, fscache, path, mod_prefix + name + '.')
             if sub_sources:
                 seen.add(name)
                 sources.extend(sub_sources)
@@ -85,27 +90,51 @@ def expand_dir(fscache: FileSystemMetaCache,
     return sources
 
 
-def crawl_up(fscache: FileSystemMetaCache, arg: str) -> Tuple[str, str]:
-    """Given a .py[i] filename, return (root directory, module).
+def module_join(parent: str, child: str) -> str:
+    """Join module ids, accounting for a possibly empty parent."""
+    if parent:
+        return parent + '.' + child
+    else:
+        return child
+
+
+def crawl_up(package_cache: PackageCache, fscache: FileSystemMetaCache, arg: str) -> str:
+    """Given a .py[i] filename, return module.
 
     We crawl up the path until we find a directory without
     __init__.py[i], or until we run out of path components.
     """
     dir, mod = os.path.split(arg)
     mod = strip_py(mod) or mod
-    while dir and get_init_file(fscache, dir):
-        dir, base = os.path.split(dir)
-        if not base:
-            break
-        # Ensure that base is a valid python module name
-        if not base.isidentifier():
-            raise InvalidSourceList('{} is not a valid Python package name'.format(base))
-        if mod == '__init__' or not mod:
-            mod = base
-        else:
-            mod = base + '.' + mod
+    base = crawl_up_dir(package_cache, fscache, dir)
+    if mod == '__init__' or not mod:
+        mod = base
+    else:
+        mod = module_join(base, mod)
 
-    return dir, mod
+    return mod
+
+
+def crawl_up_dir(package_cache: PackageCache, fscache: FileSystemMetaCache,
+                 dir: str) -> str:
+    """Given a directory name, return the corresponding module name.
+
+    Use package_cache to cache results."""
+
+    if dir in package_cache:
+        return package_cache[dir]
+
+    parent_dir, base = os.path.split(dir)
+    if not dir or not get_init_file(fscache, dir) or not base:
+        return ''
+    # Ensure that base is a valid python module name
+    if not base.isidentifier():
+        raise InvalidSourceList('{} is not a valid Python package name'.format(base))
+    parent = crawl_up_dir(package_cache, fscache, parent_dir)
+    res = module_join(parent, base)
+
+    package_cache[dir] = res
+    return res
 
 
 def strip_py(arg: str) -> Optional[str]:

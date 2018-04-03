@@ -238,7 +238,7 @@ class FineGrainedSuite(DataSuite):
             base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
             # Use expand_dir instead of create_source_list to avoid complaints
             # when there aren't any .py files in an increment
-            return [base] + expand_dir(FileSystemMetaCache(), test_temp_dir)
+            return [base] + expand_dir({}, FileSystemMetaCache(), test_temp_dir)
 
 
 def normalize_messages(messages: List[str]) -> List[str]:
