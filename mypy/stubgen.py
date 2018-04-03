@@ -851,7 +851,7 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
         path = getattr(package, '__path__', None)
         if path is None:
             # It's a module inside a package.  There's nothing else to walk/yield.
-            return
+            continue
         for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
                                                                      prefix=package.__name__ + ".",
                                                                      onerror=lambda r: None):
