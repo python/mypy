@@ -945,7 +945,8 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
     return True
 
 
-def read_protocol_cache(manager: BuildManager, graph: Graph) -> Optional[Dict[str, Set[str]]]:
+def read_protocol_cache(manager: BuildManager,
+                        graph: Graph) -> Optional[Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]]:
     """Read and validate protocol dependencies cache."""
     proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
     try:
@@ -2081,7 +2082,7 @@ class State:
             # TODO: Not a reliable test, as we could have a package named typeshed.
             # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
             return
-        self.fine_grained_deps = get_dependencies(target=self.tree,
+        self.fine_grained_deps, _ = get_dependencies(target=self.tree,
                                                   type_map=self.type_map(),
                                                   python_version=self.options.python_version)
 

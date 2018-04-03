@@ -110,15 +110,15 @@ from collections import defaultdict
 
 def get_dependencies(target: MypyFile,
                      type_map: Dict[Expression, Type],
-                     python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
+                     python_version: Tuple[int, int]) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     deps = visitor.map
-    # new_deps = collect_protocol_attr_deps(target.names, target.fullname())
-    # for trigger, targets in new_deps.items():
-    #     deps.setdefault(trigger, set()).update(targets)
-    return deps
+    new_deps, new_prio_deps = collect_protocol_attr_deps(target.names, target.fullname())
+    for trigger, targets in new_deps.items():
+         deps.setdefault(trigger, set()).update(targets)
+    return deps, new_prio_deps
 
 
 def get_dependencies_of_target(module_id: str,
@@ -785,22 +785,23 @@ def collect_protocol_attr_deps(names: SymbolTable,
                         # e.g. after x: MyProto = array() or x: Iterable = array()
                         continue
                     deps[trigger].add(make_trigger(info.fullname()))
-            for impl in info.attempted_implementations:
-                trigger = make_trigger(impl)
-                if 'typing' in trigger or 'builtins' in trigger:
-                    continue
-                # If any class that was checked against a protocol changes,
-                # we need to reset the subtype cache for the protocol.
-                # This however creates a "weak" dependency, the protocol doesn't
-                # need to be re-checked, and its uses elsewhere are still valid
-                # (unless invalidated by other deps). We process this kind of deps
-                # separately, since they are higher priority, i.e., they need
-                # to be processed before any other deps.
-                prio_deps[trigger].add(info.fullname())
-            for base_info in info.mro[1: -1]:
-                if base_info.module_name in ('typing', 'builtins'):
-                    continue
-                prio_deps[make_wildcard_trigger(base_info.fullname())].add(info.fullname())
+            if info.is_protocol:
+                for impl in info.attempted_implementations:
+                    trigger = make_trigger(impl)
+                    if 'typing' in trigger or 'builtins' in trigger:
+                        continue
+                    # If any class that was checked against a protocol changes,
+                    # we need to reset the subtype cache for the protocol.
+                    # This however creates a "weak" dependency, the protocol doesn't
+                    # need to be re-checked, and its uses elsewhere are still valid
+                    # (unless invalidated by other deps). We process this kind of deps
+                    # separately, since they are higher priority, i.e., they need
+                    # to be processed before any other deps.
+                    prio_deps[trigger].add(info.fullname())
+                for base_info in info.mro[1: -1]:
+                    if base_info.module_name in ('typing', 'builtins'):
+                        continue
+                    prio_deps[make_wildcard_trigger(base_info.fullname())].add(info.fullname())
             sub_deps, sub_prio_deps = collect_protocol_attr_deps(info.names, module_id,
                                                                  processed)  # nested classes
             merge_deps(deps, sub_deps)
@@ -824,9 +825,11 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
         if id in ('builtins', 'typing') or '/typeshed/' in node.path:
             continue
         assert id == node.fullname()
-        deps = get_dependencies(node, type_map, python_version)
+        deps, prio_deps = get_dependencies(node, type_map, python_version)
         for trigger, targets in deps.items():
             all_deps.setdefault(trigger, set()).update(targets)
+        for trigger, targets in prio_deps.items():
+            all_deps.setdefault(trigger, set()).update(t + '*' for t in targets)
 
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)

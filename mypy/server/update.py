@@ -140,7 +140,7 @@ from mypy.server.astdiff import (
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import get_dependencies_of_target, collect_protocol_attr_deps
+from mypy.server.deps import get_dependencies_of_target
 from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 
@@ -180,7 +180,7 @@ class FineGrainedBuildManager:
         self.changed_modules = []  # type: List[Tuple[str, str]]
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
-        self.prio_deps = set()  # type: Dict[str, Set[str]]
+        self.prio_deps = {}  # type: Dict[str, Set[str]]
         self.update_protocol_deps()
 
     def update_protocol_deps(self) -> None:
@@ -260,8 +260,8 @@ class FineGrainedBuildManager:
                 # when propagating changes from the errored targets,
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
-                    self.manager, self.graph, self.deps, set(), {next_id},
-                    self.previous_targets_with_errors)
+                    self.manager, self.graph, self.deps, self.prio_deps,
+                    set(), {next_id}, self.previous_targets_with_errors)
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
                     # Preserve state needed for the next update.
@@ -271,7 +271,7 @@ class FineGrainedBuildManager:
 
         self.manager.fscache.flush()
         self.previous_messages = messages[:]
-        self.manager.proto_deps.low_prio, self.manager.proto_deps.low_prio = collect_protocol_deps(self.graph)
+        self.manager.proto_deps.low_prio, self.manager.proto_deps.high_prio = collect_protocol_deps(self.graph)
         self.update_protocol_deps()
         return messages
 
@@ -365,7 +365,7 @@ class FineGrainedBuildManager:
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         collect_dependencies({module: tree}, self.deps, graph)
         remaining += propagate_changes_using_dependencies(
-            manager, graph, self.deps, triggered,
+            manager, graph, self.deps, self.prio_deps, triggered,
             {module},
             targets_with_errors=set())
 
@@ -701,6 +701,7 @@ def propagate_changes_using_dependencies(
         manager: BuildManager,
         graph: Dict[str, State],
         deps: Dict[str, Set[str]],
+        prio_deps: Dict[str, Set[str]],
         triggered: Set[str],
         up_to_date_modules: Set[str],
         targets_with_errors: Set[str]) -> List[Tuple[str, str]]:
@@ -719,7 +720,8 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo, stale_protos = find_targets_recursive(manager, triggered, deps, up_to_date_modules)
+        todo, stale_protos = find_targets_recursive(manager, triggered, deps,
+                                                    prio_deps, up_to_date_modules)
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
@@ -763,6 +765,7 @@ def find_targets_recursive(
         manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
+        prio_deps: Dict[str, Set[str]],
         up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
@@ -782,6 +785,12 @@ def find_targets_recursive(
         worklist = set()
         for target in current:
             if target.startswith('<'):
+                if target in prio_deps:
+                    # There are only leafs in high priority protocol dependencies.
+                    for proto_name in prio_deps[target]:
+                        info = lookup_typeinfo(manager, proto_name)
+                        if info is not None:
+                            stale_protos.add(info)
                 worklist |= deps.get(target, set()) - processed
             else:
                 module_id = module_prefix(manager.modules, target)
@@ -794,12 +803,6 @@ def find_targets_recursive(
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained('process: %s' % target)
-                if '*' in target:
-                    target = target.strip('*')
-                    info = lookup_typeinfo(manager, target)
-                    if info is not None:
-                        stale_protos.add(info)
-                    continue
                 deferred = lookup_target(manager, target)
                 result[module_id].update(deferred)
 
@@ -950,6 +953,13 @@ def update_deps(module_id: str,
 
 
 def lookup_typeinfo(manager: BuildManager, target: str) -> Optional[TypeInfo]:
+    """Lookup TypeInfo in symbol tables by its full name.
+
+    If the name is stale (not found, refers to another node kind, etc.)
+    return None.
+    """
+    # TODO: there is code/logic duplication with lookup_target.
+    # Factor out common parts.
     modules = manager.modules
     items = split_target(modules, target)
     if items is None:

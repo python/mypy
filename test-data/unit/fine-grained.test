@@ -5952,7 +5952,7 @@ for i in x:
     pass
 [file a.py]
 import b
-class A(B):
+class A(b.B):
     pass
 [file a.py.2]
 class A:
