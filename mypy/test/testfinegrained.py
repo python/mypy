@@ -27,7 +27,7 @@ from mypy.test.helpers import (
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
 from mypy.main import parse_config_file
-from mypy.find_sources import expand_dir, create_source_list
+from mypy.find_sources import create_source_list
 from mypy.fscache import FileSystemMetaCache
 
 import pytest  # type: ignore  # no pytest in typeshed
@@ -238,7 +238,8 @@ class FineGrainedSuite(DataSuite):
             base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
             # Use expand_dir instead of create_source_list to avoid complaints
             # when there aren't any .py files in an increment
-            return [base] + expand_dir({}, FileSystemMetaCache(), test_temp_dir)
+            return [base] + create_source_list([test_temp_dir], options,
+                                               allow_empty_dir=True)
 
 
 def normalize_messages(messages: List[str]) -> List[str]:
