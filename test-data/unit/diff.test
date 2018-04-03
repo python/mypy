@@ -879,3 +879,49 @@ def outer() -> None:
     def inner(y: B) -> A:
         pass
 [out]
+
+[case testProtocolVsNominal]
+from typing import Protocol
+class A(Protocol):
+    x: int
+class B(Protocol):
+    x: int
+class C(Protocol):
+    x: int
+class D(Protocol):
+    x: int
+[file next.py]
+from typing import Protocol
+class A(Protocol):
+    x: int
+class B(Protocol):
+    x: str
+class C(Protocol):
+    x: int
+    y: int
+class D:
+    x: int
+[out]
+__main__.B.x
+__main__.C.y
+__main__.D
+
+[case testProtocolNormalVsGeneric]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P(Protocol[T]):
+    x: T
+class P2(Protocol[T]):
+    x: T
+    y: T
+[file next.py]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P(Protocol):
+    x: int
+class P2(Protocol[T]):
+    x: T
+[out]
+__main__.P
+__main__.P.x
+__main__.P2.y
