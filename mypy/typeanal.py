@@ -29,7 +29,7 @@ from mypy.nodes import (
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
-from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy import nodes, messages
 
 
@@ -55,7 +55,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
 
 
 def analyze_type_alias(node: Expression,
-                       api: SemanticAnalyzerInterface,
+                       api: SemanticAnalyzerCoreInterface,
                        tvar_scope: TypeVarScope,
                        plugin: Plugin,
                        options: Options,
@@ -145,7 +145,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     global_scope = True  # type: bool
 
     def __init__(self,
-                 api: SemanticAnalyzerInterface,
+                 api: SemanticAnalyzerCoreInterface,
                  tvar_scope: Optional[TypeVarScope],
                  plugin: Plugin,
                  options: Options,
@@ -677,7 +677,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
     """
 
     def __init__(self,
-                 api: SemanticAnalyzerInterface,
+                 api: SemanticAnalyzerCoreInterface,
                  plugin: Plugin,
                  options: Options,
                  is_typeshed_stub: bool,
