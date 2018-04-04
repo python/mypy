@@ -88,6 +88,7 @@ from mypy.scope import Scope
 from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
+from mypy.semanal_newtype import NewTypeAnalyzer
 
 
 T = TypeVar('T')
@@ -275,6 +276,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
         self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
         self.enum_call_analyzer = EnumCallAnalyzer(options, self)
+        self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
 
         with experiments.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
@@ -1601,7 +1603,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
         self.check_and_set_up_type_alias(s)
-        self.process_newtype_declaration(s)
+        self.newtype_analyzer.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
         self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
@@ -1940,117 +1942,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # This has been flagged elsewhere as an error, so just ignore here.
             pass
 
-    def process_newtype_declaration(self, s: AssignmentStmt) -> None:
-        """Check if s declares a NewType; if yes, store it in symbol table."""
-        # Extract and check all information from newtype declaration
-        name, call = self.analyze_newtype_declaration(s)
-        if name is None or call is None:
-            return
-
-        old_type = self.check_newtype_args(name, call, s)
-        call.analyzed = NewTypeExpr(name, old_type, line=call.line)
-        if old_type is None:
-            return
-
-        # Create the corresponding class definition if the aliased type is subtypeable
-        if isinstance(old_type, TupleType):
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type.fallback)
-            newtype_class_info.tuple_type = old_type
-        elif isinstance(old_type, Instance):
-            if old_type.type.is_protocol:
-                self.fail("NewType cannot be used with protocol classes", s)
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type)
-        else:
-            message = "Argument 2 to NewType(...) must be subclassable (got {})"
-            self.fail(message.format(self.msg.format(old_type)), s)
-            return
-
-        check_for_explicit_any(old_type, self.options, self.is_typeshed_stub_file, self.msg,
-                               context=s)
-
-        if self.options.disallow_any_unimported and has_any_from_unimported_type(old_type):
-            self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
-
-        # If so, add it to the symbol table.
-        node = self.lookup(name, s)
-        if node is None:
-            self.fail("Could not find {} in current namespace".format(name), s)
-            return
-        # TODO: why does NewType work in local scopes despite always being of kind GDEF?
-        node.kind = GDEF
-        call.analyzed.info = node.node = newtype_class_info
-
-    def analyze_newtype_declaration(self,
-            s: AssignmentStmt) -> Tuple[Optional[str], Optional[CallExpr]]:
-        """Return the NewType call expression if `s` is a newtype declaration or None otherwise."""
-        name, call = None, None
-        if (len(s.lvalues) == 1
-                and isinstance(s.lvalues[0], NameExpr)
-                and isinstance(s.rvalue, CallExpr)
-                and isinstance(s.rvalue.callee, RefExpr)
-                and s.rvalue.callee.fullname == 'typing.NewType'):
-            lvalue = s.lvalues[0]
-            name = s.lvalues[0].name
-            if not lvalue.is_inferred_def:
-                if s.type:
-                    self.fail("Cannot declare the type of a NewType declaration", s)
-                else:
-                    self.fail("Cannot redefine '%s' as a NewType" % name, s)
-
-            # This dummy NewTypeExpr marks the call as sufficiently analyzed; it will be
-            # overwritten later with a fully complete NewTypeExpr if there are no other
-            # errors with the NewType() call.
-            call = s.rvalue
-
-        return name, call
-
-    def check_newtype_args(self, name: str, call: CallExpr, context: Context) -> Optional[Type]:
-        has_failed = False
-        args, arg_kinds = call.args, call.arg_kinds
-        if len(args) != 2 or arg_kinds[0] != ARG_POS or arg_kinds[1] != ARG_POS:
-            self.fail("NewType(...) expects exactly two positional arguments", context)
-            return None
-
-        # Check first argument
-        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
-            self.fail("Argument 1 to NewType(...) must be a string literal", context)
-            has_failed = True
-        elif args[0].value != name:
-            msg = "String argument 1 '{}' to NewType(...) does not match variable name '{}'"
-            self.fail(msg.format(args[0].value, name), context)
-            has_failed = True
-
-        # Check second argument
-        try:
-            unanalyzed_type = expr_to_unanalyzed_type(args[1])
-        except TypeTranslationError:
-            self.fail("Argument 2 to NewType(...) must be a valid type", context)
-            return None
-        old_type = self.anal_type(unanalyzed_type)
-
-        return None if has_failed else old_type
-
-    def build_newtype_typeinfo(self, name: str, old_type: Type, base_type: Instance) -> TypeInfo:
-        info = self.basic_new_typeinfo(name, base_type)
-        info.is_newtype = True
-
-        # Add __init__ method
-        args = [Argument(Var('self'), NoneTyp(), None, ARG_POS),
-                self.make_argument('item', old_type)]
-        signature = CallableType(
-            arg_types=[Instance(info, []), old_type],
-            arg_kinds=[arg.kind for arg in args],
-            arg_names=['self', 'item'],
-            ret_type=NoneTyp(),
-            fallback=self.named_type('__builtins__.function'),
-            name=name)
-        init_func = FuncDef('__init__', args, Block([]), typ=signature)
-        init_func.info = info
-        init_func._fullname = self.qualified_name(name) + '.__init__'
-        info.names['__init__'] = SymbolTableNode(MDEF, init_func)
-
-        return info
-
     def process_typevar_declaration(self, s: AssignmentStmt) -> None:
         """Check if s declares a TypeVar; it yes, store it in symbol table."""
         call = self.get_typevar_declaration(s)
@@ -2215,9 +2106,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         info.mro = [info] + mro
         info.bases = [basetype_or_fallback]
         return info
-
-    def make_argument(self, name: str, type: Type) -> Argument:
-        return Argument(Var(name), type, None, ARG_POS)
 
     def analyze_types(self, items: List[Expression]) -> List[Type]:
         result = []  # type: List[Type]
