@@ -97,6 +97,10 @@ class SemanticAnalyzerInterface:
     def parse_bool(self, expr: Expression) -> Optional[bool]:
         raise NotImplementedError
 
+    @abstractmethod
+    def qualified_name(self, n: str) -> str:
+        raise NotImplementedError
+
     @abstractproperty
     def is_typeshed_stub_file(self) -> bool:
         raise NotImplementedError

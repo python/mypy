@@ -87,6 +87,7 @@ from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name, PR
 from mypy.scope import Scope
 from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
 from mypy.semanal_typeddict import TypedDictAnalyzer
+from mypy.semanal_enum import EnumCallAnalyzer
 
 
 T = TypeVar('T')
@@ -273,6 +274,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.patches = patches
         self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
         self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
+        self.enum_call_analyzer = EnumCallAnalyzer(options, self)
 
         with experiments.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
@@ -1603,7 +1605,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.process_typevar_declaration(s)
         self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
-        self.process_enum_call(s)
+        self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
 
@@ -2319,141 +2321,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         elif lval.is_inferred_def:
                             lnode.kind = MODULE_REF
                             lnode.node = rnode.node
-
-    def process_enum_call(self, s: AssignmentStmt) -> None:
-        """Check if s defines an Enum; if yes, store the definition in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        lvalue = s.lvalues[0]
-        name = lvalue.name
-        enum_call = self.check_enum_call(s.rvalue, name)
-        if enum_call is None:
-            return
-        # Yes, it's a valid Enum definition. Add it to the symbol table.
-        node = self.lookup(name, s)
-        if node:
-            node.kind = GDEF   # TODO locally defined Enum
-            node.node = enum_call
-
-    def check_enum_call(self, node: Expression,
-                        var_name: Optional[str] = None) -> Optional[TypeInfo]:
-        """Check if a call defines an Enum.
-
-        Example:
-
-          A = enum.Enum('A', 'foo bar')
-
-        is equivalent to:
-
-          class A(enum.Enum):
-              foo = 1
-              bar = 2
-        """
-        if not isinstance(node, CallExpr):
-            return None
-        call = node
-        callee = call.callee
-        if not isinstance(callee, RefExpr):
-            return None
-        fullname = callee.fullname
-        if fullname not in ('enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag'):
-            return None
-        items, values, ok = self.parse_enum_call_args(call, fullname.split('.')[-1])
-        if not ok:
-            # Error. Construct dummy return value.
-            return self.build_enum_call_typeinfo('Enum', [], fullname)
-        name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.is_func_scope():
-            # Give it a unique name derived from the line number.
-            name += '@' + str(call.line)
-        info = self.build_enum_call_typeinfo(name, items, fullname)
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info)
-        if self.type:
-            self.type.names[name] = stnode
-        else:
-            self.globals[name] = stnode
-        call.analyzed = EnumCallExpr(info, items, values)
-        call.analyzed.set_line(call.line, call.column)
-        return info
-
-    def build_enum_call_typeinfo(self, name: str, items: List[str], fullname: str) -> TypeInfo:
-        base = self.named_type_or_none(fullname)
-        assert base is not None
-        info = self.basic_new_typeinfo(name, base)
-        info.is_enum = True
-        for item in items:
-            var = Var(item)
-            var.info = info
-            var.is_property = True
-            var._fullname = '{}.{}'.format(self.qualified_name(name), item)
-            info.names[item] = SymbolTableNode(MDEF, var)
-        return info
-
-    def parse_enum_call_args(self, call: CallExpr,
-                             class_name: str) -> Tuple[List[str],
-                                                       List[Optional[Expression]], bool]:
-        args = call.args
-        if len(args) < 2:
-            return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
-        if len(args) > 2:
-            return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
-            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
-        if not isinstance(args[0], (StrExpr, UnicodeExpr)):
-            return self.fail_enum_call_arg(
-                "%s() expects a string literal as the first argument" % class_name, call)
-        items = []
-        values = []  # type: List[Optional[Expression]]
-        if isinstance(args[1], (StrExpr, UnicodeExpr)):
-            fields = args[1].value
-            for field in fields.replace(',', ' ').split():
-                items.append(field)
-        elif isinstance(args[1], (TupleExpr, ListExpr)):
-            seq_items = args[1].items
-            if all(isinstance(seq_item, (StrExpr, UnicodeExpr)) for seq_item in seq_items):
-                items = [cast(StrExpr, seq_item).value for seq_item in seq_items]
-            elif all(isinstance(seq_item, (TupleExpr, ListExpr))
-                     and len(seq_item.items) == 2
-                     and isinstance(seq_item.items[0], (StrExpr, UnicodeExpr))
-                     for seq_item in seq_items):
-                for seq_item in seq_items:
-                    assert isinstance(seq_item, (TupleExpr, ListExpr))
-                    name, value = seq_item.items
-                    assert isinstance(name, (StrExpr, UnicodeExpr))
-                    items.append(name.value)
-                    values.append(value)
-            else:
-                return self.fail_enum_call_arg(
-                    "%s() with tuple or list expects strings or (name, value) pairs" %
-                    class_name,
-                    call)
-        elif isinstance(args[1], DictExpr):
-            for key, value in args[1].items:
-                if not isinstance(key, (StrExpr, UnicodeExpr)):
-                    return self.fail_enum_call_arg(
-                        "%s() with dict literal requires string literals" % class_name, call)
-                items.append(key.value)
-                values.append(value)
-        else:
-            # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
-            return self.fail_enum_call_arg(
-                "%s() expects a string, tuple, list or dict literal as the second argument" %
-                class_name,
-                call)
-        if len(items) == 0:
-            return self.fail_enum_call_arg("%s() needs at least one item" % class_name, call)
-        if not values:
-            values = [None] * len(items)
-        assert len(items) == len(values)
-        return items, values, True
-
-    def fail_enum_call_arg(self, message: str,
-                           context: Context) -> Tuple[List[str],
-                                                      List[Optional[Expression]], bool]:
-        self.fail(message, context)
-        return [], [], False
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:
