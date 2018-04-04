@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import mypy.build
 import mypy.errors
-import mypy.main
+from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
@@ -95,8 +95,6 @@ def process_start_options(flags: List[str]) -> Options:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.quick_and_dirty:
         sys.exit("dmypy: start/restart should not specify quick_and_dirty mode")
-    if options.use_fine_grained_cache and not options.fine_grained_incremental:
-        sys.exit("dmypy: fine-grained cache can only be used in experimental mode")
     # Our file change tracking can't yet handle changes to files that aren't
     # specified in the sources list.
     if options.follow_imports not in ('skip', 'error'):
@@ -120,6 +118,8 @@ class Server:
 
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
+
+        self.fscache = FileSystemCache(self.options.python_version)
 
         options.incremental = True
         options.fine_grained_incremental = True
@@ -222,8 +222,8 @@ class Server:
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
         try:
-            self.last_sources = mypy.main.create_source_list(files, self.options)
-        except mypy.main.InvalidSourceList as err:
+            self.last_sources = create_source_list(files, self.options, self.fscache)
+        except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)
 
@@ -236,21 +236,19 @@ class Server:
     def check(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
         if not self.fine_grained_manager:
-            return self.initialize_fine_grained(sources)
+            res = self.initialize_fine_grained(sources)
         else:
-            return self.fine_grained_increment(sources)
+            res = self.fine_grained_increment(sources)
+        self.fscache.flush()
+        return res
 
     def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
-        # The file system cache we create gets passed off to
-        # BuildManager, and thence to FineGrainedBuildManager, which
-        # assumes responsibility for clearing it after updates.
-        fscache = FileSystemCache(self.options.python_version)
-        self.fswatcher = FileSystemWatcher(fscache)
+        self.fswatcher = FileSystemWatcher(self.fscache)
         self.update_sources(sources)
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
-                                      fscache=fscache,
+                                      fscache=self.fscache,
                                       alt_lib_path=self.alt_lib_path)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
@@ -291,7 +289,6 @@ class Server:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
 
-        fscache.flush()
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
@@ -318,9 +315,12 @@ class Server:
     def find_changed(self, sources: List[mypy.build.BuildSource]) -> Tuple[List[Tuple[str, str]],
                                                                            List[Tuple[str, str]]]:
         changed_paths = self.fswatcher.find_changed()
+        # Find anything that has been added or modified
         changed = [(source.module, source.path)
                    for source in sources
                    if source.path in changed_paths]
+
+        # Now find anything that has been removed from the build
         modules = {source.module for source in sources}
         omitted = [source for source in self.previous_sources if source.module not in modules]
         removed = []
@@ -328,6 +328,16 @@ class Server:
             path = source.path
             assert path
             removed.append((source.module, path))
+
+        # Find anything that has had its module path change because of added or removed __init__s
+        last = {s.path: s.module for s in self.previous_sources}
+        for s in sources:
+            assert s.path
+            if s.path in last and last[s.path] != s.module:
+                # Mark it as removed from its old name and changed at its new name
+                removed.append((last[s.path], s.path))
+                changed.append((s.module, s.path))
+
         return changed, removed
 
     def cmd_hang(self) -> Dict[str, object]:

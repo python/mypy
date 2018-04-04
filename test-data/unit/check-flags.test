@@ -1013,3 +1013,26 @@ def f(i: int, s):
 [out]
 main:3: error: Function is missing a return type annotation
 main:3: error: Function is missing a type annotation for one or more arguments
+
+[case testAlwaysTrueAlwaysFalseFlags]
+# flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
+from somewhere import YOLO, BLAH
+if not YOLO:
+    1+()
+if BLAH:
+    1+()
+[builtins fixtures/bool.pyi]
+
+[case testAlwaysTrueAlwaysFalseConfigFile]
+# flags: --config-file tmp/mypy.ini
+from somewhere import YOLO, BLAH
+if not YOLO:
+    1+()
+if BLAH:
+    1+()
+[file mypy.ini]
+[[mypy]
+ignore_missing_imports = True
+always_true = YOLO1, YOLO
+always_false = BLAH, BLAH1
+[builtins fixtures/bool.pyi]

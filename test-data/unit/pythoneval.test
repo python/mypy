@@ -1459,6 +1459,63 @@ _testNoCrashOnGenericUnionUnpacking.py:11: error: Revealed type is 'Union[builti
 _testNoCrashOnGenericUnionUnpacking.py:15: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
 _testNoCrashOnGenericUnionUnpacking.py:16: error: Revealed type is 'Union[builtins.int*, builtins.str*]'
 
+[case testMetaclassOpAccess]
+from typing import Type
+class A:
+    pass
+
+class Meta(type):
+    def __mul__(self, other: int) -> Type[A]:
+        pass
+    def __add__(self, other: int) -> Type[C]:
+        pass
+    def __radd__(self, other: int) -> Type[C]:
+        pass
+class C(metaclass=Meta):
+    pass
+
+bar: Type[C]
+def get_c_type() -> Type[C]:
+    pass
+
+res = bar * 4
+other = 4 + get_c_type() + 5
+reveal_type(res)
+reveal_type(other)
+[out]
+_testMetaclassOpAccess.py:21: error: Revealed type is 'Type[_testMetaclassOpAccess.A]'
+_testMetaclassOpAccess.py:22: error: Revealed type is 'Type[_testMetaclassOpAccess.C]'
+
+[case testMetaclassOpAccessUnion]
+from typing import Type, Union
+
+class MetaA(type):
+    def __mul__(self, other: int) -> str:
+        pass
+class A(metaclass=MetaA):
+    pass
+class MetaB(type):
+    def __mul__(self, other: int) -> int:
+        pass
+class B(metaclass=MetaB):
+    pass
+
+bar: Type[Union[A, B]]
+res = bar * 4
+reveal_type(res)
+[out]
+_testMetaclassOpAccessUnion.py:16: error: Revealed type is 'Union[builtins.str, builtins.int]'
+
+[case testMetaclassOpAccessAny]
+from typing import Type
+from nonexistent import C
+bar: Type[C]
+
+bar * 4 + bar + 3  # should not produce more errors
+[out]
+_testMetaclassOpAccessAny.py:2: error: Cannot find module named 'nonexistent'
+_testMetaclassOpAccessAny.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
 [case testEnumIterationAndPreciseElementType]
 # Regression test for #2305
 from enum import Enum

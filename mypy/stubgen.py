@@ -66,7 +66,10 @@ from mypy.nodes import (
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
-from mypy.types import Type, TypeStrVisitor, AnyType, CallableType, UnboundType, NoneTyp, TupleType
+from mypy.types import (
+    Type, TypeStrVisitor, AnyType, CallableType,
+    UnboundType, NoneTyp, TupleType, TypeList,
+)
 from mypy.visitor import NodeVisitor
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
@@ -150,15 +153,6 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             try:
                 mod = importlib.import_module(module)
             except Exception:
-                # Print some debugging output that might help diagnose problems.
-                print('=== debug dump follows ===')
-                traceback.print_exc()
-                print('sys.path:')
-                for entry in sys.path:
-                    print('    %r' % entry)
-                print('PYTHONPATH: %s' % os.getenv("PYTHONPATH"))
-                dump_dir(os.getcwd())
-                print('=== end of debug dump ===')
                 raise CantImport(module)
             if is_c_module(mod):
                 return None
@@ -172,18 +166,6 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
                 "Can't find module '{}' (consider using --search-path)".format(module))
         module_all = None
     return module_path, module_all
-
-
-def dump_dir(path: str) -> None:
-    for root, dirs, files in os.walk(os.getcwd()):
-        print('%s:' % root)
-        for d in dirs:
-            print('    %s/' % d)
-        for f in files:
-            path = os.path.join(root, f)
-            print('    %s (%d bytes)' % (f, os.path.getsize(path)))
-        if not dirs and not files:
-            print('    (empty)')
 
 
 def load_python_module_info(module: str, interpreter: str) -> Tuple[str, Optional[List[str]]]:
@@ -273,6 +255,9 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_none_type(self, t: NoneTyp) -> str:
         return "None"
+
+    def visit_type_list(self, t: TypeList) -> str:
+        return '[{}]'.format(self.list_str(t.items))
 
 
 class AliasPrinter(NodeVisitor[str]):
@@ -472,8 +457,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             kind = arg_.kind
             name = var.name()
             annotated_type = o.type.arg_types[i] if isinstance(o.type, CallableType) else None
-            if annotated_type and not (
-                    i == 0 and name == 'self' and isinstance(annotated_type, AnyType)):
+            is_self_arg = i == 0 and name == 'self'
+            is_cls_arg = i == 0 and name == 'cls'
+            if (annotated_type is None
+                    and not arg_.initializer
+                    and not is_self_arg
+                    and not is_cls_arg):
+                self.add_typing_import("Any")
+                annotation = ": Any"
+            elif annotated_type and not is_self_arg:
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
                 annotation = ""
@@ -861,9 +853,13 @@ def get_qualified_name(o: Expression) -> str:
 
 def walk_packages(packages: List[str]) -> Iterator[str]:
     for package_name in packages:
-        package = __import__(package_name)
+        package = importlib.import_module(package_name)
         yield package.__name__
-        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+        path = getattr(package, '__path__', None)
+        if path is None:
+            # It's a module inside a package.  There's nothing else to walk/yield.
+            continue
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
                                                                      prefix=package.__name__ + ".",
                                                                      onerror=lambda r: None):
             yield qualified_name

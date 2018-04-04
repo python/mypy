@@ -1,5 +1,4 @@
 import glob
-import importlib
 import os.path
 import shutil
 import sys
@@ -12,12 +11,34 @@ from typing import List, Tuple
 from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
-from mypy.stubgen import generate_stub, generate_stub_for_module, parse_options, Options
+from mypy.stubgen import (
+    generate_stub, generate_stub_for_module, parse_options, walk_packages, Options
+)
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring
 )
+
+
+class StubgenCliParseSuite(Suite):
+    def test_walk_packages(self) -> None:
+        assert_equal(
+            set(walk_packages(["mypy.errors"])),
+            {"mypy.errors"})
+
+        assert_equal(
+            set(walk_packages(["mypy.errors", "mypy.stubgen"])),
+            {"mypy.errors", "mypy.stubgen"})
+
+        all_mypy_packages = set(walk_packages(["mypy"]))
+        self.assertTrue(all_mypy_packages.issuperset({
+            "mypy",
+            "mypy.errors",
+            "mypy.stubgen",
+            "mypy.test",
+            "mypy.test.helpers",
+        }))
 
 
 class StubgenUtilSuite(Suite):
@@ -125,7 +146,7 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         handle.close()
         # Without this we may sometimes be unable to import the module below, as importlib
         # caches os.listdir() results in Python 3.3+ (Guido explained this to me).
-        reset_importlib_caches()
+        reset_importlib_cache('stubgen-test-path')
         try:
             if testcase.name.endswith('_import'):
                 generate_stub_for_module(name, out_dir, quiet=True,
@@ -145,11 +166,16 @@ def test_stubgen(testcase: DataDrivenTestCase) -> None:
         shutil.rmtree(out_dir)
 
 
-def reset_importlib_caches() -> None:
-    try:
-        importlib.invalidate_caches()
-    except (ImportError, AttributeError):
-        pass
+def reset_importlib_cache(entry: str) -> None:
+    # importlib.invalidate_caches() is insufficient, since it doesn't
+    # clear cache entries that indicate that a directory on the path
+    # does not exist, which can cause failures.  Just directly clear
+    # the sys.path_importer_cache entry ourselves.  Other possible
+    # workarounds include always using different paths in the sys.path
+    # (perhaps by using the full path name) or removing the entry from
+    # sys.path after each run.
+    if entry in sys.path_importer_cache:
+        del sys.path_importer_cache[entry]
 
 
 def load_output(dirname: str) -> List[str]:
