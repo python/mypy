@@ -914,6 +914,39 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
     return True
 
 
+def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
+    """Collect protocol dependency map for fine grained incremental mode."""
+    from mypy.server.deps import collect_protocol_attr_deps
+    result = {}  # type: Dict[str, Set[str]]
+    for id in graph:
+        file = graph[id].tree
+        assert file is not None, "Should call this only when all files are processed"
+        names = file.names
+        deps = collect_protocol_attr_deps(names, id)
+        for trigger, targets in deps.items():
+            result.setdefault(trigger, set()).update(targets)
+    return result
+
+
+def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
+                              manager: BuildManager, graph: Graph) -> None:
+    """Write cache files for protocol dependencies.
+
+    Serialize protocol dependencies map for fine grained mode. Also take the snapshot
+    of current sources to later check consistency between protocol cache and individual
+    cache files.
+    """
+    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    meta_snapshot = {}  # type: Dict[str, str]
+    for id in graph:
+        meta_snapshot[id] = graph[id].source_hash
+    if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
+        manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
+    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
+    if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
+        manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
+
+
 def read_protocol_cache(manager: BuildManager,
                         graph: Graph) -> Optional[Dict[str, Set[str]]]:
     """Read and validate protocol dependencies cache."""
@@ -951,39 +984,6 @@ def read_protocol_cache(manager: BuildManager,
     return {k: set(v) for (k, v) in deps.items()}
 
 
-def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
-    """Collect protocol dependency map for fine grained incremental mode."""
-    from mypy.server.deps import collect_protocol_attr_deps
-    result = {}  # type: Dict[str, Set[str]]
-    for id in graph:
-        file = graph[id].tree
-        assert file is not None, "Should call this only when all files are processed"
-        names = file.names
-        deps = collect_protocol_attr_deps(names, id)
-        for trigger, targets in deps.items():
-            result.setdefault(trigger, set()).update(targets)
-    return result
-
-
-def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
-                              manager: BuildManager, graph: Graph) -> None:
-    """Write cache files for protocol dependencies.
-
-    Serialize protocol dependencies map for fine grained mode. Also take the snapshot
-    of current sources to later check consistency between protocol cache and individual
-    cache files.
-    """
-    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
-    meta_snapshot = {}  # type: Dict[str, str]
-    for id in graph:
-        meta_snapshot[id] = graph[id].source_hash
-    if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
-        manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
-    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
-    if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
-        manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
-
-
 def _get_prefix(manager: BuildManager, id: Optional[str] = None) -> str:
     """Get current cache directory (or file if id is given)."""
     cache_dir = manager.options.cache_dir
@@ -1001,16 +1001,6 @@ def _cache_name_pair(name: str) -> Tuple[str, str]:
     cache data, while .meta.json file contains metadata about the first file.
     """
     return name + '.meta.json', name + '.data.json'
-
-
-def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
-    """Return file names for fine grained protocol dependencies cache.
-
-    Since these dependencies represent a global state of the program, they
-    are serialized per program, not per module, and the corresponding files
-    live at the root of the cache folder for a given Python version."""
-    prefix = _get_prefix(manager)
-    return _cache_name_pair(os.path.join(prefix, 'proto_deps'))
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:
@@ -1031,6 +1021,16 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     if is_package:
         prefix = os.path.join(prefix, '__init__')
     return _cache_name_pair(prefix)
+
+
+def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
+    """Return file names for fine grained protocol dependencies cache.
+
+    Since these dependencies represent a global state of the program, they
+    are serialized per program, not per module, and the corresponding files
+    live at the root of the cache folder for a given Python version."""
+    prefix = _get_prefix(manager)
+    return _cache_name_pair(os.path.join(prefix, 'proto_deps'))
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:

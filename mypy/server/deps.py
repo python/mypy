@@ -750,7 +750,20 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 def collect_protocol_attr_deps(names: SymbolTable,
                                module_id: str,
                                processed: Optional[Set[TypeInfo]] = None) -> Dict[str, Set[str]]:
-    """Recursively collect protocol attribute dependencies for classes in 'names'."""
+    """Recursively collect protocol attribute dependencies for classes in 'names'.
+
+    There are three kinds of protocol dependencies. For example, after a subtype check:
+
+        x: Proto = C()
+
+    the following dependencies will be generated:
+        1. ..., <SuperProto[wildcard]>, <Proto[wildcard]> -> <Proto>
+        2. ..., <B.attr>, <C.attr> -> <C> [for every attr in Proto members]
+        3. <C> -> Proto  # this one to invalidate the subtype cache
+
+    The first kind is generated immediately per-module. While two other kinds are generated here
+    after all modules are type checked anf we have recorded all the subtype checks.
+    """
     if processed is None:
         processed = set()
     deps = {}  # type: Dict[str, Set[str]]
@@ -768,21 +781,19 @@ def collect_protocol_attr_deps(names: SymbolTable,
                     trigger = make_trigger('%s.%s' % (base_info.fullname(), attr))
                     if 'typing' in trigger or 'builtins' in trigger:
                         # TODO: avoid everything from typeshed
-                        # e.g. after x: MyProto = array() or x: Iterable = array()
                         continue
                     deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
-            if info.is_protocol:
-                for impl in info.attempted_implementations:
-                    trigger = make_trigger(impl)
-                    if 'typing' in trigger or 'builtins' in trigger:
-                        continue
-                    # If any class that was checked against a protocol changes,
-                    # we need to reset the subtype cache for the protocol.
-                    # Strictly speaking, the protocol doesn't
-                    # need to be re-checked we only need to reset the cache,
-                    # and its uses elsewhere are still valid
-                    # (unless invalidated by other deps).
-                    deps.setdefault(trigger, set()).add(info.fullname())
+            for proto in info.attempted_protocols:
+                trigger = make_trigger(info.fullname())
+                if 'typing' in trigger or 'builtins' in trigger:
+                    continue
+                # If any class that was checked against a protocol changes,
+                # we need to reset the subtype cache for the protocol.
+                #
+                # Note: strictly speaking, the protocol doesn't need to be
+                # re-checked, we only need to reset the cache, and its uses
+                # elsewhere are still valid (unless invalidated by other deps).
+                deps.setdefault(trigger, set()).add(proto)
             sub_deps = collect_protocol_attr_deps(info.names, module_id,
                                                   processed)  # nested classes
             for trigger, targets in sub_deps.items():

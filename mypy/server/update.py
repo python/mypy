@@ -179,17 +179,10 @@ class FineGrainedBuildManager:
         self.changed_modules = []  # type: List[Tuple[str, str]]
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
-        # These dependencies point to higher priority targets
-        # that should be reprocessed first. Namely, we need to partially
-        # refresh protocol TypeInfos by clearing subtype caches.
-        # The special nature of these
-        # protocol dependencies is that _nothing_ may be changed in a
-        # given protocol (so re-checking it will not trigger anything)
-        # but its mutable state is still stale because of non-local nature
-        # of protocols.
         self.update_protocol_deps()
 
     def update_protocol_deps(self) -> None:
+        """Add protocol dependencies to the dependency map."""
         # TODO: fail gracefully if cache doesn't contain protocol deps data.
         assert self.manager.proto_deps is not None
         for trigger, targets in self.manager.proto_deps.items():
@@ -274,6 +267,8 @@ class FineGrainedBuildManager:
                     break
 
         self.previous_messages = messages[:]
+        # TODO: Avoid full re-collection (slow) after every update by moving the mutable
+        # TypeInfo state to a shared class, and just checking what's new there.
         self.manager.proto_deps = collect_protocol_deps(self.graph)
         self.update_protocol_deps()
         return messages
@@ -722,12 +717,13 @@ def propagate_changes_using_dependencies(
                 more_nodes, _ = lookup_target(manager, target)
                 todo[id].update(more_nodes)
         triggered = set()
-        # TODO: Preserve order (set is not optimal)
-        # First briefly reprocess high priority nodes, to invalidate
-        # stale protocols.
+        # First invalidate subtype caches in all stale protocols.
+        # We need to do this to avoid false negatives if the protocol itself is
+        # unchanged, but was marked stale because its sub- (or super-) type changed.
         for info in stale_protos:
             info.reset_subtype_cache()
-        # Now fully reprocess all targets.
+        # Then fully reprocess all targets.
+        # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
             if manager.modules[id].is_cache_skeleton:

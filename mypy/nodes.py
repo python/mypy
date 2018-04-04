@@ -2000,12 +2000,12 @@ class TypeInfo(SymbolNode):
     # 'inferring' and 'assuming' can't be also made sets, since we need to use
     # is_same_type to correctly treat unions.
 
-    # Members of protocols, instances of this TypeInfo were checked against.
-    # Used to optimize dependencies in fine grained mode.
+    # Protocols (full names) this class attempted to implement.
+    # Used to calculate fine grained protocol dependencies and optimize protocol
+    # subtype cache invalidation in fine grained mode.
+    attempted_protocols = None  # type: Set[str]
+    # We also snapshot protocol members of the above protocols.
     checked_against_members = None  # type: Set[str]
-    # Classes that attempted to implement this protocol.
-    # Used to optimize protocol subtype cache invalidation in fine grained mode.
-    attempted_implementations = None  # type: Set[str]
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
@@ -2080,8 +2080,8 @@ class TypeInfo(SymbolNode):
         self.inferring = []
         self._cache = set()
         self._cache_proper = set()
+        self.attempted_protocols = set()
         self.checked_against_members = set()
-        self.attempted_implementations = set()
         self.add_type_vars()
         self.metadata = {}
 
@@ -2127,18 +2127,8 @@ class TypeInfo(SymbolNode):
 
     def record_protocol_subtype_check(self, right_type: 'TypeInfo') -> None:
         assert right_type.is_protocol
-        if not self.is_protocol:
-            self.checked_against_members.update(right_type.protocol_members)
-        right_type.record_possible_implementation(self.fullname())
-
-    def record_possible_implementation(self, fullname: str) -> None:
-        """We record all classes that appear in a subtype check against this protocol.
-
-        This is needed so that we can reset the subtype cache in fine grained incremental
-        mode if one of the possible implementation is updated.
-        """
-        assert self.is_protocol, "This method should be called only on protocols"
-        self.attempted_implementations.add(fullname)
+        self.attempted_protocols.add(right_type.fullname())
+        self.checked_against_members.update(right_type.protocol_members)
 
     def is_cached_subtype_check(self, left: 'mypy.types.Instance',
                                 right: 'mypy.types.Instance',
