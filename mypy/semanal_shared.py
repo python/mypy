@@ -47,11 +47,12 @@ class SemanticAnalyzerInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
+    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
+    def named_type_or_none(self, qualified_name: str,
+                           args: Optional[List[Type]] = None) -> Optional[Instance]:
         raise NotImplementedError
 
     @abstractmethod
