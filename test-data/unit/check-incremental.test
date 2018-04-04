@@ -28,7 +28,7 @@
 -- annotation, and any files expect to be stale (aka have a modified interface)
 -- should be annotated in the [stale] annotation. Note that a file that ends up
 -- producing an error has its caches deleted and is marked stale automatically.
--- Such files don't need to be included in [stale ...] list.
+-- Such files do not need to be included in [stale ...] list.
 --
 -- The test suite will automatically assume that __main__ is stale and rechecked in
 -- all cases so we can avoid constantly having to annotate it. The list of
@@ -4206,3 +4206,32 @@ class Two:
     pass
 [out2]
 tmp/m/two.py:2: error: Revealed type is 'builtins.str'
+
+[case testImportUnusedIgnore1]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b
+import foo  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = '2'
+
+-- TODO: Fails due to #4856
+[case testImportUnusedIgnore2-skip]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b
+import c  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file c.py.3]
+pass
+[out]
+[out2]
+[out3]
+tmp/a.py:1: note: unused 'type: ignore' comment
