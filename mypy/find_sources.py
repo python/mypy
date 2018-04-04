@@ -63,7 +63,7 @@ class SourceFinder:
 
     def expand_dir(self, arg: str, mod_prefix: str = '') -> List[BuildSource]:
         """Convert a directory name to a list of sources to build."""
-        f = get_init_file(self.fscache, arg)
+        f = self.get_init_file(arg)
         if mod_prefix and not f:
             return []
         seen = set()  # type: Set[str]
@@ -111,13 +111,13 @@ class SourceFinder:
     def crawl_up_dir(self, dir: str) -> str:
         """Given a directory name, return the corresponding module name.
 
-        Use package_cache to cache results."""
-
+        Use package_cache to cache results.
+        """
         if dir in self.package_cache:
             return self.package_cache[dir]
 
         parent_dir, base = os.path.split(dir)
-        if not dir or not get_init_file(self.fscache, dir) or not base:
+        if not dir or not self.get_init_file(dir) or not base:
             res = ''
         else:
             # Ensure that base is a valid python module name
@@ -128,6 +128,20 @@ class SourceFinder:
 
         self.package_cache[dir] = res
         return res
+
+    def get_init_file(self, dir: str) -> Optional[str]:
+        """Check whether a directory contains a file named __init__.py[i].
+
+        If so, return the file's name (with dir prefixed).  If not, return
+        None.
+
+        This prefers .pyi over .py (because of the ordering of PY_EXTENSIONS).
+        """
+        for ext in PY_EXTENSIONS:
+            f = os.path.join(dir, '__init__' + ext)
+            if self.fscache.isfile(f):
+                return f
+        return None
 
 
 def module_join(parent: str, child: str) -> str:
@@ -146,19 +160,4 @@ def strip_py(arg: str) -> Optional[str]:
     for ext in PY_EXTENSIONS:
         if arg.endswith(ext):
             return arg[:-len(ext)]
-    return None
-
-
-def get_init_file(fscache: FileSystemMetaCache, dir: str) -> Optional[str]:
-    """Check whether a directory contains a file named __init__.py[i].
-
-    If so, return the file's name (with dir prefixed).  If not, return
-    None.
-
-    This prefers .pyi over .py (because of the ordering of PY_EXTENSIONS).
-    """
-    for ext in PY_EXTENSIONS:
-        f = os.path.join(dir, '__init__' + ext)
-        if fscache.isfile(f):
-            return f
     return None
