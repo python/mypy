@@ -926,7 +926,7 @@ class P(PBase, Protocol):
 <mod.PBase.x> -> <mod.P.x>
 <mod.PBase.y> -> <mod.P.y>
 <mod.PBase> -> mod, mod.P, mod.PBase
-<mod.PBase[wildcard]> -> <mod.P>, <mod.PBase>, mod.P
+<mod.PBase[wildcard]> -> <mod.P>, <mod.PBase>
 <mod.P[wildcard]> -> <mod.P>
 <mod> -> m
 

@@ -171,7 +171,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     right.type.record_subtype_cache_entry(left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(left, right):
-                    return True
+                return True
             return False
         if isinstance(right, TypeType):
             item = right.item

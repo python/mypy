@@ -139,7 +139,7 @@ from mypy.server.astdiff import (
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import get_dependencies_of_target, merge_deps
+from mypy.server.deps import get_dependencies_of_target
 from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 
@@ -192,7 +192,8 @@ class FineGrainedBuildManager:
     def update_protocol_deps(self) -> None:
         # TODO: fail gracefully if cache doesn't contain protocol deps data.
         assert self.manager.proto_deps is not None
-        merge_deps(self.deps, self.manager.proto_deps)
+        for trigger, targets in self.manager.proto_deps.items():
+            self.deps.setdefault(trigger, set()).update(targets)
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -263,8 +264,8 @@ class FineGrainedBuildManager:
                 # when propagating changes from the errored targets,
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
-                    self.manager, self.graph, self.deps,
-                    set(), {next_id}, self.previous_targets_with_errors)
+                    self.manager, self.graph, self.deps, set(), {next_id},
+                    self.previous_targets_with_errors)
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
                     # Preserve state needed for the next update.
@@ -367,8 +368,9 @@ class FineGrainedBuildManager:
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         collect_dependencies({module: tree}, self.deps, graph)
         remaining += propagate_changes_using_dependencies(
-            manager, graph, self.deps,
-            triggered, {module}, targets_with_errors=set())
+            manager, graph, self.deps, triggered,
+            {module},
+            targets_with_errors=set())
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors.update(manager.errors.targets())
@@ -932,8 +934,8 @@ def update_deps(module_id: str,
             deps.setdefault(trigger, set()).update(targets)
 
 
-def lookup_target(manager: BuildManager, target: str) -> Tuple[List[DeferredNode],
-                                                               Optional[TypeInfo]]:
+def lookup_target(manager: BuildManager,
+                  target: str) -> Tuple[List[DeferredNode], Optional[TypeInfo]]:
     """Look up a target by fully-qualified name.
 
     The first item in the return tuple is a list of deferred nodes that

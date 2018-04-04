@@ -953,14 +953,15 @@ def read_protocol_cache(manager: BuildManager,
 
 def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
     """Collect protocol dependency map for fine grained incremental mode."""
-    from mypy.server.deps import collect_protocol_attr_deps, merge_deps
+    from mypy.server.deps import collect_protocol_attr_deps
     result = {}  # type: Dict[str, Set[str]]
     for id in graph:
         file = graph[id].tree
         assert file is not None, "Should call this only when all files are processed"
         names = file.names
         deps = collect_protocol_attr_deps(names, id)
-        merge_deps(result, deps)
+        for trigger, targets in deps.items():
+            result.setdefault(trigger, set()).update(targets)
     return result
 
 

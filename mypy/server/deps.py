@@ -105,14 +105,10 @@ from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
 
-from collections import defaultdict
-
-Deps = Dict[str, Set[str]]
-
 
 def get_dependencies(target: MypyFile,
                      type_map: Dict[Expression, Type],
-                     python_version: Tuple[int, int]) -> Deps:
+                     python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
@@ -127,7 +123,7 @@ def get_dependencies_of_target(module_id: str,
                                module_tree: MypyFile,
                                target: Node,
                                type_map: Dict[Expression, Type],
-                               python_version: Tuple[int, int]) -> Deps:
+                               python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
@@ -169,7 +165,7 @@ class DependencyVisitor(TraverserVisitor):
         # are preserved at alias expansion points in `semanal.py`, stored as an attribute
         # on MypyFile, and then passed here.
         self.alias_deps = alias_deps
-        self.map = {}  # type: Deps
+        self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
         self.is_package_init_file = False
 
@@ -751,21 +747,13 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
 
-def merge_deps(deps: Deps, new_deps: Deps) -> None:
-    """Merge 'new_deps' into existing 'deps' in place."""
-    for trigger, targets in new_deps.items():
-        deps.setdefault(trigger, set()).update(targets)
-
-
 def collect_protocol_attr_deps(names: SymbolTable,
                                module_id: str,
-                               processed: Optional[Set[TypeInfo]] = None) -> Deps:
+                               processed: Optional[Set[TypeInfo]] = None) -> Dict[str, Set[str]]:
     """Recursively collect protocol attribute dependencies for classes in 'names'."""
-    # Currently there can be at most one target per trigger, but we might
-    # add more deps in future so we are using defaultdict.
     if processed is None:
         processed = set()
-    deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
+    deps = {}  # type: Dict[str, Set[str]]
     for node in names.values():
         if isinstance(node.node, TypeInfo) and node.node not in processed:
             info = node.node
@@ -782,7 +770,7 @@ def collect_protocol_attr_deps(names: SymbolTable,
                         # TODO: avoid everything from typeshed
                         # e.g. after x: MyProto = array() or x: Iterable = array()
                         continue
-                    deps[trigger].add(make_trigger(info.fullname()))
+                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
             if info.is_protocol:
                 for impl in info.attempted_implementations:
                     trigger = make_trigger(impl)
@@ -794,16 +782,12 @@ def collect_protocol_attr_deps(names: SymbolTable,
                     # need to be re-checked we only need to reset the cache,
                     # and its uses elsewhere are still valid
                     # (unless invalidated by other deps).
-                    deps[trigger].add(info.fullname())
-                for base_info in info.mro[1: -1]:
-                    if base_info.module_name in ('typing', 'builtins'):
-                        continue
-                    deps[make_wildcard_trigger(base_info.fullname())].add(info.fullname())
+                    deps.setdefault(trigger, set()).add(info.fullname())
             sub_deps = collect_protocol_attr_deps(info.names, module_id,
                                                   processed)  # nested classes
             for trigger, targets in sub_deps.items():
                 deps.setdefault(trigger, set()).update(targets)
-    return dict(deps)
+    return deps
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
@@ -815,7 +799,7 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
                           type_map: Dict[Expression, Type],
                           python_version: Tuple[int, int]) -> None:
     """Generate dependencies for all interesting modules and print them to stdout."""
-    all_deps = {}  # type: Deps
+    all_deps = {}  # type: Dict[str, Set[str]]
     for id, node in modules.items():
         # Uncomment for debugging:
         # print('processing', id)

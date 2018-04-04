@@ -12,7 +12,7 @@ from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
 from mypy.options import Options
-from mypy.server.deps import get_dependencies, merge_deps
+from mypy.server.deps import get_dependencies
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
@@ -55,7 +55,8 @@ class GetDependenciesSuite(DataSuite):
                                                                            'mypy_extensions',
                                                                            'enum'):
                     new_deps = get_dependencies(files[module], type_map, python_version)
-                    merge_deps(deps, new_deps)
+                    for source in new_deps:
+                        deps[source].update(new_deps[source])
 
             for source, targets in sorted(deps.items()):
                 if source.startswith('<enum.'):
