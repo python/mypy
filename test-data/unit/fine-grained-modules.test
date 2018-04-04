@@ -1632,3 +1632,117 @@ class Foo:
 [out]
 ==
 a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
+
+[case testSkipButDontIgnore1]
+# cmd: mypy a.py c.py
+# flags: --follow-imports=skip
+[file a.py]
+import b
+from c import x
+[file b.py]
+1+'lol'
+[file c.py]
+x = 1
+[file c.py.2]
+x = '2'
+[file b.py.3]
+[out]
+==
+==
+
+[case testSkipButDontIgnore2]
+# cmd: mypy a.py c.py
+# flags: --follow-imports=skip
+[file a.py]
+from c import x
+import b
+[file b.py]
+[file c.py]
+x = 1
+[file b.py]
+1+'x'
+[file c.py.2]
+x = '2'
+[file c.py.3]
+x = 2
+[delete b.py.3]
+[out]
+==
+==
+a.py:2: error: Cannot find module named 'b'
+a.py:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testErrorButDontIgnore1]
+# cmd: mypy a.py c.py
+# flags: --follow-imports=error
+[file a.py]
+from c import x
+import b
+[file b.py]
+[file c.py]
+x = 1
+[file c.py.2]
+x = '2'
+[out]
+a.py:2: note: Import of 'b' ignored
+a.py:2: note: (Using --follow-imports=error, module not passed on command line)
+==
+a.py:2: note: Import of 'b' ignored
+a.py:2: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testErrorButDontIgnore2]
+# cmd1: mypy a.py c.py b.py
+# cmd2: mypy a.py c.py
+# flags: --follow-imports=error
+[file a.py]
+from c import x
+import b
+[file b.py]
+[file c.py]
+x = 1
+[file c.py.2]
+x = '2'
+[out]
+==
+a.py:2: note: Import of 'b' ignored
+a.py:2: note: (Using --follow-imports=error, module not passed on command line)
+
+-- TODO: This test fails because p.b does not depend on p (#4847)
+[case testErrorButDontIgnore3-skip]
+# cmd1: mypy a.py c.py p/b.py p/__init__.py
+# cmd2: mypy a.py c.py p/b.py
+# flags: --follow-imports=error
+[file a.py]
+from c import x
+from p.b import y
+[file p/b.py]
+y = 12
+[file p/__init__.py]
+[file c.py]
+x = 1
+[file c.py.2]
+x = '2'
+[out]
+==
+p/b.py: note: Ancestor package 'p' ignored
+p/b.py: note: (Using --follow-imports=error, submodule passed on command line)
+
+[case testErrorButDontIgnore4]
+# cmd: mypy a.py z.py p/b.py p/__init__.py
+# cmd2: mypy a.py p/b.py
+# flags: --follow-imports=error
+[file a.py]
+from p.b import y
+[file p/b.py]
+from z import x
+y = 12
+[file p/__init__.py]
+[file z.py]
+x = 1
+[delete z.py.2]
+[out]
+==
+p/b.py: note: Ancestor package 'p' ignored
+p/b.py: note: (Using --follow-imports=error, submodule passed on command line)
+p/b.py:1: error: Cannot find module named 'z'
+p/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)

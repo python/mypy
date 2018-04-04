@@ -121,7 +121,7 @@ from typing import (
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
     PRI_INDIRECT, DEBUG_FINE_GRAINED, collect_protocol_deps
 )
 from mypy.checker import DeferredNode
@@ -220,7 +220,6 @@ class FineGrainedBuildManager:
         self.changed_modules = changed_modules
 
         if not changed_modules:
-            self.manager.fscache.flush()
             return self.previous_messages
 
         # Reset find_module's caches for the new build.
@@ -273,7 +272,6 @@ class FineGrainedBuildManager:
                     messages = self.manager.errors.new_messages()
                     break
 
-        self.manager.fscache.flush()
         self.previous_messages = messages[:]
         self.manager.proto_deps = collect_protocol_deps(self.graph)
         self.update_protocol_deps()
@@ -610,18 +608,6 @@ def get_all_changed_modules(root_module: str,
     return changed_modules
 
 
-def verify_dependencies(state: State, manager: BuildManager) -> None:
-    """Report errors for import targets in module that don't exist."""
-    # Strip out indirect dependencies. See comment in build.load_graph().
-    dependencies = [dep for dep in state.dependencies if state.priorities.get(dep) != PRI_INDIRECT]
-    for dep in dependencies + state.suppressed:  # TODO: ancestors?
-        if dep not in manager.modules and not state.options.ignore_missing_imports:
-            assert state.tree
-            line = state.dep_line_map.get(dep, 1)
-            assert state.path
-            manager.module_not_found(state.path, state.id, line, dep)
-
-
 def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
                          deps: Dict[str, Set[str]],
                          graph: Dict[str, State]) -> None:
@@ -906,7 +892,7 @@ def reprocess_nodes(manager: BuildManager,
     update_deps(module_id, nodes, graph, deps, options)
 
     # Report missing imports.
-    verify_dependencies(graph[module_id], manager)
+    graph[module_id].verify_dependencies()
 
     return new_triggered
 
