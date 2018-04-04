@@ -1705,6 +1705,28 @@ class A:
     def __add__(self, x: str) -> int: pass
     def __radd__(self, x: 'A') -> str: pass
 
+[case testReverseOperatorStar]
+class B:
+    def __radd__(*self) -> int: pass
+    def __rsub__(*self: 'B') -> int: pass
+
+[case testReverseOperatorTypeVar]
+from typing import TypeVar
+T = TypeVar("T", bound='Real')
+class Real:
+    def __add__(self, other) -> str: ...
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+
+[case testReverseOperatorTypeType]
+from typing import TypeVar, Type
+class Real(type):
+    def __add__(self, other) -> str: ...
+class Fraction(Real):
+    def __radd__(self, other: Type['A']) -> Real: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "Type[A]" are unsafely overlapping
+
+class A(metaclass=Real): pass
+
 [case testAbstractReverseOperatorMethod]
 import typing
 from abc import abstractmethod
@@ -1751,7 +1773,7 @@ tmp/foo.pyi:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are u
 [case testUnsafeOverlappingWithLineNo]
 from typing import TypeVar
 class Real:
-    def __add__(self, other): ...
+    def __add__(self, other) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: Real) -> Real: ...
 [out]

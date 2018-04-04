@@ -9,28 +9,31 @@ information.
 
 import os
 import re
-import shutil
 
-from typing import List, Tuple, Dict, Optional, Set
+from typing import List, Set, Tuple, Optional, cast
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource, Graph
-from mypy.errors import Errors, CompileError
-from mypy.nodes import Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression
+from mypy.build import BuildManager, BuildSource
+from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.server.astmerge import merge_asts
-from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
-from mypy.strconv import StrConv, indent
-from mypy.test.config import test_temp_dir, test_data_prefix
+from mypy.test.config import test_temp_dir
 from mypy.test.data import (
-    parse_test_cases, DataDrivenTestCase, DataSuite, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, UpdateFile
 )
-from mypy.test.helpers import assert_string_arrays_equal, parse_options
-from mypy.test.testtypegen import ignore_node
-from mypy.types import TypeStrVisitor, Type
-from mypy.util import short_type
+from mypy.test.helpers import (
+    assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
+)
+from mypy.server.mergecheck import check_consistency
+from mypy.dmypy_server import Server
+from mypy.main import parse_config_file
+from mypy.find_sources import expand_dir, create_source_list
+from mypy.fscache import FileSystemMetaCache
+
 import pytest  # type: ignore  # no pytest in typeshed
+
+# Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
+CHECK_CONSISTENCY = False
 
 
 class FineGrainedSuite(DataSuite):
@@ -69,45 +72,73 @@ class FineGrainedSuite(DataSuite):
             return
 
         main_src = '\n'.join(testcase.input)
-        sources_override = self.parse_sources(main_src)
-        messages, manager, graph = self.build(main_src, testcase, sources_override,
-                                              build_cache=self.use_cache,
-                                              enable_cache=self.use_cache)
+        main_path = os.path.join(test_temp_dir, 'main')
+        with open(main_path, 'w') as f:
+            f.write(main_src)
+
+        options = self.get_options(main_src, testcase, build_cache=False)
+        for name, _ in testcase.files:
+            if 'mypy.ini' in name:
+                config = name  # type: Optional[str]
+                break
+        else:
+            config = None
+        if config:
+            parse_config_file(options, config)
+        server = Server(options, alt_lib_path=test_temp_dir)
+
+        step = 1
+        sources = self.parse_sources(main_src, step, options)
+        if self.use_cache:
+            build_options = self.get_options(main_src, testcase, build_cache=True)
+            if config:
+                parse_config_file(build_options, config)
+            messages = self.build(build_options, sources)
+        else:
+            messages = self.run_check(server, sources)
+
         a = []
         if messages:
             a.extend(normalize_messages(messages))
 
-        fine_grained_manager = None
-        if not self.use_cache:
-            fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        if server.fine_grained_manager:
+            if CHECK_CONSISTENCY:
+                check_consistency(server.fine_grained_manager)
 
         steps = testcase.find_steps()
         all_triggered = []
+
         for operations in steps:
-            modules = []
+            step += 1
             for op in operations:
                 if isinstance(op, UpdateFile):
                     # Modify/create file
-                    shutil.copy(op.source_path, op.target_path)
-                    modules.append((op.module, op.target_path))
+                    copy_and_fudge_mtime(op.source_path, op.target_path)
                 else:
                     # Delete file
                     os.remove(op.path)
-                    modules.append((op.module, op.path))
-            if sources_override is not None:
-                modules = [(module, path)
-                           for module, path in sources_override
-                           if any(m == module for m, _ in modules)]
+            sources = self.parse_sources(main_src, step, options)
+            new_messages = self.run_check(server, sources)
 
-            # If this is the second iteration and we are using a
-            # cache, now we need to set it up
-            if fine_grained_manager is None:
-                messages, manager, graph = self.build(main_src, testcase, sources_override,
-                                                      build_cache=False, enable_cache=True)
-                fine_grained_manager = FineGrainedBuildManager(manager, graph)
+            updated = []  # type: List[str]
+            changed = []  # type: List[str]
+            if server.fine_grained_manager:
+                if CHECK_CONSISTENCY:
+                    check_consistency(server.fine_grained_manager)
+                all_triggered.append(server.fine_grained_manager.triggered)
 
-            new_messages = fine_grained_manager.update(modules)
-            all_triggered.append(fine_grained_manager.triggered)
+                updated = server.fine_grained_manager.updated_modules
+                changed = [mod for mod, file in server.fine_grained_manager.changed_modules]
+
+            assert_module_equivalence(
+                'stale' + str(step - 1),
+                testcase.expected_stale_modules.get(step - 1),
+                changed)
+            assert_module_equivalence(
+                'rechecked' + str(step - 1),
+                testcase.expected_rechecked_modules.get(step - 1),
+                updated)
+
             new_messages = normalize_messages(new_messages)
 
             a.append('==')
@@ -128,38 +159,39 @@ class FineGrainedSuite(DataSuite):
                 'Invalid active triggers ({}, line {})'.format(testcase.file,
                                                                testcase.line))
 
-    def build(self,
-              source: str,
-              testcase: DataDrivenTestCase,
-              sources_override: Optional[List[Tuple[str, str]]],
-              build_cache: bool,
-              enable_cache: bool) -> Tuple[List[str], BuildManager, Graph]:
+    def get_options(self,
+                    source: str,
+                    testcase: DataDrivenTestCase,
+                    build_cache: bool) -> Options:
         # This handles things like '# flags: --foo'.
         options = parse_options(source, testcase, incremental_step=1)
         options.incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.fine_grained_incremental = not build_cache
-        options.use_fine_grained_cache = enable_cache and not build_cache
-        options.cache_fine_grained = enable_cache
+        options.use_fine_grained_cache = self.use_cache and not build_cache
+        options.cache_fine_grained = self.use_cache
+        options.local_partial_types = True
+        if options.follow_imports == 'normal':
+            options.follow_imports = 'error'
 
-        main_path = os.path.join(test_temp_dir, 'main')
-        with open(main_path, 'w') as f:
-            f.write(source)
-        if sources_override is not None:
-            sources = [BuildSource(path, module, None)
-                       for module, path in sources_override]
-        else:
-            sources = [BuildSource(main_path, None, None)]
+        return options
+
+    def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
+        response = server.check(sources)
+        out = cast(str, response['out'] or response['err'])
+        return out.splitlines()
+
+    def build(self,
+              options: Options,
+              sources: List[BuildSource]) -> List[str]:
         try:
             result = build.build(sources=sources,
                                  options=options,
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
-            # TODO: We need a manager and a graph in this case as well
-            assert False, str('\n'.join(e.messages))
-            return e.messages, None, None
-        return result.errors, result.manager, result.graph
+            return e.messages
+        return result.errors
 
     def format_triggered(self, triggered: List[List[str]]) -> List[str]:
         result = []
@@ -170,26 +202,43 @@ class FineGrainedSuite(DataSuite):
             result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
         return result
 
-    def parse_sources(self, program_text: str) -> Optional[List[Tuple[str, str]]]:
-        """Return target (module, path) tuples for a test case, if not using the defaults.
+    def parse_sources(self, program_text: str,
+                      incremental_step: int,
+                      options: Options) -> List[BuildSource]:
+        """Return target BuildSources for a test case.
 
-        These are defined through a comment like '# cmd: main a.py' in the test case
-        description.
+        Normally, the unit tests will check all files included in the test
+        case. This differs from how testcheck works by default, as dmypy
+        doesn't currently support following imports.
+
+        You can override this behavior and instruct the tests to check
+        multiple modules by using a comment like this in the test case
+        input:
+
+          # cmd: main a.py
+
+        You can also use `# cmdN:` to have a different cmd for incremental
+        step N (2, 3, ...).
+
         """
-        # TODO: Support defining separately for each incremental step.
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
+        regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
+        alt_m = re.search(regex, program_text, flags=re.MULTILINE)
+        if alt_m is not None:
+            # Optionally return a different command if in a later step
+            # of incremental mode, otherwise default to reusing the
+            # original cmd.
+            m = alt_m
+
         if m:
             # The test case wants to use a non-default set of files.
-            paths = m.group(1).strip().split()
-            result = []
-            for path in paths:
-                path = os.path.join(test_temp_dir, path)
-                module = module_from_path(path)
-                if module == 'main':
-                    module = '__main__'
-                result.append((module, path))
-            return result
-        return None
+            paths = [os.path.join(test_temp_dir, path) for path in m.group(1).strip().split()]
+            return create_source_list(paths, options)
+        else:
+            base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
+            # Use expand_dir instead of create_source_list to avoid complaints
+            # when there aren't any .py files in an increment
+            return [base] + expand_dir(FileSystemMetaCache(), test_temp_dir)
 
 
 def normalize_messages(messages: List[str]) -> List[str]:

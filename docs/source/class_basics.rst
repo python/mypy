@@ -312,7 +312,8 @@ This is a type for objects that support ``bytes(x)``.
 ``SupportsComplex``
 -------------------
 
-This is a type for objects that support ``complex(x)``.
+This is a type for objects that support ``complex(x)``. Note that no arithmetic operations
+are supported.
 
 .. code-block:: python
 
@@ -321,7 +322,8 @@ This is a type for objects that support ``complex(x)``.
 ``SupportsFloat``
 -----------------
 
-This is a type for objects that support ``float(x)``.
+This is a type for objects that support ``float(x)``. Note that no arithmetic operations
+are supported.
 
 .. code-block:: python
 
@@ -330,7 +332,8 @@ This is a type for objects that support ``float(x)``.
 ``SupportsInt``
 ---------------
 
-This is a type for objects that support ``int(x)``.
+This is a type for objects that support ``int(x)``.  Note that no arithmetic operations
+are supported.
 
 .. code-block:: python
 

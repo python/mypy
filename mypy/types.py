@@ -242,9 +242,10 @@ class CallableArgument(Type):
 class TypeList(Type):
     """Information about argument types and names [...].
 
-    This is only used for the arguments of a Callable type, i.e. for
+    This is used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
-    but a syntactic AST construct.
+    but a syntactic AST construct. UnboundTypes can also have TypeList
+    types before they are processed into Callable types.
     """
 
     items = None  # type: List[Type]
@@ -283,6 +284,8 @@ class TypeOfAny(Enum):
     special_form = 'special_form'
     # Does this Any come from interaction with another Any?
     from_another_any = 'from_another_any'
+    # Does this Any come from an implementation limitation/bug?
+    implementation_artifact = 'implementation_artifact'
 
 
 class AnyType(Type):
@@ -291,6 +294,7 @@ class AnyType(Type):
     def __init__(self,
                  type_of_any: TypeOfAny,
                  source_any: Optional['AnyType'] = None,
+                 missing_import_name: Optional[str] = None,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
@@ -301,6 +305,14 @@ class AnyType(Type):
         if source_any and source_any.source_any:
             self.source_any = source_any.source_any
 
+        if source_any is None:
+            self.missing_import_name = missing_import_name
+        else:
+            self.missing_import_name = source_any.missing_import_name
+
+        # Only unimported type anys and anys from other anys should have an import name
+        assert (missing_import_name is None or
+                type_of_any in (TypeOfAny.from_unimported_type, TypeOfAny.from_another_any))
         # Only Anys that come from another Any can have source_any.
         assert type_of_any != TypeOfAny.from_another_any or source_any is not None
         # We should not have chains of Anys.
@@ -318,6 +330,7 @@ class AnyType(Type):
         if original_any is _dummy:
             original_any = self.source_any
         return AnyType(type_of_any=type_of_any, source_any=original_any,
+                       missing_import_name=self.missing_import_name,
                        line=self.line, column=self.column)
 
     def __hash__(self) -> int:
@@ -328,14 +341,16 @@ class AnyType(Type):
 
     def serialize(self) -> JsonDict:
         return {'.class': 'AnyType', 'type_of_any': self.type_of_any.name,
-                'source_any': self.source_any.serialize() if self.source_any is not None else None}
+                'source_any': self.source_any.serialize() if self.source_any is not None else None,
+                'missing_import_name': self.missing_import_name}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
         source = data['source_any']
         return AnyType(TypeOfAny[data['type_of_any']],
-                       AnyType.deserialize(source) if source is not None else None)
+                       AnyType.deserialize(source) if source is not None else None,
+                       data['missing_import_name'])
 
 
 class UninhabitedType(Type):
@@ -517,6 +532,9 @@ class Instance(Type):
     def copy_modified(self, *, args: List[Type]) -> 'Instance':
         return Instance(self.type, args, self.line, self.column, self.erased)
 
+    def has_readable_member(self, name: str) -> bool:
+        return self.type.has_readable_member(name)
+
 
 class TypeVarType(Type):
     """A type variable type.
@@ -663,6 +681,7 @@ class CallableType(FunctionLike):
                  from_type_type: bool = False,
                  bound_args: Optional[List[Optional[Type]]] = None,
                  ) -> None:
+        assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
             variables = []
         assert len(arg_types) == len(arg_kinds)

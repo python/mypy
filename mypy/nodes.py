@@ -2,10 +2,14 @@
 
 import os
 from abc import abstractmethod
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence
 )
+
+MYPY = False
+if MYPY:
+    from typing import DefaultDict
 
 import mypy.strconv
 from mypy.util import short_type
@@ -194,6 +198,8 @@ class MypyFile(SymbolNode):
     path = ''
     # Top-level definitions and statements
     defs = None  # type: List[Statement]
+    # Type alias dependencies as mapping from target to set of alias full names
+    alias_deps = None  # type: DefaultDict[str, Set[str]]
     # Is there a UTF-8 BOM at the start?
     is_bom = False
     names = None  # type: SymbolTable
@@ -215,6 +221,7 @@ class MypyFile(SymbolNode):
         self.line = 1  # Dummy line number
         self.imports = imports
         self.is_bom = is_bom
+        self.alias_deps = defaultdict(set)
         if ignored_lines:
             self.ignored_lines = ignored_lines
         else:
@@ -308,14 +315,48 @@ class ImportAll(ImportBase):
     """from m import *"""
     id = None  # type: str
     relative = None  # type: int
+    imported_names = None  # type: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
+        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
+
+
+class ImportedName(SymbolNode):
+    """Indirect reference to a fullname stored in symbol table.
+
+    This node is not present in the original program as such. This is
+    just a temporary artifact in binding imported names. After semantic
+    analysis pass 2, these references should be replaced with direct
+    reference to a real AST node.
+
+    Note that this is neither a Statement nor an Expression so this
+    can't be visited.
+    """
+
+    def __init__(self, target_fullname: str) -> None:
+        self.target_fullname = target_fullname
+
+    def name(self) -> str:
+        return self.target_fullname.split('.')[-1]
+
+    def fullname(self) -> str:
+        return self.target_fullname
+
+    def serialize(self) -> JsonDict:
+        assert False, "ImportedName leaked from semantic analysis"
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ImportedName':
+        assert False, "ImportedName should never be serialized"
+
+    def __str__(self) -> str:
+        return 'ImportedName(%s)' % self.target_fullname
 
 
 class FuncBase(Node):
@@ -417,7 +458,7 @@ class Argument(Node):
 
 
 class FuncItem(FuncBase):
-    arguments = []  # type: List[Argument]
+    arguments = []  # type: List[Argument]  # Note: Can be None if deserialized (type is a lie!)
     arg_names = []  # type: List[str]
     arg_kinds = []  # type: List[int]
     # Minimum number of arguments
@@ -797,6 +838,8 @@ class AssignmentStmt(Statement):
     unanalyzed_type = None  # type: Optional[mypy.types.Type]
     # This indicates usage of PEP 526 type annotation syntax in assignment.
     new_syntax = False  # type: bool
+    # Does this assignment define a type alias?
+    is_alias_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
@@ -1321,6 +1364,7 @@ op_methods = {
     '*': '__mul__',
     '/': '__truediv__',
     '%': '__mod__',
+    'divmod': '__divmod__',
     '//': '__floordiv__',
     '**': '__pow__',
     '@': '__matmul__',
@@ -1356,6 +1400,7 @@ reverse_op_methods = {
     '__mul__': '__rmul__',
     '__truediv__': '__rtruediv__',
     '__mod__': '__rmod__',
+    '__divmod__': '__rdivmod__',
     '__floordiv__': '__rfloordiv__',
     '__pow__': '__rpow__',
     '__matmul__': '__rmatmul__',
@@ -2069,6 +2114,11 @@ class TypeInfo(SymbolNode):
             return (left, right) in self._cache
         return (left, right) in self._cache_proper
 
+    def reset_subtype_cache(self) -> None:
+        for item in self.mro:
+            item._cache = set()
+            item._cache_proper = set()
+
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
@@ -2079,14 +2129,8 @@ class TypeInfo(SymbolNode):
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
 
-    # IDEA: Refactor the has* methods to be more consistent and document
-    #       them.
-
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
-
-    def has_method(self, name: str) -> bool:
-        return self.get_method(name) is not None
 
     def get_method(self, name: str) -> Optional[FuncBase]:
         if self.mro is None:  # Might be because of a previous error.
@@ -2111,6 +2155,7 @@ class TypeInfo(SymbolNode):
         self.is_enum = self._calculate_is_enum()
         # The property of falling back to Any is inherited.
         self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
+        self.reset_subtype_cache()
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass
@@ -2195,11 +2240,18 @@ class TypeInfo(SymbolNode):
             if isinstance(node, Var) and node.type:
                 description += ' ({})'.format(type_str(node.type))
             names.append(description)
+        items = [
+            'Name({})'.format(self.fullname()),
+            base,
+            mro,
+            ('Names', names),
+        ]
+        if self.declared_metaclass:
+            items.append('DeclaredMetaclass({})'.format(type_str(self.declared_metaclass)))
+        if self.metaclass_type:
+            items.append('MetaclassType({})'.format(type_str(self.metaclass_type)))
         return mypy.strconv.dump_tagged(
-            ['Name({})'.format(self.fullname()),
-             base,
-             mro,
-             ('Names', names)],
+            items,
             head,
             str_conv=str_conv)
 
@@ -2319,7 +2371,7 @@ class SymbolTableNode:
     #  - UNBOUND_IMPORTED: temporary kind for imported names (we don't know the final kind yet)
     kind = None  # type: int
     # AST node of definition (among others, this can be FuncDef/Var/TypeInfo/TypeVarExpr/MypyFile,
-    # or None for a bound type variable).
+    # or None for a bound type variable or a cross_ref that hasn't been fixed up yet).
     node = None  # type: Optional[SymbolNode]
     # If this not None, override the type of the 'node' attribute. This is only used for
     # type aliases.
@@ -2341,6 +2393,10 @@ class SymbolTableNode:
     normalized = False  # type: bool
     # Was this defined by assignment to self attribute?
     implicit = False  # type: bool
+    # Is this node refers to other node via node aliasing?
+    # (This is currently used for simple aliases like `A = int` instead of .type_override)
+    is_aliasing = False  # type: bool
+    alias_name = None  # type: Optional[str]
 
     def __init__(self,
                  kind: int,

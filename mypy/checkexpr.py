@@ -10,8 +10,8 @@ from mypy.types import (
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UnboundType, UninhabitedType, TypeType, TypeOfAny,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    get_typ_args, set_typ_args,
-    StarType)
+    get_typ_args, StarType
+)
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
@@ -136,16 +136,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
-                if result.type is None:
+                in_scope, partial_types = self.chk.find_partial_types_in_all_scopes(node)
+                if result.type is None and in_scope:
                     # 'None' partial type. It has a well-defined type. In an lvalue context
                     # we want to preserve the knowledge of it being a partial type.
                     if not lvalue:
                         result = NoneTyp()
                 else:
-                    partial_types = self.chk.find_partial_types(node)
                     if partial_types is not None and not self.chk.current_node_deferred:
-                        context = partial_types[node]
-                        self.msg.need_annotation_for_var(node, context)
+                        if in_scope:
+                            context = partial_types[node]
+                            self.msg.need_annotation_for_var(node, context)
+                        else:
+                            # Defer the node -- we might get a better type in the outer scope
+                            self.chk.handle_cannot_determine_type(node.name(), e)
                     result = AnyType(TypeOfAny.special_form)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
@@ -157,6 +161,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type(node, self.named_type)
+            if isinstance(result, CallableType) and isinstance(result.ret_type, Instance):
+                # We need to set correct line and column
+                # TODO: always do this in type_object_type by passing the original context
+                result.ret_type.line = e.line
+                result.ret_type.column = e.column
             if isinstance(self.type_context[-1], TypeType):
                 # This is the type in a Type[] expression, so substitute type
                 # variables with Any.
@@ -2084,7 +2093,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_ctx = callable_ctx.copy_modified(
                 is_ellipsis_args=False,
                 arg_types=[AnyType(TypeOfAny.special_form)] * len(arg_kinds),
-                arg_kinds=arg_kinds
+                arg_kinds=arg_kinds,
+                arg_names=[None] * len(arg_kinds)
             )
 
         if ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds:
@@ -2419,7 +2429,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
-        # TODO TupleType => also consider tuple attributes
+        # TODO: refactor this to use checkmember.analyze_member_access, otherwise
+        # these two should be carefully kept in sync.
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
         if isinstance(typ, CallableType) and typ.is_type_obj():
@@ -2431,6 +2442,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return result
         elif isinstance(typ, TupleType):
             return self.has_member(typ.fallback, member)
+        elif isinstance(typ, TypeType):
+            # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
+            # so we don't need to care about unions here.
+            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
+                return self.has_member(typ.item.type.metaclass_type, member)
+            if isinstance(typ.item, AnyType):
+                return True
+            return False
         else:
             return False
 

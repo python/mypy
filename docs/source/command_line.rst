@@ -11,15 +11,20 @@ flag (or its long form ``--help``)::
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
               [--follow-imports {normal,silent,skip,error}]
-              [--disallow-any-{unimported,expr,decorated,explicit,generics}]
-              [--disallow-untyped-calls] [--disallow-untyped-defs]
+              [--disallow-any-unimported] [--disallow-any-expr]
+              [--disallow-any-decorated] [--disallow-any-explicit]
+              [--disallow-any-generics] [--disallow-untyped-calls]
+              [--disallow-untyped-defs] [--disallow-incomplete-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
-              [--warn-incomplete-stub] [--warn-redundant-casts]
-              [--no-warn-no-return] [--warn-return-any] [--warn-unused-ignores]
-              [--show-error-context] [--no-implicit-optional] [-i]
-              [--quick-and-dirty] [--cache-dir DIR] [--skip-version-check]
+              [--warn-incomplete-stub] [--disallow-untyped-decorators]
+              [--warn-redundant-casts] [--no-warn-no-return]
+              [--warn-return-any] [--warn-unused-ignores]
+              [--warn-unused-configs] [--show-error-context]
+              [--no-implicit-optional] [-i] [--quick-and-dirty]
+              [--cache-dir DIR] [--cache-fine-grained] [--skip-version-check]
               [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
+              [--always-true NAME] [--always-false NAME]
               [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
               [--inferstats] [--custom-typing MODULE]
               [--custom-typeshed-dir DIR] [--scripts-are-modules]
@@ -28,9 +33,9 @@ flag (or its long form ``--help``)::
               [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
               [--cobertura-xml-report DIR] [--html-report DIR]
               [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR]
-              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
-              [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
+              [--memory-xml-report DIR] [--txt-report DIR] [--xml-report DIR]
+              [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
+              [-p PACKAGE] [-c PROGRAM_TEXT]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -100,7 +105,10 @@ and anything imported from there.)  For example::
 
   $ mypy -p html
 
-will type check the entire ``html`` package (of library stubs).
+will type check the entire ``html`` package (of library stubs). One can
+specify multiple packages and modules on the command line, for example::
+
+  $ mypy --package p.a --package p.b --module c
 
 Finally the flag ``-c`` (long form: ``--command``) will take a string
 from the command line and type check it as a small program.  For
@@ -292,22 +300,11 @@ Here are some more useful flags:
 - ``--ignore-missing-imports`` suppresses error messages about imports
   that cannot be resolved (see :ref:`follow-imports` for some examples).
 
-- ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
-  types and ``None`` values. Without this option, mypy doesn't generally check the
-  use of ``None`` values -- they are valid everywhere. See :ref:`strict_optional` for
-  more about this feature.
-
-- ``--strict-optional-whitelist`` attempts to suppress strict Optional-related
-  errors in non-whitelisted files.  Takes an arbitrary number of globs as the
-  whitelist.  This option is intended to be used to incrementally roll out
-  ``--strict-optional`` to a large codebase that already has mypy annotations.
-  However, this flag comes with some significant caveats.  It does not suppress
-  all errors caused by turning on ``--strict-optional``, only most of them, so
-  there may still be a bit of upfront work to be done before it can be used in
-  CI.  It will also suppress some errors that would be caught in a
-  non-strict-Optional run.  Therefore, when using this flag, you should also
-  re-check your code without ``--strict-optional`` to ensure new type errors
-  are not introduced.
+- ``--strict-optional`` enables strict checking of ``Optional[...]``
+  types and ``None`` values. Without this option, mypy doesn't
+  generally check the use of ``None`` values -- they are valid
+  everywhere. See :ref:`strict_optional` for more about this feature.
+  This flag will become the default in the near future.
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
@@ -342,17 +339,19 @@ Here are some more useful flags:
 
 .. _incremental:
 
-- ``--incremental`` is an experimental option that enables a module
-  cache. When enabled, mypy caches results from previous runs
-  to speed up type checking. Incremental mode can help when most parts
-  of your program haven't changed since the previous mypy run.  A
-  companion flag is ``--cache-dir DIR``, which specifies where the
-  cache files are written.  By default this is ``.mypy_cache`` in the
-  current directory.  While the cache is only read in incremental
-  mode, it is written even in non-incremental mode, in order to "warm"
-  the cache.  To disable writing the cache, use
-  ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul`` (Windows).
-  Cache files belonging to a different mypy version are ignored.
+- ``--incremental`` enables a module cache, using results from
+  previous runs to speed up type checking. Incremental mode can help
+  when most parts of your program haven't changed since the previous
+  mypy run.
+
+- ``--cache-dir DIR`` is a companion flag to ``-incremental``, which
+  specifies where the cache files are written.  By default this is
+  ``.mypy_cache`` in the current directory.  While the cache is only
+  read in incremental mode, it is written even in non-incremental
+  mode, in order to "warm" the cache.  To disable writing the cache,
+  use ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul``
+  (Windows).  Cache files belonging to a different mypy version are
+  ignored.
 
 .. _quick-mode:
 
@@ -376,6 +375,12 @@ Here are some more useful flags:
   run under the the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
+
+- ``--always-true NAME`` will treat all variables named ``NAME`` as
+  compile-time constants that are always true.  May be repeated.
+
+- ``--always-false NAME`` will treat all variables named ``NAME`` as
+  compile-time constants that are always false.  May be repeated.
 
 - ``--show-column-numbers`` will add column offsets to error messages,
   for example, the following indicates an error in line 12, column 9

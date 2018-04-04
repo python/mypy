@@ -4,6 +4,7 @@ from typing import Optional, Dict, List, cast, Tuple, Iterable
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
+from mypy.fixup import lookup_qualified_stnode
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
@@ -54,14 +55,23 @@ class Attribute:
         if self.converter_name:
             # When a converter is set the init_type is overriden by the first argument
             # of the converter method.
-            converter = ctx.api.lookup_fully_qualified(self.converter_name)
+            converter = lookup_qualified_stnode(ctx.api.modules, self.converter_name, True)
+            if not converter:
+                # The converter may be a local variable. Check there too.
+                converter = ctx.api.lookup_qualified(self.converter_name, self.info, True)
+
             if (converter
                     and converter.type
                     and isinstance(converter.type, CallableType)
                     and converter.type.arg_types):
-                init_type = converter.type.arg_types[0]
+                init_type = ctx.api.anal_type(converter.type.arg_types[0])
             else:
-                init_type = None
+                ctx.api.fail("Cannot determine type of converter function", self.context)
+                init_type = AnyType(TypeOfAny.from_error)
+        elif self.converter_name == '':
+            # This means we had a converter but it's not of a type we can infer.
+            # Error was shown in _get_converter_name
+            init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
             if ctx.api.options.disallow_untyped_defs:
@@ -121,7 +131,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     info = ctx.cls.info
 
     init = _get_decorator_bool_argument(ctx, 'init', True)
-    frozen = _get_decorator_bool_argument(ctx, 'frozen', False)
+    frozen = _get_frozen(ctx)
     cmp = _get_decorator_bool_argument(ctx, 'cmp', True)
     auto_attribs = _get_decorator_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
 
@@ -136,6 +146,12 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     attributes = _analyze_class(ctx, auto_attribs)
 
+    # Save the attributes so that subclasses can reuse them.
+    ctx.cls.info.metadata['attrs'] = {
+        'attributes': [attr.serialize() for attr in attributes],
+        'frozen': frozen,
+    }
+
     adder = MethodAdder(info, ctx.api.named_type('__builtins__.function'))
     if init:
         _add_init(ctx, attributes, adder)
@@ -143,6 +159,17 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         _add_cmp(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
+
+
+def _get_frozen(ctx: 'mypy.plugin.ClassDefContext') -> bool:
+    """Return whether this class is frozen."""
+    if _get_decorator_bool_argument(ctx, 'frozen', False):
+        return True
+    # Subclasses of frozen classes are frozen so check that.
+    for super_info in ctx.cls.info.mro[1:-1]:
+        if 'attrs' in super_info.metadata and super_info.metadata['attrs']['frozen']:
+            return True
+    return False
 
 
 def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> List[Attribute]:
@@ -162,6 +189,14 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
         elif isinstance(stmt, Decorator):
             _cleanup_decorator(stmt, own_attrs)
 
+    for attribute in own_attrs.values():
+        # Even though these look like class level assignments we want them to look like
+        # instance level assignments.
+        if attribute.name in ctx.cls.info.names:
+            node = ctx.cls.info.names[attribute.name].node
+            assert isinstance(node, Var)
+            node.is_initialized_in_class = False
+
     # Traverse the MRO and collect attributes from the parents.
     taken_attr_names = set(own_attrs)
     super_attrs = []
@@ -175,9 +210,6 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
                     super_attrs.append(a)
                     taken_attr_names.add(a.name)
     attributes = super_attrs + list(own_attrs.values())
-
-    # Save the attributes so that subclasses can reuse them.
-    ctx.cls.info.metadata['attrs'] = {'attributes': [attr.serialize() for attr in attributes]}
 
     # Check the init args for correct default-ness.  Note: This has to be done after all the
     # attributes for all classes have been read, because subclasses can override parents.
@@ -309,22 +341,29 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert
-    converter_name = _get_converter_name(converter)
+    converter_name = _get_converter_name(ctx, converter)
 
     return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, converter_name, stmt)
 
 
-def _get_converter_name(converter: Optional[Expression]) -> Optional[str]:
+def _get_converter_name(ctx: 'mypy.plugin.ClassDefContext',
+                        converter: Optional[Expression]) -> Optional[str]:
     """Return the full name of the converter if it exists and is a simple function."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
-    if (converter
-            and isinstance(converter, RefExpr)
-            and converter.node
-            and isinstance(converter.node, FuncBase)
-            and converter.node.type
-            and isinstance(converter.node.type, CallableType)
-            and converter.node.type.arg_types):
-        return converter.node.fullname()
+    if converter:
+        if (isinstance(converter, RefExpr)
+                and converter.node
+                and isinstance(converter.node, FuncBase)
+                and converter.node.type
+                and isinstance(converter.node.type, CallableType)
+                and converter.node.type.arg_types):
+            return converter.node.fullname()
+        # Signal that we have an unsupported converter.
+        ctx.api.fail(
+            "Unsupported converter function, only named functions are currently supported",
+            converter
+        )
+        return ''
     return None
 
 
@@ -367,12 +406,20 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
 
 def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]) -> None:
     """Turn all the attributes into properties to simulate frozen classes."""
-    # TODO: Handle subclasses of frozen classes.
     for attribute in attributes:
-        node = ctx.cls.info.names[attribute.name].node
-        assert isinstance(node, Var)
-        node.is_initialized_in_class = False
-        node.is_property = True
+        if attribute.name in ctx.cls.info.names:
+            # This variable belongs to this class so we can modify it.
+            node = ctx.cls.info.names[attribute.name].node
+            assert isinstance(node, Var)
+            node.is_property = True
+        else:
+            # This variable belongs to a super class so create new Var so we
+            # can modify it.
+            var = Var(attribute.name, ctx.cls.info[attribute.name].type)
+            var.info = ctx.cls.info
+            var._fullname = '%s.%s' % (ctx.cls.info.fullname(), var.name())
+            ctx.cls.info.names[var.name()] = SymbolTableNode(MDEF, var)
+            var.is_property = True
 
 
 def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],

@@ -81,6 +81,10 @@ Test cases for this module live in 'test-data/unit/deps*.test'.
 
 from typing import Dict, List, Set, Optional, Tuple, Union
 
+MYPY = False
+if MYPY:
+    from typing import DefaultDict
+
 from mypy.checkmember import bind_self
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
@@ -88,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -97,26 +101,28 @@ from mypy.types import (
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, ForwardRef, Overloaded
 )
-from mypy.server.trigger import make_trigger
+from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
+from mypy.scope import Scope
 
 
 def get_dependencies(target: MypyFile,
                      type_map: Dict[Expression, Type],
                      python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
-    visitor = DependencyVisitor(type_map, python_version)
+    visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     return visitor.map
 
 
 def get_dependencies_of_target(module_id: str,
+                               module_tree: MypyFile,
                                target: Node,
                                type_map: Dict[Expression, Type],
                                python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
-    visitor = DependencyVisitor(type_map, python_version)
+    visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
     visitor.scope.enter_file(module_id)
     if isinstance(target, MypyFile):
         # Only get dependencies of the top-level of the module. Don't recurse into
@@ -140,26 +146,33 @@ def get_dependencies_of_target(module_id: str,
 class DependencyVisitor(TraverserVisitor):
     def __init__(self,
                  type_map: Dict[Expression, Type],
-                 python_version: Tuple[int, int]) -> None:
+                 python_version: Tuple[int, int],
+                 alias_deps: 'DefaultDict[str, Set[str]]') -> None:
         self.scope = Scope()
         self.type_map = type_map
         self.python2 = python_version[0] == 2
+        # This attribute holds a mapping from target to names of type aliases
+        # it depends on. These need to be processed specially, since they are
+        # only present in expanded form in symbol tables. For example, after:
+        #    A = List[int]
+        #    x: A
+        # The module symbol table will just have a Var `x` with type `List[int]`,
+        # and the dependency of `x` on `A` is lost. Therefore the alias dependencies
+        # are preserved at alias expansion points in `semanal.py`, stored as an attribute
+        # on MypyFile, and then passed here.
+        self.alias_deps = alias_deps
         self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
         self.is_package_init_file = False
 
     # TODO (incomplete):
-    #   from m import *
     #   await
     #   protocols
-    #   metaclasses
-    #   type aliases
-    #   functional enum
-    #   type variable with value restriction
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
         self.is_package_init_file = o.is_package_init_file()
+        self.add_type_alias_deps(self.scope.current_target())
         super().visit_mypy_file(o)
         self.scope.leave()
 
@@ -177,11 +190,20 @@ class DependencyVisitor(TraverserVisitor):
         if o.info:
             for base in non_trivial_bases(o.info):
                 self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
+        self.add_type_alias_deps(self.scope.current_target())
         super().visit_func_def(o)
+        variants = set(o.expanded) - {o}
+        for ex in variants:
+            if isinstance(ex, FuncDef):
+                super().visit_func_def(ex)
         self.scope.leave()
 
     def visit_decorator(self, o: Decorator) -> None:
-        self.add_dependency(make_trigger(o.func.fullname()))
+        # We don't need to recheck outer scope for an overload, only overload itself.
+        # Also if any decorator is nested, it is not externally visible, so we don't need to
+        # generate dependency.
+        if not o.func.is_overload and self.scope.current_function_name() is None:
+            self.add_dependency(make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
@@ -193,17 +215,28 @@ class DependencyVisitor(TraverserVisitor):
         # Add dependencies to type variables of a generic class.
         for tv in o.type_vars:
             self.add_dependency(make_trigger(tv.fullname), target)
-        # Add dependencies to base types.
-        for base in o.info.bases:
-            self.add_type_dependencies(base, target=target)
-        if o.info.tuple_type:
-            self.add_type_dependencies(o.info.tuple_type, target=make_trigger(target))
-        if o.info.typeddict_type:
-            self.add_type_dependencies(o.info.typeddict_type, target=make_trigger(target))
-        # TODO: Add dependencies based on remaining TypeInfo attributes.
+        self.process_type_info(o.info)
         super().visit_class_def(o)
         self.is_class = old_is_class
-        info = o.info
+        self.scope.leave()
+
+    def visit_newtype_expr(self, o: NewTypeExpr) -> None:
+        if o.info:
+            self.scope.enter_class(o.info)
+            self.process_type_info(o.info)
+            self.scope.leave()
+
+    def process_type_info(self, info: TypeInfo) -> None:
+        target = self.scope.current_full_target()
+        for base in info.bases:
+            self.add_type_dependencies(base, target=target)
+        if info.tuple_type:
+            self.add_type_dependencies(info.tuple_type, target=make_trigger(target))
+        if info.typeddict_type:
+            self.add_type_dependencies(info.typeddict_type, target=make_trigger(target))
+        if info.declared_metaclass:
+            self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
+        self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
                 for base_info in non_trivial_bases(info):
@@ -217,11 +250,11 @@ class DependencyVisitor(TraverserVisitor):
                                     target=make_trigger(info.fullname() + '.' + name))
             self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
                                 target=make_trigger(info.fullname() + '.__init__'))
-        self.scope.leave()
+            self.add_dependency(make_trigger(base_info.fullname() + '.__new__'),
+                                target=make_trigger(info.fullname() + '.__new__'))
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
-            # TODO: as_id
             self.add_dependency(make_trigger(id), self.scope.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
@@ -232,20 +265,29 @@ class DependencyVisitor(TraverserVisitor):
         for name, as_name in o.names:
             self.add_dependency(make_trigger(module_id + '.' + name))
 
+    def visit_import_all(self, o: ImportAll) -> None:
+        module_id, _ = correct_relative_import(self.scope.current_module_id(),
+                                               o.relative,
+                                               o.id,
+                                               self.is_package_init_file)
+        # The current target needs to be rechecked if anything "significant" changes in the
+        # target module namespace (as the imported definitions will need to be updated).
+        self.add_dependency(make_wildcard_trigger(module_id))
+
     def visit_block(self, o: Block) -> None:
         if not o.is_unreachable:
             super().visit_block(o)
 
     def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-        # TODO: Implement all assignment special forms, including these:
-        #   Enum
-        #   type aliases
         rvalue = o.rvalue
         if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
-            # TODO: Support type variable value restriction
             analyzed = rvalue.analyzed
             self.add_type_dependencies(analyzed.upper_bound,
                                        target=make_trigger(analyzed.fullname()))
+            for val in analyzed.values:
+                self.add_type_dependencies(val, target=make_trigger(analyzed.fullname()))
+            # We need to re-analyze the definition if bound or value is deleted.
+            super().visit_call_expr(rvalue)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
@@ -264,6 +306,23 @@ class DependencyVisitor(TraverserVisitor):
             assert info.typeddict_type is not None
             prefix = '%s.%s' % (self.scope.current_full_target(), info.name())
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
+        elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, EnumCallExpr):
+            # Enum values are currently not checked, but for future we add the deps on them
+            for name, symnode in rvalue.analyzed.info.names.items():
+                if isinstance(symnode.node, Var) and symnode.node.type:
+                    self.add_type_dependencies(symnode.node.type)
+        elif o.is_alias_def:
+            assert len(o.lvalues) == 1
+            lvalue = o.lvalues[0]
+            assert isinstance(lvalue, NameExpr)
+            # TODO: get rid of this extra dependency from __init__ to alias definition scope
+            typ = self.type_map.get(lvalue)
+            if isinstance(typ, FunctionLike) and typ.is_type_obj():
+                class_name = typ.type_object().fullname()
+                self.add_dependency(make_trigger(class_name + '.__init__'))
+                self.add_dependency(make_trigger(class_name + '.__new__'))
+            if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
+                self.add_type_dependencies(rvalue.analyzed.type)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
@@ -386,6 +445,7 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname()
             self.add_dependency(make_trigger(class_name + '.__init__'))
+            self.add_dependency(make_trigger(class_name + '.__new__'))
 
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.kind == LDEF:
@@ -473,8 +533,6 @@ class DependencyVisitor(TraverserVisitor):
     def add_operator_method_dependency_for_type(self, typ: Type, method: str) -> None:
         # Note that operator methods can't be (non-metaclass) methods of type objects
         # (that is, TypeType objects or Callables representing a type).
-        # TODO: TypedDict
-        # TODO: metaclasses
         if isinstance(typ, TypeVarType):
             typ = typ.upper_bound
         if isinstance(typ, TupleType):
@@ -485,6 +543,11 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(typ, UnionType):
             for item in typ.items:
                 self.add_operator_method_dependency_for_type(item, method)
+        elif isinstance(typ, FunctionLike) and typ.is_type_obj():
+            self.add_operator_method_dependency_for_type(typ.fallback, method)
+        elif isinstance(typ, TypeType):
+            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
+                self.add_operator_method_dependency_for_type(typ.item.type.metaclass_type, method)
 
     def visit_generator_expr(self, e: GeneratorExpr) -> None:
         super().visit_generator_expr(e)
@@ -505,6 +568,13 @@ class DependencyVisitor(TraverserVisitor):
         self.add_iter_dependency(e.expr)
 
     # Helpers
+
+    def add_type_alias_deps(self, target: str) -> None:
+        # Type aliases are special, because some of the dependencies are calculated
+        # in semanal.py, before they are expanded.
+        if target in self.alias_deps:
+            for alias in self.alias_deps[target]:
+                self.add_dependency(make_trigger(alias))
 
     def add_dependency(self, trigger: str, target: Optional[str] = None) -> None:
         """Add dependency from trigger to a target.
@@ -550,15 +620,21 @@ class DependencyVisitor(TraverserVisitor):
             return [make_trigger(member)]
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
             member = '%s.%s' % (typ.type_object().fullname(), name)
-            return [make_trigger(member)]
+            triggers = [make_trigger(member)]
+            triggers.extend(self.attribute_triggers(typ.fallback, name))
+            return triggers
         elif isinstance(typ, UnionType):
             targets = []
             for item in typ.items:
                 targets.extend(self.attribute_triggers(item, name))
             return targets
         elif isinstance(typ, TypeType):
-            # TODO: Metaclass attribute lookup
-            return self.attribute_triggers(typ.item, name)
+            triggers = self.attribute_triggers(typ.item, name)
+            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
+                triggers.append(make_trigger('%s.%s' %
+                                             (typ.item.type.metaclass_type.type.fullname(),
+                                              name)))
+            return triggers
         else:
             return []
 
@@ -571,78 +647,6 @@ class DependencyVisitor(TraverserVisitor):
         typ = self.type_map.get(node)
         if typ:
             self.add_attribute_dependency(typ, '__iter__')
-
-
-class Scope:
-    """Track which target we are processing at any given time."""
-
-    def __init__(self) -> None:
-        self.module = None  # type: Optional[str]
-        self.classes = []  # type: List[TypeInfo]
-        self.function = None  # type: Optional[FuncDef]
-        # Number of nested scopes ignored (that don't get their own separate targets)
-        self.ignored = 0
-
-    def current_module_id(self) -> str:
-        assert self.module
-        return self.module
-
-    def current_target(self) -> str:
-        """Return the current target (non-class; for a class return enclosing module)."""
-        assert self.module
-        target = self.module
-        if self.function:
-            if self.classes:
-                target += '.' + '.'.join(c.name() for c in self.classes)
-            target += '.' + self.function.name()
-        return target
-
-    def current_full_target(self) -> str:
-        """Return the current target (may be a class)."""
-        assert self.module
-        target = self.module
-        if self.classes:
-            target += '.' + '.'.join(c.name() for c in self.classes)
-        if self.function:
-            target += '.' + self.function.name()
-        return target
-
-    def enter_file(self, prefix: str) -> None:
-        self.module = prefix
-        self.classes = []
-        self.function = None
-        self.ignored = 0
-
-    def enter_function(self, fdef: FuncDef) -> None:
-        if not self.function:
-            self.function = fdef
-        else:
-            # Nested functions are part of the topmost function target.
-            self.ignored += 1
-
-    def enter_class(self, info: TypeInfo) -> None:
-        """Enter a class target scope."""
-        if not self.function:
-            self.classes.append(info)
-        else:
-            # Classes within functions are part of the enclosing function target.
-            self.ignored += 1
-
-    def leave(self) -> None:
-        """Leave the innermost scope (can be any kind of scope)."""
-        if self.ignored:
-            # Leave a scope that's included in the enclosing target.
-            self.ignored -= 1
-        elif self.function:
-            # Function is always the innermost target.
-            self.function = None
-        elif self.classes:
-            # Leave the innermost class.
-            self.classes.pop()
-        else:
-            # Leave module.
-            assert self.module
-            self.module = None
 
 
 def get_type_triggers(typ: Type) -> List[str]:
@@ -662,18 +666,20 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:
+        if typ.missing_import_name is not None:
+            return [make_trigger(typ.missing_import_name)]
         return []
 
     def visit_none_type(self, typ: NoneTyp) -> List[str]:
         return []
 
     def visit_callable_type(self, typ: CallableType) -> List[str]:
-        # TODO: generic callables
-        # TODO: fallback?
         triggers = []
         for arg in typ.arg_types:
             triggers.extend(get_type_triggers(arg))
         triggers.extend(get_type_triggers(typ.ret_type))
+        # fallback is a metaclass type for class objects, and is
+        # processed separately.
         return triggers
 
     def visit_overloaded(self, typ: Overloaded) -> List[str]:
@@ -702,10 +708,13 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
-        # TODO: bound (values?)
         triggers = []
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
+        if typ.upper_bound:
+            triggers.extend(get_type_triggers(typ.upper_bound))
+        for val in typ.values:
+            triggers.extend(get_type_triggers(val))
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:

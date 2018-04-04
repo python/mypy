@@ -552,16 +552,64 @@ class B:
 __main__.B.x
 
 [case testFunctionalEnum]
-from enum import Enum
+from enum import Enum, IntEnum
 A = Enum('A', 'x')
 B = Enum('B', 'x')
+C = Enum('C', 'x')
+D = IntEnum('D', 'x')
 [file next.py]
-from enum import Enum
+from enum import Enum, IntEnum
 A = Enum('A', 'x')
 B = Enum('B', 'y')
+C = IntEnum('C', 'x')
+D = IntEnum('D', 'x y')
 [out]
 __main__.B.x
 __main__.B.y
+__main__.C
+__main__.D.y
+
+[case testClassBasedEnum]
+from enum import Enum
+class A(Enum):
+    X = 0
+    Y = 1
+class B(Enum):
+    X = 0
+    Y = 1
+class C(Enum):
+    X = 0
+    Y = 1
+class D(Enum):
+    X = 0
+    Y = 1
+class E(Enum):
+    X = 0
+[file next.py]
+from enum import Enum
+class A(Enum):
+    X = 0
+    Y = 1
+class B(Enum):
+    X = 0
+    Z = 1
+class C(Enum):
+    X = 0
+    Y = 1
+    Z = 2
+class D(Enum):
+    X = 'a'
+    Y = 'b'
+class F(Enum):
+    X = 0
+[out]
+__main__.B.Y
+__main__.B.Z
+__main__.C.Z
+__main__.D.X
+__main__.D.Y
+__main__.E
+__main__.F
 
 [case testTypedDict]
 from mypy_extensions import TypedDict
@@ -618,3 +666,216 @@ p = Point(dict(x=42, y=1337))
 [out]
 __main__.Point
 __main__.p
+
+[case testTypeAliasSimple]
+A = int
+B = int
+[file next.py]
+A = str
+B = int
+[out]
+__main__.A
+
+[case testTypeAliasGeneric]
+from typing import List
+A = List[int]
+B = List[int]
+[file next.py]
+from typing import List
+A = List[str]
+B = List[int]
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenToNonGen]
+from typing import List
+A = List[str]
+B = List
+[file next.py]
+from typing import List
+A = List
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasNonGenToGen]
+from typing import List
+A = List
+B = List
+[file next.py]
+from typing import List
+A = List[str]
+B = List
+[builtins fixtures/list.pyi]
+[out]
+__main__.A
+
+[case testTypeAliasGenericTypeVar]
+from typing import TypeVar, Dict
+T = TypeVar('T')
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[file next.py]
+from typing import TypeVar, Dict
+class T: pass
+S = TypeVar('S')
+A = Dict[str, T]
+B = Dict[str, S]
+[builtins fixtures/dict.pyi]
+[out]
+__main__.A
+__main__.T
+
+[case testNewType]
+from typing import NewType
+class C: pass
+class D: pass
+N1 = NewType('N1', C)
+N2 = NewType('N2', D)
+N3 = NewType('N3', C)
+class N4(C): pass
+[file next.py]
+from typing import NewType
+class C: pass
+class D(C): pass
+N1 = NewType('N1', C)
+N2 = NewType('N2', D)
+class N3(C): pass
+N4 = NewType('N4', C)
+[out]
+__main__.D
+__main__.N2
+__main__.N3
+__main__.N3.__init__
+__main__.N4
+__main__.N4.__init__
+
+[case testChangeGenericBaseClassOnly]
+from typing import List
+class C(List[int]): pass
+[file next.py]
+from typing import List
+class C(List[str]): pass
+[builtins fixtures/list.pyi]
+[out]
+__main__.C
+
+[case testOverloads]
+from typing import overload
+class C: pass
+@overload
+def a(x: int) -> None: pass
+@overload
+def a(x: str) -> str: pass
+def a(x):
+    pass
+@overload
+def b(x: int) -> None: pass
+@overload
+def b(x: str) -> str: pass
+def b(x):
+    pass
+@overload
+def c(x: int) -> None: pass
+@overload
+def c(x: str) -> str: pass
+def c(x):
+    pass
+@overload
+def d(x: int) -> None: pass
+@overload
+def d(x: str) -> str: pass
+def d(x):
+    pass
+[file next.py]
+from typing import overload
+class C: pass
+@overload
+def a(x: int) -> None: pass
+@overload
+def a(x: str) -> str: pass
+def a(x):
+    pass
+@overload
+def b(x: str) -> str: pass
+@overload
+def b(x: int) -> None: pass
+def b(x):
+    pass
+@overload
+def c(x: int) -> None: pass
+@overload
+def c(x: str) -> str: pass
+@overload
+def c(x: C) -> C: pass
+def c(x):
+    pass
+def d(x: int) -> None:
+    pass
+@overload
+def e(x: int) -> None: pass
+@overload
+def e(x: str) -> str: pass
+def e(x):
+    pass
+[out]
+__main__.b
+__main__.c
+__main__.d
+__main__.e
+
+[case testOverloadsExternalOnly]
+from typing import overload
+class Base: pass
+class A(Base): pass
+class B(Base): pass
+class C(Base): pass
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+def f(x: Base) -> Base:
+    pass
+@overload
+def g(x: A) -> A: pass
+@overload
+def g(x: B) -> B: pass
+def g(x: Base) -> Base:
+    pass
+[file next.py]
+from typing import overload
+class Base: pass
+class A(Base): pass
+class B(Base): pass
+class C(Base): pass
+@overload
+def f(x: A) -> A: pass
+@overload
+def f(x: B) -> B: pass
+def f(x: object) -> object:
+    pass
+@overload
+def g(x: A) -> A: pass
+@overload
+def g(x: C) -> C: pass
+def g(x: Base) -> Base:
+    pass
+[out]
+__main__.g
+
+[case testNestedFunctionDoesntMatter]
+class A: pass
+class B: pass
+def outer() -> None:
+    def inner(x: A) -> B:
+        pass
+[file next.py]
+class A: pass
+class B: pass
+def outer() -> None:
+    def inner(y: B) -> A:
+        pass
+[out]

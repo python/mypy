@@ -363,7 +363,7 @@ class DataDrivenTestCase:
 
 
 def module_from_path(path: str) -> str:
-    path = re.sub(r'\.py$', '', path)
+    path = re.sub(r'\.pyi?$', '', path)
     # We can have a mix of Unix-style and Windows-style separators.
     parts = re.split(r'[/\\]', path)
     assert parts[0] == test_temp_dir
@@ -593,7 +593,7 @@ class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
         # obj is the object for which pytest_pycollect_makeitem returned self.
         suite = self.obj  # type: DataSuite
         for f in suite.files:
-            for case in parse_test_cases(os.path.join(test_data_prefix, f),
+            for case in parse_test_cases(os.path.join(suite.data_prefix, f),
                                          base_path=suite.base_path,
                                          optional_out=suite.optional_out,
                                          native_sep=suite.native_sep):
@@ -673,6 +673,7 @@ class DataSuite:
     # option fields - class variables
     files = None  # type: List[str]
     base_path = '.'
+    data_prefix = test_data_prefix
     optional_out = False
     native_sep = False
     # Name suffix automatically added to each test case in the suite (can be

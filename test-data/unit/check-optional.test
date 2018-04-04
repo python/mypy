@@ -4,6 +4,12 @@
 x = None
 x()  # E: "None" not callable
 
+[case testImplicitNoneTypeInNestedFunction]
+def f() -> None:
+    def g() -> None:
+        x = None
+        x()  # E: "None" not callable
+
 [case testExplicitNoneType]
 x = None  # type: None
 x()  # E: "None" not callable

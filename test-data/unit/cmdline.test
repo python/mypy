@@ -241,6 +241,18 @@ bad = 0
 mypy.ini: [mypy]: Unrecognized option: bad = 0
 == Return code: 0
 
+[case testConfigErrorBadFlag]
+# cmd: mypy a.py
+[file mypy.ini]
+[[mypy]
+disallow-untyped-defs = True
+[file a.py]
+def f():
+    pass
+[out]
+mypy.ini: [mypy]: Unrecognized option: disallow-untyped-defs = True
+== Return code: 0
+
 [case testConfigErrorBadBoolean]
 # cmd: mypy -c pass
 [file mypy.ini]
@@ -581,7 +593,7 @@ m.py:6: error: Explicit "Any" is not allowed
 m.py:9: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitVarDeclaration]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 
 [file mypy.ini]
 [[mypy]
@@ -601,7 +613,7 @@ m.py:3: error: Explicit "Any" is not allowed
 m.py:5: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyExplicitGenericVarDeclaration]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 
 [file mypy.ini]
 [[mypy]
@@ -785,7 +797,7 @@ N = TypedDict('N', {'x': str, 'y': List})  # no error
 m.py:4: error: Explicit "Any" is not allowed
 
 [case testDisallowAnyGenericsTupleNoTypeParams]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -821,7 +833,7 @@ def g(s: List[Tuple[str, str]]) -> None: pass  # no error
 m.py:3: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsTypeType]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -858,7 +870,7 @@ def g(l: L[str]) -> None: pass  # no error
 m.py:5: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsGenericAlias]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -882,7 +894,7 @@ m.py:7: error: Missing type parameters for generic type
 m.py:11: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsPlainList]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -906,7 +918,7 @@ m.py:8: error: Need type annotation for 'x'
 m.py:9: error: Missing type parameters for generic type
 
 [case testDisallowAnyGenericsCustomGenericClass]
-# cmd: mypy m.py
+# cmd: mypy --python-version=3.6 m.py
 [file mypy.ini]
 [[mypy]
 [[mypy-m]
@@ -1054,3 +1066,50 @@ def foo(x):
 [out]
 a.py:1: error: Type signature has too many arguments
 == Return code: 2
+
+[case testModulesAndPackages]
+# cmd: mypy --package p.a --package p.b --module c
+[file p/__init__.py]
+[file p/a.py]
+def foo(x):
+    # type: (int) -> str
+    return "x"
+foo("wrong")
+[file p/b/__init__.py]
+from ..a import foo
+def bar(a):
+    # type: (int) -> str
+    return foo(a)
+bar("wrong")
+[file c.py]
+import p.b
+p.b.bar("wrong")
+[out]
+p/a.py:4: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
+p/b/__init__.py:5: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
+c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
+
+[case testFollowImportStubs1]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+[[mypy-math.*]
+follow_imports = error
+follow_imports_for_stubs = True
+[file main.py]
+import math
+math.frobnicate()
+[out]
+main.py:1: note: Import of 'math' ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
+
+[case testFollowImportStubs2]
+# cmd: mypy main.py
+[file mypy.ini]
+[[mypy]
+[[mypy-math.*]
+follow_imports = skip
+follow_imports_for_stubs = True
+[file main.py]
+import math
+math.frobnicate()
