@@ -119,7 +119,7 @@ def get_dependencies(target: MypyFile,
     deps = visitor.map
     new_deps, new_prio_deps = collect_protocol_attr_deps(target.names, target.fullname())
     for trigger, targets in new_deps.items():
-         deps.setdefault(trigger, set()).update(targets)
+        deps.setdefault(trigger, set()).update(targets)
     return deps, new_prio_deps
 
 
