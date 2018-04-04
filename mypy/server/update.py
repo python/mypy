@@ -946,7 +946,8 @@ def update_deps(module_id: str,
             deps.setdefault(trigger, set()).update(targets)
 
 
-def lookup_target(manager: BuildManager, target: str) -> Tuple[List[DeferredNode], Optional[TypeInfo]]:
+def lookup_target(manager: BuildManager, target: str) -> Tuple[List[DeferredNode],
+                                                               Optional[TypeInfo]]:
     """Look up a target by fully-qualified name.
 
     The first item in the return tuple is a list of deferred nodes that
@@ -1001,7 +1002,8 @@ def lookup_target(manager: BuildManager, target: str) -> Tuple[List[DeferredNode
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                result.extend(lookup_target(manager, target + '.' + name))
+                method, _ = lookup_target(manager, target + '.' + name)
+                result.extend(method)
         return result, stale_info
     if isinstance(node, Decorator):
         # Decorator targets actually refer to the function definition only.
