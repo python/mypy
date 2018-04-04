@@ -702,6 +702,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if self.analyze_typeddict_classdef(defn):
                 yield False
                 return
+            self.setup_class_def_analysis(defn)
             named_tuple_info = self.analyze_namedtuple_classdef(defn)
             if named_tuple_info is not None:
                 # Temporarily clear the names dict so we don't get errors about duplicate names
@@ -735,7 +736,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if key not in named_tuple_info.names or key != '__doc__'
                 })
             else:
-                self.setup_class_def_analysis(defn)
                 self.analyze_base_classes(defn)
                 self.analyze_metaclass(defn)
                 defn.info.is_protocol = is_protocol
@@ -988,6 +988,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
+    def is_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        base_exprs = defn.base_type_exprs
+        return any(getattr(b, 'fullname', None) == 'typing.NamedTuple' for b in base_exprs)
+
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> Optional[TypeInfo]:
         # special case for NamedTuple
         for base_expr in defn.base_type_exprs:
@@ -996,10 +1000,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if base_expr.fullname == 'typing.NamedTuple':
                     node = self.lookup(defn.name, defn)
                     if node is not None:
+                        if self.type or self.is_func_scope():
+                            name = defn.name + '@' + str(defn.line)
+                        else:
+                            name = defn.name
                         node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
                         items, types, default_items = self.check_namedtuple_classdef(defn)
                         info = self.build_namedtuple_typeinfo(
-                            defn.name, items, types, default_items)
+                            name, items, types, default_items)
                         node.node = info
                         defn.info.replaced = info
                         defn.info = info
@@ -1085,7 +1093,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     # Preserve name from previous fine-grained incremental run.
                     local_name = defn.info._fullname
                 defn.fullname = defn.info._fullname
-                self.globals[local_name] = node
+                if self.type and self.is_namedtuple_classdef(defn):
+                    # Special case for NamedTuple.
+                    self.type.names[local_name] = node
+                else:
+                    self.globals[local_name] = node
 
     def analyze_base_classes(self, defn: ClassDef) -> None:
         """Analyze and set up base classes.

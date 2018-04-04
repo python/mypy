@@ -132,6 +132,48 @@ MypyFile:1(
       __main__.N@2)
     PassStmt:2()))
 
+[case testNamedTupleDirectSubclass]
+from typing import NamedTuple
+class A(NamedTuple):
+	x: int
+
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  ClassDef:2(
+    A
+    TupleType(
+      Tuple[builtins.int])
+    BaseType(
+      builtins.tuple[builtins.int])
+    AssignmentStmt:3(
+      NameExpr(x [m])
+      TempNode:-1(
+        Any)
+      builtins.int)))
+
+[case testLocalNamedTupleDirectSubclass]
+from typing import NamedTuple
+def foo():
+    class A(NamedTuple):
+            x: int
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [NamedTuple])
+  FuncDef:2(
+    foo
+    Block:2(
+      ClassDef:3(
+        A
+        TupleType(
+          Tuple[builtins.int])
+        BaseType(
+          builtins.tuple[builtins.int])
+        AssignmentStmt:4(
+          NameExpr(x [m])
+          TempNode:-1(
+            Any)
+          builtins.int)))))
 -- Errors
 
 [case testNamedTupleWithTooFewArguments]
