@@ -235,12 +235,12 @@ def process_options(args: List[str],
         if help is not argparse.SUPPRESS:
             help += " (inverse: {})".format(inverse)
 
-        arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
+        arg = parser.add_argument(flag,
                                   action='store_false' if default else 'store_true',
                                   dest=dest,
                                   help=help)
         dest = arg.dest
-        arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
+        arg = parser.add_argument(inverse,
                                   action='store_true' if default else 'store_false',
                                   dest=dest,
                                   help=argparse.SUPPRESS)
