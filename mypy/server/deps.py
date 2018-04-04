@@ -112,15 +112,15 @@ Deps = Dict[str, Set[str]]
 
 def get_dependencies(target: MypyFile,
                      type_map: Dict[Expression, Type],
-                     python_version: Tuple[int, int]) -> Tuple[Deps, Deps]:
+                     python_version: Tuple[int, int]) -> Deps:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     deps = visitor.map
-    new_deps, new_prio_deps = collect_protocol_attr_deps(target.names, target.fullname())
+    new_deps = collect_protocol_attr_deps(target.names, target.fullname())
     for trigger, targets in new_deps.items():
         deps.setdefault(trigger, set()).update(targets)
-    return deps, new_prio_deps
+    return deps
 
 
 def get_dependencies_of_target(module_id: str,
@@ -759,14 +759,13 @@ def merge_deps(deps: Deps, new_deps: Deps) -> None:
 
 def collect_protocol_attr_deps(names: SymbolTable,
                                module_id: str,
-                               processed: Optional[Set[TypeInfo]] = None) -> Tuple[Deps, Deps]:
+                               processed: Optional[Set[TypeInfo]] = None) -> Deps:
     """Recursively collect protocol attribute dependencies for classes in 'names'."""
     # Currently there can be at most one target per trigger, but we might
     # add more deps in future so we are using defaultdict.
     if processed is None:
         processed = set()
     deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
-    prio_deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
     for node in names.values():
         if isinstance(node.node, TypeInfo) and node.node not in processed:
             info = node.node
@@ -791,21 +790,20 @@ def collect_protocol_attr_deps(names: SymbolTable,
                         continue
                     # If any class that was checked against a protocol changes,
                     # we need to reset the subtype cache for the protocol.
-                    # This however creates a "weak" dependency, the protocol doesn't
-                    # need to be re-checked, and its uses elsewhere are still valid
-                    # (unless invalidated by other deps). We process this kind of deps
-                    # separately, since they are higher priority, i.e., they need
-                    # to be processed before any other deps.
-                    prio_deps[trigger].add(info.fullname())
+                    # Strictly speaking, the protocol doesn't
+                    # need to be re-checked we only need to reset the cache,
+                    # and its uses elsewhere are still valid
+                    # (unless invalidated by other deps).
+                    deps[trigger].add(info.fullname())
                 for base_info in info.mro[1: -1]:
                     if base_info.module_name in ('typing', 'builtins'):
                         continue
-                    prio_deps[make_wildcard_trigger(base_info.fullname())].add(info.fullname())
-            sub_deps, sub_prio_deps = collect_protocol_attr_deps(info.names, module_id,
-                                                                 processed)  # nested classes
-            merge_deps(deps, sub_deps)
-            merge_deps(prio_deps, sub_prio_deps)
-    return dict(deps), dict(prio_deps)
+                    deps[make_wildcard_trigger(base_info.fullname())].add(info.fullname())
+            sub_deps = collect_protocol_attr_deps(info.names, module_id,
+                                                  processed)  # nested classes
+            for trigger, targets in sub_deps.items():
+                deps.setdefault(trigger, set()).update(targets)
+    return dict(deps)
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
@@ -824,11 +822,9 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
         if id in ('builtins', 'typing') or '/typeshed/' in node.path:
             continue
         assert id == node.fullname()
-        deps, prio_deps = get_dependencies(node, type_map, python_version)
+        deps = get_dependencies(node, type_map, python_version)
         for trigger, targets in deps.items():
             all_deps.setdefault(trigger, set()).update(targets)
-        for trigger, targets in prio_deps.items():
-            all_deps.setdefault(trigger, set()).update(t + '*' for t in targets)
 
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)

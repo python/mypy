@@ -60,7 +60,7 @@ from mypy.fscache import FileSystemCache, FileSystemMetaCache
 # mode only that is useful during development. This produces only a subset of
 # output compared to --verbose output. We use a global flag to enable this so
 # that it's easy to enable this when running tests.
-DEBUG_FINE_GRAINED = False
+DEBUG_FINE_GRAINED = True
 
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
@@ -542,23 +542,6 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class ProtoDeps:
-    """This class holds the state of protocol dependencies.
-
-    These are special in two ways:
-      * They should be collected at the very end of build.
-      * They have two priority levels (other dependencies all have the same priority).
-    """
-    prio_normal = None  # type: Dict[str, Set[str]]
-    prio_protocol = None  # type: Dict[str, Set[str]]
-
-    def __init__(self, proto_deps: Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]) -> None:
-        self.prio_normal, self.prio_protocol = proto_deps
-
-    def recollect(self, graph: Graph) -> None:
-        self.prio_normal, self.prio_protocol = collect_protocol_deps(graph)
-
-
 class BuildManager:
     """This class holds shared state for building a mypy program.
 
@@ -638,7 +621,7 @@ class BuildManager:
         # `proto_deps` can be None if after deserialization it turns out that they are
         # inconsistent with the other cache files (or an error occurred during deserialization).
         # A blocking error will be generated in this case, since we can't proceed safely.
-        self.proto_deps = None  # type: Optional[ProtoDeps]
+        self.proto_deps = None  # type: Optional[Dict[str, Set[str]]]
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -954,8 +937,7 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
 
 
 def read_protocol_cache(manager: BuildManager,
-                        graph: Graph) -> Optional[Tuple[Dict[str, Set[str]],
-                                                        Dict[str, Set[str]]]]:
+                        graph: Graph) -> Optional[Dict[str, Set[str]]]:
     """Read and validate protocol dependencies cache."""
     proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
     try:
@@ -988,26 +970,23 @@ def read_protocol_cache(manager: BuildManager,
         manager.log('Could not load protocol cache: cache is not a dict: {}'
                     .format(repr(deps)))
         return None
-    return ({k: set(v) for (k, v) in deps['prio_normal'].items()},
-            {k: set(v) for (k, v) in deps['prio_protocol'].items()})
+    return {k: set(v) for (k, v) in deps.items()}
 
 
-def collect_protocol_deps(graph: Graph) -> Tuple[Dict[str, Set[str]], Dict[str, Set[str]]]:
+def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
     """Collect protocol dependency map for fine grained incremental mode."""
     from mypy.server.deps import collect_protocol_attr_deps, merge_deps
     result = {}  # type: Dict[str, Set[str]]
-    prio_result = {}  # type: Dict[str, Set[str]]
     for id in graph:
         file = graph[id].tree
         assert file is not None, "Should call this only when all files are processed"
         names = file.names
-        deps, prio_deps = collect_protocol_attr_deps(names, id)
+        deps = collect_protocol_attr_deps(names, id)
         merge_deps(result, deps)
-        merge_deps(prio_result, prio_deps)
-    return result, prio_result
+    return result
 
 
-def write_protocol_deps_cache(proto_deps: Tuple[Dict[str, Set[str]], Dict[str, Set[str]]],
+def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
                               manager: BuildManager, graph: Graph) -> None:
     """Write cache files for protocol dependencies.
 
@@ -1021,9 +1000,7 @@ def write_protocol_deps_cache(proto_deps: Tuple[Dict[str, Set[str]], Dict[str, S
         meta_snapshot[id] = graph[id].source_hash
     if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
         manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
-    prio_normal, prio_protocol = proto_deps
-    listed_proto_deps = {'prio_normal': {k: list(v) for (k, v) in prio_normal.items()},
-                         'prio_protocol': {k: list(v) for (k, v) in prio_protocol.items()}}
+    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
     if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
         manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
 
@@ -2092,7 +2069,7 @@ class State:
             # TODO: Not a reliable test, as we could have a package named typeshed.
             # TODO: Consider relaxing this -- maybe allow some typeshed changes to be tracked.
             return
-        self.fine_grained_deps, _ = get_dependencies(target=self.tree,
+        self.fine_grained_deps = get_dependencies(target=self.tree,
                                                   type_map=self.type_map(),
                                                   python_version=self.options.python_version)
 
@@ -2188,9 +2165,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         # Fine grained protocol dependencies are serialized separately, so we read them
         # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
         # the protocol cache against the loaded individual cache files.
-        proto_deps = read_protocol_cache(manager, graph)
-        if proto_deps:
-            manager.proto_deps = ProtoDeps(proto_deps)
+        manager.proto_deps = read_protocol_cache(manager, graph)
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
@@ -2199,10 +2174,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
             proto_deps = collect_protocol_deps(graph)
-            manager.proto_deps = ProtoDeps(proto_deps)
+            manager.proto_deps = proto_deps
             write_protocol_deps_cache(proto_deps, manager, graph)
 
-    if manager.options.dump_deps:
+    if manager.options.dump_deps or True:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
         dump_all_dependencies(manager.modules, manager.all_types, manager.options.python_version)

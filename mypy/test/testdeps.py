@@ -54,10 +54,8 @@ class GetDependenciesSuite(DataSuite):
                                                                            'typing',
                                                                            'mypy_extensions',
                                                                            'enum'):
-                    new_deps, new_prio = get_dependencies(files[module], type_map, python_version)
+                    new_deps = get_dependencies(files[module], type_map, python_version)
                     merge_deps(deps, new_deps)
-                    for source in new_prio:
-                        deps[source].update(t + '*' for t in new_prio[source])
 
             for source, targets in sorted(deps.items()):
                 if source.startswith('<enum.'):

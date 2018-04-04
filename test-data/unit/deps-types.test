@@ -926,7 +926,7 @@ class P(PBase, Protocol):
 <mod.PBase.x> -> <mod.P.x>
 <mod.PBase.y> -> <mod.P.y>
 <mod.PBase> -> mod, mod.P, mod.PBase
-<mod.PBase[wildcard]> -> <mod.P>, <mod.PBase>, mod.P*
+<mod.PBase[wildcard]> -> <mod.P>, <mod.PBase>, mod.P
 <mod.P[wildcard]> -> <mod.P>
 <mod> -> m
 
@@ -944,7 +944,7 @@ class P(Protocol):
 <m.C.__init__> -> m
 <m.C.__new__> -> m
 <m.C.x> -> <m.C>
-<m.C> -> m, m.C, mod.P*
+<m.C> -> m, m.C, mod.P
 <m.x> -> m
 <mod.P> -> <m.x>, m, mod.P
 <mod.P[wildcard]> -> <mod.P>
@@ -972,7 +972,7 @@ class P(Protocol):
 <m.C.__init__> -> m
 <m.C.__new__> -> m
 <m.C.x> -> <m.C>
-<m.C> -> <m.func>, m, m.C, m.func, mod.P*
+<m.C> -> <m.func>, m, m.C, m.func, mod.P
 <m.func> -> m
 <mod.P> -> <m.func>, m.func, mod.P
 <mod.P[wildcard]> -> <mod.P>
@@ -998,7 +998,7 @@ class P(Protocol):
 <m.C.__init__> -> m
 <m.C.__new__> -> m
 <m.C.x> -> <m.C>
-<m.C> -> m, m.C, mod.P*
+<m.C> -> m, m.C, mod.P
 <m.x> -> m
 <mod.P> -> <m.x>, m, mod.P
 <mod.P[wildcard]> -> <mod.P>
