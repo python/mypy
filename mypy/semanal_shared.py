@@ -22,8 +22,38 @@ PRIORITY_FALLBACKS = 1
 PRIORITY_TYPEVAR_VALUES = 2
 
 
-class SemanticAnalyzerInterface:
-    """A limited abstract interface to some generic semantic analyzer functionality.
+class SemanticAnalyzerCoreInterface:
+    """A core abstract interface to generic semantic analyzer functionality.
+
+    This is implemented by both semantic analyzer passes 2 and 3.
+    """
+
+    @abstractmethod
+    def lookup_qualified(self, name: str, ctx: Context,
+                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+        raise NotImplementedError
+
+    @abstractmethod
+    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def note(self, msg: str, ctx: Context) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def dereference_module_cross_ref(
+            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+
+class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
+    """A limited abstract interface to some generic semantic analyzer pass 2 functionality.
 
     We use this interface for various reasons:
 
@@ -38,35 +68,12 @@ class SemanticAnalyzerInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def lookup_qualified(self, name: str, ctx: Context,
-                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
-        raise NotImplementedError
-
-    @abstractmethod
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
     def named_type_or_none(self, qualified_name: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def dereference_module_cross_ref(
-            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
-             blocker: bool = False) -> None:
-        raise NotImplementedError
-
-    @abstractmethod
-    def note(self, msg: str, ctx: Context) -> None:
         raise NotImplementedError
 
     @abstractmethod
