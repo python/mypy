@@ -1,10 +1,10 @@
 """Shared definitions used by different parts of semantic analysis."""
 
-from abc import abstractmethod
+from abc import abstractmethod, abstractproperty
 from typing import Optional, List, Callable
 
 from mypy.nodes import (
-    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, GDEF
+    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF
 )
 from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance
@@ -91,6 +91,14 @@ class SemanticAnalyzerInterface:
     @abstractmethod
     def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
         """Add node to global symbol table (or to nearest class if there is one)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def parse_bool(self, expr: Expression) -> Optional[bool]:
+        raise NotImplementedError
+
+    @abstractproperty
+    def is_typeshed_stub_file(self) -> bool:
         raise NotImplementedError
 
 
