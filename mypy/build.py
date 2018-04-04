@@ -1912,8 +1912,11 @@ class State:
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
 
-    def verify_dependencies(self, suppressed_only: bool=False) -> None:
-        """Report errors for import targets in modules that don't exist."""
+    def verify_dependencies(self, suppressed_only: bool = False) -> None:
+        """Report errors for import targets in modules that don't exist.
+
+        If suppressed_only is set, only check suppressed dependencies.
+        """
         manager = self.manager
         assert self.ancestors is not None
         if suppressed_only:
@@ -1955,7 +1958,7 @@ class State:
         if self.options.warn_unused_ignores:
             # If this file was initially loaded from the cache, it may have suppressed
             # dependencies due to imports with ignores on them. We need to generate
-            # those errors to avoid spuriously them as unused ignores.
+            # those errors to avoid spuriously flagging them as unused ignores.
             if self.meta:
                 self.verify_dependencies(suppressed_only=True)
             self.manager.errors.generate_unused_ignore_notes(self.xpath)

@@ -4207,7 +4207,7 @@ class Two:
 [out2]
 tmp/m/two.py:2: error: Revealed type is 'builtins.str'
 
-[case testImportUnusedIgnore]
+[case testImportUnusedIgnore1]
 # flags: --warn-unused-ignores
 import a
 [file a.py]
@@ -4217,3 +4217,21 @@ import foo  # type: ignore
 x = 1
 [file b.py.2]
 x = '2'
+
+-- TODO: Fails due to #4856
+[case testImportUnusedIgnore2-skip]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b
+import c  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file c.py.3]
+pass
+[out]
+[out2]
+[out3]
+tmp/a.py:1: note: unused 'type: ignore' comment
