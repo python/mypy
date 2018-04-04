@@ -183,10 +183,9 @@ class FineGrainedBuildManager:
 
     def update_protocol_deps(self) -> None:
         """Add protocol dependencies to the dependency map."""
-        # TODO: fail gracefully if cache doesn't contain protocol deps data.
-        assert self.manager.proto_deps is not None
-        for trigger, targets in self.manager.proto_deps.items():
-            self.deps.setdefault(trigger, set()).update(targets)
+        if self.manager.proto_deps is not None:
+            for trigger, targets in self.manager.proto_deps.items():
+                self.deps.setdefault(trigger, set()).update(targets)
 
     def update(self,
                changed_modules: List[Tuple[str, str]],

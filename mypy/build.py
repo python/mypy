@@ -938,13 +938,20 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
     """
     proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
     meta_snapshot = {}  # type: Dict[str, str]
+    error = False
     for id in graph:
         meta_snapshot[id] = graph[id].source_hash
     if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
         manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
+        error = True
     listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
     if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
         manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
+        error = True
+    if error:
+        manager.errors.set_file(_get_prefix(manager), None)
+        manager.errors.report(0, 0, "Error writing protocol dependencies cache.",
+                              blocker=True)
 
 
 def read_protocol_cache(manager: BuildManager,
@@ -2240,6 +2247,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
         # the protocol cache against the loaded individual cache files.
         manager.proto_deps = read_protocol_cache(manager, graph)
+        if manager.proto_deps is None and manager.stats.get('fresh_trees', 0):
+            manager.errors.set_file(_get_prefix(manager), None)
+            manager.errors.report(0, 0, "Error reading protocol dependencies cache. Aborting.",
+                                  blocker=True)
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:

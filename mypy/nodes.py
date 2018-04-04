@@ -1948,18 +1948,6 @@ class TypeInfo(SymbolNode):
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
 
-    @property
-    def protocol_members(self) -> List[str]:
-        # Protocol members are names of all attributes/methods defined in a protocol
-        # and in all its supertypes (except for 'object').
-        members = set()  # type: Set[str]
-        assert self.mro, "This property can be only acessed after MRO is (re-)calculated"
-        for base in self.mro[:-1]:  # we skip "object" since everyone implements it
-            if base.is_protocol:
-                for name in base.names:
-                    members.add(name)
-        return sorted(list(members))
-
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
     # In languages with structural subtyping, one can keep a global subtype matrix like this:
@@ -2116,6 +2104,18 @@ class TypeInfo(SymbolNode):
             if name in cls.names:
                 return cls
         return None
+
+    @property
+    def protocol_members(self) -> List[str]:
+        # Protocol members are names of all attributes/methods defined in a protocol
+        # and in all its supertypes (except for 'object').
+        members = set()  # type: Set[str]
+        assert self.mro, "This property can be only acessed after MRO is (re-)calculated"
+        for base in self.mro[:-1]:  # we skip "object" since everyone implements it
+            if base.is_protocol:
+                for name in base.names:
+                    members.add(name)
+        return sorted(list(members))
 
     def record_subtype_cache_entry(self, left: 'mypy.types.Instance',
                                    right: 'mypy.types.Instance',
