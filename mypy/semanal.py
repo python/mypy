@@ -84,8 +84,9 @@ from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy import join
 from mypy.util import get_prefix, correct_relative_import
-from mypy.semanal_shared import SemanticAnalyzerInterface, PRIORITY_FALLBACKS
+from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
 from mypy.scope import Scope
+from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
 
 
 T = TypeVar('T')
@@ -150,13 +151,6 @@ TYPE_PROMOTIONS_PYTHON2.update({
 FUNCTION_BOTH_PHASES = 0  # Everything in one go
 FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
 FUNCTION_SECOND_PHASE = 2  # Only analyze body
-
-# Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
-# easily be supported in a static checker.
-NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
-                               '_fields', '_field_defaults', '_field_types',
-                               '_make', '_replace', '_asdict', '_source',
-                               '__annotations__')
 
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
@@ -277,6 +271,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.patches = patches
+        self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
 
         with experiments.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
@@ -702,7 +697,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if self.analyze_typeddict_classdef(defn):
                 yield False
                 return
-            named_tuple_info = self.analyze_namedtuple_classdef(defn)
+            named_tuple_info = self.named_tuple_analyzer.analyze_namedtuple_classdef(defn)
             if named_tuple_info is not None:
                 # Temporarily clear the names dict so we don't get errors about duplicate names
                 # that were already set in build_namedtuple_typeinfo.
@@ -988,79 +983,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> Optional[TypeInfo]:
-        # special case for NamedTuple
-        for base_expr in defn.base_type_exprs:
-            if isinstance(base_expr, RefExpr):
-                base_expr.accept(self)
-                if base_expr.fullname == 'typing.NamedTuple':
-                    node = self.lookup(defn.name, defn)
-                    if node is not None:
-                        node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
-                        items, types, default_items = self.check_namedtuple_classdef(defn)
-                        info = self.build_namedtuple_typeinfo(
-                            defn.name, items, types, default_items)
-                        node.node = info
-                        defn.info.replaced = info
-                        defn.info = info
-                        defn.analyzed = NamedTupleExpr(info)
-                        defn.analyzed.line = defn.line
-                        defn.analyzed.column = defn.column
-                        return info
-        return None
-
-    def check_namedtuple_classdef(
-            self, defn: ClassDef) -> Tuple[List[str], List[Type], Dict[str, Expression]]:
-        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                                'expected "field_name: field_type [= default]"')
-        if self.options.python_version < (3, 6):
-            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
-            return [], [], {}
-        if len(defn.base_type_exprs) > 1:
-            self.fail('NamedTuple should be a single base', defn)
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        default_items = {}  # type: Dict[str, Expression]
-        for stmt in defn.defs.body:
-            if not isinstance(stmt, AssignmentStmt):
-                # Still allow pass or ... (for empty namedtuples).
-                if (isinstance(stmt, PassStmt) or
-                    (isinstance(stmt, ExpressionStmt) and
-                        isinstance(stmt.expr, EllipsisExpr))):
-                    continue
-                # Also allow methods, including decorated ones.
-                if isinstance(stmt, (Decorator, FuncBase)):
-                    continue
-                # And docstrings.
-                if (isinstance(stmt, ExpressionStmt) and
-                        isinstance(stmt.expr, StrExpr)):
-                    continue
-                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
-            elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
-                # An assignment, but an invalid one.
-                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
-            else:
-                # Append name and type in this case...
-                name = stmt.lvalues[0].name
-                items.append(name)
-                types.append(AnyType(TypeOfAny.unannotated)
-                             if stmt.type is None
-                             else self.anal_type(stmt.type))
-                # ...despite possible minor failures that allow further analyzis.
-                if name.startswith('_'):
-                    self.fail('NamedTuple field name cannot start with an underscore: {}'
-                              .format(name), stmt)
-                if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
-                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
-                elif isinstance(stmt.rvalue, TempNode):
-                    # x: int assigns rvalue to TempNode(AnyType())
-                    if default_items:
-                        self.fail('Non-default NamedTuple fields cannot follow default fields',
-                                  stmt)
-                else:
-                    default_items[name] = stmt.rvalue
-        return items, types, default_items
-
     def setup_class_def_analysis(self, defn: ClassDef) -> None:
         """Prepare for the analysis of a class definition."""
         if not defn.info:
@@ -1215,7 +1137,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def expr_to_analyzed_type(self, expr: Expression) -> Type:
         if isinstance(expr, CallExpr):
             expr.accept(self)
-            info = self.check_namedtuple(expr)
+            info = self.named_tuple_analyzer.check_namedtuple(expr, None, self.is_func_scope())
             if info is None:
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.
@@ -1796,7 +1718,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.check_and_set_up_type_alias(s)
         self.process_newtype_declaration(s)
         self.process_typevar_declaration(s)
-        self.process_namedtuple_definition(s)
+        self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
         self.process_typeddict_definition(s)
         self.process_enum_call(s)
         if not s.type:
@@ -2395,134 +2317,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             variance = INVARIANT
         return (variance, upper_bound)
 
-    def process_namedtuple_definition(self, s: AssignmentStmt) -> None:
-        """Check if s defines a namedtuple; if yes, store the definition in symbol table."""
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], NameExpr):
-            return
-        lvalue = s.lvalues[0]
-        name = lvalue.name
-        named_tuple = self.check_namedtuple(s.rvalue, name)
-        if named_tuple is None:
-            return
-        # Yes, it's a valid namedtuple definition. Add it to the symbol table.
-        node = self.lookup(name, s)
-        assert node is not None
-        node.kind = GDEF   # TODO locally defined namedtuple
-        node.node = named_tuple
-
-    def check_namedtuple(self, node: Expression,
-                         var_name: Optional[str] = None) -> Optional[TypeInfo]:
-        """Check if a call defines a namedtuple.
-
-        The optional var_name argument is the name of the variable to
-        which this is assigned, if any.
-
-        If it does, return the corresponding TypeInfo. Return None otherwise.
-
-        If the definition is invalid but looks like a namedtuple,
-        report errors but return (some) TypeInfo.
-        """
-        if not isinstance(node, CallExpr):
-            return None
-        call = node
-        callee = call.callee
-        if not isinstance(callee, RefExpr):
-            return None
-        fullname = callee.fullname
-        if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
-            return None
-        items, types, ok = self.parse_namedtuple_args(call, fullname)
-        if not ok:
-            # Error. Construct dummy return value.
-            return self.build_namedtuple_typeinfo('namedtuple', [], [], {})
-        name = cast(StrExpr, call.args[0]).value
-        if name != var_name or self.is_func_scope():
-            # Give it a unique name derived from the line number.
-            name += '@' + str(call.line)
-        info = self.build_namedtuple_typeinfo(name, items, types, {})
-        # Store it as a global just in case it would remain anonymous.
-        # (Or in the nearest class if there is one.)
-        stnode = SymbolTableNode(GDEF, info)
-        if self.type:
-            self.type.names[name] = stnode
-        else:
-            self.globals[name] = stnode
-        call.analyzed = NamedTupleExpr(info)
-        call.analyzed.set_line(call.line, call.column)
-        return info
-
-    def parse_namedtuple_args(self, call: CallExpr,
-                              fullname: str) -> Tuple[List[str], List[Type], bool]:
-        # TODO: Share code with check_argument_count in checkexpr.py?
-        args = call.args
-        if len(args) < 2:
-            return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
-        if len(args) > 2:
-            # FIX incorrect. There are two additional parameters
-            return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
-            return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
-        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
-            return self.fail_namedtuple_arg(
-                "namedtuple() expects a string literal as the first argument", call)
-        types = []  # type: List[Type]
-        ok = True
-        if not isinstance(args[1], (ListExpr, TupleExpr)):
-            if (fullname == 'collections.namedtuple'
-                    and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
-                str_expr = cast(StrExpr, args[1])
-                items = str_expr.value.replace(',', ' ').split()
-            else:
-                return self.fail_namedtuple_arg(
-                    "List or tuple literal expected as the second argument to namedtuple()", call)
-        else:
-            listexpr = args[1]
-            if fullname == 'collections.namedtuple':
-                # The fields argument contains just names, with implicit Any types.
-                if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
-                       for item in listexpr.items):
-                    return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
-                                                    call)
-                items = [cast(StrExpr, item).value for item in listexpr.items]
-            else:
-                # The fields argument contains (name, type) tuples.
-                items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
-        if not types:
-            types = [AnyType(TypeOfAny.unannotated) for _ in items]
-        underscore = [item for item in items if item.startswith('_')]
-        if underscore:
-            self.fail("namedtuple() field names cannot start with an underscore: "
-                      + ', '.join(underscore), call)
-        return items, types, ok
-
-    def parse_namedtuple_fields_with_types(self, nodes: List[Expression],
-                                           context: Context) -> Tuple[List[str], List[Type], bool]:
-        items = []  # type: List[str]
-        types = []  # type: List[Type]
-        for item in nodes:
-            if isinstance(item, TupleExpr):
-                if len(item.items) != 2:
-                    return self.fail_namedtuple_arg("Invalid NamedTuple field definition",
-                                                    item)
-                name, type_node = item.items
-                if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
-                    items.append(name.value)
-                else:
-                    return self.fail_namedtuple_arg("Invalid NamedTuple() field name", item)
-                try:
-                    type = expr_to_unanalyzed_type(type_node)
-                except TypeTranslationError:
-                    return self.fail_namedtuple_arg('Invalid field type', type_node)
-                types.append(self.anal_type(type))
-            else:
-                return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
-        return items, types, True
-
-    def fail_namedtuple_arg(self, message: str,
-                            context: Context) -> Tuple[List[str], List[Type], bool]:
-        self.fail(message, context)
-        return [], [], False
-
     def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
         class_def = ClassDef(name, Block([]))
         class_def.fullname = self.qualified_name(name)
@@ -2535,111 +2329,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             mro = [basetype_or_fallback.type, self.object_type().type]
         info.mro = [info] + mro
         info.bases = [basetype_or_fallback]
-        return info
-
-    def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
-                                  default_items: Dict[str, Expression]) -> TypeInfo:
-        strtype = self.str_type()
-        implicit_any = AnyType(TypeOfAny.special_form)
-        basetuple_type = self.named_type('__builtins__.tuple', [implicit_any])
-        dictype = (self.named_type_or_none('builtins.dict', [strtype, implicit_any])
-                   or self.object_type())
-        # Actual signature should return OrderedDict[str, Union[types]]
-        ordereddictype = (self.named_type_or_none('builtins.dict', [strtype, implicit_any])
-                          or self.object_type())
-        fallback = self.named_type('__builtins__.tuple', [implicit_any])
-        # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
-        # but it can't be expressed. 'new' and 'len' should be callable types.
-        iterable_type = self.named_type_or_none('typing.Iterable', [implicit_any])
-        function_type = self.named_type('__builtins__.function')
-
-        info = self.basic_new_typeinfo(name, fallback)
-        info.is_named_tuple = True
-        info.tuple_type = TupleType(types, fallback)
-
-        def patch() -> None:
-            # Calculate the correct value type for the fallback tuple.
-            assert info.tuple_type, "TupleType type deleted before calling the patch"
-            fallback.args[0] = join.join_type_list(list(info.tuple_type.items))
-
-        # We can't calculate the complete fallback type until after semantic
-        # analysis, since otherwise MROs might be incomplete. Postpone a callback
-        # function that patches the fallback.
-        self.patches.append((PRIORITY_FALLBACKS, patch))
-
-        def add_field(var: Var, is_initialized_in_class: bool = False,
-                      is_property: bool = False) -> None:
-            var.info = info
-            var.is_initialized_in_class = is_initialized_in_class
-            var.is_property = is_property
-            var._fullname = '%s.%s' % (info.fullname(), var.name())
-            info.names[var.name()] = SymbolTableNode(MDEF, var)
-
-        vars = [Var(item, typ) for item, typ in zip(items, types)]
-        for var in vars:
-            add_field(var, is_property=True)
-
-        tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
-        add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
-        add_field(Var('_field_types', dictype), is_initialized_in_class=True)
-        add_field(Var('_field_defaults', dictype), is_initialized_in_class=True)
-        add_field(Var('_source', strtype), is_initialized_in_class=True)
-        add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
-        add_field(Var('__doc__', strtype), is_initialized_in_class=True)
-
-        tvd = TypeVarDef('NT', 'NT', 1, [], info.tuple_type)
-        selftype = TypeVarType(tvd)
-
-        def add_method(funcname: str,
-                       ret: Type,
-                       args: List[Argument],
-                       name: Optional[str] = None,
-                       is_classmethod: bool = False,
-                       ) -> None:
-            if is_classmethod:
-                first = [Argument(Var('cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
-            else:
-                first = [Argument(Var('self'), selftype, None, ARG_POS)]
-            args = first + args
-
-            types = [arg.type_annotation for arg in args]
-            items = [arg.variable.name() for arg in args]
-            arg_kinds = [arg.kind for arg in args]
-            assert None not in types
-            signature = CallableType(cast(List[Type], types), arg_kinds, items, ret,
-                                     function_type)
-            signature.variables = [tvd]
-            func = FuncDef(funcname, args, Block([]))
-            func.info = info
-            func.is_class = is_classmethod
-            func.type = set_callable_name(signature, func)
-            func._fullname = info.fullname() + '.' + funcname
-            if is_classmethod:
-                v = Var(funcname, func.type)
-                v.is_classmethod = True
-                v.info = info
-                v._fullname = func._fullname
-                dec = Decorator(func, [NameExpr('classmethod')], v)
-                info.names[funcname] = SymbolTableNode(MDEF, dec)
-            else:
-                info.names[funcname] = SymbolTableNode(MDEF, func)
-
-        add_method('_replace', ret=selftype,
-                   args=[Argument(var, var.type, EllipsisExpr(), ARG_NAMED_OPT) for var in vars])
-
-        def make_init_arg(var: Var) -> Argument:
-            default = default_items.get(var.name(), None)
-            kind = ARG_POS if default is None else ARG_OPT
-            return Argument(var, var.type, default, kind)
-
-        add_method('__init__', ret=NoneTyp(), name=info.name(),
-                   args=[make_init_arg(var) for var in vars])
-        add_method('_asdict', args=[], ret=ordereddictype)
-        special_form_any = AnyType(TypeOfAny.special_form)
-        add_method('_make', ret=selftype, is_classmethod=True,
-                   args=[Argument(Var('iterable', iterable_type), iterable_type, None, ARG_POS),
-                         Argument(Var('new'), special_form_any, EllipsisExpr(), ARG_NAMED_OPT),
-                         Argument(Var('len'), special_form_any, EllipsisExpr(), ARG_NAMED_OPT)])
         return info
 
     def make_argument(self, name: str, type: Type) -> Argument:
@@ -4026,6 +3715,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             return self.globals.get(name)
 
+    def schedule_patch(self, priority: int, patch: Callable[[], None]) -> None:
+        self.patches.append((priority, patch))
+
+    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
+        """Add node to global symbol table (or to nearest class if there is one)."""
+        # TODO: Adding to the nearest class is ad hoc.
+        if self.type:
+            self.type.names[name] = stnode
+        else:
+            self.globals[name] = stnode
+
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
     if isinstance(sig, CallableType):
@@ -4037,17 +3737,6 @@ def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
                            for i in sig.items()])
     else:
         assert False
-
-
-def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
-    if isinstance(sig, FunctionLike):
-        if fdef.info:
-            return sig.with_name(
-                '{} of {}'.format(fdef.name(), fdef.info.name()))
-        else:
-            return sig.with_name(fdef.name())
-    else:
-        return sig
 
 
 def refers_to_fullname(node: Expression, fullname: str) -> bool:

@@ -1,10 +1,14 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, List, Callable
 
-from mypy.nodes import Context, SymbolTableNode, MypyFile, ImportedName, GDEF
+from mypy.nodes import (
+    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, GDEF
+)
 from mypy.util import correct_relative_import
+from mypy.types import Type, FunctionLike, Instance
+from mypy.tvar_scope import TypeVarScope
 
 
 # Priorities for ordering of patches within the final "patch" phase of semantic analysis
@@ -29,12 +33,25 @@ class SemanticAnalyzerInterface:
     """
 
     @abstractmethod
+    def lookup(self, name: str, ctx: Context,
+               suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        raise NotImplementedError
+
+    @abstractmethod
     def lookup_qualified(self, name: str, ctx: Context,
                          suppress_errors: bool = False) -> Optional[SymbolTableNode]:
         raise NotImplementedError
 
     @abstractmethod
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
+        raise NotImplementedError
+
+    @abstractmethod
+    def named_type(self, qualified_name: str, args: List[Type] = None) -> Instance:
+        raise NotImplementedError
+
+    @abstractmethod
+    def named_type_or_none(self, qualified_name: str, args: List[Type] = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
@@ -49,6 +66,31 @@ class SemanticAnalyzerInterface:
 
     @abstractmethod
     def note(self, msg: str, ctx: Context) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def accept(self, node: Node) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def anal_type(self, t: Type, *,
+                  tvar_scope: Optional[TypeVarScope] = None,
+                  allow_tuple_literal: bool = False,
+                  aliasing: bool = False,
+                  third_pass: bool = False) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
+        raise NotImplementedError
+
+    @abstractmethod
+    def schedule_patch(self, priority: int, fn: Callable[[], None]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def add_symbol_table_node(self, name: str, stnode: SymbolTableNode) -> None:
+        """Add node to global symbol table (or to nearest class if there is one)."""
         raise NotImplementedError
 
 
@@ -71,3 +113,14 @@ def create_indirect_imported_name(file_node: MypyFile,
     link = ImportedName(target_name)
     # Use GDEF since this refers to a module-level definition.
     return SymbolTableNode(GDEF, link)
+
+
+def set_callable_name(sig: Type, fdef: FuncDef) -> Type:
+    if isinstance(sig, FunctionLike):
+        if fdef.info:
+            return sig.with_name(
+                '{} of {}'.format(fdef.name(), fdef.info.name()))
+        else:
+            return sig.with_name(fdef.name())
+    else:
+        return sig
