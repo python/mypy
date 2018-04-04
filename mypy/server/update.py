@@ -134,7 +134,6 @@ from mypy.options import Options
 from mypy.types import Type
 from mypy.fscache import FileSystemCache
 from mypy.semanal import apply_semantic_analyzer_patches
-from mypy.semanal_pass3 import add_protocol_members
 from mypy.server.astdiff import (
     snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 )
@@ -745,9 +744,6 @@ def propagate_changes_using_dependencies(
         for info in stale_protos:
             if info.is_protocol:
                 info.reset_subtype_cache()
-                # Strictly speaking we need to do this only if super-protocol changes,
-                # but the performance implications are negligible.
-                add_protocol_members(info)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
             if manager.modules[id].is_cache_skeleton:
