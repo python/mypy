@@ -717,28 +717,6 @@ class BuildManager:
         self.errors.set_file_ignored_lines(path, tree.ignored_lines, ignore_errors)
         return tree
 
-    def module_not_found(self, path: str, source: str, line: int, target: str) -> None:
-        self.errors.set_file(path, source)
-        stub_msg = "(Stub files are from https://github.com/python/typeshed)"
-        if target == 'builtins':
-            self.errors.report(line, 0, "Cannot find 'builtins' module. Typeshed appears broken!",
-                               blocker=True)
-            self.errors.raise_error()
-        elif ((self.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target))
-              or (self.options.python_version[0] >= 3
-                  and moduleinfo.is_py3_std_lib_module(target))):
-            self.errors.report(
-                line, 0, "No library stub file for standard library module '{}'".format(target))
-            self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
-        elif moduleinfo.is_third_party_module(target):
-            self.errors.report(line, 0, "No library stub file for module '{}'".format(target))
-            self.errors.report(line, 0, stub_msg, severity='note', only_once=True)
-        else:
-            self.errors.report(line, 0, "Cannot find module named '{}'".format(target))
-            self.errors.report(line, 0, '(Perhaps setting MYPYPATH '
-                               'or using the "--ignore-missing-imports" flag would help)',
-                               severity='note', only_once=True)
-
     def report_file(self,
                     file: MypyFile,
                     type_map: Dict[Expression, Type],
@@ -1512,63 +1490,15 @@ class State:
         self.fine_grained_deps = {}
         if not path and source is None:
             assert id is not None
-            file_id = id
-            if id == 'builtins' and self.options.python_version[0] == 2:
-                # The __builtin__ module is called internally by mypy
-                # 'builtins' in Python 2 mode (similar to Python 3),
-                # but the stub file is __builtin__.pyi.  The reason is
-                # that a lot of code hard-codes 'builtins.x' and it's
-                # easier to work it around like this.  It also means
-                # that the implementation can mostly ignore the
-                # difference and just assume 'builtins' everywhere,
-                # which simplifies code.
-                file_id = '__builtin__'
-            path = manager.find_module_cache.find_module(file_id, manager.lib_path)
-            if path:
-                # For non-stubs, look at options.follow_imports:
-                # - normal (default) -> fully analyze
-                # - silent -> analyze but silence errors
-                # - skip -> don't analyze, make the type Any
-                follow_imports = self.options.follow_imports
-                if (follow_imports != 'normal'
-                        and not root_source  # Honor top-level modules
-                        and (path.endswith('.py')  # Stubs are always normal
-                             or self.options.follow_imports_for_stubs)  # except when they aren't
-                        and id != 'builtins'):  # Builtins is always normal
-                    if follow_imports == 'silent':
-                        # Still import it, but silence non-blocker errors.
-                        manager.log("Silencing %s (%s)" % (path, id))
-                        self.ignore_all = True
-                    else:
-                        # In 'error' mode, produce special error messages.
-                        if id not in manager.missing_modules:
-                            manager.log("Skipping %s (%s)" % (path, id))
-                        if follow_imports == 'error':
-                            if ancestor_for:
-                                self.skipping_ancestor(id, path, ancestor_for)
-                            else:
-                                self.skipping_module(id, path)
-                        path = None
-                        manager.missing_modules.add(id)
-                        raise ModuleNotFound
-            else:
-                # Could not find a module.  Typically the reason is a
-                # misspelled module name, missing stub, module not in
-                # search path or the module has not been installed.
-                if caller_state:
-                    if not self.options.ignore_missing_imports:
-                        save_import_context = manager.errors.import_context()
-                        manager.errors.set_import_context(caller_state.import_context)
-                        manager.module_not_found(caller_state.xpath, caller_state.id,
-                                                 caller_line, id)
-                        manager.errors.set_import_context(save_import_context)
-                    manager.missing_modules.add(id)
-                    raise ModuleNotFound
-                else:
-                    # If we can't find a root source it's always fatal.
-                    # TODO: This might hide non-fatal errors from
-                    # root sources processed earlier.
-                    raise CompileError(["mypy: can't find module '%s'" % id])
+            try:
+                path, follow_imports = find_module_and_diagnose(
+                    manager, id, self.options, caller_state, caller_line,
+                    ancestor_for, root_source)
+            except ModuleNotFound:
+                manager.missing_modules.add(id)
+                raise
+            if follow_imports == 'silent':
+                self.ignore_all = True
         self.path = path
         self.xpath = path or '<string>'
         self.source = source
@@ -1603,35 +1533,6 @@ class State:
             self.parse_file()
             self.compute_dependencies()
             self.child_modules = set()
-
-    def skipping_ancestor(self, id: str, path: str, ancestor_for: 'State') -> None:
-        # TODO: Read the path (the __init__.py file) and return
-        # immediately if it's empty or only contains comments.
-        # But beware, some package may be the ancestor of many modules,
-        # so we'd need to cache the decision.
-        manager = self.manager
-        manager.errors.set_import_context([])
-        manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
-        manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
-                              severity='note', only_once=True)
-        manager.errors.report(-1, -1,
-                              "(Using --follow-imports=error, submodule passed on command line)",
-                              severity='note', only_once=True)
-
-    def skipping_module(self, id: str, path: str) -> None:
-        assert self.caller_state, (id, path)
-        manager = self.manager
-        save_import_context = manager.errors.import_context()
-        manager.errors.set_import_context(self.caller_state.import_context)
-        manager.errors.set_file(self.caller_state.xpath, self.caller_state.id)
-        line = self.caller_line
-        manager.errors.report(line, 0,
-                              "Import of '%s' ignored" % (id,),
-                              severity='note')
-        manager.errors.report(line, 0,
-                              "(Using --follow-imports=error, module not passed on command line)",
-                              severity='note', only_once=True)
-        manager.errors.set_import_context(save_import_context)
 
     def add_ancestors(self) -> None:
         if self.path is not None:
@@ -2008,6 +1909,35 @@ class State:
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
 
+    def verify_dependencies(self) -> None:
+        """Report errors for import targets in modules that don't exist."""
+        # Strip out indirect dependencies. See comment in build.load_graph().
+        manager = self.manager
+        dependencies = [dep for dep in self.dependencies
+                        if self.priorities.get(dep) != PRI_INDIRECT]
+        assert self.ancestors is not None
+        for dep in dependencies + self.suppressed + self.ancestors:
+            options = manager.options.clone_for_module(dep)
+            if dep not in manager.modules and not options.ignore_missing_imports:
+                line = self.dep_line_map.get(dep, 1)
+                try:
+                    if dep in self.ancestors:
+                        state, ancestor = None, self  # type: (Optional[State], Optional[State])
+                    else:
+                        state, ancestor = self, None
+                    # Called just for its side effects of producing diagnostics.
+                    find_module_and_diagnose(
+                        manager, dep, options,
+                        caller_state=state, caller_line=line,
+                        ancestor_for=ancestor)
+                except (ModuleNotFound, CompileError):
+                    # Swallow up any ModuleNotFounds or CompilerErrors while generating
+                    # a diagnostic. CompileErrors may get generated in
+                    # fine-grained mode when an __init__.py is deleted, if a module
+                    # that was in that package has targets reprocessed before
+                    # it is renamed.
+                    pass
+
     def dependency_priorities(self) -> List[int]:
         return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
 
@@ -2017,6 +1947,149 @@ class State:
     def generate_unused_ignore_notes(self) -> None:
         if self.options.warn_unused_ignores:
             self.manager.errors.generate_unused_ignore_notes(self.xpath)
+
+
+# Module import and diagnostic glue
+
+
+def find_module_and_diagnose(manager: BuildManager,
+                             id: str,
+                             options: Options,
+                             caller_state: 'Optional[State]' = None,
+                             caller_line: int = 0,
+                             ancestor_for: 'Optional[State]' = None,
+                             root_source: bool = False) -> Tuple[str, str]:
+    """Find a module by name, respecting follow_imports and producing diagnostics.
+
+    Args:
+      id: module to find
+      options: the options for the module being loaded
+      caller_state: the state of the importing module, if applicable
+      caller_line: the line number of the import
+      ancestor_for: the child module this is an ancestor of, if applicable
+      root_source: whether this source was specified on the command line
+
+    The specified value of follow_imports for a module can be overridden
+    if the module is specified on the command line or if it is a stub,
+    so we compute and return the "effective" follow_imports of the module.
+
+    Returns a tuple containing (file path, target's effective follow_imports setting)
+    """
+    file_id = id
+    if id == 'builtins' and options.python_version[0] == 2:
+        # The __builtin__ module is called internally by mypy
+        # 'builtins' in Python 2 mode (similar to Python 3),
+        # but the stub file is __builtin__.pyi.  The reason is
+        # that a lot of code hard-codes 'builtins.x' and it's
+        # easier to work it around like this.  It also means
+        # that the implementation can mostly ignore the
+        # difference and just assume 'builtins' everywhere,
+        # which simplifies code.
+        file_id = '__builtin__'
+    path = manager.find_module_cache.find_module(file_id, manager.lib_path)
+    if path:
+        # For non-stubs, look at options.follow_imports:
+        # - normal (default) -> fully analyze
+        # - silent -> analyze but silence errors
+        # - skip -> don't analyze, make the type Any
+        follow_imports = options.follow_imports
+        if (root_source  # Honor top-level modules
+                or (not path.endswith('.py')  # Stubs are always normal
+                    and not options.follow_imports_for_stubs)  # except when they aren't
+                or id == 'builtins'):  # Builtins is always normal
+            follow_imports = 'normal'
+
+        if follow_imports == 'silent':
+            # Still import it, but silence non-blocker errors.
+            manager.log("Silencing %s (%s)" % (path, id))
+        elif follow_imports == 'skip' or follow_imports == 'error':
+            # In 'error' mode, produce special error messages.
+            if id not in manager.missing_modules:
+                manager.log("Skipping %s (%s)" % (path, id))
+            if follow_imports == 'error':
+                if ancestor_for:
+                    skipping_ancestor(manager, id, path, ancestor_for)
+                else:
+                    skipping_module(manager, caller_line, caller_state,
+                                    id, path)
+            raise ModuleNotFound
+
+        return (path, follow_imports)
+    else:
+        # Could not find a module.  Typically the reason is a
+        # misspelled module name, missing stub, module not in
+        # search path or the module has not been installed.
+        if caller_state:
+            if not options.ignore_missing_imports:
+                module_not_found(manager, caller_line, caller_state, id)
+            raise ModuleNotFound
+        else:
+            # If we can't find a root source it's always fatal.
+            # TODO: This might hide non-fatal errors from
+            # root sources processed earlier.
+            raise CompileError(["mypy: can't find module '%s'" % id])
+
+
+def module_not_found(manager: BuildManager, line: int, caller_state: State,
+                     target: str) -> None:
+    errors = manager.errors
+    save_import_context = errors.import_context()
+    errors.set_import_context(caller_state.import_context)
+    errors.set_file(caller_state.xpath, caller_state.id)
+    stub_msg = "(Stub files are from https://github.com/python/typeshed)"
+    if target == 'builtins':
+        errors.report(line, 0, "Cannot find 'builtins' module. Typeshed appears broken!",
+                      blocker=True)
+        errors.raise_error()
+    elif ((manager.options.python_version[0] == 2 and moduleinfo.is_py2_std_lib_module(target))
+          or (manager.options.python_version[0] >= 3
+              and moduleinfo.is_py3_std_lib_module(target))):
+        errors.report(
+            line, 0, "No library stub file for standard library module '{}'".format(target))
+        errors.report(line, 0, stub_msg, severity='note', only_once=True)
+    elif moduleinfo.is_third_party_module(target):
+        errors.report(line, 0, "No library stub file for module '{}'".format(target))
+        errors.report(line, 0, stub_msg, severity='note', only_once=True)
+    else:
+        errors.report(line, 0, "Cannot find module named '{}'".format(target))
+        errors.report(line, 0, '(Perhaps setting MYPYPATH '
+                      'or using the "--ignore-missing-imports" flag would help)',
+                      severity='note', only_once=True)
+    errors.set_import_context(save_import_context)
+
+
+def skipping_module(manager: BuildManager, line: int, caller_state: Optional[State],
+                    id: str, path: str) -> None:
+    """Produce an error for an import ignored due to --follow_imports=error"""
+    assert caller_state, (id, path)
+    save_import_context = manager.errors.import_context()
+    manager.errors.set_import_context(caller_state.import_context)
+    manager.errors.set_file(caller_state.xpath, caller_state.id)
+    manager.errors.report(line, 0,
+                          "Import of '%s' ignored" % (id,),
+                          severity='note')
+    manager.errors.report(line, 0,
+                          "(Using --follow-imports=error, module not passed on command line)",
+                          severity='note', only_once=True)
+    manager.errors.set_import_context(save_import_context)
+
+
+def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: 'State') -> None:
+    """Produce an error for an ancestor ignored due to --follow_imports=error"""
+    # TODO: Read the path (the __init__.py file) and return
+    # immediately if it's empty or only contains comments.
+    # But beware, some package may be the ancestor of many modules,
+    # so we'd need to cache the decision.
+    manager.errors.set_import_context([])
+    manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
+    manager.errors.report(-1, -1, "Ancestor package '%s' ignored" % (id,),
+                          severity='note', only_once=True)
+    manager.errors.report(-1, -1,
+                          "(Using --follow-imports=error, submodule passed on command line)",
+                          severity='note', only_once=True)
+
+
+# The driver
 
 
 def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:

@@ -26,7 +26,9 @@ from mypy.test.helpers import (
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
-from mypy.main import expand_dir, create_source_list, parse_config_file
+from mypy.main import parse_config_file
+from mypy.find_sources import expand_dir, create_source_list
+from mypy.fscache import FileSystemMetaCache
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -222,7 +224,7 @@ class FineGrainedSuite(DataSuite):
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
         regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
         alt_m = re.search(regex, program_text, flags=re.MULTILINE)
-        if alt_m is not None and incremental_step > 1:
+        if alt_m is not None:
             # Optionally return a different command if in a later step
             # of incremental mode, otherwise default to reusing the
             # original cmd.
@@ -236,7 +238,7 @@ class FineGrainedSuite(DataSuite):
             base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
             # Use expand_dir instead of create_source_list to avoid complaints
             # when there aren't any .py files in an increment
-            return [base] + expand_dir(test_temp_dir)
+            return [base] + expand_dir(FileSystemMetaCache(), test_temp_dir)
 
 
 def normalize_messages(messages: List[str]) -> List[str]:
