@@ -1369,6 +1369,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                          normalized=node.normalized,
                                          alias_tvars=node.alias_tvars,
                                          module_hidden=module_hidden)
+                symbol.is_aliasing = node.is_aliasing
+                symbol.alias_name = node.alias_name
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
@@ -1454,6 +1456,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             assert new_node is not None, "Collection node not found"
             node = SymbolTableNode(new_node.kind, new_node.node, new_node.type_override,
                                    normalized=True, alias_tvars=new_node.alias_tvars)
+            node.is_aliasing = new_node.is_aliasing
+            node.alias_name = new_node.alias_name
         return node
 
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
@@ -1490,10 +1494,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, new_node, i):
                             continue
-                    self.add_symbol(name, SymbolTableNode(new_node.kind, new_node.node,
-                                                          new_node.type_override,
-                                                          normalized=new_node.normalized,
-                                                          alias_tvars=new_node.alias_tvars), i)
+                    symbol = SymbolTableNode(new_node.kind, new_node.node,
+                                             new_node.type_override,
+                                             normalized=new_node.normalized,
+                                             alias_tvars=new_node.alias_tvars)
+                    symbol.is_aliasing = new_node.is_aliasing
+                    symbol.alias_name = new_node.alias_name
+                    self.add_symbol(name, symbol, i)
                     i.imported_names.append(name)
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
@@ -1642,6 +1649,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """Make a dummy Instance with no methods. It is used as a fallback type
         to detect errors for non-Instance aliases (i.e. Unions, Tuples, Callables).
         """
+        # TODO: this has None fullname (and also can't be serialized), fix this.
         kind = (' to Callable' if isinstance(tp, CallableType) else
                 ' to Tuple' if isinstance(tp, TupleType) else
                 ' to Union' if isinstance(tp, UnionType) else '')
@@ -2457,6 +2465,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     # Expressions
     #
 
+    def add_symbol_alias_deps(self, n: Optional[SymbolTableNode]) -> None:
+        """Add type alias dependencies for a RefExpr node."""
+        if n and n.is_aliasing:
+            assert n.alias_name is not None
+            self.add_type_alias_deps([n.alias_name])
+
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
@@ -2464,6 +2478,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             else:
+                self.add_symbol_alias_deps(n)
                 expr.kind = n.kind
                 expr.node = n.node
                 expr.fullname = n.fullname
@@ -2641,6 +2656,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
+            self.add_symbol_alias_deps(n)
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
@@ -2698,6 +2714,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         type_info = self.type
             if type_info:
                 n = type_info.names.get(expr.name)
+                self.add_symbol_alias_deps(n)
                 if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
                     n = self.normalize_type_alias(n, expr)
                     if not n:
