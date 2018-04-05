@@ -11,12 +11,34 @@ from typing import List, Tuple
 from mypy.test.helpers import Suite, assert_equal, assert_string_arrays_equal
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
-from mypy.stubgen import generate_stub, generate_stub_for_module, parse_options, Options
+from mypy.stubgen import (
+    generate_stub, generate_stub_for_module, parse_options, walk_packages, Options
+)
 from mypy.stubgenc import generate_c_type_stub, infer_method_sig
 from mypy.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring
 )
+
+
+class StubgenCliParseSuite(Suite):
+    def test_walk_packages(self) -> None:
+        assert_equal(
+            set(walk_packages(["mypy.errors"])),
+            {"mypy.errors"})
+
+        assert_equal(
+            set(walk_packages(["mypy.errors", "mypy.stubgen"])),
+            {"mypy.errors", "mypy.stubgen"})
+
+        all_mypy_packages = set(walk_packages(["mypy"]))
+        self.assertTrue(all_mypy_packages.issuperset({
+            "mypy",
+            "mypy.errors",
+            "mypy.stubgen",
+            "mypy.test",
+            "mypy.test.helpers",
+        }))
 
 
 class StubgenUtilSuite(Suite):

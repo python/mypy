@@ -17,17 +17,12 @@ from mypy import defaults
 from mypy import experiments
 from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
+from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
 from mypy.report import reporter_classes
 
 from mypy.version import __version__
-
-PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
-
-
-class InvalidSourceList(Exception):
-    """Exception indicating a problem in the list of sources given to mypy."""
 
 
 orig_stat = os.stat
@@ -308,12 +303,12 @@ def process_options(args: List[str],
         if help is not argparse.SUPPRESS:
             help += " (inverse: {})".format(inverse)
 
-        arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
+        arg = parser.add_argument(flag,
                                   action='store_false' if default else 'store_true',
                                   dest=dest,
                                   help=help)
         dest = arg.dest
-        arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
+        arg = parser.add_argument(inverse,
                                   action='store_true' if default else 'store_false',
                                   dest=dest,
                                   help=argparse.SUPPRESS)
@@ -413,6 +408,10 @@ def process_options(args: List[str],
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    parser.add_argument('--always-true', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered True (may be repeated)")
+    parser.add_argument('--always-false', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered False (may be repeated)")
     parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
@@ -583,6 +582,12 @@ def process_options(args: List[str],
         elif code_methods > 1:
             parser.error("May only specify one of: module/package, files, or command.")
 
+    # Check for overlapping `--always-true` and `--always-false` flags.
+    overlap = set(options.always_true) & set(options.always_false)
+    if overlap:
+        parser.error("You can't make a variable always true and always false (%s)" %
+                     ', '.join(sorted(overlap)))
+
     # Set build flags.
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
@@ -611,7 +616,7 @@ def process_options(args: List[str],
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
         targets = []
-        # TODO: use the same cache as the BuildManager will
+        # TODO: use the same cache that the BuildManager will
         cache = build.FindModuleCache()
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
@@ -629,126 +634,11 @@ def process_options(args: List[str],
         return targets, options
     else:
         try:
+            # TODO: use the same cache that the BuildManager will
             targets = create_source_list(special_opts.files, options)
         except InvalidSourceList as e:
             fail(str(e))
         return targets, options
-
-
-# TODO: use a FileSystemCache for this
-def create_source_list(files: Sequence[str], options: Options) -> List[BuildSource]:
-    """From a list of source files/directories, makes a list of BuildSources.
-
-    Raises InvalidSourceList on errors.
-    """
-    targets = []
-    for f in files:
-        if f.endswith(PY_EXTENSIONS):
-            # Can raise InvalidSourceList if a directory doesn't have a valid module name.
-            targets.append(BuildSource(f, crawl_up(f)[1], None))
-        elif os.path.isdir(f):
-            sub_targets = expand_dir(f)
-            if not sub_targets:
-                raise InvalidSourceList("There are no .py[i] files in directory '{}'"
-                                        .format(f))
-            targets.extend(sub_targets)
-        else:
-            mod = os.path.basename(f) if options.scripts_are_modules else None
-            targets.append(BuildSource(f, mod, None))
-    return targets
-
-
-def keyfunc(name: str) -> Tuple[int, str]:
-    """Determines sort order for directory listing.
-
-    The desirable property is foo < foo.pyi < foo.py.
-    """
-    base, suffix = os.path.splitext(name)
-    for i, ext in enumerate(PY_EXTENSIONS):
-        if suffix == ext:
-            return (i, base)
-    return (-1, name)
-
-
-def expand_dir(arg: str, mod_prefix: str = '') -> List[BuildSource]:
-    """Convert a directory name to a list of sources to build."""
-    f = get_init_file(arg)
-    if mod_prefix and not f:
-        return []
-    seen = set()  # type: Set[str]
-    sources = []
-    if f and not mod_prefix:
-        top_dir, top_mod = crawl_up(f)
-        mod_prefix = top_mod + '.'
-    if mod_prefix:
-        sources.append(BuildSource(f, mod_prefix.rstrip('.'), None))
-    names = os.listdir(arg)
-    names.sort(key=keyfunc)
-    for name in names:
-        path = os.path.join(arg, name)
-        if os.path.isdir(path):
-            sub_sources = expand_dir(path, mod_prefix + name + '.')
-            if sub_sources:
-                seen.add(name)
-                sources.extend(sub_sources)
-        else:
-            base, suffix = os.path.splitext(name)
-            if base == '__init__':
-                continue
-            if base not in seen and '.' not in base and suffix in PY_EXTENSIONS:
-                seen.add(base)
-                src = BuildSource(path, mod_prefix + base, None)
-                sources.append(src)
-    return sources
-
-
-def crawl_up(arg: str) -> Tuple[str, str]:
-    """Given a .py[i] filename, return (root directory, module).
-
-    We crawl up the path until we find a directory without
-    __init__.py[i], or until we run out of path components.
-    """
-    dir, mod = os.path.split(arg)
-    mod = strip_py(mod) or mod
-    while dir and get_init_file(dir):
-        dir, base = os.path.split(dir)
-        if not base:
-            break
-        # Ensure that base is a valid python module name
-        if not base.isidentifier():
-            raise InvalidSourceList('{} is not a valid Python package name'.format(base))
-        if mod == '__init__' or not mod:
-            mod = base
-        else:
-            mod = base + '.' + mod
-
-    return dir, mod
-
-
-def strip_py(arg: str) -> Optional[str]:
-    """Strip a trailing .py or .pyi suffix.
-
-    Return None if no such suffix is found.
-    """
-    for ext in PY_EXTENSIONS:
-        if arg.endswith(ext):
-            return arg[:-len(ext)]
-    return None
-
-
-def get_init_file(dir: str) -> Optional[str]:
-    """Check whether a directory contains a file named __init__.py[i].
-
-    If so, return the file's name (with dir prefixed).  If not, return
-    None.
-
-    This prefers .pyi over .py (because of the ordering of PY_EXTENSIONS).
-    """
-    for ext in PY_EXTENSIONS:
-        f = os.path.join(dir, '__init__' + ext)
-        if os.path.isfile(f):
-            return f
-    return None
 
 
 # For most options, the type of the default value set in options.py is
@@ -766,6 +656,8 @@ config_types = {
     'silent_imports': bool,
     'almost_silent': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
+    'always_true': lambda s: [p.strip() for p in s.split(',')],
+    'always_false': lambda s: [p.strip() for p in s.split(',')],
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)

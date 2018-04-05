@@ -120,7 +120,7 @@ from typing import (
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
@@ -159,9 +159,8 @@ class FineGrainedBuildManager:
         manager = result.manager
         self.manager = manager
         self.graph = result.graph
-        self.options = manager.options
         self.previous_modules = get_module_to_path_map(manager)
-        self.deps = get_all_dependencies(manager, self.graph, self.options)
+        self.deps = get_all_dependencies(manager, self.graph)
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
         # Module, if any, that had blocking errors in the last run as (id, path) tuple.
@@ -206,7 +205,6 @@ class FineGrainedBuildManager:
         self.changed_modules = changed_modules
 
         if not changed_modules:
-            self.manager.fscache.flush()
             return self.previous_messages
 
         # Reset find_module's caches for the new build.
@@ -259,7 +257,6 @@ class FineGrainedBuildManager:
                     messages = self.manager.errors.new_messages()
                     break
 
-        self.manager.fscache.flush()
         self.previous_messages = messages[:]
         return messages
 
@@ -364,8 +361,7 @@ class FineGrainedBuildManager:
         return remaining, (module, path), None
 
 
-def get_all_dependencies(manager: BuildManager, graph: Dict[str, State],
-                         options: Options) -> Dict[str, Set[str]]:
+def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     # Deps for each module were computed during build() or loaded from the cache.
     deps = {}  # type: Dict[str, Set[str]]
@@ -596,18 +592,6 @@ def get_all_changed_modules(root_module: str,
     return changed_modules
 
 
-def verify_dependencies(state: State, manager: BuildManager) -> None:
-    """Report errors for import targets in module that don't exist."""
-    # Strip out indirect dependencies. See comment in build.load_graph().
-    dependencies = [dep for dep in state.dependencies if state.priorities.get(dep) != PRI_INDIRECT]
-    for dep in dependencies + state.suppressed:  # TODO: ancestors?
-        if dep not in manager.modules and not manager.options.ignore_missing_imports:
-            assert state.tree
-            line = state.dep_line_map.get(dep, 1)
-            assert state.path
-            manager.module_not_found(state.path, state.id, line, dep)
-
-
 def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
                          deps: Dict[str, Set[str]],
                          graph: Dict[str, State]) -> None:
@@ -824,11 +808,12 @@ def reprocess_nodes(manager: BuildManager,
 
     # Second pass of semantic analysis. We don't redo the first pass, because it only
     # does local things that won't go stale.
+    options = graph[module_id].options
     for deferred in nodes:
         with semantic_analyzer.file_context(
                 file_node=file_node,
                 fnam=file_node.path,
-                options=manager.options,
+                options=options,
                 active_type=deferred.active_typeinfo):
             manager.semantic_analyzer.refresh_partial(deferred.node, patches)
 
@@ -837,7 +822,7 @@ def reprocess_nodes(manager: BuildManager,
         with semantic_analyzer.file_context(
                 file_node=file_node,
                 fnam=file_node.path,
-                options=manager.options,
+                options=options,
                 active_type=deferred.active_typeinfo,
                 scope=manager.semantic_analyzer_pass3.scope):
             manager.semantic_analyzer_pass3.refresh_partial(deferred.node, patches)
@@ -845,7 +830,7 @@ def reprocess_nodes(manager: BuildManager,
     with semantic_analyzer.file_context(
             file_node=file_node,
             fnam=file_node.path,
-            options=manager.options,
+            options=options,
             active_type=None):
         apply_semantic_analyzer_patches(patches)
 
@@ -877,10 +862,10 @@ def reprocess_nodes(manager: BuildManager,
     new_triggered = {make_trigger(name) for name in changed}
 
     # Dependencies may have changed.
-    update_deps(module_id, nodes, graph, deps, manager.options)
+    update_deps(module_id, nodes, graph, deps, options)
 
     # Report missing imports.
-    verify_dependencies(graph[module_id], manager)
+    graph[module_id].verify_dependencies()
 
     return new_triggered
 

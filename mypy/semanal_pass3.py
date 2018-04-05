@@ -33,12 +33,11 @@ from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
 from mypy.scope import Scope
-from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 import mypy.semanal
 
 
-class SemanticAnalyzerPass3(TraverserVisitor,
-                            SemanticAnalyzerInterface):
+class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     """The third and final pass of semantic analysis.
 
     Check type argument counts and values of generic types, and perform some

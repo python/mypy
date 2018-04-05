@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import mypy.build
 import mypy.errors
-import mypy.main
+from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.gclogger import GcLogger
@@ -118,6 +118,8 @@ class Server:
 
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
+
+        self.fscache = FileSystemCache(self.options.python_version)
 
         options.incremental = True
         options.fine_grained_incremental = True
@@ -220,8 +222,8 @@ class Server:
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
         try:
-            self.last_sources = mypy.main.create_source_list(files, self.options)
-        except mypy.main.InvalidSourceList as err:
+            self.last_sources = create_source_list(files, self.options, self.fscache)
+        except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)
 
@@ -234,21 +236,19 @@ class Server:
     def check(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
         if not self.fine_grained_manager:
-            return self.initialize_fine_grained(sources)
+            res = self.initialize_fine_grained(sources)
         else:
-            return self.fine_grained_increment(sources)
+            res = self.fine_grained_increment(sources)
+        self.fscache.flush()
+        return res
 
     def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
-        # The file system cache we create gets passed off to
-        # BuildManager, and thence to FineGrainedBuildManager, which
-        # assumes responsibility for clearing it after updates.
-        fscache = FileSystemCache(self.options.python_version)
-        self.fswatcher = FileSystemWatcher(fscache)
+        self.fswatcher = FileSystemWatcher(self.fscache)
         self.update_sources(sources)
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
-                                      fscache=fscache,
+                                      fscache=self.fscache,
                                       alt_lib_path=self.alt_lib_path)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
@@ -289,7 +289,6 @@ class Server:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
 
-        fscache.flush()
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
