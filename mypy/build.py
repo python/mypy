@@ -852,8 +852,7 @@ class FindModuleCache:
         self.find_module.cache_clear()
         self.find_lib_path_dirs.cache_clear()
 
-    def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...],
-                            python_executable: str) -> List[str]:
+    def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> List[str]:
         # Cache some repeated work within distinct find_module calls: finding which
         # elements of lib_path have even the subdirectory they'd need for the module
         # to exist.  This is shared among different module ids when they differ only
