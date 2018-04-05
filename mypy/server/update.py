@@ -413,9 +413,7 @@ def update_module_isolated(module: str,
 
     Returns a named tuple describing the result (see above for details).
     """
-    if module in manager.modules:
-        assert_equivalent_paths(path, manager.modules[module].path)
-    else:
+    if module not in manager.modules:
         manager.log_fine_grained('new module %r' % module)
 
     if not manager.fscache.isfile(path) or force_removed:
@@ -525,12 +523,6 @@ def find_relative_leaf_module(modules: List[Tuple[str, str]], graph: Graph) -> T
             return module, path
     # Could not find any. Just return the first module (by lexicographic order).
     return modules[0]
-
-
-def assert_equivalent_paths(path1: str, path2: str) -> None:
-    path1 = os.path.normpath(os.path.abspath(path1))
-    path2 = os.path.normpath(os.path.abspath(path2))
-    assert path1 == path2, '%s != %s' % (path1, path2)
 
 
 def delete_module(module_id: str,
