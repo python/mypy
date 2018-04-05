@@ -333,14 +333,14 @@ def process_options(args: List[str],
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
                         help='use Python x.y', dest='special-opts:python_version')
     parser.add_argument('--python-executable', action='store', metavar='EXECUTABLE',
-                        help="Python executable which will be used in typechecking.",
-                        dest='special-opts:python_executable')
+                        help="Python executable used for finding PEP 561 compliant installed"
+                             " packages and stubs", dest='special-opts:python_executable')
     parser.add_argument('--no-site-packages', action='store_true',
                         dest='special-opts:no_executable',
-                        help="Do not search for installed PEP 561 compliant packages.")
+                        help="Do not search for installed PEP 561 compliant packages")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
-                             "(defaults to sys.platform).")
+                             "(defaults to sys.platform)")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('--ignore-missing-imports', action='store_true',
