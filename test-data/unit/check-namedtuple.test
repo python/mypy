@@ -46,8 +46,8 @@ x.z = 5 # E: "X" has no attribute "z"
 
 class A(X): pass
 a = None  # type: A
-a.x = 5 # E: Property "x" defined in "A" is read-only
-a.y = 5 # E: Property "y" defined in "A" is read-only
+a.x = 5 # E: Property "x" defined in "X" is read-only
+a.y = 5 # E: Property "y" defined in "X" is read-only
 -- a.z = 5 # not supported yet
 
 
