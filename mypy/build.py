@@ -872,8 +872,7 @@ class FindModuleCache:
             elif os.path.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
                 third_party_dirs.append(path)
-        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path,
-                                                      python_executable) + third_party_dirs
+        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + third_party_dirs
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
