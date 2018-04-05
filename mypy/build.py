@@ -2038,8 +2038,8 @@ def find_module_and_diagnose(manager: BuildManager,
         # difference and just assume 'builtins' everywhere,
         # which simplifies code.
         file_id = '__builtin__'
-    path = manager.find_module_cache.find_module(file_id, manager.lib_path, 
-                                                 manager.options.python_version)
+    path = manager.find_module_cache.find_module(file_id, manager.lib_path,
+                                                 manager.options.python_executable)
     if path:
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
