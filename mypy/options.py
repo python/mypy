@@ -192,6 +192,9 @@ class Options:
         self.local_partial_types = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
+        # List of package roots -- directories under these are packages even
+        # if they don't have __init__.py.
+        self.package_root = []  # type: List[str]
         self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
 
     def __eq__(self, other: object) -> bool:

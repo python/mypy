@@ -383,6 +383,10 @@ def process_options(args: List[str],
     parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
     # --bazel changes some behaviors for use with Bazel (https://bazel.build).
     parser.add_argument('--bazel', action='store_true', help=argparse.SUPPRESS)
+    # --package-root adds a directory below which directories are considered
+    # packages even without __init__.py.  May be repeated.
+    parser.add_argument('--package-root', metavar='ROOT', action='append', default=[],
+                        help=argparse.SUPPRESS)
     # --cache-map FILE ... gives a mapping from source files to cache files.
     # Each triple of arguments is a source file, a cache meta file, and a cache data file.
     # Modules not mentioned in the file will go through cache_dir.
@@ -598,6 +602,7 @@ config_types = {
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
+    'package_root': lambda s: [p.strip() for p in s.split(',')],
 }
 
 SHARED_CONFIG_FILES = ('setup.cfg',)

@@ -23,7 +23,7 @@ def create_source_list(files: Sequence[str], options: Options,
 
     Raises InvalidSourceList on errors.
     """
-    fscache = fscache or FileSystemMetaCache()
+    fscache = fscache or FileSystemMetaCache(package_root=options.package_root)
     finder = SourceFinder(fscache)
 
     targets = []
@@ -140,6 +140,8 @@ class SourceFinder:
         for ext in PY_EXTENSIONS:
             f = os.path.join(dir, '__init__' + ext)
             if self.fscache.isfile(f):
+                return f
+            if ext == '.py' and self.fscache.under_package_root(f):
                 return f
         return None
 

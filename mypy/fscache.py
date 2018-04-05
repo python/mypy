@@ -36,8 +36,8 @@ from mypy.util import read_with_python_encoding
 
 
 class FileSystemMetaCache:
-    def __init__(self, package_root: bool = False) -> None:
-        self.package_root = package_root
+    def __init__(self, package_root: Optional[List[str]] = None) -> None:
+        self.package_root = package_root if package_root is not None else []
         self.flush()
 
     def flush(self) -> None:
@@ -48,6 +48,7 @@ class FileSystemMetaCache:
         self.listdir_error_cache = {}  # type: Dict[str, Exception]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
         self.fake_package_cache = set()  # type: Set[str]
+        self.cwd = os.getcwd()
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -57,8 +58,7 @@ class FileSystemMetaCache:
         try:
             st = os.stat(path)
         except Exception as err:
-            if (self.package_root and not os.path.isabs(path)
-                    and os.path.basename(path) == '__init__.py'):
+            if isinstance(err, OSError) and self.under_package_root(path):
                 try:
                     return self._fake_init(path)
                 except OSError:
@@ -67,6 +67,25 @@ class FileSystemMetaCache:
             raise err
         self.stat_cache[path] = st
         return st
+
+    def under_package_root(self, path: str) -> bool:
+        if not self.package_root:
+            return False
+        dirname, basename = os.path.split(path)
+        if basename not in ('__init__.py', '__init__.pyi'):
+            return False
+        try:
+            st = self.stat(dirname)
+        except OSError:
+            return False
+        else:
+            if not stat.S_ISDIR(st.st_mode):
+                return False
+        for root in self.package_root:
+            if (path.startswith(root + os.sep) or
+                root == '' or root == '.' or root == self.cwd and not os.path.isabs(path)):
+                return True
+        return False
 
     def _fake_init(self, path: str) -> os.stat_result:
         dirname = os.path.dirname(path) or os.curdir
@@ -149,7 +168,7 @@ class FileSystemMetaCache:
 
 
 class FileSystemCache(FileSystemMetaCache):
-    def __init__(self, pyversion: Tuple[int, int], package_root: bool = False) -> None:
+    def __init__(self, pyversion: Tuple[int, int], package_root: Optional[List[str]] = None) -> None:
         self.pyversion = pyversion
         super().__init__(package_root=package_root)
 
