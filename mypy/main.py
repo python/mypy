@@ -314,9 +314,9 @@ def process_options(args: List[str],
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="don't assume arguments with default values of None are Optional")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable module cache, (inverse: --no-incremental)")
-    parser.add_argument('--no-incremental', action='store_false', dest='incremental',
                         help=argparse.SUPPRESS)
+    parser.add_argument('--no-incremental', action='store_false', dest='incremental',
+                        help="disable module cache, (inverse: --incremental)")
     parser.add_argument('--quick-and-dirty', action='store_true',
                         help="use cache even if dependencies out of date "
                         "(implies --incremental)")
