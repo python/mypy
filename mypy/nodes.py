@@ -211,6 +211,8 @@ class MypyFile(SymbolNode):
     is_stub = False
     # Is this loaded from the cache and thus missing the actual body of the file?
     is_cache_skeleton = False
+    # Full names under which this module appears in other modules.
+    aka_names = None  # type: Set[str]
 
     def __init__(self,
                  defs: List[Statement],
@@ -226,6 +228,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = ignored_lines
         else:
             self.ignored_lines = set()
+        self.aka_names = set()
 
     def name(self) -> str:
         return self._name
@@ -2370,9 +2373,13 @@ class SymbolTableNode:
     #  - TYPE_ALIAS: type alias
     #  - UNBOUND_IMPORTED: temporary kind for imported names (we don't know the final kind yet)
     kind = None  # type: int
+    # Store old kind if changed during second pass.
+    unanalyzed_kind = None  # type: int
     # AST node of definition (among others, this can be FuncDef/Var/TypeInfo/TypeVarExpr/MypyFile,
     # or None for a bound type variable or a cross_ref that hasn't been fixed up yet).
     node = None  # type: Optional[SymbolNode]
+    # Store old node if changed during second pass.
+    unanalyzed_node = None  # type: Optional[SymbolNode]
     # If this not None, override the type of the 'node' attribute. This is only used for
     # type aliases.
     type_override = None  # type: Optional[mypy.types.Type]
@@ -2393,10 +2400,12 @@ class SymbolTableNode:
     normalized = False  # type: bool
     # Was this defined by assignment to self attribute?
     implicit = False  # type: bool
-    # Is this node refers to other node via node aliasing?
+    # Is this node refers to other _class_ node via node aliasing?
     # (This is currently used for simple aliases like `A = int` instead of .type_override)
     is_aliasing = False  # type: bool
     alias_name = None  # type: Optional[str]
+    # Is this node refers to other _module_ node via node aliasing?
+    is_module_alias = False  # type: bool
 
     def __init__(self,
                  kind: int,

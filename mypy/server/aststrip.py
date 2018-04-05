@@ -162,8 +162,14 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
-        if self.type and not self.is_class_body:
-            for lvalue in node.lvalues:
+        for lvalue in node.lvalues:
+            if self.names and isinstance(lvalue, NameExpr):
+                name = lvalue.name
+                if name in self.names and self.names[name].is_module_alias:
+                    snode = self.names[name]
+                    snode.node = snode.unanalyzed_node
+                    snode.kind = snode.unanalyzed_kind
+            if self.type and not self.is_class_body:
                 self.process_lvalue_in_method(lvalue)
         super().visit_assignment_stmt(node)
 

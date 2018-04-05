@@ -1303,6 +1303,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                           context: Context, module_hidden: bool = False) -> None:
         if id in self.modules:
             m = self.modules[id]
+            m.aka_names.add('{}.{}'.format(self.cur_mod_id, as_id))
             self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m,
                                                    module_public=module_public,
                                                    module_hidden=module_hidden), context)
@@ -2215,8 +2216,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                 ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
-                            lnode.kind = MODULE_REF
-                            lnode.node = rnode.node
+                            lnode.is_module_alias = True
+                            lnode.kind, lnode.unanalyzed_kind = MODULE_REF, lnode.kind
+                            lnode.node, lnode.unanalyzed_node = rnode.node, lnode.node
+                            if isinstance(rnode.node, MypyFile):
+                                rnode.node.aka_names.add('{}.{}'.format(self.cur_mod_id,
+                                                                        lval.name))
 
     def visit_decorator(self, dec: Decorator) -> None:
         for d in dec.decorators:

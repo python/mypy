@@ -436,6 +436,10 @@ class DependencyVisitor(TraverserVisitor):
     def process_global_ref_expr(self, o: RefExpr) -> None:
         if o.fullname is not None:
             self.add_dependency(make_trigger(o.fullname))
+        if isinstance(o.node, MypyFile):
+            for name in o.node.aka_names:
+                if self.scope.module and not name.startswith(self.scope.module):
+                    self.add_dependency(make_trigger(name))
 
         # If this is a reference to a type, generate a dependency to its
         # constructor.

@@ -5139,6 +5139,72 @@ class A(Generic[T]):
 main:3: error: "int" not callable
 main:6: error: "int" not callable
 
+[case testChangeModuleToFunction]
+import b
+b.c.x
+def f(x: int) -> None:
+    b.c.x
+class A:
+    def meth(self) -> None:
+        def inner() -> int:
+            return b.c.x
+[file b.py]
+import c
+[file b.py.2]
+def c() -> None: pass
+[file c.py]
+x: int
+[builtins fixtures/module.pyi]
+[out]
+==
+main:2: error: "Callable[[], None]" has no attribute "x"
+main:4: error: "Callable[[], None]" has no attribute "x"
+main:8: error: "Callable[[], None]" has no attribute "x"
+
+[case testChangeModuleToTypeAlias]
+import a
+x: int = a.C.x
+def f(x: int) -> None:
+    x = a.C.x
+class A:
+    def meth(self) -> None:
+        def inner() -> int:
+            return a.C.x
+[file a.py]
+import b
+C = b.D
+[file b.py]
+import D
+[file b.py.2]
+class D:
+    x: str
+[file D.py]
+x: int
+[builtins fixtures/module.pyi]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:8: error: Incompatible return value type (got "str", expected "int")
+
+[case testRefreshModuleAlias]
+import a
+a.n.x
+[file a.py]
+from b import m
+n = m
+[file b.py]
+import m
+[file b.py.2]
+import m2 as m
+[file m.py]
+x = 1
+[file m2.py]
+[builtins fixtures/module.pyi]
+[out]
+==
+main:2: error: Module has no attribute "x"
+
 [case testRefreshNestedClassWithSelfReference]
 import a
 [file a.py]
