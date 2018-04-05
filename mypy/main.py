@@ -219,11 +219,14 @@ class PythonExecutableInferenceError(Exception):
     """Represents a failure to infer the version or executable while searching."""
 
 
-if sys.platform == 'win32':
-    def python_executable_prefix(v: str) -> List[str]:
+def python_executable_prefix(v: str) -> List[str]:
+    if sys.platform == 'win32':
+        # on Windows, all Python executables are named `python`. To handle this, there
+        # is the `py` launcher, which can be passed a version e.g. `py -3.5`, and it will
+        # execute an installed Python 3.5 interpreter. See also:
+        # https://docs.python.org/3/using/windows.html#python-launcher-for-windows
         return ['py', '-{}'.format(v)]
-else:
-    def python_executable_prefix(v: str) -> List[str]:
+    else:
         return ['python{}'.format(v)]
 
 
@@ -242,7 +245,6 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
     str_ver = '.'.join(map(str, python_version))
-    print(str_ver)
     try:
         sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
                                           ['-c', 'import sys; print(sys.executable)'],
