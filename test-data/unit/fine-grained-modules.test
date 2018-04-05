@@ -1746,3 +1746,39 @@ p/b.py: note: Ancestor package 'p' ignored
 p/b.py: note: (Using --follow-imports=error, submodule passed on command line)
 p/b.py:1: error: Cannot find module named 'z'
 p/b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testTurnPackageToModule]
+[file a.py]
+[file b.py]
+import p
+x = p.f()
+[file p/__init__.py]
+def f() -> int: pass
+[delete p/__init__.py.2]
+[file p.py.2]
+def f() -> str: pass
+[file a.py.3]
+import b
+reveal_type(b.x)
+[out]
+==
+==
+a.py:2: error: Revealed type is 'builtins.str'
+
+[case testModuleToPackage]
+[file a.py]
+[file b.py]
+import p
+x = p.f()
+[file p.py]
+def f() -> str: pass
+[delete p.py.2]
+[file p/__init__.py.2]
+def f() -> int: pass
+[file a.py.3]
+import b
+reveal_type(b.x)
+[out]
+==
+==
+a.py:2: error: Revealed type is 'builtins.int'
