@@ -1077,6 +1077,20 @@ class A:
 A().f = '' # E: Property "f" defined in "A" is read-only
 [builtins fixtures/property.pyi]
 
+[case testAssigningToInheritedReadOnlyProperty]
+class A:
+    @property
+    def f(self) -> str: pass
+class B(A): pass
+class C(A):
+    @property
+    def f(self) -> str: pass
+
+A().f = '' # E: Property "f" defined in "A" is read-only
+B().f = '' # E: Property "f" defined in "A" is read-only
+C().f = '' # E: Property "f" defined in "C" is read-only
+[builtins fixtures/property.pyi]
+
 [case testPropertyGetterBody]
 import typing
 class A:
