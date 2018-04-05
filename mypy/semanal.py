@@ -3284,6 +3284,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     # Expressions
     #
 
+    def add_symbol_alias_deps(self, n: Optional[SymbolTableNode]) -> None:
+        """Add type alias dependencies for a RefExpr node."""
+        if n and n.is_aliasing:
+            assert n.alias_name is not None
+            self.add_type_alias_deps([n.alias_name])
+
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
@@ -3291,9 +3297,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             else:
-                if n.is_aliasing:
-                    assert n.alias_name is not None
-                    self.add_type_alias_deps([n.alias_name])
+                self.add_symbol_alias_deps(n)
                 expr.kind = n.kind
                 expr.node = n.node
                 expr.fullname = n.fullname
@@ -3471,9 +3475,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
-            if n and n.is_aliasing:
-                assert n.alias_name is not None
-                self.add_type_alias_deps([n.alias_name])
+            self.add_symbol_alias_deps(n)
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 n = self.normalize_type_alias(n, expr)
@@ -3531,9 +3533,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         type_info = self.type
             if type_info:
                 n = type_info.names.get(expr.name)
-                if n and n.is_aliasing:
-                    assert n.alias_name is not None
-                    self.add_type_alias_deps([n.alias_name])
+                self.add_symbol_alias_deps(n)
                 if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
                     n = self.normalize_type_alias(n, expr)
                     if not n:

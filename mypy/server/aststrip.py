@@ -236,7 +236,7 @@ class NodeStripVisitor(TraverserVisitor):
             if node.kind == MDEF and node.is_new_def:
                 self.strip_class_attr(node.name)
             self.strip_ref_expr(node)
-        # [*] although we always strip type
+        # [*] although we always strip type, thus returning the Var to the state after pass 1.
         if isinstance(node.node, Var):
             node.node.type = None
 
