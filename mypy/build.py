@@ -36,7 +36,7 @@ MYPY = False
 if MYPY:
     from typing import Deque
 
-from . import sitepkgs
+from mypy import sitepkgs
 from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
@@ -816,7 +816,10 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
 
 @functools.lru_cache(maxsize=None)
 def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
-    """Find package directories for given python."""
+    """Find package directories for given python.
+
+    This runs a subprocess call, which generates a list of the site package directories.
+    To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
     if python_executable is None:
         return []
     if python_executable == sys.executable:
