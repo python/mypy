@@ -2,7 +2,7 @@ from contextlib import contextmanager
 import os
 import shutil
 import sys
-from typing import Generator, List
+from typing import Iterator, List
 from unittest import TestCase, main
 
 import mypy.api
@@ -18,15 +18,28 @@ reveal_type(a)
 """
 
 
+def check_mypy_run(cmd_line: List[str],
+                   expected_out: str,
+                   expected_err: str = '',
+                   expected_returncode: int = 1) -> None:
+    """Helper to run mypy and check the output."""
+    out, err, returncode = mypy.api.run(cmd_line)
+    assert out == expected_out, err
+    assert err == expected_err, out
+    assert returncode == expected_returncode, returncode
+
+
 class TestPEP561(TestCase):
     @contextmanager
     def install_package(self, pkg: str,
-                        python_executable: str = sys.executable) -> Generator[None, None, None]:
+                        python_executable: str = sys.executable) -> Iterator[None]:
         """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
         install_cmd = [python_executable, '-m', 'pip', 'install', '.']
         # if we aren't in a virtualenv, install in the
         # user package directory so we don't need sudo
+        # In a virtualenv, real_prefix is patched onto
+        # sys
         if not hasattr(sys, 'real_prefix') or python_executable != sys.executable:
             install_cmd.append('--user')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
@@ -42,22 +55,12 @@ class TestPEP561(TestCase):
         dirs = _get_site_packages_dirs(sys.executable)
         assert dirs
 
-    @staticmethod
-    def check_mypy_run(cmd_line: List[str],
-                       expected_out: str,
-                       expected_err: str = '',
-                       expected_returncode: int = 1) -> None:
-        """Helper to run mypy and check the output."""
-        out, err, returncode = mypy.api.run(cmd_line)
-        assert out == expected_out, err
-        assert err == expected_err, out
-        assert returncode == expected_returncode, returncode
-
     def test_typed_pkg(self) -> None:
         """Tests type checking based on installed packages.
 
         This test CANNOT be split up, concurrency means that simultaneously
-        installing/uninstalling will break tests"""
+        installing/uninstalling will break tests.
+        """
         test_file = 'simple.py'
         if not os.path.isdir('test-packages-data'):
             os.mkdir('test-packages-data')
@@ -67,7 +70,7 @@ class TestPEP561(TestCase):
             f.write(SIMPLE_PROGRAM)
         try:
             with self.install_package('typedpkg-stubs'):
-                self.check_mypy_run(
+                check_mypy_run(
                     [test_file],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
@@ -77,32 +80,32 @@ class TestPEP561(TestCase):
             python2 = try_find_python2_interpreter()
             if python2:
                 with self.install_package('typedpkg-stubs', python2):
-                    self.check_mypy_run(
+                    check_mypy_run(
                         ['--python-executable={}'.format(python2), test_file],
                         "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                     )
                 with self.install_package('typedpkg', python2):
-                    self.check_mypy_run(
+                    check_mypy_run(
                         ['--python-executable={}'.format(python2), 'simple.py'],
                         "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
                     )
 
                 with self.install_package('typedpkg', python2):
                     with self.install_package('typedpkg-stubs', python2):
-                        self.check_mypy_run(
+                        check_mypy_run(
                             ['--python-executable={}'.format(python2), test_file],
                             "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                         )
 
             with self.install_package('typedpkg'):
-                self.check_mypy_run(
+                check_mypy_run(
                     [test_file],
                     "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
                 )
 
             with self.install_package('typedpkg'):
                 with self.install_package('typedpkg-stubs'):
-                    self.check_mypy_run(
+                    check_mypy_run(
                         [test_file],
                         "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                     )
