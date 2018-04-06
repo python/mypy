@@ -2163,10 +2163,14 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         graph = load_graph(sources, manager)
 
     t1 = time.time()
+    fm_cache_size = manager.find_module_cache.find_module.cache_info().currsize
+    fm_dir_cache_size = manager.find_module_cache.find_lib_path_dirs.cache_info().currsize
     manager.add_stats(graph_size=len(graph),
                       stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
                                       for g in graph.values()),
                       graph_load_time=(t1 - t0),
+                      fm_cache_size=fm_cache_size,
+                      fm_dir_cache_size=fm_dir_cache_size,
                       )
     if not graph:
         print("Nothing to do?!")
