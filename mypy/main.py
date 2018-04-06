@@ -253,7 +253,15 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
 
 def infer_python_version_and_executable(options: Options,
                                         special_opts: argparse.Namespace) -> None:
+    """Infer the Python version or executable from each other. Check they are consistent.
+
+    This function mutates options based on special_opts to infer the correct Python version and
+    executable to use.
+    """
     # Infer Python version and/or executable if one is not given
+
+    # TODO: (ethanhs) Look at folding these checks and the site packages subprocess calls into
+    # one subprocess call for speed.
     if special_opts.python_executable is not None and special_opts.python_version is not None:
         py_exe_ver = _python_version_from_executable(special_opts.python_executable)
         if py_exe_ver != special_opts.python_version:
