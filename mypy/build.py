@@ -864,12 +864,12 @@ class FindModuleCache:
             stub_name = components[0] + '-stubs'
             typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_dir = os.path.join(pkg_dir, stub_name)
-            if os.path.isdir(stub_dir):
+            if fscache.isdir(stub_dir):
                 stub_components = [stub_name] + components[1:]
                 path = os.path.join(pkg_dir, *stub_components[:-1])
-                if os.path.isdir(path):
+                if fscache.isdir(path):
                     third_party_dirs.append(path)
-            elif os.path.isfile(typed_file):
+            elif fscache.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
                 third_party_dirs.append(path)
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + third_party_dirs
