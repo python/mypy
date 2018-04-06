@@ -1,5 +1,11 @@
 from __future__ import print_function
-# NOTE: This file must remain compatible with Python 2
+"""This file is used to find the site packages of a Python executable, which may be Python 2.
+
+This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
+Python being executed, this module should not use *any* dependencies outside of the standard
+library found in Python 2. This file is run each mypy run, so it should be kept as fast as
+possible.
+"""
 
 
 from distutils.sysconfig import get_python_lib
