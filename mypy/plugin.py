@@ -5,6 +5,7 @@ from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 
 import mypy.plugins.attrs
+import mypy.plugins.ctypes
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
     TypeInfo, SymbolTableNode, MypyFile
@@ -276,6 +277,7 @@ class DefaultPlugin(Plugin):
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
+        print(f"get_function_hook({fullname!r})")  # XXX debugging
         if fullname == 'contextlib.contextmanager':
             return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
@@ -284,16 +286,29 @@ class DefaultPlugin(Plugin):
 
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+        print(f"get_method_signature_hook({fullname!r})")  # XXX debugging
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
+        elif fullname == 'ctypes.Array.__init__':
+            return mypy.plugins.ctypes.array_init_callback
         return None
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
+        print(f"get_method_hook({fullname!r})")  # XXX debugging
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
+        elif fullname == 'ctypes.Array.__getitem__':
+            return mypy.plugins.ctypes.array_getitem_callback
+        elif fullname == 'ctypes.Array.__iter__':
+            return mypy.plugins.ctypes.array_iter_callback
+        return None
+
+    def get_attribute_hook(self, fullname: str
+                           ) -> Optional[Callable[[AttributeContext], Type]]:
+        print(f"get_attribute_hook({fullname!r})")  # XXX debugging
         return None
 
     def get_class_decorator_hook(self, fullname: str
