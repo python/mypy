@@ -5,10 +5,12 @@ import shutil
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource, State
+from mypy.build import BuildManager, BuildSource, BuildResult, State, Graph
+from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, UNBOUND_IMPORTED
+    Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
+    UNBOUND_IMPORTED
 )
 from mypy.options import Options
 from mypy.server.astmerge import merge_asts
@@ -37,6 +39,7 @@ NOT_DUMPED_MODULES = (
     'contextlib',
     'sys',
     'mypy_extensions',
+    'enum',
 )
 
 
@@ -66,26 +69,30 @@ class ASTMergeSuite(DataSuite):
             kind = AST
 
         main_src = '\n'.join(testcase.input)
-        messages, manager, graph = self.build(main_src)
-        assert manager is not None, 'cases where CompileError occurred should not be run'
-        fine_grained_manager = FineGrainedBuildManager(manager, graph)
+        result = self.build(main_src)
+        assert result is not None, 'cases where CompileError occurred should not be run'
+        result.manager.fscache.flush()
+        fine_grained_manager = FineGrainedBuildManager(result)
 
         a = []
-        if messages:
-            a.extend(messages)
+        if result.errors:
+            a.extend(result.errors)
 
         target_path = os.path.join(test_temp_dir, 'target.py')
         shutil.copy(os.path.join(test_temp_dir, 'target.py.next'), target_path)
 
-        a.extend(self.dump(manager, kind))
-        old_subexpr = get_subexpressions(manager.modules['target'])
+        a.extend(self.dump(fine_grained_manager, kind))
+        old_subexpr = get_subexpressions(result.manager.modules['target'])
 
         a.append('==>')
 
         new_file, new_types = self.build_increment(fine_grained_manager, 'target', target_path)
-        a.extend(self.dump(manager, kind))
+        a.extend(self.dump(fine_grained_manager, kind))
 
         for expr in old_subexpr:
+            if isinstance(expr, TypeVarExpr):
+                # These are merged so we can't perform the check.
+                continue
             # Verify that old AST nodes are removed from the expression type map.
             assert expr not in new_types
 
@@ -96,12 +103,13 @@ class ASTMergeSuite(DataSuite):
             'Invalid output ({}, line {})'.format(testcase.file,
                                                   testcase.line))
 
-    def build(self, source: str) -> Tuple[List[str], Optional[BuildManager], Dict[str, State]]:
+    def build(self, source: str) -> Optional[BuildResult]:
         options = Options()
         options.incremental = True
         options.fine_grained_incremental = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
+        options.python_version = PYTHON3_VERSION
         main_path = os.path.join(test_temp_dir, 'main')
         with open(main_path, 'w') as f:
             f.write(source)
@@ -111,21 +119,21 @@ class ASTMergeSuite(DataSuite):
                                  alt_lib_path=test_temp_dir)
         except CompileError as e:
             # TODO: Is it okay to return None?
-            return e.messages, None, {}
-        return result.errors, result.manager, result.graph
+            return None
+        return result
 
     def build_increment(self, manager: FineGrainedBuildManager,
                         module_id: str, path: str) -> Tuple[MypyFile,
                                                             Dict[Expression, Type]]:
-        manager.update([(module_id, path)])
+        manager.update([(module_id, path)], [])
         module = manager.manager.modules[module_id]
-        type_map = manager.type_maps[module_id]
+        type_map = manager.graph[module_id].type_map()
         return module, type_map
 
     def dump(self,
-             manager: BuildManager,
+             manager: FineGrainedBuildManager,
              kind: str) -> List[str]:
-        modules = manager.modules
+        modules = manager.manager.modules
         if kind == AST:
             return self.dump_asts(modules)
         elif kind == TYPEINFO:
@@ -199,18 +207,21 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def dump_typeinfo(self, info: TypeInfo) -> List[str]:
+        if info.fullname() == 'enum.Enum':
+            # Avoid noise
+            return []
         s = info.dump(str_conv=self.str_conv,
                       type_str_conv=self.type_str_conv)
         return s.splitlines()
 
-    def dump_types(self, manager: BuildManager) -> List[str]:
+    def dump_types(self, manager: FineGrainedBuildManager) -> List[str]:
         a = []
         # To make the results repeatable, we try to generate unique and
         # deterministic sort keys.
-        for module_id in sorted(manager.modules):
+        for module_id in sorted(manager.manager.modules):
             if not is_dumped_module(module_id):
                 continue
-            type_map = manager.saved_cache[module_id][2]
+            type_map = manager.graph[module_id].type_map()
             if type_map:
                 a.append('## {}'.format(module_id))
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),

@@ -29,3 +29,6 @@ dmypy.json
 # Coverage Files
 htmlcov
 .coverage*
+
+# pytest cache
+.pytest_cache/

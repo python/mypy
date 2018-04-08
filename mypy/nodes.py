@@ -312,14 +312,48 @@ class ImportAll(ImportBase):
     """from m import *"""
     id = None  # type: str
     relative = None  # type: int
+    imported_names = None  # type: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
+        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
+
+
+class ImportedName(SymbolNode):
+    """Indirect reference to a fullname stored in symbol table.
+
+    This node is not present in the original program as such. This is
+    just a temporary artifact in binding imported names. After semantic
+    analysis pass 2, these references should be replaced with direct
+    reference to a real AST node.
+
+    Note that this is neither a Statement nor an Expression so this
+    can't be visited.
+    """
+
+    def __init__(self, target_fullname: str) -> None:
+        self.target_fullname = target_fullname
+
+    def name(self) -> str:
+        return self.target_fullname.split('.')[-1]
+
+    def fullname(self) -> str:
+        return self.target_fullname
+
+    def serialize(self) -> JsonDict:
+        assert False, "ImportedName leaked from semantic analysis"
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'ImportedName':
+        assert False, "ImportedName should never be serialized"
+
+    def __str__(self) -> str:
+        return 'ImportedName(%s)' % self.target_fullname
 
 
 class FuncBase(Node):
@@ -421,7 +455,7 @@ class Argument(Node):
 
 
 class FuncItem(FuncBase):
-    arguments = []  # type: List[Argument]
+    arguments = []  # type: List[Argument]  # Note: Can be None if deserialized (type is a lie!)
     arg_names = []  # type: List[str]
     arg_kinds = []  # type: List[int]
     # Minimum number of arguments
@@ -2077,6 +2111,11 @@ class TypeInfo(SymbolNode):
             return (left, right) in self._cache
         return (left, right) in self._cache_proper
 
+    def reset_subtype_cache(self) -> None:
+        for item in self.mro:
+            item._cache = set()
+            item._cache_proper = set()
+
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
@@ -2087,14 +2126,8 @@ class TypeInfo(SymbolNode):
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
 
-    # IDEA: Refactor the has* methods to be more consistent and document
-    #       them.
-
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
-
-    def has_method(self, name: str) -> bool:
-        return self.get_method(name) is not None
 
     def get_method(self, name: str) -> Optional[FuncBase]:
         if self.mro is None:  # Might be because of a previous error.
@@ -2118,6 +2151,7 @@ class TypeInfo(SymbolNode):
         self.mro = mro
         # The property of falling back to Any is inherited.
         self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
+        self.reset_subtype_cache()
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass
@@ -2191,11 +2225,18 @@ class TypeInfo(SymbolNode):
             if isinstance(node, Var) and node.type:
                 description += ' ({})'.format(type_str(node.type))
             names.append(description)
+        items = [
+            'Name({})'.format(self.fullname()),
+            base,
+            mro,
+            ('Names', names),
+        ]
+        if self.declared_metaclass:
+            items.append('DeclaredMetaclass({})'.format(type_str(self.declared_metaclass)))
+        if self.metaclass_type:
+            items.append('MetaclassType({})'.format(type_str(self.metaclass_type)))
         return mypy.strconv.dump_tagged(
-            ['Name({})'.format(self.fullname()),
-             base,
-             mro,
-             ('Names', names)],
+            items,
             head,
             str_conv=str_conv)
 
@@ -2315,7 +2356,7 @@ class SymbolTableNode:
     #  - UNBOUND_IMPORTED: temporary kind for imported names (we don't know the final kind yet)
     kind = None  # type: int
     # AST node of definition (among others, this can be FuncDef/Var/TypeInfo/TypeVarExpr/MypyFile,
-    # or None for a bound type variable).
+    # or None for a bound type variable or a cross_ref that hasn't been fixed up yet).
     node = None  # type: Optional[SymbolNode]
     # If this not None, override the type of the 'node' attribute. This is only used for
     # type aliases.

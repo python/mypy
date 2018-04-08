@@ -696,7 +696,10 @@ class MessageBuilder:
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None
-            self.note('{} defined here'.format(callable_name(callee)), callee.definition,
+            fname = callable_name(callee)
+            if not fname:  # an alias to function with a different name
+                fname = 'Called function'
+            self.note('{} defined here'.format(fname), callee.definition,
                       file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
@@ -932,12 +935,12 @@ class MessageBuilder:
                   'of signature {}'.format(index1), context)
 
     def operator_method_signatures_overlap(
-            self, reverse_class: str, reverse_method: str, forward_class: str,
+            self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
             forward_method: str, context: Context) -> None:
-        self.fail('Signatures of "{}" of "{}" and "{}" of "{}" '
+        self.fail('Signatures of "{}" of "{}" and "{}" of {} '
                   'are unsafely overlapping'.format(
-                      reverse_method, reverse_class,
-                      forward_method, forward_class),
+                      reverse_method, reverse_class.name(),
+                      forward_method, self.format(forward_class)),
                   context)
 
     def forward_operator_not_callable(

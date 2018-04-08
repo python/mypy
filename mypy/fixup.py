@@ -16,14 +16,16 @@ from mypy.types import (
 from mypy.visitor import NodeVisitor
 
 
+# N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
+# when fixing up a fine-grained incremental cache load (since there may
+# be cross-refs into deleted modules)
 def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
                           quick_and_dirty: bool) -> None:
     node_fixer = NodeFixer(modules, quick_and_dirty)
     node_fixer.visit_symbol_table(tree.names)
 
 
-def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile],
-                          quick_and_dirty: bool) -> None:
+def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
     compute_all_mros(tree.names, modules)
 
 
@@ -87,15 +89,15 @@ class NodeFixer(NodeVisitor[None]):
                         value.type_override = stnode.type_override
                         if (self.quick_and_dirty and value.kind == TYPE_ALIAS and
                                 stnode.type_override is None):
-                            value.type_override = Instance(stale_info(), [])
+                            value.type_override = Instance(stale_info(self.modules), [])
                         value.alias_tvars = stnode.alias_tvars or []
                     elif not self.quick_and_dirty:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
                     else:
                         # We have a missing crossref in quick mode, need to put something
-                        value.node = stale_info()
+                        value.node = stale_info(self.modules)
                         if value.kind == TYPE_ALIAS:
-                            value.type_override = Instance(stale_info(), [])
+                            value.type_override = Instance(stale_info(self.modules), [])
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
@@ -171,7 +173,7 @@ class TypeFixer(TypeVisitor[None]):
         else:
             # Looks like a missing TypeInfo in quick mode, put something there
             assert self.quick_and_dirty, "Should never get here in normal mode"
-            inst.type = stale_info()
+            inst.type = stale_info(self.modules)
         for a in inst.args:
             a.accept(self)
 
@@ -287,16 +289,23 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
         if not rest:
             return stnode
         node = stnode.node
+        # In fine-grained mode, could be a cross-reference to a deleted module
+        if node is None:
+            if not quick_and_dirty:
+                assert node, "Cannot find %s" % (name,)
+            return None
         assert isinstance(node, TypeInfo)
         names = node.names
 
 
-def stale_info() -> TypeInfo:
+def stale_info(modules: Dict[str, MypyFile]) -> TypeInfo:
     suggestion = "<stale cache: consider running mypy without --quick>"
     dummy_def = ClassDef(suggestion, Block([]))
     dummy_def.fullname = suggestion
 
     info = TypeInfo(SymbolTable(), dummy_def, "<stale>")
-    info.mro = [info]
-    info.bases = []
+    obj_type = lookup_qualified(modules, 'builtins.object', False)
+    assert isinstance(obj_type, TypeInfo)
+    info.bases = [Instance(obj_type, [])]
+    info.mro = [info, obj_type]
     return info

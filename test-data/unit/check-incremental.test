@@ -28,7 +28,7 @@
 -- annotation, and any files expect to be stale (aka have a modified interface)
 -- should be annotated in the [stale] annotation. Note that a file that ends up
 -- producing an error has its caches deleted and is marked stale automatically.
--- Such files don't need to be included in [stale ...] list.
+-- Such files do not need to be included in [stale ...] list.
 --
 -- The test suite will automatically assume that __main__ is stale and rechecked in
 -- all cases so we can avoid constantly having to annotate it. The list of
@@ -2502,7 +2502,7 @@ a.f()
 import a
 reveal_type(a.f)
 [out2]
-tmp/b.py:2: error: Revealed type is 'Any'
+tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
 
 [case testQuickAndDirtyDeleteClassUsedInAnnotation]
 # flags: --quick-and-dirty
@@ -2521,6 +2521,32 @@ a.f().x
 tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
 tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
 
+[case testQuickAndDirtyDeleteSuperClass]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+from b import Foo
+z = (1, Foo())
+
+class Bar:
+    pass
+[file b.py]
+from e import Quux
+class Baz:
+    pass
+class Foo(Baz, Quux):
+    pass
+[file e.py]
+from a import Bar
+class Quux(Bar):
+    pass
+
+[file a.py.2]
+from b import Foo
+z = (1, Foo())
+[out]
+[out2]
+
 [case testQuickAndDirtyDeleteClassUsedAsBase]
 # flags: --quick-and-dirty
 import a
@@ -2535,7 +2561,8 @@ import a
 reveal_type(a.D)
 a.D().x
 [out2]
-tmp/b.py:2: error: Revealed type is 'Any'
+tmp/b.py:2: error: Revealed type is 'def () -> a.D'
+tmp/b.py:3: error: "D" has no attribute "x"
 
 [case testQuickAndDirtyDeleteNestedClassUsedInAnnotation]
 # flags: --quick-and-dirty
@@ -2875,6 +2902,15 @@ from b import x
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
 [out3]
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
+
+[case testNoCrashOnDeletedWithCacheOnCmdline]
+# cmd: mypy -m nonexistent
+# cmd2: mypy -m nonexistent
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+[out2]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
 
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
@@ -4011,6 +4047,26 @@ class Baz:
 [out2]
 tmp/a.py:3: error: Unsupported operand types for + ("int" and "Optional[int]")
 
+[case testIncrementalMetaclassUpdate]
+import a
+[file a.py]
+from b import B
+B.x
+
+[file b.py]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    x: int
+
+[file c.py.2]
+class M(type):
+    y: int
+[out]
+[out2]
+tmp/a.py:2: error: "Type[B]" has no attribute "x"
 
 [case testIncrementalLotsOfInheritance]
 import a
@@ -4059,3 +4115,123 @@ class Baz:
 [out]
 [out2]
 tmp/a.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testIncrementalWithIgnoresTwice]
+import a
+[file a.py]
+import b
+import foo # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file b.py.3]
+x = 1
+[builtins fixtures/module.pyi]
+[out]
+[out2]
+[out3]
+
+[case testIgnoredImport2]
+import x
+[file y.py]
+import xyz  # type: ignore
+B = 0
+from x import A
+[file x.py]
+A = 0
+from y import B
+[file x.py.2]
+A = 1
+from y import B
+[file x.py.3]
+A = 2
+from y import B
+[out]
+[out2]
+[out3]
+
+[case testDeletionOfSubmoduleTriggersImportFrom2]
+from p.q import f
+f()
+[file p/__init__.py]
+[file p/q.py]
+def f() -> None: pass
+[delete p/q.py.2]
+[file p/q.py.3]
+def f(x: int) -> None: pass
+[out]
+[out2]
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out3]
+main:2: error: Too few arguments for "f"
+
+[case testDeleteIndirectDependency]
+import b
+b.x.foo()
+[file b.py]
+import c
+x = c.Foo()
+[file c.py]
+class Foo:
+    def foo(self) -> None: pass
+[delete c.py.2]
+[file b.py.2]
+class Foo:
+    def foo(self) -> None: pass
+x = Foo()
+[out]
+[out2]
+
+[case testImportReExportInCycle]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+class One:
+    pass
+[file m/two.py]
+import m
+class Two:
+    pass
+[file m/one.py.2]
+class One:
+    name: str
+[file m/two.py.2]
+import m
+reveal_type(m.One.name)
+class Two:
+    pass
+[out2]
+tmp/m/two.py:2: error: Revealed type is 'builtins.str'
+
+[case testImportUnusedIgnore1]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b
+import foo  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = '2'
+
+-- TODO: Fails due to #4856
+[case testImportUnusedIgnore2-skip]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b
+import c  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file c.py.3]
+pass
+[out]
+[out2]
+[out3]
+tmp/a.py:1: note: unused 'type: ignore' comment

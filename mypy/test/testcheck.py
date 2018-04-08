@@ -7,12 +7,13 @@ import shutil
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.build import BuildSource, find_module_clear_caches
+from mypy.build import BuildSource, Graph
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages,
-    retry_on_error, update_testcase_output, parse_options
+    assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
+    retry_on_error, update_testcase_output, parse_options,
+    copy_and_fudge_mtime
 )
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -113,37 +114,28 @@ class TypeCheckSuite(DataSuite):
             shutil.rmtree(dn)
 
     def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
-        find_module_clear_caches()
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
-        if incremental_step:
-            if incremental_step == 1:
-                # In run 1, copy program text to program file.
-                for module_name, program_path, program_text in module_data:
-                    if module_name == '__main__':
-                        with open(program_path, 'w') as f:
-                            f.write(program_text)
-                        break
-            elif incremental_step > 1:
-                # In runs 2+, copy *.[num] files to * files.
-                for dn, dirs, files in os.walk(os.curdir):
-                    for file in files:
-                        if file.endswith('.' + str(incremental_step)):
-                            full = os.path.join(dn, file)
-                            target = full[:-2]
-                            # Use retries to work around potential flakiness on Windows (AppVeyor).
-                            retry_on_error(lambda: shutil.copy(full, target))
-
-                            # In some systems, mtime has a resolution of 1 second which can cause
-                            # annoying-to-debug issues when a file has the same size after a
-                            # change. We manually set the mtime to circumvent this.
-                            new_time = os.stat(target).st_mtime + 1
-                            os.utime(target, times=(new_time, new_time))
-                # Delete files scheduled to be deleted in [delete <path>.num] sections.
-                for path in testcase.deleted_paths.get(incremental_step, set()):
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
-                    retry_on_error(lambda: os.remove(path))
+        if incremental_step == 0 or incremental_step == 1:
+            # In run 1, copy program text to program file.
+            for module_name, program_path, program_text in module_data:
+                if module_name == '__main__':
+                    with open(program_path, 'w') as f:
+                        f.write(program_text)
+                    break
+        elif incremental_step > 1:
+            # In runs 2+, copy *.[num] files to * files.
+            for dn, dirs, files in os.walk(os.curdir):
+                for file in files:
+                    if file.endswith('.' + str(incremental_step)):
+                        full = os.path.join(dn, file)
+                        target = full[:-2]
+                        copy_and_fudge_mtime(full, target)
+            # Delete files scheduled to be deleted in [delete <path>.num] sections.
+            for path in testcase.deleted_paths.get(incremental_step, set()):
+                # Use retries to work around potential flakiness on Windows (AppVeyor).
+                retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
@@ -153,8 +145,6 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if incremental_step:
             options.incremental = True
-        else:
-            options.cache_dir = os.devnull  # Don't waste time writing cache
 
         sources = []
         for module_name, program_path, program_text in module_data:
@@ -191,82 +181,56 @@ class TypeCheckSuite(DataSuite):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
-        if incremental_step and res:
-            if options.follow_imports == 'normal' and testcase.output is None:
-                self.verify_cache(module_data, a, res.manager)
+        if res:
+            self.verify_cache(module_data, res.errors, res.manager, res.graph)
+
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'rechecked' + suffix,
                     testcase.expected_rechecked_modules.get(incremental_step - 1),
                     res.manager.rechecked_modules)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'stale' + suffix,
                     testcase.expected_stale_modules.get(incremental_step - 1),
                     res.manager.stale_modules)
 
-    def check_module_equivalence(self, name: str,
-                                 expected: Optional[Set[str]], actual: Set[str]) -> None:
-        if expected is not None:
-            expected_normalized = sorted(expected)
-            actual_normalized = sorted(actual.difference({"__main__"}))
-            assert_string_arrays_equal(
-                expected_normalized,
-                actual_normalized,
-                ('Actual modules ({}) do not match expected modules ({}) '
-                 'for "[{} ...]"').format(
-                    ', '.join(actual_normalized),
-                    ', '.join(expected_normalized),
-                    name))
-
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
-                     manager: build.BuildManager) -> None:
+                     manager: build.BuildManager, graph: Graph) -> None:
         # There should be valid cache metadata for each module except
-        # those in error_paths; for those there should not be.
-        #
-        # NOTE: When A imports B and there's an error in B, the cache
-        # data for B is invalidated, but the cache data for A remains.
-        # However build.process_graphs() will ignore A's cache data.
-        #
-        # Also note that when A imports B, and there's an error in A
-        # _due to a valid change in B_, the cache data for B will be
-        # invalidated and updated, but the old cache data for A will
-        # remain unchanged. As before, build.process_graphs() will
-        # ignore A's (old) cache data.
-        error_paths = self.find_error_paths(a)
-        modules = self.find_module_files()
+        # for those that had an error in themselves or one of their
+        # dependencies.
+        error_paths = self.find_error_message_paths(a)
+        if manager.options.quick_and_dirty:
+            busted_paths = error_paths
+        else:
+            busted_paths = {m.path for id, m in manager.modules.items()
+                            if graph[id].transitive_error}
+        modules = self.find_module_files(manager)
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
-        if not missing_paths.issubset(error_paths):
+        # We would like to assert error_paths.issubset(busted_paths)
+        # but this runs into trouble because while some 'notes' are
+        # really errors that cause an error to be marked, many are
+        # just notes attached to other errors.
+        assert error_paths or not busted_paths, "Some modules reported error despite no errors"
+        if not missing_paths == busted_paths:
             raise AssertionError("cache data discrepancy %s != %s" %
-                                 (missing_paths, error_paths))
+                                 (missing_paths, busted_paths))
 
-    def find_error_paths(self, a: List[str]) -> Set[str]:
+    def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()
         for line in a:
-            m = re.match(r'([^\s:]+):\d+: error:', line)
+            m = re.match(r'([^\s:]+):(\d+:)?(\d+:)? (error|warning|note):', line)
             if m:
-                # Normalize to Linux paths.
-                p = m.group(1).replace(os.path.sep, '/')
+                p = m.group(1)
                 hits.add(p)
         return hits
 
-    def find_module_files(self) -> Dict[str, str]:
+    def find_module_files(self, manager: build.BuildManager) -> Dict[str, str]:
         modules = {}
-        for dn, dirs, files in os.walk(test_temp_dir):
-            dnparts = dn.split(os.sep)
-            assert dnparts[0] == test_temp_dir
-            del dnparts[0]
-            for file in files:
-                if file.endswith('.py'):
-                    if file == "__init__.py":
-                        # If the file path is `a/b/__init__.py`, exclude the file name
-                        # and make sure the module id is just `a.b`, not `a.b.__init__`.
-                        id = '.'.join(dnparts)
-                    else:
-                        base, ext = os.path.splitext(file)
-                        id = '.'.join(dnparts + [base])
-                    modules[id] = os.path.join(dn, file)
+        for id, module in manager.modules.items():
+            modules[id] = module.path
         return modules
 
     def find_missing_cache_files(self, modules: Dict[str, str],
@@ -312,7 +276,7 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                path = build.FindModuleCache().find_module(module_name, [test_temp_dir])
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()

@@ -311,7 +311,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         t = expand_type_by_instance(typ, itype)
         if is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
-            msg.read_only_property(name, info, node)
+            msg.read_only_property(name, itype.type, node)
         if is_lvalue and var.is_classvar:
             msg.cant_assign_to_classvar(name, node)
         result = t
@@ -319,7 +319,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             if is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
-                        msg.read_only_property(name, info, node)
+                        msg.read_only_property(name, itype.type, node)
                 else:
                     msg.cant_assign_to_method(node)
 

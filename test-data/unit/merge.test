@@ -1333,3 +1333,119 @@ target:
     C: TypeInfo<3>
     D: TypeInfo<5>
     NewType: Var<4>
+
+[case testCallable_symtable-skip]
+# The TypeInfo is currently not being merged correctly
+import target
+[file target.py]
+def g(o: object) -> None:
+    if callable(o):
+        pass
+[file target.py.next]
+def g(o: object) -> None:
+    if callable(o):
+        o()
+[builtins fixtures/callable.pyi]
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    <callable subtype of object>: TypeInfo<1>
+    g: FuncDef<2>
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    <callable subtype of object>: TypeInfo<1>
+    g: FuncDef<2>
+
+[case testMetaclass_typeinfo]
+import target
+[file target.py]
+class M(type): pass
+class C(metaclass=M):
+    pass
+[file target.py.next]
+class M(type): pass
+class C(metaclass=M):
+    pass # dummy change
+[out]
+TypeInfo<0>(
+  Name(target.C)
+  Bases(builtins.object<1>)
+  Mro(target.C<0>, builtins.object<1>)
+  Names()
+  DeclaredMetaclass(target.M<2>)
+  MetaclassType(target.M<2>))
+TypeInfo<2>(
+  Name(target.M)
+  Bases(builtins.type<3>)
+  Mro(target.M<2>, builtins.type<3>, builtins.object<1>)
+  Names())
+==>
+TypeInfo<0>(
+  Name(target.C)
+  Bases(builtins.object<1>)
+  Mro(target.C<0>, builtins.object<1>)
+  Names()
+  DeclaredMetaclass(target.M<2>)
+  MetaclassType(target.M<2>))
+TypeInfo<2>(
+  Name(target.M)
+  Bases(builtins.type<3>)
+  Mro(target.M<2>, builtins.type<3>, builtins.object<1>)
+  Names())
+
+[case testCast_symtable]
+import target
+[file target.py]
+from typing import cast
+class Thing:
+    pass
+thing = cast(Thing, Thing())
+[file target.py.next]
+from typing import cast
+class Thing:
+    pass
+thing = cast(Thing, Thing())
+[out]
+__main__:
+    target: MypyFile<0>
+target:
+    Thing: TypeInfo<1>
+    cast: Var<2>
+    thing: Var<3>(target.Thing<1>)
+==>
+__main__:
+    target: MypyFile<0>
+target:
+    Thing: TypeInfo<1>
+    cast: Var<2>
+    thing: Var<3>(target.Thing<1>)
+
+[case testClassBasedEnum_typeinfo]
+import target
+[file target.py]
+from enum import Enum
+class A(Enum):
+    X = 0
+[file target.py.next]
+from enum import Enum
+class A(Enum):
+    X = 0
+    Y = 1
+[out]
+TypeInfo<0>(
+  Name(target.A)
+  Bases(enum.Enum<1>)
+  Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
+  Names(
+    X<3> (builtins.int<4>)))
+==>
+TypeInfo<0>(
+  Name(target.A)
+  Bases(enum.Enum<1>)
+  Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
+  Names(
+    X<3> (builtins.int<4>)
+    Y<5> (builtins.int<4>)))

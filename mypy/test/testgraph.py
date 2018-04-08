@@ -10,6 +10,7 @@ from mypy.options import Options
 from mypy.report import Reports
 from mypy.plugin import Plugin
 from mypy.errors import Errors
+from mypy.fscache import FileSystemCache
 
 
 class GraphSuite(Suite):
@@ -38,6 +39,7 @@ class GraphSuite(Suite):
     def _make_manager(self) -> BuildManager:
         errors = Errors()
         options = Options()
+        fscache = FileSystemCache(options.python_version)
         manager = BuildManager(
             data_dir='',
             lib_path=[],
@@ -49,6 +51,7 @@ class GraphSuite(Suite):
             plugin=Plugin(options),
             errors=errors,
             flush_errors=lambda msgs, serious: None,
+            fscache=fscache,
         )
         return manager
 

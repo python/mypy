@@ -18,6 +18,7 @@ def f(a: Any) -> None:
 class A: pass
 [out]
 <m.N.__init__> -> m.f
+<m.N.__new__> -> m.f
 <m.N.a> -> m.f
 <m.N> -> m.f
 <a.A> -> <m.N.a>, <m.N>, m
@@ -35,6 +36,7 @@ class A: pass
 class B: pass
 [out]
 <m.N.__init__> -> m.f
+<m.N.__new__> -> m.f
 <m.N.a> -> m.f
 <m.N> -> m.f
 <a.A> -> <m.N.a>, <m.N>, m
@@ -48,8 +50,10 @@ M = NamedTuple('M', [('z', 'N')])
 y = M(x)
 [out]
 <m.M.__init__> -> m
+<m.M.__new__> -> m
 <m.M> -> <m.y>, m
 <m.N.__init__> -> m
+<m.N.__new__> -> m
 <m.N> -> <m.M.z>, <m.M>, <m.x>, <m.y>, m
 <m.x> -> m
 <m.y> -> m
@@ -67,6 +71,7 @@ def f(a: Any) -> None:
 class A: pass
 [out]
 <m.N.__init__> -> m.f
+<m.N.__new__> -> m.f
 <m.N.a> -> m.f
 <m.N> -> m.N, m.f
 <a.A> -> <m.N.a>, <m.N>, m, m.N
@@ -111,6 +116,7 @@ class D:
 [out]
 -- TODO: Is it okay to have targets like m.S1@4.__init__?
 <m.C.__init__> -> <m.S1@4.__init__>, <m.S2@8.__init__>
+<m.C.__new__> -> <m.S1@4.__new__>, <m.S2@8.__new__>
 <m.C> -> m.C, m.D.g, m.f
 <m.D.g> -> m.D.g
 <m.D> -> m.D
@@ -127,6 +133,7 @@ class D(C):
         super().foo()
 [out]
 <m.C.__init__> -> <m.D.__init__>, m.D.__init__
+<m.C.__new__> -> <m.D.__new__>
 <m.C.foo> -> <m.D.foo>
 <m.C> -> m, m.C, m.D
 <m.D.__init__> -> m.D.__init__
@@ -144,6 +151,32 @@ def foo() -> None:
     D(6)
 [out]
 <m.C.__init__> -> <m.D.__init__>
+<m.C.__new__> -> <m.D.__new__>
 <m.C> -> m, m.C, m.D
 <m.D.__init__> -> m.foo
+<m.D.__new__> -> m.foo
 <m.D> -> m.D, m.foo
+
+[case testClassBasedEnum]
+from enum import Enum
+from m import B
+
+class A(Enum):
+    X = B()
+
+def f(a: A) -> None:
+    pass
+def g() -> None:
+    A.X
+[file m.py]
+class B: pass
+[out]
+<m.A.X> -> m.g
+-- The __init__ is superfluous but benign
+<m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
+<m.A> -> <m.f>, m.A, m.f, m.g
+<m.B.__init__> -> m
+<m.B.__new__> -> m
+-- The <m.A.X> dependecy target is superfluous but benign
+<m.B> -> <m.A.X>, m

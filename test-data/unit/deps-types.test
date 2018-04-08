@@ -146,11 +146,154 @@ def h() -> None:
     ff(A())
 [out]
 <m.A.__init__> -> m.h
+<m.A.__new__> -> m.h
 <m.A> -> <m.f>, <m.ff>, m.A, m.f, m.h
 <m.B> -> <m.f>, <m.ff>, m.B, m.f
 <m.f> -> m, m.h
 <m.ff> -> m, m.h
 <m.g> -> m.f
+
+[case testMetaclassAttributes]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg.x
+[file mod.py]
+class M(type):
+    x: int
+class C(metaclass=M):
+    pass
+[out]
+<mod.C.x> -> m.f
+<mod.C> -> <m.f>, m, m.f
+<mod.M.x> -> m.f
+
+[case testMetaclassAttributesDirect]
+from mod import C
+def f() -> None:
+    C.x
+[file mod.py]
+class M(type):
+    x: int
+class C(metaclass=M):
+    pass
+[out]
+<mod.C.__init__> -> m.f
+<mod.C.__new__> -> m.f
+<mod.C.x> -> m.f
+<mod.C> -> m, m.f
+<mod.M.x> -> m.f
+
+[case testMetaclassOperators]
+from mod import C
+from typing import Type
+def f(arg: Type[C]) -> None:
+    arg + arg
+[file mod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+class C(metaclass=M):
+    pass
+[out]
+<mod.C> -> <m.f>, m, m.f
+<mod.M.__add__> -> m.f
+<mod.M.__radd__> -> m.f
+
+[case testMetaclassOperatorsDirect]
+from mod import C
+def f() -> None:
+    C + C
+[file mod.py]
+class M(type):
+    def __add__(self, other: M) -> M:
+        pass
+class C(metaclass=M):
+    pass
+[out]
+<mod.C.__init__> -> m.f
+<mod.C.__new__> -> m.f
+<mod.C> -> m, m.f
+<mod.M.__add__> -> m.f
+<mod.M.__radd__> -> m.f
+
+[case testMetaclassDepsDeclared]
+import mod
+class C(metaclass=mod.M):
+    pass
+[file mod.py]
+class M(type):
+    pass
+[out]
+<m.C> -> m.C
+<mod.M> -> <m.C>
+<mod> -> m
+
+[case testMetaclassDepsDeclared_python2]
+# flags: --py2
+import mod
+class C:
+    __metaclass__ = mod.M
+[file mod.py]
+class M(type):
+    pass
+[out]
+<m.C> -> m.C
+<mod.M.__init__> -> m
+<mod.M.__new__> -> m
+<mod.M> -> <m.C>, m
+<mod> -> m
+
+[case testMetaclassDepsDeclaredNested]
+import mod
+
+def func() -> None:
+    class C(metaclass=mod.M):
+        pass
+[file mod.py]
+class M(type):
+    pass
+[out]
+<m.func> -> m.func
+<mod.M> -> <m.func>
+<mod> -> m
+
+[case testMetaclassAttributes_python2]
+# flags: --py2
+from mod import C
+from typing import Type
+def f(arg):
+    # type: (Type[C]) -> None
+    arg.x
+[file mod.py]
+class M(type):
+    x = None  # type: int
+class C:
+    __metaclass__ = M
+[out]
+<mod.C.x> -> m.f
+<mod.C> -> <m.f>, m, m.f
+<mod.M.x> -> m.f
+
+[case testMetaclassOperatorsDirect_python2]
+# flags: --py2
+from mod import C
+def f():
+    # type: () -> None
+    C + C
+[file mod.py]
+class M(type):
+    def __add__(self, other):
+        # type: (M) -> M
+        pass
+class C:
+    __metaclass__ = M
+[out]
+<mod.C.__init__> -> m.f
+<mod.C.__new__> -> m.f
+<mod.C> -> m, m.f
+<mod.M.__add__> -> m.f
+<mod.M.__radd__> -> m.f
 
 -- Type aliases
 
@@ -164,6 +307,7 @@ class I: pass
 <m.A> -> m
 <m.x> -> m
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
 
 [case testAliasDepsNormalModExtended]
@@ -180,6 +324,7 @@ class I: pass
 <a.A> -> m
 <a> -> m
 <mod.I.__init__> -> a
+<mod.I.__new__> -> a
 <mod.I> -> <m.x>, m, a, mod.I
 
 [case testAliasDepsNormalFunc]
@@ -192,6 +337,7 @@ class I: pass
 [out]
 <m.A> -> m.f
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.f>, m, m.f
 
 [case testAliasDepsNormalFuncExtended]
@@ -208,6 +354,7 @@ class I: pass
 <a.A> -> m.f
 <a> -> m
 <mod.I.__init__> -> a
+<mod.I.__new__> -> a
 <mod.I> -> <m.f>, m.f, a, mod.I
 
 [case testAliasDepsNormalClass]
@@ -237,6 +384,7 @@ class I: pass
 <m.C> -> m.C
 <a.A> -> m
 <mod.I.__init__> -> <m.C.__init__>
+<mod.I.__new__> -> <m.C.__new__>
 <mod.I> -> m, m.C
 
 [case testAliasDepsGenericMod]
@@ -254,6 +402,7 @@ class S: pass
 <m.A> -> m
 <m.x> -> m
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.x>, m
 <mod.I> -> <m.x>, m
 <mod.S> -> <m.x>, m
@@ -273,6 +422,7 @@ class S: pass
 [out]
 <m.A> -> m.f
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
@@ -314,6 +464,7 @@ class S: pass
 <m.A> -> m
 <m.C> -> m.C
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.C.x>, m
 <mod.I> -> <m.C.x>, m
 <mod.S> -> <m.C.x>, m
@@ -330,6 +481,7 @@ class I: pass
 <m.A> -> m
 <m.x> -> m
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
 
 [case testAliasDepsForwardFunc]
@@ -342,6 +494,7 @@ class I: pass
 [out]
 <m.A> -> m.f
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.f>, m, m.f
 
 [case testAliasDepsForwardClass]
@@ -355,6 +508,7 @@ class I: pass
 <m.A> -> m
 <m.C> -> m.C
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.C.x>, m
 
 [case testAliasDepsChainedMod]
@@ -369,6 +523,7 @@ class I: pass
 <m.B> -> m
 <m.x> -> m
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
 
 [case testAliasDepsChainedFunc]
@@ -383,6 +538,7 @@ class I: pass
 <m.A> -> m
 <m.B> -> m.f
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.f>, m, m.f
 
 [case testAliasDepsChainedFuncExtended]
@@ -400,6 +556,7 @@ class I: pass
 <a.A> -> m
 <a> -> m
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.f>, m, m.f
 
 [case testAliasDepsChainedClass]
@@ -415,6 +572,7 @@ class I: pass
 <m.B> -> m
 <m.C> -> m.C
 <mod.I.__init__> -> <m.C.__init__>, m
+<mod.I.__new__> -> <m.C.__new__>, m
 <mod.I> -> m, m.C
 
 [case testAliasDepsNestedMod]
@@ -434,6 +592,7 @@ class S: pass
 <m.B> -> m
 <m.x> -> m
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.x>, m
 <mod.I> -> <m.x>, m
 <mod.S> -> <m.x>, m
@@ -460,6 +619,7 @@ class S: pass
 <a.A> -> m
 <a> -> m
 <mod.D.__init__> -> m, a
+<mod.D.__new__> -> m, a
 <mod.D> -> <m.x>, m, a, mod.D
 <mod.I> -> <m.x>, m, a, mod.I
 <mod.S> -> <m.x>, m, a, mod.S
@@ -483,6 +643,7 @@ class S: pass
 <m.A> -> m
 <m.B> -> m.f
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
@@ -509,6 +670,7 @@ class S: pass
 <a.A> -> m
 <a> -> m
 <mod.D.__init__> -> m, a
+<mod.D.__new__> -> m, a
 <mod.D> -> <m.f>, m, m.f, a, mod.D
 <mod.I> -> <m.f>, m, m.f, a, mod.I
 <mod.S> -> <m.f>, m, m.f, a, mod.S
@@ -532,6 +694,7 @@ class S: pass
 <m.A> -> m.f
 <m.E> -> m.f
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
@@ -554,6 +717,7 @@ class S: pass
 <m.B> -> m
 <m.C> -> m.C
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.C.x>, m
 <mod.I> -> <m.C.x>, m
 <mod.S> -> <m.C.x>, m
@@ -574,6 +738,7 @@ class S: pass
 [out]
 <m.A> -> m.fun
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> m, m.fun
 
 [case testAliasDepsRuntime]
@@ -591,8 +756,10 @@ class S: pass
 <m.A> -> m
 <m.x> -> m
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.x>, m
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.x>, m
 <mod.S> -> <m.x>, m
 
@@ -616,8 +783,10 @@ class S: pass
 <a.A> -> m
 <a> -> m
 <mod.D.__init__> -> m
+<mod.D.__new__> -> m
 <mod.D> -> <m.x>, m, mod.D
 <mod.I.__init__> -> a
+<mod.I.__new__> -> a
 <mod.I> -> <m.x>, m, a, mod.I
 <mod.S> -> <m.x>, m, mod.S
 <mod.T> -> mod.D
@@ -635,6 +804,7 @@ class I: pass
 <m.A> -> m
 <m.P> -> m.P
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.P.x>, <m.P>, m, m.P
 
 [case testAliasDepsNamedTupleFunctional]
@@ -651,6 +821,7 @@ class I: pass
 <a.A> -> m
 <a> -> m
 <mod.I.__init__> -> a
+<mod.I.__new__> -> a
 <mod.I> -> <m.P.x>, <m.P>, m, a, mod.I
 
 [case testAliasDepsTypedDict]
@@ -666,6 +837,7 @@ class I: pass
 <m.A> -> m
 <m.P> -> m.P
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.P>, m, m.P
 <mypy_extensions.TypedDict> -> m
 
@@ -684,6 +856,7 @@ class I: pass
 <a.A> -> m
 <a> -> m
 <mod.I.__init__> -> a
+<mod.I.__new__> -> a
 <mod.I> -> <m.P>, a, mod.I
 <mypy_extensions.TypedDict> -> m
 
@@ -699,4 +872,47 @@ class I: pass
 <m.A> -> m.f
 <m.f> -> m.f
 <mod.I.__init__> -> m
+<mod.I.__new__> -> m
 <mod.I> -> <m.f.x>, m, m.f
+
+[case testAliasDepsFromImportUnqualified]
+from a import C
+x: C
+def f() -> None:
+    C()
+class A:
+    def meth(self) -> None:
+        def inner() -> C:
+            pass
+[file a.py]
+from b import D
+C = D
+[file b.py]
+class D:
+    pass
+[out]
+<m.A> -> m.A
+<m.x> -> m
+<a.C> -> m, m.A.meth, m.f
+<b.D.__init__> -> m.f
+<b.D.__new__> -> m.f
+<b.D> -> <m.A.meth>, <m.x>, m, m.A.meth, m.f
+
+[case testFuncBasedEnum]
+from enum import Enum
+from mod import B
+
+A = Enum('A', [('X', B())])
+
+def f(a: A) -> None:
+    pass
+def g() -> None:
+    A.X
+[file mod.py]
+class B: pass
+[out]
+<m.A.X> -> m.g
+<m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
+<m.A> -> <m.f>, m.f, m.g
+<mod.B> -> m
