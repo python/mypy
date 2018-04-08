@@ -16,6 +16,9 @@ class Medal(metaclass=EnumMeta):
     gold = 1
     silver = "hello"
     bronze = None
+    # Without __init__ the definition fails at runtime, but we want to verify that mypy
+    # uses `enum.EnumMeta` and not `enum.Enum` as the definition of what is enum.
+    def __init__(self, *args): pass
 reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
 m = Medal.gold
 m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
@@ -27,6 +30,8 @@ class Medal(Achievement):
     gold = 1
     silver = "hello"
     bronze = None
+    # See comment in testEnumFromEnumMetaBasics
+    def __init__(self, *args): pass
 reveal_type(Medal.bronze)  # E: Revealed type is '__main__.Medal'
 m = Medal.gold
 m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
