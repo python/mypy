@@ -110,6 +110,7 @@ class A:
 class B(A):
     pass
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> m, m.A, m.B
@@ -122,6 +123,7 @@ class B(A):
     def f(self) -> None:
         self.x = 1
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A.f> -> m.B.f
@@ -139,11 +141,13 @@ class C(B):
     def f(self) -> None:
         self.x = 1
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, <m.C.__init__>, m
 <m.A.__init__> -> <m.B.__init__>, <m.C.__init__>
 <m.A.__new__> -> <m.B.__new__>, <m.C.__new__>
 <m.A.f> -> m.C.f
 <m.A.x> -> <m.C.x>
 <m.A> -> m, m.A, m.B
+<m.B.(abstract)> -> <m.C.__init__>, m
 <m.B.__init__> -> <m.C.__init__>
 <m.B.__new__> -> <m.C.__new__>
 <m.B.f> -> m.C.f
@@ -165,6 +169,7 @@ class A:
 [out]
 <m.B.x> -> m.B.f
 <m.B> -> m.B
+<n.A.(abstract)> -> <m.B.__init__>, m
 <n.A.__init__> -> <m.B.__init__>
 <n.A.__new__> -> <m.B.__new__>
 <n.A.f> -> m.B.f
@@ -180,6 +185,7 @@ class B(A):
     def f(self) -> None:
         self.g()
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A.f> -> m.B.f
@@ -1083,6 +1089,7 @@ class A(B):
 <m.D.x> -> m
 <m.D> -> m.D
 <mod.A> -> <m.D.x>, m
+<mod.C.(abstract)> -> <m.D.__init__>, m
 <mod.C.__init__> -> <m.D.__init__>
 <mod.C.__new__> -> <m.D.__new__>
 <mod.C.x> -> <m.D.x>
@@ -1105,6 +1112,7 @@ class A(B):
 <m.D.x> -> m.D.__init__
 <m.D> -> m.D
 <mod.A> -> <m.D.x>, m, m.D.__init__
+<mod.C.(abstract)> -> <m.D.__init__>, m
 <mod.C.__init__> -> <m.D.__init__>, m.D.__init__
 <mod.C.__new__> -> <m.D.__new__>
 <mod.C.x> -> <m.D.x>

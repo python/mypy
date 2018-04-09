@@ -6074,3 +6074,95 @@ def deco(f: F) -> F:
 [out]
 ==
 main:5: error: Return type of "m" incompatible with supertype "B"
+
+[case testAddAbstractMethod]
+from b import D
+D()
+[file b.py]
+from a import C
+class D(C):
+    def f(self) -> None: pass
+[file a.py]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+[file a.py.2]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file a.py.3]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[out]
+==
+main:2: error: Cannot instantiate abstract class 'D' with abstract attribute 'g'
+==
+
+[case testMakeMethodNoLongerAbstract1]
+[file z.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file b.py]
+import z
+def x() -> Foo: return Foo()
+class Foo(z.I):
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+
+[file z.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+
+[file b.py.2]
+import z
+def x() -> Foo: return Foo()
+class Foo(z.I):
+    def g(self) -> None: pass
+[out]
+==
+
+[case testMakeMethodNoLongerAbstract2]
+-- this version never failed, but it is just a file-renaming
+-- away from the above test that did
+[file a.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file b.py]
+import a
+def x() -> Foo: return Foo()
+class Foo(a.I):
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+
+[file a.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+
+[file b.py.2]
+import a
+def x() -> Foo: return Foo()
+class Foo(a.I):
+    def g(self) -> None: pass
+[out]
+==

@@ -581,6 +581,7 @@ def f(x: A) -> A:
 def g() -> None: pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.f>, m, m.A, m.B, m.f
@@ -606,6 +607,7 @@ class C:
     def g(self) -> None: pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.C.f>, m, m.A, m.B, m.C.f
@@ -674,6 +676,7 @@ class C:
     x: int
 [out]
 <m.N> -> <m.f>, m, m.f
+<m.C.(abstract)> -> <m.N.__init__>, m
 <m.C.__init__> -> <m.N.__init__>
 <m.C.__new__> -> <m.N.__new__>
 <m.C.x> -> <m.N.x>
