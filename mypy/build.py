@@ -10,10 +10,12 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
+import ast
 import binascii
 import collections
 import contextlib
 from distutils.sysconfig import get_python_lib
+import functools
 import gc
 import hashlib
 import json
@@ -21,6 +23,7 @@ import os.path
 import re
 import site
 import stat
+import subprocess
 import sys
 import time
 from os.path import dirname, basename
@@ -33,6 +36,7 @@ MYPY = False
 if MYPY:
     from typing import Deque
 
+from mypy import sitepkgs
 from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
@@ -698,7 +702,8 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return self.find_module_cache.find_module(id, self.lib_path) is not None
+        return self.find_module_cache.find_module(id, self.lib_path,
+                                                  self.options.python_executable) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -789,6 +794,24 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     return p
 
 
+@functools.lru_cache(maxsize=None)
+def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
+    """Find package directories for given python.
+
+    This runs a subprocess call, which generates a list of the site package directories.
+    To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
+    if python_executable is None:
+        return []
+    if python_executable == sys.executable:
+        # Use running Python's package dirs
+        return sitepkgs.getsitepackages()
+    else:
+        # Use subprocess to get the package directory of given Python
+        # executable
+        return ast.literal_eval(subprocess.check_output([python_executable, sitepkgs.__file__],
+                                stderr=subprocess.PIPE).decode())
+
+
 class FindModuleCache:
     """Module finder with integrated cache.
 
@@ -802,20 +825,29 @@ class FindModuleCache:
 
     def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
         self.fscache = fscache or FileSystemMetaCache()
-        # Cache find_module: (id, lib_path) -> result.
-        self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
+        self.find_lib_path_dirs = functools.lru_cache(maxsize=None)(self._find_lib_path_dirs)
+        self.find_module = functools.lru_cache(maxsize=None)(self._find_module)
 
+    def clear(self) -> None:
+        self.find_module.cache_clear()
+        self.find_lib_path_dirs.cache_clear()
+
+    def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> List[str]:
         # Cache some repeated work within distinct find_module calls: finding which
         # elements of lib_path have even the subdirectory they'd need for the module
         # to exist.  This is shared among different module ids when they differ only
         # in the last component.
-        self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
+        dirs = []
+        for pathitem in lib_path:
+            # e.g., '/usr/lib/python3.4/foo/bar'
+            dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+            if self.fscache.isdir(dir):
+                dirs.append(dir)
+        return dirs
 
-    def clear(self) -> None:
-        self.results.clear()
-        self.dirs.clear()
-
-    def _find_module(self, id: str, lib_path: Tuple[str, ...]) -> Optional[str]:
+    def _find_module(self, id: str, lib_path: Tuple[str, ...],
+                     python_executable: Optional[str]) -> Optional[str]:
+        """Return the path of the module source file, or None if not found."""
         fscache = self.fscache
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -824,15 +856,23 @@ class FindModuleCache:
         # that will require the same subdirectory.
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if (dir_chain, lib_path) not in self.dirs:
-            dirs = []
-            for pathitem in lib_path:
-                # e.g., '/usr/lib/python3.4/foo/bar'
-                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                if fscache.isdir(dir):
-                    dirs.append(dir)
-            self.dirs[dir_chain, lib_path] = dirs
-        candidate_base_dirs = self.dirs[dir_chain, lib_path]
+        # TODO (ethanhs): refactor each path search to its own method with lru_cache
+
+        third_party_dirs = []
+        # Third-party stub/typed packages
+        for pkg_dir in _get_site_packages_dirs(python_executable):
+            stub_name = components[0] + '-stubs'
+            typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
+            stub_dir = os.path.join(pkg_dir, stub_name)
+            if fscache.isdir(stub_dir):
+                stub_components = [stub_name] + components[1:]
+                path = os.path.join(pkg_dir, *stub_components[:-1])
+                if fscache.isdir(path):
+                    third_party_dirs.append(path)
+            elif fscache.isfile(typed_file):
+                path = os.path.join(pkg_dir, dir_chain)
+                third_party_dirs.append(path)
+        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + third_party_dirs
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
@@ -845,8 +885,11 @@ class FindModuleCache:
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
+                path_stubs = base_path + '-stubs' + sepinit + extension
                 if fscache.isfile_case(path) and verify_module(fscache, id, path):
                     return path
+                elif fscache.isfile_case(path_stubs) and verify_module(fscache, id, path_stubs):
+                    return path_stubs
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
@@ -854,17 +897,9 @@ class FindModuleCache:
                     return path
         return None
 
-    def find_module(self, id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
-        """Return the path of the module source file, or None if not found."""
-        lib_path = tuple(lib_path_arg)
-
-        key = (id, lib_path)
-        if key not in self.results:
-            self.results[key] = self._find_module(id, lib_path)
-        return self.results[key]
-
-    def find_modules_recursive(self, module: str, lib_path: List[str]) -> List[BuildSource]:
-        module_path = self.find_module(module, lib_path)
+    def find_modules_recursive(self, module: str, lib_path: Tuple[str, ...],
+                               python_executable: Optional[str]) -> List[BuildSource]:
+        module_path = self.find_module(module, lib_path, python_executable)
         if not module_path:
             return []
         result = [BuildSource(module_path, module, None)]
@@ -884,13 +919,15 @@ class FindModuleCache:
                         (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
                         os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
                     hits.add(item)
-                    result += self.find_modules_recursive(module + '.' + item, lib_path)
+                    result += self.find_modules_recursive(module + '.' + item, lib_path,
+                                                          python_executable)
                 elif item != '__init__.py' and item != '__init__.pyi' and \
                         item.endswith(('.py', '.pyi')):
                     mod = item.split('.')[0]
                     if mod not in hits:
                         hits.add(mod)
-                        result += self.find_modules_recursive(module + '.' + mod, lib_path)
+                        result += self.find_modules_recursive(module + '.' + mod, lib_path,
+                                                              python_executable)
         return result
 
 
@@ -2001,7 +2038,8 @@ def find_module_and_diagnose(manager: BuildManager,
         # difference and just assume 'builtins' everywhere,
         # which simplifies code.
         file_id = '__builtin__'
-    path = manager.find_module_cache.find_module(file_id, manager.lib_path)
+    path = manager.find_module_cache.find_module(file_id, manager.lib_path,
+                                                 manager.options.python_executable)
     if path:
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
@@ -2125,12 +2163,14 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         graph = load_graph(sources, manager)
 
     t1 = time.time()
+    fm_cache_size = manager.find_module_cache.find_module.cache_info().currsize
+    fm_dir_cache_size = manager.find_module_cache.find_lib_path_dirs.cache_info().currsize
     manager.add_stats(graph_size=len(graph),
                       stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
                                       for g in graph.values()),
                       graph_load_time=(t1 - t0),
-                      fm_cache_size=len(manager.find_module_cache.results),
-                      fm_dir_cache_size=len(manager.find_module_cache.dirs),
+                      fm_cache_size=fm_cache_size,
+                      fm_dir_cache_size=fm_dir_cache_size,
                       )
     if not graph:
         print("Nothing to do?!")

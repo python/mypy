@@ -28,49 +28,45 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+import functools
 import os
 import stat
-from typing import Tuple, Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, TypeVar
 from mypy.util import read_with_python_encoding
 
 
 class FileSystemMetaCache:
     def __init__(self) -> None:
-        self.flush()
+        self.stat = functools.lru_cache(maxsize=None)(self._stat)
+        self.listdir = functools.lru_cache(maxsize=None)(self._listdir)
+        # lru_cache doesn't handle exceptions, so we need special caches for them.
+        self.stat_error_cache = {}  # type: Dict[str, Exception]
+        self.listdir_error_cache = {}  # type: Dict[str, Exception]
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat_cache = {}  # type: Dict[str, os.stat_result]
-        self.stat_error_cache = {}  # type: Dict[str, Exception]
-        self.listdir_cache = {}  # type: Dict[str, List[str]]
-        self.listdir_error_cache = {}  # type: Dict[str, Exception]
-        self.isfile_case_cache = {}  # type: Dict[str, bool]
+        self.stat.cache_clear()
+        self.listdir.cache_clear()
+        self.stat_error_cache.clear()
+        self.listdir_error_cache.clear()
 
-    def stat(self, path: str) -> os.stat_result:
-        if path in self.stat_cache:
-            return self.stat_cache[path]
+    def _stat(self, path: str) -> os.stat_result:
         if path in self.stat_error_cache:
             raise self.stat_error_cache[path]
         try:
-            st = os.stat(path)
+            return os.stat(path)
         except Exception as err:
             self.stat_error_cache[path] = err
             raise
-        self.stat_cache[path] = st
-        return st
 
-    def listdir(self, path: str) -> List[str]:
-        if path in self.listdir_cache:
-            return self.listdir_cache[path]
+    def _listdir(self, path: str) -> List[str]:
         if path in self.listdir_error_cache:
             raise self.listdir_error_cache[path]
         try:
-            results = os.listdir(path)
+            return os.listdir(path)
         except Exception as err:
             self.listdir_error_cache[path] = err
             raise err
-        self.listdir_cache[path] = results
-        return results
 
     def isfile(self, path: str) -> bool:
         try:
@@ -88,8 +84,6 @@ class FileSystemMetaCache:
         TODO: We should maybe check the case for some directory components also,
         to avoid permitting wrongly-cased *packages*.
         """
-        if path in self.isfile_case_cache:
-            return self.isfile_case_cache[path]
         head, tail = os.path.split(path)
         if not tail:
             res = False
@@ -99,7 +93,6 @@ class FileSystemMetaCache:
                 res = tail in names and self.isfile(path)
             except OSError:
                 res = False
-        self.isfile_case_cache[path] = res
         return res
 
     def isdir(self, path: str) -> bool:
@@ -119,6 +112,7 @@ class FileSystemMetaCache:
 
 class FileSystemCache(FileSystemMetaCache):
     def __init__(self, pyversion: Tuple[int, int]) -> None:
+        super().__init__()
         self.pyversion = pyversion
         self.flush()
 

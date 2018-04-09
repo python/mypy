@@ -56,6 +56,9 @@ class Options:
         # -- build options --
         self.build_type = BuildType.STANDARD
         self.python_version = sys.version_info[:2]  # type: Tuple[int, int]
+        # The executable used to search for PEP 561 packages. If this is None,
+        # then mypy does not search for PEP 561 packages.
+        self.python_executable = sys.executable  # type: Optional[str]
         self.platform = sys.platform
         self.custom_typing_module = None  # type: Optional[str]
         self.custom_typeshed_dir = None  # type: Optional[str]
