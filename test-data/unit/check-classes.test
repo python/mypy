@@ -4142,6 +4142,7 @@ class MyDestr(Destroyable):
 reveal_type(Arc[MyDestr]())  # E: Revealed type is '__main__.Arc[__main__.MyDestr*]'
 reveal_type(Arc1[MyDestr]())  # E: Revealed type is '__main__.Arc1[__main__.MyDestr*]'
 [builtins fixtures/bool.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testSixMetaclassErrors]
 import six
