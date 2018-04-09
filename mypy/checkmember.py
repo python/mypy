@@ -311,7 +311,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         t = expand_type_by_instance(typ, itype)
         if is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
-            msg.read_only_property(name, info, node)
+            msg.read_only_property(name, itype.type, node)
         if is_lvalue and var.is_classvar:
             msg.cant_assign_to_classvar(name, node)
         result = t
@@ -319,7 +319,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             if is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
-                        msg.read_only_property(name, info, node)
+                        msg.read_only_property(name, itype.type, node)
                 else:
                     msg.cant_assign_to_method(node)
 
@@ -366,7 +366,7 @@ def freeze_type_vars(member_type: Type) -> None:
 
 
 def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,
-                                  context: Context) -> Type:
+                                  node: SymbolNode) -> Type:
     if typ.type is None:
         # 'None' partial type. It has a well-defined type -- 'None'.
         # In an lvalue context we want to preserver the knowledge of
@@ -375,7 +375,7 @@ def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: Messag
             return NoneTyp()
         return typ
     else:
-        msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+        msg.need_annotation_for_var(node, node)
         return AnyType(TypeOfAny.from_error)
 
 
@@ -467,8 +467,12 @@ def analyze_class_attribute_access(itype: Instance,
         return builtin_type('types.ModuleType')
 
     if is_decorated:
-        # TODO: Return type of decorated function. This is quick hack to work around #998.
-        return AnyType(TypeOfAny.special_form)
+        assert isinstance(node.node, Decorator)
+        if node.node.type:
+            return node.node.type
+        else:
+            not_ready_callback(name, context)
+            return AnyType(TypeOfAny.from_error)
     else:
         return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 

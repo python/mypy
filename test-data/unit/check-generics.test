@@ -615,17 +615,17 @@ X = T # Error
 
 [builtins fixtures/list.pyi]
 [out]
-main:9:4: error: "Node" expects 2 type arguments, but 1 given
-main:11:4: error: "Node" expects 2 type arguments, but 3 given
-main:15:9: error: "list" expects 1 type argument, but 2 given
-main:16:18: error: "list" expects 1 type argument, but 2 given
-main:17:24: error: "Node" expects 2 type arguments, but 1 given
-main:18:3: error: "Node" expects 2 type arguments, but 1 given
-main:19:4: error: Bad number of arguments for type alias, expected: 1, given: 2
-main:19:4: error: "Node" expects 2 type arguments, but 1 given
-main:22:0: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
-main:24:0: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
-main:26:4: error: Type variable "__main__.T" is invalid as target for type alias
+main:9:5: error: "Node" expects 2 type arguments, but 1 given
+main:11:5: error: "Node" expects 2 type arguments, but 3 given
+main:15:10: error: "list" expects 1 type argument, but 2 given
+main:16:19: error: "list" expects 1 type argument, but 2 given
+main:17:25: error: "Node" expects 2 type arguments, but 1 given
+main:18:4: error: "Node" expects 2 type arguments, but 1 given
+main:19:5: error: Bad number of arguments for type alias, expected: 1, given: 2
+main:19:5: error: "Node" expects 2 type arguments, but 1 given
+main:22:1: error: Revealed type is '__main__.Node[builtins.int, builtins.str]'
+main:24:1: error: Revealed type is '__main__.Node[__main__.Node[builtins.int, builtins.int], builtins.list[builtins.int]]'
+main:26:5: error: Type variable "__main__.T" is invalid as target for type alias
 
 [case testGenericTypeAliasesForAliases]
 from typing import TypeVar, Generic, List, Union
@@ -1000,7 +1000,7 @@ IntNode[int](1, 1)
 IntNode[int](1, 'a')  # E: Argument 2 to "Node" has incompatible type "str"; expected "int"
 
 SameNode = Node[T, T]
-ff = SameNode[T](1, 1)  # E: Need type annotation for variable
+ff = SameNode[T](1, 1)  # E: Need type annotation for 'ff'
 a = SameNode(1, 'x')
 reveal_type(a) # E: Revealed type is '__main__.Node[Any, Any]'
 b = SameNode[int](1, 1)
@@ -1068,7 +1068,7 @@ y = None # type: SameA[str] # Two errors here, for both args of A
 
 [builtins fixtures/list.pyi]
 [out]
-main:9:7: error: Value of type variable "T" of "A" cannot be "str"
+main:9:8: error: Value of type variable "T" of "A" cannot be "str"
 main:13: error: Value of type variable "T" of "A" cannot be "str"
 main:13: error: Value of type variable "S" of "A" cannot be "str"
 
@@ -1686,6 +1686,7 @@ from typing import TypeVar, Container
 T = TypeVar('T')
 def f(x: Container[T]) -> T: ...
 reveal_type(f((1, 2))) # E: Revealed type is 'builtins.int*'
+[typing fixtures/typing-full.pyi]
 
 [case testClassMethodInGenericClassWithGenericConstructorArg]
 from typing import TypeVar, Generic

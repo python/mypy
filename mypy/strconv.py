@@ -339,13 +339,13 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_name_expr(self, o: 'mypy.nodes.NameExpr') -> str:
-        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_def, o.node)
+        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_inferred_def, o.node)
         return short_type(o) + '(' + pretty + ')'
 
     def pretty_name(self, name: str, kind: Optional[int], fullname: Optional[str],
-                    is_def: bool, target_node: 'Optional[mypy.nodes.Node]' = None) -> str:
+                    is_inferred_def: bool, target_node: 'Optional[mypy.nodes.Node]' = None) -> str:
         n = name
-        if is_def:
+        if is_inferred_def:
             n += '*'
         if target_node:
             id = self.format_id(target_node)
@@ -366,7 +366,7 @@ class StrConv(NodeVisitor[str]):
         return n
 
     def visit_member_expr(self, o: 'mypy.nodes.MemberExpr') -> str:
-        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_def, o.node)
+        pretty = self.pretty_name(o.name, o.kind, o.fullname, o.is_inferred_def, o.node)
         return self.dump([o.expr, pretty], o)
 
     def visit_yield_expr(self, o: 'mypy.nodes.YieldExpr') -> str:

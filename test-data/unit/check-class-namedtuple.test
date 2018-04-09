@@ -40,7 +40,7 @@ x.y = 5 # E: "X" has no attribute "y"
 
 class A(X): pass
 a: A
-a.x = 5 # E: Property "x" defined in "A" is read-only
+a.x = 5 # E: Property "x" defined in "X" is read-only
 
 [case testNewNamedTupleCreateWithPositionalArguments]
 # flags: --python-version 3.6
@@ -114,7 +114,7 @@ class N(NamedTuple):
     b: str
 
 n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "int"
-n = N(1, b=2)   # E: Argument 2 to "N" has incompatible type "int"; expected "str"
+n = N(1, b=2)   # E: Argument "b" to "N" has incompatible type "int"; expected "str"
 N(1, 'x')
 N(b='x', a=1)
 
@@ -283,7 +283,7 @@ class X(NamedTuple):
 x: X
 reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
-x._replace(y=5)  # E: Argument 1 to "_replace" of "X" has incompatible type "int"; expected "str"
+x._replace(y=5)  # E: Argument "y" to "_replace" of "X" has incompatible type "int"; expected "str"
 
 [case testNewNamedTupleFields]
 # flags: --python-version 3.6
@@ -553,7 +553,7 @@ class Child(Base):
         reveal_type(self[0])  # E: Revealed type is 'builtins.int'
         self[0] = 3  # E: Unsupported target for indexed assignment
         reveal_type(self.x)  # E: Revealed type is 'builtins.int'
-        self.x = 3  # E: Property "x" defined in "Child" is read-only
+        self.x = 3  # E: Property "x" defined in "Base" is read-only
         self[1]  # E: Tuple index out of range
         return self.x
     def good_override(self) -> int:

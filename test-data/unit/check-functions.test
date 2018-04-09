@@ -1391,12 +1391,43 @@ if g(C()):
     def f(x: B) -> B: pass
 
 [case testRedefineFunctionDefinedAsVariableInitializedToEmptyList]
-f = [] # E: Need type annotation for variable
+f = [] # E: Need type annotation for 'f'
 if object():
     def f(): pass # E: Incompatible redefinition
 f()
 f(1)
 [builtins fixtures/list.pyi]
+
+[case testDefineConditionallyAsImportedAndDecorated]
+from typing import Callable
+
+def dec(f: Callable[[], None]) -> Callable[[], None]: ...
+
+if int():
+    from m import f
+else:
+    @dec
+    def f():
+        yield
+[file m.py]
+def f(): pass
+
+[case testDefineConditionallyAsImportedAndDecoratedWithInference]
+if int():
+    from m import f
+else:
+    from contextlib import contextmanager
+
+    @contextmanager
+    def f():
+        yield
+[file m.py]
+from contextlib import contextmanager
+
+@contextmanager
+def f():
+    yield
+[typing fixtures/typing-full.pyi]
 
 
 -- Conditional method definition
@@ -1482,8 +1513,23 @@ f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 g('x')
 g(1) # E: Argument 1 to "g" has incompatible type "int"; expected "str"
 
+[case testConditionalMethodDefinitionUsingDecorator]
+from typing import Callable
+
+def dec(f) -> Callable[['A', int], None]: pass
+
+class A:
+    x = int()
+    if x:
+        @dec
+        def f(self): pass
+    else:
+        def f(self, x: int) -> None: pass
+
+
 -- Callable with specific arg list
 -- -------------------------------
+
 
 [case testCallableWithNamedArg]
 from typing import Callable
@@ -1671,7 +1717,7 @@ def a(f: Callable[[NamedArg(int, 'x')], int]):
     f(2) # E: Too many positional arguments
     f() # E: Missing named argument "x"
     f(y=3) # E: Unexpected keyword argument "y"
-    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallableWithKeywordOnlyOptionalArg]
@@ -1683,7 +1729,7 @@ def a(f: Callable[[DefaultNamedArg(int, 'x')], int]):
     f(2) # E: Too many positional arguments
     f()
     f(y=3) # E: Unexpected keyword argument "y"
-    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testCallableWithKwargs]
@@ -1696,7 +1742,7 @@ def a(f: Callable[[KwArg(int)], int]):
     f()
     f(y=3)
     f(x=4, y=3, z=10)
-    f(x="foo") # E: Argument 1 has incompatible type "str"; expected "int"
+    f(x="foo") # E: Argument "x" has incompatible type "str"; expected "int"
 [builtins fixtures/dict.pyi]
 
 
@@ -1878,6 +1924,34 @@ class A(Generic[t]):
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Cannot use a covariant type variable as a parameter
+
+[case testRejectCovariantArgumentSplitLine]
+from typing import TypeVar, Generic
+
+t = TypeVar('t', covariant=True)
+class A(Generic[t]):
+    def foo(self,
+            x: t) -> None:
+        return None
+[builtins fixtures/bool.pyi]
+[out]
+main:6: error: Cannot use a covariant type variable as a parameter
+
+[case testRejectCovariantArgumentInLambda]
+from typing import TypeVar, Generic, Callable
+
+t = TypeVar('t', covariant=True)
+class Thing(Generic[t]):
+    def chain(self, func: Callable[[t], None]) -> None: pass
+    def end(self) -> None:
+        return self.chain(  # Note that lambda args have no line numbers
+            lambda _: None)
+[builtins fixtures/bool.pyi]
+[out]
+main:8: error: Cannot use a covariant type variable as a parameter
+
+[case testRejectCovariantArgumentInLambdaSplitLine]
+from typing import TypeVar, Generic, Callable
 
 [case testRejectContravariantReturnType]
 from typing import TypeVar, Generic
@@ -2126,7 +2200,7 @@ def make_list() -> List[T]: pass
 
 l: List[int] = make_list()
 
-bad = make_list()  # E: Need type annotation for variable
+bad = make_list()  # E: Need type annotation for 'bad'
 [builtins fixtures/list.pyi]
 
 [case testAnonymousArgumentError]
@@ -2138,7 +2212,7 @@ foo(y=2)  # E: Missing positional arguments
 def dec(f): pass
 
 @dec
-def test(a: str) -> (str,): # E: Invalid tuple literal type
+def test(a: str) -> (str,): # E: Invalid tuple literal type # N: Suggestion: Is there a spurious trailing comma?
     return None
 
 [case testReturnTypeLineNumberNewLine]
@@ -2212,3 +2286,19 @@ def i() -> List[Union[str, int]]:
     return x
 
 [builtins fixtures/dict.pyi]
+
+[case testLambdaSemanal]
+f = lambda: xyz
+[out]
+main:1: error: Name 'xyz' is not defined
+
+[case testLambdaTypeCheck]
+f = lambda: 1 + '1'
+[out]
+main:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testLambdaTypeInference]
+f = lambda: 5
+reveal_type(f)
+[out]
+main:2: error: Revealed type is 'def () -> builtins.int'

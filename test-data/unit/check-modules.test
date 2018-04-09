@@ -1312,9 +1312,14 @@ class A:
     def f(self) -> str: return 'foo'
 class B(A):
     def f(self) -> str: return self.x
-    def initialize(self): self.x = 'bar'
-[out]
+    def initialize(self) -> None: self.x = 'bar'
 
+[case testDeferredClassContextUnannotated]
+class A:
+    def f(self) -> str: return 'foo'
+class B(A):
+    def f(self) -> str: return self.x
+    def initialize(self): self.x = 'bar'
 
 -- Scripts and __main__
 
@@ -1324,6 +1329,8 @@ class B(A):
 pass
 [file b]
 pass
+
+-- Misc
 
 [case testScriptsAreNotModules]
 # cmd: mypy a b
@@ -1938,3 +1945,257 @@ main:2: error: Name 'name' is not defined
 main:3: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]
+
+[case testFailedImportFromTwoModules]
+import c
+import b
+[file b.py]
+import c
+
+[out]
+-- TODO: it would be better for this to be in the other order
+tmp/b.py:1: error: Cannot find module named 'c'
+main:1: error: Cannot find module named 'c'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIndirectFromImportWithinCycle1]
+import a
+[file a.py]
+from b import f
+from c import x
+[file b.py]
+from c import y
+from a import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycle2]
+import a
+[file a.py]
+from c import y
+from b import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file b.py]
+from a import f
+from c import x
+[file c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycleInPackage]
+import p.a
+[file p/__init__.py]
+[file p/a.py]
+from p.b import f
+from p.c import x
+[file p/b.py]
+from p.c import y
+from p.a import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file p/c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycleInPackageIgnoredInit]
+# cmd: mypy -m p.a p.b p.c
+# flags: --follow-imports=skip --ignore-missing-imports
+[file p/__init__.py]
+[file p/a.py]
+from p.b import f
+from p.c import x
+[file p/b.py]
+from p.c import y
+from p.a import x
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file p/c.py]
+x = str()
+y = int()
+
+[case testForwardReferenceToListAlias-skip]
+# TODO: This fails because of missing ImportedName handling in
+#     mypy.typeanal.TypeAnalyser.visit_unbound_type.
+x: List[int]
+reveal_type(x) # E: Revealed type is 'builtins.list[builtins.int]'
+def f() -> 'List[int]': pass
+reveal_type(f) # E: Revealed type is 'def () -> builtins.list[builtins.int]'
+class A:
+    y: 'List[str]'
+    def g(self, x: 'List[int]') -> None: pass
+reveal_type(A().y) # E: Revealed type is 'builtins.list[builtins.str]'
+reveal_type(A().g) # E: Revealed type is 'def (x: builtins.list[builtins.int])'
+from typing import List
+[builtins fixtures/list.pyi]
+
+[case testIndirectStarImportWithinCycle1]
+import a
+[file a.py]
+from b import f
+from c import x
+[file b.py]
+from c import y
+from a import *
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file c.py]
+x = str()
+y = int()
+
+[case testIndirectStarImportWithinCycle2]
+import a
+[file a.py]
+from c import y
+from b import *
+def f() -> None: pass
+reveal_type(x) # E: Revealed type is 'builtins.str'
+[file b.py]
+from a import f
+from c import x
+[file c.py]
+x = str()
+y = int()
+
+[case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
+-- TODO: Fails because of missing ImportedName handling in mypy.typeanal
+import a
+[file a.py]
+from b import f
+from c import B
+[file b.py]
+from c import y
+class A(B): pass
+reveal_type(A().x) # E: Revealed type is 'builtins.str'
+from a import B
+def f() -> None: pass
+[file c.py]
+class B:
+    x: int
+x = str()
+y = int()
+
+[case testImportFromReExportInCycleUsingRelativeImport1]
+from m import One
+reveal_type(One)
+[file m/__init__.py]
+from .one import One
+from .two import Two
+reveal_type(One)
+[file m/one.py]
+class One:
+    pass
+[file m/two.py]
+from m import One
+reveal_type(One)
+x: One
+reveal_type(x)
+
+class Two(One):
+    pass
+y: Two
+y = x
+x = y
+[out]
+tmp/m/two.py:2: error: Revealed type is 'def () -> m.one.One'
+tmp/m/two.py:4: error: Revealed type is 'm.one.One'
+tmp/m/two.py:9: error: Incompatible types in assignment (expression has type "One", variable has type "Two")
+tmp/m/__init__.py:3: error: Revealed type is 'def () -> m.one.One'
+main:2: error: Revealed type is 'def () -> m.one.One'
+
+[case testImportReExportInCycleUsingRelativeImport2]
+from m import One
+reveal_type(One)
+[file m/__init__.py]
+from .one import One
+from .two import Two
+reveal_type(One)
+[file m/one.py]
+class One:
+    pass
+[file m/two.py]
+import m
+reveal_type(m.One)
+x: m.One
+reveal_type(x)
+class Two:
+    pass
+[out]
+tmp/m/two.py:2: error: Revealed type is 'def () -> m.one.One'
+tmp/m/two.py:4: error: Revealed type is 'm.one.One'
+tmp/m/__init__.py:3: error: Revealed type is 'def () -> m.one.One'
+main:2: error: Revealed type is 'def () -> m.one.One'
+
+[case testImportReExportedNamedTupleInCycle1]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import NamedTuple
+class One(NamedTuple):
+    name: str
+[file m/two.py]
+import m
+x = m.One(name="Foo")
+reveal_type(x.name)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'builtins.str'
+
+[case testImportReExportedNamedTupleInCycle2]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import NamedTuple
+One = NamedTuple('One', [('name', str)])
+[file m/two.py]
+import m
+x = m.One(name="Foo")
+reveal_type(x.name)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'builtins.str'
+
+[case testImportReExportedTypeAliasInCycle]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+from typing import Union
+One = Union[int, str]
+[file m/two.py]
+import m
+x: m.One
+reveal_type(x)
+class Two:
+    pass
+[out]
+tmp/m/two.py:3: error: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testImportCycleSpecialCase]
+import p
+[file p/__init__.py]
+from . import a
+from . import b
+reveal_type(a.foo())
+[file p/a.py]
+import p
+def foo() -> int: pass
+[file p/b.py]
+import p
+
+def run() -> None:
+    reveal_type(p.a.foo())
+[builtins fixtures/module.pyi]
+[out]
+tmp/p/b.py:4: error: Revealed type is 'builtins.int'
+tmp/p/__init__.py:3: error: Revealed type is 'builtins.int'

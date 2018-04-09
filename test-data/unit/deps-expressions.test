@@ -1,6 +1,8 @@
 -- Test cases for generating fine-grained dependencies for expressions.
 --
 -- The dependencies are used for fined-grained incremental checking.
+--
+-- See the comment at the top of deps.test for more documentation.
 
 [case testListExpr]
 def f() -> int: pass
@@ -52,6 +54,7 @@ def g() -> None:
 [out]
 <m.A.__init__> -> m.g
 <m.A.__iter__> -> m.g
+<m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
 <m.f1> -> m.g
 <m.f2> -> m.g
@@ -84,6 +87,7 @@ def g() -> None:
 [out]
 <m.A.__init__> -> m.g
 <m.A.__iter__> -> m.g
+<m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
 <m.f1> -> m.g
 <m.f2> -> m.g
@@ -134,6 +138,7 @@ def g() -> None:
 [out]
 <m.A.__init__> -> m.g
 <m.A.__iter__> -> m.g
+<m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
 
 [case testCast]
@@ -163,6 +168,7 @@ def g() -> None:
     x = A[B, C](f())
 [out]
 <m.A.__init__> -> m.g
+<m.A.__new__> -> m.g
 <m.A> -> m.A, m.g
 <m.B> -> m.B, m.g
 <m.C> -> m.C, m.g
@@ -269,9 +275,11 @@ def f() -> int:
 [out]
 <m.A.__init__> -> m.f
 <m.A.__lt__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 <m.B.__gt__> -> m.f
 <m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
 <m.B> -> <m.A.__lt__>, m.A.__lt__, m.B, m.f
 
 [case testIsOp-skip]
@@ -284,8 +292,10 @@ def f() -> bool:
 [out]
 -- fails because of https://github.com/python/mypy/issues/4055
 <m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 <m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
 <m.B> -> m.B, m.f
 
 [case testInOp]
@@ -298,8 +308,10 @@ def f() -> int:
 [out]
 <m.A.__contains__> -> m.f
 <m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 <m.B.__init__> -> m.f
+<m.B.__new__> -> m.f
 <m.B> -> <m.A.__contains__>, m.A.__contains__, m.B, m.f
 
 [case testComparisonExprWithMultipleOperands]
@@ -314,13 +326,16 @@ def f() -> int:
 [out]
 <m.A.__init__> -> m.f
 <m.A.__lt__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 <m.B.__gt__> -> m.f
 <m.B.__init__> -> m.f
 <m.B.__le__> -> m.f
+<m.B.__new__> -> m.f
 <m.B> -> <m.A.__lt__>, <m.C.__ge__>, m.A.__lt__, m.B, m.C.__ge__, m.f
 <m.C.__ge__> -> m.f
 <m.C.__init__> -> m.f
+<m.C.__new__> -> m.f
 <m.C> -> m.C, m.f
 
 [case testOperatorWithTupleOperand]

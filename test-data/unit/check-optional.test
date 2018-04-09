@@ -4,6 +4,12 @@
 x = None
 x()  # E: "None" not callable
 
+[case testImplicitNoneTypeInNestedFunction]
+def f() -> None:
+    def g() -> None:
+        x = None
+        x()  # E: "None" not callable
+
 [case testExplicitNoneType]
 x = None  # type: None
 x()  # E: "None" not callable
@@ -673,3 +679,19 @@ class A:
         lambda: (self.y, x.a) # E: Cannot determine type of 'y'
         self.y = int()
 [builtins fixtures/isinstancelist.pyi]
+
+[case testDeferredAndOptionalInferenceSpecialCase]
+def f() -> str:
+    y
+    x = None
+    if int():
+        x = ''
+    if x is None:
+        x = ''
+        g(x)
+    return x
+
+def g(x: str) -> None: pass
+
+y = int()
+[builtins fixtures/bool.pyi]

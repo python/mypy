@@ -1,14 +1,26 @@
 import os
 import re
+import subprocess
 import sys
 import time
+import shutil
 
-from typing import List, Dict, Tuple, Callable, Any
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
-from mypy.myunit import AssertionFailure
+from mypy.test.config import test_temp_dir
+
+import pytest  # type: ignore  # no pytest in typeshed
+
+# Exporting Suite as alias to TestCase for backwards compatibility
+# TODO: avoid aliasing - import and subclass TestCase directly
+from unittest import TestCase as Suite
+
+from mypy.main import process_options
+from mypy.options import Options
 from mypy.test.data import DataDrivenTestCase
 
+skip = pytest.mark.skip
 
 # AssertStringArraysEqual displays special line alignment helper messages if
 # the first different line has at least this many characters,
@@ -83,7 +95,22 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
             # long lines.
             show_align_message(expected[first_diff], actual[first_diff])
 
-        raise AssertionFailure(msg)
+        raise AssertionError(msg)
+
+
+def assert_module_equivalence(name: str,
+                              expected: Optional[Iterable[str]], actual: Iterable[str]) -> None:
+    if expected is not None:
+        expected_normalized = sorted(expected)
+        actual_normalized = sorted(set(actual).difference({"__main__"}))
+        assert_string_arrays_equal(
+            expected_normalized,
+            actual_normalized,
+            ('Actual modules ({}) do not match expected modules ({}) '
+             'for "[{} ...]"').format(
+                 ', '.join(actual_normalized),
+                 ', '.join(expected_normalized),
+                 name))
 
 
 def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> None:
@@ -169,21 +196,6 @@ def show_align_message(s1: str, s2: str) -> None:
     sys.stderr.write('\n')
 
 
-def assert_string_arrays_equal_wildcards(expected: List[str],
-                                         actual: List[str],
-                                         msg: str) -> None:
-    # Like above, but let a line with only '...' in expected match any number
-    # of lines in actual.
-    actual = clean_up(actual)
-
-    while actual != [] and actual[-1] == '':
-        actual = actual[:-1]
-
-    # Expand "..." wildcards away.
-    expected = match_array(expected, actual)
-    assert_string_arrays_equal(expected, actual, msg)
-
-
 def clean_up(a: List[str]) -> List[str]:
     """Remove common directory prefix from all strings in a.
 
@@ -200,52 +212,6 @@ def clean_up(a: List[str]) -> List[str]:
         # Ignore spaces at end of line.
         ss = re.sub(' +$', '', ss)
         res.append(re.sub('\\r$', '', ss))
-    return res
-
-
-def match_array(pattern: List[str], target: List[str]) -> List[str]:
-    """Expand '...' wildcards in pattern by matching against target."""
-
-    res = []  # type: List[str]
-    i = 0
-    j = 0
-
-    while i < len(pattern):
-        if pattern[i] == '...':
-            # Wildcard in pattern.
-            if i + 1 == len(pattern):
-                # Wildcard at end of pattern; match the rest of target.
-                res.extend(target[j:])
-                # Finished.
-                break
-            else:
-                # Must find the instance of the next pattern line in target.
-                jj = j
-                while jj < len(target):
-                    if target[jj] == pattern[i + 1]:
-                        break
-                    jj += 1
-                if jj == len(target):
-                    # No match. Get out.
-                    res.extend(pattern[i:])
-                    break
-                res.extend(target[j:jj])
-                i += 1
-                j = jj
-        elif (j < len(target) and (pattern[i] == target[j]
-                                   or (i + 1 < len(pattern)
-                                       and j + 1 < len(target)
-                                       and pattern[i + 1] == target[j + 1]))):
-            # In sync; advance one line. The above condition keeps sync also if
-            # only a single line is different, but loses it if two consecutive
-            # lines fail to match.
-            res.append(pattern[i])
-            i += 1
-            j += 1
-        else:
-            # Out of sync. Get out.
-            res.extend(pattern[i:])
-            break
     return res
 
 
@@ -308,3 +274,121 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
                 # Done enough waiting, the error seems persistent.
                 raise
             time.sleep(wait_time)
+
+# TODO: assert_true and assert_false are redundant - use plain assert
+
+
+def assert_true(b: bool, msg: Optional[str] = None) -> None:
+    if not b:
+        raise AssertionError(msg)
+
+
+def assert_false(b: bool, msg: Optional[str] = None) -> None:
+    if b:
+        raise AssertionError(msg)
+
+
+def good_repr(obj: object) -> str:
+    if isinstance(obj, str):
+        if obj.count('\n') > 1:
+            bits = ["'''\\"]
+            for line in obj.split('\n'):
+                # force repr to use ' not ", then cut it off
+                bits.append(repr('"' + line)[2:-1])
+            bits[-1] += "'''"
+            return '\n'.join(bits)
+    return repr(obj)
+
+
+def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
+    if a != b:
+        raise AssertionError(fmt.format(good_repr(a), good_repr(b)))
+
+
+def typename(t: type) -> str:
+    if '.' in str(t):
+        return str(t).split('.')[-1].rstrip("'>")
+    else:
+        return str(t)[8:-2]
+
+
+def assert_type(typ: type, value: object) -> None:
+    if type(value) != typ:
+        raise AssertionError('Invalid type {}, expected {}'.format(
+            typename(type(value)), typename(typ)))
+
+
+def parse_options(program_text: str, testcase: DataDrivenTestCase,
+                  incremental_step: int) -> Options:
+    """Parse comments like '# flags: --foo' in a test case."""
+    options = Options()
+    flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
+    if incremental_step > 1:
+        flags2 = re.search('# flags{}: (.*)$'.format(incremental_step), program_text,
+                           flags=re.MULTILINE)
+        if flags2:
+            flags = flags2
+
+    flag_list = None
+    if flags:
+        flag_list = flags.group(1).split()
+        flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
+        targets, options = process_options(flag_list, require_targets=False)
+        if targets:
+            # TODO: support specifying targets via the flags pragma
+            raise RuntimeError('Specifying targets via the flags pragma is not supported.')
+    else:
+        options = Options()
+
+    # Allow custom python version to override testcase_pyversion
+    if (not flag_list or
+            all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
+        options.python_version = testcase_pyversion(testcase.file, testcase.name)
+
+    return options
+
+
+def split_lines(*streams: bytes) -> List[str]:
+    """Returns a single list of string lines from the byte streams in args."""
+    return [
+        s
+        for stream in streams
+        for s in stream.decode('utf8').splitlines()
+    ]
+
+
+def run_command(cmdline: List[str], *, env: Optional[Dict[str, str]] = None,
+                timeout: int = 300, cwd: str = test_temp_dir) -> Tuple[int, List[str]]:
+    """A poor man's subprocess.run() for 3.4 compatibility."""
+    process = subprocess.Popen(
+        cmdline,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=cwd,
+    )
+    try:
+        out, err = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        out = err = b''
+        process.kill()
+    return process.returncode, split_lines(out, err)
+
+
+def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
+    # In some systems, mtime has a resolution of 1 second which can
+    # cause annoying-to-debug issues when a file has the same size
+    # after a change. We manually set the mtime to circumvent this.
+    # Note that we increment the old file's mtime, which guarentees a
+    # different value, rather than incrementing the mtime after the
+    # copy, which could leave the mtime unchanged if the old file had
+    # a similarly fudged mtime.
+    new_time = None
+    if os.path.isfile(target_path):
+        new_time = os.stat(target_path).st_mtime + 1
+
+    # Use retries to work around potential flakiness on Windows (AppVeyor).
+    retry_on_error(lambda: shutil.copy(source_path, target_path))
+
+    if new_time:
+        os.utime(target_path, times=(new_time, new_time))

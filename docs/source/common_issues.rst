@@ -85,6 +85,18 @@ flagged as an error.
   clarity about the latter use ``--follow-imports=error``.  You can
   read up about these and other useful flags in :ref:`command-line`.
 
+- **A function annotated as returning a non-optional type returns ``None``
+  and mypy doesn't complain**.
+
+  .. code-block:: python
+
+      def foo() -> str:
+          return None  # No error!
+
+  By default, the ``None`` value is considered compatible with everything. See
+  :ref:`optional` for details on strict optional checking, which allows mypy to
+  check ``None`` values precisely, and will soon become default.
+
 .. _silencing_checker:
 
 Spurious errors and locally silencing the checker
@@ -472,3 +484,27 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
+
+
+.. _silencing-linters:
+
+Silencing linters
+-----------------
+
+In some cases, linters will complain about unused imports or code. In
+these cases, you can silence them with a comment after type comments, or on
+the same line as the import:
+
+.. code-block:: python
+
+   # to silence complaints about unused imports
+   from typing import List  # noqa
+   a = None  # type: List[int]
+
+
+To silence the linter on the same line as a type comment
+put the linter comment *after* the type comment:
+
+.. code-block:: python
+
+    a = some_complex_thing()  # type: ignore  # noqa

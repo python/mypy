@@ -38,8 +38,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
      * Do not duplicate TypeInfo nodes. This would generally not be desirable.
      * Only update some name binding cross-references, but only those that
-       refer to Var or FuncDef nodes, not those targeting ClassDef or TypeInfo
-       nodes.
+       refer to Var, Decorator or FuncDef nodes, not those targeting ClassDef or
+       TypeInfo nodes.
      * Types are not transformed, but you can override type() to also perform
        type transformation.
 
@@ -337,11 +337,14 @@ class TransformVisitor(NodeVisitor[Node]):
         target = original.node
         if isinstance(target, Var):
             target = self.visit_var(target)
+        elif isinstance(target, Decorator):
+            target = self.visit_var(target.var)
         elif isinstance(target, FuncDef):
             # Use a placeholder node for the function if it exists.
             target = self.func_placeholder_map.get(target, target)
         new.node = target
-        new.is_def = original.is_def
+        new.is_new_def = original.is_new_def
+        new.is_inferred_def = original.is_inferred_def
 
     def visit_yield_from_expr(self, node: YieldFromExpr) -> YieldFromExpr:
         return YieldFromExpr(self.expr(node.expr))

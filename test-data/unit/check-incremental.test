@@ -1,7 +1,7 @@
 -- Checks for incremental mode (see testcheck.py).
--- Each test is run twice, once with a cold cache, once with a warm cache.
+-- Each test is run at least twice, once with a cold cache, once with a warm cache.
 -- Before the tests are run again, in step N any *.py.N files are copied to
--- *.py.
+-- *.py.  There are at least two runs; more as long as there are *.py.N files.
 --
 -- You can add an empty section like `[delete mod.py.2]` to delete `mod.py`
 -- before the second run.
@@ -28,7 +28,7 @@
 -- annotation, and any files expect to be stale (aka have a modified interface)
 -- should be annotated in the [stale] annotation. Note that a file that ends up
 -- producing an error has its caches deleted and is marked stale automatically.
--- Such files don't need to be included in [stale ...] list.
+-- Such files do not need to be included in [stale ...] list.
 --
 -- The test suite will automatically assume that __main__ is stale and rechecked in
 -- all cases so we can avoid constantly having to annotate it. The list of
@@ -1113,7 +1113,7 @@ val = "foo"
 
 [builtins fixtures/module_all.pyi]
 [rechecked main, c, c.submodule]
-[stale]
+[stale c]
 [out2]
 tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
@@ -2502,7 +2502,7 @@ a.f()
 import a
 reveal_type(a.f)
 [out2]
-tmp/b.py:2: error: Revealed type is 'Any'
+tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
 
 [case testQuickAndDirtyDeleteClassUsedInAnnotation]
 # flags: --quick-and-dirty
@@ -2521,6 +2521,32 @@ a.f().x
 tmp/b.py:2: error: Revealed type is 'def () -> <stale cache: consider running mypy without --quick>'
 tmp/b.py:3: error: "<stale cache: consider running mypy without --quick>" has no attribute "x"
 
+[case testQuickAndDirtyDeleteSuperClass]
+# flags: --quick-and-dirty
+import a
+[file a.py]
+from b import Foo
+z = (1, Foo())
+
+class Bar:
+    pass
+[file b.py]
+from e import Quux
+class Baz:
+    pass
+class Foo(Baz, Quux):
+    pass
+[file e.py]
+from a import Bar
+class Quux(Bar):
+    pass
+
+[file a.py.2]
+from b import Foo
+z = (1, Foo())
+[out]
+[out2]
+
 [case testQuickAndDirtyDeleteClassUsedAsBase]
 # flags: --quick-and-dirty
 import a
@@ -2535,7 +2561,8 @@ import a
 reveal_type(a.D)
 a.D().x
 [out2]
-tmp/b.py:2: error: Revealed type is 'Any'
+tmp/b.py:2: error: Revealed type is 'def () -> a.D'
+tmp/b.py:3: error: "D" has no attribute "x"
 
 [case testQuickAndDirtyDeleteNestedClassUsedInAnnotation]
 # flags: --quick-and-dirty
@@ -2817,10 +2844,8 @@ from b import x
 [out]
 [out2]
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
 [out3]
 tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
 
 [case testCacheDeletedAfterErrorsFound2]
 import a
@@ -2875,12 +2900,17 @@ from b import x
 [out]
 [out2]
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
 [out3]
 tmp/c.py:1: error: Module 'd' has no attribute 'x'
-tmp/b.py:1: error: Module 'c' has no attribute 'x'
-tmp/a.py:1: error: Module 'b' has no attribute 'x'
+
+[case testNoCrashOnDeletedWithCacheOnCmdline]
+# cmd: mypy -m nonexistent
+# cmd2: mypy -m nonexistent
+[file nonexistent.py]
+[delete nonexistent.py.2]
+[out]
+[out2]
+mypy: can't read file 'tmp/nonexistent.py': No such file or directory
 
 [case testNoCrashOnDoubleImportAliasQuick]
 # cmd: mypy -m e
@@ -3438,3 +3468,770 @@ extra = 1
 
 [out1]
 [out2]
+
+[case testErrorsAffectDependentsOnly]
+# cmd: mypy -m m.a m.b m.c
+[file m/__init__.py]
+[file m/a.py]
+1 + ''  # Deliberate error
+[file m/b.py]
+import m.a  # Depends on module with error
+[file m/c.py]
+import m  # No error here
+[rechecked m.a, m.b]
+[out1]
+tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
+[out2]
+tmp/m/a.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testDisallowAnyExprIncremental]
+# cmd: mypy -m main
+# flags:  --disallow-any-expr
+
+[file ns.py]
+class Namespace:
+    def __init__(self):
+        self.user = 0
+
+[file main.py]
+import ns
+user = ns.Namespace.user
+
+[out1]
+tmp/main.py:2: error: Expression has type "Any"
+
+[out2]
+tmp/main.py:2: error: Expression has type "Any"
+
+[case testIncrementalStrictOptional]
+# flags: --strict-optional
+import a
+1 + a.foo()
+[file a.py]
+def foo() -> int: return 0
+[file a.py.2]
+from typing import Optional
+def foo() -> Optional[int]: return 0
+[out1]
+[out2]
+main:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+
+[case testAttrsIncrementalSubclassingCached]
+from a import A
+import attr
+@attr.s(auto_attribs=True)
+class B(A):
+    e: str = 'e'
+a = B(5, [5], 'foo')
+a.a = 6
+a._b = [2]
+a.c = 'yo'
+a._d = 22
+a.e = 'hi'
+
+[file a.py]
+import attr
+import attr
+from typing import List, ClassVar
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+    _b: List[int]
+    c: str = '18'
+    _d: int = attr.ib(validator=None, default=18)
+    E = 7
+    F: ClassVar[int] = 22
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+
+[case testAttrsIncrementalSubclassingCachedConverter]
+from a import A
+import attr
+@attr.s
+class B(A):
+    pass
+reveal_type(B)
+
+[file a.py]
+def converter(s:int) -> str:
+    return 'hello'
+
+import attr
+@attr.s
+class A:
+    x: str = attr.ib(converter=converter)
+
+[builtins fixtures/list.pyi]
+[out1]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[out2]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testAttrsIncrementalSubclassingCachedType]
+from a import A
+import attr
+@attr.s
+class B(A):
+    pass
+reveal_type(B)
+
+[file a.py]
+import attr
+@attr.s
+class A:
+    x = attr.ib(type=int)
+
+[builtins fixtures/list.pyi]
+[out1]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+[out2]
+main:6: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testAttrsIncrementalArguments]
+from a import Frozen, NoInit, NoCmp
+f = Frozen(5)
+f.x = 6
+
+g = NoInit()
+
+Frozen(1) < Frozen(2)
+Frozen(1) <= Frozen(2)
+Frozen(1) > Frozen(2)
+Frozen(1) >= Frozen(2)
+
+NoCmp(1) < NoCmp(2)
+NoCmp(1) <= NoCmp(2)
+NoCmp(1) > NoCmp(2)
+NoCmp(1) >= NoCmp(2)
+
+[file a.py]
+import attr
+@attr.s(frozen=True)
+class Frozen:
+    x: int = attr.ib()
+@attr.s(init=False)
+class NoInit:
+    x: int = attr.ib()
+@attr.s(cmp=False)
+class NoCmp:
+    x: int = attr.ib()
+
+[builtins fixtures/list.pyi]
+[rechecked]
+[stale]
+[out1]
+main:3: error: Property "x" defined in "Frozen" is read-only
+main:12: error: Unsupported left operand type for < ("NoCmp")
+main:13: error: Unsupported left operand type for <= ("NoCmp")
+main:14: error: Unsupported left operand type for > ("NoCmp")
+main:15: error: Unsupported left operand type for >= ("NoCmp")
+
+[out2]
+main:3: error: Property "x" defined in "Frozen" is read-only
+main:12: error: Unsupported left operand type for < ("NoCmp")
+main:13: error: Unsupported left operand type for <= ("NoCmp")
+main:14: error: Unsupported left operand type for > ("NoCmp")
+main:15: error: Unsupported left operand type for >= ("NoCmp")
+
+[case testAttrsIncrementalDunder]
+from a import A
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> a.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+reveal_type(A.__ne__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+
+A(1) < A(2)
+A(1) <= A(2)
+A(1) > A(2)
+A(1) >= A(2)
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported operand types for < ("A" and "int")
+A(1) <= 1  # E: Unsupported operand types for <= ("A" and "int")
+A(1) > 1  # E: Unsupported operand types for > ("A" and "int")
+A(1) >= 1  # E: Unsupported operand types for >= ("A" and "int")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported operand types for > ("A" and "int")
+1 <= A(1)  # E: Unsupported operand types for >= ("A" and "int")
+1 > A(1)  # E: Unsupported operand types for < ("A" and "int")
+1 >= A(1)  # E: Unsupported operand types for <= ("A" and "int")
+1 == A(1)
+1 != A(1)
+
+[file a.py]
+from attr import attrib, attrs
+@attrs(auto_attribs=True)
+class A:
+    a: int
+
+[builtins fixtures/attr.pyi]
+[rechecked]
+[stale]
+[out2]
+main:2: error: Revealed type is 'def (a: builtins.int) -> a.A'
+main:3: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+main:4: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
+main:5: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:6: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:7: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:8: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:17: error: Unsupported operand types for < ("A" and "int")
+main:18: error: Unsupported operand types for <= ("A" and "int")
+main:19: error: Unsupported operand types for > ("A" and "int")
+main:20: error: Unsupported operand types for >= ("A" and "int")
+main:24: error: Unsupported operand types for > ("A" and "int")
+main:25: error: Unsupported operand types for >= ("A" and "int")
+main:26: error: Unsupported operand types for < ("A" and "int")
+main:27: error: Unsupported operand types for <= ("A" and "int")
+
+[case testAttrsIncrementalSubclassModified]
+from b import B
+B(5, 'foo')
+
+[file a.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    x: int
+
+[file b.py]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: str
+
+[file b.py.2]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: int
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+[rechecked b]
+
+[case testAttrsIncrementalSubclassModifiedErrorFirst]
+from b import B
+B(5, 'foo')
+[file a.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    x: int
+
+[file b.py]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: int
+
+[file b.py.2]
+import attr
+from a import A
+@attr.s(auto_attribs=True)
+class B(A):
+    y: str
+
+[builtins fixtures/list.pyi]
+[out1]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+
+[out2]
+[rechecked b]
+
+[case testAttrsIncrementalThreeFiles]
+from c import C
+C(5, 'foo', True)
+
+[file a.py]
+import attr
+@attr.s
+class A:
+    a: int = attr.ib()
+
+[file b.py]
+import attr
+@attr.s
+class B:
+    b: str = attr.ib()
+
+[file c.py]
+from a import A
+from b import B
+import attr
+@attr.s
+class C(A, B):
+    c: bool = attr.ib()
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+
+[case testAttrsIncrementalConverterInSubmodule]
+from a.a import A
+reveal_type(A)
+[file a/__init__.py]
+[file a/a.py]
+from typing import Optional
+def converter(s:Optional[int]) -> int:
+    ...
+
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(converter=converter)
+
+[builtins fixtures/list.pyi]
+[out1]
+main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+[out2]
+main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+
+[case testAttrsIncrementalConverterManyStyles]
+import a
+[file a.py]
+from base import Base
+Base(1, 'str', True)
+Base(None, None, None)
+
+from subclass import A, B
+A(1, 'str', True)
+A(None, None, None)
+B(1, 'str', True, 1, 'str', True)
+B(None, None, None, None, None, None)
+
+from submodule.base import SubBase
+SubBase(1, 'str', True)
+SubBase(None, None, None)
+
+from submodule.subclass import AA, BB
+AA(1, 'str', True)
+AA(None, None, None)
+BB(1, 'str', True, 1, 'str', True)
+BB(None, None, None, None, None, None)
+
+from submodule.subsubclass import SubAA, SubBB
+SubAA(1, 'str', True)
+SubAA(None, None, None)
+SubBB(1, 'str', True, 1, 'str', True)
+SubBB(None, None, None, None, None, None)
+
+[file a.py.2]
+# Now with errors.
+from base import Base
+Base(1, 1, True)
+
+from subclass import A, B
+A(1, 1, True)
+B(1, 'str', True, 1, 1, True)
+
+from submodule.base import SubBase
+SubBase(1, 1, True)
+
+from submodule.subclass import AA, BB
+AA(1, 1, True)
+BB(1, 'str', True, 1, 1, True)
+
+from submodule.subsubclass import SubAA, SubBB
+SubAA(1, 1, True)
+SubBB(1, 'str', True, 1, 1, True)
+
+[file foo.py]
+from typing import Optional
+def maybe_int(x: Optional[int]) -> int:
+   ...
+[file bar.py]
+from typing import Optional
+def maybe_bool(x: Optional[bool]) -> bool:
+   ...
+[file base.py]
+from typing import Optional
+import attr
+import bar
+from foo import maybe_int
+def maybe_str(x: Optional[str]) -> str:
+   ...
+@attr.s
+class Base:
+    x: int = attr.ib(converter=maybe_int)
+    y: str = attr.ib(converter=maybe_str)
+    z: bool = attr.ib(converter=bar.maybe_bool)
+[file subclass.py]
+from typing import Optional
+import attr
+from base import Base
+@attr.s
+class A(Base): pass
+
+import bar
+from foo import maybe_int
+def maybe_str(x: Optional[str]) -> str:
+   ...
+@attr.s
+class B(Base):
+    xx: int = attr.ib(converter=maybe_int)
+    yy: str = attr.ib(converter=maybe_str)
+    zz: bool = attr.ib(converter=bar.maybe_bool)
+
+[file submodule/__init__.py]
+[file submodule/base.py]
+from typing import Optional
+import attr
+import bar
+from foo import maybe_int
+def maybe_str(x: Optional[str]) -> str:
+   ...
+@attr.s
+class SubBase:
+    x: int = attr.ib(converter=maybe_int)
+    y: str = attr.ib(converter=maybe_str)
+    z: bool = attr.ib(converter=bar.maybe_bool)
+
+[file submodule/subclass.py]
+from typing import Optional
+import attr
+from base import Base
+@attr.s
+class AA(Base): pass
+
+import bar
+from foo import maybe_int
+def maybe_str(x: Optional[str]) -> str:
+   ...
+@attr.s
+class BB(Base):
+    xx: int = attr.ib(converter=maybe_int)
+    yy: str = attr.ib(converter=maybe_str)
+    zz: bool = attr.ib(converter=bar.maybe_bool)
+
+[file submodule/subsubclass.py]
+from typing import Optional
+import attr
+from .base import SubBase
+@attr.s
+class SubAA(SubBase): pass
+
+import bar
+from foo import maybe_int
+def maybe_str(x: Optional[str]) -> str:
+   ...
+@attr.s
+class SubBB(SubBase):
+    xx: int = attr.ib(converter=maybe_int)
+    yy: str = attr.ib(converter=maybe_str)
+    zz: bool = attr.ib(converter=bar.maybe_bool)
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+tmp/a.py:3: error: Argument 2 to "Base" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:6: error: Argument 2 to "A" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:7: error: Argument 5 to "B" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:10: error: Argument 2 to "SubBase" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:13: error: Argument 2 to "AA" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:14: error: Argument 5 to "BB" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:17: error: Argument 2 to "SubAA" has incompatible type "int"; expected "Optional[str]"
+tmp/a.py:18: error: Argument 5 to "SubBB" has incompatible type "int"; expected "Optional[str]"
+
+[case testAttrsIncrementalConverterInFunction]
+import attr
+def foo() -> None:
+    def foo(x: str) -> int:
+        ...
+    @attr.s
+    class A:
+        x: int = attr.ib(converter=foo)
+    reveal_type(A)
+[builtins fixtures/list.pyi]
+[out1]
+main:8: error: Revealed type is 'def (x: builtins.str) -> __main__.A@5'
+[out2]
+main:8: error: Revealed type is 'def (x: builtins.str) -> __main__.A@5'
+
+[case testAttrsIncrementalConverterInSubmoduleForwardRef]
+from a.a import A
+reveal_type(A)
+[file a/__init__.py]
+[file a/a.py]
+from typing import List
+def converter(s:F) -> int:
+    ...
+
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(converter=converter)
+
+F = List[int]
+
+[builtins fixtures/list.pyi]
+[out1]
+main:2: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
+[out2]
+main:2: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
+
+
+[case testAttrsIncrementalThreeRuns]
+from a import A
+A(5)
+
+[file a.py]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int
+
+[file a.py.2]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: str
+
+[file a.py.3]
+import attr
+@attr.s(auto_attribs=True)
+class A:
+    a: int = 6
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+[out3]
+
+[case testDeletedDepLineNumber]
+# The import is not on line 1 and that data should be preserved
+import a
+[file a.py]
+[delete a.py.2]
+[out1]
+
+[out2]
+main:2: error: Cannot find module named 'a'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testIncrementalInheritanceAddAnnotation]
+# flags: --strict-optional
+import a
+[file a.py]
+import b
+def foo() -> None:
+    1 + b.Bar().get()
+[file b.py]
+from c import Baz
+class Bar(Baz): pass
+
+[file c.py]
+class Baz:
+    def get(self):
+        return 1
+[file c.py.2]
+from typing import Optional
+class Baz:
+    def get(self) -> Optional[int]:
+        return 1
+[out]
+[out2]
+tmp/a.py:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+
+[case testIncrementalMetaclassUpdate]
+import a
+[file a.py]
+from b import B
+B.x
+
+[file b.py]
+import c
+class B(metaclass=c.M): pass
+
+[file c.py]
+class M(type):
+    x: int
+
+[file c.py.2]
+class M(type):
+    y: int
+[out]
+[out2]
+tmp/a.py:2: error: "Type[B]" has no attribute "x"
+
+[case testIncrementalLotsOfInheritance]
+import a
+[file a.py]
+from b import B
+from d import D
+def take(d: D) -> None: pass
+def foo() -> None:
+    take(B())
+[file b.py]
+from c import C
+class B(C): pass
+
+[file c.py]
+from d import D
+class C(D): pass
+
+[file c.py.2]
+from d import D
+class C: pass
+
+[file d.py]
+class D: pass
+[out]
+[out2]
+tmp/a.py:5: error: Argument 1 to "take" has incompatible type "B"; expected "D"
+
+[case testIncrementalInheritanceProperty]
+import a
+[file a.py]
+import b
+def foo() -> None:
+    1 + b.Bar().x
+[file b.py]
+from c import Baz
+class Bar(Baz): pass
+
+[file c.py]
+class Baz:
+    def __init__(self):
+        self.x = 12  # type: int
+[file c.py.2]
+class Baz:
+    def __init__(self):
+        self.x = 'lol'  # type: str
+[out]
+[out2]
+tmp/a.py:3: error: Unsupported operand types for + ("int" and "str")
+
+[case testIncrementalWithIgnoresTwice]
+import a
+[file a.py]
+import b
+import foo # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file b.py.3]
+x = 1
+[builtins fixtures/module.pyi]
+[out]
+[out2]
+[out3]
+
+[case testIgnoredImport2]
+import x
+[file y.py]
+import xyz  # type: ignore
+B = 0
+from x import A
+[file x.py]
+A = 0
+from y import B
+[file x.py.2]
+A = 1
+from y import B
+[file x.py.3]
+A = 2
+from y import B
+[out]
+[out2]
+[out3]
+
+[case testDeletionOfSubmoduleTriggersImportFrom2]
+from p.q import f
+f()
+[file p/__init__.py]
+[file p/q.py]
+def f() -> None: pass
+[delete p/q.py.2]
+[file p/q.py.3]
+def f(x: int) -> None: pass
+[out]
+[out2]
+main:1: error: Cannot find module named 'p.q'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out3]
+main:2: error: Too few arguments for "f"
+
+[case testDeleteIndirectDependency]
+import b
+b.x.foo()
+[file b.py]
+import c
+x = c.Foo()
+[file c.py]
+class Foo:
+    def foo(self) -> None: pass
+[delete c.py.2]
+[file b.py.2]
+class Foo:
+    def foo(self) -> None: pass
+x = Foo()
+[out]
+[out2]
+
+[case testImportReExportInCycle]
+from m import One
+[file m/__init__.py]
+from .one import One
+from .two import Two
+[file m/one.py]
+class One:
+    pass
+[file m/two.py]
+import m
+class Two:
+    pass
+[file m/one.py.2]
+class One:
+    name: str
+[file m/two.py.2]
+import m
+reveal_type(m.One.name)
+class Two:
+    pass
+[out2]
+tmp/m/two.py:2: error: Revealed type is 'builtins.str'
+
+[case testImportUnusedIgnore1]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b
+import foo  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = '2'
+
+-- TODO: Fails due to #4856
+[case testImportUnusedIgnore2-skip]
+# flags: --warn-unused-ignores
+import a
+[file a.py]
+import b
+import c  # type: ignore
+[file b.py]
+x = 1
+[file b.py.2]
+x = 'hi'
+[file c.py.3]
+pass
+[out]
+[out2]
+[out3]
+tmp/a.py:1: note: unused 'type: ignore' comment

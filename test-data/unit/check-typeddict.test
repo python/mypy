@@ -347,6 +347,7 @@ def as_mutable_mapping(p: Point) -> MutableMapping[str, int]:
               # N: 'Point' is missing following 'MutableMapping' protocol member: \
               # N:     __setitem__
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCanConvertTypedDictToAny]
 from mypy_extensions import TypedDict
@@ -1333,7 +1334,7 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict({'x': builtins.int}, fallback=typing.Mapping[builtins.str, builtins.object])"
+yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict('__main__.M', {'x': builtins.int})"
 yg: G[M]
 z: int = G[M]().x['x']
 

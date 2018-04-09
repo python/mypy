@@ -10,14 +10,15 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from typing import Dict, List, Callable, Optional, Union, Set, cast
+from contextlib import contextmanager
+from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iterator
 
 from mypy import messages, experiments
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, Var, ARG_POS, OverloadedFuncDef
+    TupleExpr, RevealTypeExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -28,10 +29,15 @@ from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import TypeAnalyserPass3, collect_any_types
 from mypy.typevars import has_no_typevars
+from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
+from mypy.subtypes import is_subtype
+from mypy.sametypes import is_same_type
+from mypy.scope import Scope
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 import mypy.semanal
 
 
-class SemanticAnalyzerPass3(TraverserVisitor):
+class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     """The third and final pass of semantic analysis.
 
     Check type argument counts and values of generic types, and perform some
@@ -43,30 +49,46 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         self.modules = modules
         self.errors = errors
         self.sem = sem
+        self.scope = Scope()
+        # If True, process function definitions. If False, don't. This is used
+        # for processing module top levels in fine-grained incremental mode.
+        self.recurse_into_functions = True
 
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
-                   patches: List[Callable[[], None]]) -> None:
-        self.errors.set_file(fnam, file_node.fullname())
+                   patches: List[Tuple[int, Callable[[], None]]]) -> None:
+        self.recurse_into_functions = True
+        self.errors.set_file(fnam, file_node.fullname(), scope=self.scope)
         self.options = options
         self.sem.options = options
         self.patches = patches
         self.is_typeshed_file = self.errors.is_typeshed_file(fnam)
+        self.sem.cur_mod_id = file_node.fullname()
+        self.cur_mod_node = file_node
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
+            self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
+            self.analyze_symbol_table(file_node.names)
+            self.scope.leave()
+        del self.cur_mod_node
+        self.patches = []
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem]) -> None:
+    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+                        patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
+        self.patches = patches
         if isinstance(node, MypyFile):
+            self.recurse_into_functions = False
             self.refresh_top_level(node)
         else:
+            self.recurse_into_functions = True
             self.accept(node)
+        self.patches = []
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
         """Reanalyze a stale module top-level in fine-grained incremental mode."""
         for d in file_node.defs:
-            if not isinstance(d, (FuncItem, ClassDef)):
-                self.accept(d)
+            self.accept(d)
 
     def accept(self, node: Node) -> None:
         try:
@@ -80,18 +102,23 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         super().visit_block(b)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
-        self.errors.push_function(fdef.name())
-        self.analyze(fdef.type, fdef)
-        super().visit_func_def(fdef)
-        self.errors.pop_function()
+        if not self.recurse_into_functions:
+            return
+        with self.scope.function_scope(fdef):
+            self.analyze(fdef.type, fdef)
+            super().visit_func_def(fdef)
 
     def visit_overloaded_func_def(self, fdef: OverloadedFuncDef) -> None:
-        self.analyze(fdef.type, fdef)
-        super().visit_overloaded_func_def(fdef)
+        if not self.recurse_into_functions:
+            return
+        with self.scope.function_scope(fdef):
+            self.analyze(fdef.type, fdef)
+            super().visit_overloaded_func_def(fdef)
 
     def visit_class_def(self, tdef: ClassDef) -> None:
         # NamedTuple base classes are validated in check_namedtuple_classdef; we don't have to
         # check them again here.
+        self.scope.enter_class(tdef.info)
         if not tdef.info.is_named_tuple:
             types = list(tdef.info.bases)  # type: List[Type]
             for tvar in tdef.type_vars:
@@ -122,6 +149,8 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
                 self.analyze_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
+        self.analyze_symbol_table(tdef.info.names)
+        self.scope.leave()
 
     def visit_decorator(self, dec: Decorator) -> None:
         """Try to infer the type of the decorated function.
@@ -133,7 +162,13 @@ class SemanticAnalyzerPass3(TraverserVisitor):
         This basically uses a simple special-purpose type inference
         engine just for decorators.
         """
-        super().visit_decorator(dec)
+        # Don't just call the super method since we don't unconditionally traverse the decorated
+        # function.
+        dec.var.accept(self)
+        for decorator in dec.decorators:
+            decorator.accept(self)
+        if self.recurse_into_functions:
+            dec.func.accept(self)
         if dec.var.is_property:
             # Decorators are expected to have a callable type (it's a little odd).
             if dec.func.type is None:
@@ -146,6 +181,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                     name=dec.var.name())
             elif isinstance(dec.func.type, CallableType):
                 dec.var.type = dec.func.type
+                self.analyze(dec.var.type, dec.var)
             return
         decorator_preserves_type = True
         for expr in dec.decorators:
@@ -173,6 +209,7 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 orig_sig = function_type(dec.func, self.builtin_type('function'))
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig
+        self.analyze(dec.var.type, dec.var)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Traverse the assignment statement.
@@ -331,12 +368,10 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
-            if indicator.get('forward') or indicator.get('synthetic'):
-                def patch() -> None:
-                    self.perform_transform(node,
-                        lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
-                                                                      node, warn)))
-                self.patches.append(patch)
+            self.generate_type_patches(node, indicator, warn)
+            if analyzer.aliases_used:
+                target = self.scope.current_target()
+                self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
 
     def analyze_types(self, types: List[Type], node: Node) -> None:
         # Similar to above but for nodes with multiple types.
@@ -345,12 +380,41 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
             self.check_for_omitted_generics(type)
+            if analyzer.aliases_used:
+                target = self.scope.current_target()
+                self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
+        self.generate_type_patches(node, indicator, warn=False)
+
+    def analyze_symbol_table(self, names: SymbolTable) -> None:
+        """Analyze types in symbol table nodes only (shallow)."""
+        for node in names.values():
+            if node.type_override:
+                self.analyze(node.type_override, node)
+
+    def make_scoped_patch(self, fn: Callable[[], None]) -> Callable[[], None]:
+        saved_scope = self.scope.save()
+
+        def patch() -> None:
+            with self.scope.saved_scope(saved_scope):
+                fn()
+        return patch
+
+    def generate_type_patches(self,
+                              node: Union[Node, SymbolTableNode],
+                              indicator: Dict[str, bool],
+                              warn: bool) -> None:
         if indicator.get('forward') or indicator.get('synthetic'):
             def patch() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(ForwardReferenceResolver(self.fail,
-                                                                  node, warn=False)))
-            self.patches.append(patch)
+                                                                  node, warn)))
+            self.patches.append((PRIORITY_FORWARD_REF, self.make_scoped_patch(patch)))
+        if indicator.get('typevar'):
+            def patch() -> None:
+                self.perform_transform(node,
+                    lambda tp: tp.accept(TypeVariableChecker(self.fail)))
+
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch)))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
@@ -362,14 +426,12 @@ class SemanticAnalyzerPass3(TraverserVisitor):
                 self.analyze(sym.node.type, sym.node)
 
     def make_type_analyzer(self, indicator: Dict[str, bool]) -> TypeAnalyserPass3:
-        return TypeAnalyserPass3(self.sem.lookup_qualified,
-                                 self.sem.lookup_fully_qualified,
-                                 self.fail,
-                                 self.sem.note,
+        return TypeAnalyserPass3(self,
                                  self.sem.plugin,
                                  self.options,
                                  self.is_typeshed_file,
-                                 indicator)
+                                 indicator,
+                                 self.patches)
 
     def check_for_omitted_generics(self, typ: Type) -> None:
         if not self.options.disallow_any_generics or self.is_typeshed_file:
@@ -379,11 +441,26 @@ class SemanticAnalyzerPass3(TraverserVisitor):
             if t.type_of_any == TypeOfAny.from_omitted_generics:
                 self.fail(messages.BARE_GENERIC, t)
 
-    def fail(self, msg: str, ctx: Context, *, blocker: bool = False) -> None:
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg)
+    def lookup_qualified(self, name: str, ctx: Context,
+                         suppress_errors: bool = False) -> Optional[SymbolTableNode]:
+        return self.sem.lookup_qualified(name, ctx, suppress_errors=suppress_errors)
+
+    def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        return self.sem.lookup_fully_qualified(fullname)
+
+    def dereference_module_cross_ref(
+            self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
+        return self.sem.dereference_module_cross_ref(node)
+
+    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
+        self.sem.fail(msg, ctx, serious, blocker=blocker)
 
     def fail_blocker(self, msg: str, ctx: Context) -> None:
         self.fail(msg, ctx, blocker=True)
+
+    def note(self, msg: str, ctx: Context) -> None:
+        self.sem.note(msg, ctx)
 
     def builtin_type(self, name: str, args: Optional[List[Type]] = None) -> Instance:
         names = self.modules['builtins']
@@ -588,3 +665,58 @@ class ForwardReferenceResolver(TypeTranslator):
         if self.check_recursion(t):
             return AnyType(TypeOfAny.from_error)
         return super().visit_type_type(t)
+
+
+class TypeVariableChecker(TypeTranslator):
+    """Visitor that checks that type variables in generic types have valid values.
+
+    Note: This must be run at the end of semantic analysis when MROs are
+    complete and forward references have been resolved.
+
+    This does two things:
+
+    - If type variable in C has a value restriction, check that X in C[X] conforms
+      to the restriction.
+    - If type variable in C has a non-default upper bound, check that X in C[X]
+      conforms to the upper bound.
+
+    (This doesn't need to be a type translator, but it simplifies the implementation.)
+    """
+
+    def __init__(self, fail: Callable[[str, Context], None]) -> None:
+        self.fail = fail
+
+    def visit_instance(self, t: Instance) -> Type:
+        info = t.type
+        for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
+            if tvar.values:
+                if isinstance(arg, TypeVarType):
+                    arg_values = arg.values
+                    if not arg_values:
+                        self.fail('Type variable "{}" not valid as type '
+                                  'argument value for "{}"'.format(
+                                      arg.name, info.name()), t)
+                        continue
+                else:
+                    arg_values = [arg]
+                self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+            if not is_subtype(arg, tvar.upper_bound):
+                self.fail('Type argument "{}" of "{}" must be '
+                          'a subtype of "{}"'.format(
+                              arg, info.name(), tvar.upper_bound), t)
+        return t
+
+    def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
+                              valids: List[Type], arg_number: int, context: Context) -> None:
+        for actual in actuals:
+            if (not isinstance(actual, AnyType) and
+                    not any(is_same_type(actual, value)
+                            for value in valids)):
+                if len(actuals) > 1 or not isinstance(actual, Instance):
+                    self.fail('Invalid type argument value for "{}"'.format(
+                        type.name()), context)
+                else:
+                    class_name = '"{}"'.format(type.name())
+                    actual_type_name = '"{}"'.format(actual.type.name())
+                    self.fail(messages.INCOMPATIBLE_TYPEVAR_VALUE.format(
+                        arg_name, class_name, actual_type_name), context)

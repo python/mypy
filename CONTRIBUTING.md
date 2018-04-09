@@ -47,6 +47,17 @@ other people with respect and more generally to follow the guidelines
 articulated in the [Python Community Code of
 Conduct](https://www.python.org/psf/codeofconduct/).
 
+First Time Contributors
+-----------------------
+
+Mypy appreciates your contribution! If you are interested in helping improve
+mypy, there are several ways to get started:
+
+* Contributing to [typeshed](https://github.com/python/typeshed/issues) is a great way to
+become familiar with Python's type syntax.
+* Work on [documentation issues](https://github.com/python/mypy/labels/documentation).
+* Ask on [the chat](https://gitter.im/python/typing) or on
+[the issue tracker](https://github.com/python/mypy/issues) about good beginner issues.
 
 Submitting Changes
 ------------------
@@ -69,11 +80,7 @@ For every pull request, we aim to promptly either merge it or say why
 it's not yet ready; if you go a few days without a reply, please feel
 free to ping the thread by adding a new comment.
 
-At present the core developers are (alphabetically):
-* David Fisher (@ddfisher)
-* Jukka Lehtosalo (@JukkaL)
-* Greg Price (@gnprice)
-* Guido van Rossum (@gvanrossum)
+For a list of mypy core developers, see the file [CREDITS](CREDITS).
 
 
 Preparing Changes
@@ -97,6 +104,9 @@ See also our [coding conventions](https://github.com/python/mypy/wiki/Code-Conve
 which consist mainly of a reference to
 [PEP 8](https://www.python.org/dev/peps/pep-0008/) -- for the code you
 put in the pull request.
+
+Also, do not squash your commits after you have submitted a pull request, as this
+erases context during review. We will squash commits when the pull request is merged.
 
 You may also find other pages in the
 [Mypy developer guide](https://github.com/python/mypy/wiki/Developer-Guides)

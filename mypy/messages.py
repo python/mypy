@@ -25,7 +25,8 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
-    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT,
+    ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
+    CallExpr
 )
 
 
@@ -62,7 +63,6 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpol
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
 INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-NEED_ANNOTATION_FOR_VAR = 'Need type annotation for variable'
 ITERABLE_EXPECTED = 'Iterable expected'
 ASYNC_ITERABLE_EXPECTED = 'AsyncIterable expected'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
@@ -153,8 +153,9 @@ class MessageBuilder:
     def add_errors(self, messages: 'MessageBuilder') -> None:
         """Add errors in messages to this builder."""
         if self.disable_count <= 0:
-            for info in messages.errors.error_info:
-                self.errors.add_error_info(info)
+            for errs in messages.errors.error_info_map.values():
+                for info in errs:
+                    self.errors.add_error_info(info)
 
     def disable_errors(self) -> None:
         self.disable_count += 1
@@ -634,8 +635,17 @@ class MessageBuilder:
                 arg_type_str = '*' + arg_type_str
             elif arg_kind == ARG_STAR2:
                 arg_type_str = '**' + arg_type_str
+
+            # For function calls with keyword arguments, display the argument name rather than the
+            # number.
+            arg_label = str(n)
+            if isinstance(context, CallExpr):
+                arg_name = context.arg_names[n - 1]
+                if arg_name is not None:
+                    arg_label = '"{}"'.format(arg_name)
+
             msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                n, target, self.quote_type_string(arg_type_str),
+                arg_label, target, self.quote_type_string(arg_type_str),
                 self.quote_type_string(expected_type_str))
             if isinstance(arg_type, Instance) and isinstance(expected_type, Instance):
                 notes = append_invariance_notes(notes, arg_type, expected_type)
@@ -686,7 +696,10 @@ class MessageBuilder:
         module = find_defining_module(self.modules, callee)
         if module:
             assert callee.definition is not None
-            self.note('{} defined here'.format(callable_name(callee)), callee.definition,
+            fname = callable_name(callee)
+            if not fname:  # an alias to function with a different name
+                fname = 'Called function'
+            self.note('{} defined here'.format(fname), callee.definition,
                       file=module.path, origin=context)
 
     def duplicate_argument_value(self, callee: CallableType, index: int,
@@ -922,12 +935,12 @@ class MessageBuilder:
                   'of signature {}'.format(index1), context)
 
     def operator_method_signatures_overlap(
-            self, reverse_class: str, reverse_method: str, forward_class: str,
+            self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
             forward_method: str, context: Context) -> None:
-        self.fail('Signatures of "{}" of "{}" and "{}" of "{}" '
+        self.fail('Signatures of "{}" of "{}" and "{}" of {} '
                   'are unsafely overlapping'.format(
-                      reverse_method, reverse_class,
-                      forward_method, forward_class),
+                      reverse_method, reverse_class.name(),
+                      forward_method, self.format(forward_class)),
                   context)
 
     def forward_operator_not_callable(
@@ -960,6 +973,9 @@ class MessageBuilder:
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, self.format(typ)),
                   ctx)
+
+    def need_annotation_for_var(self, node: SymbolNode, context: Context) -> None:
+        self.fail("Need type annotation for '{}'".format(node.name()), context)
 
     def explicit_any(self, ctx: Context) -> None:
         self.fail('Explicit "Any" is not allowed', ctx)

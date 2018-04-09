@@ -69,7 +69,13 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
     def visit_instance(self, t: types.Instance) -> Set[str]:
         out = self._visit(*t.args)
         if t.type is not None:
-            out.update(split_module_names(t.type.module_name))
+            # Uses of a class depend on everything in the MRO,
+            # as changes to classes in the MRO can add types to methods,
+            # change property types, change the MRO itself, etc.
+            for s in t.type.mro:
+                out.update(split_module_names(s.module_name))
+            if t.type.metaclass_type is not None:
+                out.update(split_module_names(t.type.metaclass_type.type.module_name))
         return out
 
     def visit_callable_type(self, t: types.CallableType) -> Set[str]:

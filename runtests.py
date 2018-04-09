@@ -73,14 +73,16 @@ class Driver:
             return
         args = [sys.executable, self.mypy] + mypy_args
         args.append('--show-traceback')
+        args.append('--no-site-packages')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
     def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         self.add_mypy_cmd(name, list(args), cwd=cwd)
 
-    def add_mypy_modules(self, name: str, modules: Iterable[str],
-                         cwd: Optional[str] = None) -> None:
-        args = list(itertools.chain(*(['-m', mod] for mod in modules)))
+    def add_mypy_modules(self, name: str, modules: Iterable[str], cwd: Optional[str] = None,
+                         extra_args: Optional[List[str]] = None) -> None:
+        args = extra_args or []
+        args.extend(list(itertools.chain(*(['-m', mod] for mod in modules))))
         self.add_mypy_cmd(name, args, cwd=cwd)
 
     def add_mypy_package(self, name: str, packagename: str, *flags: str) -> None:
@@ -164,7 +166,6 @@ def add_basic(driver: Driver) -> None:
         driver.add_mypy('file setup.py', 'setup.py')
     driver.add_mypy('file runtests.py', 'runtests.py')
     driver.add_mypy('legacy entry script', 'scripts/mypy')
-    driver.add_mypy('legacy myunit script', 'scripts/myunit')
     # needs typed_ast installed:
     driver.add_mypy('fast-parse', '--fast-parse', 'test-data/samples/hello.py')
 
@@ -204,50 +205,43 @@ def test_path(*names: str):
 
 PYTEST_FILES = test_path(
     'testcheck',
-    'testdmypy',
     'testextensions',
     'testdeps',
     'testdiff',
     'testfinegrained',
+    'testfinegrainedcache',
     'testmerge',
     'testtransform',
     'testtypegen',
     'testparse',
-    'testsemanal'
-)
-
-SLOW_FILES = test_path(
-    'testpythoneval',
-    'testcmdline',
-    'teststubgen',
-)
-
-MYUNIT_FILES = test_path(
-    'teststubgen',
-    'testargs',
+    'testsemanal',
+    'testerrorstream',
+    # non-data-driven:
     'testgraph',
     'testinfer',
     'testmoduleinfo',
+    'teststubgen',
+    'testargs',
     'testreports',
     'testsolve',
     'testsubtypes',
     'testtypes',
 )
 
+SLOW_FILES = test_path(
+    'testpep561',
+    'testpythoneval',
+    'testcmdline',
+    'teststubgen',
+)
+
 for f in find_files('mypy', prefix='test', suffix='.py'):
-    assert f in PYTEST_FILES + SLOW_FILES + MYUNIT_FILES, f
+    assert f in PYTEST_FILES + SLOW_FILES, f
 
 
 def add_pytest(driver: Driver) -> None:
     driver.add_pytest([('unit-test', name) for name in PYTEST_FILES] +
                       [('integration', name) for name in SLOW_FILES])
-
-
-def add_myunit(driver: Driver) -> None:
-    for f in MYUNIT_FILES:
-        mod = file_to_module(f)
-        driver.add_python_mod('myunit unit-test %s' % mod, 'mypy.myunit', '-m', mod,
-                              *driver.arglist, coverage=True)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -264,7 +258,8 @@ def add_stubs(driver: Driver) -> None:
                 module = file_to_module(f[len(stubdir) + 1:])
                 modules.add(module)
 
-    driver.add_mypy_modules('stubs', sorted(modules))
+    # these require at least 3.5 otherwise it will fail trying to import zipapp
+    driver.add_mypy_modules('stubs', sorted(modules), extra_args=['--python-version=3.5'])
 
 
 def add_stdlibsamples(driver: Driver) -> None:
@@ -284,7 +279,11 @@ def add_stdlibsamples(driver: Driver) -> None:
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        driver.add_mypy('file %s' % f, f)
+        if f == os.path.join('test-data', 'samples', 'crawl2.py'):
+            # This test requires 3.5 for async functions
+            driver.add_mypy_cmd('file {}'.format(f), ['--python-version=3.5', f])
+        else:
+            driver.add_mypy('file %s' % f, f)
 
 
 def usage(status: int) -> None:
@@ -310,7 +309,6 @@ def usage(status: int) -> None:
     print('  --ff                   run all tests but run the last failures first')
     print('  -q, --quiet            decrease driver verbosity')
     print('  -jN                    run N tasks at once (default: one per CPU)')
-    print('  -a, --argument ARG     pass an argument to myunit tasks')
     print('  -p, --pytest_arg ARG   pass an argument to pytest tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
     print('  -l, --list             list included tasks (after filtering) and exit')
@@ -427,7 +425,6 @@ def main() -> None:
     add_pytest(driver)
     add_basic(driver)
     add_selftypecheck(driver)
-    add_myunit(driver)
     add_imports(driver)
     add_stubs(driver)
     add_stdlibsamples(driver)

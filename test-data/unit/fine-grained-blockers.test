@@ -1,0 +1,409 @@
+-- Test cases for fine-grained incremental mode and blocking errors
+--
+-- The comments in fine-grained.test explain how these tests work.
+
+-- TODO:
+-- - blocking error while other existing errors as well (that get preserved)
+-- - differences in other modules + blocking error
+
+[case testParseError]
+import a
+a.f()
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+def f(x: int) ->
+[file a.py.3]
+def f(x: int) -> None: pass
+[file a.py.4]
+def f() -> None: pass
+[out]
+==
+a.py:1: error: invalid syntax
+==
+main:2: error: Too few arguments for "f"
+==
+
+[case testParseErrorMultipleTimes]
+import a
+a.f()
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+def f(x: int) ->
+[file a.py.3]
+def f(x: int
+      ) -> None
+[file a.py.4]
+def f(x: int) -> None: pass
+[out]
+==
+a.py:1: error: invalid syntax
+==
+a.py:2: error: invalid syntax
+==
+main:2: error: Too few arguments for "f"
+
+[case testSemanticAnalysisBlockingError]
+import a
+a.f()
+[file a.py]
+def f() -> None: pass
+[file a.py.2]
+def f() -> None: pass
+break
+[file a.py.3]
+def f(x: int) -> None: pass
+[out]
+==
+a.py:2: error: 'break' outside loop
+==
+main:2: error: Too few arguments for "f"
+
+[case testBlockingErrorWithPreviousError]
+import a
+import b
+a.f(1)
+def g() -> None:
+    b.f(1)
+[file a.py]
+def f() -> None: pass
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+def f() -> None
+[file a.py.3]
+def f() -> None: pass
+[out]
+main:3: error: Too many arguments for "f"
+main:5: error: Too many arguments for "f"
+==
+a.py:1: error: invalid syntax
+==
+main:3: error: Too many arguments for "f"
+main:5: error: Too many arguments for "f"
+
+[case testUpdateClassReferenceAcrossBlockingError]
+import a
+c: a.C
+
+def f() -> None:
+    c.f()
+[file a.py]
+class C:
+    def f(self) -> None: pass
+[file a.py.2]
+error error
+[file a.py.3]
+class C:
+    def f(self, x: int) -> None: pass
+[out]
+==
+a.py:1: error: invalid syntax
+==
+main:5: error: Too few arguments for "f" of "C"
+
+[case testAddFileWithBlockingError]
+import a
+a.f(1)
+[file a.py.2]
+x x
+[file a.py.3]
+def f() -> None: pass
+[out]
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+a.py:1: error: invalid syntax
+==
+main:2: error: Too many arguments for "f"
+
+[case testModifyTwoFilesOneWithBlockingError1]
+import a
+[file a.py]
+import b
+def f() -> None: pass
+b.g()
+[file b.py]
+import a
+a.f()
+def g() -> None: pass
+[file a.py.2]
+import b  # Dummy edit
+def f() -> None: pass
+b.g()
+[file b.py.2]
+import a a  # Syntax error
+a.f()
+def g() -> None: pass
+[file b.py.3]
+import a
+a.f()
+def g() -> None: pass
+[out]
+==
+b.py:1: error: invalid syntax
+==
+
+[case testModifyTwoFilesOneWithBlockingError2]
+import a
+[file a.py]
+import b
+def f() -> None: pass
+b.g()
+[file b.py]
+import a
+a.f()
+def g() -> None: pass
+[file a.py.2]
+import b b
+def f() -> None: pass
+b.g()
+[file b.py.2]
+import a  # Dummy edit
+a.f()
+def g() -> None: pass
+[file a.py.3]
+import b
+def f() -> None: pass
+b.g()
+[out]
+==
+a.py:1: error: invalid syntax
+==
+
+[case testBlockingErrorRemainsUnfixed]
+import a
+[file a.py]
+import b
+b.f()
+[file b.py]
+def f() -> None: pass
+[file a.py.2]
+x x
+[file b.py.3]
+def f(x: int) -> None: pass
+[file a.py.4]
+import b
+b.f()
+[out]
+==
+a.py:1: error: invalid syntax
+==
+a.py:1: error: invalid syntax
+==
+a.py:2: error: Too few arguments for "f"
+
+[case testModifyTwoFilesIntroduceTwoBlockingErrors]
+import a
+[file a.py]
+import b
+def f() -> None: pass
+b.g()
+[file b.py]
+import a
+a.f()
+def g() -> None: pass
+[file a.py.2]
+import b b
+def f() -> None: pass
+b.g()
+[file b.py.2]
+import a a
+a.f()
+def g() -> None: pass
+[file a.py.3]
+import b b
+def f() -> None: pass
+b.g()
+[file b.py.3]
+import a a
+a.f()
+def g() -> None: pass
+[file a.py.4]
+import b
+def f() -> None: pass
+b.g(1)
+[file b.py.4]
+import a
+def g() -> None: pass
+a.f(1)
+[out]
+==
+a.py:1: error: invalid syntax
+==
+a.py:1: error: invalid syntax
+==
+b.py:3: error: Too many arguments for "f"
+a.py:3: error: Too many arguments for "g"
+
+[case testDeleteFileWithBlockingError-skip-cache]
+-- Different cache/no-cache tests because:
+-- Error message ordering differs
+import a
+import b
+[file a.py]
+def f() -> None: pass
+[file b.py]
+import a
+a.f()
+[file a.py.2]
+x x
+[delete a.py.3]
+[out]
+==
+a.py:1: error: invalid syntax
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+b.py:1: error: Cannot find module named 'a'
+
+[case testDeleteFileWithBlockingError-skip-nocache]
+-- Different cache/no-cache tests because:
+-- Error message ordering differs
+import a
+import b
+[file a.py]
+def f() -> None: pass
+[file b.py]
+import a
+a.f()
+[file a.py.2]
+x x
+[delete a.py.3]
+[out]
+==
+a.py:1: error: invalid syntax
+==
+b.py:1: error: Cannot find module named 'a'
+b.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'a'
+
+[case testModifyFileWhileBlockingErrorElsewhere]
+import a
+import b
+[file a.py]
+[file b.py]
+import a
+[file a.py.2]
+x x
+[file b.py.3]
+import a
+a.f()
+1()
+[file a.py.4]
+[builtins fixtures/module.pyi]
+[out]
+==
+a.py:1: error: invalid syntax
+==
+a.py:1: error: invalid syntax
+==
+b.py:2: error: Module has no attribute "f"
+b.py:3: error: "int" not callable
+
+[case testImportBringsAnotherFileWithBlockingError1]
+import a
+[file a.py]
+[file a.py.2]
+import blocker
+1()
+[file a.py.3]
+1()
+def f() -> None: pass
+[out]
+==
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
+==
+a.py:1: error: "int" not callable
+
+[case testImportBringsAnotherFileWithSemanticAnalysisBlockingError]
+import a
+[file a.py]
+[file a.py.2]
+import blocker2
+1()
+[file a.py.3]
+1()
+[out]
+==
+<ROOT>/test-data/unit/lib-stub/blocker2.pyi:2: error: 'continue' outside loop
+==
+a.py:1: error: "int" not callable
+
+[case testFixingBlockingErrorTriggersDeletion1-skip-cache]
+-- Disabled in cache mdode:
+-- Cache mode fails to produce the error in the final step, but this is
+-- a manifestation of a bug that can occur in no-cache mode also.
+import a
+
+def g(x: a.A) -> None:
+    x.f()
+[file a.py]
+class A:
+    def f(self) -> None: pass
+[delete a.py.2]
+[file a.py.3]
+class A: pass
+[builtins fixtures/module.pyi]
+[out]
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:4: error: "A" has no attribute "f"
+
+[case testFixingBlockingErrorTriggersDeletion2]
+from a import A
+
+def g(x: A) -> None:
+    x.f()
+[file a.py]
+class A:
+    def f(self) -> None: pass
+[delete a.py.2]
+[file a.py.3]
+[builtins fixtures/module.pyi]
+[out]
+==
+main:1: error: Cannot find module named 'a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+==
+main:1: error: Module 'a' has no attribute 'A'
+
+[case testFixingBlockingErrorBringsInAnotherModuleWithBlocker]
+import a
+[file a.py]
+[file a.py.2]
+x y
+[file a.py.3]
+import blocker
+1()
+[file a.py.4]
+import sys
+1()
+[out]
+==
+a.py:1: error: invalid syntax
+==
+<ROOT>/test-data/unit/lib-stub/blocker.pyi:2: error: invalid syntax
+==
+a.py:2: error: "int" not callable
+
+[case testInitialBlocker]
+# cmd: mypy a.py b.py
+[file a.py]
+1 1
+[file b.py]
+def f() -> int:
+    return ''
+[file a.py.2]
+x = 1
+[file b.py.3]
+def f() -> int:
+    return 0
+[out]
+a.py:1: error: invalid syntax
+==
+b.py:2: error: Incompatible return value type (got "str", expected "int")
+==

@@ -3,6 +3,7 @@
 import copy
 from abc import abstractmethod
 from collections import OrderedDict
+from enum import Enum
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
     Callable, Sequence
@@ -241,9 +242,10 @@ class CallableArgument(Type):
 class TypeList(Type):
     """Information about argument types and names [...].
 
-    This is only used for the arguments of a Callable type, i.e. for
+    This is used for the arguments of a Callable type, i.e. for
     [arg, ...] in Callable[[arg, ...], ret]. This is not a real type
-    but a syntactic AST construct.
+    but a syntactic AST construct. UnboundTypes can also have TypeList
+    types before they are processed into Callable types.
     """
 
     items = None  # type: List[Type]
@@ -263,43 +265,36 @@ class TypeList(Type):
 _dummy = object()  # type: Any
 
 
-class TypeOfAny:
+class TypeOfAny(Enum):
     """
     This class describes different types of Any. Each 'Any' can be of only one type at a time.
-
-    TODO: this class should be made an Enum once we drop support for python 3.3.
     """
-    MYPY = False
-    if MYPY:
-        from typing import NewType
-        TypeOfAny = NewType('TypeOfAny', str)
-    else:
-        def TypeOfAny(x: str) -> str:
-            return x
-
     # Was this Any type was inferred without a type annotation?
-    unannotated = TypeOfAny('unannotated')
+    unannotated = 'unannotated'
     # Does this Any come from an explicit type annotation?
-    explicit = TypeOfAny('explicit')
+    explicit = 'explicit'
     # Does this come from an unfollowed import? See --disallow-any-unimported option
-    from_unimported_type = TypeOfAny('from_unimported_type')
+    from_unimported_type = 'from_unimported_type'
     # Does this Any type come from omitted generics?
-    from_omitted_generics = TypeOfAny('from_omitted_generics')
+    from_omitted_generics = 'from_omitted_generics'
     # Does this Any come from an error?
-    from_error = TypeOfAny('from_error')
+    from_error = 'from_error'
     # Is this a type that can't be represented in mypy's type system? For instance, type of
-    # call to NewType(...)). Even though these types aren't real Anys, we treat them as such.
-    special_form = TypeOfAny('special_form')
+    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    special_form = 'special_form'
     # Does this Any come from interaction with another Any?
-    from_another_any = TypeOfAny('from_another_any')
+    from_another_any = 'from_another_any'
+    # Does this Any come from an implementation limitation/bug?
+    implementation_artifact = 'implementation_artifact'
 
 
 class AnyType(Type):
     """The type 'Any'."""
 
     def __init__(self,
-                 type_of_any: TypeOfAny.TypeOfAny,
+                 type_of_any: TypeOfAny,
                  source_any: Optional['AnyType'] = None,
+                 missing_import_name: Optional[str] = None,
                  line: int = -1,
                  column: int = -1) -> None:
         super().__init__(line, column)
@@ -310,6 +305,14 @@ class AnyType(Type):
         if source_any and source_any.source_any:
             self.source_any = source_any.source_any
 
+        if source_any is None:
+            self.missing_import_name = missing_import_name
+        else:
+            self.missing_import_name = source_any.missing_import_name
+
+        # Only unimported type anys and anys from other anys should have an import name
+        assert (missing_import_name is None or
+                type_of_any in (TypeOfAny.from_unimported_type, TypeOfAny.from_another_any))
         # Only Anys that come from another Any can have source_any.
         assert type_of_any != TypeOfAny.from_another_any or source_any is not None
         # We should not have chains of Anys.
@@ -319,7 +322,7 @@ class AnyType(Type):
         return visitor.visit_any(self)
 
     def copy_modified(self,
-                      type_of_any: TypeOfAny.TypeOfAny = _dummy,
+                      type_of_any: TypeOfAny = _dummy,
                       original_any: Optional['AnyType'] = _dummy,
                       ) -> 'AnyType':
         if type_of_any is _dummy:
@@ -327,6 +330,7 @@ class AnyType(Type):
         if original_any is _dummy:
             original_any = self.source_any
         return AnyType(type_of_any=type_of_any, source_any=original_any,
+                       missing_import_name=self.missing_import_name,
                        line=self.line, column=self.column)
 
     def __hash__(self) -> int:
@@ -336,12 +340,17 @@ class AnyType(Type):
         return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType'}
+        return {'.class': 'AnyType', 'type_of_any': self.type_of_any.name,
+                'source_any': self.source_any.serialize() if self.source_any is not None else None,
+                'missing_import_name': self.missing_import_name}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
-        return AnyType(TypeOfAny.special_form)
+        source = data['source_any']
+        return AnyType(TypeOfAny[data['type_of_any']],
+                       AnyType.deserialize(source) if source is not None else None,
+                       data['missing_import_name'])
 
 
 class UninhabitedType(Type):
@@ -523,6 +532,9 @@ class Instance(Type):
     def copy_modified(self, *, args: List[Type]) -> 'Instance':
         return Instance(self.type, args, self.line, self.column, self.erased)
 
+    def has_readable_member(self, name: str) -> bool:
+        return self.type.has_readable_member(name)
+
 
 class TypeVarType(Type):
     """A type variable type.
@@ -669,6 +681,7 @@ class CallableType(FunctionLike):
                  from_type_type: bool = False,
                  bound_args: Optional[List[Optional[Type]]] = None,
                  ) -> None:
+        assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
             variables = []
         assert len(arg_types) == len(arg_kinds)
@@ -1680,10 +1693,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_type_var(self, t: TypeVarType) -> str:
         if t.name is None:
             # Anonymous type variable type (only numeric id).
-            return '`{}'.format(t.id)
+            s = '`{}'.format(t.id)
         else:
             # Named type variable type.
-            return '{}`{}'.format(t.name, t.id)
+            s = '{}`{}'.format(t.name, t.id)
+        if self.id_mapper and t.upper_bound:
+            s += '(upper_bound={})'.format(t.upper_bound.accept(self))
+        return s
 
     def visit_callable_type(self, t: CallableType) -> str:
         s = ''
@@ -1711,7 +1727,17 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += ' -> {}'.format(t.ret_type.accept(self))
 
         if t.variables:
-            s = '{} {}'.format(t.variables, s)
+            vs = []
+            # We reimplement TypeVarDef.__repr__ here in order to support id_mapper.
+            for var in t.variables:
+                if var.values:
+                    vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
+                    vs.append('{} in {}'.format(var.name, vals))
+                elif not is_named_instance(var.upper_bound, 'builtins.object'):
+                    vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                else:
+                    vs.append(var.name)
+            s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
 
         return 'def {}'.format(s)
 
@@ -1969,6 +1995,8 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
         ret_type or AnyType(TypeOfAny.unannotated),
         fallback,
         name=fdef.name(),
+        line=fdef.line,
+        column=fdef.column,
         implicit=True,
     )
 

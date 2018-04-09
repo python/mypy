@@ -55,6 +55,14 @@ The following global flags may only be set in the global section
   Windows, respectively).  The default is the current platform as
   revealed by Python's ``sys.platform`` variable.
 
+- ``always_true`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  true.
+
+- ``always_false`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  false.
+
 - ``custom_typing_module`` (string) specifies the name of an
   alternative module which is to be considered equivalent to the
   ``typing`` module.
@@ -73,9 +81,6 @@ The following global flags may only be set in the global section
 
 - ``warn_redundant_casts`` (Boolean, default False) warns about
   casting an expression to its inferred type.
-
-- ``warn_unused_ignores`` (Boolean, default False) warns about
-  unneeded ``# type: ignore`` comments.
 
 - ``warn_unused_configs`` (Boolean, default False) warns about
   per-module sections in the config file that didn't match any
@@ -102,7 +107,7 @@ The following global flags may only be set in the global section
 - ``dump_inference_stats`` (Boolean, default False) dumps stats about
   type inference.
 
-- ``incremental`` (Boolean, default False) enables :ref:`incremental
+- ``incremental`` (Boolean, default True) enables :ref:`incremental
   mode <incremental>`.
 
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache
@@ -142,13 +147,22 @@ overridden by the pattern sections matching the module name.
   ``error``.  For explanations see the discussion for the
   :ref:`--follow-imports <follow-imports>` command line flag.  Note
   that if pattern matching is used, the pattern should match the name
-  of the _imported_ module, not the module containing the import
+  of the *imported* module, not the module containing the import
   statement.
+
+- ``follow_imports_for_stubs`` (Boolean, default false) determines
+  whether to respect the ``follow_imports`` setting even for stub
+  (``.pyi``) files.
+  Used in conjunction with ``follow_imports=skip``, this can be used
+  to suppress the import of a module from ``typeshed``, replacing it
+  with `Any`.
+  Used in conjuncation with ``follow_imports=error``, this can be used
+  to make any use of a particular ``typeshed`` module an error.
 
 - ``ignore_missing_imports`` (Boolean, default False) suppress error
   messages about imports that cannot be resolved.  Note that if
   pattern matching is used, the pattern should match the name of the
-  _imported_ module, not the module containing the import statement.
+  *imported* module, not the module containing the import statement.
 
 - ``silent_imports`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip`` plus ``ignore_missing_imports=True``.
@@ -203,14 +217,17 @@ overridden by the pattern sections matching the module name.
   returning a value with type ``Any`` from a function declared with a
   non- ``Any`` return type.
 
+- ``warn_unused_ignores`` (Boolean, default False) warns about
+  unneeded ``# type: ignore`` comments.
+
 - ``strict_boolean`` (Boolean, default False) makes using non-boolean
   expressions in conditions an error.
 
 - ``no_implicit_optional`` (Boolean, default false) changes the treatment of
   arguments with a default value of None by not implicitly making their type Optional
 
-Example
-*******
+Examples
+********
 
 You might put this in your ``mypy.ini`` file at the root of your repo:
 
@@ -226,6 +243,17 @@ for all mypy runs in this tree, and also selectively turns on the
 ``--disallow-untyped-defs`` flag for all modules in the ``foo``
 package.  This issues an error for function definitions without
 type annotations in that subdirectory only.
+
+If you would like to ignore specific imports, instead of ignoring all missing
+imports with ``--ignore-missing-imports``, use a section of the configuration
+file per module such as the following to ignore missing imports from
+``lib_module``:
+
+.. code-block:: text
+
+    [mypy-lib_module]
+    ignore_missing_imports = True
+
 
 .. note::
 
