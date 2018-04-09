@@ -858,7 +858,10 @@ class FindModuleCache:
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
         # TODO (ethanhs): refactor each path search to its own method with lru_cache
 
-        third_party_dirs = []
+        # We have two sets of folders so that we collect *all* stubs folders and
+        # put them in the front of the search path
+        third_party_inline_dirs = []
+        third_party_stubs_dirs = []
         # Third-party stub/typed packages
         for pkg_dir in _get_site_packages_dirs(python_executable):
             stub_name = components[0] + '-stubs'
@@ -868,11 +871,12 @@ class FindModuleCache:
                 stub_components = [stub_name] + components[1:]
                 path = os.path.join(pkg_dir, *stub_components[:-1])
                 if fscache.isdir(path):
-                    third_party_dirs.append(path)
+                    third_party_stubs_dirs.append(path)
             elif fscache.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
-                third_party_dirs.append(path)
-        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + third_party_dirs
+                third_party_inline_dirs.append(path)
+        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + \
+            third_party_stubs_dirs + third_party_inline_dirs
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
