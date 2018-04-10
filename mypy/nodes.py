@@ -440,6 +440,7 @@ class Argument(Node):
 
     def __init__(self, variable: 'Var', type_annotation: 'Optional[mypy.types.Type]',
                  initializer: Optional[Expression], kind: int) -> None:
+        super().__init__()
         self.variable = variable
         self.type_annotation = type_annotation
         self.initializer = initializer
@@ -531,6 +532,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__(arguments, body, typ)
         self._name = name
+        self.is_decorated = False
+        self.is_conditional = False
+        self.is_abstract = False
+        self.is_property = False
+        self.original_def = None
 
     def name(self) -> str:
         return self._name
@@ -665,13 +671,22 @@ class Var(SymbolNode):
     ]
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
+        super().__init__()
         self._name = name
+        self._fullname = None
+        self.info = None
         self.type = type
-        if self.type is None:
-            self.is_inferred = True
         self.is_self = False
         self.is_ready = True
+        self.is_inferred = (self.type is None)
         self.is_initialized_in_class = False
+        self.is_staticmethod = False
+        self.is_classmethod = False
+        self.is_property = False
+        self.is_settable_property = False
+        self.is_classvar = False
+        self.is_abstract_var = False
+        self.is_suppressed_import = False
 
     def name(self) -> str:
         return self._name
@@ -799,6 +814,7 @@ class Block(Statement):
 
     def __init__(self, body: List[Statement]) -> None:
         self.body = body
+        self.is_unreachable = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_block(self)
@@ -1176,17 +1192,21 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    kind = None  # type: Optional[int]      # LDEF/GDEF/MDEF/... (None if not available)
-    node = None  # type: Optional[SymbolNode]  # Var, FuncDef or TypeInfo that describes this
-    fullname = None  # type: Optional[str]  # Fully qualified name (or name if not global)
-
-    # Does this define a new name?
-    is_new_def = False
-    # Does this define a new name with inferred type?
-    #
-    # For members, after semantic analysis, this does not take base
-    # classes into consideration at all; the type checker deals with these.
-    is_inferred_def = False
+    def __init__(self) -> None:
+        super().__init__()
+        # LDEF/GDEF/MDEF/... (None if not available)
+        self.kind = None  # type: Optional[int]
+        # Var, FuncDef or TypeInfo that describes this
+        self.node = None  # type: Optional[SymbolNode]
+        # Fully qualified name (or name if not global)
+        self.fullname = None  # type: Optional[str]
+        # Does this define a new name?
+        self.is_new_def = False
+        # Does this define a new name with inferred type?
+        #
+        # For members, after semantic analysis, this does not take base
+        # classes into consideration at all; the type checker deals with these.
+        self.is_inferred_def = False
 
 
 class NameExpr(RefExpr):
@@ -1198,6 +1218,7 @@ class NameExpr(RefExpr):
     name = None  # type: str      # Name referred to (may be qualified)
 
     def __init__(self, name: str) -> None:
+        super().__init__()
         self.name = name
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
@@ -1237,6 +1258,7 @@ class MemberExpr(RefExpr):
     def_var = None  # type: Optional[Var]
 
     def __init__(self, expr: Expression, name: str) -> None:
+        super().__init__()
         self.expr = expr
         self.name = name
 
@@ -2343,6 +2365,7 @@ class SymbolTableNode:
     Type aliases are very special and have additional attributes that
     are only used for them ('type_override', 'alias_tvars' at least).
     """
+
     # TODO: This is a mess. Refactor!
     # TODO: Describe how type aliases work.
 
@@ -2400,6 +2423,9 @@ class SymbolTableNode:
         self.alias_tvars = alias_tvars
         self.implicit = implicit
         self.module_hidden = module_hidden
+        self.cross_ref = None
+        self.is_aliasing = False
+        self.alias_name = None
 
     @property
     def fullname(self) -> Optional[str]:
