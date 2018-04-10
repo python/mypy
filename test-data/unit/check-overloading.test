@@ -993,9 +993,16 @@ T = TypeVar('T', bound=str)
 def f(x: Sequence[T]) -> None: pass
 @overload
 def f(x: Sequence[int]) -> int: pass
-# These are considered overlapping despite the bound on T due to runtime type erasure.
-[out]
-tmp/foo.pyi:4: error: Overloaded function signatures 1 and 2 overlap with incompatible return types
+
+@overload
+def g(x: Sequence[T]) -> None: pass
+@overload
+def g(x: Sequence[str]) -> int: pass
+
+@overload
+def h(x: Sequence[str]) -> int: pass
+@overload
+def h(x: Sequence[T]) -> None: pass
 
 [case testOverlapWithTypeVarsWithValues]
 from foo import *
@@ -1026,16 +1033,21 @@ g(1, 'foo')
 g(1, 'foo', b'bar') # E: Value of type variable "AnyStr" of "g" cannot be "object"
 [builtins fixtures/primitives.pyi]
 
-[case testBadOverlapWithTypeVarsWithValues]
+[case testOverlapWithTypeVarsWithValuesOrdering]
 from foo import *
 [file foo.pyi]
 from typing import overload, TypeVar
 AnyStr = TypeVar('AnyStr', bytes, str)
 
 @overload
-def f(x: AnyStr) -> None: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: AnyStr) -> None: pass
 @overload
 def f(x: str) -> bool: pass
+
+@overload
+def g(x: str) -> bool: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(x: AnyStr) -> None: pass
 [builtins fixtures/primitives.pyi]
 
 [case testOverlappingOverloadCounting]
@@ -1490,3 +1502,39 @@ class Child4(ParentWithDynamicImpl):
 
 [builtins fixtures/tuple.pyi]
 
+[case testOverloadWithNonPositionalArgs]
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+
+@overload
+def foo(*, p1: A, p2: B = B()) -> A: ...
+@overload
+def foo(*, p2: B = B()) -> B: ...
+def foo(p1, p2=None): ...
+
+reveal_type(foo())  # E: Revealed type is '__main__.B'
+reveal_type(foo(p2=B()))  # E: Revealed type is '__main__.B'
+reveal_type(foo(p1=A()))  # E: Revealed type is '__main__.A'
+
+[case testOverloadWithNonPositionalArgsIgnoresOrder]
+from typing import overload
+
+class A: ...
+class B(A): ...
+class X: ...
+class Y: ...
+
+@overload
+def f(*, p1: X, p2: A) -> X: ...
+@overload
+def f(*, p2: B, p1: X) -> Y: ...
+def f(*, p1, p2): ...
+
+@overload
+def g(*, p1: X, p2: B) -> X: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(*, p2: A, p1: X) -> Y: ...
+def g(*, p1, p2): ...

@@ -789,6 +789,13 @@ class CallableType(FunctionLike):
             n -= 1
         return n
 
+    def max_positional_args(self) -> int:
+        """Returns the number of positional args.
+
+        This includes *arg and **kwargs but excludes keyword-only args."""
+        blacklist = (ARG_NAMED, ARG_NAMED_OPT)
+        return len([kind not in blacklist for kind in self.arg_kinds])
+
     def corresponding_argument(self, model: FormalArgument) -> Optional[FormalArgument]:
         """Return the argument in this function that corresponds to `model`"""
 

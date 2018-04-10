@@ -20,7 +20,7 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase,
-    ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
+    ARG_POS, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT,
 )
 from mypy import nodes
@@ -39,7 +39,7 @@ from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound,
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
-    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_subtype,
+    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_compatible,
     unify_generic_callable, find_member
 )
 from mypy.maptype import map_instance_to_supertype
@@ -437,7 +437,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 assert isinstance(impl_type, CallableType)
                 assert isinstance(sig1, CallableType)
-                if not is_callable_subtype(impl_type, sig1, ignore_return=True):
+                if not is_callable_compatible(impl_type, sig1,
+                                              is_compat=is_subtype, ignore_return=True):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
                 impl_type_subst = impl_type
                 if impl_type.variables:
@@ -3524,37 +3525,45 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
     """
     if isinstance(signature, CallableType):
         if isinstance(other, CallableType):
-            # TODO varargs
-            # TODO keyword args
-            # TODO erasure
             # TODO allow to vary covariantly
+
             # Check if the argument counts are overlapping.
             min_args = max(signature.min_args, other.min_args)
-            max_args = min(len(signature.arg_types), len(other.arg_types))
+            max_args = min(signature.max_positional_args(), other.max_positional_args())
             if min_args > max_args:
                 # Argument counts are not overlapping.
                 return False
-            # Signatures are overlapping iff if they are overlapping for the
-            # smallest common argument count.
-            for i in range(min_args):
-                t1 = signature.arg_types[i]
-                t2 = other.arg_types[i]
-                if not is_overlapping_types(t1, t2):
-                    return False
+
+            # If one of the corresponding argument do NOT overlap,
+            # then the signatures are not overlapping.
+            if not is_callable_compatible(signature, other,
+                                          is_compat=is_overlapping_types,
+                                          ignore_return=True,
+                                          check_args_covariantly=True):
+                # TODO: this check (unlike the others) will erase types due to
+                # how is_overlapping_type is implemented. This should be
+                # fixed to make this check consistent with the others.
+                return False
+
             # All arguments types for the smallest common argument count are
             # overlapping => the signature is overlapping. The overlapping is
             # safe if the return types are identical.
             if is_same_type(signature.ret_type, other.ret_type):
                 return False
+
             # If the first signature has more general argument types, the
             # latter will never be called
             if is_more_general_arg_prefix(signature, other):
                 return False
+
             # Special case: all args are subtypes, and returns are subtypes
-            if (all(is_proper_subtype(s, o)
-                    for (s, o) in zip(signature.arg_types, other.arg_types)) and
-                    is_proper_subtype(signature.ret_type, other.ret_type)):
+            if is_callable_compatible(signature, other,
+                                      is_compat=is_proper_subtype,
+                                      check_args_covariantly=True):
                 return False
+
+            # If the first signature is NOT more precise then the second,
+            # then the overlap is unsafe.
             return not is_more_precise_signature(signature, other)
     return True
 
@@ -3563,41 +3572,17 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     """Does t have wider arguments than s?"""
     # TODO should an overload with additional items be allowed to be more
     #      general than one with fewer items (or just one item)?
-    # TODO check argument kinds and otherwise make more general
     if isinstance(t, CallableType):
         if isinstance(s, CallableType):
-            t, s = unify_generic_callables(t, s)
-            return all(is_proper_subtype(args, argt)
-                       for argt, args in zip(t.arg_types, s.arg_types))
+            return is_callable_compatible(t, s,
+                                          is_compat=is_proper_subtype,
+                                          ignore_return=True)
     elif isinstance(t, FunctionLike):
         if isinstance(s, FunctionLike):
             if len(t.items()) == len(s.items()):
                 return all(is_same_arg_prefix(items, itemt)
                            for items, itemt in zip(t.items(), s.items()))
     return False
-
-
-def unify_generic_callables(t: CallableType,
-                            s: CallableType) -> Tuple[CallableType,
-                                                      CallableType]:
-    """Make type variables in generic callables the same if possible.
-
-    Return updated callables. If we can't unify the type variables,
-    return the unmodified arguments.
-    """
-    # TODO: Use this elsewhere when comparing generic callables.
-    if t.is_generic() and s.is_generic():
-        t_substitutions = {}
-        s_substitutions = {}
-        for tv1, tv2 in zip(t.variables, s.variables):
-            # Are these something we can unify?
-            if tv1.id != tv2.id and is_equivalent_type_var_def(tv1, tv2):
-                newdef = TypeVarDef.new_unification_variable(tv2)
-                t_substitutions[tv1.id] = TypeVarType(newdef)
-                s_substitutions[tv2.id] = TypeVarType(newdef)
-        return (cast(CallableType, expand_type(t, t_substitutions)),
-                cast(CallableType, expand_type(s, s_substitutions)))
-    return t, s
 
 
 def is_equivalent_type_var_def(tv1: TypeVarDef, tv2: TypeVarDef) -> bool:
@@ -3615,9 +3600,11 @@ def is_equivalent_type_var_def(tv1: TypeVarDef, tv2: TypeVarDef) -> bool:
 
 
 def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:
-    # TODO check argument kinds
-    return all(is_same_type(argt, args)
-               for argt, args in zip(t.arg_types, s.arg_types))
+    return is_callable_compatible(t, s,
+                                  is_compat=is_same_type,
+                                  ignore_return=True,
+                                  check_args_covariantly=True,
+                                  ignore_pos_arg_names=True)
 
 
 def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
@@ -3625,16 +3612,10 @@ def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
 
     A signature t is more precise than s if all argument types and the return
     type of t are more precise than the corresponding types in s.
-
-    Assume that the argument kinds and names are compatible, and that the
-    argument counts are overlapping.
     """
-    # TODO generic function types
-    # Only consider the common prefix of argument types.
-    for argt, args in zip(t.arg_types, s.arg_types):
-        if not is_more_precise(argt, args):
-            return False
-    return is_more_precise(t.ret_type, s.ret_type)
+    return is_callable_compatible(t, s,
+                                  is_compat=is_more_precise,
+                                  check_args_covariantly=True)
 
 
 def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, str]:
