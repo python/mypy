@@ -2312,14 +2312,14 @@ def foo() -> None:
     _ = 0
     _ = ''
 
-[case testUnusedTargetGlobal]
+[case testUnusedTargetNotGlobal]
 _ = 0
-_ = ''
+_ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testUnusedTargetClass]
+[case testUnusedTargetNotClass]
 class C:
     _ = 0
-    _ = ''
+    _ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testUnusedTargetTupleUnpacking]
 def foo() -> None:
@@ -2369,14 +2369,16 @@ _ = 0  # E: Incompatible types in assignment (expression has type "int", variabl
 [builtins fixtures/module.pyi]
 
 [case testUnusedTargetNotClass]
-class _:
-    pass
-_().method()  # E: "_" has no attribute "method"
+def foo() -> None:
+    class _:
+        pass
+    _().method()  # E: "_" has no attribute "method"
 
 [case testUnusedTargetNotDef]
-def _() -> int:
-    pass
-_() + ''  # E: Unsupported operand types for + ("int" and "str")
+def foo() -> None:
+    def _() -> int:
+        pass
+    _() + ''  # E: Unsupported operand types for + ("int" and "str")
 
 [case testUnusedTargetForLoop]
 def f() -> None:
@@ -2397,10 +2399,12 @@ def f() -> None:
     _ = 0
     _ = ''
 
-[case testUnusedTargetExceptClause]
+[case testUnusedTargetNotExceptClause]
+# Things don't work for except clauses.
+# This is due to the implementation, but it's just as well.
 def f() -> None:
     try: pass
     except BaseException as _:
-        _ = 0
-        _ = ''
+        _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "BaseException")
+        _ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "BaseException")
 [builtins fixtures/exception.pyi]
