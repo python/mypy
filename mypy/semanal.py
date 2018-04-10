@@ -1085,8 +1085,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # the MRO. Fix MRO if needed.
         if info.mro and info.mro[-1].fullname() != 'builtins.object':
             info.mro.append(self.object_type().type)
-        if defn.info.is_enum and defn.type_vars:
-            self.fail("Enum class cannot be generic", defn)
 
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
@@ -1223,6 +1221,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # do not declare explicit metaclass, but it's harder to catch at this stage
             if defn.metaclass is not None:
                 self.fail("Inconsistent metaclass structure for '%s'" % defn.name, defn)
+        else:
+            if defn.info.metaclass_type.type.has_base('enum.EnumMeta'):
+                defn.info.is_enum = True
+                if defn.type_vars:
+                    self.fail("Enum class cannot be generic", defn)
 
     def object_type(self) -> Instance:
         return self.named_type('__builtins__.object')

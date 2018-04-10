@@ -1,6 +1,9 @@
 from typing import Any, TypeVar, Union
 
-class Enum:
+class EnumMeta(type):
+    pass
+
+class Enum(metaclass=EnumMeta):
     def __new__(cls, value: Any) -> None: pass
     def __repr__(self) -> str: pass
     def __str__(self) -> str: pass
