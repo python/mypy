@@ -1607,9 +1607,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr):
                 if s.lvalues[0].is_inferred_def:
-                    # Except if it's an assignment to '_'.
-                    if s.lvalues[0].name != '_':
-                        s.type = self.analyze_simple_literal_type(s.rvalue)
+                    s.type = self.analyze_simple_literal_type(s.rvalue)
         if s.type:
             # Store type into nodes.
             for lvalue in s.lvalues:
@@ -1828,6 +1826,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 lval.kind = LDEF
                 lval.fullname = lval.name
                 self.add_local(v, lval)
+                if isinstance(lval, NameExpr) and lval.name == '_' and self.is_func_scope():
+                    # Special case for assignment to local named '_': always infer 'Any'.
+                    typ = AnyType(TypeOfAny.special_form)
+                    self.store_declared_types(lval, typ)
             elif not self.is_func_scope() and (self.type and
                                                lval.name not in self.type.names):
                 # Define a new attribute within class body.
