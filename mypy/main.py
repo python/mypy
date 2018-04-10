@@ -3,7 +3,6 @@
 import argparse
 import ast
 import configparser
-import fnmatch
 import os
 import re
 import subprocess
@@ -90,7 +89,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if options.warn_unused_configs and options.unused_configs:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
-               ", ".join("[mypy-%s]" % glob for glob in options.unused_configs.values())),
+               ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
+                         if glob in options.unused_configs)),
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
@@ -730,10 +730,14 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                 glob = glob.replace(os.sep, '.')
                 if os.altsep:
                     glob = glob.replace(os.altsep, '.')
-                pattern = re.compile(fnmatch.translate(glob))
-                options.per_module_options[pattern] = updates
-                options.unused_configs[pattern] = glob
 
+                if (any(c in glob for c in '?[]!') or
+                        ('*' in glob and (not glob.endswith('.*') or '*' in glob[:-2]))):
+                    print("%s: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'" %
+                          prefix,
+                          file=sys.stderr)
+                else:
+                    options.per_module_options[glob] = updates
 
 def parse_section(prefix: str, template: Options,
                   section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:

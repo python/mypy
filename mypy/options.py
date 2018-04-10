@@ -1,9 +1,8 @@
 from collections import OrderedDict
-import fnmatch
 import pprint
 import sys
 
-from typing import Dict, List, Mapping, MutableMapping, Optional, Pattern, Set, Tuple
+from typing import Dict, List, Mapping, MutableMapping, Optional, Set, Tuple
 
 from mypy import defaults
 
@@ -51,7 +50,7 @@ class Options:
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
-        self.clone_cache = {}  # type: Dict[str, Options]
+        self.per_module_cache = None  # type: Optional[Dict[str, Options]]
 
         # -- build options --
         self.build_type = BuildType.STANDARD
@@ -167,10 +166,9 @@ class Options:
         self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
-        pm_opts = OrderedDict()  # type: OrderedDict[Pattern[str], Dict[str, object]]
+        pm_opts = OrderedDict()  # type: OrderedDict[str, Dict[str, object]]
         self.per_module_options = pm_opts
-        # Map pattern back to glob
-        self.unused_configs = OrderedDict()  # type: OrderedDict[Pattern[str], str]
+        self.unused_configs = set()  # type: Set[str]
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -202,8 +200,30 @@ class Options:
 
     def __repr__(self) -> str:
         d = dict(self.__dict__)
-        del d['clone_cache']
+        del d['per_module_cache']
         return 'Options({})'.format(pprint.pformat(d))
+
+    def build_per_module_cache(self) -> None:
+        self.per_module_cache = {}
+        # Since configs inherit from glob configs above them in the hierarchy,
+        # we need to process per-module configs in a careful order.
+        # We have to process foo.* before foo.bar.* before foo.bar.
+        # To do this, process all glob configs before non-glob configs and
+        # exploit the fact that foo.* sorts earlier ASCIIbetically (unicodebetically?)
+        # than foo.bar.*.
+        keys = (sorted(k for k in self.per_module_options.keys() if k.endswith('.*')) +
+                [k for k in self.per_module_options.keys() if not k.endswith('.*')])
+        for key in keys:
+            # Find what the options for this key would be, just based
+            # on inheriting from parent configs.
+            options = self.clone_for_module(key)
+            # And then update it with its per-module options.
+            new_options = Options()
+            new_options.__dict__.update(options.__dict__)
+            new_options.__dict__.update(self.per_module_options[key])
+            self.per_module_cache[key] = new_options
+
+        self.unused_configs = set(keys)
 
     def clone_for_module(self, module: str) -> 'Options':
         """Create an Options object that incorporates per-module options.
@@ -211,29 +231,32 @@ class Options:
         NOTE: Once this method is called all Options objects should be
         considered read-only, else the caching might be incorrect.
         """
-        res = self.clone_cache.get(module)
-        if res is not None:
-            return res
-        updates = {}
-        for pattern in self.per_module_options:
-            if self.module_matches_pattern(module, pattern):
-                if pattern in self.unused_configs:
-                    del self.unused_configs[pattern]
-                updates.update(self.per_module_options[pattern])
-        if not updates:
-            self.clone_cache[module] = self
-            return self
-        new_options = Options()
-        new_options.__dict__.update(self.__dict__)
-        new_options.__dict__.update(updates)
-        self.clone_cache[module] = new_options
-        return new_options
+        if self.per_module_cache is None:
+            self.build_per_module_cache()
+            assert self.per_module_cache is not None
 
-    def module_matches_pattern(self, module: str, pattern: Pattern[str]) -> bool:
-        # If the pattern is 'mod.*', we want 'mod' to match that too.
-        # (That's so that a pattern specifying a package also matches
-        # that package's __init__.)
-        return pattern.match(module) is not None or pattern.match(module + '.') is not None
+        # If the module just directly has a config entry, use it.
+        if module in self.per_module_cache:
+            self.unused_configs.discard(module)
+            return self.per_module_cache[module]
+
+        # If not, search for glob paths at all the parents. So if we are looking for
+        # options for foo.bar.baz, we search foo.bar.baz.*, foo.bar.*, foo.*,
+        # in that order, looking for an entry.
+        # This is technically quadratic in the length of the path, but module paths
+        # don't actually get all that long.
+        path = module.split('.')
+        for i in range(len(path), 0, -1):
+            key = '.'.join(path[:i] + ['*'])
+            if key in self.per_module_cache:
+                self.unused_configs.discard(key)
+                return self.per_module_cache[key]
+
+        # We could update the cache to directly point to modules once
+        # they have been looked up, but in testing this made things
+        # slower and not faster, so we don't bother.
+
+        return self
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
