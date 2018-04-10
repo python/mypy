@@ -289,6 +289,9 @@ class Server:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
 
+        #from mypy.memprofile import print_memory_profile
+        #print_memory_profile(run_gc=False)
+
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 

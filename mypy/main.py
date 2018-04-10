@@ -82,7 +82,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     serious = False
     blockers = False
     try:
-        type_check_only(sources, bin_dir, options, flush_errors)
+        # Keep a dummy reference (res) for memory profiling below.
+        res = type_check_only(sources, bin_dir, options, flush_errors)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -95,6 +96,10 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if options.junit_xml:
         t1 = time.time()
         util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+
+    #from mypy.memprofile import print_memory_profile
+    #print_memory_profile()
+
     if messages:
         code = 2 if blockers else 1
         sys.exit(code)
