@@ -2351,21 +2351,31 @@ def bar() -> None:
 [case testUnusedTargetNotImport]
 import d, c, b, a
 [file _.py]
+def f(): pass
 [file m.py]
 def f(): pass
-def _(): pass
+_ = f
+_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file a.py]
-import _
-_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+def foo() -> None:
+    import _
+    _.f()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
 [file b.py]
-import m as _
-_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+def foo() -> None:
+    import m as _
+    _.f()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
 [file c.py]
-from m import _
-_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+def foo() -> None:
+    from m import _
+    _()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file d.py]
-from m import f as _
-_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+def foo() -> None:
+    from m import f as _
+    _()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [builtins fixtures/module.pyi]
 
 [case testUnusedTargetNotClass]
