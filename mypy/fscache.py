@@ -31,7 +31,7 @@ advantage of the benefits.
 import functools
 import os
 import stat
-from typing import Dict, List, Optional, Tuple, TypeVar
+from typing import Dict, List, Optional, Tuple, TypeVar, Type
 from mypy.util import read_with_python_encoding
 
 
@@ -51,12 +51,14 @@ class FileSystemMetaCache:
         if path in self.stat_cache:
             return self.stat_cache[path]
         if path in self.stat_error_cache:
-            raise self.stat_error_cache[path]
+            raise copy_os_error(self.stat_error_cache[path])
         try:
             st = os.stat(path)
-        except Exception as err:
-            self.stat_error_cache[path] = err
-            raise
+        except OSError as err:
+            # Take a copy to get rid of associated traceback and frame objects.
+            # Just assigning to __traceback__ doesn't free them.
+            self.stat_error_cache[path] = copy_os_error(err)
+            raise err
         self.stat_cache[path] = st
         return st
 
@@ -64,11 +66,12 @@ class FileSystemMetaCache:
         if path in self.listdir_cache:
             return self.listdir_cache[path]
         if path in self.listdir_error_cache:
-            raise self.listdir_error_cache[path]
+            raise copy_os_error(self.listdir_error_cache[path])
         try:
             results = os.listdir(path)
-        except Exception as err:
-            self.listdir_error_cache[path] = err
+        except OSError as err:
+            # Like above, take a copy to reduce memory use.
+            self.listdir_error_cache[path] = copy_os_error(err)
             raise err
         self.listdir_cache[path] = results
         return results
@@ -154,3 +157,13 @@ class FileSystemCache(FileSystemMetaCache):
         if path not in self.hash_cache:
             self.read_with_python_encoding(path)
         return self.hash_cache[path]
+
+
+def copy_os_error(e: OSError) -> OSError:
+    new = OSError(*e.args)
+    new.errno = e.errno
+    new.strerror = e.strerror
+    new.filename = e.filename
+    if e.filename2:
+        new.filename2 = e.filename2
+    return new
