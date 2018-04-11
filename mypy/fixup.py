@@ -78,7 +78,7 @@ class NodeFixer(NodeVisitor[None]):
         for key, value in list(symtab.items()):
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
-                del value.cross_ref
+                value.cross_ref = None
                 if cross_ref in self.modules:
                     value.node = self.modules[cross_ref]
                 else:
@@ -161,7 +161,7 @@ class TypeFixer(TypeVisitor[None]):
         type_ref = inst.type_ref
         if type_ref is None:
             return  # We've already been here.
-        del inst.type_ref
+        inst.type_ref = None
         node = lookup_qualified(self.modules, type_ref, self.quick_and_dirty)
         if isinstance(node, TypeInfo):
             inst.type = node

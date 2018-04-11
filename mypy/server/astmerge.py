@@ -270,7 +270,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            new.__dict__ = node.__dict__
+            replace_object_state(new, node)
             return cast(SN, new)
         return node
 
@@ -431,7 +431,8 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]
-                new.__dict__ = node.node.__dict__
+                old = node.node
+                replace_object_state(new, old)
                 node.node = new
             if isinstance(node.node, Var):
                 # Handle them here just in case these aren't exposed through the AST.
@@ -446,3 +447,17 @@ def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:
     if node.type:
         node.type.accept(TypeReplaceVisitor(replacements))
     node.info = cast(TypeInfo, replacements.get(node.info, node.info))
+
+
+def replace_object_state(new: object, old: object) -> None:
+    # Copy state of old node to the new node. This varies depending on whether
+    # there is __slots__ and/or __dict__.
+    if hasattr(old, '__dict__'):
+        new.__dict__ = old.__dict__
+    if hasattr(old, '__slots__'):
+        # Use type.mro(...) since some classes override 'mro' with something different.
+        for base in type.mro(type(old)):
+            if '__slots__' in base.__dict__:
+                for attr in base.__slots__:
+                    if hasattr(old, attr):
+                        setattr(new, attr, getattr(old, attr))
