@@ -659,7 +659,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # and return type.
 
             targets = cast(List[CallableType], targets)
-            unioned_callable = self.union_overload_matches(targets)
+            unioned_callable = self.union_overload_matches(
+                targets, args, arg_kinds, arg_names, context)
             if unioned_callable is None:
                 # If it was not possible to actually combine together the
                 # callables in a sound way, we give up and return the original
@@ -1204,14 +1205,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 arg_types, arg_kinds, arg_names, m, context=context)]
             return out if len(out) >= 1 else match
 
-    def union_overload_matches(self, callables: List[CallableType]) -> Optional[CallableType]:
+    def union_overload_matches(self, callables: List[CallableType],
+                               args: List[Expression],
+                               arg_kinds: List[int],
+                               arg_names: Optional[Sequence[Optional[str]]],
+                               context: Context) -> Optional[CallableType]:
         """Accepts a list of overload signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
 
         Returns None if it is not possible to combine the different callables together in a
         sound manner."""
-
         new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
+        new_returns = []  # type: List[Type]
 
         expected_names = callables[0].arg_names
         expected_kinds = callables[0].arg_kinds
@@ -1222,13 +1227,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: Enhance the union overload logic to handle a wider variety of signatures.
                 return None
 
+            if target.is_generic():
+                formal_to_actual = map_actuals_to_formals(
+                    arg_kinds, arg_names,
+                    target.arg_kinds, target.arg_names,
+                    lambda i: self.accept(args[i]))
+
+                target = freshen_function_type_vars(target)
+                target = self.infer_function_type_arguments_using_context(target, context)
+                target = self.infer_function_type_arguments(
+                    target, args, arg_kinds, formal_to_actual, context)
+
             for i, arg in enumerate(target.arg_types):
                 new_args[i].append(arg)
+            new_returns.append(target.ret_type)
 
         union_count = 0
         final_args = []
-        for args in new_args:
-            new_type = UnionType.make_simplified_union(args)
+        for args_list in new_args:
+            new_type = UnionType.make_simplified_union(args_list)
             union_count += 1 if isinstance(new_type, UnionType) else 0
             final_args.append(new_type)
 
@@ -1256,7 +1273,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return callables[0].copy_modified(
             arg_types=final_args,
-            ret_type=UnionType.make_simplified_union([t.ret_type for t in callables]),
+            ret_type=UnionType.make_simplified_union(new_returns),
             implicit=True,
             from_overloads=True)
 

@@ -1444,51 +1444,51 @@ class Child4(Parent):
 [case testOverloadWithIncompatibleMethodOverrideAndImplementation]
 from typing import overload, Union, Any
 
-class StrSub: pass
+class Sub: pass
+class A: pass
+class B: pass
 
 class ParentWithTypedImpl:
     @overload
-    def f(self, arg: int) -> int: ...
+    def f(self, arg: A) -> A: ...
     @overload
-    def f(self, arg: str) -> str: ...
-    def f(self, arg: Union[int, str]) -> Union[int, str]: ...
+    def f(self, arg: B) -> B: ...
+    def f(self, arg: Union[A, B]) -> Union[A, B]: ...
 
 class Child1(ParentWithTypedImpl):
     @overload # E: Signature of "f" incompatible with supertype "ParentWithTypedImpl"
-    def f(self, arg: int) -> int: ...
+    def f(self, arg: A) -> A: ...
     @overload
-    def f(self, arg: StrSub) -> str: ...
-    def f(self, arg: Union[int, StrSub]) -> Union[int, str]: ...
+    def f(self, arg: Sub) -> B: ...
+    def f(self, arg: Union[A, Sub]) -> Union[A, B]: ...
 
 class Child2(ParentWithTypedImpl):
     @overload # E: Signature of "f" incompatible with supertype "ParentWithTypedImpl"
-    def f(self, arg: int) -> int: ...
+    def f(self, arg: A) -> A: ...
     @overload
-    def f(self, arg: StrSub) -> str: ...
+    def f(self, arg: Sub) -> B: ...
     def f(self, arg: Any) -> Any: ...
 
 class ParentWithDynamicImpl:
     @overload
-    def f(self, arg: int) -> int: ...
+    def f(self, arg: A) -> A: ...
     @overload
-    def f(self, arg: str) -> str: ...
+    def f(self, arg: B) -> B: ...
     def f(self, arg: Any) -> Any: ...
 
 class Child3(ParentWithDynamicImpl):
     @overload # E: Signature of "f" incompatible with supertype "ParentWithDynamicImpl"
-    def f(self, arg: int) -> int: ...
+    def f(self, arg: A) -> A: ...
     @overload
-    def f(self, arg: StrSub) -> str: ...
-    def f(self, arg: Union[int, StrSub]) -> Union[int, str]: ...
+    def f(self, arg: Sub) -> B: ...
+    def f(self, arg: Union[A, Sub]) -> Union[A, B]: ...
 
 class Child4(ParentWithDynamicImpl):
     @overload # E: Signature of "f" incompatible with supertype "ParentWithDynamicImpl"
-    def f(self, arg: int) -> int: ...
+    def f(self, arg: A) -> A: ...
     @overload
-    def f(self, arg: StrSub) -> str: ...
+    def f(self, arg: Sub) -> B: ...
     def f(self, arg: Any) -> Any: ...
-
-[builtins fixtures/tuple.pyi]
 
 [case testOverloadInferUnionReturnBasic]
 from typing import overload, Union
@@ -1514,8 +1514,6 @@ def f2(x: C) -> B: ...
 def f2(x): ...
 
 reveal_type(f2(arg1))  # E: Revealed type is '__main__.B'
-
-[builtins fixtures/tuple.pyi]
 
 [case testOverloadInferUnionReturnMultipleArguments]
 from typing import overload, Union
@@ -1544,7 +1542,6 @@ def f2(x, y): ...
 reveal_type(f2(arg1, arg1))
 reveal_type(f2(arg1, C()))
 
-[builtins fixtures/tuple.pyi]
 [out]
 main:16: error: Revealed type is '__main__.B'
 main:16: error: Argument 1 to "f1" has incompatible type "Union[A, C]"; expected "A"
@@ -1552,6 +1549,24 @@ main:16: error: Argument 2 to "f1" has incompatible type "Union[A, C]"; expected
 main:24: error: Revealed type is 'Union[__main__.B, __main__.D]'
 main:24: error: Argument 2 to "f2" has incompatible type "Union[A, C]"; expected "C"
 main:25: error: Revealed type is 'Union[__main__.B, __main__.D]'
+
+[case testOverloadInferUnionSkipIfParameterNamesAreDifferent]
+from typing import overload, Union
+
+class A: ...
+class B: ...
+class C: ...
+
+@overload
+def f(x: A) -> B: ...
+@overload
+def f(y: B) -> C: ...
+def f(x): ...
+
+x: Union[A, B]
+reveal_type(f(A()))  # E: Revealed type is '__main__.B'
+reveal_type(f(B()))  # E: Revealed type is '__main__.C'
+f(x)                 # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "A"
 
 [case testOverloadInferUnionReturnFunctionsWithKwargs]
 from typing import overload, Union, Optional
@@ -1583,4 +1598,51 @@ main:16: error: Revealed type is '__main__.B'
 main:19: error: Revealed type is '__main__.C'
 main:19: error: Argument 2 to "f" has incompatible type "Union[B, C]"; expected "Optional[B]"
 main:21: error: Revealed type is '__main__.A'
+
+[case testOverloadingInferUnionReturnWithTypevarWithValueRestriction]
+from typing import overload, Union, TypeVar, Generic
+
+class A: pass
+class B: pass
+class C: pass
+
+T = TypeVar('T', B, C)
+
+class Wrapper(Generic[T]):
+    @overload
+    def f(self, x: T) -> B: ...
+
+    @overload
+    def f(self, x: A) -> C: ...
+
+    def f(self, x): ...
+
+obj: Wrapper[B] = Wrapper()
+x: Union[A, B]
+
+reveal_type(obj.f(A()))  # E: Revealed type is '__main__.C'
+reveal_type(obj.f(B()))  # E: Revealed type is '__main__.B'
+reveal_type(obj.f(x))    # E: Revealed type is 'Union[__main__.B, __main__.C]'
+
+[case testOverloadingInferUnionReturnWithTypevarReturn]
+from typing import overload, Union, TypeVar, Generic
+
+T = TypeVar('T')
+
+class Wrapper1(Generic[T]): pass
+class Wrapper2(Generic[T]): pass
+class A: pass
+class B: pass
+
+@overload
+def f(x: Wrapper1[T]) -> T: ...
+@overload
+def f(x: Wrapper2[T]) -> T: ...
+def f(x): ...
+
+obj1: Union[Wrapper1[A], Wrapper2[A]]
+reveal_type(f(obj1))  # E: Revealed type is '__main__.A'
+
+obj2: Union[Wrapper1[A], Wrapper2[B]]
+reveal_type(f(obj2))  # E: Revealed type is 'Union[__main__.A, __main__.B]'
 
