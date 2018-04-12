@@ -370,16 +370,25 @@ class ImportedName(SymbolNode):
 class FuncBase(Node):
     """Abstract base class for function-like nodes"""
 
-    # Type signature. This is usually CallableType or Overloaded, but it can be something else for
-    # decorated functions/
-    type = None  # type: Optional[mypy.types.Type]
-    # Original, not semantically analyzed type (used for reprocessing)
-    unanalyzed_type = None  # type: Optional[mypy.types.Type]
-    # If method, reference to TypeInfo
-    # TODO: The type should be Optional[TypeInfo]
-    info = None  # type: TypeInfo
-    is_property = False
-    _fullname = None  # type: str       # Name with module prefix
+    __slots__ = ('type',
+                 'unanalyzed_type',
+                 'info',
+                 'is_property',
+                 '_fullname')
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Type signature. This is usually CallableType or Overloaded, but it can be
+        # something else for decorated functions/
+        self.type = None  # type: Optional[mypy.types.Type]
+        # Original, not semantically analyzed type (used for reprocessing)
+        self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
+        # If method, reference to TypeInfo
+        # TODO: The type should be Optional[TypeInfo]
+        self.info = None  # type: TypeInfo
+        self.is_property = False
+        # Name with module prefix
+        self._fullname = None  # type: str
 
     @abstractmethod
     def name(self) -> str: pass
@@ -467,42 +476,69 @@ class Argument(Node):
         self.variable.set_line(self.line, self.column)
 
 
+FUNCITEM_FLAGS = [
+    'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
+    'is_awaitable_coroutine', 'is_static', 'is_class',
+]
+
+
 class FuncItem(FuncBase):
-    arguments = []  # type: List[Argument]  # Note: Can be None if deserialized (type is a lie!)
-    arg_names = []  # type: List[str]
-    arg_kinds = []  # type: List[int]
-    # Minimum number of arguments
-    min_args = 0
-    # Maximum number of positional arguments, -1 if no explicit limit (*args not included)
-    max_pos = 0
-    body = None  # type: Block
-    # Is this an overload variant of function with more than one overload variant?
-    is_overload = False
-    is_generator = False   # Contains a yield statement?
-    is_coroutine = False   # Defined using 'async def' syntax?
-    is_async_generator = False  # Is an async def generator?
-    is_awaitable_coroutine = False  # Decorated with '@{typing,asyncio}.coroutine'?
-    is_static = False      # Uses @staticmethod?
-    is_class = False       # Uses @classmethod?
-    # Variants of function with type variables with values expanded
-    expanded = None  # type: List[FuncItem]
+    """Base class for nodes usable as overloaded function items.
 
-    FLAGS = [
-        'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
-        'is_awaitable_coroutine', 'is_static', 'is_class',
-    ]
+    Attributes:
+        arguments: Note that can be None if deserialized (type is a lie!)
+        arg_names: Named of arguments
+        arg_kinds: Kinds of arguments
+        min_args: Minimum number of arguments
+        max_pos: Maximum number of positional arguments, -1 if no explicit
+            limit (*args not included)
+        body: Body of the function
+        is_overload: Is this an overload variant of function with more than
+            one overload variant?
+        is_generator: Contains a yield statement?
+        is_coroutine: Defined using 'async def' syntax?
+        is_async_generator: Is an async def generator?
+        is_awaitable_coroutine: Decorated with '@{typing,asyncio}.coroutine'?
+        is_static: Uses @staticmethod?
+        is_class: Uses @classmethod?
+        expanded: Variants of function with type variables with values expanded
+    """
 
-    def __init__(self, arguments: List[Argument], body: 'Block',
+    __slots__ = ('arguments',
+                 'arg_names',
+                 'arg_kinds',
+                 'min_args',
+                 'max_pos',
+                 'body',
+                 'is_overload',
+                 'is_generator',
+                 'is_coroutine',
+                 'is_async_generator',
+                 'is_awaitable_coroutine',
+                 'is_static',
+                 'is_class',
+                 'expanded')
+
+    def __init__(self,
+                 arguments: List[Argument],
+                 body: 'Block',
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__()
         self.arguments = arguments
         self.arg_names = [arg.variable.name() for arg in self.arguments]
-        self.arg_kinds = [arg.kind for arg in self.arguments]
+        self.arg_kinds = [arg.kind for arg in self.arguments]  # type: List[int]
         self.max_pos = self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT)
         self.body = body
         self.type = typ
         self.unanalyzed_type = typ
-        self.expanded = []
+        self.is_overload = False
+        self.is_generator = False
+        self.is_coroutine = False
+        self.is_async_generator = False
+        self.is_awaitable_coroutine = False
+        self.is_static = False
+        self.is_class = False
+        self.expanded = []  # type: List[FuncItem]
 
         self.min_args = 0
         for i in range(len(self.arguments)):
@@ -521,22 +557,23 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
+FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
+    'is_decorated', 'is_conditional', 'is_abstract', 'is_property'
+]
+
+
 class FuncDef(FuncItem, SymbolNode, Statement):
     """Function definition.
 
     This is a non-lambda function defined using 'def'.
     """
 
-    is_decorated = False
-    is_conditional = False             # Defined conditionally (within block)?
-    is_abstract = False
-    is_property = False
-    # Original conditional definition
-    original_def = None  # type: Union[None, FuncDef, Var, Decorator]
-
-    FLAGS = FuncItem.FLAGS + [
-        'is_decorated', 'is_conditional', 'is_abstract', 'is_property'
-    ]
+    __slots__ = ('_name',
+                 'is_decorated',
+                 'is_conditional',
+                 'is_abstract',
+                 'is_property',
+                 'original_def')
 
     def __init__(self,
                  name: str,              # Function name
@@ -546,10 +583,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         super().__init__(arguments, body, typ)
         self._name = name
         self.is_decorated = False
-        self.is_conditional = False
+        self.is_conditional = False  # Defined conditionally (within block)?
         self.is_abstract = False
         self.is_property = False
-        self.original_def = None
+        # Original conditional definition
+        self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
     def name(self) -> str:
         return self._name
@@ -570,7 +608,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                 'arg_names': self.arg_names,
                 'arg_kinds': self.arg_kinds,
                 'type': None if self.type is None else self.type.serialize(),
-                'flags': get_flags(self, FuncDef.FLAGS),
+                'flags': get_flags(self, FUNCDEF_FLAGS),
                 # TODO: Do we need expanded, original_def?
                 }
 
