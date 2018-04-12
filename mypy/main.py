@@ -733,11 +733,12 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
 
                 if (any(c in glob for c in '?[]!') or
                         ('*' in glob and (not glob.endswith('.*') or '*' in glob[:-2]))):
-                    print("%s: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'" %
-                          prefix,
+                    print("%s: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'"
+                          % prefix,
                           file=sys.stderr)
                 else:
                     options.per_module_options[glob] = updates
+
 
 def parse_section(prefix: str, template: Options,
                   section: Mapping[str, str]) -> Tuple[Dict[str, object], Dict[str, str]]:
