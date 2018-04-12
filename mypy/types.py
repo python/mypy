@@ -502,7 +502,7 @@ class Instance(Type):
         self.invalid = False  # True if recovered after incorrect number of type arguments error
         # True if created from a generic builtin (e.g. list() or set())
         self.from_generic_builtin = False
-        self.type_ref = None
+        self.type_ref = None  # type: Optional[str]
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
@@ -703,7 +703,7 @@ class CallableType(FunctionLike):
                  fallback: Instance,
                  name: Optional[str] = None,
                  definition: Optional[SymbolNode] = None,
-                 variables: List[TypeVarDef] = None,
+                 variables: Optional[List[TypeVarDef]] = None,
                  line: int = -1,
                  column: int = -1,
                  is_ellipsis_args: bool = False,
