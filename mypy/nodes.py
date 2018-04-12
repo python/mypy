@@ -384,11 +384,12 @@ class FuncBase(Node):
         # Original, not semantically analyzed type (used for reprocessing)
         self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
         # If method, reference to TypeInfo
-        # TODO: The type should be Optional[TypeInfo]
-        self.info = None  # type: TypeInfo
+        # TODO: Type should be Optional[TypeInfo]
+        self.info = cast(TypeInfo, None)
         self.is_property = False
         # Name with module prefix
-        self._fullname = None  # type: str
+        # TODO: Type should be Optional[str]
+        self._fullname = cast(str, None)
 
     @abstractmethod
     def name(self) -> str: pass
@@ -721,9 +722,10 @@ class Var(SymbolNode):
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
         super().__init__()
         self._name = name   # Name without module prefix
-        self._fullname = None  # type: str  # Name with module prefix
-        # TODO: The following should be Optional[TypeInfo]
-        self.info = None  # type: TypeInfo  # Defining class (for member variables)
+        # TODO: Should be Optional[str]
+        self._fullname = cast(str, None)  # Name with module prefix
+        # TODO: Should be Optional[TypeInfo]
+        self.info = cast(TypeInfo, None)  # Defining class (for member variables)
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
@@ -2539,7 +2541,7 @@ class SymbolTableNode:
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref = None  # type: Optional[str]
-        self.is_aliasing = False  # type: Optional[str]
+        self.is_aliasing = False
         self.alias_name = None  # type: Optional[str]
 
     @property
