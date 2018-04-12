@@ -264,7 +264,7 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-[[mypy-foo.*]
+[[mypy-*]
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
