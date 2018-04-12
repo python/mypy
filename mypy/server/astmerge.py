@@ -60,7 +60,7 @@ from mypy.types import (
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType
 )
-from mypy.util import get_prefix
+from mypy.util import get_prefix, replace_object_state
 
 
 def merge_asts(old: MypyFile, old_symbols: SymbolTable,
@@ -447,17 +447,3 @@ def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:
     if node.type:
         node.type.accept(TypeReplaceVisitor(replacements))
     node.info = cast(TypeInfo, replacements.get(node.info, node.info))
-
-
-def replace_object_state(new: object, old: object) -> None:
-    # Copy state of old node to the new node. This varies depending on whether
-    # there is __slots__ and/or __dict__.
-    if hasattr(old, '__dict__'):
-        new.__dict__ = old.__dict__
-    if hasattr(old, '__slots__'):
-        # Use type.mro(...) since some classes override 'mro' with something different.
-        for base in type.mro(type(old)):
-            if '__slots__' in base.__dict__:
-                for attr in base.__slots__:
-                    if hasattr(old, attr):
-                        setattr(new, attr, getattr(old, attr))
