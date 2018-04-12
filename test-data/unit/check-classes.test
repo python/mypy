@@ -4186,6 +4186,9 @@ class F(six.with_metaclass(t.M)): pass
 @six.add_metaclass(t.M)
 class G: pass
 
+-- Misc
+-- ----
+
 [case testCorrectEnclosingClassPushedInDeferred]
 class C:
     def __getattr__(self, attr: str) -> int:
@@ -4296,3 +4299,13 @@ class C: pass
 
 @undefined         # E: Name 'undefined' is not defined
 class D: pass
+
+[case testSlotsCompatibility]
+class A:
+    __slots__ = ()
+class B(A):
+    __slots__ = ('a', 'b')
+class C:
+    __slots__ = ('x',)
+class D(B, C):
+    __slots__ = ('aa', 'bb', 'cc')
