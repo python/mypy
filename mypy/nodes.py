@@ -259,6 +259,31 @@ class MypyFile(SymbolNode):
         return tree
 
 
+class UnloadedMypyFile(MypyFile):
+    # In fine-grained incremental mode, we try to avoid loading the
+    # data cache for modules until it is actually needed.
+    # Unfortunately, the modules map is used as a key source of truth
+    # in a lot of places, with presence in the map being an important
+    # signal, so we need to populate it with *something*.
+    # UnloadedMypyFile, like FakeInfo, uses __getattribute__ hacks
+    # to prevent most used to it.
+    # Unlike UnloadedMypyFile, we specifically allow use to a couple of
+    # very meta fields.
+
+    # TODO: this is all awful, and it would be nice to get rid of it
+    # by reworking code that depends on presence in the modules map of
+    # unloaded modules.
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self.is_cache_skeleton = True
+
+    def __getattribute__(self, attr: str) -> None:
+        if attr in ('path', 'is_cache_skeleton'):
+            return MypyFile.__getattribute__(self, attr)
+        raise AssertionError('Lazy cache-loading failure: using UnloadedMypyFile: {}, {}'.
+                             format(self.path, attr))
+
+
 class ImportBase(Statement):
     """Base class for all import statements."""
 

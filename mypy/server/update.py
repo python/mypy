@@ -116,18 +116,20 @@ import os
 import time
 import os.path
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable
+    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable,
+    Sequence,
 )
 
 from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
+    process_fresh_scc,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, OverloadedFuncDef, SymbolTable, LambdaExpr
+    Import, ImportFrom, OverloadedFuncDef, SymbolTable, LambdaExpr, UnloadedMypyFile
 )
 from mypy.options import Options
 from mypy.types import Type
@@ -324,6 +326,10 @@ class FineGrainedBuildManager:
         previous_modules = self.previous_modules
         graph = self.graph
 
+        # If this is an already existing module, make sure that we have
+        # its tree loaded so that we can snapshot it for comparison.
+        ensure_trees_loaded(manager, graph, [module])
+
         # Record symbol table snaphot of old version the changed module.
         old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
         if module in manager.modules:
@@ -359,6 +365,45 @@ class FineGrainedBuildManager:
         self.previous_modules = get_module_to_path_map(manager)
 
         return remaining, (module, path), None
+
+
+def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
+                       initial: Sequence[str]) -> List[str]:
+    """Find all the deps of the nodes in initial that haven't had their tree loaded.
+
+    The key invariant here is that if a module is loaded, so are all
+    of their dependencies. This means that when we encounter a loaded
+    module, we don't need to explore its dependencies.  (This
+    invariant is slightly violated when dependencies are added, which
+    can be handled by calling find_unloaded_deps directly on the new
+    dependencies)
+    """
+    worklist = list(initial)
+    seen = set()  # type: Set[str]
+    unloaded = []
+    while worklist:
+        node = worklist.pop()
+        if node in seen or node not in graph:
+            continue
+        seen.add(node)
+        if node not in manager.modules:
+            continue
+        if isinstance(manager.modules[node], UnloadedMypyFile):
+            ancestors = graph[node].ancestors or []
+            worklist.extend(graph[node].dependencies + ancestors)
+            unloaded.append(node)
+
+    return unloaded
+
+
+def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
+                        initial: Sequence[str]) -> None:
+    """Ensure that the modules in initial and their deps have loaded trees"""
+    to_process = find_unloaded_deps(manager, graph, initial)
+    if to_process:
+        manager.log("Calling process_fresh_scc on an 'scc' of size {} ({})".format(
+            len(to_process), to_process))
+        process_fresh_scc(graph, to_process, manager)
 
 
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
@@ -445,8 +490,15 @@ def update_module_isolated(module: str,
             remaining_modules = []
         return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
 
+    # Reparsing the file may have brought in dependencies that we
+    # didn't have before. Make sure that they are loaded to restore
+    # the invariant that a module having a loaded tree implies that
+    # its dependencies do as well.
+    ensure_trees_loaded(manager, graph, graph[module].dependencies)
+
     # Find any other modules brought in by imports.
     changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
+
     # If there are multiple modules to process, only process one of them and return
     # the remaining ones to the caller.
     if len(changed_modules) > 1:
@@ -673,7 +725,7 @@ def propagate_changes_using_dependencies(
     a target that needs to be reprocessed but that has not been parsed yet."""
 
     num_iter = 0
-    remaining_modules = []
+    remaining_modules = []  # type: List[Tuple[str, str]]
 
     # Propagate changes until nothing visible has changed during the last
     # iteration.
@@ -682,7 +734,9 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo = find_targets_recursive(manager, triggered, deps, up_to_date_modules)
+        todo, unloaded = find_targets_recursive(manager, triggered, deps, up_to_date_modules)
+        # TODO: we sort to make it deterministic, but this is *incredibly* ad hoc
+        remaining_modules.extend((id, graph[id].xpath) for id in sorted(unloaded))
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
@@ -696,13 +750,7 @@ def propagate_changes_using_dependencies(
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            if manager.modules[id].is_cache_skeleton:
-                # We have only loaded the cache for this file, not the actual file,
-                # so we can't access the nodes to reprocess.
-                # Add it to the queue of files that need to be processed fully.
-                remaining_modules.append((id, manager.modules[id].path))
-            else:
-                triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
+            triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
         # Changes elsewhere may require us to reprocess modules that were
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
@@ -718,14 +766,18 @@ def find_targets_recursive(
         manager: BuildManager,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        up_to_date_modules: Set[str]) -> Dict[str, Set[DeferredNode]]:
+        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]],
+                                               Set[str]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
-    Returns: Dictionary from module id to a set of stale targets.
+    Returns: a tuple containing a:
+     * Dictionary from module id to a set of stale targets.
+     * A set of module ids for unparsed modules with stale targets
     """
     result = {}  # type: Dict[str, Set[DeferredNode]]
     worklist = triggers
     processed = set()  # type: Set[str]
+    unloaded_files = set()  # type: Set[str]
 
     # Find AST nodes corresponding to each target.
     #
@@ -745,13 +797,21 @@ def find_targets_recursive(
                 if module_id in up_to_date_modules:
                     # Already processed.
                     continue
+                if (module_id not in manager.modules
+                        or manager.modules[module_id].is_cache_skeleton):
+                    # We haven't actually parsed and checked the module, so we don't have
+                    # access to the actual nodes.
+                    # Add it to the queue of files that need to be processed fully.
+                    unloaded_files.add(module_id)
+                    continue
+
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained('process: %s' % target)
                 deferred = lookup_target(manager, target)
                 result[module_id].update(deferred)
 
-    return result
+    return (result, unloaded_files)
 
 
 def reprocess_nodes(manager: BuildManager,

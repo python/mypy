@@ -5504,7 +5504,7 @@ from typing import overload
 ==
 main:3: error: Module has no attribute "f"
 
-[case testOverloadsUpdatedTypeRecheckImplementation]
+[case testOverloadsUpdatedTypeRecheckImplementation-skip]
 from typing import overload
 import mod
 class Outer:

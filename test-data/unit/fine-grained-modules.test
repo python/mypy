@@ -1782,3 +1782,19 @@ reveal_type(b.x)
 ==
 ==
 a.py:2: error: Revealed type is 'builtins.int'
+
+[case testQualifiedSubpackage1]
+[file c/__init__.py]
+[file c/a.py]
+from lurr import x
+from c.d import f
+
+[file c/d.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[file lurr.py]
+x = 10
+[file lurr.py.2]
+x = '10'
+[out]
+==

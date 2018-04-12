@@ -1715,7 +1715,7 @@ class State:
         # cache load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules,
                      self.manager.options.quick_and_dirty or
-                     self.manager.use_fine_grained_cache())
+                     self.options.use_fine_grained_cache)
 
     def patch_dependency_parents(self) -> None:
         """
@@ -2542,21 +2542,14 @@ def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> Non
     """Finish loading everything for use in the fine-grained incremental cache"""
 
     # If we are running in fine-grained incremental mode with caching,
-    # we process all SCCs as fresh SCCs so that we have all of the symbol
-    # tables and fine-grained dependencies available.
-    # We fail the loading of any SCC that we can't load a meta for, so we
-    # don't have anything *but* fresh SCCs.
-    sccs = sorted_components(graph)
-    manager.log("Found %d SCCs; largest has %d nodes" %
-                (len(sccs), max(len(scc) for scc in sccs)))
-
-    for ascc in sccs:
-        # Order the SCC's nodes using a heuristic.
-        # Note that ascc is a set, and scc is a list.
-        scc = order_ascc(graph, ascc)
-        process_fresh_scc(graph, scc, manager)
-        for id in scc:
-            graph[id].load_fine_grained_deps()
+    # we don't actually have much to do. We need to load all of the
+    # fine-grained dependencies and populate manager.modules with fake
+    # mypy files.
+    from mypy.nodes import UnloadedMypyFile
+    for id, state in graph.items():
+        state.load_fine_grained_deps()
+        assert state.path is not None
+        manager.modules[id] = UnloadedMypyFile(state.path)
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
