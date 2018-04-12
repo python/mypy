@@ -1832,6 +1832,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 v = Var(lval.name)
                 v.info = self.type
                 v.is_initialized_in_class = True
+                v.is_inferred = not explicit_type
                 v.set_line(lval)
                 v._fullname = self.qualified_name(lval.name)
                 lval.node = v
