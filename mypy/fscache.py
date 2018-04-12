@@ -31,7 +31,7 @@ advantage of the benefits.
 import functools
 import os
 import stat
-from typing import Dict, List, Optional, Tuple, TypeVar, Type
+from typing import Dict, List, Tuple
 from mypy.util import read_with_python_encoding
 
 
@@ -42,9 +42,9 @@ class FileSystemMetaCache:
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         self.stat_cache = {}  # type: Dict[str, os.stat_result]
-        self.stat_error_cache = {}  # type: Dict[str, Exception]
+        self.stat_error_cache = {}  # type: Dict[str, OSError]
         self.listdir_cache = {}  # type: Dict[str, List[str]]
-        self.listdir_error_cache = {}  # type: Dict[str, Exception]
+        self.listdir_error_cache = {}  # type: Dict[str, OSError]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
 
     def stat(self, path: str) -> os.stat_result:
