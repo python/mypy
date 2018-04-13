@@ -3,12 +3,27 @@ Revision history
 
 List of major changes:
 
+- April 2018
+    * Publish ``mypy`` version 0.590 on PyPI.
+
+      * Document PEP 561 support.
+
+      * Made incremental mode the default.
+
+      * Document ``--always-true`` and ``--always-false``.
+
+      * Document ``follow_imports_for_stubs``.
+
+      * Add coroutines to Python 3 cheat sheet.
+
+      * Add ``None`` return/strict-optional to common issues.
+
+      * Clarify that ``SupportsInt`` etc. don't support arithmetic operations.
+
 - March 2018
     * Publish ``mypy`` version 0.580 on PyPI.
 
       * Allow specifying multiple packages on the command line with ``-p`` and ``-m`` flags.
-
-      * Clarify that ``SupportsInt`` etc. don't support arithmetic operations.
 
     * Publish ``mypy`` version 0.570 on PyPI.
 
