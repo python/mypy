@@ -29,6 +29,18 @@ def check_mypy_run(cmd_line: List[str],
     assert returncode == expected_returncode, returncode
 
 
+def is_in_venv() -> bool:
+    """Returns whether we are running inside a venv.
+
+    Based on https://stackoverflow.com/a/42580137.
+
+    """
+    if hasattr(sys, 'real_prefix'):
+        return True
+    else:
+        return hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix
+
+
 class TestPEP561(TestCase):
     @contextmanager
     def install_package(self, pkg: str,
@@ -38,9 +50,7 @@ class TestPEP561(TestCase):
         install_cmd = [python_executable, '-m', 'pip', 'install', '.']
         # if we aren't in a virtualenv, install in the
         # user package directory so we don't need sudo
-        # In a virtualenv, real_prefix is patched onto
-        # sys
-        if not hasattr(sys, 'real_prefix') or python_executable != sys.executable:
+        if not is_in_venv() or python_executable != sys.executable:
             install_cmd.append('--user')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
@@ -48,7 +58,10 @@ class TestPEP561(TestCase):
         try:
             yield
         finally:
-            run_command([python_executable, '-m', 'pip', 'uninstall', '-y', pkg], cwd=package_path)
+            returncode, lines = run_command([python_executable, '-m', 'pip', 'uninstall',
+                                             '-y', pkg], cwd=package_path)
+            if returncode != 0:
+                self.fail('\n'.join(lines))
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
