@@ -1110,8 +1110,8 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         return None
     deps_mtime = None
     if manager.options.cache_fine_grained:
-        deps_mtime = getmtime(meta.data_json)
-        if data_mtime != meta.deps_mtime:
+        deps_mtime = getmtime(meta.deps_json)
+        if deps_mtime != meta.deps_mtime:
             manager.log('Metadata abandoned for {}: deps cache is modified'.format(id))
             return None
 
