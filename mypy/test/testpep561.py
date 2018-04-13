@@ -38,8 +38,7 @@ def is_in_venv() -> bool:
     if hasattr(sys, 'real_prefix'):
         return True
     else:
-        # https://github.com/python/typeshed/pull/2047
-        return hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix  # type: ignore
+        return hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix
 
 
 class TestPEP561(TestCase):
