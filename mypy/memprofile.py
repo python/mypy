@@ -6,7 +6,6 @@ owned by particular AST nodes, etc.
 
 from collections import defaultdict
 import gc
-import resource
 import sys
 from typing import List, Dict, Set, Iterable, Tuple, cast
 
@@ -61,7 +60,11 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
 
 
 def print_memory_profile(run_gc: bool = True) -> None:
-    system_memuse = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    if not sys.platform.startswith('win'):
+        import resource
+        system_memuse = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    else:
+        system_memuse = -1  # TODO: Support this on Windows
     if run_gc:
         gc.collect()
     freqs, memuse = collect_memory_stats()
