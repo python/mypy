@@ -6,19 +6,19 @@ List of major changes:
 - April 2018
     * Publish ``mypy`` version 0.590 on PyPI.
 
-      * Document PEP 561 support.
+      * Document :ref:`PEP 561 support <installed-packages>`.
 
-      * Made incremental mode the default.
+      * Made :ref:`incremental mode <incremental>` the default.
 
-      * Document ``--always-true`` and ``--always-false``.
+      * Document ``--always-true`` and ``--always-false`` (:ref:`docs <always-true>`).
 
-      * Document ``follow_imports_for_stubs``.
+      * Document ``follow_imports_for_stubs`` (:ref:`docs<per-module-flags>`).
 
-      * Add coroutines to Python 3 cheat sheet.
+      * Add coroutines to :ref:`Python 3 cheat sheet <cheat-sheet-py3>`.
 
-      * Add ``None`` return/strict-optional to common issues.
+      * Add ``None`` return/strict-optional to :ref:`common issues <annotations_needed>`.
 
-      * Clarify that ``SupportsInt`` etc. don't support arithmetic operations.
+      * Clarify that ``SupportsInt`` etc. don't support arithmetic operations (see :ref:`docs <supports-int-etc>`).
 
 - March 2018
     * Publish ``mypy`` version 0.580 on PyPI.
