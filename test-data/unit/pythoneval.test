@@ -1250,3 +1250,12 @@ def g(si: Iterable[str]):
     pass
 f(E)
 g(E)
+
+[case testInvalidSlots]
+class A:
+    __slots__ = 1
+class B:
+    __slots__ = (1, 2)
+[out]
+_testInvalidSlots.py:2: error: Incompatible types in assignment (expression has type "int", base class "object" defined the type as "Union[str, Iterable[str], None]")
+_testInvalidSlots.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, int]", base class "object" defined the type as "Union[str, Iterable[str], None]")
