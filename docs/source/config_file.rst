@@ -29,7 +29,7 @@ characters.
   the global flags. The ``setup.cfg`` file is an exception to this.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
-  present, where ``PATTERN1``, ``PATTERN2`` etc. are comma-separated
+  present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
   patterns of the form ``dotted_module_name`` or ``dotted_module_name.*``.
   These sections specify additional flags that only apply to *modules*
   whose name matches at least one of the patterns.
