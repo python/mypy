@@ -28,6 +28,9 @@ from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
 
 
+MEM_PROFILE = False  # If True, dump memory profile after initialization
+
+
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     """Arrange to call func() in a grandchild of the current process.
 
@@ -289,8 +292,9 @@ class Server:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
 
-        # from mypy.memprofile import print_memory_profile
-        # print_memory_profile(run_gc=False)
+        if MEM_PROFILE:
+            from mypy.memprofile import print_memory_profile
+            print_memory_profile(run_gc=False)
 
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}

@@ -27,6 +27,8 @@ from mypy.version import __version__
 
 orig_stat = os.stat
 
+MEM_PROFILE = False  # If True, dump memory profile
+
 
 def stat_proxy(path: str) -> os.stat_result:
     try:
@@ -98,8 +100,9 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         t1 = time.time()
         util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
 
-    # from mypy.memprofile import print_memory_profile
-    # print_memory_profile()
+    if MEM_PROFILE:
+        from mypy.memprofile import print_memory_profile
+        print_memory_profile()
 
     if messages:
         code = 2 if blockers else 1
