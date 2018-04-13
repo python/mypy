@@ -309,6 +309,8 @@ This is a type for objects that support ``bytes(x)``.
 
    def __bytes__(self) -> bytes
 
+.. _supports-int-etc:
+
 ``SupportsComplex``
 -------------------
 
