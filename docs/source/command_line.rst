@@ -393,6 +393,8 @@ Here are some more useful flags:
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
 
+.. _always-true:
+
 - ``--always-true NAME`` will treat all variables named ``NAME`` as
   compile-time constants that are always true.  May be repeated.
 
