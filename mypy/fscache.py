@@ -37,36 +37,41 @@ from mypy.util import read_with_python_encoding
 
 class FileSystemMetaCache:
     def __init__(self) -> None:
-        self.stat = functools.lru_cache(maxsize=None)(self._stat)
-        self.listdir = functools.lru_cache(maxsize=None)(self._listdir)
-        # lru_cache doesn't handle exceptions, so we need special caches for them.
-        self.stat_error_cache = {}  # type: Dict[str, Exception]
-        self.listdir_error_cache = {}  # type: Dict[str, Exception]
+        self.flush()
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        self.stat.cache_clear()
-        self.listdir.cache_clear()
-        self.stat_error_cache.clear()
-        self.listdir_error_cache.clear()
+        self.stat_cache = {}  # type: Dict[str, os.stat_result]
+        self.stat_error_cache = {}  # type: Dict[str, Exception]
+        self.listdir_cache = {}  # type: Dict[str, List[str]]
+        self.listdir_error_cache = {}  # type: Dict[str, Exception]
+        self.isfile_case_cache = {}  # type: Dict[str, bool]
 
-    def _stat(self, path: str) -> os.stat_result:
+    def stat(self, path: str) -> os.stat_result:
+        if path in self.stat_cache:
+            return self.stat_cache[path]
         if path in self.stat_error_cache:
             raise self.stat_error_cache[path]
         try:
-            return os.stat(path)
+            st = os.stat(path)
         except Exception as err:
             self.stat_error_cache[path] = err
             raise
+        self.stat_cache[path] = st
+        return st
 
-    def _listdir(self, path: str) -> List[str]:
+    def listdir(self, path: str) -> List[str]:
+        if path in self.listdir_cache:
+            return self.listdir_cache[path]
         if path in self.listdir_error_cache:
             raise self.listdir_error_cache[path]
         try:
-            return os.listdir(path)
+            results = os.listdir(path)
         except Exception as err:
             self.listdir_error_cache[path] = err
             raise err
+        self.listdir_cache[path] = results
+        return results
 
     def isfile(self, path: str) -> bool:
         try:
@@ -84,6 +89,8 @@ class FileSystemMetaCache:
         TODO: We should maybe check the case for some directory components also,
         to avoid permitting wrongly-cased *packages*.
         """
+        if path in self.isfile_case_cache:
+            return self.isfile_case_cache[path]
         head, tail = os.path.split(path)
         if not tail:
             res = False
@@ -93,6 +100,7 @@ class FileSystemMetaCache:
                 res = tail in names and self.isfile(path)
             except OSError:
                 res = False
+        self.isfile_case_cache[path] = res
         return res
 
     def isdir(self, path: str) -> bool:
