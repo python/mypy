@@ -396,7 +396,9 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('hash', str),
                         ('dependencies', List[str]),  # names of imported modules
                         ('data_mtime', int),  # mtime of data_json
+                        ('deps_mtime', Optional[int]),  # mtime of deps_json
                         ('data_json', str),  # path of <id>.data.json
+                        ('deps_json', Optional[str]),  # path of <id>.deps.json
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
@@ -413,7 +415,8 @@ CacheMeta = NamedTuple('CacheMeta',
 # silent mode or simply not found.
 
 
-def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
+def cache_meta_from_dict(meta: Dict[str, Any],
+                         data_json: str, deps_json: Optional[str]) -> CacheMeta:
     sentinel = None  # type: Any  # Values to be validated by the caller
     return CacheMeta(
         meta.get('id', sentinel),
@@ -423,7 +426,9 @@ def cache_meta_from_dict(meta: Dict[str, Any], data_json: str) -> CacheMeta:
         meta.get('hash', sentinel),
         meta.get('dependencies', []),
         int(meta['data_mtime']) if 'data_mtime' in meta else sentinel,
+        int(meta['deps_mtime']) if meta.get('deps_mtime') is not None else None,
         data_json,
+        deps_json,
         meta.get('suppressed', []),
         meta.get('child_modules', []),
         meta.get('options'),
@@ -962,7 +967,7 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
     return True
 
 
-def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str]:
+def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
     """Return the file names for the cache files.
 
     Args:
@@ -972,8 +977,8 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       pyversion: Python version (major, minor)
 
     Returns:
-      A tuple with the file names to be used for the meta JSON and the
-      data JSON, respectively.
+      A tuple with the file names to be used for the meta JSON, the
+      data JSON, and the deps JSON, respectively.
     """
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
@@ -981,7 +986,11 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
-    return (prefix + '.meta.json', prefix + '.data.json')
+
+    deps_json = None
+    if manager.options.cache_fine_grained:
+        deps_json = prefix + '.deps.json'
+    return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
@@ -997,7 +1006,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
       valid; otherwise None.
     """
     # TODO: May need to take more build options into account
-    meta_json, data_json = get_cache_names(id, path, manager)
+    meta_json, data_json, deps_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
     try:
         with open(meta_json, 'r') as f:
@@ -1011,11 +1020,12 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
                     .format(id, repr(meta)))
         return None
-    m = cache_meta_from_dict(meta, data_json)
+    m = cache_meta_from_dict(meta, data_json, deps_json)
     # Don't check for path match, that is dealt with in validate_meta().
     if (m.id != id or
             m.mtime is None or m.size is None or
-            m.dependencies is None or m.data_mtime is None):
+            m.dependencies is None or m.data_mtime is None or
+            (manager.options.cache_fine_grained and m.deps_mtime is None)):
         manager.log('Metadata abandoned for {}: attributes are missing'.format(id))
         return None
 
@@ -1098,6 +1108,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     if data_mtime != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
+    deps_mtime = None
+    if manager.options.cache_fine_grained:
+        deps_mtime = getmtime(meta.data_json)
+        if data_mtime != meta.deps_mtime:
+            manager.log('Metadata abandoned for {}: deps cache is modified'.format(id))
+            return None
 
     path = os.path.abspath(path)
     try:
@@ -1143,6 +1159,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 'size': size,
                 'hash': source_hash,
                 'data_mtime': data_mtime,
+                'deps_mtime': deps_mtime,
                 'dependencies': meta.dependencies,
                 'suppressed': meta.suppressed,
                 'child_modules': meta.child_modules,
@@ -1158,7 +1175,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
                 meta_str = json.dumps(meta_dict, indent=2, sort_keys=True)
             else:
                 meta_str = json.dumps(meta_dict)
-            meta_json, _ = get_cache_names(id, path, manager)
+            meta_json, _, _2 = get_cache_names(id, path, manager)
             manager.log('Updating mtime for {}: file {}, meta {}, mtime {}'
                         .format(id, path, meta_json, meta.mtime))
             atomic_write(meta_json, meta_str, '\n')  # Ignore errors, it's just an optimization.
@@ -1174,6 +1191,13 @@ def compute_hash(text: str) -> str:
     # can differ between runs due to hash randomization (enabled by default in Python 3.3).
     # See the note in https://docs.python.org/3/reference/datamodel.html#object.__hash__.
     return hashlib.md5(text.encode('utf-8')).hexdigest()
+
+
+def json_dumps(obj: Any, debug_cache: bool) -> str:
+    if debug_cache:
+        return json.dumps(obj, indent=2, sort_keys=True)
+    else:
+        return json.dumps(obj, sort_keys=True)
 
 
 def write_cache(id: str, path: str, tree: MypyFile,
@@ -1209,21 +1233,17 @@ def write_cache(id: str, path: str, tree: MypyFile,
     """
     # Obtain file paths
     path = os.path.abspath(path)
-    meta_json, data_json = get_cache_names(id, path, manager)
-    manager.log('Writing {} {} {} {}'.format(id, path, meta_json, data_json))
+    meta_json, data_json, deps_json = get_cache_names(id, path, manager)
+    manager.log('Writing {} {} {} {} {}'.format(
+        id, path, meta_json, data_json, deps_json))
 
     # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
     assert os.path.dirname(meta_json) == parent
 
     # Serialize data and analyze interface
-    data = {'tree': tree.serialize(),
-            'fine_grained_deps': serialized_fine_grained_deps,
-            }
-    if manager.options.debug_cache:
-        data_str = json.dumps(data, indent=2, sort_keys=True)
-    else:
-        data_str = json.dumps(data, sort_keys=True)
+    data = tree.serialize()
+    data_str = json_dumps(data, manager.options.debug_cache)
     interface_hash = compute_hash(data_str)
 
     # Obtain and set up metadata
@@ -1265,6 +1285,15 @@ def write_cache(id: str, path: str, tree: MypyFile,
             return interface_hash, None
         data_mtime = getmtime(data_json)
 
+    deps_mtime = None
+    if deps_json:
+        deps_str = json_dumps(serialized_fine_grained_deps, manager.options.debug_cache)
+        if not atomic_write(deps_json, deps_str, '\n'):
+            manager.log("Error writing deps JSON file {}".format(deps_json))
+            return interface_hash, None
+            raise CompileError(["Error writing deps JSON file {}".format(deps_json)])
+        deps_mtime = getmtime(deps_json)
+
     mtime = int(st.st_mtime)
     size = st.st_size
     options = manager.options.clone_for_module(id)
@@ -1275,6 +1304,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             'size': size,
             'hash': source_hash,
             'data_mtime': data_mtime,
+            'deps_mtime': deps_mtime,
             'dependencies': dependencies,
             'suppressed': suppressed,
             'child_modules': child_modules,
@@ -1287,17 +1317,14 @@ def write_cache(id: str, path: str, tree: MypyFile,
             }
 
     # Write meta cache file
-    if manager.options.debug_cache:
-        meta_str = json.dumps(meta, indent=2, sort_keys=True)
-    else:
-        meta_str = json.dumps(meta)
+    meta_str = json_dumps(meta, manager.options.debug_cache)
     if not atomic_write(meta_json, meta_str, '\n'):
         # Most likely the error is the replace() call
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
         manager.log("Error writing meta JSON file {}".format(meta_json))
 
-    return interface_hash, cache_meta_from_dict(meta, data_json)
+    return interface_hash, cache_meta_from_dict(meta, data_json, deps_json)
 
 
 def delete_cache(id: str, path: str, manager: BuildManager) -> None:
@@ -1308,12 +1335,13 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     see #4043 for an example.
     """
     path = os.path.abspath(path)
-    meta_json, data_json = get_cache_names(id, path, manager)
-    manager.log('Deleting {} {} {} {}'.format(id, path, meta_json, data_json))
+    cache_paths = get_cache_names(id, path, manager)
+    manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
 
-    for filename in [data_json, meta_json]:
+    for filename in cache_paths:
         try:
-            os.remove(filename)
+            if filename:
+                os.remove(filename)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 manager.log("Error deleting cache file {}: {}".format(filename, e.strerror))
@@ -1657,6 +1685,14 @@ class State:
         self.check_blockers()
 
     # Methods for processing cached modules.
+    def load_fine_grained_deps(self) -> None:
+        assert self.meta is not None, "Internal error: this method must be called only" \
+                                      " for cached modules"
+        assert self.meta.deps_json
+        with open(self.meta.deps_json) as f:
+            deps = json.load(f)
+        # TODO: Assert deps file wasn't changed.
+        self.fine_grained_deps = {k: set(v) for k, v in deps.items()}
 
     def load_tree(self) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
@@ -1664,8 +1700,7 @@ class State:
         with open(self.meta.data_json) as f:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
-        self.tree = MypyFile.deserialize(data['tree'])
-        self.fine_grained_deps = {k: set(v) for k, v in data['fine_grained_deps'].items()}
+        self.tree = MypyFile.deserialize(data)
 
         self.manager.modules[self.id] = self.tree
         self.manager.add_stats(fresh_trees=1)
@@ -2517,6 +2552,8 @@ def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> Non
         # Note that ascc is a set, and scc is a list.
         scc = order_ascc(graph, ascc)
         process_fresh_scc(graph, scc, manager)
+        for id in scc:
+            graph[id].load_fine_grained_deps()
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
