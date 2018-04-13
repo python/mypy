@@ -94,6 +94,7 @@ sub.pkg is not a valid Python package name
 mypy: can't decode file 'a.py': unknown encoding: uft-8
 == Return code: 2
 
+-- '
 [case testCannotIgnoreDuplicateModule]
 # cmd: mypy one/mod/__init__.py two/mod/__init__.py
 [file one/mod/__init__.py]
@@ -157,9 +158,9 @@ def f():
 [file mypy.ini]
 [[mypy]
 disallow_untyped_defs = True
-[[mypy-y*]
+[[mypy-y]
 disallow_untyped_defs = False
-[[mypy-z*]
+[[mypy-z]
 disallow_untyped_calls = True
 [file x.py]
 def f(a):
@@ -181,7 +182,7 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
-[case testPerFileConfigSectionMultipleMatches]
+[case testPerFileConfigSectionMultipleMatchesDisallowed]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
 [[mypy]
@@ -202,18 +203,15 @@ def g(a: int) -> int: return f(a)
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [out]
-yy.py:2: error: Call to untyped function "f" in typed context
-yx.py:1: error: Function is missing a type annotation
-yx.py:2: error: Call to untyped function "f" in typed context
-xy.py:1: error: Function is missing a type annotation
-xy.py:2: error: Call to untyped function "f" in typed context
-xx.py:1: error: Function is missing a type annotation
+mypy.ini: [mypy-*x*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
+mypy.ini: [mypy-*y*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
+== Return code: 0
 
 [case testMultipleGlobConfigSection]
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-[[mypy-x*,z*]
+[[mypy-x.*,z.*]
 disallow_untyped_defs = True
 [file x.py]
 def f(a): pass
@@ -270,6 +268,7 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
+mypy.ini: [mypy-*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
 == Return code: 0
 
 [case testConfigMypyPath]
@@ -572,7 +571,7 @@ main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 # cmd: mypy m.py
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -597,7 +596,7 @@ m.py:9: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -617,7 +616,7 @@ m.py:5: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -631,7 +630,7 @@ m.py:2: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -651,7 +650,7 @@ m.py:6: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -673,7 +672,7 @@ m.py:4: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -698,7 +697,7 @@ m.py:10: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -716,7 +715,7 @@ m.py:5: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -733,7 +732,7 @@ m.py:3: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -748,7 +747,7 @@ m.py:3: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -766,7 +765,7 @@ m.py:4: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -784,7 +783,7 @@ m.py:4: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -1008,28 +1007,40 @@ class ShouldNotBeFine(x): ...
 [out]
 y.py:5: error: Class cannot subclass 'x' (has type 'Any')
 
-[case testDeterministicSectionOrdering]
+[case testSectionInheritance]
 # cmd: mypy a
 [file a/__init__.py]
+0()
+[file a/foo.py]
+0()
 [file a/b/__init__.py]
 [file a/b/c/__init__.py]
+0()
 [file a/b/c/d/__init__.py]
 [file a/b/c/d/e/__init__.py]
-0()
+from typing import List
+def g(x: List) -> None: pass
+g(None)
 [file mypy.ini]
 [[mypy]
+disallow_any_generics = False
 [[mypy-a.*]
 ignore_errors = True
 [[mypy-a.b.*]
+disallow_any_generics = True
 ignore_errors = True
 [[mypy-a.b.c.*]
 ignore_errors = True
 [[mypy-a.b.c.d.*]
 ignore_errors = True
+[[mypy-a.b.c.d.e.*]
+ignore_errors = True
+strict_optional = True
 [[mypy-a.b.c.d.e]
 ignore_errors = False
 [out]
-a/b/c/d/e/__init__.py:1: error: "int" not callable
+a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type
+a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
 
 [case testDisallowUntypedDefsAndGenerics]
 # cmd: mypy a.py
@@ -1048,6 +1059,7 @@ a.py:1: error: Function is missing a type annotation
 [out]
 mypy: can't read file 'nope.py': No such file or directory
 == Return code: 2
+--'
 
 [case testParseError]
 # cmd: mypy a.py
@@ -1113,3 +1125,25 @@ follow_imports_for_stubs = True
 [file main.py]
 import math
 math.frobnicate()
+
+[case testConfigWarnUnusedSection1]
+# cmd: mypy foo.py quux.py spam/eggs.py
+# flags: --follow-imports=skip
+[file mypy.ini]
+[[mypy]
+warn_unused_configs = True
+[[mypy-bar]
+[[mypy-foo]
+[[mypy-baz.*]
+[[mypy-quux.*]
+[[mypy-spam.*]
+[[mypy-spam.eggs]
+[[mypy-emarg.*]
+[[mypy-emarg.hatch]
+[file foo.py]
+[file quux.py]
+[file spam/__init__.py]
+[file spam/eggs.py]
+[out]
+Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch]
+== Return code: 0
