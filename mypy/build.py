@@ -1114,12 +1114,17 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # changed since the cache was generated. We *don't* want to do a
     # coarse-grained incremental rebuild, so we accept the cache
     # metadata even if it doesn't match the source file.
-    if manager.use_fine_grained_cache():
-        manager.log('Using potentially stale metadata for {}'.format(id))
-        return meta
+    #
+    # We still *do* the mtime/md5 checks, however, to enable
+    # fine-grained mode to take advantage of the mtime-updating
+    # optimization when mtimes differ but md5s match.  There is
+    # essentially no extra time cost to computing the hash here, since
+    # it will be cached and will be needed for finding changed files
+    # later anyways.
+    fine_grained_cache = manager.use_fine_grained_cache()
 
     size = st.st_size
-    if size != meta.size:
+    if size != meta.size and not fine_grained_cache:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
@@ -1130,8 +1135,13 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
         if source_hash != meta.hash:
-            manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
-            return None
+            if fine_grained_cache:
+                manager.log('Using stale metadata for {}: file {}'.format(id, path))
+                return meta
+            else:
+                manager.log('Metadata abandoned for {}: file {} has different hash'.format(
+                    id, path))
+                return None
         else:
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
             meta = meta._replace(mtime=mtime, path=path)
@@ -1165,7 +1175,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
-    manager.trace('Metadata fresh for {}: file {}'.format(id, path))
+    manager.log('Metadata fresh for {}: file {}'.format(id, path))
     return meta
 
 
