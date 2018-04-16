@@ -398,7 +398,9 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('data_mtime', int),  # mtime of data_json
                         ('deps_mtime', Optional[int]),  # mtime of deps_json
                         ('data_json', str),  # path of <id>.data.json
-                        ('deps_json', Optional[str]),  # path of <id>.deps.json
+                        # path of <id>.deps.json, which we use to store fine-grained
+                        # dependency information for fine-grained mode
+                        ('deps_json', Optional[str]),
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
@@ -417,6 +419,14 @@ CacheMeta = NamedTuple('CacheMeta',
 
 def cache_meta_from_dict(meta: Dict[str, Any],
                          data_json: str, deps_json: Optional[str]) -> CacheMeta:
+    """Build a CacheMeta object from a json metadata dictionary
+
+    Args:
+      meta: JSON metadata read from the metadata cache file
+      data_json: Path to the .data.json file containing the AST trees
+      deps_json: Optionally, path to the .deps.json file containign
+                 fine-grained dependency information.
+    """
     sentinel = None  # type: Any  # Values to be validated by the caller
     return CacheMeta(
         meta.get('id', sentinel),
@@ -978,7 +988,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
 
     Returns:
       A tuple with the file names to be used for the meta JSON, the
-      data JSON, and the deps JSON, respectively.
+      data JSON, and the fine-grained deps JSON, respectively.
     """
     cache_dir = manager.options.cache_dir
     pyversion = manager.options.python_version
@@ -1292,7 +1302,6 @@ def write_cache(id: str, path: str, tree: MypyFile,
         if not atomic_write(deps_json, deps_str, '\n'):
             manager.log("Error writing deps JSON file {}".format(deps_json))
             return interface_hash, None
-            raise CompileError(["Error writing deps JSON file {}".format(deps_json)])
         deps_mtime = getmtime(deps_json)
 
     mtime = int(st.st_mtime)
