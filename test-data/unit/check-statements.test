@@ -416,8 +416,13 @@ x = None # type: typing.Type[BaseException]
 raise x
 [builtins fixtures/exception.pyi]
 
-[case testRaiseFromStatement]
+[case testRaiseNonExceptionTypeFails]
+import typing
+x = int # type: typing.Type[int]
+raise x # E: Exception must be derived from BaseException
+[builtins fixtures/exception.pyi]
 
+[case testRaiseFromStatement]
 e = None # type: BaseException
 f = None # type: MyError
 a = None # type: A
