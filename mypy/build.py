@@ -1983,26 +1983,29 @@ class State:
                             if self.priorities.get(dep) != PRI_INDIRECT]
             all_deps = dependencies + self.suppressed + self.ancestors
         for dep in all_deps:
+            if dep in manager.modules:
+                continue
             options = manager.options.clone_for_module(dep)
-            if dep not in manager.modules and not options.ignore_missing_imports:
-                line = self.dep_line_map.get(dep, 1)
-                try:
-                    if dep in self.ancestors:
-                        state, ancestor = None, self  # type: (Optional[State], Optional[State])
-                    else:
-                        state, ancestor = self, None
-                    # Called just for its side effects of producing diagnostics.
-                    find_module_and_diagnose(
-                        manager, dep, options,
-                        caller_state=state, caller_line=line,
-                        ancestor_for=ancestor)
-                except (ModuleNotFound, CompileError):
-                    # Swallow up any ModuleNotFounds or CompilerErrors while generating
-                    # a diagnostic. CompileErrors may get generated in
-                    # fine-grained mode when an __init__.py is deleted, if a module
-                    # that was in that package has targets reprocessed before
-                    # it is renamed.
-                    pass
+            if options.ignore_missing_imports:
+                continue
+            line = self.dep_line_map.get(dep, 1)
+            try:
+                if dep in self.ancestors:
+                    state, ancestor = None, self  # type: (Optional[State], Optional[State])
+                else:
+                    state, ancestor = self, None
+                # Called just for its side effects of producing diagnostics.
+                find_module_and_diagnose(
+                    manager, dep, options,
+                    caller_state=state, caller_line=line,
+                    ancestor_for=ancestor)
+            except (ModuleNotFound, CompileError):
+                # Swallow up any ModuleNotFounds or CompilerErrors while generating
+                # a diagnostic. CompileErrors may get generated in
+                # fine-grained mode when an __init__.py is deleted, if a module
+                # that was in that package has targets reprocessed before
+                # it is renamed.
+                pass
 
     def dependency_priorities(self) -> List[int]:
         return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies + self.suppressed]
