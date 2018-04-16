@@ -410,6 +410,12 @@ raise object # E: Exception must be derived from BaseException
 raise f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
+[case testRaiseExceptionType]
+import typing
+x = None # type: typing.Type[BaseException]
+raise x
+[builtins fixtures/exception.pyi]
+
 [case testRaiseFromStatement]
 
 e = None # type: BaseException
@@ -1615,4 +1621,3 @@ N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-

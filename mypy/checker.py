@@ -2357,15 +2357,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = self.expr_checker.accept(e)
-        if isinstance(typ, FunctionLike):
-            if typ.is_type_obj():
-                # Cases like "raise/from ExceptionClass".
-                typeinfo = typ.type_object()
-                base = self.lookup_typeinfo('builtins.BaseException')
-                if base in typeinfo.mro or typeinfo.fallback_to_any:
-                    # Good!
-                    return
-                # Else fall back to the checks below (which will fail).
+        typeinfo = None
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
+            typeinfo = typ.type_object()
+        elif isinstance(typ, TypeType):
+            if isinstance(typ.item, AnyType):
+                return
+            typeinfo = typ.item.type
+        if typeinfo is not None:
+            # Cases like "raise/from ExceptionClass".
+            base = self.lookup_typeinfo('builtins.BaseException')
+            if base in typeinfo.mro or typeinfo.fallback_to_any:
+                # Good!
+                return
+            # Else fall back to the checks below (which will fail).
         if isinstance(typ, TupleType) and self.options.python_version[0] == 2:
             # allow `raise type, value, traceback`
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
