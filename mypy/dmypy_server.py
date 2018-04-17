@@ -128,7 +128,9 @@ class Server:
         options.fine_grained_incremental = True
         options.show_traceback = True
         if options.use_fine_grained_cache:
-            options.cache_fine_grained = True  # set this so that cache options match
+            # Using fine_grained_cache implies generating and caring
+            # about the fine grained cache
+            options.cache_fine_grained = True
         else:
             options.cache_dir = os.devnull
         # Fine-grained incremental doesn't support general partial types

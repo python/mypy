@@ -4235,3 +4235,33 @@ pass
 [out2]
 [out3]
 tmp/a.py:1: note: unused 'type: ignore' comment
+
+-- Test that a non cache_fine_grained run can use a fine-grained cache
+[case testRegularUsesFgCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+x = 0
+[file mypy.ini]
+[[mypy]
+cache_fine_grained = True
+[file mypy.ini.2]
+[[mypy]
+cache_fine_grained = False
+-- Nothing should get rechecked
+[rechecked]
+[stale]
+
+[case testFgCacheNeedsFgCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+x = 0
+[file mypy.ini]
+[[mypy]
+cache_fine_grained = False
+[file mypy.ini.2]
+[[mypy]
+cache_fine_grained = True
+[rechecked a, builtins]
+[stale a, builtins]
