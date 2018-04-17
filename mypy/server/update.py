@@ -122,7 +122,7 @@ from typing import (
 
 from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
-    process_fresh_scc,
+    process_fresh_modules,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
@@ -376,7 +376,7 @@ def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
     module, we don't need to explore its dependencies.  (This
     invariant is slightly violated when dependencies are added, which
     can be handled by calling find_unloaded_deps directly on the new
-    dependencies)
+    dependencies.)
     """
     worklist = list(initial)
     seen = set()  # type: Set[str]
@@ -398,12 +398,12 @@ def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
 
 def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
                         initial: Sequence[str]) -> None:
-    """Ensure that the modules in initial and their deps have loaded trees"""
+    """Ensure that the modules in initial and their deps have loaded trees."""
     to_process = find_unloaded_deps(manager, graph, initial)
     if to_process:
-        manager.log("Calling process_fresh_scc on an 'scc' of size {} ({})".format(
+        manager.log_fine_grained("Calling process_fresh_modules on set of size {} ({})".format(
             len(to_process), to_process))
-        process_fresh_scc(graph, to_process, manager)
+        process_fresh_modules(graph, to_process, manager)
 
 
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
@@ -770,9 +770,9 @@ def find_targets_recursive(
                                                Set[str]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
-    Returns: a tuple containing a:
+    Returns: A tuple containing a:
      * Dictionary from module id to a set of stale targets.
-     * A set of module ids for unparsed modules with stale targets
+     * A set of module ids for unparsed modules with stale targets.
     """
     result = {}  # type: Dict[str, Set[DeferredNode]]
     worklist = triggers
