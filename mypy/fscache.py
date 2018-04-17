@@ -43,9 +43,9 @@ class FileSystemMetaCache:
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         self.stat_cache = {}  # type: Dict[str, os.stat_result]
-        self.stat_error_cache = {}  # type: Dict[str, Exception]
+        self.stat_error_cache = {}  # type: Dict[str, OSError]
         self.listdir_cache = {}  # type: Dict[str, List[str]]
-        self.listdir_error_cache = {}  # type: Dict[str, Exception]
+        self.listdir_error_cache = {}  # type: Dict[str, OSError]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
         self.fake_package_cache = set()  # type: Set[str]
         self.cwd = os.getcwd()
@@ -54,16 +54,18 @@ class FileSystemMetaCache:
         if path in self.stat_cache:
             return self.stat_cache[path]
         if path in self.stat_error_cache:
-            raise self.stat_error_cache[path]
+            raise copy_os_error(self.stat_error_cache[path])
         try:
             st = os.stat(path)
-        except Exception as err:
+        except OSError as err:
             if isinstance(err, OSError) and self.under_package_root(path):
                 try:
                     return self._fake_init(path)
                 except OSError:
                     pass
-            self.stat_error_cache[path] = err
+            # Take a copy to get rid of associated traceback and frame objects.
+            # Just assigning to __traceback__ doesn't free them.
+            self.stat_error_cache[path] = copy_os_error(err)
             raise err
         self.stat_cache[path] = st
         return st
@@ -111,11 +113,12 @@ class FileSystemMetaCache:
                 res.append('__init__.py')  # Updates the result as well as the cache
             return res
         if path in self.listdir_error_cache:
-            raise self.listdir_error_cache[path]
+            raise copy_os_error(self.listdir_error_cache[path])
         try:
             results = os.listdir(path)
-        except Exception as err:
-            self.listdir_error_cache[path] = err
+        except OSError as err:
+            # Like above, take a copy to reduce memory use.
+            self.listdir_error_cache[path] = copy_os_error(err)
             raise err
         self.listdir_cache[path] = results
         if path in self.fake_package_cache and '__init__.py' not in results:
@@ -169,8 +172,8 @@ class FileSystemMetaCache:
 
 class FileSystemCache(FileSystemMetaCache):
     def __init__(self, pyversion: Tuple[int, int], package_root: Optional[List[str]] = None) -> None:
-        self.pyversion = pyversion
         super().__init__(package_root=package_root)
+        self.pyversion = pyversion
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
@@ -206,3 +209,13 @@ class FileSystemCache(FileSystemMetaCache):
         if path not in self.hash_cache:
             self.read_with_python_encoding(path)
         return self.hash_cache[path]
+
+
+def copy_os_error(e: OSError) -> OSError:
+    new = OSError(*e.args)
+    new.errno = e.errno
+    new.strerror = e.strerror
+    new.filename = e.filename
+    if e.filename2:
+        new.filename2 = e.filename2
+    return new

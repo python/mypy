@@ -372,6 +372,12 @@ x + ""  # E: Unsupported operand types for + ("int" and "str")
 1 + ""
 x = 0
 
+[case testFollowImportsSilentTypeIgnore]
+# flags: --warn-unused-ignores --follow-imports=silent
+import mod
+[file mod.py]
+x = 3  # type: ignore
+
 [case testFollowImportsSkip]
 # flags: --follow-imports=skip
 from mod import x

@@ -1390,6 +1390,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
+        # __slots__ is special and the type can vary across class hierarchy.
+        if name == '__slots__':
+            ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
                                                          ctx)

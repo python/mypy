@@ -29,10 +29,15 @@ characters.
   the global flags. The ``setup.cfg`` file is an exception to this.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
-  present, where ``PATTERN1``, ``PATTERN2`` etc. are `fnmatch patterns
-  <https://docs.python.org/3.6/library/fnmatch.html>`_
-  separated by commas.  These sections specify additional flags that
-  only apply to *modules* whose name matches at least one of the patterns.
+  present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
+  patterns of the form ``dotted_module_name`` or ``dotted_module_name.*``.
+  These sections specify additional flags that only apply to *modules*
+  whose name matches at least one of the patterns.
+
+  A pattern of the form ``dotted_module_name`` matches only the named module,
+  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
+  submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
+  ``foo.bar.baz``, and ``foo.bar.baz.quux``).
 
 .. note::
 
@@ -107,7 +112,7 @@ The following global flags may only be set in the global section
 - ``dump_inference_stats`` (Boolean, default False) dumps stats about
   type inference.
 
-- ``incremental`` (Boolean, default False) enables :ref:`incremental
+- ``incremental`` (Boolean, default True) enables :ref:`incremental
   mode <incremental>`.
 
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache
@@ -137,8 +142,12 @@ overridden by the pattern sections matching the module name.
 
 .. note::
 
-   If multiple pattern sections match a module they are processed in
-   order of their occurrence in the config file.
+   If multiple pattern sections match a module, the options from the
+   most specific section are used where they disagree.  This means
+   that ``foo.bar`` will take values from sections with the patterns
+   ``foo.bar``, ``foo.bar.*``, and ``foo.*``, but when they specify
+   different values, it will use values from ``foo.bar`` before
+   ``foo.bar.*`` before ``foo.*``.
 
 - ``follow_imports`` (string, default ``normal``) directs what to do
   with imports when the imported module is found as a ``.py`` file and

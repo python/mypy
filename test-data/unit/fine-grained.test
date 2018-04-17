@@ -4769,6 +4769,161 @@ C = Enum('C', [('X', 0), ('Y', 1)])
 a.py:4: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 a.py:5: error: Argument 1 to "f" has incompatible type "C"; expected "int"
 
+[case testChangeTypeVarToFunction]
+import a
+from typing import Generic
+Alias = C[C[a.T]]
+
+class C(Generic[a.T]):
+    def meth(self, x: a.T) -> None:
+        pass
+def outer() -> None:
+    def func(x: a.T) -> Alias[a.T]:
+        pass
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T')
+[file a.py.2]
+from typing import TypeVar
+def T() -> None:
+    pass
+[out]
+==
+main:3: error: "C" expects no type arguments, but 1 given
+main:3: error: Invalid type "a.T"
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Invalid type "a.T"
+main:9: error: Invalid type "a.T"
+main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:9: error: "C" expects no type arguments, but 1 given
+
+[case testChangeTypeVarToModule]
+import a
+from typing import Generic
+Alias = C[C[a.T]]
+
+class C(Generic[a.T]):
+    def meth(self, x: a.T) -> None:
+        pass
+def outer() -> None:
+    def func(x: a.T) -> Alias[a.T]:
+        pass
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T')
+[file T.py.2]
+[file a.py.3]
+from typing import TypeVar
+import T
+[out]
+==
+==
+main:3: error: "C" expects no type arguments, but 1 given
+main:5: error: Free type variable expected in Generic[...]
+main:6: error: Invalid type "T"
+main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:9: error: "C" expects no type arguments, but 1 given
+main:9: error: Invalid type "T"
+
+[case testChangeClassToModule]
+import a
+x: a.C
+def f() -> None:
+    a.C()
+class A:
+    def meth(self) -> None:
+        def inner() -> a.C:
+            pass
+[file a.py]
+class C:
+    pass
+[file C.py.2]
+[file a.py.3]
+import C
+[builtins fixtures/module.pyi]
+[out]
+==
+==
+main:2: error: Invalid type "C"
+main:4: error: Module not callable
+main:7: error: Invalid type "C"
+
+[case testChangeTypeVarToTypeAlias]
+import a
+from typing import Generic
+Alias = C[C[a.T]]
+
+class C(Generic[a.T]):
+    def meth(self, x: a.T) -> None:
+        pass
+def outer() -> None:
+    def func(x: a.T) -> Alias[a.T]:
+        pass
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T')
+[file a.py.2]
+from typing import TypeVar
+T = int
+[out]
+==
+main:3: error: "C" expects no type arguments, but 1 given
+main:5: error: Free type variable expected in Generic[...]
+main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
+main:9: error: "C" expects no type arguments, but 1 given
+
+[case testChangeTypeAliasToModule]
+import a
+x: a.C
+def f() -> None:
+    a.C()
+class A:
+    def meth(self) -> None:
+        def inner() -> a.C:
+            pass
+[file a.py]
+import b
+C = b.D
+[file b.py]
+class D:
+    pass
+[file D.py.2]
+[file b.py.3]
+import D
+[builtins fixtures/module.pyi]
+[out]
+==
+==
+main:2: error: Invalid type "D"
+main:4: error: Module not callable
+main:7: error: Invalid type "D"
+
+[case testChangeTypeAliasToModuleUnqualified]
+from a import C
+x: C
+def f() -> None:
+    C()
+class A:
+    def meth(self) -> None:
+        def inner() -> C:
+            pass
+[file a.py]
+from b import D
+C = D
+[file b.py]
+class D:
+    pass
+[file D.py.2]
+[file b.py.3]
+import D
+[builtins fixtures/module.pyi]
+[out]
+==
+==
+main:2: error: Invalid type "D"
+main:4: error: Module not callable
+main:7: error: Invalid type "D"
+
 [case testChangeFunctionToVariableAndRefreshUsingStaleDependency]
 import a
 import c
@@ -4913,6 +5068,76 @@ class A: pass
 [out]
 ==
 ==
+
+[case testChangeGenericFunctionToVariable]
+import a
+x: int
+y: int = a.f(x)
+class Dummy:
+    def g(self) -> None:
+        a.f(x)
+[file a.py]
+from typing import TypeVar
+T = TypeVar('T')
+def f(x: T) -> T:
+    pass
+[file a.py.2]
+from typing import TypeVar
+T = TypeVar('T')
+f = 42
+[out]
+==
+main:3: error: "int" not callable
+main:6: error: "int" not callable
+
+[case testChangeGenericClassToVariable]
+import a
+x: int
+a.A(x)
+class Dummy:
+    def g(self) -> None:
+        a.A(x)
+[file a.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+A = 'no way'
+[out]
+==
+main:3: error: "str" not callable
+main:6: error: "str" not callable
+
+[case testChangeGenericMethodToVariable]
+import a
+x: int
+y: int = a.A(x).f()
+class Dummy:
+    def g(self) -> None:
+        a.A(x).f()
+[file a.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    def __init__(self, x: T) -> None:
+        pass
+    def f(self) -> T:
+        pass
+[file a.py.2]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    f: T
+    def __init__(self, x: T) -> None:
+        pass
+[out]
+==
+main:3: error: "int" not callable
+main:6: error: "int" not callable
 
 [case testRefreshNestedClassWithSelfReference]
 import a

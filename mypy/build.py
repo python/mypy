@@ -10,10 +10,12 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
+import ast
 import binascii
 import collections
 import contextlib
 from distutils.sysconfig import get_python_lib
+import functools
 import gc
 import hashlib
 import json
@@ -21,6 +23,7 @@ import os.path
 import re
 import site
 import stat
+import subprocess
 import sys
 import time
 from os.path import dirname, basename
@@ -33,6 +36,7 @@ MYPY = False
 if MYPY:
     from typing import Deque
 
+from mypy import sitepkgs
 from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
@@ -427,6 +431,8 @@ CacheMeta = NamedTuple('CacheMeta',
                         ('suppressed', List[str]),  # dependencies that weren't imported
                         ('child_modules', List[str]),  # all submodules of the given module
                         ('options', Optional[Dict[str, object]]),  # build options
+                        # dep_prios and dep_lines are in parallel with
+                        # dependencies + suppressed.
                         ('dep_prios', List[int]),
                         ('dep_lines', List[int]),
                         ('interface_hash', str),  # hash representing the public interface
@@ -727,7 +733,8 @@ class BuildManager:
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return self.find_module_cache.find_module(id, self.lib_path) is not None
+        return self.find_module_cache.find_module(id, self.lib_path,
+                                                  self.options.python_executable) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -818,6 +825,24 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     return p
 
 
+@functools.lru_cache(maxsize=None)
+def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
+    """Find package directories for given python.
+
+    This runs a subprocess call, which generates a list of the site package directories.
+    To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
+    if python_executable is None:
+        return []
+    if python_executable == sys.executable:
+        # Use running Python's package dirs
+        return sitepkgs.getsitepackages()
+    else:
+        # Use subprocess to get the package directory of given Python
+        # executable
+        return ast.literal_eval(subprocess.check_output([python_executable, sitepkgs.__file__],
+                                stderr=subprocess.PIPE).decode())
+
+
 class FindModuleCache:
     """Module finder with integrated cache.
 
@@ -831,20 +856,44 @@ class FindModuleCache:
 
     def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
         self.fscache = fscache or FileSystemMetaCache()
-        # Cache find_module: (id, lib_path) -> result.
-        self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...]], Optional[str]]
-
-        # Cache some repeated work within distinct find_module calls: finding which
-        # elements of lib_path have even the subdirectory they'd need for the module
-        # to exist.  This is shared among different module ids when they differ only
-        # in the last component.
+        # Cache find_lib_path_dirs: (dir_chain, lib_path)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
+        # Cache find_module: (id, lib_path, python_version) -> result.
+        self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...], Optional[str]], Optional[str]]
 
     def clear(self) -> None:
         self.results.clear()
         self.dirs.clear()
 
-    def _find_module(self, id: str, lib_path: Tuple[str, ...]) -> Optional[str]:
+    def find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> List[str]:
+        # Cache some repeated work within distinct find_module calls: finding which
+        # elements of lib_path have even the subdirectory they'd need for the module
+        # to exist.  This is shared among different module ids when they differ only
+        # in the last component.
+        key = (dir_chain, lib_path)
+        if key not in self.dirs:
+            self.dirs[key] = self._find_lib_path_dirs(dir_chain, lib_path)
+        return self.dirs[key]
+
+    def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> List[str]:
+        dirs = []
+        for pathitem in lib_path:
+            # e.g., '/usr/lib/python3.4/foo/bar'
+            dir = os.path.normpath(os.path.join(pathitem, dir_chain))
+            if self.fscache.isdir(dir):
+                dirs.append(dir)
+        return dirs
+
+    def find_module(self, id: str, lib_path: Tuple[str, ...],
+                    python_executable: Optional[str]) -> Optional[str]:
+        """Return the path of the module source file, or None if not found."""
+        key = (id, lib_path, python_executable)
+        if key not in self.results:
+            self.results[key] = self._find_module(id, lib_path, python_executable)
+        return self.results[key]
+
+    def _find_module(self, id: str, lib_path: Tuple[str, ...],
+                     python_executable: Optional[str]) -> Optional[str]:
         fscache = self.fscache
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -853,15 +902,27 @@ class FindModuleCache:
         # that will require the same subdirectory.
         components = id.split('.')
         dir_chain = os.sep.join(components[:-1])  # e.g., 'foo/bar'
-        if (dir_chain, lib_path) not in self.dirs:
-            dirs = []
-            for pathitem in lib_path:
-                # e.g., '/usr/lib/python3.4/foo/bar'
-                dir = os.path.normpath(os.path.join(pathitem, dir_chain))
-                if fscache.isdir(dir):
-                    dirs.append(dir)
-            self.dirs[dir_chain, lib_path] = dirs
-        candidate_base_dirs = self.dirs[dir_chain, lib_path]
+        # TODO (ethanhs): refactor each path search to its own method with lru_cache
+
+        # We have two sets of folders so that we collect *all* stubs folders and
+        # put them in the front of the search path
+        third_party_inline_dirs = []
+        third_party_stubs_dirs = []
+        # Third-party stub/typed packages
+        for pkg_dir in _get_site_packages_dirs(python_executable):
+            stub_name = components[0] + '-stubs'
+            typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
+            stub_dir = os.path.join(pkg_dir, stub_name)
+            if fscache.isdir(stub_dir):
+                stub_components = [stub_name] + components[1:]
+                path = os.path.join(pkg_dir, *stub_components[:-1])
+                if fscache.isdir(path):
+                    third_party_stubs_dirs.append(path)
+            elif fscache.isfile(typed_file):
+                path = os.path.join(pkg_dir, dir_chain)
+                third_party_inline_dirs.append(path)
+        candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + \
+            third_party_stubs_dirs + third_party_inline_dirs
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
@@ -874,8 +935,11 @@ class FindModuleCache:
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
+                path_stubs = base_path + '-stubs' + sepinit + extension
                 if fscache.isfile_case(path) and verify_module(fscache, id, path):
                     return path
+                elif fscache.isfile_case(path_stubs) and verify_module(fscache, id, path_stubs):
+                    return path_stubs
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
@@ -883,17 +947,9 @@ class FindModuleCache:
                     return path
         return None
 
-    def find_module(self, id: str, lib_path_arg: Iterable[str]) -> Optional[str]:
-        """Return the path of the module source file, or None if not found."""
-        lib_path = tuple(lib_path_arg)
-
-        key = (id, lib_path)
-        if key not in self.results:
-            self.results[key] = self._find_module(id, lib_path)
-        return self.results[key]
-
-    def find_modules_recursive(self, module: str, lib_path: List[str]) -> List[BuildSource]:
-        module_path = self.find_module(module, lib_path)
+    def find_modules_recursive(self, module: str, lib_path: Tuple[str, ...],
+                               python_executable: Optional[str]) -> List[BuildSource]:
+        module_path = self.find_module(module, lib_path, python_executable)
         if not module_path:
             return []
         result = [BuildSource(module_path, module, None)]
@@ -913,13 +969,15 @@ class FindModuleCache:
                         (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
                         os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
                     hits.add(item)
-                    result += self.find_modules_recursive(module + '.' + item, lib_path)
+                    result += self.find_modules_recursive(module + '.' + item, lib_path,
+                                                          python_executable)
                 elif item != '__init__.py' and item != '__init__.pyi' and \
                         item.endswith(('.py', '.pyi')):
                     mod = item.split('.')[0]
                     if mod not in hits:
                         hits.add(mod)
-                        result += self.find_modules_recursive(module + '.' + mod, lib_path)
+                        result += self.find_modules_recursive(module + '.' + mod, lib_path,
+                                                              python_executable)
         return result
 
 
@@ -998,8 +1056,8 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # Ignore cache if generated by an older mypy version.
     if ((m.version_id != manager.version_id and not manager.options.skip_version_check)
             or m.options is None
-            or len(m.dependencies) != len(m.dep_prios)
-            or len(m.dependencies) != len(m.dep_lines)):
+            or len(m.dependencies) + len(m.suppressed) != len(m.dep_prios)
+            or len(m.dependencies) + len(m.suppressed) != len(m.dep_lines)):
         manager.log('Metadata abandoned for {}: new attributes are missing'.format(id))
         return None
 
@@ -1561,12 +1619,13 @@ class State:
             # compare them to the originals later.
             self.dependencies = list(self.meta.dependencies)
             self.suppressed = list(self.meta.suppressed)
-            assert len(self.meta.dependencies) == len(self.meta.dep_prios)
+            all_deps = self.dependencies + self.suppressed
+            assert len(all_deps) == len(self.meta.dep_prios)
             self.priorities = {id: pri
-                               for id, pri in zip(self.meta.dependencies, self.meta.dep_prios)}
-            assert len(self.meta.dependencies) == len(self.meta.dep_lines)
+                               for id, pri in zip(all_deps, self.meta.dep_prios)}
+            assert len(all_deps) == len(self.meta.dep_lines)
             self.dep_line_map = {id: line
-                                 for id, line in zip(self.meta.dependencies, self.meta.dep_lines)}
+                                 for id, line in zip(all_deps, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
         else:
             # When doing a fine-grained cache load, pretend we only
@@ -1956,43 +2015,58 @@ class State:
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
 
-    def verify_dependencies(self) -> None:
-        """Report errors for import targets in modules that don't exist."""
-        # Strip out indirect dependencies. See comment in build.load_graph().
+    def verify_dependencies(self, suppressed_only: bool = False) -> None:
+        """Report errors for import targets in modules that don't exist.
+
+        If suppressed_only is set, only check suppressed dependencies.
+        """
         manager = self.manager
-        dependencies = [dep for dep in self.dependencies
-                        if self.priorities.get(dep) != PRI_INDIRECT]
         assert self.ancestors is not None
-        for dep in dependencies + self.suppressed + self.ancestors:
+        if suppressed_only:
+            all_deps = self.suppressed
+        else:
+            # Strip out indirect dependencies. See comment in build.load_graph().
+            dependencies = [dep for dep in self.dependencies
+                            if self.priorities.get(dep) != PRI_INDIRECT]
+            all_deps = dependencies + self.suppressed + self.ancestors
+        for dep in all_deps:
+            if dep in manager.modules:
+                continue
             options = manager.options.clone_for_module(dep)
-            if dep not in manager.modules and not options.ignore_missing_imports:
-                line = self.dep_line_map.get(dep, 1)
-                try:
-                    if dep in self.ancestors:
-                        state, ancestor = None, self  # type: (Optional[State], Optional[State])
-                    else:
-                        state, ancestor = self, None
-                    # Called just for its side effects of producing diagnostics.
-                    find_module_and_diagnose(
-                        manager, dep, options,
-                        caller_state=state, caller_line=line,
-                        ancestor_for=ancestor)
-                except (ModuleNotFound, CompileError):
-                    # Swallow up any ModuleNotFounds or CompilerErrors while generating
-                    # a diagnostic. CompileErrors may get generated in
-                    # fine-grained mode when an __init__.py is deleted, if a module
-                    # that was in that package has targets reprocessed before
-                    # it is renamed.
-                    pass
+            if options.ignore_missing_imports:
+                continue
+            line = self.dep_line_map.get(dep, 1)
+            try:
+                if dep in self.ancestors:
+                    state, ancestor = None, self  # type: (Optional[State], Optional[State])
+                else:
+                    state, ancestor = self, None
+                # Called just for its side effects of producing diagnostics.
+                find_module_and_diagnose(
+                    manager, dep, options,
+                    caller_state=state, caller_line=line,
+                    ancestor_for=ancestor)
+            except (ModuleNotFound, CompileError):
+                # Swallow up any ModuleNotFounds or CompilerErrors while generating
+                # a diagnostic. CompileErrors may get generated in
+                # fine-grained mode when an __init__.py is deleted, if a module
+                # that was in that package has targets reprocessed before
+                # it is renamed.
+                pass
 
     def dependency_priorities(self) -> List[int]:
-        return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies]
+        return [self.priorities.get(dep, PRI_HIGH) for dep in self.dependencies + self.suppressed]
 
     def dependency_lines(self) -> List[int]:
-        return [self.dep_line_map.get(dep, 1) for dep in self.dependencies]
+        return [self.dep_line_map.get(dep, 1) for dep in self.dependencies + self.suppressed]
 
     def generate_unused_ignore_notes(self) -> None:
         if self.options.warn_unused_ignores:
+            # If this file was initially loaded from the cache, it may have suppressed
+            # dependencies due to imports with ignores on them. We need to generate
+            # those errors to avoid spuriously flagging them as unused ignores.
+            if self.meta:
+                self.verify_dependencies(suppressed_only=True)
             self.manager.errors.generate_unused_ignore_notes(self.xpath)
 
 
@@ -2033,7 +2107,8 @@ def find_module_and_diagnose(manager: BuildManager,
         # difference and just assume 'builtins' everywhere,
         # which simplifies code.
         file_id = '__builtin__'
-    path = manager.find_module_cache.find_module(file_id, manager.lib_path)
+    path = manager.find_module_cache.find_module(file_id, manager.lib_path,
+                                                 manager.options.python_executable)
     if path:
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
