@@ -242,7 +242,7 @@ def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
         return ast.literal_eval(check)
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise PythonExecutableInferenceError(
-            'Error: invalid Python executable {}'.format(python_executable))
+            'invalid Python executable {}'.format(python_executable))
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
@@ -256,7 +256,7 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
         return sys_exe
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise PythonExecutableInferenceError(
-            'Error: failed to find a Python executable matching version {},'
+            'failed to find a Python executable matching version {},'
             ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
