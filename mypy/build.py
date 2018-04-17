@@ -47,7 +47,7 @@ from mypy.errors import Errors, CompileError, report_internal_error
 from mypy.util import DecodeError
 from mypy.report import Reports
 from mypy import moduleinfo
-from mypy.fixup import fixup_module_pass_one, fixup_module_pass_two
+from mypy.fixup import fixup_module
 from mypy.nodes import Expression
 from mypy.options import Options
 from mypy.parse import parse
@@ -1719,13 +1719,9 @@ class State:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         # We need to set quick_and_dirty when doing a fine grained
         # cache load because we need to gracefully handle missing modules.
-        fixup_module_pass_one(self.tree, self.manager.modules,
-                              self.manager.options.quick_and_dirty or
-                              self.manager.use_fine_grained_cache())
-
-    def calculate_mros(self) -> None:
-        assert self.tree is not None, "Internal error: method must be called on parsed file only"
-        fixup_module_pass_two(self.tree, self.manager.modules)
+        fixup_module(self.tree, self.manager.modules,
+                     self.manager.options.quick_and_dirty or
+                     self.manager.use_fine_grained_cache())
 
     def patch_dependency_parents(self) -> None:
         """
@@ -2626,8 +2622,6 @@ def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
     for id in scc:
         graph[id].fix_cross_refs()
     for id in scc:
-        graph[id].calculate_mros()
-    for id in scc:
         graph[id].patch_dependency_parents()
 
 
@@ -2660,8 +2654,6 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].semantic_analysis()
     for id in stale:
         graph[id].semantic_analysis_pass_three()
-    for id in fresh:
-        graph[id].calculate_mros()
     for id in stale:
         graph[id].semantic_analysis_apply_patches()
     for id in stale:
