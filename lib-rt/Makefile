@@ -2,6 +2,8 @@
 
 .PHONY: clean test
 
+all: test_capi
+
 OS := $(shell uname)
 PYTHONCONFIG ?= python3-config
 
@@ -12,6 +14,7 @@ ifeq ($(OS),Darwin)
     CFLAGS += -mmacosx-version-min=10.10
 else
     CFLAGS += $(shell $(PYTHONCONFIG) --cflags)
+    CFLAGS += -fPIC
 endif
 
 ifeq ($(OS),Darwin)
