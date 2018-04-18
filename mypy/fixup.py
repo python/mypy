@@ -266,7 +266,7 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
                 # Not yet: assert '.' in head, "Cannot find %s" % (name,)
                 stale = stale_info(modules)
                 stale.fallback_to_any = True
-                return stale
+                return SymbolTableNode(GDEF, stale)
             return None
         head, tail = head.rsplit('.', 1)
         rest.append(tail)
