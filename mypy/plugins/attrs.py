@@ -9,11 +9,11 @@ from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
     is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
-    PassStmt, SymbolTableNode, MDEF, JsonDict
+    PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
-    Overloaded, Instance, UnionType
+    Overloaded, Instance, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
 
@@ -65,6 +65,8 @@ class Attribute:
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
                 converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+            elif converter and isinstance(converter.node, OverloadedFuncDef):
+                converter_type = converter.node.type
             elif converter and converter.type:
                 converter_type = converter.type
 
@@ -372,8 +374,7 @@ def _get_converter_name(ctx: 'mypy.plugin.ClassDefContext',
         if isinstance(converter, RefExpr) and converter.node:
             if (isinstance(converter.node, FuncBase)
                     and converter.node.type
-                    and isinstance(converter.node.type, CallableType)
-                    and converter.node.type.arg_types):
+                    and isinstance(converter.node.type, FunctionLike)):
                 return converter.node.fullname()
             elif isinstance(converter.node, TypeInfo):
                 return converter.node.fullname()

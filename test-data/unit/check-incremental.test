@@ -3986,12 +3986,12 @@ main:2: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
 [case testAttrsIncrementalConverterType]
 from a import C
 import attr
-o = C("1", "2", "3")
-o = C(1, 2, "3")
+o = C("1", "2", "3", "4")
+o = C(1, 2, "3", 4)
 reveal_type(C)
 @attr.s
 class D(C):
-    a: str = attr.ib()
+    x: str = attr.ib()
 reveal_type(D)
 [file a.py]
 from typing import overload
@@ -3999,18 +3999,26 @@ import attr
 @attr.dataclass
 class A:
     x: str
+@overload
+def parse(x: int) -> int:
+   ...
+@overload
+def parse(x: str, y: str = '') -> int:
+   ...
+def parse(x, y): ...
 @attr.s
 class C:
-    x: complex = attr.ib(converter=complex)
-    y: int = attr.ib(converter=int)
-    z: A = attr.ib(converter=A)
+    a: complex = attr.ib(converter=complex)
+    b: int = attr.ib(converter=int)
+    c: A = attr.ib(converter=A)
+    d: int = attr.ib(converter=parse)
 [builtins fixtures/attr.pyi]
 [out1]
-main:5: error: Revealed type is 'def (x: Union[builtins.float, builtins.str], y: Union[builtins.str, builtins.bytes, builtins.int], z: builtins.str) -> a.C'
-main:9: error: Revealed type is 'def (x: Union[builtins.float, builtins.str], y: Union[builtins.str, builtins.bytes, builtins.int], z: builtins.str, a: builtins.str) -> __main__.D'
+main:5: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+main:9: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
 [out2]
-main:5: error: Revealed type is 'def (x: Union[builtins.float, builtins.str], y: Union[builtins.str, builtins.bytes, builtins.int], z: builtins.str) -> a.C'
-main:9: error: Revealed type is 'def (x: Union[builtins.float, builtins.str], y: Union[builtins.str, builtins.bytes, builtins.int], z: builtins.str, a: builtins.str) -> __main__.D'
+main:5: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+main:9: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
 
 [case testAttrsIncrementalThreeRuns]
 from a import A
