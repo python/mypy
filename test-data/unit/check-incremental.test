@@ -3996,12 +3996,6 @@ reveal_type(D)
 [file a.py]
 from typing import overload
 import attr
-class complex:
-    @overload
-    def __init__(self, re: float = 0.0, im: float = 0.0) -> None: ...
-    @overload
-    def __init__(self, s: str) -> None: ...
-    def __init__(self, a=0.0, b=0.0): pass
 @attr.dataclass
 class A:
     x: str
