@@ -37,7 +37,17 @@ from mypy.util import read_with_python_encoding
 
 class FileSystemMetaCache:
     def __init__(self, package_root: Optional[List[str]] = None) -> None:
-        self.package_root = package_root if package_root is not None else []
+        self.package_root = []
+        if package_root:
+            for root in package_root:
+                assert not os.path.isabs(root), "Package root cannot be absolute"
+                if os.altsep:
+                    root = root.replace(root, os.altsep, os.sep)
+                if root in ('.', '.' + os.sep):
+                    root = ''
+                if root and not root.endswith(os.sep):
+                    root = root + os.sep
+                self.package_root.append(root)
         self.flush()
 
     def flush(self) -> None:
@@ -58,7 +68,7 @@ class FileSystemMetaCache:
         try:
             st = os.stat(path)
         except OSError as err:
-            if isinstance(err, OSError) and self.under_package_root(path):
+            if isinstance(err, OSError) and self.init_under_package_root(path):
                 try:
                     return self._fake_init(path)
                 except OSError:
@@ -70,7 +80,7 @@ class FileSystemMetaCache:
         self.stat_cache[path] = st
         return st
 
-    def under_package_root(self, path: str) -> bool:
+    def init_under_package_root(self, path: str) -> bool:
         if not self.package_root:
             return False
         dirname, basename = os.path.split(path)
@@ -83,11 +93,16 @@ class FileSystemMetaCache:
         else:
             if not stat.S_ISDIR(st.st_mode):
                 return False
+        ok = False
         for root in self.package_root:
-            if (path.startswith(root + os.sep) or
-                root == '' or root == '.' or root == self.cwd and not os.path.isabs(path)):
-                return True
-        return False
+            if path.startswith(root):
+                if path == root + basename:
+                    # A package root itself is never a package.
+                    ok = False
+                    break
+                else:
+                    ok = True
+        return ok
 
     def _fake_init(self, path: str) -> os.stat_result:
         dirname = os.path.dirname(path) or os.curdir

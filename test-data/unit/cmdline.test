@@ -5,6 +5,9 @@
 --
 --   # cmd: mypy <options>
 --
+-- Note that # flags: --some-flag IS NOT SUPPORTED.
+-- Use # cmd: mypy --some-flag ...
+--
 -- '== Return code: <value>' is added to the output when the process return code
 -- is "nonobvious" -- that is, when it is something other than 0 if there are no
 -- messages and 1 if there are.
@@ -1128,7 +1131,6 @@ math.frobnicate()
 
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
-# flags: --follow-imports=skip
 [file mypy.ini]
 [[mypy]
 warn_unused_configs = True
@@ -1147,3 +1149,31 @@ warn_unused_configs = True
 [out]
 Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch]
 == Return code: 0
+
+[case testPackageRootEmpty]
+# cmd: mypy --package-root= a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import a.b.c
+
+[case testPackageRootNonEmpty]
+# cmd: mypy --package-root=a/ a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import b.c
+
+[case testPackageRootMultiple1]
+# cmd: mypy --package-root=. --package-root=a a/b/c.py d.py main.py
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
+[case testPackageRootMultiple2]
+# cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d

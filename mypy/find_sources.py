@@ -141,7 +141,7 @@ class SourceFinder:
             f = os.path.join(dir, '__init__' + ext)
             if self.fscache.isfile(f):
                 return f
-            if ext == '.py' and self.fscache.under_package_root(f):
+            if ext == '.py' and self.fscache.init_under_package_root(f):
                 return f
         return None
 
