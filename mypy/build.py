@@ -2306,11 +2306,16 @@ def dump_graph(graph: Graph) -> None:
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager,
-               old_graph: Optional[Graph] = None) -> Graph:
+               old_graph: Optional[Graph] = None,
+               new_modules: Optional[List[State]] = None) -> Graph:
     """Given some source files, load the full dependency graph.
 
     If an old_graph is passed in, it is used as the starting point and
     modified during graph loading.
+
+    If a new_modules is passed in, any modules that are loaded are
+    added to the list. This is an argument and not a return value
+    so that the caller can access it even if load_graph fails.
 
     As this may need to parse files, this can raise CompileError in case
     there are syntax errors.
@@ -2321,7 +2326,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.
-    new = collections.deque()  # type: Deque[State]
+    new = new_modules if new_modules is not None else []
     entry_points = set()  # type: Set[str]
     # Seed the graph with the initial root sources.
     for bs in sources:
@@ -2338,8 +2343,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         new.append(st)
         entry_points.add(bs.module)
     # Collect dependencies.  We go breadth-first.
-    while new:
-        st = new.popleft()
+    # More nodes might get added to new as we go, but that's fine.
+    for st in new:
         assert st.ancestors is not None
         # Strip out indirect dependencies.  These will be dealt with
         # when they show up as direct dependencies, and there's a
@@ -2542,14 +2547,10 @@ def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> Non
     """Finish loading everything for use in the fine-grained incremental cache"""
 
     # If we are running in fine-grained incremental mode with caching,
-    # we don't actually have much to do. We need to load all of the
-    # fine-grained dependencies and populate manager.modules with fake
-    # mypy files.
-    from mypy.nodes import UnloadedMypyFile
+    # we don't actually have much to do: just load the fine-grained
+    # deps.
     for id, state in graph.items():
         state.load_fine_grained_deps()
-        assert state.path is not None
-        manager.modules[id] = UnloadedMypyFile(state.path)
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
