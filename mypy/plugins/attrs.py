@@ -71,7 +71,7 @@ class Attribute:
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):
-                types: List[Type] = []
+                types = []  # type: List[Type]
                 for item in converter_type.items():
                     # Walk the overloads looking for methods that can accept one argument.
                     num_arg_types = len(item.arg_types)
