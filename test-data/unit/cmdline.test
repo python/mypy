@@ -1177,3 +1177,10 @@ import d
 [file main.py]
 import b.c
 import d
+
+[case testCacheMap]
+-- This just checks that a valid --cache-map triple is accepted.
+-- (Errors are too verbose to check.)
+# cmd: mypy a.py --cache-map a.py a.meta.json a.data.json 
+[file a.py]
+[out]

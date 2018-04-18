@@ -37,17 +37,9 @@ from mypy.util import read_with_python_encoding
 
 class FileSystemMetaCache:
     def __init__(self, package_root: Optional[List[str]] = None) -> None:
-        self.package_root = []
-        if package_root:
-            for root in package_root:
-                assert not os.path.isabs(root), "Package root cannot be absolute"
-                if os.altsep:
-                    root = root.replace(root, os.altsep, os.sep)
-                if root in ('.', '.' + os.sep):
-                    root = ''
-                if root and not root.endswith(os.sep):
-                    root = root + os.sep
-                self.package_root.append(root)
+        if package_root is None:
+            package_root = []
+        self.package_root = package_root
         self.flush()
 
     def flush(self) -> None:

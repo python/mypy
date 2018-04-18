@@ -4235,3 +4235,14 @@ pass
 [out2]
 [out3]
 tmp/a.py:1: note: unused 'type: ignore' comment
+
+[case testBazelFlagIgnoresFileChanges]
+-- Since the initial run wrote a cache file, the second run ignores the source
+# flags: --bazel
+from a import f
+f()
+[file a.py]
+def f(): pass
+[file a.py.2]
+[out]
+[out2]

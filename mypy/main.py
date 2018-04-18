@@ -638,16 +638,38 @@ def process_options(args: List[str],
             report_dir = val
             options.report_dirs[report_type] = report_dir
 
-    # Parse cache map.  Uses assertions for checking.
+    # Validate and normalize --package-root.
+    if options.package_root:
+        package_root = []
+        for root in options.package_root:
+            if os.path.isabs(root):
+                parse.error("Package root cannot be absolute: %r" % root)
+            if os.altsep:
+                root = root.replace(root, os.altsep, os.sep)
+            if root in ('.', '.' + os.sep):
+                root = ''
+            if root and not root.endswith(os.sep):
+                root = root + os.sep
+            package_root.append(root)
+        options.package_root = package_root
+
+    # Parse cache map.
     if special_opts.cache_map:
         n = len(special_opts.cache_map)
-        assert n % 3 == 0, "--cache-map requires one or more triples (see source)"
+        if n % 3 != 0:
+            parser.error("--cache-map requires one or more triples (see source)")
         for i in range(0, n, 3):
             source, meta_file, data_file = special_opts.cache_map[i:i + 3]
-            assert source not in options.cache_map
-            assert source.endswith('.py') or source.endswith('.pyi'), source
-            assert meta_file.endswith('.meta.json'), meta_file
-            assert data_file.endswith('.data.json'), data_file
+            if source in options.cache_map:
+                parser.error("Duplicate --cache-map source %s)" % source)
+            if not source.endswith('.py') and not source.endswith('.pyi'):
+                parser.error("Invalid --cache-map source %s (triple[0] must be *.py[i])" % source)
+            if not meta_file.endswith('.meta.json'):
+                parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
+                             meta_file)
+            if not data_file.endswith('.data.json'):
+                parser.error("Invalid --cache-map data_file %s (triple[2] must be *.data.json)" %
+                             data_file)
             options.cache_map[source] = (meta_file, data_file)
 
     # Let quick_and_dirty imply incremental.
