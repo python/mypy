@@ -80,6 +80,7 @@ class EnumCallAnalyzer:
         base = self.api.named_type_or_none(fullname)
         assert base is not None
         info = self.api.basic_new_typeinfo(name, base)
+        info.metaclass_type = info.calculate_metaclass_type()
         info.is_enum = True
         for item in items:
             var = Var(item)
