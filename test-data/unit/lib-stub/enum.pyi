@@ -1,7 +1,11 @@
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar, Union, Type, Sized, Iterator, Mapping
 
-class EnumMeta(type):
-    pass
+_T = TypeVar('_T')
+
+class EnumMeta(type, Sized):
+    def __iter__(self: Type[_T]) -> Iterator[_T]: pass
+    def __reversed__(self: Type[_T]) -> Iterator[_T]: pass
+    def __getitem__(self: Type[_T], name: str) -> _T: pass
 
 class Enum(metaclass=EnumMeta):
     def __new__(cls, value: Any) -> None: pass
@@ -16,8 +20,6 @@ class Enum(metaclass=EnumMeta):
 
 class IntEnum(int, Enum):
     value = 0  # type: int
-
-_T = TypeVar('_T')
 
 def unique(enumeration: _T) -> _T: pass
 
