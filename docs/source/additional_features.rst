@@ -84,6 +84,8 @@ Caveats/Known Issues
 * Method definitions added by mypy currently overwrite any existing method
   definitions.
 
+.. _remote-cache:
+
 Using a remote cache to speed up mypy runs
 ******************************************
 
