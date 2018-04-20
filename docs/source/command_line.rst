@@ -352,7 +352,8 @@ Here are some more useful flags:
   mode, in order to "warm" the cache.  To disable writing the cache,
   use ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul``
   (Windows).  Cache files belonging to a different mypy version are
-  ignored.
+  ignored.  This flag can be useful for controlling cache use when using
+  :ref:`remote caching <remote-cache>`.
 
 .. _quick-mode:
 
