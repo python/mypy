@@ -4,9 +4,10 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` (with fallback to ``setup.cfg``) in the
-current directory; the ``--config-file`` command-line flag can be used to
-read a different file instead (see :ref:`--config-file <config-file-flag>`).
+it uses the file ``mypy.ini`` with fallback to ``setup.cfg`` in the current
+directory, or ``.mypy.ini`` in the user home directory if none of them are
+found; the ``--config-file`` command-line flag can be used to read a different
+file instead (see :ref:`--config-file <config-file-flag>`).
 
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity.  The ``--config-file`` flag
