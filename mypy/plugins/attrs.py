@@ -70,6 +70,7 @@ class Attribute:
             elif converter and converter.type:
                 converter_type = converter.type
 
+            init_type = None
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
                 init_type = ctx.api.anal_type(converter_type.arg_types[0])
             elif isinstance(converter_type, Overloaded):
@@ -83,10 +84,11 @@ class Attribute:
                         continue
                     types.append(item.arg_types[0])
                 # Make a union of all the valid types.
-                args = UnionType.make_simplified_union(types)
-                init_type = ctx.api.anal_type(args)
-            else:
-                ctx.api.fail("Cannot determine type of converter", self.context)
+                if types:
+                    args = UnionType.make_simplified_union(types)
+                    init_type = ctx.api.anal_type(args)
+            if not init_type:
+                ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
         elif self.converter_name == '':
             # This means we had a converter but it's not of a type we can infer.

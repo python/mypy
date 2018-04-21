@@ -532,6 +532,32 @@ class C:
 
 [builtins fixtures/list.pyi]
 
+[case testAttrsUsingBadConverter]
+import attr
+from typing import overload
+@overload
+def bad_overloaded_converter(x: int, y: int) -> int:
+    ...
+@overload
+def bad_overloaded_converter(x: str, y: str) -> str:
+    ...
+def bad_overloaded_converter(x, y=7):
+    return x
+def bad_converter() -> str:
+    return ''
+@attr.dataclass
+class A:
+    bad: str = attr.ib(converter=bad_converter)
+    bad_overloaded: int = attr.ib(converter=bad_overloaded_converter)
+reveal_type(A)
+[out]
+main:15: error: Cannot determine __init__ type from converter
+main:15: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:16: error: Cannot determine __init__ type from converter
+main:16: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:17: error: Revealed type is 'def (bad: Any, bad_overloaded: Any) -> __main__.A'
+[builtins fixtures/list.pyi]
+
 [case testAttrsUsingUnsupportedConverter]
 import attr
 class Thing:
