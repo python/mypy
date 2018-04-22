@@ -1040,14 +1040,14 @@ from typing import overload, TypeVar
 AnyStr = TypeVar('AnyStr', bytes, str)
 
 @overload
-def f(x: AnyStr) -> None: pass
+def f(x: AnyStr) -> AnyStr: pass
 @overload
-def f(x: str) -> bool: pass
+def f(x: str) -> str: pass
 
 @overload
-def g(x: str) -> bool: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def g(x: str) -> str: pass # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
-def g(x: AnyStr) -> None: pass
+def g(x: AnyStr) -> AnyStr: pass
 [builtins fixtures/primitives.pyi]
 
 [case testOverlappingOverloadCounting]
