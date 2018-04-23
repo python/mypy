@@ -643,9 +643,9 @@ def process_options(args: List[str],
         package_root = []
         for root in options.package_root:
             if os.path.isabs(root):
-                parse.error("Package root cannot be absolute: %r" % root)
+                parser.error("Package root cannot be absolute: %r" % root)
             if os.altsep:
-                root = root.replace(root, os.altsep, os.sep)
+                root = root.replace(os.altsep, os.sep)
             if root in ('.', '.' + os.sep):
                 root = ''
             if root and not root.endswith(os.sep):
