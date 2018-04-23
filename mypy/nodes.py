@@ -374,12 +374,13 @@ class FuncBase(Node):
                  'unanalyzed_type',
                  'info',
                  'is_property',
-                 '_fullname')
+                 '_fullname',
+                 )
 
     def __init__(self) -> None:
         super().__init__()
         # Type signature. This is usually CallableType or Overloaded, but it can be
-        # something else for decorated functions/
+        # something else for decorated functions.
         self.type = None  # type: Optional[mypy.types.Type]
         # Original, not semantically analyzed type (used for reprocessing)
         self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
@@ -484,41 +485,25 @@ FUNCITEM_FLAGS = [
 
 
 class FuncItem(FuncBase):
-    """Base class for nodes usable as overloaded function items.
+    """Base class for nodes usable as overloaded function items."""
 
-    Attributes:
-        arguments: Note that can be None if deserialized (type is a lie!)
-        arg_names: Named of arguments
-        arg_kinds: Kinds of arguments
-        min_args: Minimum number of arguments
-        max_pos: Maximum number of positional arguments, -1 if no explicit
-            limit (*args not included)
-        body: Body of the function
-        is_overload: Is this an overload variant of function with more than
-            one overload variant?
-        is_generator: Contains a yield statement?
-        is_coroutine: Defined using 'async def' syntax?
-        is_async_generator: Is an async def generator?
-        is_awaitable_coroutine: Decorated with '@{typing,asyncio}.coroutine'?
-        is_static: Uses @staticmethod?
-        is_class: Uses @classmethod?
-        expanded: Variants of function with type variables with values expanded
-    """
-
-    __slots__ = ('arguments',
-                 'arg_names',
-                 'arg_kinds',
-                 'min_args',
-                 'max_pos',
-                 'body',
-                 'is_overload',
-                 'is_generator',
-                 'is_coroutine',
-                 'is_async_generator',
-                 'is_awaitable_coroutine',
-                 'is_static',
-                 'is_class',
-                 'expanded')
+    __slots__ = ('arguments',  # Note that can be None if deserialized (type is a lie!)
+                 'arg_names',  # Names of arguments
+                 'arg_kinds',  # Kinds of arguments
+                 'min_args',  # Minimum number of arguments
+                 'max_pos',  # Maximum number of positional arguments, -1 if no explicit
+                             # limit (*args not included)
+                 'body',  # Body of the function
+                 'is_overload',  # Is this an overload variant of function with more than
+                                 # one overload variant?
+                 'is_generator',  # Contains a yield statement?
+                 'is_coroutine',  # Defined using 'async def' syntax?
+                 'is_async_generator',  # Is an async def generator?
+                 'is_awaitable_coroutine',  # Decorated with '@{typing,asyncio}.coroutine'?
+                 'is_static',  # Uses @staticmethod?
+                 'is_class',  # Uses @classmethod?
+                 'expanded',  # Variants of function with type variables with values expanded
+                 )
 
     def __init__(self,
                  arguments: List[Argument],
@@ -574,7 +559,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  'is_conditional',
                  'is_abstract',
                  'is_property',
-                 'original_def')
+                 'original_def',
+                 )
 
     def __init__(self,
                  name: str,              # Function name
@@ -717,7 +703,8 @@ class Var(SymbolNode):
                  'is_settable_property',
                  'is_classvar',
                  'is_abstract_var',
-                 'is_suppressed_import')
+                 'is_suppressed_import',
+                 )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
         super().__init__()
@@ -2532,7 +2519,8 @@ class SymbolTableNode:
                  'normalized',
                  'implicit',
                  'is_aliasing',
-                 'alias_name')
+                 'alias_name',
+                 )
 
     # TODO: This is a mess. Refactor!
     # TODO: Better describe how type aliases work.

@@ -203,14 +203,20 @@ def correct_relative_import(cur_mod_id: str,
 
 
 def replace_object_state(new: object, old: object) -> None:
-    # Copy state of old node to the new node. This varies depending on whether
-    # there is __slots__ and/or __dict__.
+    """Copy state of old node to the new node.
+
+    This handles cases where there is __slots__ and/or __dict__.
+
+    Assume that both objects have the same __class__.
+    """
     if hasattr(old, '__dict__'):
         new.__dict__ = old.__dict__
     if hasattr(old, '__slots__'):
-        # Use type.mro(...) since some classes override 'mro' with something different.
-        for base in type.mro(type(old)):
+        # Use __mro__ since some classes override 'mro' with something different.
+        for base in type(old).__mro__:
             if '__slots__' in base.__dict__:
                 for attr in getattr(base, '__slots__'):
                     if hasattr(old, attr):
                         setattr(new, attr, getattr(old, attr))
+                    elif hasattr(new, attr):
+                        delattr(new, attr)
