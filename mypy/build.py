@@ -58,7 +58,7 @@ from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache, FileSystemMetaCache
-from mypy.typestate import State
+from mypy.typestate import TypeState
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -266,7 +266,7 @@ def _build(sources: List[BuildSource],
                            fscache=fscache)
 
     try:
-        State.reset_all()
+        TypeState.reset_all()
         graph = dispatch(sources, manager)
         return BuildResult(manager, graph)
     finally:

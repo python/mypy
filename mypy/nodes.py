@@ -14,7 +14,7 @@ if MYPY:
 import mypy.strconv
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-from mypy.typestate import State
+from mypy.typestate import TypeState
 
 
 class Context:
@@ -2058,7 +2058,7 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
-        State.add_caches(self)
+        TypeState.add_caches(self)
         self.add_type_vars()
         self.metadata = {}
 
@@ -2096,7 +2096,7 @@ class TypeInfo(SymbolNode):
 
     def reset_subtype_cache(self) -> None:
         for item in self.mro:
-            State.reset_caches(item)
+            TypeState.reset_caches(item)
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)

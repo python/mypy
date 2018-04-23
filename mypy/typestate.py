@@ -12,7 +12,7 @@ if MYPY:
     from mypy.types import Instance
 
 
-class State:
+class TypeState:
     # 'caches' and 'caches_proper' are subtype caches, implemented as sets of pairs
     # of (subtype, supertype), where supertypes are instances of given TypeInfo.
     # We need the caches, since subtype checks for structural types are very slow.
@@ -20,7 +20,7 @@ class State:
     caches_proper = {}  # type: ClassVar[Dict[TypeInfo, Set[Tuple[Instance, Instance]]]]
 
     @classmethod
-    def reset_all(cls):
+    def reset_all(cls) -> None:
         cls.caches = {}
         cls.caches_proper = {}
 

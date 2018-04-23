@@ -49,7 +49,7 @@ from mypy.nodes import (
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
-from mypy.typestate import State
+from mypy.typestate import TypeState
 
 
 def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
@@ -102,7 +102,7 @@ class NodeStripVisitor(TraverserVisitor):
         info.tuple_type = None
         info.typeddict_type = None
         info.tuple_type = None
-        State.reset_caches(info)
+        TypeState.reset_caches(info)
         info.declared_metaclass = None
         info.metaclass_type = None
 
