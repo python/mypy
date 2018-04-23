@@ -20,6 +20,11 @@ class State:
     caches_proper = {}  # type: ClassVar[Dict[TypeInfo, Set[Tuple[Instance, Instance]]]]
 
     @classmethod
+    def reset_all(cls):
+        cls.caches = {}
+        cls.caches_proper = {}
+
+    @classmethod
     def add_caches(cls, info: 'TypeInfo') -> None:
         cls.caches[info] = set()
         cls.caches_proper[info] = set()
