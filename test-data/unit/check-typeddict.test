@@ -1249,7 +1249,7 @@ b: B
 c: C
 f(a)
 f(b)
-f(c) # E: Argument 1 to "f" has incompatible type "C"; expected "A"
+f(c) # E: Argument 1 to "f" has incompatible type "C"; expected one of "A", "B" based on available overloads
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1268,8 +1268,8 @@ def f(x): pass
 
 a: A
 b: B
-reveal_type(f(a)) # E: Revealed type is 'Any'
-reveal_type(f(b)) # E: Revealed type is 'Any'
+reveal_type(f(a)) # E: Revealed type is 'builtins.int'
+reveal_type(f(b)) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 

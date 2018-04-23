@@ -1801,8 +1801,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 expr = expr.expr
             types, declared_types = zip(*items)
             self.binder.assign_type(expr,
-                                    UnionType.make_simplified_union(types),
-                                    UnionType.make_simplified_union(declared_types),
+                                    UnionType.make_simplified_union(list(types)),
+                                    UnionType.make_simplified_union(list(declared_types)),
                                     False)
         for union, lv in zip(union_types, self.flatten_lvalues(lvalues)):
             # Properly store the inferred types.
