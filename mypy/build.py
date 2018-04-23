@@ -83,26 +83,6 @@ def getmtime(name: str) -> int:
     return int(os.path.getmtime(name))
 
 
-def relpath(path: str) -> str:
-    """Returns the path relative to the current working directory."""
-    if not path or path[0] not in SEPARATORS:
-        # Relative path, or has drive letter prefix (C: etc.) on Windows.
-        assert not os.path.isabs(path), "%s is neither rel nor abs" % (path,)
-        return path
-    if os.altsep and os.altsep in path:
-        # So the rest of this code doesn't need to handle altsep on Windows.
-        path = path.replace(os.altsep, os.sep)
-    cwd = os.getcwd()
-    for i in range(10):
-        if path.startswith(cwd + os.sep):
-            # The .lstrip(os.sep) call strips duplicate leading slashes.
-            return '../' * i + path[len(cwd) + 1:].lstrip(os.sep)
-        cwd = os.path.dirname(cwd)
-        if all(c == os.sep for c in cwd):
-            break
-    return path
-
-
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
 class BuildResult:
     """The result of a successful build.
@@ -1161,7 +1141,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             manager.log('Metadata abandoned for {}: deps cache is modified'.format(id))
             return None
 
-    path = relpath(path) if bazel else os.path.abspath(path)
+    path = os.path.relpath(path) if bazel else os.path.abspath(path)
     try:
         st = manager.get_stat(path)
     except OSError:
@@ -1287,7 +1267,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     else:
         # For Bazel, make all paths relative (else Bazel caching is thwarted).
         # And also patch tree.path, which might have been made absolute earlier.
-        tree.path = path = relpath(path)
+        tree.path = path = os.path.relpath(path)
     meta_json, data_json, deps_json = get_cache_names(id, path, manager)
     manager.log('Writing {} {} {} {} {}'.format(
         id, path, meta_json, data_json, deps_json))
@@ -1390,7 +1370,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     This avoids inconsistent states with cache files from different mypy runs,
     see #4043 for an example.
     """
-    path = relpath(path) if manager.options.bazel else os.path.abspath(path)
+    path = os.path.relpath(path) if manager.options.bazel else os.path.abspath(path)
     cache_paths = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
 
