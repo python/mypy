@@ -263,7 +263,10 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
     while True:
         if '.' not in head:
             if not quick_and_dirty:
-                assert '.' in head, "Cannot find %s" % (name,)
+                # Not yet: assert '.' in head, "Cannot find %s" % (name,)
+                stale = stale_info(modules)
+                stale.fallback_to_any = True
+                return SymbolTableNode(GDEF, stale)
             return None
         head, tail = head.rsplit('.', 1)
         rest.append(tail)
