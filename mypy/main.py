@@ -644,11 +644,12 @@ def process_options(args: List[str],
         for root in options.package_root:
             if os.path.isabs(root):
                 parser.error("Package root cannot be absolute: %r" % root)
-            root = root and os.path.relpath(root)  # Normalizes and removes drive on Windows
-            if root in ('.', '.' + os.sep):
-                root = ''
-            if root and not root.endswith(os.sep):
-                root = root + os.sep
+            drive, root = os.path.splitdrive(root)  # Ignore Windows drive name
+            if root:
+                if root in (os.curdir, os.curdir + os.sep):
+                    root = ''
+                elif not root.endswith(os.sep):
+                    root = root + os.sep
             package_root.append(root)
         options.package_root = package_root
 
