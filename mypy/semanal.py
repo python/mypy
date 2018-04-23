@@ -1826,6 +1826,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 lval.kind = LDEF
                 lval.fullname = lval.name
                 self.add_local(v, lval)
+                if lval.name == '_':
+                    # Special case for assignment to local named '_': always infer 'Any'.
+                    typ = AnyType(TypeOfAny.special_form)
+                    self.store_declared_types(lval, typ)
             elif not self.is_func_scope() and (self.type and
                                                lval.name not in self.type.names):
                 # Define a new attribute within class body.

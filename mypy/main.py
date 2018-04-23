@@ -3,7 +3,6 @@
 import argparse
 import ast
 import configparser
-import fnmatch
 import os
 import re
 import subprocess
@@ -94,7 +93,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if options.warn_unused_configs and options.unused_configs:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
-               ", ".join("[mypy-%s]" % glob for glob in options.unused_configs.values())),
+               ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
+                         if glob in options.unused_configs)),
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
@@ -242,7 +242,7 @@ def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
         return ast.literal_eval(check)
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise PythonExecutableInferenceError(
-            'Error: invalid Python executable {}'.format(python_executable))
+            'invalid Python executable {}'.format(python_executable))
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
@@ -256,7 +256,7 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
         return sys_exe
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise PythonExecutableInferenceError(
-            'Error: failed to find a Python executable matching version {},'
+            'failed to find a Python executable matching version {},'
             ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
@@ -739,9 +739,14 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                 glob = glob.replace(os.sep, '.')
                 if os.altsep:
                     glob = glob.replace(os.altsep, '.')
-                pattern = re.compile(fnmatch.translate(glob))
-                options.per_module_options[pattern] = updates
-                options.unused_configs[pattern] = glob
+
+                if (any(c in glob for c in '?[]!') or
+                        ('*' in glob and (not glob.endswith('.*') or '*' in glob[:-2]))):
+                    print("%s: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'"
+                          % prefix,
+                          file=sys.stderr)
+                else:
+                    options.per_module_options[glob] = updates
 
 
 def parse_section(prefix: str, template: Options,

@@ -352,7 +352,8 @@ Here are some more useful flags:
   mode, in order to "warm" the cache.  To disable writing the cache,
   use ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul``
   (Windows).  Cache files belonging to a different mypy version are
-  ignored.
+  ignored.  This flag can be useful for controlling cache use when using
+  :ref:`remote caching <remote-cache>`.
 
 .. _quick-mode:
 
@@ -392,6 +393,8 @@ Here are some more useful flags:
   run under the the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
+
+.. _always-true:
 
 - ``--always-true NAME`` will treat all variables named ``NAME`` as
   compile-time constants that are always true.  May be repeated.

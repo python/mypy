@@ -308,3 +308,27 @@ class C:
         pass
 [out]
 main:2: error: The return type of "__init__" must be None
+
+-- WritesCache signals to testcheck to do the cache validation
+[case testWritesCache]
+import a
+import d
+[file a.py]
+import b
+import c
+[file b.py]
+[file c.py]
+[file d.py]
+
+[case testWritesCacheErrors]
+import a
+import d
+[file a.py]
+import b
+import c
+[file b.py]
+[file c.py]
+[file d.py]
+import e
+[file e.py]
+1+'no'  # E: Unsupported operand types for + ("int" and "str")

@@ -287,6 +287,7 @@ class TypeOfAny(Enum):
     from_error = 'from_error'
     # Is this a type that can't be represented in mypy's type system? For instance, type of
     # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    # Also used for variables named '_'.
     special_form = 'special_form'
     # Does this Any come from interaction with another Any?
     from_another_any = 'from_another_any'
