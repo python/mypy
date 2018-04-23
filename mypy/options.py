@@ -45,7 +45,7 @@ class Options:
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                                {"quick_and_dirty", "platform", "cache_fine_grained", "bazel"})
+                                {"quick_and_dirty", "platform", "bazel"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
