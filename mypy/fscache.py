@@ -178,7 +178,8 @@ class FileSystemMetaCache:
 
 
 class FileSystemCache(FileSystemMetaCache):
-    def __init__(self, pyversion: Tuple[int, int], package_root: Optional[List[str]] = None) -> None:
+    def __init__(self, pyversion: Tuple[int, int],
+                 package_root: Optional[List[str]] = None) -> None:
         super().__init__(package_root=package_root)
         self.pyversion = pyversion
 
