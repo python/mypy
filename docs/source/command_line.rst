@@ -352,7 +352,8 @@ Here are some more useful flags:
   mode, in order to "warm" the cache.  To disable writing the cache,
   use ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul``
   (Windows).  Cache files belonging to a different mypy version are
-  ignored.
+  ignored.  This flag can be useful for controlling cache use when using
+  :ref:`remote caching <remote-cache>`.
 
 .. _quick-mode:
 
@@ -428,9 +429,10 @@ Here are some more useful flags:
 
 - ``--config-file CONFIG_FILE`` causes configuration settings to be
   read from the given file.  By default settings are read from ``mypy.ini``
-  or ``setup.cfg`` in the current directory.  Settings override mypy's
-  built-in defaults and command line flags can override settings.
-  See :ref:`config-file` for the syntax of configuration files.
+  or ``setup.cfg`` in the current directory, or ``.mypy.ini`` in the user home
+  directory.  Settings override mypy's built-in defaults and command line flags
+  can override settings. See :ref:`config-file` for the syntax of configuration
+  files.
 
 - ``--junit-xml JUNIT_XML`` will make mypy generate a JUnit XML test
   result document with type checking results. This can make it easier
