@@ -57,12 +57,12 @@ MypyFile:1(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
-            x* [m])
+            x*)
           IntExpr(1))
         AssignmentStmt:4(
           MemberExpr:4(
             NameExpr(self [l])
-            y* [m])
+            y*)
           IntExpr(2))))))
 
 [case testMemberAssignmentViaSelfOutsideInit]
@@ -83,7 +83,7 @@ MypyFile:1(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
-            x* [m])
+            x*)
           IntExpr(1)))))
   FuncDef:4(
     __init__
@@ -151,7 +151,7 @@ MypyFile:1(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(x [l])
-            y* [m])
+            y*)
           IntExpr(1))))))
 
 [case testAssignmentAfterAttributeInit]
@@ -171,7 +171,7 @@ MypyFile:1(
         AssignmentStmt:3(
           MemberExpr:3(
             NameExpr(self [l])
-            x* [m])
+            x*)
           IntExpr(1))
         AssignmentStmt:4(
           MemberExpr:4(

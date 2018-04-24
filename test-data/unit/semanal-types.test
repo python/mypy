@@ -73,7 +73,7 @@ MypyFile:1(
         AssignmentStmt:4(
           MemberExpr:4(
             NameExpr(self [l])
-            x [m])
+            x)
           NameExpr(None [builtins.None])
           builtins.int)))))
 

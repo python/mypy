@@ -70,14 +70,8 @@ def f(a: Any) -> None:
 [file a.py]
 class A: pass
 [out]
-<m.N.__annotations__> -> m
-<m.N.__doc__> -> m
 <m.N.__init__> -> m.f
 <m.N.__new__> -> m.f
-<m.N._field_defaults> -> m
-<m.N._field_types> -> m
-<m.N._fields> -> m
-<m.N._source> -> m
 <m.N.a> -> m.f
 <m.N> -> m.N, m.f
 <a.A> -> <m.N.a>, <m.N>, m, m.N
