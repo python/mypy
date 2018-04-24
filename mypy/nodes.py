@@ -1983,12 +1983,7 @@ class TypeInfo(SymbolNode):
     # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
     # -> infer_constraints.
     inferring = None  # type: List[mypy.types.Instance]
-    # '_cache' and '_cache_proper' are subtype caches, implemented as sets of pairs
-    # of (subtype, supertype), where supertypes are instances of given TypeInfo.
-    # We need the caches, since subtype checks for structural types are very slow.
-    _cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
-    _cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
-    # 'inferring' and 'assuming' can't be also made sets, since we need to use
+    # 'inferring' and 'assuming' can't be made sets, since we need to use
     # is_same_type to correctly treat unions.
 
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
@@ -2062,8 +2057,6 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
-        self._cache = set()
-        self._cache_proper = set()
         self.add_type_vars()
         self.metadata = {}
 
@@ -2099,26 +2092,6 @@ class TypeInfo(SymbolNode):
                 return cls
         return None
 
-    def record_subtype_cache_entry(self, left: 'mypy.types.Instance',
-                                   right: 'mypy.types.Instance',
-                                   proper_subtype: bool = False) -> None:
-        if proper_subtype:
-            self._cache_proper.add((left, right))
-        else:
-            self._cache.add((left, right))
-
-    def is_cached_subtype_check(self, left: 'mypy.types.Instance',
-                                right: 'mypy.types.Instance',
-                                proper_subtype: bool = False) -> bool:
-        if not proper_subtype:
-            return (left, right) in self._cache
-        return (left, right) in self._cache_proper
-
-    def reset_subtype_cache(self) -> None:
-        for item in self.mro:
-            item._cache = set()
-            item._cache_proper = set()
-
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
@@ -2143,18 +2116,6 @@ class TypeInfo(SymbolNode):
                 else:
                     return None
         return None
-
-    def calculate_mro(self) -> None:
-        """Calculate and set mro (method resolution order).
-
-        Raise MroError if cannot determine mro.
-        """
-        mro = linearize_hierarchy(self)
-        assert mro, "Could not produce a MRO at all for %s" % (self,)
-        self.mro = mro
-        # The property of falling back to Any is inherited.
-        self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
-        self.reset_subtype_cache()
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass
@@ -2562,42 +2523,6 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             if key != '.class':
                 st[key] = SymbolTableNode.deserialize(value)
         return st
-
-
-class MroError(Exception):
-    """Raised if a consistent mro cannot be determined for a class."""
-
-
-def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
-    # TODO describe
-    if info.mro:
-        return info.mro
-    bases = info.direct_base_classes()
-    lin_bases = []
-    for base in bases:
-        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
-        lin_bases.append(linearize_hierarchy(base))
-    lin_bases.append(bases)
-    return [info] + merge(lin_bases)
-
-
-def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
-    seqs = [s[:] for s in seqs]
-    result = []  # type: List[TypeInfo]
-    while True:
-        seqs = [s for s in seqs if s]
-        if not seqs:
-            return result
-        for seq in seqs:
-            head = seq[0]
-            if not [s for s in seqs if head in s[1:]]:
-                break
-        else:
-            raise MroError()
-        result.append(head)
-        for s in seqs:
-            if s[0] is head:
-                del s[0]
 
 
 def get_flags(node: Node, names: List[str]) -> List[str]:

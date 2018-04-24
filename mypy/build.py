@@ -58,6 +58,7 @@ from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache, FileSystemMetaCache
+from mypy.typestate import TypeState
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -264,8 +265,11 @@ def _build(sources: List[BuildSource],
                            flush_errors=flush_errors,
                            fscache=fscache)
 
+    TypeState.reset_all_subtype_caches()
     try:
         graph = dispatch(sources, manager)
+        if not options.fine_grained_incremental:
+            TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %

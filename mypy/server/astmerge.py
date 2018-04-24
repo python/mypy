@@ -61,6 +61,7 @@ from mypy.types import (
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType
 )
 from mypy.util import get_prefix
+from mypy.typestate import TypeState
 
 
 def merge_asts(old: MypyFile, old_symbols: SymbolTable,
@@ -284,7 +285,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             # The subclass relationships may change, so reset all caches relevant to the
             # old MRO.
             new = cast(TypeInfo, self.replacements[node])
-            new.reset_subtype_cache()
+            TypeState.reset_all_subtype_caches_for(new)
         return self.fixup(node)
 
     def fixup_type(self, typ: Optional[Type]) -> None:
