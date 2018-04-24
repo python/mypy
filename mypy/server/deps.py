@@ -760,8 +760,9 @@ def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
 
 
 def user_bases(info: TypeInfo) -> List[TypeInfo]:
+    # TODO: skip everything from typeshed?
     return [base for base in info.mro[1:]
-            if base.module_name not in ('builtins', 'typing')]
+            if base.module_name not in ('builtins', 'typing', 'enum')]
 
 
 def dump_all_dependencies(modules: Dict[str, MypyFile],

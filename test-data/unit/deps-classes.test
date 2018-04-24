@@ -171,7 +171,7 @@ def g() -> None:
 [file m.py]
 class B: pass
 [out]
-<m.A.X> -> m, m.g
+<m.A.X> -> m.g
 -- The __init__ is superfluous but benign
 <m.A.__init__> -> m.g
 <m.A.__new__> -> m.g
