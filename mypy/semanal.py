@@ -995,7 +995,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn.info._fullname = defn.info.name()
         if self.is_func_scope() or self.type:
             kind = MDEF
-            if self.is_nested_func_scope():
+            if self.is_nested_within_func_scope():
                 kind = LDEF
             node = SymbolTableNode(kind, defn.info)
             self.add_symbol(defn.name, node, defn)
@@ -3109,8 +3109,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None
 
-    # Are we underneath a function scope, even if we are in a nested class also
-    def is_nested_func_scope(self) -> bool:
+    def is_nested_within_func_scope(self) -> bool:
+        """Are we underneath a function scope, even if we are in a nested class also"""
         return any(l is not None for l in self.locals)
 
     def is_class_scope(self) -> bool:
