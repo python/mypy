@@ -4266,6 +4266,23 @@ cache_fine_grained = True
 [rechecked a, builtins]
 [stale a, builtins]
 
+[case testIncrementalPackageNameOverload]
+# cmd: mypy -m main a
+# flags: --follow-imports=skip
+[file main.py]
+from a import x
+x.foo()
+[file a/__init__.py]
+pass
+[file a/__init__.py.2]
+x = 10
+[file a/x.py]
+def foo() -> None:
+    pass
+[out]
+[out2]
+tmp/main.py:2: error: "int" has no attribute "foo"
+
 [case testBazelFlagIgnoresFileChanges]
 -- Since the initial run wrote a cache file, the second run ignores the source
 # flags: --bazel
