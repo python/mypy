@@ -640,13 +640,25 @@ def process_options(args: List[str],
 
     # Validate and normalize --package-root.
     if options.package_root:
+        # Do some stuff with drive letters to make Windows happy (esp. tests).
+        current_drive, _ = os.path.splitdrive(os.getcwd())
+        dot = os.curdir
+        dotslash = os.curdir + os.sep
+        dotdotslash = os.pardir + os.sep
+        trivial_paths = {dot, dotslash}
         package_root = []
         for root in options.package_root:
             if os.path.isabs(root):
                 parser.error("Package root cannot be absolute: %r" % root)
-            drive, root = os.path.splitdrive(root)  # Ignore Windows drive name
+            drive, root = os.path.splitdrive(root)
+            if drive != current_drive:
+                parser.error("Package root must be on current drive: %r" % (drive + root))
+            # Empty package root is always okay.
             if root:
-                if root in (os.curdir, os.curdir + os.sep):
+                root = os.path.relpath(root)  # Normalize the heck out of it.
+                if root.startswith(dotdotslash):
+                    parser.error("Package root cannot be above current directory: %r" % root)
+                if root in trivial_paths:
                     root = ''
                 elif not root.endswith(os.sep):
                     root = root + os.sep
