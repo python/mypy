@@ -28,11 +28,11 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+import functools
 import hashlib
 import os
 import stat
 from typing import Dict, List, Optional, Set, Tuple
-from mypy.util import read_with_python_encoding
 
 
 class FileSystemMetaCache:
@@ -178,20 +178,19 @@ class FileSystemMetaCache:
         return True
 
 
+# TODO: Merge FileSystemMetaCache back into this?
 class FileSystemCache(FileSystemMetaCache):
-    def __init__(self, pyversion: Tuple[int, int],
-                 package_root: Optional[List[str]] = None) -> None:
+    def __init__(self, package_root: Optional[List[str]] = None) -> None:
         super().__init__(package_root=package_root)
-        self.pyversion = pyversion
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         super().flush()
-        self.read_cache = {}  # type: Dict[str, str]
+        self.read_cache = {}  # type: Dict[str, bytes]
         self.read_error_cache = {}  # type: Dict[str, Exception]
         self.hash_cache = {}  # type: Dict[str, str]
 
-    def read_with_python_encoding(self, path: str) -> str:
+    def read(self, path: str) -> bytes:
         if path in self.read_cache:
             return self.read_cache[path]
         if path in self.read_error_cache:
@@ -200,23 +199,26 @@ class FileSystemCache(FileSystemMetaCache):
         # Need to stat first so that the contents of file are from no
         # earlier instant than the mtime reported by self.stat().
         self.stat(path)
+
         if (os.path.basename(path) == '__init__.py'
                 and os.path.dirname(path) in self.fake_package_cache):
-            data = ''
-            md5hash = hashlib.md5(b'').hexdigest()
+            data = b''
         else:
             try:
-                data, md5hash = read_with_python_encoding(path, self.pyversion)
+                with open(path, 'rb') as f:
+                    data = f.read()
             except Exception as err:
                 self.read_error_cache[path] = err
                 raise
+
+        md5hash = hashlib.md5(data).hexdigest()
         self.read_cache[path] = data
         self.hash_cache[path] = md5hash
         return data
 
     def md5(self, path: str) -> str:
         if path not in self.hash_cache:
-            self.read_with_python_encoding(path)
+            self.read(path)
         return self.hash_cache[path]
 
 

@@ -44,7 +44,7 @@ from mypy.subtypes import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
-from mypy.semanal import set_callable_name, refers_to_fullname
+from mypy.semanal import set_callable_name, refers_to_fullname, calculate_mro
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
@@ -2736,7 +2736,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
         cdef.info = info
         info.bases = [typ]
-        info.calculate_mro()
+        calculate_mro(info)
         info.calculate_metaclass_type()
 
         # Build up a fake FuncDef so we can populate the symbol table.

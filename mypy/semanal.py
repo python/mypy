@@ -50,7 +50,7 @@ from mypy.nodes import (
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
@@ -89,6 +89,7 @@ from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NA
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
+from mypy.typestate import TypeState
 
 
 T = TypeVar('T')
@@ -3271,11 +3272,60 @@ def refers_to_class_or_function(node: Expression) -> bool:
 
 def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) -> None:
     try:
-        defn.info.calculate_mro()
+        calculate_mro(defn.info)
     except MroError:
         fail("Cannot determine consistent method resolution order "
              '(MRO) for "%s"' % defn.name, defn)
         defn.info.mro = []
+
+
+def calculate_mro(info: TypeInfo) -> None:
+    """Calculate and set mro (method resolution order).
+
+    Raise MroError if cannot determine mro.
+    """
+    mro = linearize_hierarchy(info)
+    assert mro, "Could not produce a MRO at all for %s" % (info,)
+    info.mro = mro
+    # The property of falling back to Any is inherited.
+    info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in info.mro)
+    TypeState.reset_all_subtype_caches_for(info)
+
+
+class MroError(Exception):
+    """Raised if a consistent mro cannot be determined for a class."""
+
+
+def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
+    # TODO describe
+    if info.mro:
+        return info.mro
+    bases = info.direct_base_classes()
+    lin_bases = []
+    for base in bases:
+        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
+        lin_bases.append(linearize_hierarchy(base))
+    lin_bases.append(bases)
+    return [info] + merge(lin_bases)
+
+
+def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
+    seqs = [s[:] for s in seqs]
+    result = []  # type: List[TypeInfo]
+    while True:
+        seqs = [s for s in seqs if s]
+        if not seqs:
+            return result
+        for seq in seqs:
+            head = seq[0]
+            if not [s for s in seqs if head in s[1:]]:
+                break
+        else:
+            raise MroError()
+        result.append(head)
+        for s in seqs:
+            if s[0] is head:
+                del s[0]
 
 
 def find_duplicate(list: List[T]) -> Optional[T]:

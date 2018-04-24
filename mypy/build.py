@@ -44,7 +44,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError
+from mypy.util import DecodeError, decode_python_encoding
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -58,6 +58,7 @@ from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache, FileSystemMetaCache
+from mypy.typestate import TypeState
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -211,7 +212,7 @@ def _build(sources: List[BuildSource],
     gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
-    fscache = fscache or FileSystemCache(options.python_version, package_root=options.package_root)
+    fscache = fscache or FileSystemCache(package_root=options.package_root)
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,
@@ -275,8 +276,11 @@ def _build(sources: List[BuildSource],
                            flush_errors=flush_errors,
                            fscache=fscache)
 
+    TypeState.reset_all_subtype_caches()
     try:
         graph = dispatch(sources, manager)
+        if not options.fine_grained_incremental:
+            TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
@@ -1160,7 +1164,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     fine_grained_cache = manager.use_fine_grained_cache()
 
     size = st.st_size
-    if size != meta.size and not (bazel or fine_grained_cache):
+    if size != meta.size and not bazel and not fine_grained_cache:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
@@ -1830,7 +1834,8 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = manager.fscache.read_with_python_encoding(path)
+                    source = decode_python_encoding(manager.fscache.read(path),
+                                                    manager.options.python_version)
                     self.source_hash = manager.fscache.md5(path)
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
