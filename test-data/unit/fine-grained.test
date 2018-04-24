@@ -5800,3 +5800,31 @@ class M(type):
 [out]
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
+
+[case testYieldFrom]
+from typing import Iterator
+from a import f
+
+def g() -> Iterator[int]:
+    a = "string"
+    a = yield from f()
+
+[file a.py]
+from typing import Generator
+
+def f() -> Generator[int, None, str]:
+    yield 5
+    return "ham"
+
+[file a.py.2]
+from typing import Generator
+
+class A: pass
+
+def f() -> Generator[int, None, A]:
+    yield 5
+    return A()
+
+[out]
+==
+main:6: error: Incompatible types in assignment (expression has type "A", variable has type "str")
