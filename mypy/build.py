@@ -268,7 +268,7 @@ def _build(sources: List[BuildSource],
     TypeState.reset_all_subtype_caches()
     try:
         graph = dispatch(sources, manager)
-        if not options.cache_fine_grained or options.fine_grained_incremental:
+        if not options.fine_grained_incremental:
             TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:

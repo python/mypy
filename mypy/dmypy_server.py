@@ -153,7 +153,7 @@ class Server:
                         conn, addr = sock.accept()
                     except socket.timeout:
                         print("Exiting due to inactivity.")
-                        TypeState.reset_all_subtype_caches()
+                        self.free_global_state()
                         sys.exit(0)
                     try:
                         data = receive(conn)
@@ -184,7 +184,7 @@ class Server:
                     conn.close()
                     if command == 'stop':
                         sock.close()
-                        TypeState.reset_all_subtype_caches()
+                        self.free_global_state()
                         sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)
@@ -193,6 +193,9 @@ class Server:
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)  # type: ignore
+
+    def free_global_state(self) -> None:
+        TypeState.reset_all_subtype_caches()
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""

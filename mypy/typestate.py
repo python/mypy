@@ -8,8 +8,8 @@ from typing import Dict, Set, Tuple
 MYPY = False
 if MYPY:
     from typing import ClassVar
-    from mypy.nodes import TypeInfo
-    from mypy.types import Instance
+from mypy.nodes import TypeInfo
+from mypy.types import Instance
 
 
 class TypeState:
@@ -36,29 +36,29 @@ class TypeState:
         cls._subtype_caches_proper = {}
 
     @classmethod
-    def reset_subtype_caches_for(cls, info: 'TypeInfo') -> None:
+    def reset_subtype_caches_for(cls, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo."""
         cls._subtype_caches.setdefault(info, set()).clear()
         cls._subtype_caches_proper.setdefault(info, set()).clear()
 
     @classmethod
-    def reset_all_subtype_caches_for(cls, info: 'TypeInfo') -> None:
+    def reset_all_subtype_caches_for(cls, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo and its MRO."""
         for item in info.mro:
             cls.reset_subtype_caches_for(item)
 
     @classmethod
-    def is_cached_subtype_check(cls, left: 'Instance', right: 'Instance') -> bool:
+    def is_cached_subtype_check(cls, left: Instance, right: Instance) -> bool:
         return (left, right) in cls._subtype_caches.setdefault(right.type, set())
 
     @classmethod
-    def is_cached_proper_subtype_check(cls, left: 'Instance', right: 'Instance') -> bool:
+    def is_cached_proper_subtype_check(cls, left: Instance, right: Instance) -> bool:
         return (left, right) in cls._subtype_caches_proper.setdefault(right.type, set())
 
     @classmethod
-    def record_subtype_cache_entry(cls, left: 'Instance', right: 'Instance') -> None:
+    def record_subtype_cache_entry(cls, left: Instance, right: Instance) -> None:
         cls._subtype_caches.setdefault(right.type, set()).add((left, right))
 
     @classmethod
-    def record_proper_subtype_cache_entry(cls, left: 'Instance', right: 'Instance') -> None:
+    def record_proper_subtype_cache_entry(cls, left: Instance, right: Instance) -> None:
         cls._subtype_caches_proper.setdefault(right.type, set()).add((left, right))
