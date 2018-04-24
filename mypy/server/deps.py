@@ -427,8 +427,12 @@ class DependencyVisitor(TraverserVisitor):
     def visit_with_stmt(self, o: WithStmt) -> None:
         super().visit_with_stmt(o)
         for e in o.expr:
-            self.add_attribute_dependency_for_expr(e, '__enter__')
-            self.add_attribute_dependency_for_expr(e, '__exit__')
+            if not o.is_async:
+                self.add_attribute_dependency_for_expr(e, '__enter__')
+                self.add_attribute_dependency_for_expr(e, '__exit__')
+            else:
+                self.add_attribute_dependency_for_expr(e, '__aenter__')
+                self.add_attribute_dependency_for_expr(e, '__aexit__')
         if o.target_type:
             self.add_type_dependencies(o.target_type)
 

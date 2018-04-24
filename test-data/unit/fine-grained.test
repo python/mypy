@@ -5883,3 +5883,40 @@ class E:
 main:6: error: Incompatible return value type (got "str", expected "int")
 ==
 main:6: error: Incompatible return value type (got "object", expected "int")
+
+[case testAsyncWith2-skip-cache]
+from a import C
+
+async def f() -> int:
+    async with C() as x:
+        return x
+
+[file a.py]
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.2]
+class C:
+    async def __aenter__(self) -> str: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.3]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.4]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "str", expected "int")
+==
+==
+main:4: error: "C" has no attribute "__aexit__"
