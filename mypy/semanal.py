@@ -1913,7 +1913,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     v.is_ready = False
                     lval.def_var = v
                     lval.node = v
-                    lval.kind = MDEF
+                    # TODO: should we also set lval.kind = MDEF?
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
         self.check_lvalue_validity(lval.node, lval)
 

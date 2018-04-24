@@ -802,6 +802,12 @@ class P(NamedTuple):
 class I: pass
 [out]
 <m.A> -> m
+<m.P.__annotations__> -> m
+<m.P.__doc__> -> m
+<m.P._field_defaults> -> m
+<m.P._field_types> -> m
+<m.P._fields> -> m
+<m.P._source> -> m
 <m.P> -> m.P
 <mod.I.__init__> -> m
 <mod.I.__new__> -> m

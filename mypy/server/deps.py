@@ -239,8 +239,8 @@ class DependencyVisitor(TraverserVisitor):
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
-                # Recheck Liskov if needed
-                if node.node.is_initialized_in_class:
+                # Recheck Liskov if needed, self definitions are checked in the defining method
+                if node.node.is_initialized_in_class and info.bases:
                     self.add_dependency(make_trigger(info.fullname() + '.' + name))
                 for base_info in non_trivial_bases(info):
                     # If the type of an attribute changes in a base class, we make references
@@ -360,7 +360,7 @@ class DependencyVisitor(TraverserVisitor):
                 node = lvalue.node
                 if isinstance(node, Var):
                     info = node.info
-                    if info:
+                    if info and info.bases:
                         # Recheck Liskov for self definitions
                         self.add_dependency(make_trigger(info.fullname() + '.' + lvalue.name))
             if lvalue.kind is None:

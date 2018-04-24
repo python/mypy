@@ -64,7 +64,7 @@ from mypy.fscache import FileSystemCache, FileSystemMetaCache
 # mode only that is useful during development. This produces only a subset of
 # output compared to --verbose output. We use a global flag to enable this so
 # that it's easy to enable this when running tests.
-DEBUG_FINE_GRAINED = False
+DEBUG_FINE_GRAINED = True
 
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
@@ -2252,7 +2252,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     else:
         process_graph(graph, manager)
 
-    if manager.options.dump_deps:
+    if manager.options.dump_deps or True:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
         dump_all_dependencies(manager.modules, manager.all_types, manager.options.python_version)

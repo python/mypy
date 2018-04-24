@@ -1539,7 +1539,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         lvalue_node = lvalue.node
         # Check if we are a class variable with at least one base class
         if (isinstance(lvalue_node, Var) and
-                lvalue.kind == MDEF and
+                lvalue.kind in (MDEF, None) and  # None for Vars defined via self
                 len(lvalue_node.info.bases) > 0):
 
             for base in lvalue_node.info.mro[1:]:
