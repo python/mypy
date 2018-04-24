@@ -26,6 +26,7 @@ from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
+from mypy.typestate import TypeState
 
 
 MEM_PROFILE = False  # If True, dump memory profile after initialization
@@ -152,6 +153,7 @@ class Server:
                         conn, addr = sock.accept()
                     except socket.timeout:
                         print("Exiting due to inactivity.")
+                        TypeState.reset_all_subtype_caches()
                         sys.exit(0)
                     try:
                         data = receive(conn)
@@ -182,6 +184,7 @@ class Server:
                     conn.close()
                     if command == 'stop':
                         sock.close()
+                        TypeState.reset_all_subtype_caches()
                         sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)

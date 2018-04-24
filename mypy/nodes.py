@@ -2058,7 +2058,6 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
-        TypeState.add_caches(self)
         self.add_type_vars()
         self.metadata = {}
 
@@ -2093,10 +2092,6 @@ class TypeInfo(SymbolNode):
             if name in cls.names:
                 return cls
         return None
-
-    def reset_subtype_cache(self) -> None:
-        for item in self.mro:
-            TypeState.reset_caches(item)
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
@@ -2133,7 +2128,7 @@ class TypeInfo(SymbolNode):
         self.mro = mro
         # The property of falling back to Any is inherited.
         self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
-        self.reset_subtype_cache()
+        TypeState.reset_all_subtype_caches_for(self)
 
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass

@@ -434,7 +434,10 @@ def is_protocol_implementation(left: Instance, right: Instance,
             # This rule is copied from nominal check in checker.py
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
-    TypeState.record_subtype_cache_entry(left, right, proper_subtype)
+    if proper_subtype:
+        TypeState.record_proper_subtype_cache_entry(left, right)
+    else:
+        TypeState.record_subtype_cache_entry(left, right)
     return True
 
 
@@ -865,11 +868,11 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if TypeState.is_cached_subtype_check(left, right, proper_subtype=True):
+            if TypeState.is_cached_proper_subtype_check(left, right):
                 return True
             for base in left.type.mro:
                 if base._promote and is_proper_subtype(base._promote, right):
-                    TypeState.record_subtype_cache_entry(left, right, proper_subtype=True)
+                    TypeState.record_proper_subtype_cache_entry(left, right)
                     return True
 
             if left.type.has_base(right.type.fullname()):
@@ -886,7 +889,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                               zip(left.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    TypeState.record_subtype_cache_entry(left, right, proper_subtype=True)
+                    TypeState.record_proper_subtype_cache_entry(left, right)
                 return nominal
             if (right.type.is_protocol and
                     is_protocol_implementation(left, right, proper_subtype=True)):

@@ -102,7 +102,7 @@ class NodeStripVisitor(TraverserVisitor):
         info.tuple_type = None
         info.typeddict_type = None
         info.tuple_type = None
-        TypeState.reset_caches(info)
+        TypeState.reset_subtype_caches_for(info)
         info.declared_metaclass = None
         info.metaclass_type = None
 

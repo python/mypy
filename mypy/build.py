@@ -265,9 +265,11 @@ def _build(sources: List[BuildSource],
                            flush_errors=flush_errors,
                            fscache=fscache)
 
+    TypeState.reset_all_subtype_caches()
     try:
-        TypeState.reset_all()
         graph = dispatch(sources, manager)
+        if not options.cache_fine_grained or options.fine_grained_incremental:
+            TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
