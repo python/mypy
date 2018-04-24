@@ -57,7 +57,7 @@ from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
-from mypy.fscache import FileSystemCache, FileSystemMetaCache
+from mypy.fscache import FileSystemCache
 from mypy.typestate import TypeState
 
 
@@ -836,8 +836,8 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
-        self.fscache = fscache or FileSystemMetaCache()
+    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
+        self.fscache = fscache or FileSystemCache()
         # Cache find_lib_path_dirs: (dir_chain, lib_path)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
         # Cache find_module: (id, lib_path, python_version) -> result.
@@ -963,7 +963,7 @@ class FindModuleCache:
         return result
 
 
-def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
+def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = dirname(path)

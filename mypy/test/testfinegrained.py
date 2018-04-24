@@ -28,7 +28,7 @@ from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
 from mypy.main import parse_config_file
 from mypy.find_sources import create_source_list
-from mypy.fscache import FileSystemMetaCache
+from mypy.fscache import FileSystemCache
 
 import pytest  # type: ignore  # no pytest in typeshed
 
