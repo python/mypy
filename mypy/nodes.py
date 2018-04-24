@@ -544,7 +544,7 @@ class FuncItem(FuncBase):
 
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
-    'is_decorated', 'is_conditional', 'is_abstract', 'is_property'
+    'is_decorated', 'is_conditional', 'is_abstract', 'is_property',
 ]
 
 
