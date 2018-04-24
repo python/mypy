@@ -5800,3 +5800,15 @@ class M(type):
 [out]
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
+
+[case testFString]
+from a import g
+f'{g(1)}'
+[file a.py]
+def g(x: int) -> str: pass
+[file a.py.2]
+def g(x: str) -> str: pass
+[builtins fixtures/f_string.pyi]
+[out]
+==
+main:2: error: Argument 1 to "g" has incompatible type "int"; expected "str"
