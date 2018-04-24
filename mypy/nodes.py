@@ -887,6 +887,8 @@ class ForStmt(Statement):
     index_type = None  # type: Optional[mypy.types.Type]
     # Inferred iterable item type
     inferred_item_type = None  # type: Optional[mypy.types.Type]
+    # Inferred iterator type
+    inferred_iterator_type = None  # type: Optional[mypy.types.Type]
     # Expression to iterate
     expr = None  # type: Expression
     body = None  # type: Block

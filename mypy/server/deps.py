@@ -397,10 +397,22 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_for_stmt(self, o: ForStmt) -> None:
         super().visit_for_stmt(o)
-        # __getitem__ is only used if __iter__ is missing but for simplicity we
-        # just always depend on both.
-        self.add_attribute_dependency_for_expr(o.expr, '__iter__')
-        self.add_attribute_dependency_for_expr(o.expr, '__getitem__')
+        if not o.is_async:
+            # __getitem__ is only used if __iter__ is missing but for simplicity we
+            # just always depend on both.
+            self.add_attribute_dependency_for_expr(o.expr, '__iter__')
+            self.add_attribute_dependency_for_expr(o.expr, '__getitem__')
+            if o.inferred_iterator_type:
+                if self.python2:
+                    method = 'next'
+                else:
+                    method = '__next__'
+                self.add_attribute_dependency(o.inferred_iterator_type, method)
+        else:
+            self.add_attribute_dependency_for_expr(o.expr, '__aiter__')
+            if o.inferred_iterator_type:
+                self.add_attribute_dependency(o.inferred_iterator_type, '__anext__')
+
         self.process_lvalue(o.index)
         if isinstance(o.index, TupleExpr):
             # Process multiple assignment to index variables.

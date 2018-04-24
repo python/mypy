@@ -5846,3 +5846,40 @@ class C:
 [out]
 ==
 main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case test__aiter__and__anext__]
+from a import C
+
+async def f() -> int:
+    async for x in C():
+        pass
+    return x
+
+[file a.py]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> int: return 0
+
+[file a.py.2]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> str: return ''
+
+[file a.py.3]
+class C:
+    def __aiter__(self) -> E: pass
+class E:
+    def __aiter__(self) -> E: pass
+    async def __anext__(self) -> object: return 0
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:6: error: Incompatible return value type (got "str", expected "int")
+==
+main:6: error: Incompatible return value type (got "object", expected "int")

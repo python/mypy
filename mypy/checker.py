@@ -2518,15 +2518,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_for_stmt(self, s: ForStmt) -> None:
         """Type check a for statement."""
         if s.is_async:
-            item_type = self.analyze_async_iterable_item_type(s.expr)
+            iterator_type, item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
-            item_type = self.analyze_iterable_item_type(s.expr)
+            iterator_type, item_type = self.analyze_iterable_item_type(s.expr)
         s.inferred_item_type = item_type
+        s.inferred_iterator_type = iterator_type
         self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
         self.accept_loop(s.body, s.else_body)
 
-    def analyze_async_iterable_item_type(self, expr: Expression) -> Type:
-        """Analyse async iterable expression and return iterator item type."""
+    def analyze_async_iterable_item_type(self, expr: Expression) -> Tuple[Type, Type]:
+        """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
 
@@ -2539,19 +2540,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__anext__', iterator, expr)
         awaitable = echk.check_call(method, [], [], expr)[0]
-        return echk.check_awaitable_expr(awaitable, expr,
-                                         messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+        item_type = echk.check_awaitable_expr(awaitable, expr,
+                                              messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+        return iterator, item_type
 
-    def analyze_iterable_item_type(self, expr: Expression) -> Type:
-        """Analyse iterable expression and return iterator item type."""
+    def analyze_iterable_item_type(self, expr: Expression) -> Tuple[Type, Type]:
+        """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
+        method = echk.analyze_external_member_access('__iter__', iterable, expr)
+        iterator = echk.check_call(method, [], [], expr)[0]
 
         if isinstance(iterable, TupleType):
             joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
-            return joined
+            return iterator, joined
         else:
             # Non-tuple iterable.
             self.check_subtype(iterable,
@@ -2559,16 +2563,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                        [AnyType(TypeOfAny.special_form)]),
                                expr, messages.ITERABLE_EXPECTED)
 
-            method = echk.analyze_external_member_access('__iter__', iterable,
-                                                         expr)
-            iterator = echk.check_call(method, [], [], expr)[0]
             if self.options.python_version[0] >= 3:
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
             method = echk.analyze_external_member_access(nextmethod, iterator,
                                                          expr)
-            return echk.check_call(method, [], [], expr)[0]
+            return iterator, echk.check_call(method, [], [], expr)[0]
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:
