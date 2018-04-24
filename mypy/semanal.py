@@ -1854,7 +1854,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
             if not add_global:
-                self.analyze_member_lvalue(lval)
+                self.analyze_member_lvalue(lval, explicit_type)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
@@ -1892,12 +1892,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type = explicit_type)
 
-    def analyze_member_lvalue(self, lval: MemberExpr) -> None:
+    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False) -> None:
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"
+            cur_node = self.type.names.get(lval.name, None)
             node = self.type.get(lval.name)
-            if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
+            if (node is None or isinstance(node.node, Var) and node.node.is_abstract_var or
+                    cur_node is None and explicit_type):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
@@ -1911,6 +1913,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     v.is_ready = False
                     lval.def_var = v
                     lval.node = v
+                    lval.kind = MDEF
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
         self.check_lvalue_validity(lval.node, lval)
 

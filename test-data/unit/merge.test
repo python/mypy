@@ -261,7 +261,7 @@ MypyFile:1<1>(
         AssignmentStmt:3<6>(
           MemberExpr:3<8>(
             NameExpr(self [l<9>])
-            x*<7>)
+            x* [m<7>])
           IntExpr(1))
         ExpressionStmt:4<10>(
           MemberExpr:4<11>(
@@ -284,7 +284,7 @@ MypyFile:1<1>(
         AssignmentStmt:3<14>(
           MemberExpr:3<15>(
             NameExpr(self [l<16>])
-            x*<7>)
+            x* [m<7>])
           IntExpr(1))
         ExpressionStmt:4<17>(
           MemberExpr:4<18>(

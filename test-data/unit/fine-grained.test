@@ -5898,6 +5898,37 @@ class B:
 ==
 main:3: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
+[case testLiskovFineVariableCleanDefInMethod]
+import b
+class A(b.B):
+    def meth(self) -> None:
+        self.x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineVariableCleanDefInMethodNested]
+from b import B
+def outer() -> None:
+    class A(B):
+        def meth(self) -> None:
+            self.x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
 [case testLiskovFineVariableInFunctionClean]
 from b import B
 def outer() -> None:
