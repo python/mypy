@@ -3,7 +3,6 @@
 import re
 import subprocess
 import hashlib
-from io import BytesIO
 from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
 
@@ -77,20 +76,13 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     """
     encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
 
-    # look at first two lines and check if PEP-263 coding is present
-    f = BytesIO(source)
-    source_start = f.readline() + f.readline()
-
     # check for BOM UTF-8 encoding and strip it out if present
-    if source_start.startswith(b'\xef\xbb\xbf'):
+    if source.startswith(b'\xef\xbb\xbf'):
         encoding = 'utf8'
         source = source[3:]
     else:
-        _encoding, _ = find_python_encoding(source_start, pyversion)
-        # check that the coding isn't mypy. We skip it since
-        # registering may not have happened yet
-        if _encoding != 'mypy':
-            encoding = _encoding
+        # look at first two lines and check if PEP-263 coding is present
+        encoding, _ = find_python_encoding(source, pyversion)
 
     try:
         source_text = source.decode(encoding)
