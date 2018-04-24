@@ -60,7 +60,7 @@ class FileSystemMetaCache:
         try:
             st = os.stat(path)
         except OSError as err:
-            if isinstance(err, OSError) and self.init_under_package_root(path):
+            if self.init_under_package_root(path):
                 try:
                     return self._fake_init(path)
                 except OSError:
@@ -87,6 +87,7 @@ class FileSystemMetaCache:
                 return False
         ok = False
         drive, path = os.path.splitdrive(path)  # Ignore Windows drive name
+        path = os.path.normpath(path)
         for root in self.package_root:
             if path.startswith(root):
                 if path == root + basename:
@@ -98,7 +99,7 @@ class FileSystemMetaCache:
         return ok
 
     def _fake_init(self, path: str) -> os.stat_result:
-        dirname = os.path.dirname(path) or os.curdir
+        dirname = os.path.normpath(os.path.dirname(path))
         st = self.stat(dirname)  # May raise OSError
         # Get stat result as a sequence so we can modify it.
         # (Alas, typeshed's os.stat_result is not a sequence yet.)
@@ -115,9 +116,10 @@ class FileSystemMetaCache:
         return st
 
     def listdir(self, path: str) -> List[str]:
+        path = os.path.normpath(path)
         if path in self.listdir_cache:
             res = self.listdir_cache[path]
-            if os.path.normpath(path) in self.fake_package_cache and '__init__.py' not in res:
+            if path in self.fake_package_cache and '__init__.py' not in res:
                 res.append('__init__.py')  # Updates the result as well as the cache
             return res
         if path in self.listdir_error_cache:
@@ -200,14 +202,15 @@ class FileSystemCache(FileSystemMetaCache):
         # earlier instant than the mtime reported by self.stat().
         self.stat(path)
 
-        if (os.path.basename(path) == '__init__.py'
-                and os.path.dirname(path) in self.fake_package_cache):
+        dirname, basename = os.path.split(path)
+        dirname = os.path.normpath(dirname)
+        if basename == '__init__.py' and dirname in self.fake_package_cache:
             data = b''
         else:
             try:
                 with open(path, 'rb') as f:
                     data = f.read()
-            except Exception as err:
+            except OSError as err:
                 self.read_error_cache[path] = err
                 raise
 

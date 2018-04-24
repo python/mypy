@@ -651,7 +651,7 @@ def process_options(args: List[str],
             if os.path.isabs(root):
                 parser.error("Package root cannot be absolute: %r" % root)
             drive, root = os.path.splitdrive(root)
-            if drive != current_drive:
+            if drive and drive != current_drive:
                 parser.error("Package root must be on current drive: %r" % (drive + root))
             # Empty package root is always okay.
             if root:
