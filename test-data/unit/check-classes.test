@@ -1887,6 +1887,18 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+[case testNestedGetAttr]
+def foo() -> object:
+    def __getattr__() -> None:  # no error because not in a class
+        pass
+    return __getattr__
+
+class X:
+    def foo(self) -> object:
+        def __getattr__() -> None:  # no error because not directly inside a class
+            pass
+        return __getattr__
+
 [case testGetAttrSignature]
 class A:
     def __getattr__(self, x: str) -> A: pass

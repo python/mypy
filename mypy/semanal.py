@@ -1334,7 +1334,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     missing = True
             # If it is still not resolved, and the module is a stub
             # check for a module level __getattr__
-            if module and not node and module.is_stub and '__getattr__' in module.names:
+            if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in module.names):
                 getattr_defn = module.names['__getattr__']
                 if isinstance(getattr_defn.node, FuncDef):
                     if isinstance(getattr_defn.node.type, CallableType):
@@ -2676,7 +2677,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     expr.kind = n.kind
                     expr.fullname = n.fullname
                     expr.node = n.node
-            elif file is not None and file.is_stub and '__getattr__' in file.names:
+            elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in file.names):
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
                 getattr_defn = file.names['__getattr__']

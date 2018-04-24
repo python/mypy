@@ -1064,30 +1064,33 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_getattr_method(self, typ: CallableType, context: Context, name: str) -> None:
         if len(self.scope.stack) == 1:
-            # module-level __getattr__
+            # module scope
             if name == '__getattribute__':
                 self.msg.fail('__getattribute__ is not valid at the module level', context)
                 return
-            elif name == '__getattr__' and not self.is_stub:
-                self.msg.fail('__getattr__ is not valid at the module level outside a stub file',
-                              context)
-                return
+            # __getattr__ is fine at the module level as of Python 3.7 (PEP 562). We could
+            # show an error for Python < 3.7, but that would be annoying in code that supports
+            # both 3.7 and older versions.
             method_type = CallableType([self.named_type('builtins.str')],
                                        [nodes.ARG_POS],
                                        [None],
                                        AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
-        else:
+        elif self.scope.active_class():
             method_type = CallableType([AnyType(TypeOfAny.special_form),
                                         self.named_type('builtins.str')],
                                        [nodes.ARG_POS, nodes.ARG_POS],
                                        [None, None],
                                        AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
+        else:
+            return
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature(typ, context)
 
     def check_setattr_method(self, typ: CallableType, context: Context) -> None:
+        if not self.scope.active_class():
+            return
         method_type = CallableType([AnyType(TypeOfAny.special_form),
                                     self.named_type('builtins.str'),
                                     AnyType(TypeOfAny.special_form)],
