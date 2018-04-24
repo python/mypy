@@ -991,7 +991,8 @@ def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
     result = {}  # type: Dict[str, Set[str]]
     for id in graph:
         file = graph[id].tree
-        assert file is not None, "Should call this only when all files are processed"
+        if file is None:
+            continue  # this file has not been loaded
         names = file.names
         deps = collect_protocol_attr_deps(names, id)
         for trigger, targets in deps.items():

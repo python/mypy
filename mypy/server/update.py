@@ -775,7 +775,8 @@ def find_targets_recursive(
         graph: Graph,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]], Set[str], Set[TypeInfo]]:
+        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]],
+                                               Set[str], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
     Returns: A tuple containing a:
