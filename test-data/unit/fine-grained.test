@@ -5800,3 +5800,154 @@ class M(type):
 [out]
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
+
+[case testLiskovFineVariable]
+import b
+class A(b.B):
+    x: str
+def f(x: b.B) -> None:
+    x.x + int()
+f(A())
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+main:5: error: Unsupported operand types for + ("str" and "int")
+==
+main:3: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineVariableInFunction]
+from b import B
+def outer() -> None:
+    class A(B):
+        x: str
+    def f(x: B) -> None:
+        x.x + int()
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+main:6: error: Unsupported operand types for + ("str" and "int")
+==
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineMethod]
+import b
+class A(b.B):
+    def m(self) -> str: pass
+def f(x: b.B) -> None:
+    x.m() + int()
+f(A())
+[file b.py]
+class B:
+    def m(self) -> str: pass
+[file b.py.2]
+class B:
+    def m(self) -> int: pass
+[out]
+main:5: error: Unsupported operand types for + ("str" and "int")
+==
+main:3: error: Return type of "m" incompatible with supertype "B"
+
+[case testLiskovFineDecorator]
+import b
+from c import deco
+class A(b.B):
+    @deco
+    def m(self) -> str: pass
+def f(x: b.B) -> None:
+    x.m() + int()
+f(A())
+[file b.py]
+from c import deco
+class B:
+    @deco
+    def m(self) -> str: pass
+[file b.py.2]
+from c import deco
+class B:
+    @deco
+    def m(self) -> int: pass
+[file c.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+def deco(f: F) -> F:
+    pass
+[out]
+main:7: error: Unsupported operand types for + ("str" and "int")
+==
+main:5: error: Return type of "m" incompatible with supertype "B"
+
+[case testLiskovFineVariableClean]
+import b
+class A(b.B):
+    x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:3: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineVariableInFunctionClean]
+from b import B
+def outer() -> None:
+    class A(B):
+        x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineMethodClean]
+import b
+class A(b.B):
+    def m(self) -> str: pass
+[file b.py]
+class B:
+    def m(self) -> str: pass
+[file b.py.2]
+class B:
+    def m(self) -> int: pass
+[out]
+==
+main:3: error: Return type of "m" incompatible with supertype "B"
+
+[case testLiskovFineDecoratorClean]
+import b
+from c import deco
+class A(b.B):
+    @deco
+    def m(self) -> str: pass
+[file b.py]
+from c import deco
+class B:
+    @deco
+    def m(self) -> str: pass
+[file b.py.2]
+from c import deco
+class B:
+    @deco
+    def m(self) -> int: pass
+[file c.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+def deco(f: F) -> F:
+    pass
+[out]
+==
+main:5: error: Return type of "m" incompatible with supertype "B"

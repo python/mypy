@@ -239,6 +239,8 @@ class DependencyVisitor(TraverserVisitor):
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
+                # Recheck Liskov if needed
+                self.add_dependency(make_trigger(info.fullname() + '.' + name))
                 for base_info in non_trivial_bases(info):
                     # If the type of an attribute changes in a base class, we make references
                     # to the attribute in the subclass stale.
