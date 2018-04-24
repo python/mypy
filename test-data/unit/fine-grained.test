@@ -5800,3 +5800,49 @@ class M(type):
 [out]
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
+
+[case testAwaitAndAsyncDef-skip-cache]
+from a import g
+
+async def f() -> int:
+    return await g()
+
+[file a.py]
+async def g() -> int:
+    return 0
+
+[file a.py.2]
+async def g() -> str:
+    return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case testAwaitAnd__await__-skip-cache]
+from a import C
+
+async def f(c: C) -> int:
+    return await c
+
+[file a.py]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, int]:
+        yield
+        return 0
+
+[file a.py.2]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, str]:
+        yield
+        return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
