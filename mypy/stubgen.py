@@ -206,7 +206,9 @@ def generate_stub(path: str,
                   include_private: bool = False
                   ) -> None:
 
-    source, _ = mypy.util.read_with_python_encoding(path, pyversion)
+    with open(path, 'rb') as f:
+        data = f.read()
+    source = mypy.util.decode_python_encoding(data, pyversion)
     options = MypyOptions()
     options.python_version = pyversion
     try:

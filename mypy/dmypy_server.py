@@ -122,7 +122,7 @@ class Server:
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
 
-        self.fscache = FileSystemCache(self.options.python_version)
+        self.fscache = FileSystemCache()
 
         options.incremental = True
         options.fine_grained_incremental = True
