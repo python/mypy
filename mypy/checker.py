@@ -2530,12 +2530,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-
-        self.check_subtype(iterable,
-                           self.named_generic_type('typing.AsyncIterable',
-                                                   [AnyType(TypeOfAny.special_form)]),
-                           expr, messages.ASYNC_ITERABLE_EXPECTED)
-
         method = echk.analyze_external_member_access('__aiter__', iterable, expr)
         iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__anext__', iterator, expr)
@@ -2558,11 +2552,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return iterator, joined
         else:
             # Non-tuple iterable.
-            self.check_subtype(iterable,
-                               self.named_generic_type('typing.Iterable',
-                                                       [AnyType(TypeOfAny.special_form)]),
-                               expr, messages.ITERABLE_EXPECTED)
-
             if self.options.python_version[0] >= 3:
                 nextmethod = '__next__'
             else:

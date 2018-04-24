@@ -1563,7 +1563,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:5: error: "None" has no attribute "__iter__"
+main:5: error: "None" has no attribute "__iter__" (not iterable)
 
 [case testPartialTypeErrorSpecialCase2]
 # This used to crash.
@@ -1584,7 +1584,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:4: error: "None" has no attribute "__iter__"
+main:4: error: "None" has no attribute "__iter__" (not iterable)
 
 
 -- Multipass

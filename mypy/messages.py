@@ -63,8 +63,6 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpol
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
 INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-ITERABLE_EXPECTED = 'Iterable expected'
-ASYNC_ITERABLE_EXPECTED = 'AsyncIterable expected'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
 CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'
@@ -450,6 +448,11 @@ class MessageBuilder:
                 self.fail('{} not callable'.format(self.format(original_type)), context)
         else:
             # The non-special case: a missing ordinary attribute.
+            extra = ''
+            if member == '__iter__':
+                extra = ' (not iterable)'
+            elif member == '__aiter__':
+                extra = ' (not async iterable)'
             if not self.disable_type_names:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
@@ -457,12 +460,13 @@ class MessageBuilder:
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
                     if matches:
-                        self.fail('{} has no attribute "{}"; maybe {}?'.format(
-                            self.format(original_type), member, pretty_or(matches)), context)
+                        self.fail('{} has no attribute "{}"; maybe {}?{}'.format(
+                            self.format(original_type), member, pretty_or(matches), extra),
+                            context)
                         failed = True
                 if not failed:
-                    self.fail('{} has no attribute "{}"'.format(self.format(original_type),
-                                                                member), context)
+                    self.fail('{} has no attribute "{}"{}'.format(self.format(original_type),
+                                                                  member, extra), context)
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
@@ -470,8 +474,8 @@ class MessageBuilder:
                 if typ_format == '"object"' and \
                         any(type(item) == NoneTyp for item in original_type.items):
                     typ_format = '"None"'
-                self.fail('Item {} of {} has no attribute "{}"'.format(
-                    typ_format, self.format(original_type), member), context)
+                self.fail('Item {} of {} has no attribute "{}"{}'.format(
+                    typ_format, self.format(original_type), member, extra), context)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self, op: str, left_type: Any,
