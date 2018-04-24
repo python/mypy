@@ -3,6 +3,7 @@
 import re
 import subprocess
 import hashlib
+from io import BytesIO
 from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
 
@@ -68,40 +69,34 @@ class DecodeError(Exception):
     """
 
 
-def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
     Returns:
       A tuple: the source as a string, and the hash calculated from the binary representation.
     """
-    source_bytearray = bytearray()
     encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
 
-    with open(path, 'rb') as f:
-        # read first two lines and check if PEP-263 coding is present
-        source_bytearray.extend(f.readline())
-        source_bytearray.extend(f.readline())
-        m = hashlib.md5(source_bytearray)
+    # look at first two lines and check if PEP-263 coding is present
+    f = BytesIO(source)
+    source_start = f.readline() + f.readline()
 
-        # check for BOM UTF-8 encoding and strip it out if present
-        if source_bytearray.startswith(b'\xef\xbb\xbf'):
-            encoding = 'utf8'
-            source_bytearray = source_bytearray[3:]
-        else:
-            _encoding, _ = find_python_encoding(source_bytearray, pyversion)
-            # check that the coding isn't mypy. We skip it since
-            # registering may not have happened yet
-            if _encoding != 'mypy':
-                encoding = _encoding
+    # check for BOM UTF-8 encoding and strip it out if present
+    if source_start.startswith(b'\xef\xbb\xbf'):
+        encoding = 'utf8'
+        source = source[3:]
+    else:
+        _encoding, _ = find_python_encoding(source_start, pyversion)
+        # check that the coding isn't mypy. We skip it since
+        # registering may not have happened yet
+        if _encoding != 'mypy':
+            encoding = _encoding
 
-        remainder = f.read()
-        m.update(remainder)
-        source_bytearray.extend(remainder)
-        try:
-            source_text = source_bytearray.decode(encoding)
-        except LookupError as lookuperr:
-            raise DecodeError(str(lookuperr))
-        return source_text, m.hexdigest()
+    try:
+        source_text = source.decode(encoding)
+    except LookupError as lookuperr:
+        raise DecodeError(str(lookuperr))
+    return source_text
 
 
 _python2_interpreter = None  # type: Optional[str]

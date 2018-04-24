@@ -44,7 +44,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError
+from mypy.util import DecodeError, decode_python_encoding
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -205,7 +205,7 @@ def _build(sources: List[BuildSource],
     gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
-    fscache = fscache or FileSystemCache(options.python_version)
+    fscache = fscache or FileSystemCache()
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,
@@ -1810,7 +1810,8 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = manager.fscache.read_with_python_encoding(path)
+                    source = decode_python_encoding(manager.fscache.read(path),
+                                                    manager.options.python_version)
                     self.source_hash = manager.fscache.md5(path)
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
