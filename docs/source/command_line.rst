@@ -17,25 +17,23 @@ flag (or its long form ``--help``)::
               [--disallow-untyped-defs] [--disallow-incomplete-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
               [--warn-incomplete-stub] [--disallow-untyped-decorators]
-              [--warn-redundant-casts] [--no-warn-no-return]
-              [--warn-return-any] [--warn-unused-ignores]
-              [--warn-unused-configs] [--show-error-context]
-              [--no-implicit-optional] [-i] [--quick-and-dirty]
-              [--cache-dir DIR] [--cache-fine-grained] [--skip-version-check]
-              [--strict-optional]
+              [--warn-redundant-casts] [--no-warn-no-return] [--warn-return-any]
+              [--warn-unused-ignores] [--warn-unused-configs]
+              [--show-error-context] [--no-implicit-optional] [--no-incremental]
+              [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
+              [--skip-version-check] [--strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
-              [--always-true NAME] [--always-false NAME]
-              [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
-              [--inferstats] [--custom-typing MODULE]
-              [--custom-typeshed-dir DIR] [--scripts-are-modules]
-              [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--strict]
-              [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
-              [--cobertura-xml-report DIR] [--html-report DIR]
-              [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR] [--txt-report DIR] [--xml-report DIR]
-              [--xslt-html-report DIR] [--xslt-txt-report DIR] [-m MODULE]
-              [-p PACKAGE] [-c PROGRAM_TEXT]
+              [--always-true NAME] [--always-false NAME] [--junit-xml JUNIT_XML]
+              [--pdb] [--show-traceback] [--stats] [--inferstats]
+              [--custom-typing MODULE] [--custom-typeshed-dir DIR]
+              [--scripts-are-modules] [--config-file CONFIG_FILE]
+              [--show-column-numbers] [--find-occurrences CLASS.MEMBER]
+              [--strict] [--shadow-file SOURCE_FILE SHADOW_FILE]
+              [--any-exprs-report DIR] [--cobertura-xml-report DIR]
+              [--html-report DIR] [--linecount-report DIR]
+              [--linecoverage-report DIR] [--memory-xml-report DIR]
+              [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
+              [--xslt-txt-report DIR] [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -339,19 +337,23 @@ Here are some more useful flags:
 
 .. _incremental:
 
-- ``--incremental`` enables a module cache, using results from
+- Incremental mode enables a module cache, using results from
   previous runs to speed up type checking. Incremental mode can help
   when most parts of your program haven't changed since the previous
   mypy run.
 
-- ``--cache-dir DIR`` is a companion flag to ``-incremental``, which
+  Incremental mode is the default and may be disabled with
+  ``--no-incremental``.
+
+- ``--cache-dir DIR`` is a companion flag to incremental mode, which
   specifies where the cache files are written.  By default this is
   ``.mypy_cache`` in the current directory.  While the cache is only
   read in incremental mode, it is written even in non-incremental
   mode, in order to "warm" the cache.  To disable writing the cache,
   use ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul``
   (Windows).  Cache files belonging to a different mypy version are
-  ignored.
+  ignored.  This flag can be useful for controlling cache use when using
+  :ref:`remote caching <remote-cache>`.
 
 .. _quick-mode:
 
@@ -365,16 +367,34 @@ Here are some more useful flags:
   updates the cache, but regular incremental mode ignores cache files
   written by quick mode.
 
+- ``--python-executable EXECUTABLE`` will have mypy collect type information
+  from `PEP 561`_ compliant packages installed for the Python executable
+  ``EXECUTABLE``. If not provided, mypy will use PEP 561 compliant packages
+  installed for the Python executable running mypy. See
+  :ref:`installed-packages` for more on making PEP 561 compliant packages.
+  This flag will attempt to set ``--python-version`` if not already set.
+
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
   whatever version of Python is running mypy. Note that the ``-2`` and
   ``--py2`` flags are aliases for ``--python-version 2.7``. See
-  :ref:`version_and_platform_checks` for more about this feature.
+  :ref:`version_and_platform_checks` for more about this feature. This flag
+  will attempt to find a Python executable of the corresponding version to
+  search for `PEP 561`_ compliant packages. If you'd like to disable this,
+  see ``--no-site-packages`` below.
+
+- ``--no-site-packages`` will disable searching for `PEP 561`_ compliant
+  packages. This will also disable searching for a usable Python executable.
+  Use this  flag if mypy cannot find a Python executable for the version of
+  Python being checked, and you don't need to use PEP 561 typed packages.
+  Otherwise, use ``--python-executable``.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
   run under the the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
+
+.. _always-true:
 
 - ``--always-true NAME`` will treat all variables named ``NAME`` as
   compile-time constants that are always true.  May be repeated.
@@ -409,9 +429,10 @@ Here are some more useful flags:
 
 - ``--config-file CONFIG_FILE`` causes configuration settings to be
   read from the given file.  By default settings are read from ``mypy.ini``
-  or ``setup.cfg`` in the current directory.  Settings override mypy's
-  built-in defaults and command line flags can override settings.
-  See :ref:`config-file` for the syntax of configuration files.
+  or ``setup.cfg`` in the current directory, or ``.mypy.ini`` in the user home
+  directory.  Settings override mypy's built-in defaults and command line flags
+  can override settings. See :ref:`config-file` for the syntax of configuration
+  files.
 
 - ``--junit-xml JUNIT_XML`` will make mypy generate a JUnit XML test
   result document with type checking results. This can make it easier
@@ -457,6 +478,8 @@ For the remaining flags you can read the full ``mypy -h`` output.
 .. note::
 
    Command line flags are liable to change between releases.
+
+.. _PEP 561: https://www.python.org/dev/peps/pep-0561/
 
 .. _integrating-mypy:
 

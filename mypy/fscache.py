@@ -28,10 +28,11 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
+import functools
+import hashlib
 import os
 import stat
-from typing import Tuple, Dict, List, Optional
-from mypy.util import read_with_python_encoding
+from typing import Dict, List, Tuple
 
 
 class FileSystemMetaCache:
@@ -41,21 +42,23 @@ class FileSystemMetaCache:
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         self.stat_cache = {}  # type: Dict[str, os.stat_result]
-        self.stat_error_cache = {}  # type: Dict[str, Exception]
+        self.stat_error_cache = {}  # type: Dict[str, OSError]
         self.listdir_cache = {}  # type: Dict[str, List[str]]
-        self.listdir_error_cache = {}  # type: Dict[str, Exception]
+        self.listdir_error_cache = {}  # type: Dict[str, OSError]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
             return self.stat_cache[path]
         if path in self.stat_error_cache:
-            raise self.stat_error_cache[path]
+            raise copy_os_error(self.stat_error_cache[path])
         try:
             st = os.stat(path)
-        except Exception as err:
-            self.stat_error_cache[path] = err
-            raise
+        except OSError as err:
+            # Take a copy to get rid of associated traceback and frame objects.
+            # Just assigning to __traceback__ doesn't free them.
+            self.stat_error_cache[path] = copy_os_error(err)
+            raise err
         self.stat_cache[path] = st
         return st
 
@@ -63,11 +66,12 @@ class FileSystemMetaCache:
         if path in self.listdir_cache:
             return self.listdir_cache[path]
         if path in self.listdir_error_cache:
-            raise self.listdir_error_cache[path]
+            raise copy_os_error(self.listdir_error_cache[path])
         try:
             results = os.listdir(path)
-        except Exception as err:
-            self.listdir_error_cache[path] = err
+        except OSError as err:
+            # Like above, take a copy to reduce memory use.
+            self.listdir_error_cache[path] = copy_os_error(err)
             raise err
         self.listdir_cache[path] = results
         return results
@@ -117,19 +121,20 @@ class FileSystemMetaCache:
         return True
 
 
+# TODO: Merge FileSystemMetaCache back into this?
 class FileSystemCache(FileSystemMetaCache):
-    def __init__(self, pyversion: Tuple[int, int]) -> None:
-        self.pyversion = pyversion
+    def __init__(self) -> None:
+        super().__init__()
         self.flush()
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
         super().flush()
-        self.read_cache = {}  # type: Dict[str, str]
+        self.read_cache = {}  # type: Dict[str, bytes]
         self.read_error_cache = {}  # type: Dict[str, Exception]
         self.hash_cache = {}  # type: Dict[str, str]
 
-    def read_with_python_encoding(self, path: str) -> str:
+    def read(self, path: str) -> bytes:
         if path in self.read_cache:
             return self.read_cache[path]
         if path in self.read_error_cache:
@@ -140,15 +145,27 @@ class FileSystemCache(FileSystemMetaCache):
         self.stat(path)
 
         try:
-            data, md5hash = read_with_python_encoding(path, self.pyversion)
+            with open(path, 'rb') as f:
+                data = f.read()
         except Exception as err:
             self.read_error_cache[path] = err
             raise
+        md5hash = hashlib.md5(data).hexdigest()
         self.read_cache[path] = data
         self.hash_cache[path] = md5hash
         return data
 
     def md5(self, path: str) -> str:
         if path not in self.hash_cache:
-            self.read_with_python_encoding(path)
+            self.read(path)
         return self.hash_cache[path]
+
+
+def copy_os_error(e: OSError) -> OSError:
+    new = OSError(*e.args)
+    new.errno = e.errno
+    new.strerror = e.strerror
+    new.filename = e.filename
+    if e.filename2:
+        new.filename2 = e.filename2
+    return new

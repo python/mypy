@@ -49,6 +49,7 @@ from mypy.nodes import (
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
+from mypy.typestate import TypeState
 
 
 def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
@@ -85,6 +86,7 @@ class NodeStripVisitor(TraverserVisitor):
     def visit_class_def(self, node: ClassDef) -> None:
         """Strip class body and type info, but don't strip methods."""
         self.strip_type_info(node.info)
+        node.type_vars = []
         node.base_type_exprs.extend(node.removed_base_type_exprs)
         node.removed_base_type_exprs = []
         with self.enter_class(node.info):
@@ -100,8 +102,7 @@ class NodeStripVisitor(TraverserVisitor):
         info.tuple_type = None
         info.typeddict_type = None
         info.tuple_type = None
-        info._cache = set()
-        info._cache_proper = set()
+        TypeState.reset_subtype_caches_for(info)
         info.declared_metaclass = None
         info.metaclass_type = None
 
@@ -228,13 +229,16 @@ class NodeStripVisitor(TraverserVisitor):
         node.imported_names = []
 
     def visit_name_expr(self, node: NameExpr) -> None:
-        # Global assignments are processed in semantic analysis pass 1, and we
+        # Global assignments are processed in semantic analysis pass 1 [*], and we
         # only want to strip changes made in passes 2 or later.
         if not (node.kind == GDEF and node.is_new_def):
             # Remove defined attributes so that they can recreated during semantic analysis.
             if node.kind == MDEF and node.is_new_def:
                 self.strip_class_attr(node.name)
             self.strip_ref_expr(node)
+        # [*] although we always strip type, thus returning the Var to the state after pass 1.
+        if isinstance(node.node, Var):
+            node.node.type = None
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)

@@ -760,7 +760,7 @@ b = B() # E
 b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
-main:7: error: Property "x" defined in "B" is read-only
+main:7: error: Property "x" defined in "A" is read-only
 main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 main:9: error: "int" has no attribute "y"
 

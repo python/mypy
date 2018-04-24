@@ -6,21 +6,7 @@ targeting these areas are very welcome, but please check first with a
 core team member that nobody else is working on the same thing.
 
 **Note:** This doesn’t include everything that the core team will work
-on, and everything is subject to change. Near-term plans are likely
-more accurate.
-
-## September-December 2017
-
-- Fix remaining highest-priority TypedDict issues and make TypedDict
-  an officially supported mypy feature.
-
-- Add support for protocols and structural subtyping (PEP 544).
-
-- Continue making error messages more useful and informative.
-  ([issue](https://github.com/python/mypy/labels/topic-usability))
-
-- Switch completely to pytest and remove the custom testing framework.
-  ([issue](https://github.com/python/mypy/issues/1673))
+on, and everything is subject to change.
 
 - Make it possible to run mypy as a daemon to avoid reprocessing the
   entire program on each run. This will improve performance
@@ -28,14 +14,13 @@ more accurate.
   large number of files is not cheap.
 
 - Provide much faster, reliable interactive feedback through
-  fine-grained incremental type checking, built on top the daemon
+  fine-grained incremental type checking, built on top of the daemon
   mode.
 
-- Document basic properties of all type operations used within mypy,
-  including compatibility, proper subtyping, joins and meets.
-  ([issue](https://github.com/python/mypy/issues/3454))
+- Turn on `--strict-optional` by default.
 
-## 2018
+- Continue making error messages more useful and informative.
+  ([issue](https://github.com/python/mypy/labels/topic-usability))
 
 - Refactor and simplify specific tricky parts of mypy internals, such
   as the [conditional type binder](https://github.com/python/mypy/issues/3457),
@@ -54,9 +39,5 @@ more accurate.
   Django models.
   ([issue](https://github.com/python/mypy/issues/1240))
 
-- Add support for statically typed
-  [protobufs](https://developers.google.com/protocol-buffers/).
-
-- Start work on editor plugins and support for selected IDE features.
-
-- Turn on `--strict-optional` by default.
+- Implement editor plugins and/or document how to integrate mypy
+  with popular editors. Support selected IDE features.

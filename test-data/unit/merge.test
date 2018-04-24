@@ -1440,7 +1440,8 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>)))
+    X<3> (builtins.int<4>))
+  MetaclassType(enum.EnumMeta<5>))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -1448,4 +1449,5 @@ TypeInfo<0>(
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
     X<3> (builtins.int<4>)
-    Y<5> (builtins.int<4>)))
+    Y<6> (builtins.int<4>))
+  MetaclassType(enum.EnumMeta<5>))

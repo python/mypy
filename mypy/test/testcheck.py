@@ -3,6 +3,7 @@
 import os
 import re
 import shutil
+import sys
 
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -145,6 +146,11 @@ class TypeCheckSuite(DataSuite):
             options.strict_optional = True
         if incremental_step:
             options.incremental = True
+        else:
+            options.incremental = False
+            # Don't waste time writing cache unless we are specifically looking for it
+            if 'writescache' not in testcase.name.lower():
+                options.cache_dir = os.devnull
 
         sources = []
         for module_name, program_path, program_text in module_data:
@@ -182,7 +188,8 @@ class TypeCheckSuite(DataSuite):
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
         if res:
-            self.verify_cache(module_data, res.errors, res.manager, res.graph)
+            if options.cache_dir != os.devnull:
+                self.verify_cache(module_data, res.errors, res.manager, res.graph)
 
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
@@ -276,7 +283,8 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.FindModuleCache().find_module(module_name, [test_temp_dir])
+                path = build.FindModuleCache().find_module(module_name, (test_temp_dir,),
+                                                           sys.executable)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()

@@ -85,9 +85,6 @@ LITERAL_YES = 2
 LITERAL_TYPE = 1
 LITERAL_NO = 0
 
-# Hard coded name of Enum baseclass.
-ENUM_BASECLASS = "enum.Enum"
-
 node_kinds = {
     LDEF: 'Ldef',
     GDEF: 'Gdef',
@@ -1938,6 +1935,9 @@ class TypeInfo(SymbolNode):
     # Method Resolution Order: the order of looking up attributes. The first
     # value always to refers to this class.
     mro = None  # type: List[TypeInfo]
+    # Used to stash the names of the mro classes temporarily between
+    # deserialization and fixup. See deserialize() for why.
+    _mro_refs = None  # type: Optional[List[str]]
 
     declared_metaclass = None  # type: Optional[mypy.types.Instance]
     metaclass_type = None  # type: Optional[mypy.types.Instance]
@@ -1980,12 +1980,7 @@ class TypeInfo(SymbolNode):
     # there is a dependency infer_constraint -> is_subtype -> is_callable_subtype ->
     # -> infer_constraints.
     inferring = None  # type: List[mypy.types.Instance]
-    # '_cache' and '_cache_proper' are subtype caches, implemented as sets of pairs
-    # of (subtype, supertype), where supertypes are instances of given TypeInfo.
-    # We need the caches, since subtype checks for structural types are very slow.
-    _cache = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
-    _cache_proper = None  # type: Set[Tuple[mypy.types.Type, mypy.types.Type]]
-    # 'inferring' and 'assuming' can't be also made sets, since we need to use
+    # 'inferring' and 'assuming' can't be made sets, since we need to use
     # is_same_type to correctly treat unions.
 
     # Protocols (full names) this class attempted to implement.
@@ -2066,8 +2061,6 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
-        self._cache = set()
-        self._cache_proper = set()
         self.attempted_protocols = set()
         self.checked_against_members = set()
         self.add_type_vars()
@@ -2117,30 +2110,10 @@ class TypeInfo(SymbolNode):
                     members.add(name)
         return sorted(list(members))
 
-    def record_subtype_cache_entry(self, left: 'mypy.types.Instance',
-                                   right: 'mypy.types.Instance',
-                                   proper_subtype: bool = False) -> None:
-        if proper_subtype:
-            self._cache_proper.add((left, right))
-        else:
-            self._cache.add((left, right))
-
     def record_protocol_subtype_check(self, right_type: 'TypeInfo') -> None:
         assert right_type.is_protocol
         self.attempted_protocols.add(right_type.fullname())
         self.checked_against_members.update(right_type.protocol_members)
-
-    def is_cached_subtype_check(self, left: 'mypy.types.Instance',
-                                right: 'mypy.types.Instance',
-                                proper_subtype: bool = False) -> bool:
-        if not proper_subtype:
-            return (left, right) in self._cache
-        return (left, right) in self._cache_proper
-
-    def reset_subtype_cache(self) -> None:
-        for item in self.mro:
-            item._cache = set()
-            item._cache_proper = set()
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
@@ -2167,19 +2140,6 @@ class TypeInfo(SymbolNode):
                     return None
         return None
 
-    def calculate_mro(self) -> None:
-        """Calculate and set mro (method resolution order).
-
-        Raise MroError if cannot determine mro.
-        """
-        mro = linearize_hierarchy(self)
-        assert mro, "Could not produce a MRO at all for %s" % (self,)
-        self.mro = mro
-        self.is_enum = self._calculate_is_enum()
-        # The property of falling back to Any is inherited.
-        self.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in self.mro)
-        self.reset_subtype_cache()
-
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass
         if declared is not None and not declared.type.has_base('builtins.type'):
@@ -2200,17 +2160,6 @@ class TypeInfo(SymbolNode):
     def is_metaclass(self) -> bool:
         return (self.has_base('builtins.type') or self.fullname() == 'abc.ABCMeta' or
                 self.fallback_to_any)
-
-    def _calculate_is_enum(self) -> bool:
-        """
-        If this is "enum.Enum" itself, then yes, it's an enum.
-        If the flag .is_enum has been set on anything in the MRO, it's an enum.
-        """
-        if self.fullname() == ENUM_BASECLASS:
-            return True
-        if self.mro:
-            return any(type_info.is_enum for type_info in self.mro)
-        return False
 
     def has_base(self, fullname: str) -> bool:
         """Return True if type has a base type with the specified name.
@@ -2288,6 +2237,7 @@ class TypeInfo(SymbolNode):
                 'abstract_attributes': self.abstract_attributes,
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
+                'mro': [c.fullname() for c in self.mro],
                 '_promote': None if self._promote is None else self._promote.serialize(),
                 'declared_metaclass': (None if self.declared_metaclass is None
                                        else self.declared_metaclass.serialize()),
@@ -2318,7 +2268,17 @@ class TypeInfo(SymbolNode):
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
         ti.metaclass_type = (None if data['metaclass_type'] is None
                              else mypy.types.Instance.deserialize(data['metaclass_type']))
-        # NOTE: ti.mro will be set in the fixup phase.
+        # NOTE: ti.mro will be set in the fixup phase based on these
+        # names.  The reason we need to store the mro instead of just
+        # recomputing it from base classes has to do with a subtle
+        # point about fine-grained incremental: the cache files might
+        # not be loaded until after a class in the mro has changed its
+        # bases, which causes the mro to change. If we recomputed our
+        # mro, we would compute the *new* mro, which leaves us with no
+        # way to detact that the mro has changed! Thus we need to make
+        # sure to load the original mro so that once the class is
+        # rechecked, it can tell that the mro has changed.
+        ti._mro_refs = data['mro']
         ti.tuple_type = (None if data['tuple_type'] is None
                          else mypy.types.TupleType.deserialize(data['tuple_type']))
         ti.typeddict_type = (None if data['typeddict_type'] is None
@@ -2584,42 +2544,6 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             if key != '.class':
                 st[key] = SymbolTableNode.deserialize(value)
         return st
-
-
-class MroError(Exception):
-    """Raised if a consistent mro cannot be determined for a class."""
-
-
-def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
-    # TODO describe
-    if info.mro:
-        return info.mro
-    bases = info.direct_base_classes()
-    lin_bases = []
-    for base in bases:
-        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
-        lin_bases.append(linearize_hierarchy(base))
-    lin_bases.append(bases)
-    return [info] + merge(lin_bases)
-
-
-def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
-    seqs = [s[:] for s in seqs]
-    result = []  # type: List[TypeInfo]
-    while True:
-        seqs = [s for s in seqs if s]
-        if not seqs:
-            return result
-        for seq in seqs:
-            head = seq[0]
-            if not [s for s in seqs if head in s[1:]]:
-                break
-        else:
-            raise MroError()
-        result.append(head)
-        for s in seqs:
-            if s[0] is head:
-                del s[0]
 
 
 def get_flags(node: Node, names: List[str]) -> List[str]:

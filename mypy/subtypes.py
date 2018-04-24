@@ -20,6 +20,7 @@ from mypy.nodes import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.sametypes import is_same_type
+from mypy.typestate import TypeState
 
 from mypy import experiments
 
@@ -145,7 +146,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
-            if right.type.is_cached_subtype_check(left, right):
+            if TypeState.is_cached_subtype_check(left, right):
                 return True
             # NOTE: left.type.mro may be None in quick mode if there
             # was an error somewhere.
@@ -155,7 +156,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if base._promote and is_subtype(
                             base._promote, self.right, self.check_type_parameter,
                             ignore_pos_arg_names=self.ignore_pos_arg_names):
-                        right.type.record_subtype_cache_entry(left, right)
+                        TypeState.record_subtype_cache_entry(left, right)
                         return True
             rname = right.type.fullname()
             # Always try a nominal check if possible,
@@ -168,7 +169,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                               for lefta, righta, tvar in
                               zip(t.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    right.type.record_subtype_cache_entry(left, right)
+                    TypeState.record_subtype_cache_entry(left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(left, right):
                 return True
@@ -183,10 +184,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if isinstance(item, AnyType):
                     return True
                 if isinstance(item, Instance):
-                    # Special-case enum since we don't have better way of expressing it
-                    if (is_named_instance(left, 'enum.EnumMeta')
-                            and is_named_instance(item, 'enum.Enum')):
-                        return True
                     return is_named_instance(item, 'builtins.object')
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
@@ -438,7 +435,10 @@ def is_protocol_implementation(left: Instance, right: Instance,
             # This rule is copied from nominal check in checker.py
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
-    right.type.record_subtype_cache_entry(left, right, proper_subtype)
+    if proper_subtype:
+        TypeState.record_proper_subtype_cache_entry(left, right)
+    else:
+        TypeState.record_subtype_cache_entry(left, right)
     return True
 
 
@@ -869,11 +869,11 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if right.type.is_cached_subtype_check(left, right, proper_subtype=True):
+            if TypeState.is_cached_proper_subtype_check(left, right):
                 return True
             for base in left.type.mro:
                 if base._promote and is_proper_subtype(base._promote, right):
-                    right.type.record_subtype_cache_entry(left, right, proper_subtype=True)
+                    TypeState.record_proper_subtype_cache_entry(left, right)
                     return True
 
             if left.type.has_base(right.type.fullname()):
@@ -890,7 +890,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                               zip(left.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    right.type.record_subtype_cache_entry(left, right, proper_subtype=True)
+                    TypeState.record_proper_subtype_cache_entry(left, right)
                 return nominal
             if (right.type.is_protocol and
                     is_protocol_implementation(left, right, proper_subtype=True)):

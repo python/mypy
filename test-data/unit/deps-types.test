@@ -875,6 +875,29 @@ class I: pass
 <mod.I.__new__> -> m
 <mod.I> -> <m.f.x>, m, m.f
 
+[case testAliasDepsFromImportUnqualified]
+from a import C
+x: C
+def f() -> None:
+    C()
+class A:
+    def meth(self) -> None:
+        def inner() -> C:
+            pass
+[file a.py]
+from b import D
+C = D
+[file b.py]
+class D:
+    pass
+[out]
+<m.A> -> m.A
+<m.x> -> m
+<a.C> -> m, m.A.meth, m.f
+<b.D.__init__> -> m.f
+<b.D.__new__> -> m.f
+<b.D> -> <m.A.meth>, <m.x>, m, m.A.meth, m.f
+
 [case testFuncBasedEnum]
 from enum import Enum
 from mod import B

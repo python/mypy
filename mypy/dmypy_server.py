@@ -26,6 +26,10 @@ from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
+from mypy.typestate import TypeState
+
+
+MEM_PROFILE = False  # If True, dump memory profile after initialization
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -119,13 +123,15 @@ class Server:
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
 
-        self.fscache = FileSystemCache(self.options.python_version)
+        self.fscache = FileSystemCache()
 
         options.incremental = True
         options.fine_grained_incremental = True
         options.show_traceback = True
         if options.use_fine_grained_cache:
-            options.cache_fine_grained = True  # set this so that cache options match
+            # Using fine_grained_cache implies generating and caring
+            # about the fine grained cache
+            options.cache_fine_grained = True
         else:
             options.cache_dir = os.devnull
         # Fine-grained incremental doesn't support general partial types
@@ -147,6 +153,7 @@ class Server:
                         conn, addr = sock.accept()
                     except socket.timeout:
                         print("Exiting due to inactivity.")
+                        self.free_global_state()
                         sys.exit(0)
                     try:
                         data = receive(conn)
@@ -177,6 +184,7 @@ class Server:
                     conn.close()
                     if command == 'stop':
                         sock.close()
+                        self.free_global_state()
                         sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)
@@ -185,6 +193,9 @@ class Server:
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)  # type: ignore
+
+    def free_global_state(self) -> None:
+        TypeState.reset_all_subtype_caches()
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
@@ -288,6 +299,10 @@ class Server:
         else:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
+
+        if MEM_PROFILE:
+            from mypy.memprofile import print_memory_profile
+            print_memory_profile(run_gc=False)
 
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}

@@ -19,23 +19,10 @@ from mypy.visitor import NodeVisitor
 # N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
 # when fixing up a fine-grained incremental cache load (since there may
 # be cross-refs into deleted modules)
-def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
-                          quick_and_dirty: bool) -> None:
+def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile],
+                 quick_and_dirty: bool) -> None:
     node_fixer = NodeFixer(modules, quick_and_dirty)
     node_fixer.visit_symbol_table(tree.names)
-
-
-def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile]) -> None:
-    compute_all_mros(tree.names, modules)
-
-
-def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
-    for key, value in symtab.items():
-        if value.kind in (LDEF, MDEF, GDEF) and isinstance(value.node, TypeInfo):
-            info = value.node
-            info.calculate_mro()
-            assert info.mro, "No MRO calculated for %s" % (info.fullname(),)
-            compute_all_mros(info.names, modules)
 
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
@@ -69,6 +56,10 @@ class NodeFixer(NodeVisitor[None]):
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info._mro_refs:
+                info.mro = [lookup_qualified_typeinfo(self.modules, name, self.quick_and_dirty)
+                            for name in info._mro_refs]
+                info._mro_refs = None
         finally:
             self.current_info = save_info
 
@@ -162,18 +153,12 @@ class TypeFixer(TypeVisitor[None]):
         if type_ref is None:
             return  # We've already been here.
         del inst.type_ref
-        node = lookup_qualified(self.modules, type_ref, self.quick_and_dirty)
-        if isinstance(node, TypeInfo):
-            inst.type = node
-            # TODO: Is this needed or redundant?
-            # Also fix up the bases, just in case.
-            for base in inst.type.bases:
-                if base.type is NOT_READY:
-                    base.accept(self)
-        else:
-            # Looks like a missing TypeInfo in quick mode, put something there
-            assert self.quick_and_dirty, "Should never get here in normal mode"
-            inst.type = stale_info(self.modules)
+        inst.type = lookup_qualified_typeinfo(self.modules, type_ref, self.quick_and_dirty)
+        # TODO: Is this needed or redundant?
+        # Also fix up the bases, just in case.
+        for base in inst.type.bases:
+            if base.type is NOT_READY:
+                base.accept(self)
         for a in inst.args:
             a.accept(self)
 
@@ -251,6 +236,17 @@ class TypeFixer(TypeVisitor[None]):
         t.item.accept(self)
 
 
+def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
+                              quick_and_dirty: bool) -> TypeInfo:
+    node = lookup_qualified(modules, name, quick_and_dirty)
+    if isinstance(node, TypeInfo):
+        return node
+    else:
+        # Looks like a missing TypeInfo in quick mode, put something there
+        assert quick_and_dirty, "Should never get here in normal mode"
+        return stale_info(modules)
+
+
 def lookup_qualified(modules: Dict[str, MypyFile], name: str,
                      quick_and_dirty: bool) -> Optional[SymbolNode]:
     stnode = lookup_qualified_stnode(modules, name, quick_and_dirty)
@@ -267,7 +263,10 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
     while True:
         if '.' not in head:
             if not quick_and_dirty:
-                assert '.' in head, "Cannot find %s" % (name,)
+                # Not yet: assert '.' in head, "Cannot find %s" % (name,)
+                stale = stale_info(modules)
+                stale.fallback_to_any = True
+                return SymbolTableNode(GDEF, stale)
             return None
         head, tail = head.rsplit('.', 1)
         rest.append(tail)
