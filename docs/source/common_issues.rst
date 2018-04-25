@@ -51,7 +51,7 @@ flagged as an error.
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
-- **One of the values involved has type ``Any``.** Extending the above
+- **One of the values involved has type Any.** Extending the above
   example, if we were to leave out the annotation for ``a``, we'd get
   no error:
 
@@ -85,7 +85,7 @@ flagged as an error.
   clarity about the latter use ``--follow-imports=error``.  You can
   read up about these and other useful flags in :ref:`command-line`.
 
-- **A function annotated as returning a non-optional type returns ``None``
+- **A function annotated as returning a non-optional type returns None
   and mypy doesn't complain**.
 
   .. code-block:: python
@@ -93,9 +93,8 @@ flagged as an error.
       def foo() -> str:
           return None  # No error!
 
-  By default, the ``None`` value is considered compatible with everything. See
-  :ref:`optional` for details on strict optional checking, which allows mypy to
-  check ``None`` values precisely, and will soon become default.
+  You may have disabled strict optional checking (see
+  :ref:`no_strict_optional` for more).
 
 .. _silencing_checker:
 
