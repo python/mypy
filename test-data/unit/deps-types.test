@@ -943,6 +943,7 @@ class P(PBase, Protocol):
     y: int
 [out]
 <m.x> -> m
+<mod.P.y> -> mod
 <mod.P> -> <m.x>, m, mod.P
 <mod.PBase.__init__> -> <mod.P.__init__>
 <mod.PBase.__new__> -> <mod.P.__new__>
