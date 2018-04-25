@@ -108,7 +108,7 @@ class TypeState:
                                                 set()).update(right_type.protocol_members)
 
     @classmethod
-    def snapshot_protocol_deps(cls) -> Dict[str, Set[str]]:
+    def _snapshot_protocol_deps(cls) -> Dict[str, Set[str]]:
         """Collect protocol attribute dependencies found so far from registered subtype checks.
 
         There are three kinds of protocol dependencies. For example, after a subtype check:
@@ -160,7 +160,7 @@ class TypeState:
         if cls.proto_deps is None:
             # Unsuccesful cache loading, nothing to do.
             return
-        new_deps = cls.snapshot_protocol_deps()
+        new_deps = cls._snapshot_protocol_deps()
         for trigger, targets in new_deps.items():
             cls.proto_deps.setdefault(trigger, set()).update(targets)
         if second_map is not None:
@@ -170,7 +170,12 @@ class TypeState:
 
     @classmethod
     def add_all_protocol_deps(cls, deps: Dict[str, Set[str]]) -> None:
-        """Add all known protocol dependencies to deps."""
+        """Add all known protocol dependencies to deps.
+
+        This is used by tests and debug output, and also when passing
+        all collected or loaded dependencies on to FineGrainedBuildManager
+        in its __init__.
+        """
         cls.update_protocol_deps()  # just in case
         if TypeState.proto_deps is None:
             return
