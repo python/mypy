@@ -244,7 +244,7 @@ class DependencyVisitor(TraverserVisitor):
             for base_info in info.mro[:-1]:
                 self.add_dependency(make_wildcard_trigger(base_info.fullname()),
                                     target=make_trigger(target))
-                # More protocol dependencies are collected in collect_proto_attr_deps
+                # More protocol dependencies are collected in TypeState.snapshot_protocol_deps
                 # after a full run or update is finished.
 
         self.add_type_alias_deps(self.scope.current_target())

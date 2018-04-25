@@ -117,12 +117,13 @@ import time
 import os.path
 from typing import (
     Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable,
-    Sequence, overload
+    Sequence
 )
 
 from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
-    process_fresh_modules, PRI_INDIRECT, DEBUG_FINE_GRAINED,
+    process_fresh_modules,
+    PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
