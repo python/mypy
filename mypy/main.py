@@ -652,6 +652,7 @@ def process_options(args: List[str],
     if options.package_root:
         if fscache is None:
             parser.error("--package-root does not work here (no fscache)")
+        assert fscache is not None  # Since mypy doesn't know parser.error() raises.
         # Do some stuff with drive letters to make Windows happy (esp. tests).
         current_drive, _ = os.path.splitdrive(os.getcwd())
         dot = os.curdir
