@@ -5891,6 +5891,9 @@ async def f() -> int:
     async with C() as x:
         return x
 
+async def g() -> None:
+    async with C(): pass
+
 [file a.py]
 class C:
     async def __aenter__(self) -> int: pass
@@ -5920,3 +5923,4 @@ main:5: error: Incompatible return value type (got "str", expected "int")
 ==
 ==
 main:4: error: "C" has no attribute "__aexit__"
+main:8: error: "C" has no attribute "__aexit__"
