@@ -1898,8 +1898,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             assert self.type, "Self member outside a class"
             cur_node = self.type.names.get(lval.name, None)
             node = self.type.get(lval.name)
-            if (node is None or isinstance(node.node, Var) and node.node.is_abstract_var or
-                    cur_node is None and explicit_type):
+            # If the attribute of self is not defined in superclasses, create a new Var, ...
+            if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
+                    # ... also an explicit declaration on self also creates a new Var.
+                    (cur_node is None and explicit_type)):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:

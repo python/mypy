@@ -5837,24 +5837,6 @@ main:6: error: Unsupported operand types for + ("str" and "int")
 ==
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineMethod]
-import b
-class A(b.B):
-    def m(self) -> str: pass
-def f(x: b.B) -> None:
-    x.m() + int()
-f(A())
-[file b.py]
-class B:
-    def m(self) -> str: pass
-[file b.py.2]
-class B:
-    def m(self) -> int: pass
-[out]
-main:5: error: Unsupported operand types for + ("str" and "int")
-==
-main:3: error: Return type of "m" incompatible with supertype "B"
-
 [case testLiskovFineDecorator]
 import b
 from c import deco
@@ -5884,7 +5866,7 @@ main:7: error: Unsupported operand types for + ("str" and "int")
 ==
 main:5: error: Return type of "m" incompatible with supertype "B"
 
-[case testLiskovFineVariableClean]
+[case testLiskovFineVariableClean-skip-cache]
 import b
 class A(b.B):
     x: str
@@ -5898,7 +5880,7 @@ class B:
 ==
 main:3: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineVariableCleanDefInMethod]
+[case testLiskovFineVariableCleanDefInMethod-skip-cache]
 import b
 class A(b.B):
     def meth(self) -> None:
@@ -5913,7 +5895,7 @@ class B:
 ==
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineVariableCleanDefInMethodNested]
+[case testLiskovFineVariableCleanDefInMethodNested-skip-cache]
 from b import B
 def outer() -> None:
     class A(B):
@@ -5929,7 +5911,7 @@ class B:
 ==
 main:5: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineVariableInFunctionClean]
+[case testLiskovFineVariableInFunctionClean-skip-cache]
 from b import B
 def outer() -> None:
     class A(B):
@@ -5944,21 +5926,7 @@ class B:
 ==
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineMethodClean]
-import b
-class A(b.B):
-    def m(self) -> str: pass
-[file b.py]
-class B:
-    def m(self) -> str: pass
-[file b.py.2]
-class B:
-    def m(self) -> int: pass
-[out]
-==
-main:3: error: Return type of "m" incompatible with supertype "B"
-
-[case testLiskovFineDecoratorClean]
+[case testLiskovFineDecoratorClean-skip-cache]
 import b
 from c import deco
 class A(b.B):

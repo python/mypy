@@ -240,7 +240,7 @@ class DependencyVisitor(TraverserVisitor):
         for name, node in info.names.items():
             if isinstance(node.node, Var):
                 # Recheck Liskov if needed, self definitions are checked in the defining method
-                if node.node.is_initialized_in_class and user_bases(info):
+                if node.node.is_initialized_in_class and has_user_bases(info):
                     self.add_dependency(make_trigger(info.fullname() + '.' + name))
                 for base_info in non_trivial_bases(info):
                     # If the type of an attribute changes in a base class, we make references
@@ -360,7 +360,7 @@ class DependencyVisitor(TraverserVisitor):
                 node = lvalue.node
                 if isinstance(node, Var):
                     info = node.info
-                    if info and user_bases(info):
+                    if info and has_user_bases(info):
                         # Recheck Liskov for self definitions
                         self.add_dependency(make_trigger(info.fullname() + '.' + lvalue.name))
             if lvalue.kind is None:
@@ -759,10 +759,9 @@ def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
             if base.fullname() != 'builtins.object']
 
 
-def user_bases(info: TypeInfo) -> List[TypeInfo]:
+def has_user_bases(info: TypeInfo) -> bool:
     # TODO: skip everything from typeshed?
-    return [base for base in info.mro[1:]
-            if base.module_name not in ('builtins', 'typing', 'enum')]
+    return any(base.module_name not in ('builtins', 'typing', 'enum') for base in info.mro[1:])
 
 
 def dump_all_dependencies(modules: Dict[str, MypyFile],
