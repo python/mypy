@@ -35,7 +35,7 @@ import stat
 from typing import Dict, List, Tuple
 
 
-class FileSystemMetaCache:
+class FileSystemCache:
     def __init__(self) -> None:
         self.flush()
 
@@ -46,6 +46,9 @@ class FileSystemMetaCache:
         self.listdir_cache = {}  # type: Dict[str, List[str]]
         self.listdir_error_cache = {}  # type: Dict[str, OSError]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
+        self.read_cache = {}  # type: Dict[str, bytes]
+        self.read_error_cache = {}  # type: Dict[str, Exception]
+        self.hash_cache = {}  # type: Dict[str, str]
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -119,20 +122,6 @@ class FileSystemMetaCache:
         except FileNotFoundError:
             return False
         return True
-
-
-# TODO: Merge FileSystemMetaCache back into this?
-class FileSystemCache(FileSystemMetaCache):
-    def __init__(self) -> None:
-        super().__init__()
-        self.flush()
-
-    def flush(self) -> None:
-        """Start another transaction and empty all caches."""
-        super().flush()
-        self.read_cache = {}  # type: Dict[str, bytes]
-        self.read_error_cache = {}  # type: Dict[str, Exception]
-        self.hash_cache = {}  # type: Dict[str, str]
 
     def read(self, path: str) -> bytes:
         if path in self.read_cache:
