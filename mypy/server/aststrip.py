@@ -44,7 +44,7 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr
+    ListExpr, ForStmt
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -216,6 +216,11 @@ class NodeStripVisitor(TraverserVisitor):
                     symnode = self.names[initial]
                     symnode.kind = UNBOUND_IMPORTED
                     symnode.node = None
+
+    def visit_for_stmt(self, node: ForStmt) -> None:
+        node.index_type = None
+        node.inferred_item_type = None
+        super().visit_for_stmt(node)
 
     def visit_import_all(self, node: ImportAll) -> None:
         # If the node is unreachable, we don't want to reset entries from a reachable import.
