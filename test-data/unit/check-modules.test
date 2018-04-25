@@ -1853,7 +1853,7 @@ reveal_type(has_getattr.any_attribute)
 def __getattr__(x: int, y: str) -> str: ...
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str"
+tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str" for "__getattr__"
 main:3: error: Revealed type is 'builtins.str'
 
 [builtins fixtures/module.pyi]
@@ -1861,10 +1861,14 @@ main:3: error: Revealed type is 'builtins.str'
 [case testModuleLevelGetattrNotCallable]
 import has_getattr
 
-reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'  # E: Module has no attribute "any_attribute"
+reveal_type(has_getattr.any_attribute)
 
 [file has_getattr.pyi]
 __getattr__ = 3
+
+[out]
+tmp/has_getattr.pyi:1: error: Invalid signature "builtins.int" for "__getattr__"
+main:3: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]
 
@@ -1956,6 +1960,60 @@ def __getattr__(name: str) -> Any: ...
 main:2: error: Revealed type is 'Any'
 main:2: error: Name 'name' is not defined
 main:3: error: Revealed type is 'Any'
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrAssignedGood]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)  # E: Revealed type is 'builtins.int'
+
+[file non_stub.py]
+from typing import Callable
+
+def make_getattr_good() -> Callable[[str], int]: ...
+__getattr__ = make_getattr_good()  # OK
+
+[case testModuleLevelGetattrAssignedBad]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)
+
+[file non_stub.py]
+from typing import Callable
+
+def make_getattr_bad() -> Callable[[], int]: ...
+__getattr__ = make_getattr_bad()
+
+[out]
+tmp/non_stub.py:4: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+main:3: error: Revealed type is 'builtins.int'
+
+[case testModuleLevelGetattrImportedGood]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)  # E: Revealed type is 'builtins.int'
+
+[file non_stub.py]
+from has_getattr import __getattr__
+
+[file has_getattr.py]
+def __getattr__(name: str) -> int: ...
+
+[case testModuleLevelGetattrImportedBad]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)
+
+[file non_stub.py]
+from has_getattr import __getattr__
+
+[file has_getattr.py]
+def __getattr__() -> int: ...
+
+[out]
+tmp/has_getattr.py:1: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+main:3: error: Revealed type is 'builtins.int'
 
 [builtins fixtures/module.pyi]
 

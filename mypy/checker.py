@@ -1062,7 +1062,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
 
-    def check_getattr_method(self, typ: CallableType, context: Context, name: str) -> None:
+    def check_getattr_method(self, typ: Type, context: Context, name: str) -> None:
         if len(self.scope.stack) == 1:
             # module scope
             if name == '__getattribute__':
@@ -1086,9 +1086,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return
         if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+            self.msg.invalid_signature_for_special_method(typ, context, name)
 
-    def check_setattr_method(self, typ: CallableType, context: Context) -> None:
+    def check_setattr_method(self, typ: Type, context: Context) -> None:
         if not self.scope.active_class():
             return
         method_type = CallableType([AnyType(TypeOfAny.special_form),
@@ -1099,7 +1099,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                    NoneTyp(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+            self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
     def expand_typevars(self, defn: FuncItem,
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
@@ -1473,6 +1473,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
+                rvalue_type = self.expr_checker.accept(rvalue)
+                if rvalue_type and lvalue.node and isinstance(lvalue, NameExpr):
+                    name = lvalue.node.name()
+                    if name == '__setattr__':
+                        self.check_setattr_method(rvalue_type, lvalue)
+                    elif name in ('__getattribute__', '__getattr__'):
+                        self.check_getattr_method(rvalue_type, lvalue, name)
+
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
@@ -1530,6 +1538,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
+
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
