@@ -168,6 +168,15 @@ class TypeState:
                 second_map.setdefault(trigger, set()).update(targets)
         cls._rechecked_types.clear()
 
+    @classmethod
+    def add_all_protocol_deps(cls, deps: Dict[str, Set[str]]) -> None:
+        """Add all known protocol dependencies to deps."""
+        cls.update_protocol_deps()  # just in case
+        if TypeState.proto_deps is None:
+            return
+        for trigger, targets in TypeState.proto_deps.items():
+            deps.setdefault(trigger, set()).update(targets)
+
 
 def reset_global_state() -> None:
     """Reset all existing global states. Currently they are all in this module."""

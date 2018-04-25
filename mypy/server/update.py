@@ -410,6 +410,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict
     # Deps for each module were computed during build() or loaded from the cache.
     deps = {}  # type: Dict[str, Set[str]]
     collect_dependencies(graph, deps, graph)
+    TypeState.add_all_protocol_deps(deps)
     return deps
 
 
@@ -958,6 +959,8 @@ def update_deps(module_id: str,
                                               options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
+    # Merge also the newly added protocol deps (if any).
+    TypeState.update_protocol_deps(deps)
 
 
 def lookup_target(manager: BuildManager,

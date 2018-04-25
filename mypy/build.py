@@ -1006,7 +1006,7 @@ def read_protocol_cache(manager: BuildManager,
     """Read and validate protocol dependencies cache."""
     proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
     try:
-        data = manager.fscache.read(proto_meta)
+        data = manager.fscache.read(proto_meta).decode()
         manager.trace('Proto meta {}'.format(data.rstrip()))
         meta_snapshot = json.loads(data)
     except IOError:
@@ -1023,7 +1023,7 @@ def read_protocol_cache(manager: BuildManager,
         manager.log('Protocol cache inconsistent, ignoring.')
         return None
     try:
-        data = manager.fscache.read(proto_cache)
+        data = manager.fscache.read(proto_cache).decode()
         manager.trace('Proto deps {}'.format(data.rstrip()))
         deps = json.loads(data)  # TODO: Errors
     except IOError:
@@ -1075,7 +1075,8 @@ def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
 
     Since these dependencies represent a global state of the program, they
     are serialized per program, not per module, and the corresponding files
-    live at the root of the cache folder for a given Python version."""
+    live at the root of the cache folder for a given Python version.
+    """
     name = os.path.join(_get_prefix(manager), 'proto_deps')
     return name + '.meta.json', name + '.data.json'
 

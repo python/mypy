@@ -113,11 +113,7 @@ def get_dependencies(target: MypyFile,
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
-    deps = visitor.map
-    new_deps = TypeState.snapshot_protocol_deps()
-    for trigger, targets in new_deps.items():
-        deps.setdefault(trigger, set()).update(targets)
-    return deps
+    return visitor.map
 
 
 def get_dependencies_of_target(module_id: str,
@@ -789,6 +785,7 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
         deps = get_dependencies(node, type_map, python_version)
         for trigger, targets in deps.items():
             all_deps.setdefault(trigger, set()).update(targets)
+    TypeState.add_all_protocol_deps(all_deps)
 
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)
