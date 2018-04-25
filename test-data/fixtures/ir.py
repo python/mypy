@@ -1,7 +1,7 @@
 # These builtins stubs are used implicitly in AST to IR generation
 # test cases.
 
-from typing import TypeVar, Generic, List, Iterator, Iterable, Sized
+from typing import TypeVar, Generic, List, Iterator, Iterable, Sized, Dict
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -52,6 +52,7 @@ class dict(Generic[T, S]):
     def __getitem__(self, x: T) -> S: pass
     def __setitem__(self, x: T, y: S) -> None: pass
     def __contains__(self, x: T) -> bool: pass
+    def update(self, x: Dict[T, S]) -> None: pass
 
 def len(o: Sized) -> int: pass
 def print(*object) -> None: pass

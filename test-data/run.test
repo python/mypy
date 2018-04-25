@@ -279,3 +279,17 @@ assert f(None) is None
 assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
+
+[case testDictUpdate]
+from typing import Dict
+def f(x: int) -> int:
+    dict1 = {} # type: Dict[int, int]
+    dict1[1] = 1
+    dict2 = {} # type: Dict[int, int]
+    dict2[x] = 2
+    dict1.update(dict2)
+    return dict1[1]
+[file driver.py]
+from native import f
+assert f(1) == 2
+assert f(2) == 1

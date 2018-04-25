@@ -789,6 +789,12 @@ class IRBuilder(NodeVisitor[Register]):
         return target
 
     def translate_special_method_call(self, callee: MemberExpr, expr: CallExpr) -> Register:
+        """Translate a method call which is handled nongenerically.
+
+        These are special in the sense that we have code generated specifically for them.
+        They tend to be method calls which have equivalents in C that are more direct
+        than calling with the PyObject api.
+        """
         base_type = self.node_type(callee.expr)
         result_type = self.node_type(expr)
         base = self.accept(callee.expr)
@@ -796,6 +802,10 @@ class IRBuilder(NodeVisitor[Register]):
             target = INVALID_REGISTER  # TODO: Do we sometimes need to allocate a register?
             arg = self.box_expr(expr.args[0])
             self.add(PrimitiveOp(target, PrimitiveOp.LIST_APPEND, base, arg))
+        elif callee.name == 'update' and base_type.name == 'dict':
+            target = INVALID_REGISTER
+            other_list_reg = self.accept(expr.args[0])
+            self.add(PrimitiveOp(None, PrimitiveOp.DICT_UPDATE, base, other_list_reg))
         else:
             assert False, 'Unsupported method call: %s.%s' % (base_type.name, callee.name)
         return target

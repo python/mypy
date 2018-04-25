@@ -203,6 +203,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                 abort();
                          """)
 
+    def test_dict_update(self) -> None:
+        self.assert_emit(PrimitiveOp(None, PrimitiveOp.DICT_UPDATE, self.d, self.o),
+                        """if (PyDict_Update(cpy_r_d, cpy_r_o) == -1)
+                               abort();
+                        """)
+
     def test_new_dict(self) -> None:
         self.assert_emit(PrimitiveOp(self.d, PrimitiveOp.NEW_DICT),
                          """cpy_r_d = PyDict_New();

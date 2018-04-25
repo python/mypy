@@ -104,3 +104,16 @@ L2:
     return r4
 L3:
     unreachable
+
+[case testDictUpdate]
+from typing import Dict
+def f(a: Dict[int, int], b: Dict[int, int]) -> None:
+    a.update(b)
+[out]
+def f(a, b):
+    a, b :: dict
+    r0 :: None
+L0:
+    a.update b :: dict
+    r0 = None
+    return r0

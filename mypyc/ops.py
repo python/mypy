@@ -628,6 +628,7 @@ VAR_ARG = -1
 # Primitive op inds
 OP_MISC = 0    # No specific kind
 OP_BINARY = 1  # Regular binary operation such as +
+OP_SPECIAL_METHOD_CALL = 2
 
 OpDesc = NamedTuple('OpDesc', [('name', str),        # Symbolic name of the operation
                                ('num_args', int),    # Number of args (or VAR_ARG for any number)
@@ -647,7 +648,14 @@ def make_op(name: str, num_args: int, typ: str, format_str: str = None,
             assert is_void
             format_str = '{args[0]}[{args[1]}] = {args[2]} :: %s' % typ
         elif kind == OP_BINARY:
+            assert not is_void
             format_str = '{dest} = {args[0]} %s {args[1]} :: %s' % (name, typ)
+        elif kind == OP_SPECIAL_METHOD_CALL:
+            args_joined = ', '.join(['{args[%d]}' % i for i in range (1, num_args)])
+            if is_void:
+                format_str = ('{args[0]}.%s ' + args_joined + ' :: %s') % (name, typ)
+            else:
+                format_str = ('{dest} = {args[0]}.%s ' + args_joined + ' :: %s') % (name, typ)
         elif num_args == 1:
             if name[-1].isalpha():
                 name += ' '
@@ -700,6 +708,7 @@ class PrimitiveOp(RegisterOp):
     DICT_SET = make_op('[]=', 3, 'dict', is_void=True)
     NEW_DICT = make_op('new', 0, 'dict', format_str='{dest} = {{}}')
     DICT_CONTAINS = make_op('in', 2, 'dict', kind=OP_BINARY)
+    DICT_UPDATE = make_op('update', 2, 'dict', kind=OP_SPECIAL_METHOD_CALL, is_void=True)
 
     # Sequence Tuple
     HOMOGENOUS_TUPLE_GET = make_op('[]', 2, 'sequence_tuple', kind=OP_BINARY)
