@@ -23,7 +23,7 @@ def create_source_list(files: Sequence[str], options: Options,
 
     Raises InvalidSourceList on errors.
     """
-    fscache = fscache or FileSystemCache(package_root=options.package_root)
+    fscache = fscache or FileSystemCache()
     finder = SourceFinder(fscache)
 
     targets = []

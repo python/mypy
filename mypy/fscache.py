@@ -36,11 +36,14 @@ from typing import Dict, List, Optional, Set, Tuple
 
 
 class FileSystemCache:
-    def __init__(self, package_root: Optional[List[str]] = None) -> None:
-        if package_root is None:
-            package_root = []
-        self.package_root = package_root
+    def __init__(self) -> None:
+        # The package root is not flushed with the caches.
+        # It is set by set_package_root() below.
+        self.package_root = []  # type: List[str]
         self.flush()
+
+    def set_package_root(self, package_root: List[str]) -> None:
+        self.package_root = package_root
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
@@ -53,7 +56,6 @@ class FileSystemCache:
         self.read_error_cache = {}  # type: Dict[str, Exception]
         self.hash_cache = {}  # type: Dict[str, str]
         self.fake_package_cache = set()  # type: Set[str]
-        self.cwd = os.getcwd()
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:

@@ -303,7 +303,11 @@ def process_options(args: List[str],
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
                     ) -> Tuple[List[BuildSource], Options]:
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    If a FileSystemCache is passed in, and package_root options are given,
+    call fscache.set_package_root() to set the cache's package root.
+    """
 
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
@@ -646,6 +650,8 @@ def process_options(args: List[str],
 
     # Validate and normalize --package-root.
     if options.package_root:
+        if fscache is None:
+            parser.error("--package-root does not work here (no fscache)")
         # Do some stuff with drive letters to make Windows happy (esp. tests).
         current_drive, _ = os.path.splitdrive(os.getcwd())
         dot = os.curdir
@@ -670,6 +676,8 @@ def process_options(args: List[str],
                     root = root + os.sep
             package_root.append(root)
         options.package_root = package_root
+        # Pass the package root on the the filesystem cache.
+        fscache.set_package_root(package_root)
 
     # Parse cache map.
     if special_opts.cache_map:
