@@ -246,9 +246,9 @@ async def wrong_iterable(obj: Iterable[int]):
     {i: i for i in asyncify(obj)}
 
 [out]
-main:18: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"? (not async iterable)
+main:18: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
 main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
-main:20: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"? (not async iterable)
+main:20: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
 main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]

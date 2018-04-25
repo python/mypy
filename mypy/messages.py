@@ -459,6 +459,8 @@ class MessageBuilder:
                     alternatives = set(original_type.type.names.keys())
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
+                    if member == '__aiter__' and matches == ['__iter__']:
+                        matches = []  # Avoid misleading suggestion
                     if matches:
                         self.fail('{} has no attribute "{}"; maybe {}?{}'.format(
                             self.format(original_type), member, pretty_or(matches), extra),
