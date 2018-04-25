@@ -5,7 +5,7 @@ import os.path
 from typing import List, Sequence, Set, Tuple, Optional, Dict
 
 from mypy.build import BuildSource, PYTHON_EXTENSIONS
-from mypy.fscache import FileSystemMetaCache
+from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
 
@@ -17,13 +17,13 @@ class InvalidSourceList(Exception):
 
 
 def create_source_list(files: Sequence[str], options: Options,
-                       fscache: Optional[FileSystemMetaCache] = None,
+                       fscache: Optional[FileSystemCache] = None,
                        allow_empty_dir: bool = False) -> List[BuildSource]:
     """From a list of source files/directories, makes a list of BuildSources.
 
     Raises InvalidSourceList on errors.
     """
-    fscache = fscache or FileSystemMetaCache(package_root=options.package_root)
+    fscache = fscache or FileSystemCache(package_root=options.package_root)
     finder = SourceFinder(fscache)
 
     targets = []
@@ -56,7 +56,7 @@ def keyfunc(name: str) -> Tuple[int, str]:
 
 
 class SourceFinder:
-    def __init__(self, fscache: FileSystemMetaCache) -> None:
+    def __init__(self, fscache: FileSystemCache) -> None:
         self.fscache = fscache
         # A cache for package names, mapping from module id to directory path
         self.package_cache = {}  # type: Dict[str, str]
