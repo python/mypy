@@ -32,7 +32,8 @@ from mypyc.ops import (
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRType,
     Unreachable, TupleGet, ClassIR, UserRType, ModuleIR, GetAttr, SetAttr, LoadStatic,
     PyGetAttr, PyCall, IntRType, BoolRType, ListRType, SequenceTupleRType, ObjectRType, NoneRType,
-    OptionalRType, DictRType, UnicodeRType, c_module_name, INVALID_REGISTER, INVALID_LABEL
+    OptionalRType, DictRType, UnicodeRType, c_module_name, PyMethodCall,
+    INVALID_REGISTER, INVALID_LABEL
 )
 
 
@@ -725,6 +726,17 @@ class IRBuilder(NodeVisitor[Register]):
         self.add(PyCall(target_box, function, arg_boxes))
         return self.unbox_or_cast(target_box, target_type)
 
+    def py_method_call(self, obj: Register, method: Register, args: List[Expression], target_type: RType) -> Register:
+        target_box = self.alloc_temp(ObjectRType())
+
+        arg_boxes = [] # type: List[Register]
+        for arg_expr in args:
+            arg_reg = self.accept(arg_expr)
+            arg_boxes.append(self.box(arg_reg, self.node_type(arg_expr)))
+
+        self.add(PyMethodCall(target_box, obj, method, arg_boxes))
+        return self.unbox_or_cast(target_box, target_type)
+
     def visit_call_expr(self, expr: CallExpr) -> Register:
         if isinstance(expr.callee, MemberExpr):
             is_module_call = self.is_module_member_expr(expr.callee)
@@ -735,8 +747,14 @@ class IRBuilder(NodeVisitor[Register]):
 
             # Either its a module call or translating to a special method call failed, so we have
             # to fallback to a PyCall
-            function = self.accept(expr.callee)
-            return self.py_call(function, expr.args, self.node_type(expr))
+            if is_module_call:
+                function = self.accept(expr.callee)
+                return self.py_call(function, expr.args, self.node_type(expr))
+            else:
+                assert expr.callee.expr in self.types
+                obj = self.accept(expr.callee.expr)
+                method = self.load_static_unicode(expr.callee.name)
+                return self.py_method_call(obj, method, expr.args, self.node_type(expr))
 
         assert isinstance(expr.callee, NameExpr)
         fn = expr.callee.name  # TODO: fullname
@@ -793,7 +811,7 @@ class IRBuilder(NodeVisitor[Register]):
 
         return target
 
-    def translate_special_method_call(self, callee: MemberExpr, expr: CallExpr) -> Register:
+    def translate_special_method_call(self, callee: MemberExpr, expr: CallExpr) -> Optional[Register]:
         """Translate a method call which is handled nongenerically.
 
         These are special in the sense that we have code generated specifically for them.
@@ -812,7 +830,7 @@ class IRBuilder(NodeVisitor[Register]):
             other_list_reg = self.accept(expr.args[0])
             self.add(PrimitiveOp(None, PrimitiveOp.DICT_UPDATE, base, other_list_reg))
         else:
-            assert False, 'Unsupported method call: %s.%s' % (base_type.name, callee.name)
+            return None
         return target
 
     def visit_list_expr(self, expr: ListExpr) -> Register:

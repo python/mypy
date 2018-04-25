@@ -592,7 +592,7 @@ class Call(RegisterOp):
 class PyCall(RegisterOp):
     """Python call f(arg, ...).
 
-    All registers must be unboxed.
+    All registers must be unboxed. Corresponds to PyObject_CallFunctionObjArgs in C.
     """
     def __init__(self, dest: Optional[Register], function: Register, args: List[Register]) -> None:
         self.dest = dest
@@ -611,6 +611,35 @@ class PyCall(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_py_call(self)
+
+
+class PyMethodCall(RegisterOp):
+    """Python method call obj.m(arg, ...)
+
+    All registers must be unboxed. Corresponds to PyObject_CallMethodObjArgs in C.
+    """
+    def __init__(self,
+            dest: Optional[Register],
+            obj: Register,
+            method: Register,
+            args: List[Register]) -> None:
+        self.dest = dest
+        self.obj = obj
+        self.method = method
+        self.args = args
+
+    def to_str(self, env: Environment) -> str:
+        args = ', '.join(env.format('%r', arg) for arg in self.args)
+        s = env.format('%r.%r(%s)', self.obj, self.method, args)
+        if self.dest is not None:
+            s = env.format('%r = ', self.dest) + s
+        return s + ' :: py'
+
+    def sources(self) -> List[Register]:
+        return self.args[:] + [self.obj, self.method]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_py_method_call(self)
 
 
 class PyGetAttr(RegisterOp):
@@ -1058,6 +1087,9 @@ class OpVisitor(Generic[T]):
         pass
 
     def visit_py_call(self, op: PyCall) -> T:
+        pass
+
+    def visit_py_method_call(self, op: PyMethodCall) -> T:
         pass
 
     def visit_cast(self, op: Cast) -> T:

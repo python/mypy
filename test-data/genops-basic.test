@@ -493,3 +493,20 @@ def f():
 L0:
     r0 = __unicode_0 :: static
     return r0
+
+[case testPyMethodCall1]
+from typing import List
+def f(x: List[int]) -> int:
+    return x.pop()
+[out]
+def f(x):
+    x :: list
+    r0 :: unicode
+    r1 :: object
+    r2 :: int
+L0:
+    r0 = __unicode_0 :: static
+    r1 = x.r0() :: py
+    r2 = unbox(int, r1)
+    return r2
+

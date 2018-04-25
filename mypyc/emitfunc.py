@@ -5,7 +5,7 @@ from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, PrimitiveOp, Assign, LoadInt, GetAttr, SetAttr,
     LoadStatic, TupleGet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast, Unbox, Label,
-    Register, RType, OP_BINARY, TupleRType
+    Register, RType, OP_BINARY, TupleRType, PyMethodCall
 )
 
 
@@ -290,7 +290,23 @@ class FunctionEmitterVisitor(OpVisitor):
 
         function = self.reg(op.function)
         args = ', '.join(self.reg(arg) for arg in op.args)
-        self.emit_line('{}PyObject_CallFunctionObjArgs({}, {}, NULL);'.format(dest, function, args))
+        if args:
+            args += ', '
+        self.emit_line('{}PyObject_CallFunctionObjArgs({}, {}NULL);'.format(dest, function, args))
+
+    def visit_py_method_call(self, op: PyMethodCall) -> None:
+        if op.dest is not None:
+            dest = self.reg(op.dest) + ' = '
+        else:
+            dest = ''
+
+        obj = self.reg(op.obj)
+        method = self.reg(op.method)
+        args = ', '.join(self.reg(arg) for arg in op.args)
+        if args:
+            args += ', '
+        self.emit_line('{}PyObject_CallMethodObjArgs({}, {}, {}NULL);'.format(
+            dest, obj, method, args))
 
     def visit_inc_ref(self, op: IncRef) -> None:
         dest = self.reg(op.dest)

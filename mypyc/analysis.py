@@ -8,6 +8,7 @@ from mypyc.ops import (
     BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
     TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register,
+    PyMethodCall,
 )
 
 
@@ -79,6 +80,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_py_call(self, op: PyCall) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_py_method_call(self, op: PyMethodCall) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:

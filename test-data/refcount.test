@@ -559,3 +559,27 @@ L1:
 L2:
     r1 = 2
     return r1
+
+[case testUnicodeLiteral]
+def f() -> str:
+    return "some string"
+[out]
+L0:
+    r0 = __unicode_0 :: static
+    inc_ref r0
+    return r0
+
+[case testPyMethodCall]
+from typing import List
+def g(x: List[int], y: List[int]) -> None:
+    x.extend(y)
+[out]
+L0:
+    r0 = __unicode_0 :: static
+    inc_ref r0
+    r1 = x.r0(y) :: py
+    dec_ref r0
+    r2 = cast(None, r1)
+    dec_ref r2
+    r3 = None
+    return r3

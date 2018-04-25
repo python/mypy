@@ -27,7 +27,7 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Register, Label, Cast, Box, Unbox, PrimitiveOp
+    Return, Op, Register, Label, Cast, Box, Unbox, PrimitiveOp, LoadStatic,
 )
 
 
@@ -87,6 +87,9 @@ def transform_block(block: BasicBlock,
                 if src not in post_live[key] and src not in pre_borrow[key]:
                     if src != op.dest:
                         ops.append(DecRef(src, env.types[src]))
+            # TODO: Analyze LoadStatics as being borrowed! (#66)
+            if isinstance(op, LoadStatic):
+                ops.append(IncRef(op.dest, env.types[op.dest]))
             if op.dest is not None and op.dest not in post_live[key]:
                 ops.append(DecRef(op.dest, env.types[op.dest]))
             if tmp_reg is not None:
