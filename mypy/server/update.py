@@ -122,8 +122,7 @@ from typing import (
 
 from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
-    process_fresh_modules, collect_protocol_deps,
-    PRI_INDIRECT, DEBUG_FINE_GRAINED,
+    process_fresh_modules, PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
@@ -181,13 +180,6 @@ class FineGrainedBuildManager:
         self.changed_modules = []  # type: List[Tuple[str, str]]
         # Modules processed during the last update
         self.updated_modules = []  # type: List[str]
-        self.update_protocol_deps()
-
-    def update_protocol_deps(self) -> None:
-        """Add protocol dependencies to the dependency map."""
-        if self.manager.proto_deps is not None:
-            for trigger, targets in self.manager.proto_deps.items():
-                self.deps.setdefault(trigger, set()).update(targets)
 
     def update(self,
                changed_modules: List[Tuple[str, str]],
@@ -268,10 +260,6 @@ class FineGrainedBuildManager:
                     break
 
         self.previous_messages = messages[:]
-        # TODO: Avoid full re-collection (slow) after every update by moving the mutable
-        # TypeInfo state to a shared class, and just checking what's new there.
-        self.manager.proto_deps = collect_protocol_deps(self.graph)
-        self.update_protocol_deps()
         return messages
 
     def update_one(self,
@@ -642,6 +630,7 @@ def collect_dependencies(new_modules: Iterable[str],
             continue
         for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
+    TypeState.update_protocol_deps(deps)
 
 
 def calculate_active_triggers(manager: BuildManager,

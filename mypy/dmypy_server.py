@@ -196,6 +196,7 @@ class Server:
 
     def free_global_state(self) -> None:
         TypeState.reset_all_subtype_caches()
+        TypeState.reset_protocol_deps()
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""

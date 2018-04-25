@@ -266,6 +266,7 @@ def _build(sources: List[BuildSource],
                            fscache=fscache)
 
     TypeState.reset_all_subtype_caches()
+    TypeState.reset_protocol_deps()
     try:
         graph = dispatch(sources, manager)
         if not options.fine_grained_incremental:
@@ -637,16 +638,6 @@ class BuildManager:
         self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
-        # This contains protocol dependencies generated after running a full build,
-        # or after an update. These dependencies are special because:
-        #   * They are a global property of the program; i.e. some dependencies for imported
-        #     classes can be generated in the importing modules.
-        #   * Because of the above, they are serialized separately, after a full run,
-        #     or a full update.
-        # `proto_deps` can be None if after deserialization it turns out that they are
-        # inconsistent with the other cache files (or an error occurred during deserialization).
-        # A blocking error will be generated in this case, since we can't proceed safely.
-        self.proto_deps = None  # type: Optional[Dict[str, Set[str]]]
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -985,21 +976,6 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
     return True
 
 
-def collect_protocol_deps(graph: Graph) -> Dict[str, Set[str]]:
-    """Collect protocol dependency map for fine grained incremental mode."""
-    from mypy.server.deps import collect_protocol_attr_deps
-    result = {}  # type: Dict[str, Set[str]]
-    for id in graph:
-        file = graph[id].tree
-        if file is None:
-            continue  # this file has not been loaded
-        names = file.names
-        deps = collect_protocol_attr_deps(names, id)
-        for trigger, targets in deps.items():
-            result.setdefault(trigger, set()).update(targets)
-    return result
-
-
 def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
                               manager: BuildManager, graph: Graph) -> None:
     """Write cache files for protocol dependencies.
@@ -1073,15 +1049,6 @@ def _get_prefix(manager: BuildManager, id: Optional[str] = None) -> str:
     return os.path.join(base, *id.split('.'))
 
 
-def _cache_name_pair(name: str) -> Tuple[str, str]:
-    """Return cache name pair given the base name.
-
-    All cache files are stored in pairs. The .data.json file contains the actual
-    cache data, while .meta.json file contains metadata about the first file.
-    """
-    return name + '.meta.json', name + '.data.json'
-
-
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
     """Return the file names for the cache files.
 
@@ -1103,7 +1070,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     deps_json = None
     if manager.options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
-    return (*_cache_name_pair(prefix), deps_json)
+    return (prefix + '.meta.json', prefix + '.data.json', deps_json)
 
 
 def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
@@ -1112,8 +1079,8 @@ def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
     Since these dependencies represent a global state of the program, they
     are serialized per program, not per module, and the corresponding files
     live at the root of the cache folder for a given Python version."""
-    prefix = _get_prefix(manager)
-    return _cache_name_pair(os.path.join(prefix, 'proto_deps'))
+    name = os.path.join(_get_prefix(manager), 'proto_deps')
+    return name + '.meta.json', name + '.data.json'
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
@@ -2372,8 +2339,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         # Fine grained protocol dependencies are serialized separately, so we read them
         # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
         # the protocol cache against the loaded individual cache files.
-        manager.proto_deps = read_protocol_cache(manager, graph)
-        if manager.proto_deps is None and manager.stats.get('fresh_trees', 0):
+        TypeState.proto_deps = read_protocol_cache(manager, graph)
+        if TypeState.proto_deps is None and manager.stats.get('fresh_trees', 0):
             manager.errors.set_file(_get_prefix(manager), None)
             manager.errors.report(0, 0, "Error reading protocol dependencies cache. Aborting.",
                                   blocker=True)
@@ -2384,9 +2351,9 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # then we need to collect fine grained protocol dependencies.
             # Since these are a global property of the program, they are calculated after we
             # processed the whole graph.
-            proto_deps = collect_protocol_deps(graph)
-            manager.proto_deps = proto_deps
-            write_protocol_deps_cache(proto_deps, manager, graph)
+            TypeState.update_protocol_deps()
+            if TypeState.proto_deps is not None:
+                write_protocol_deps_cache(TypeState.proto_deps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.

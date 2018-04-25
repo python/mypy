@@ -104,6 +104,7 @@ from mypy.types import (
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
+from mypy.typestate import TypeState
 
 
 def get_dependencies(target: MypyFile,
@@ -113,7 +114,7 @@ def get_dependencies(target: MypyFile,
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
     target.accept(visitor)
     deps = visitor.map
-    new_deps = collect_protocol_attr_deps(target.names, target.fullname())
+    new_deps = TypeState.snapshot_protocol_deps()
     for trigger, targets in new_deps.items():
         deps.setdefault(trigger, set()).update(targets)
     return deps
@@ -745,60 +746,6 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         for item in typ.items:
             triggers.extend(get_type_triggers(item))
         return triggers
-
-
-def collect_protocol_attr_deps(names: SymbolTable,
-                               module_id: str,
-                               processed: Optional[Set[TypeInfo]] = None) -> Dict[str, Set[str]]:
-    """Recursively collect protocol attribute dependencies for classes in 'names'.
-
-    There are three kinds of protocol dependencies. For example, after a subtype check:
-
-        x: Proto = C()
-
-    the following dependencies will be generated:
-        1. ..., <SuperProto[wildcard]>, <Proto[wildcard]> -> <Proto>
-        2. ..., <B.attr>, <C.attr> -> <C> [for every attr in Proto members]
-        3. <C> -> Proto  # this one to invalidate the subtype cache
-
-    The first kind is generated immediately per-module. While two other kinds are generated here
-    after all modules are type checked anf we have recorded all the subtype checks.
-    """
-    if processed is None:
-        processed = set()
-    deps = {}  # type: Dict[str, Set[str]]
-    for node in names.values():
-        if isinstance(node.node, TypeInfo) and node.node not in processed:
-            info = node.node
-            if info.module_name != module_id:
-                continue
-            processed.add(info)
-            for attr in info.checked_against_members:
-                # The need for full MRO here is subtle, during an update, base classes of
-                # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
-                # are added.
-                for base_info in info.mro[:-1]:
-                    trigger = make_trigger('%s.%s' % (base_info.fullname(), attr))
-                    if 'typing' in trigger or 'builtins' in trigger:
-                        # TODO: avoid everything from typeshed
-                        continue
-                    deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
-            for proto in info.attempted_protocols:
-                trigger = make_trigger(info.fullname())
-                if 'typing' in trigger or 'builtins' in trigger:
-                    continue
-                # If any class that was checked against a protocol changes,
-                # we need to reset the subtype cache for the protocol.
-                #
-                # Note: strictly speaking, the protocol doesn't need to be
-                # re-checked, we only need to reset the cache, and its uses
-                # elsewhere are still valid (unless invalidated by other deps).
-                deps.setdefault(trigger, set()).add(proto)
-            sub_deps = collect_protocol_attr_deps(info.names, module_id,
-                                                  processed)  # nested classes
-            for trigger, targets in sub_deps.items():
-                deps.setdefault(trigger, set()).update(targets)
-    return deps
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:

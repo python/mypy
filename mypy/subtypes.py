@@ -392,7 +392,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
     as well.
     """
     assert right.type.is_protocol
-    left.type.record_protocol_subtype_check(right.type)
+    TypeState.record_protocol_subtype_check(left.type, right.type)
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):

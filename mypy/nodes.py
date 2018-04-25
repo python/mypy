@@ -1983,13 +1983,6 @@ class TypeInfo(SymbolNode):
     # 'inferring' and 'assuming' can't be made sets, since we need to use
     # is_same_type to correctly treat unions.
 
-    # Protocols (full names) this class attempted to implement.
-    # Used to calculate fine grained protocol dependencies and optimize protocol
-    # subtype cache invalidation in fine grained mode.
-    attempted_protocols = None  # type: Set[str]
-    # We also snapshot protocol members of the above protocols.
-    checked_against_members = None  # type: Set[str]
-
     # Classes inheriting from Enum shadow their true members with a __getattr__, so we
     # have to treat them as a special case.
     is_enum = False
@@ -2061,8 +2054,6 @@ class TypeInfo(SymbolNode):
         self.assuming = []
         self.assuming_proper = []
         self.inferring = []
-        self.attempted_protocols = set()
-        self.checked_against_members = set()
         self.add_type_vars()
         self.metadata = {}
 
@@ -2109,11 +2100,6 @@ class TypeInfo(SymbolNode):
                 for name in base.names:
                     members.add(name)
         return sorted(list(members))
-
-    def record_protocol_subtype_check(self, right_type: 'TypeInfo') -> None:
-        assert right_type.is_protocol
-        self.attempted_protocols.add(right_type.fullname())
-        self.checked_against_members.update(right_type.protocol_members)
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
