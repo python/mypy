@@ -392,6 +392,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
     as well.
     """
     assert right.type.is_protocol
+    # We need to record this check to generate protocol fine-grained dependencies.
     TypeState.record_protocol_subtype_check(left.type, right.type)
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):

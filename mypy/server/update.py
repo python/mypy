@@ -631,6 +631,7 @@ def collect_dependencies(new_modules: Iterable[str],
             continue
         for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
+    # Merge also the newly added protocol deps.
     TypeState.update_protocol_deps(deps)
 
 

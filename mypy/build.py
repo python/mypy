@@ -58,7 +58,7 @@ from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
-from mypy.typestate import TypeState
+from mypy.typestate import TypeState, reset_global_state
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -265,8 +265,7 @@ def _build(sources: List[BuildSource],
                            flush_errors=flush_errors,
                            fscache=fscache)
 
-    TypeState.reset_all_subtype_caches()
-    TypeState.reset_protocol_deps()
+    reset_global_state()
     try:
         graph = dispatch(sources, manager)
         if not options.fine_grained_incremental:
@@ -1007,10 +1006,9 @@ def read_protocol_cache(manager: BuildManager,
     """Read and validate protocol dependencies cache."""
     proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
     try:
-        with open(proto_meta, 'r') as f:
-            data = f.read()
-            manager.trace('Proto meta {}'.format(data.rstrip()))
-            meta_snapshot = json.loads(data)
+        data = manager.fscache.read(proto_meta)
+        manager.trace('Proto meta {}'.format(data.rstrip()))
+        meta_snapshot = json.loads(data)
     except IOError:
         manager.log('Could not load protocol meta: could not find {}'.format(proto_meta))
         return None
@@ -1025,10 +1023,9 @@ def read_protocol_cache(manager: BuildManager,
         manager.log('Protocol cache inconsistent, ignoring.')
         return None
     try:
-        with open(proto_cache, 'r') as f:
-            data = f.read()
-            manager.trace('Proto deps {}'.format(data.rstrip()))
-            deps = json.loads(data)  # TODO: Errors
+        data = manager.fscache.read(proto_cache)
+        manager.trace('Proto deps {}'.format(data.rstrip()))
+        deps = json.loads(data)  # TODO: Errors
     except IOError:
         manager.log('Could not load protocol cache: could not find {}'.format(proto_cache))
         return None

@@ -50,8 +50,13 @@ class TypeState:
     _attempted_protocols = {}  # type: Dict[TypeInfo, Set[str]]
     # We also snapshot protocol members of the above protocols.
     _checked_against_members = {}  # type: Dict[TypeInfo, Set[str]]
-    # TypeInfos that has been reprocessed since latest dependency snapshot update.
-    _reprocessed_types = set()  # type: Set[TypeInfo]
+    # TypeInfos that has been type-checked since latest dependency snapshot update.
+    # This is an optimisation for fine grained mode; during a full run we only take
+    # a dependency snapshot at the very end, so this set will contain all type-checked
+    # TypeInfos. After a fine grained update however, we can gather new dependencies only
+    # from few TypeInfos that were type-checked during this update, because these are
+    # the only that can generate new protocol dependencies.
+    _rechecked_types = set()  # type: Set[TypeInfo]
 
     @classmethod
     def reset_all_subtype_caches(cls) -> None:
@@ -90,12 +95,14 @@ class TypeState:
     @classmethod
     def reset_protocol_deps(cls) -> None:
         cls.proto_deps = {}
-        cls._reprocessed_types = set()
+        cls._attempted_protocols = {}
+        cls._checked_against_members = {}
+        cls._rechecked_types = set()
 
     @classmethod
     def record_protocol_subtype_check(cls, left_type: TypeInfo, right_type: TypeInfo) -> None:
         assert right_type.is_protocol
-        cls._reprocessed_types.add(left_type)
+        cls._rechecked_types.add(left_type)
         cls._attempted_protocols.setdefault(left_type, set()).add(right_type.fullname())
         cls._checked_against_members.setdefault(left_type,
                                                 set()).update(right_type.protocol_members)
@@ -118,7 +125,7 @@ class TypeState:
         checks.
         """
         deps = {}  # type: Dict[str, Set[str]]
-        for info in cls._reprocessed_types:
+        for info in cls._rechecked_types:
             for attr in cls._checked_against_members[info]:
                 # The need for full MRO here is subtle, during an update, base classes of
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
@@ -147,7 +154,8 @@ class TypeState:
         """Update global protocol dependency map.
 
         We update the global map incrementally, using a snapshot only from recently
-        reprocessed types. If second_map is given, update it as well.
+        type checked types. If second_map is given, update it as well. This is currently used
+        by FineGrainedBuildManager that maintains normal (non-protocol) dependencies.
         """
         if cls.proto_deps is None:
             # Unsuccesful cache loading, nothing to do.
@@ -158,4 +166,10 @@ class TypeState:
         if second_map is not None:
             for trigger, targets in new_deps.items():
                 second_map.setdefault(trigger, set()).update(targets)
-        cls._reprocessed_types.clear()
+        cls._rechecked_types.clear()
+
+
+def reset_global_state() -> None:
+    """Reset all existing global states. Currently they are all in this module."""
+    TypeState.reset_all_subtype_caches()
+    TypeState.reset_protocol_deps()
