@@ -21,7 +21,7 @@ from mypy.nodes import (
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
-    Import, ImportFrom, ImportAll, DictExpr, ARG_POS, MODULE_REF
+    Import, ImportFrom, ImportAll, DictExpr, StrExpr, ARG_POS, MODULE_REF
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType
 from mypy.visitor import NodeVisitor
@@ -32,7 +32,7 @@ from mypyc.ops import (
     PrimitiveOp, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, TupleRType,
     Unreachable, TupleGet, ClassIR, UserRType, ModuleIR, GetAttr, SetAttr, LoadStatic,
     PyGetAttr, PyCall, IntRType, BoolRType, ListRType, SequenceTupleRType, ObjectRType, NoneRType,
-    OptionalRType, DictRType, c_module_name, INVALID_REGISTER, INVALID_LABEL
+    OptionalRType, DictRType, UnicodeRType, c_module_name, INVALID_REGISTER, INVALID_LABEL
 )
 
 
@@ -42,7 +42,7 @@ def build_ir(module: MypyFile,
     builder = IRBuilder(types, mapper)
     module.accept(builder)
 
-    return ModuleIR(builder.imports, builder.functions, builder.classes)
+    return ModuleIR(builder.imports, builder.unicode_literals, builder.functions, builder.classes)
 
 
 class Mapper:
@@ -55,6 +55,8 @@ class Mapper:
         if isinstance(typ, Instance):
             if typ.type.fullname() == 'builtins.int':
                 return IntRType()
+            elif typ.type.fullname() == 'builtins.str':
+                return UnicodeRType()
             elif typ.type.fullname() == 'builtins.bool':
                 return BoolRType()
             elif typ.type.fullname() == 'builtins.list':
@@ -124,6 +126,9 @@ class IRBuilder(NodeVisitor[Register]):
 
         self.mapper = mapper
         self.imports = [] # type: List[str]
+
+        # Maps unicode literals to the static c name for that literal
+        self.unicode_literals = {} # type: Dict[str, str]
 
         self.current_module_name = None # type: Optional[str]
 
@@ -849,6 +854,9 @@ class IRBuilder(NodeVisitor[Register]):
         '>=': Branch.INT_GE,
     }
 
+    def visit_str_expr(self, expr: StrExpr) -> Register:
+        return self.load_static_unicode(expr.value)
+
     def process_conditional(self, e: Node) -> List[Branch]:
         if isinstance(e, ComparisonExpr):
             # TODO: Verify operand types.
@@ -1002,3 +1010,16 @@ class IRBuilder(NodeVisitor[Register]):
     def box_expr(self, expr: Expression) -> Register:
         typ = self.node_type(expr)
         return self.box(self.accept(expr), typ)
+
+    def load_static_unicode(self, value: str) -> Register:
+        """Loads a static unicode value into a register.
+
+        This is useful for more than just unicode literals; for example, method calls
+        also require a PyObject * form for the name of the method.
+        """
+        if value not in self.unicode_literals:
+            self.unicode_literals[value] = '__unicode_' + str(len(self.unicode_literals))
+        static_symbol = self.unicode_literals[value]
+        target = self.alloc_target(UnicodeRType())
+        self.add(LoadStatic(target, static_symbol))
+        return target

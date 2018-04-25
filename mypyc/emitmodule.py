@@ -1,6 +1,6 @@
 """Generate C code for a Python C extension module from Python source code."""
 
-from typing import List
+from typing import List, Tuple
 
 from mypy.build import BuildSource, build
 from mypy.errors import CompileError
@@ -46,6 +46,12 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
         '{};'.format(native_function_header(fn)),
         '{};'.format(wrapper_function_header(fn)))
 
+def encode_as_c_string(s: str) -> Tuple[str, int]:
+    """Produce a utf-8 encoded, escaped, quoted C string and its size from a string"""
+    # This is a kind of abusive way to do this...
+    b = s.encode('utf-8')
+    escaped = str(b)[2:-1].replace('"', '\\"')
+    return '"{}"'.format(escaped), len(b)
 
 class ModuleGenerator:
     def __init__(self, module_name: str, module: ModuleIR) -> None:
@@ -57,6 +63,9 @@ class ModuleGenerator:
         emitter = Emitter(self.context)
 
         self.declare_imports(self.module.imports)
+
+        for symbol in self.module.unicode_literals.values():
+            self.declare_static_pyobject(symbol)
 
         for cl in self.module.classes:
             generate_class(cl, self.module_name, emitter)
@@ -116,6 +125,15 @@ class ModuleGenerator:
                            'if (m == NULL)',
                            '    return NULL;')
         self.generate_imports_init_section(self.module.imports, emitter)
+
+        for unicode_literal, symbol in self.module.unicode_literals.items():
+            emitter.emit_lines(
+                '{} = PyUnicode_FromStringAndSize({}, {});'.format(
+                    symbol, *encode_as_c_string(unicode_literal)),
+                'if ({} == NULL)'.format(symbol),
+                '    return NULL;',
+            )
+
         for cl in self.module.classes:
             name = cl.name
             type_struct = cl.type_struct
@@ -168,6 +186,9 @@ class ModuleGenerator:
     def declare_imports(self, imps) -> None:
         for imp in imps:
             self.declare_import(imp)
+
+    def declare_static_pyobject(self, symbol):
+        self.declare_global('PyObject *', symbol)
 
     def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
         for imp in imps:

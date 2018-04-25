@@ -483,3 +483,13 @@ L0:
     r5 = cast(None, r2)
     r6 = None
     return r6
+
+[case testUnicodeLiteral]
+def f() -> str:
+    return "some string"
+[out]
+def f():
+    r0 :: unicode
+L0:
+    r0 = __unicode_0 :: static
+    return r0

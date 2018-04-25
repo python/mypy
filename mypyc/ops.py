@@ -132,7 +132,6 @@ class BoolRType(RType):
     def is_refcounted(self) -> bool:
         return False
 
-
 class TupleRType(RType):
     """Fixed-length tuple."""
 
@@ -240,6 +239,15 @@ class ListRType(PyObjectRType):
 class DictRType(PyObjectRType):
     def __init__(self) -> None:
         self.name = 'dict'
+
+
+class UnicodeRType(PyObjectRType):
+    """str in python 3; but at the c layer, its refered to as unicode (PyUnicode)
+
+    Referring to these as Unicode and as Bytes leaves zero room for confusion.
+    """
+    def __init__(self) -> None:
+        self.name = 'unicode'
 
 
 class UserRType(PyObjectRType):
@@ -985,8 +993,13 @@ class ClassIR:
 class ModuleIR:
     """Intermediate representation of a module."""
 
-    def __init__(self, imports: List[str], functions: List[FuncIR], classes: List[ClassIR]) -> None:
+    def __init__(self,
+            imports: List[str],
+            unicode_literals: Dict[str, str],
+            functions: List[FuncIR],
+            classes: List[ClassIR]) -> None:
         self.imports = imports[:]
+        self.unicode_literals = unicode_literals
         self.functions = functions
         self.classes = classes
 

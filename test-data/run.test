@@ -280,6 +280,16 @@ assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
 
+[case testUnicodeLiteral]
+def f() -> str:
+    return 'some string'
+def g() -> str:
+    return 'some\a \v \t \x7f " \n \0string 🐍'
+[file driver.py]
+from native import f, g
+assert f() == 'some string'
+assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
+
 [case testDictUpdate]
 from typing import Dict
 def f(x: int) -> int:

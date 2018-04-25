@@ -7,7 +7,7 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic
 from mypyc.ops import (
     BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
-    TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register
+    TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register,
 )
 
 
