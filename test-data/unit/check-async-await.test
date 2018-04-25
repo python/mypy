@@ -163,7 +163,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-main:4: error: "List[int]" has no attribute "__aiter__"
+main:4: error: "List[int]" has no attribute "__aiter__" (not async iterable)
 
 [case testAsyncForTypeComments]
 
