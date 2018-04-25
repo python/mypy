@@ -46,7 +46,7 @@ def generate_native_function(fn: FuncIR, emitter: Emitter, source_path: str) -> 
     emitter.emit_from_emitter(body)
 
 
-class FunctionEmitterVisitor(OpVisitor):
+class FunctionEmitterVisitor(OpVisitor[None]):
     def __init__(self,
                  emitter: Emitter,
                  declarations: Emitter,

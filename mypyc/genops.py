@@ -692,7 +692,7 @@ class IRBuilder(NodeVisitor[Register]):
                 self.add(Assign(target, reg))
                 return target
 
-    def is_module_member_expr(self, expr: MemberExpr):
+    def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
 
     def visit_member_expr(self, expr: MemberExpr) -> Register:
@@ -866,7 +866,7 @@ class IRBuilder(NodeVisitor[Register]):
         self.add(PrimitiveOp(target, PrimitiveOp.NEW_TUPLE, items, expr.line))
         return target
 
-    def visit_dict_expr(self, expr: DictExpr):
+    def visit_dict_expr(self, expr: DictExpr) -> Register:
         assert not expr.items  # TODO
         target = self.alloc_target(DictRType())
         self.add(PrimitiveOp(target, PrimitiveOp.NEW_DICT, [], expr.line))

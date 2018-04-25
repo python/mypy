@@ -71,7 +71,7 @@ class TestGenOps(MypycDataSuite):
                                                                   testcase.line))
 
 
-def get_func_names(expected):
+def get_func_names(expected: List[str]) -> List[str]:
     res = []
     for s in expected:
         m = re.match(r'def ([_a-zA-Z0-9.*$]+)\(', s)
@@ -80,7 +80,7 @@ def get_func_names(expected):
     return res
 
 
-def remove_comment_lines(a):
+def remove_comment_lines(a: List[str]) -> List[str]:
     """Return a copy of array with comments removed.
 
     Lines starting with '--' (but not with '---') are removed.

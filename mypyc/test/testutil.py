@@ -3,12 +3,12 @@
 import contextlib
 import os.path
 import shutil
-from typing import List
+from typing import List, Callable, Iterator
 
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.test.data import DataSuite
+from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 
 from mypyc import genops
@@ -25,7 +25,8 @@ class MypycDataSuite(DataSuite):
     data_prefix = test_data_prefix
 
 
-def builtins_wrapper(func, path):
+def builtins_wrapper(func: Callable[[DataDrivenTestCase], None],
+                     path: str) -> Callable[[DataDrivenTestCase], None]:
     """Decorate a function that implements a data-driven test case to copy an
     alternative builtins module implementation in place before performing the
     test case. Clean up after executing the test case.
@@ -34,7 +35,7 @@ def builtins_wrapper(func, path):
 
 
 @contextlib.contextmanager
-def use_custom_builtins(builtins_path, testcase):
+def use_custom_builtins(builtins_path: str, testcase: DataDrivenTestCase) -> Iterator[None]:
     for path, _ in testcase.files:
         if os.path.basename(path) == 'builtins.pyi':
             default_builtins = False
@@ -53,7 +54,8 @@ def use_custom_builtins(builtins_path, testcase):
         os.remove(builtins)
 
 
-def perform_test(func, builtins_path, testcase):
+def perform_test(func: Callable[[DataDrivenTestCase], None],
+                 builtins_path: str, testcase: DataDrivenTestCase) -> None:
     for path, _ in testcase.files:
         if os.path.basename(path) == 'builtins.py':
             default_builtins = False

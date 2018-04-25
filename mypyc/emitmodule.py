@@ -1,7 +1,7 @@
 """Generate C code for a Python C extension module from Python source code."""
 
 from collections import OrderedDict
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Iterable
 
 from mypy.build import BuildSource, build
 from mypy.errors import CompileError
@@ -177,7 +177,7 @@ class ModuleGenerator:
         for k, v in self.context.declarations.items():
             marked_declarations[k] = MarkedDeclaration(v, False)
 
-        def _toposort_visit(name):
+        def _toposort_visit(name: str) -> None:
             decl = marked_declarations[name]
             if decl.mark:
                 return
@@ -193,7 +193,7 @@ class ModuleGenerator:
 
         return result
 
-    def declare_global(self, type_spaced, name, static=True) -> None:
+    def declare_global(self, type_spaced: str, name: str, static: bool=True) -> None:
         static_str = 'static ' if static else ''
         if name not in self.context.declarations:
             self.context.declarations[name] = HeaderDeclaration(
@@ -207,11 +207,11 @@ class ModuleGenerator:
     def declare_import(self, imp: str) -> None:
         self.declare_global('CPyModule *', c_module_name(imp))
 
-    def declare_imports(self, imps) -> None:
+    def declare_imports(self, imps: Iterable[str]) -> None:
         for imp in imps:
             self.declare_import(imp)
 
-    def declare_static_pyobject(self, symbol):
+    def declare_static_pyobject(self, symbol: str) -> None:
         self.declare_global('PyObject *', symbol)
 
     def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:

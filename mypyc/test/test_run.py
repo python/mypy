@@ -96,5 +96,5 @@ class TestRun(MypycDataSuite):
             assert proc.returncode == 0
 
 
-def heading(text):
+def heading(text: str) -> None:
     print('=' * 20 + ' ' + text + ' ' + '=' * 20)

@@ -10,7 +10,7 @@ base_dir = os.path.join(os.path.dirname(__file__), '..', '..')
 
 
 class TestExternal(unittest.TestCase):
-    def test_c_unit_test(self):
+    def test_c_unit_test(self) -> None:
         """Run C unit tests in a subprocess."""
         # Build Google Test, the C++ framework we use for testing C code.
         # The source code for Google Test is copied to this repository.
@@ -36,7 +36,7 @@ class TestExternal(unittest.TestCase):
         if status != 0:
             raise AssertionError("make test: C unit test failure")
 
-    def test_self_type_check(self):
+    def test_self_type_check(self) -> None:
         """Use the bundled mypy (in git submodule) to type check mypyc."""
         mypy_dir = os.path.join(base_dir, 'external', 'mypy')
         if not os.path.exists(os.path.join(mypy_dir, 'typeshed', 'stdlib')):
@@ -46,8 +46,7 @@ class TestExternal(unittest.TestCase):
         status = subprocess.call(
                 [sys.executable,
                  os.path.join(mypy_dir, 'scripts', 'mypy'),
-                 '-i', '-p', 'mypyc'],
-                cwd=mypy_dir,
+                 '--config-file', 'mypy.ini', '-p', 'mypyc'],
                 env=env)
         if status != 0:
             raise AssertionError("Self type check failure")

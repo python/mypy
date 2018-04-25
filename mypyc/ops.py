@@ -37,7 +37,7 @@ INVALID_REGISTER = Register(-99999)
 INVALID_LABEL = Label(-88888)
 
 
-def c_module_name(module_name: str):
+def c_module_name(module_name: str) -> str:
     return 'module_{}'.format(module_name.replace('.', '__dot__'))
 
 

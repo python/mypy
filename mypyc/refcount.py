@@ -118,9 +118,9 @@ def transform_block(block: BasicBlock,
 def insert_branch_inc_and_decrefs(
         block: BasicBlock,
         blocks: List[BasicBlock],
-        pre_live: AnalysisDict,
-        pre_borrow: AnalysisDict,
-        post_borrow: AnalysisDict,
+        pre_live: AnalysisDict[Register],
+        pre_borrow: AnalysisDict[Register],
+        post_borrow: AnalysisDict[Register],
         env: Environment) -> None:
     """Insert inc_refs and/or dec_refs after a branch/goto.
 
@@ -175,7 +175,7 @@ def insert_branch_inc_and_decrefs(
 
 
 def after_branch_decrefs(label: Label,
-                         pre_live: AnalysisDict,
+                         pre_live: AnalysisDict[Register],
                          source_borrowed: Set[Register],
                          source_live_regs: Set[Register],
                          env: Environment,
@@ -190,7 +190,7 @@ def after_branch_decrefs(label: Label,
 
 
 def after_branch_increfs(label: Label,
-                         pre_borrow: AnalysisDict,
+                         pre_borrow: AnalysisDict[Register],
                          source_borrowed: Set[Register],
                          env: Environment) -> List[Op]:
     target_borrowed = pre_borrow[label, 0]
