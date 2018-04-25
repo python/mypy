@@ -1024,3 +1024,46 @@ class B(Base):
 <mod.B> -> <m.f>, m.f
 <mod.Base> -> <m.f>, m.f
 <mod> -> m
+
+[case testCustomIterator]
+class A:
+    def __iter__(self) -> B: pass
+class B:
+    def __iter__(self) -> B: pass
+    def __next__(self) -> C: pass
+class C:
+    pass
+def f() -> None:
+    for x in A(): pass
+[out]
+<m.A.__getitem__> -> m.f
+<m.A.__init__> -> m.f
+<m.A.__iter__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__next__> -> m.f
+<m.B> -> <m.A.__iter__>, <m.B.__iter__>, m.A.__iter__, m.B, m.B.__iter__
+<m.C> -> <m.B.__next__>, m.B.__next__, m.C
+
+[case testCustomIterator_python2]
+class A:
+    def __iter__(self): # type: () -> B
+        pass
+class B:
+    def __iter__(self): # type: () -> B
+        pass
+    def next(self): # type: () -> C
+        pass
+class C:
+    pass
+def f(): # type: () -> None
+    for x in A(): pass
+[out]
+<m.A.__getitem__> -> m.f
+<m.A.__init__> -> m.f
+<m.A.__iter__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.next> -> m.f
+<m.B> -> <m.A.__iter__>, <m.B.__iter__>, m.A.__iter__, m.B, m.B.__iter__
+<m.C> -> <m.B.next>, m.B.next, m.C
