@@ -505,6 +505,7 @@ class RegisterOp(Op):
     """
 
     def __init__(self, dest: Optional[Register]) -> None:
+        assert dest != INVALID_REGISTER
         self.dest = dest
 
     @abstractmethod
@@ -566,7 +567,7 @@ class Call(RegisterOp):
     """
 
     def __init__(self, dest: Optional[Register], fn: str, args: List[Register]) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.fn = fn
         self.args = args
 
@@ -595,7 +596,7 @@ class PyCall(RegisterOp):
     All registers must be unboxed. Corresponds to PyObject_CallFunctionObjArgs in C.
     """
     def __init__(self, dest: Optional[Register], function: Register, args: List[Register]) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.function = function
         self.args = args
 
@@ -646,7 +647,7 @@ class PyGetAttr(RegisterOp):
     """dest = left.right :: py"""
 
     def __init__(self, dest: Register, left: Register, right: str) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.left = left
         self.right = right
 
@@ -758,9 +759,9 @@ class PrimitiveOp(RegisterOp):
 
         If desc.is_void is true, dest should be None.
         """
+        super().__init__(dest)
         if desc.num_args != VAR_ARG:
             assert len(args) == desc.num_args
-        self.dest = dest
         self.desc = desc
         self.args = args
 
@@ -784,7 +785,7 @@ class Assign(RegisterOp):
     """dest = int"""
 
     def __init__(self, dest: Register, src: Register) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.src = src
 
     def sources(self) -> List[Register]:
@@ -801,7 +802,7 @@ class LoadInt(RegisterOp):
     """dest = int"""
 
     def __init__(self, dest: Register, value: int) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.value = value
 
     def sources(self) -> List[Register]:
@@ -818,7 +819,7 @@ class GetAttr(RegisterOp):
     """dest = obj.attr (for a native object)"""
 
     def __init__(self, dest: Register, obj: Register, attr: str, rtype: UserRType) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.obj = obj
         self.attr = attr
         self.rtype = rtype
@@ -837,7 +838,7 @@ class SetAttr(RegisterOp):
     """obj.attr = src (for a native object)"""
 
     def __init__(self, obj: Register, attr: str, src: Register, rtype: UserRType) -> None:
-        self.dest = None
+        super().__init__(None)
         self.obj = obj
         self.attr = attr
         self.src = src
@@ -857,7 +858,7 @@ class LoadStatic(RegisterOp):
     """dest = name :: static"""
 
     def __init__(self, dest: Register, identifier: str) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.identifier = identifier
 
     def sources(self) -> List[Register]:
@@ -874,7 +875,7 @@ class TupleGet(RegisterOp):
     """dest = src[n]"""
 
     def __init__(self, dest: Register, src: Register, index: int, target_type: RType) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.src = src
         self.index = index
         self.target_type = target_type
@@ -899,7 +900,7 @@ class Cast(RegisterOp):
     # TODO: Error checking
 
     def __init__(self, dest: Register, src: Register, typ: RType) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.src = src
         self.typ = typ
 
@@ -921,7 +922,7 @@ class Box(RegisterOp):
     """
 
     def __init__(self, dest: Register, src: Register, typ: RType) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.src = src
         self.type = typ
 
@@ -944,7 +945,7 @@ class Unbox(RegisterOp):
     # TODO: Error checking
 
     def __init__(self, dest: Register, src: Register, typ: RType) -> None:
-        self.dest = dest
+        super().__init__(dest)
         self.src = src
         self.type = typ
 

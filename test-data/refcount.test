@@ -583,3 +583,16 @@ L0:
     dec_ref r2
     r3 = None
     return r3
+
+[case testListAppend]
+from typing import List
+def f(a: List[int], x: int) -> None:
+    a.append(x)
+[out]
+L0:
+    inc_ref x :: int
+    r0 = box(int, x)
+    a.append(r0)
+    dec_ref r0
+    r1 = None
+    return r1

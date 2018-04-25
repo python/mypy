@@ -824,7 +824,7 @@ class IRBuilder(NodeVisitor[Register]):
         if callee.name == 'append' and base_type.name == 'list':
             target = INVALID_REGISTER  # TODO: Do we sometimes need to allocate a register?
             arg = self.box_expr(expr.args[0])
-            self.add(PrimitiveOp(target, PrimitiveOp.LIST_APPEND, base, arg))
+            self.add(PrimitiveOp(None, PrimitiveOp.LIST_APPEND, base, arg))
         elif callee.name == 'update' and base_type.name == 'dict':
             target = INVALID_REGISTER
             other_list_reg = self.accept(expr.args[0])

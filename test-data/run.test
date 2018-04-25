@@ -125,6 +125,20 @@ print(primes(13))
 [[0, 0, 1, 1]
 [[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
 
+[case testListAppend]
+from typing import List
+def f(x: List[int], n: int) -> None:
+    x.append(n)
+[file driver.py]
+from native import f
+l = [1, 2]
+f(l, 10)
+assert l == [1, 2, 10]
+f(l, 3)
+f(l, 4)
+f(l, 5)
+assert l == [1, 2, 10, 3, 4, 5]
+
 [case testTrue]
 def f() -> bool:
     return True
