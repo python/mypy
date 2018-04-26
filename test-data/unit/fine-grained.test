@@ -6105,6 +6105,21 @@ class C:
 main:2: error: Cannot instantiate abstract class 'D' with abstract attribute 'g'
 ==
 
+[case testMakeClassAbstract]
+from a import C
+c = C()
+[file a.py]
+from abc import abstractmethod
+class C: pass
+[file a.py.2]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+[out]
+==
+main:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+
 [case testMakeMethodNoLongerAbstract1]
 [file z.py]
 from abc import abstractmethod, ABCMeta
