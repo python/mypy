@@ -1422,7 +1422,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 elif (local_errors.is_errors() and
                     # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(right_type)):
-                    itertype = self.chk.analyze_iterable_item_type(right)
+                    _, itertype = self.chk.analyze_iterable_item_type(right)
                     method_type = CallableType(
                         [left_type],
                         [nodes.ARG_POS],
@@ -2290,9 +2290,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for index, sequence, conditions, is_async in zip(e.indices, e.sequences,
                                                          e.condlists, e.is_async):
             if is_async:
-                sequence_type = self.chk.analyze_async_iterable_item_type(sequence)
+                _, sequence_type = self.chk.analyze_async_iterable_item_type(sequence)
             else:
-                sequence_type = self.chk.analyze_iterable_item_type(sequence)
+                _, sequence_type = self.chk.analyze_iterable_item_type(sequence)
             self.chk.analyze_index_variables(index, sequence_type, True, e)
             for condition in conditions:
                 self.accept(condition)
