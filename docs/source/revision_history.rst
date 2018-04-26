@@ -225,7 +225,7 @@ List of major changes:
 - July 2016
     * Publish ``mypy-lang`` version 0.4.3 on PyPI.
 
-    * Add :ref:`strict_optional`.
+    * Add :ref:`strict optional checking <strict_optional>`.
 
     * Add :ref:`multi_line_annotation`.
 

@@ -1259,3 +1259,14 @@ class B:
 [out]
 _testInvalidSlots.py:2: error: Incompatible types in assignment (expression has type "int", base class "object" defined the type as "Union[str, Iterable[str], None]")
 _testInvalidSlots.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, int]", base class "object" defined the type as "Union[str, Iterable[str], None]")
+
+[case testDictWithStarStarSpecialCase]
+from typing import Dict
+
+def f() -> Dict[int, str]:
+    return {1: '', **d()}
+
+def d() -> Dict[int, int]:
+    return {}
+[out]
+_testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"

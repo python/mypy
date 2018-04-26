@@ -92,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -166,7 +166,6 @@ class DependencyVisitor(TraverserVisitor):
         self.is_package_init_file = False
 
     # TODO (incomplete):
-    #   await
     #   protocols
 
     def visit_mypy_file(self, o: MypyFile) -> None:
@@ -239,6 +238,9 @@ class DependencyVisitor(TraverserVisitor):
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
+                # Recheck Liskov if needed, self definitions are checked in the defining method
+                if node.node.is_initialized_in_class and has_user_bases(info):
+                    self.add_dependency(make_trigger(info.fullname() + '.' + name))
                 for base_info in non_trivial_bases(info):
                     # If the type of an attribute changes in a base class, we make references
                     # to the attribute in the subclass stale.
@@ -252,6 +254,18 @@ class DependencyVisitor(TraverserVisitor):
                                 target=make_trigger(info.fullname() + '.__init__'))
             self.add_dependency(make_trigger(base_info.fullname() + '.__new__'),
                                 target=make_trigger(info.fullname() + '.__new__'))
+            # If the set of abstract attributes change, this may invalidate class
+            # instantiation, or change the generated error message, since Python checks
+            # class abstract status when creating an instance.
+            #
+            # TODO: We should probably add this dependency only from the __init__ of the
+            #     current class, and independent of bases (to trigger changes in message
+            #     wording, as errors may enumerate all abstract attributes).
+            self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'),
+                                target=make_trigger(info.fullname() + '.__init__'))
+            # If the base class abstract attributes change, subclass abstract
+            # attributes need to be recalculated.
+            self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'))
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
@@ -353,6 +367,13 @@ class DependencyVisitor(TraverserVisitor):
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, MemberExpr):
+            if self.is_self_member_ref(lvalue) and lvalue.is_new_def:
+                node = lvalue.node
+                if isinstance(node, Var):
+                    info = node.info
+                    if info and has_user_bases(info):
+                        # Recheck Liskov for self definitions
+                        self.add_dependency(make_trigger(info.fullname() + '.' + lvalue.name))
             if lvalue.kind is None:
                 # Reference to a non-module attribute
                 if lvalue.expr not in self.type_map:
@@ -367,7 +388,15 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(lvalue, TupleExpr):
             for item in lvalue.items:
                 self.process_lvalue(item)
-        # TODO: star lvalue
+        elif isinstance(lvalue, StarExpr):
+            self.process_lvalue(lvalue.expr)
+
+    def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
+        """Does memberexpr to refer to an attribute of self?"""
+        if not isinstance(memberexpr.expr, NameExpr):
+            return False
+        node = memberexpr.expr.node
+        return isinstance(node, Var) and node.is_self
 
     def get_non_partial_lvalue_type(self, lvalue: RefExpr) -> Type:
         if lvalue not in self.type_map:
@@ -398,10 +427,22 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_for_stmt(self, o: ForStmt) -> None:
         super().visit_for_stmt(o)
-        # __getitem__ is only used if __iter__ is missing but for simplicity we
-        # just always depend on both.
-        self.add_attribute_dependency_for_expr(o.expr, '__iter__')
-        self.add_attribute_dependency_for_expr(o.expr, '__getitem__')
+        if not o.is_async:
+            # __getitem__ is only used if __iter__ is missing but for simplicity we
+            # just always depend on both.
+            self.add_attribute_dependency_for_expr(o.expr, '__iter__')
+            self.add_attribute_dependency_for_expr(o.expr, '__getitem__')
+            if o.inferred_iterator_type:
+                if self.python2:
+                    method = 'next'
+                else:
+                    method = '__next__'
+                self.add_attribute_dependency(o.inferred_iterator_type, method)
+        else:
+            self.add_attribute_dependency_for_expr(o.expr, '__aiter__')
+            if o.inferred_iterator_type:
+                self.add_attribute_dependency(o.inferred_iterator_type, '__anext__')
+
         self.process_lvalue(o.index)
         if isinstance(o.index, TupleExpr):
             # Process multiple assignment to index variables.
@@ -416,8 +457,12 @@ class DependencyVisitor(TraverserVisitor):
     def visit_with_stmt(self, o: WithStmt) -> None:
         super().visit_with_stmt(o)
         for e in o.expr:
-            self.add_attribute_dependency_for_expr(e, '__enter__')
-            self.add_attribute_dependency_for_expr(e, '__exit__')
+            if not o.is_async:
+                self.add_attribute_dependency_for_expr(e, '__enter__')
+                self.add_attribute_dependency_for_expr(e, '__exit__')
+            else:
+                self.add_attribute_dependency_for_expr(e, '__aenter__')
+                self.add_attribute_dependency_for_expr(e, '__aexit__')
         if o.target_type:
             self.add_type_dependencies(o.target_type)
 
@@ -566,6 +611,10 @@ class DependencyVisitor(TraverserVisitor):
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         super().visit_yield_from_expr(e)
         self.add_iter_dependency(e.expr)
+
+    def visit_await_expr(self, e: AwaitExpr) -> None:
+        super().visit_await_expr(e)
+        self.add_attribute_dependency_for_expr(e.expr, '__await__')
 
     # Helpers
 
@@ -740,6 +789,11 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
     return [base for base in info.mro[1:]
             if base.fullname() != 'builtins.object']
+
+
+def has_user_bases(info: TypeInfo) -> bool:
+    # TODO: skip everything from typeshed?
+    return any(base.module_name not in ('builtins', 'typing', 'enum') for base in info.mro[1:])
 
 
 def dump_all_dependencies(modules: Dict[str, MypyFile],

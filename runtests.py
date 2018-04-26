@@ -273,17 +273,19 @@ def add_stdlibsamples(driver: Driver) -> None:
                 seen.add(module)
                 modules.append(module)
         if modules:
+            # TODO: Remove need for --no-strict-optional
             driver.add_mypy_modules('stdlibsamples (%s)' % (version,), modules,
-                                    cwd=stdlibsamples_dir)
+                                    cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
 
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
         if f == os.path.join('test-data', 'samples', 'crawl2.py'):
             # This test requires 3.5 for async functions
-            driver.add_mypy_cmd('file {}'.format(f), ['--python-version=3.5', f])
+            driver.add_mypy_cmd('file {}'.format(f), ['--python-version=3.5',
+                                                      '--no-strict-optional', f])
         else:
-            driver.add_mypy('file %s' % f, f)
+            driver.add_mypy('file %s' % f, '--no-strict-optional', f)
 
 
 def usage(status: int) -> None:
