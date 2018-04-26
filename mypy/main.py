@@ -427,7 +427,7 @@ def process_options(args: List[str],
     parser.add_argument('--strict-optional', action='store_true',
                         help=argparse.SUPPRESS)
     parser.add_argument('--no-strict-optional', action='store_false', dest='strict_optional',
-                        help="disable strict Optional checks (inverse: --no-strict-optional)")
+                        help="disable strict Optional checks (inverse: --strict-optional)")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
                         "(experimental -- read documentation before using!).  "

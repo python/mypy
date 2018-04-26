@@ -273,6 +273,7 @@ def add_stdlibsamples(driver: Driver) -> None:
                 seen.add(module)
                 modules.append(module)
         if modules:
+            # TODO: Remove need for --no-strict-optional
             driver.add_mypy_modules('stdlibsamples (%s)' % (version,), modules,
                                     cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
 
