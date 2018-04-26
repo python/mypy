@@ -254,6 +254,18 @@ class DependencyVisitor(TraverserVisitor):
                                 target=make_trigger(info.fullname() + '.__init__'))
             self.add_dependency(make_trigger(base_info.fullname() + '.__new__'),
                                 target=make_trigger(info.fullname() + '.__new__'))
+            # If the set of abstract attributes change, this may invalidate class
+            # instantiation, or change the generated error message, since Python checks
+            # class abstract status when creating an instance.
+            #
+            # TODO: We should probably add this dependency only from the __init__ of the
+            #     current class, and independent of bases (to trigger changes in message
+            #     wording, as errors may enumerate all abstract attributes).
+            self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'),
+                                target=make_trigger(info.fullname() + '.__init__'))
+            # If the base class abstract attributes change, subclass abstract
+            # attributes need to be recalculated.
+            self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'))
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
