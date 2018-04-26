@@ -120,7 +120,7 @@ class Options:
         self.strict_boolean = False
 
         # Apply strict None checking
-        self.strict_optional = False
+        self.strict_optional = True
 
         # Show "note: In function "foo":" messages.
         self.show_error_context = False

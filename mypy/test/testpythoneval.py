@@ -49,7 +49,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     version.
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
-    mypy_cmdline = ['--show-traceback', '--no-site-packages']
+    # TODO: Enable strict optional for these tests
+    mypy_cmdline = ['--show-traceback', '--no-site-packages', '--no-strict-optional']
     py2 = testcase.name.lower().endswith('python2')
     if py2:
         mypy_cmdline.append('--py2')

@@ -1024,3 +1024,105 @@ class B(Base):
 <mod.B> -> <m.f>, m.f
 <mod.Base> -> <m.f>, m.f
 <mod> -> m
+
+[case testCustomIterator]
+class A:
+    def __iter__(self) -> B: pass
+class B:
+    def __iter__(self) -> B: pass
+    def __next__(self) -> C: pass
+class C:
+    pass
+def f() -> None:
+    for x in A(): pass
+[out]
+<m.A.__getitem__> -> m.f
+<m.A.__init__> -> m.f
+<m.A.__iter__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.__next__> -> m.f
+<m.B> -> <m.A.__iter__>, <m.B.__iter__>, m.A.__iter__, m.B, m.B.__iter__
+<m.C> -> <m.B.__next__>, m.B.__next__, m.C
+
+[case testCustomIterator_python2]
+class A:
+    def __iter__(self): # type: () -> B
+        pass
+class B:
+    def __iter__(self): # type: () -> B
+        pass
+    def next(self): # type: () -> C
+        pass
+class C:
+    pass
+def f(): # type: () -> None
+    for x in A(): pass
+[out]
+<m.A.__getitem__> -> m.f
+<m.A.__init__> -> m.f
+<m.A.__iter__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m.A, m.f
+<m.B.next> -> m.f
+<m.B> -> <m.A.__iter__>, <m.B.__iter__>, m.A.__iter__, m.B, m.B.__iter__
+<m.C> -> <m.B.next>, m.B.next, m.C
+
+[case testDepsLiskovClass]
+from mod import A, C
+class D(C):
+    x: A
+[file mod.py]
+class C:
+    x: B
+class B:
+    pass
+class A(B):
+    pass
+[out]
+<m.D.x> -> m
+<m.D> -> m.D
+<mod.A> -> <m.D.x>, m
+<mod.C.__init__> -> <m.D.__init__>
+<mod.C.__new__> -> <m.D.__new__>
+<mod.C.x> -> <m.D.x>
+<mod.C> -> m, m.D
+
+[case testDepsLiskovMethod]
+from mod import A, C
+class D(C):
+    def __init__(self) -> None:
+        self.x: A
+[file mod.py]
+class C:
+    def __init__(self) -> None:
+        self.x: B
+class B:
+    pass
+class A(B):
+    pass
+[out]
+<m.D.x> -> m.D.__init__
+<m.D> -> m.D
+<mod.A> -> <m.D.x>, m, m.D.__init__
+<mod.C.__init__> -> <m.D.__init__>, m.D.__init__
+<mod.C.__new__> -> <m.D.__new__>
+<mod.C.x> -> <m.D.x>
+<mod.C> -> m, m.D
+
+[case testIndexedStarLvalue]
+from typing import List, Tuple
+
+class B:
+    def __setitem__(self, i: int, v: List[str]) -> None: pass
+
+def g() -> Tuple[int, str, str]: pass
+
+def f(b: B) -> None:
+    a, *b[0] = g()
+[builtins fixtures/list.pyi]
+[out]
+<m.B.__getitem__> -> m.f
+<m.B.__setitem__> -> m.f
+<m.B> -> <m.f>, m.B, m.f
+<m.g> -> m.f
