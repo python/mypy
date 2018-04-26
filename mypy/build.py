@@ -1669,10 +1669,6 @@ class State:
     def is_interface_fresh(self) -> bool:
         return self.externally_same
 
-    def has_new_submodules(self) -> bool:
-        """Return if this module has new submodules after being loaded from a warm cache."""
-        return self.meta is not None and self.child_modules != set(self.meta.child_modules)
-
     def mark_as_rechecked(self) -> None:
         """Marks this module as having been fully re-analyzed by the type-checker."""
         self.manager.rechecked_modules.add(self.id)
@@ -2405,11 +2401,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 if dep in st.suppressed:
                     st.suppressed.remove(dep)
                     st.dependencies.append(dep)
-    for id, g in graph.items():
-        if g.has_new_submodules():
-            g.parse_file()
-            g.fix_suppressed_dependencies(graph)
-            g.mark_interface_stale()
     return graph
 
 

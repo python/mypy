@@ -436,6 +436,18 @@ main:1: error: Cannot find module named 'p.q'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
+[case testDeleteSubpackageWithNontrivialParent1]
+[file p/__init__.py]
+def g() -> None:
+    pass
+[file p/b.py.2]
+def foo() -> None: pass
+foo()
+[delete p/b.py.3]
+[out]
+==
+==
+
 [case testDeleteModuleWithError]
 import a
 [file a.py]
