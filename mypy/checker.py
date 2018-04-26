@@ -44,7 +44,7 @@ from mypy.subtypes import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
-from mypy.semanal import set_callable_name, refers_to_fullname
+from mypy.semanal import set_callable_name, refers_to_fullname, calculate_mro
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
@@ -1469,7 +1469,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
-            if isinstance(lvalue, NameExpr):
+            if isinstance(lvalue, RefExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
@@ -1534,13 +1534,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.infer_variable_type(inferred, lvalue, self.expr_checker.accept(rvalue),
                                          rvalue)
 
-    def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Optional[Type],
+    def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
         lvalue_node = lvalue.node
-
         # Check if we are a class variable with at least one base class
         if (isinstance(lvalue_node, Var) and
-                lvalue.kind == MDEF and
+                lvalue.kind in (MDEF, None) and  # None for Vars defined via self
                 len(lvalue_node.info.bases) > 0):
 
             for base in lvalue_node.info.mro[1:]:
@@ -1578,7 +1577,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     break
         return False
 
-    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Optional[Type],
+    def check_compatibility_super(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                   rvalue: Expression, base: TypeInfo, base_type: Type,
                                   base_node: Node) -> bool:
         lvalue_node = lvalue.node
@@ -2736,7 +2735,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
         cdef.info = info
         info.bases = [typ]
-        info.calculate_mro()
+        calculate_mro(info)
         info.calculate_metaclass_type()
 
         # Build up a fake FuncDef so we can populate the symbol table.

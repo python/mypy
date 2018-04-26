@@ -44,7 +44,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError
+from mypy.util import DecodeError, decode_python_encoding
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -57,7 +57,8 @@ from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
-from mypy.fscache import FileSystemCache, FileSystemMetaCache
+from mypy.fscache import FileSystemCache
+from mypy.typestate import TypeState
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -205,7 +206,7 @@ def _build(sources: List[BuildSource],
     gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
-    fscache = fscache or FileSystemCache(options.python_version)
+    fscache = fscache or FileSystemCache()
 
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,
@@ -264,8 +265,11 @@ def _build(sources: List[BuildSource],
                            flush_errors=flush_errors,
                            fscache=fscache)
 
+    TypeState.reset_all_subtype_caches()
     try:
         graph = dispatch(sources, manager)
+        if not options.fine_grained_incremental:
+            TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
@@ -692,23 +696,17 @@ class BuildManager:
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
                     pos = len(res)
-                    all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
                     for name, __ in imp.names:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
                             res.append((pri, sub_id, imp.line))
-                        else:
-                            all_are_submodules = False
-                    # If all imported names are submodules, don't add
-                    # cur_id as a dependency.  Otherwise (i.e., if at
-                    # least one imported name isn't a submodule)
-                    # cur_id is also a dependency, and we should
-                    # insert it *before* any submodules.
-                    if not all_are_submodules:
-                        pri = import_priority(imp, PRI_HIGH)
-                        res.insert(pos, ((pri, cur_id, imp.line)))
+                    # Add cur_id as a dependency, even if all of the
+                    # imports are submodules. Processing import from will try
+                    # to look through cur_id, so we should depend on it.
+                    pri = import_priority(imp, PRI_HIGH)
+                    res.insert(pos, ((pri, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
@@ -838,8 +836,8 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
-        self.fscache = fscache or FileSystemMetaCache()
+    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
+        self.fscache = fscache or FileSystemCache()
         # Cache find_lib_path_dirs: (dir_chain, lib_path)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
         # Cache find_module: (id, lib_path, python_version) -> result.
@@ -965,7 +963,7 @@ class FindModuleCache:
         return result
 
 
-def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
+def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = dirname(path)
@@ -1141,12 +1139,17 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # changed since the cache was generated. We *don't* want to do a
     # coarse-grained incremental rebuild, so we accept the cache
     # metadata even if it doesn't match the source file.
-    if manager.use_fine_grained_cache():
-        manager.log('Using potentially stale metadata for {}'.format(id))
-        return meta
+    #
+    # We still *do* the mtime/md5 checks, however, to enable
+    # fine-grained mode to take advantage of the mtime-updating
+    # optimization when mtimes differ but md5s match.  There is
+    # essentially no extra time cost to computing the hash here, since
+    # it will be cached and will be needed for finding changed files
+    # later anyways.
+    fine_grained_cache = manager.use_fine_grained_cache()
 
     size = st.st_size
-    if size != meta.size:
+    if size != meta.size and not fine_grained_cache:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
@@ -1157,8 +1160,13 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         except (OSError, UnicodeDecodeError, DecodeError):
             return None
         if source_hash != meta.hash:
-            manager.log('Metadata abandoned for {}: file {} has different hash'.format(id, path))
-            return None
+            if fine_grained_cache:
+                manager.log('Using stale metadata for {}: file {}'.format(id, path))
+                return meta
+            else:
+                manager.log('Metadata abandoned for {}: file {} has different hash'.format(
+                    id, path))
+                return None
         else:
             # Optimization: update mtime and path (otherwise, this mismatch will reappear).
             meta = meta._replace(mtime=mtime, path=path)
@@ -1193,7 +1201,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
-    manager.trace('Metadata fresh for {}: file {}'.format(id, path))
+    manager.log('Metadata fresh for {}: file {}'.format(id, path))
     return meta
 
 
@@ -1721,7 +1729,7 @@ class State:
         # cache load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules,
                      self.manager.options.quick_and_dirty or
-                     self.manager.use_fine_grained_cache())
+                     self.options.use_fine_grained_cache)
 
     def patch_dependency_parents(self) -> None:
         """
@@ -1800,7 +1808,8 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = manager.fscache.read_with_python_encoding(path)
+                    source = decode_python_encoding(manager.fscache.read(path),
+                                                    manager.options.python_version)
                     self.source_hash = manager.fscache.md5(path)
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
@@ -2312,11 +2321,16 @@ def dump_graph(graph: Graph) -> None:
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager,
-               old_graph: Optional[Graph] = None) -> Graph:
+               old_graph: Optional[Graph] = None,
+               new_modules: Optional[List[State]] = None) -> Graph:
     """Given some source files, load the full dependency graph.
 
     If an old_graph is passed in, it is used as the starting point and
     modified during graph loading.
+
+    If a new_modules is passed in, any modules that are loaded are
+    added to the list. This is an argument and not a return value
+    so that the caller can access it even if load_graph fails.
 
     As this may need to parse files, this can raise CompileError in case
     there are syntax errors.
@@ -2327,7 +2341,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.
-    new = collections.deque()  # type: Deque[State]
+    new = new_modules if new_modules is not None else []
     entry_points = set()  # type: Set[str]
     # Seed the graph with the initial root sources.
     for bs in sources:
@@ -2344,8 +2358,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         new.append(st)
         entry_points.add(bs.module)
     # Collect dependencies.  We go breadth-first.
-    while new:
-        st = new.popleft()
+    # More nodes might get added to new as we go, but that's fine.
+    for st in new:
         assert st.ancestors is not None
         # Strip out indirect dependencies.  These will be dealt with
         # when they show up as direct dependencies, and there's a
@@ -2524,7 +2538,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
                 for prev_scc in fresh_scc_queue:
-                    process_fresh_scc(graph, prev_scc, manager)
+                    process_fresh_modules(graph, prev_scc, manager)
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:
@@ -2548,21 +2562,10 @@ def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> Non
     """Finish loading everything for use in the fine-grained incremental cache"""
 
     # If we are running in fine-grained incremental mode with caching,
-    # we process all SCCs as fresh SCCs so that we have all of the symbol
-    # tables and fine-grained dependencies available.
-    # We fail the loading of any SCC that we can't load a meta for, so we
-    # don't have anything *but* fresh SCCs.
-    sccs = sorted_components(graph)
-    manager.log("Found %d SCCs; largest has %d nodes" %
-                (len(sccs), max(len(scc) for scc in sccs)))
-
-    for ascc in sccs:
-        # Order the SCC's nodes using a heuristic.
-        # Note that ascc is a set, and scc is a list.
-        scc = order_ascc(graph, ascc)
-        process_fresh_scc(graph, scc, manager)
-        for id in scc:
-            graph[id].load_fine_grained_deps()
+    # we don't actually have much to do: just load the fine-grained
+    # deps.
+    for id, state in graph.items():
+        state.load_fine_grained_deps()
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
@@ -2612,16 +2615,17 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
-def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
-    """Process the modules in one SCC from their cached data.
+def process_fresh_modules(graph: Graph, modules: List[str], manager: BuildManager) -> None:
+    """Process the modules in one group of modules from their cached data.
 
+    This can be used to process an SCC of modules
     This involves loading the tree from JSON and then doing various cleanups.
     """
-    for id in scc:
+    for id in modules:
         graph[id].load_tree()
-    for id in scc:
+    for id in modules:
         graph[id].fix_cross_refs()
-    for id in scc:
+    for id in modules:
         graph[id].patch_dependency_parents()
 
 

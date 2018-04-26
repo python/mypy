@@ -75,7 +75,8 @@ class FileSystemWatcher:
                     # File is new.
                     changed.add(path)
                     self._update(path)
-                elif st.st_size != old.st_size or st.st_mtime != old.st_mtime:
+                # Round mtimes down, to match the mtimes we write to meta files
+                elif st.st_size != old.st_size or int(st.st_mtime) != int(old.st_mtime):
                     # Only look for changes if size or mtime has changed as an
                     # optimization, since calculating md5 is expensive.
                     new_md5 = self.fs.md5(path)

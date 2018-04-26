@@ -50,7 +50,7 @@ from mypy.nodes import (
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
@@ -89,6 +89,7 @@ from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NA
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
+from mypy.typestate import TypeState
 
 
 T = TypeVar('T')
@@ -1854,7 +1855,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
             if not add_global:
-                self.analyze_member_lvalue(lval)
+                self.analyze_member_lvalue(lval, explicit_type)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
@@ -1892,12 +1893,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type = explicit_type)
 
-    def analyze_member_lvalue(self, lval: MemberExpr) -> None:
+    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False) -> None:
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"
+            cur_node = self.type.names.get(lval.name, None)
             node = self.type.get(lval.name)
-            if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
+            # If the attribute of self is not defined in superclasses, create a new Var, ...
+            if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
+                    # ... also an explicit declaration on self also creates a new Var.
+                    (cur_node is None and explicit_type)):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
@@ -1911,6 +1916,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     v.is_ready = False
                     lval.def_var = v
                     lval.node = v
+                    # TODO: should we also set lval.kind = MDEF?
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
         self.check_lvalue_validity(lval.node, lval)
 
@@ -3271,11 +3277,60 @@ def refers_to_class_or_function(node: Expression) -> bool:
 
 def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) -> None:
     try:
-        defn.info.calculate_mro()
+        calculate_mro(defn.info)
     except MroError:
         fail("Cannot determine consistent method resolution order "
              '(MRO) for "%s"' % defn.name, defn)
         defn.info.mro = []
+
+
+def calculate_mro(info: TypeInfo) -> None:
+    """Calculate and set mro (method resolution order).
+
+    Raise MroError if cannot determine mro.
+    """
+    mro = linearize_hierarchy(info)
+    assert mro, "Could not produce a MRO at all for %s" % (info,)
+    info.mro = mro
+    # The property of falling back to Any is inherited.
+    info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in info.mro)
+    TypeState.reset_all_subtype_caches_for(info)
+
+
+class MroError(Exception):
+    """Raised if a consistent mro cannot be determined for a class."""
+
+
+def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
+    # TODO describe
+    if info.mro:
+        return info.mro
+    bases = info.direct_base_classes()
+    lin_bases = []
+    for base in bases:
+        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
+        lin_bases.append(linearize_hierarchy(base))
+    lin_bases.append(bases)
+    return [info] + merge(lin_bases)
+
+
+def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
+    seqs = [s[:] for s in seqs]
+    result = []  # type: List[TypeInfo]
+    while True:
+        seqs = [s for s in seqs if s]
+        if not seqs:
+            return result
+        for seq in seqs:
+            head = seq[0]
+            if not [s for s in seqs if head in s[1:]]:
+                break
+        else:
+            raise MroError()
+        result.append(head)
+        for s in seqs:
+            if s[0] is head:
+                del s[0]
 
 
 def find_duplicate(list: List[T]) -> Optional[T]:

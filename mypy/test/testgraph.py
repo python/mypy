@@ -39,7 +39,7 @@ class GraphSuite(Suite):
     def _make_manager(self) -> BuildManager:
         errors = Errors()
         options = Options()
-        fscache = FileSystemCache(options.python_version)
+        fscache = FileSystemCache()
         manager = BuildManager(
             data_dir='',
             lib_path=[],

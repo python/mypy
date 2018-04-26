@@ -1782,3 +1782,32 @@ reveal_type(b.x)
 ==
 ==
 a.py:2: error: Revealed type is 'builtins.int'
+
+[case testQualifiedSubpackage1]
+[file c/__init__.py]
+[file c/a.py]
+from lurr import x
+from c.d import f
+
+[file c/d.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[file lurr.py]
+x = 10
+[file lurr.py.2]
+x = '10'
+[out]
+==
+
+[case testImportedMissingSubpackage]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy a.py b/__init__.py
+[file a.py]
+from b.foo import bar
+x = 10
+[file b/__init__.py]
+[file a.py.2]
+from b.foo import bar
+x = '10'
+[out]
+==

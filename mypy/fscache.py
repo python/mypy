@@ -29,13 +29,13 @@ advantage of the benefits.
 """
 
 import functools
+import hashlib
 import os
 import stat
 from typing import Dict, List, Tuple
-from mypy.util import read_with_python_encoding
 
 
-class FileSystemMetaCache:
+class FileSystemCache:
     def __init__(self) -> None:
         self.flush()
 
@@ -46,6 +46,9 @@ class FileSystemMetaCache:
         self.listdir_cache = {}  # type: Dict[str, List[str]]
         self.listdir_error_cache = {}  # type: Dict[str, OSError]
         self.isfile_case_cache = {}  # type: Dict[str, bool]
+        self.read_cache = {}  # type: Dict[str, bytes]
+        self.read_error_cache = {}  # type: Dict[str, Exception]
+        self.hash_cache = {}  # type: Dict[str, str]
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -120,21 +123,7 @@ class FileSystemMetaCache:
             return False
         return True
 
-
-class FileSystemCache(FileSystemMetaCache):
-    def __init__(self, pyversion: Tuple[int, int]) -> None:
-        super().__init__()
-        self.pyversion = pyversion
-        self.flush()
-
-    def flush(self) -> None:
-        """Start another transaction and empty all caches."""
-        super().flush()
-        self.read_cache = {}  # type: Dict[str, str]
-        self.read_error_cache = {}  # type: Dict[str, Exception]
-        self.hash_cache = {}  # type: Dict[str, str]
-
-    def read_with_python_encoding(self, path: str) -> str:
+    def read(self, path: str) -> bytes:
         if path in self.read_cache:
             return self.read_cache[path]
         if path in self.read_error_cache:
@@ -145,17 +134,19 @@ class FileSystemCache(FileSystemMetaCache):
         self.stat(path)
 
         try:
-            data, md5hash = read_with_python_encoding(path, self.pyversion)
+            with open(path, 'rb') as f:
+                data = f.read()
         except Exception as err:
             self.read_error_cache[path] = err
             raise
+        md5hash = hashlib.md5(data).hexdigest()
         self.read_cache[path] = data
         self.hash_cache[path] = md5hash
         return data
 
     def md5(self, path: str) -> str:
         if path not in self.hash_cache:
-            self.read_with_python_encoding(path)
+            self.read(path)
         return self.hash_cache[path]
 
 
