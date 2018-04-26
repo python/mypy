@@ -193,6 +193,8 @@ def snapshot_definition(node: Optional[SymbolNode],
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,
+                 # Whether subclasses are abstract can depend on the set of abstract attrs
+                 tuple(sorted(node.abstract_attributes)),
                  # We need this to e.g. trigger metaclass calculation in subclasses.
                  snapshot_optional_type(node.metaclass_type),
                  snapshot_optional_type(node.tuple_type),
