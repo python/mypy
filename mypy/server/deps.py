@@ -376,7 +376,8 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(lvalue, TupleExpr):
             for item in lvalue.items:
                 self.process_lvalue(item)
-        # TODO: star lvalue
+        elif isinstance(lvalue, StarExpr):
+            self.process_lvalue(lvalue.expr)
 
     def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
         """Does memberexpr to refer to an attribute of self?"""
