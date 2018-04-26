@@ -1067,3 +1067,45 @@ def f(): # type: () -> None
 <m.B.next> -> m.f
 <m.B> -> <m.A.__iter__>, <m.B.__iter__>, m.A.__iter__, m.B, m.B.__iter__
 <m.C> -> <m.B.next>, m.B.next, m.C
+
+[case testDepsLiskovClass]
+from mod import A, C
+class D(C):
+    x: A
+[file mod.py]
+class C:
+    x: B
+class B:
+    pass
+class A(B):
+    pass
+[out]
+<m.D.x> -> m
+<m.D> -> m.D
+<mod.A> -> <m.D.x>, m
+<mod.C.__init__> -> <m.D.__init__>
+<mod.C.__new__> -> <m.D.__new__>
+<mod.C.x> -> <m.D.x>
+<mod.C> -> m, m.D
+
+[case testDepsLiskovMethod]
+from mod import A, C
+class D(C):
+    def __init__(self) -> None:
+        self.x: A
+[file mod.py]
+class C:
+    def __init__(self) -> None:
+        self.x: B
+class B:
+    pass
+class A(B):
+    pass
+[out]
+<m.D.x> -> m.D.__init__
+<m.D> -> m.D
+<mod.A> -> <m.D.x>, m, m.D.__init__
+<mod.C.__init__> -> <m.D.__init__>, m.D.__init__
+<mod.C.__new__> -> <m.D.__new__>
+<mod.C.x> -> <m.D.x>
+<mod.C> -> m, m.D

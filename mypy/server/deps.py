@@ -238,6 +238,9 @@ class DependencyVisitor(TraverserVisitor):
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
+                # Recheck Liskov if needed, self definitions are checked in the defining method
+                if node.node.is_initialized_in_class and has_user_bases(info):
+                    self.add_dependency(make_trigger(info.fullname() + '.' + name))
                 for base_info in non_trivial_bases(info):
                     # If the type of an attribute changes in a base class, we make references
                     # to the attribute in the subclass stale.
@@ -352,6 +355,13 @@ class DependencyVisitor(TraverserVisitor):
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, MemberExpr):
+            if self.is_self_member_ref(lvalue) and lvalue.is_new_def:
+                node = lvalue.node
+                if isinstance(node, Var):
+                    info = node.info
+                    if info and has_user_bases(info):
+                        # Recheck Liskov for self definitions
+                        self.add_dependency(make_trigger(info.fullname() + '.' + lvalue.name))
             if lvalue.kind is None:
                 # Reference to a non-module attribute
                 if lvalue.expr not in self.type_map:
@@ -367,6 +377,13 @@ class DependencyVisitor(TraverserVisitor):
             for item in lvalue.items:
                 self.process_lvalue(item)
         # TODO: star lvalue
+
+    def is_self_member_ref(self, memberexpr: MemberExpr) -> bool:
+        """Does memberexpr to refer to an attribute of self?"""
+        if not isinstance(memberexpr.expr, NameExpr):
+            return False
+        node = memberexpr.expr.node
+        return isinstance(node, Var) and node.is_self
 
     def get_non_partial_lvalue_type(self, lvalue: RefExpr) -> Type:
         if lvalue not in self.type_map:
@@ -759,6 +776,11 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
     return [base for base in info.mro[1:]
             if base.fullname() != 'builtins.object']
+
+
+def has_user_bases(info: TypeInfo) -> bool:
+    # TODO: skip everything from typeshed?
+    return any(base.module_name not in ('builtins', 'typing', 'enum') for base in info.mro[1:])
 
 
 def dump_all_dependencies(modules: Dict[str, MypyFile],
