@@ -179,8 +179,10 @@ overridden by the pattern sections matching the module name.
 
 - ``strict_optional`` (Boolean, default True) enables or disables
   strict Optional checks. If False, mypy treats ``None`` as
-  compatible with every type. This was False by default in mypy
-  versions earlier than 0.600.
+  compatible with every type.
+
+  **Note::** This was False by default
+  in mypy versions earlier than 0.600.
 
 - ``disallow_any_unimported`` (Boolean, default false) disallows usage of types that come
   from unfollowed imports (such types become aliases for ``Any``).

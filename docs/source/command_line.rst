@@ -303,6 +303,10 @@ Here are some more useful flags:
   generally check the use of ``None`` values -- they are valid
   everywhere. See :ref:`no_strict_optional` for more about this feature.
 
+  **Note:** Strict optional checking was enabled by default starting in
+  mypy 0.600, and in previous versions it had to be explicitly enabled
+  using ``--strict-optional`` (which is still accepted).
+
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
 
