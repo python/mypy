@@ -34,6 +34,11 @@
 --
 -- Test runner can parse options from mypy.ini file. Updating this file in between
 -- incremental runs is not yet supported.
+--
+-- Each test case run without caching and with caching (if the initial run passes),
+-- unless it has one a --skip-cache or --skip-nocache suffix. We sometimes
+-- skip caching test cases to speed up tests, if the caching variant is not useful.
+-- The caching test case variants get an implicit _cached suffix.
 
 [case testReprocessFunction]
 import m
