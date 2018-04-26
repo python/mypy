@@ -1469,7 +1469,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
-            if isinstance(lvalue, NameExpr):
+            if isinstance(lvalue, RefExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
@@ -1534,13 +1534,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.infer_variable_type(inferred, lvalue, self.expr_checker.accept(rvalue),
                                          rvalue)
 
-    def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Optional[Type],
+    def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
         lvalue_node = lvalue.node
-
         # Check if we are a class variable with at least one base class
         if (isinstance(lvalue_node, Var) and
-                lvalue.kind == MDEF and
+                lvalue.kind in (MDEF, None) and  # None for Vars defined via self
                 len(lvalue_node.info.bases) > 0):
 
             for base in lvalue_node.info.mro[1:]:
@@ -1578,7 +1577,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     break
         return False
 
-    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Optional[Type],
+    def check_compatibility_super(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                   rvalue: Expression, base: TypeInfo, base_type: Type,
                                   base_node: Node) -> bool:
         lvalue_node = lvalue.node
@@ -2518,57 +2517,47 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_for_stmt(self, s: ForStmt) -> None:
         """Type check a for statement."""
         if s.is_async:
-            item_type = self.analyze_async_iterable_item_type(s.expr)
+            iterator_type, item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
-            item_type = self.analyze_iterable_item_type(s.expr)
+            iterator_type, item_type = self.analyze_iterable_item_type(s.expr)
         s.inferred_item_type = item_type
+        s.inferred_iterator_type = iterator_type
         self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
         self.accept_loop(s.body, s.else_body)
 
-    def analyze_async_iterable_item_type(self, expr: Expression) -> Type:
-        """Analyse async iterable expression and return iterator item type."""
+    def analyze_async_iterable_item_type(self, expr: Expression) -> Tuple[Type, Type]:
+        """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-
-        self.check_subtype(iterable,
-                           self.named_generic_type('typing.AsyncIterable',
-                                                   [AnyType(TypeOfAny.special_form)]),
-                           expr, messages.ASYNC_ITERABLE_EXPECTED)
-
         method = echk.analyze_external_member_access('__aiter__', iterable, expr)
         iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__anext__', iterator, expr)
         awaitable = echk.check_call(method, [], [], expr)[0]
-        return echk.check_awaitable_expr(awaitable, expr,
-                                         messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+        item_type = echk.check_awaitable_expr(awaitable, expr,
+                                              messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+        return iterator, item_type
 
-    def analyze_iterable_item_type(self, expr: Expression) -> Type:
-        """Analyse iterable expression and return iterator item type."""
+    def analyze_iterable_item_type(self, expr: Expression) -> Tuple[Type, Type]:
+        """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
+        method = echk.analyze_external_member_access('__iter__', iterable, expr)
+        iterator = echk.check_call(method, [], [], expr)[0]
 
         if isinstance(iterable, TupleType):
             joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
-            return joined
+            return iterator, joined
         else:
             # Non-tuple iterable.
-            self.check_subtype(iterable,
-                               self.named_generic_type('typing.Iterable',
-                                                       [AnyType(TypeOfAny.special_form)]),
-                               expr, messages.ITERABLE_EXPECTED)
-
-            method = echk.analyze_external_member_access('__iter__', iterable,
-                                                         expr)
-            iterator = echk.check_call(method, [], [], expr)[0]
             if self.options.python_version[0] >= 3:
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
             method = echk.analyze_external_member_access(nextmethod, iterator,
                                                          expr)
-            return echk.check_call(method, [], [], expr)[0]
+            return iterator, echk.check_call(method, [], [], expr)[0]
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:

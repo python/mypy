@@ -25,6 +25,7 @@ from mypy.nodes import (
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
 from mypy.visitor import NodeVisitor
+from mypy.util import replace_object_state
 
 
 class TransformVisitor(NodeVisitor[Node]):
@@ -124,7 +125,7 @@ class TransformVisitor(NodeVisitor[Node]):
             # function. We know that the classes will be identical (otherwise
             # this wouldn't work).
             result = self.func_placeholder_map[node]
-            result.__dict__ = new.__dict__
+            replace_object_state(result, new)
             return result
         else:
             return new

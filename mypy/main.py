@@ -424,8 +424,10 @@ def process_options(args: List[str],
                         help="include fine-grained dependency information in the cache")
     parser.add_argument('--skip-version-check', action='store_true',
                         help="allow using cache written by older mypy version")
-    add_invertible_flag('--strict-optional', default=False, strict_flag=True,
-                        help="enable experimental strict Optional checks")
+    parser.add_argument('--strict-optional', action='store_true',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--no-strict-optional', action='store_false', dest='strict_optional',
+                        help="disable strict Optional checks (inverse: --no-strict-optional)")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
                         "(experimental -- read documentation before using!).  "
