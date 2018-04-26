@@ -5801,6 +5801,130 @@ class M(type):
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
 
+[case testAwaitAndAsyncDef-skip-cache]
+from a import g
+
+async def f() -> int:
+    return await g()
+
+[file a.py]
+async def g() -> int:
+    return 0
+
+[file a.py.2]
+async def g() -> str:
+    return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case testAwaitAnd__await__-skip-cache]
+from a import C
+
+async def f(c: C) -> int:
+    return await c
+
+[file a.py]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, int]:
+        yield
+        return 0
+
+[file a.py.2]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, str]:
+        yield
+        return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case test__aiter__and__anext__]
+from a import C
+
+async def f() -> int:
+    async for x in C():
+        pass
+    return x
+
+[file a.py]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> int: return 0
+
+[file a.py.2]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> str: return ''
+
+[file a.py.3]
+class C:
+    def __aiter__(self) -> E: pass
+class E:
+    def __aiter__(self) -> E: pass
+    async def __anext__(self) -> object: return 0
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:6: error: Incompatible return value type (got "str", expected "int")
+==
+main:6: error: Incompatible return value type (got "object", expected "int")
+
+[case testAsyncWith2-skip-cache]
+from a import C
+
+async def f() -> int:
+    async with C() as x:
+        return x
+
+async def g() -> None:
+    async with C(): pass
+
+[file a.py]
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.2]
+class C:
+    async def __aenter__(self) -> str: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.3]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.4]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "str", expected "int")
+==
+==
+main:4: error: "C" has no attribute "__aexit__"
+main:8: error: "C" has no attribute "__aexit__"
+
 [case testLiskovFineVariable]
 import b
 class A(b.B):

@@ -76,8 +76,7 @@ for y in x:
 -- avoid things getting worse.
 main:2: error: "tuple" expects no type arguments, but 1 given
 main:3: error: Value of type "tuple" is not indexable
-main:4: error: Iterable expected
-main:4: error: "tuple" has no attribute "__iter__"
+main:4: error: "tuple" has no attribute "__iter__" (not iterable)
 
 [case testClassmethodMissingFromStubs]
 class A:
