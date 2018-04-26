@@ -1109,3 +1109,20 @@ class A(B):
 <mod.C.__new__> -> <m.D.__new__>
 <mod.C.x> -> <m.D.x>
 <mod.C> -> m, m.D
+
+[case testIndexedStarLvalue]
+from typing import List, Tuple
+
+class B:
+    def __setitem__(self, i: int, v: List[str]) -> None: pass
+
+def g() -> Tuple[int, str, str]: pass
+
+def f(b: B) -> None:
+    a, *b[0] = g()
+[builtins fixtures/list.pyi]
+[out]
+<m.B.__getitem__> -> m.f
+<m.B.__setitem__> -> m.f
+<m.B> -> <m.f>, m.B, m.f
+<m.g> -> m.f

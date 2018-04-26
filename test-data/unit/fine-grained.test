@@ -34,6 +34,11 @@
 --
 -- Test runner can parse options from mypy.ini file. Updating this file in between
 -- incremental runs is not yet supported.
+--
+-- Each test case run without caching and with caching (if the initial run passes),
+-- unless it has one a --skip-cache or --skip-nocache suffix. We sometimes
+-- skip caching test cases to speed up tests, if the caching variant is not useful.
+-- The caching test case variants get an implicit _cached suffix.
 
 [case testReprocessFunction]
 import m
@@ -5800,6 +5805,90 @@ class M(type):
 [out]
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
+
+[case testExtendedUnpacking-skip-cache]
+from typing import List
+from a import g
+def f() -> List[int]:
+    a, *b = g()
+    return b
+
+[file a.py]
+from typing import Tuple
+def g() -> Tuple[str, int, int]: pass
+
+[file a.py.2]
+from typing import Tuple
+def g() -> Tuple[str, str]: pass
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "List[str]", expected "List[int]")
+
+[case testUnpackInExpression1-skip-cache]
+from typing import Tuple, List
+from a import t
+
+def f() -> Tuple[int, int]:
+    return (1, *t())
+
+def g() -> List[int]:
+    return [1, *t()]
+
+[file a.py]
+from typing import Tuple
+def t() -> Tuple[int]: ...
+
+[file a.py.2]
+from typing import Tuple
+def t() -> Tuple[str]: ...
+
+[builtins fixtures/list.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "Tuple[int, str]", expected "Tuple[int, int]")
+main:8: error: List item 1 has incompatible type "Tuple[str]"; expected "int"
+
+[case testUnpackInExpression2-skip-cache]
+from typing import Set
+from a import t
+
+def f() -> Set[int]:
+    return {1, *t()}
+
+[file a.py]
+from typing import Tuple
+def t() -> Tuple[int]: pass
+
+[file a.py.2]
+from typing import Tuple
+def t() -> Tuple[str]: pass
+
+[builtins fixtures/set.pyi]
+[out]
+==
+main:5: error: Argument 2 to <set> has incompatible type "*Tuple[str]"; expected "int"
+
+[case testUnpackInExpression3-skip-cache]
+from typing import Dict
+from a import d
+
+def f() -> Dict[int, str]:
+    return {1: '', **d()}
+
+[file a.py]
+from typing import Dict
+def d() -> Dict[int, str]: pass
+
+[file a.py.2]
+from typing import Dict
+def d() -> Dict[int, int]: pass
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
 
 [case testAwaitAndAsyncDef-skip-cache]
 from a import g

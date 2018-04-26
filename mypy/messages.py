@@ -645,7 +645,7 @@ class MessageBuilder:
             # For function calls with keyword arguments, display the argument name rather than the
             # number.
             arg_label = str(n)
-            if isinstance(context, CallExpr):
+            if isinstance(context, CallExpr) and len(context.arg_names) >= n:
                 arg_name = context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
