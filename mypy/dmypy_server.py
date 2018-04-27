@@ -309,14 +309,19 @@ class Server:
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         assert self.fine_grained_manager is not None
+        manager = self.fine_grained_manager.manager
 
         t0 = time.time()
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
+        # Update the lib_path, which can change when sources do.
+        # TODO: This is slow.
+        manager.lib_path = tuple(mypy.build.compute_lib_path(
+            sources, manager.options, self.alt_lib_path, manager.data_dir, self.fscache))
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        self.fine_grained_manager.manager.log(
+        manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
                 t1 - t0, t2 - t1))
         status = 1 if messages else 0
