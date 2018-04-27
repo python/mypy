@@ -101,10 +101,11 @@ class BuildResult:
 
 class BuildSource:
     def __init__(self, path: Optional[str], module: Optional[str],
-            text: Optional[str]) -> None:
+                 text: Optional[str], base_dir: Optional[str] = None) -> None:
         self.path = path
         self.module = module or '__main__'
         self.text = text
+        self.base_dir = base_dir
 
     def __repr__(self) -> str:
         return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
@@ -197,29 +198,31 @@ def build(sources: List[BuildSource],
 
 def compute_lib_path(sources: List[BuildSource],
                      options: Options,
-                     alt_lib_path: Optional[str],
                      data_dir: str,
-                     fscache: FileSystemCache) -> List[str]:
+                     alt_lib_path: Optional[str] = None) -> List[str]:
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir,
-                                options.python_version,
-                                custom_typeshed_dir=options.custom_typeshed_dir)
+    lib_path = collections.deque(
+        default_lib_path(data_dir,
+                         options.python_version,
+                         custom_typeshed_dir=options.custom_typeshed_dir))
 
     if options.use_builtins_fixtures:
         # Use stub builtins (to speed up test cases and to make them easier to
         # debug).  This is a test-only feature, so assume our files are laid out
         # as in the source tree.
         root_dir = dirname(dirname(__file__))
-        lib_path.insert(0, os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
+        lib_path.appendleft(os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
     # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
     # If we don't have one, grab directories of source files.
+    lib_path_set = set(lib_path)
     if not alt_lib_path:
         for source in sources:
-            if source.path:
-                # Include directory of the program file in the module search path.
-                dir = remove_cwd_prefix_from_path(fscache, dirname(source.path))
-                if dir not in lib_path:
-                    lib_path.insert(0, dir)
+            # Include directory of the program file in the module search path.
+            if source.base_dir:
+                dir = remove_cwd_prefix_from_path(source.base_dir)
+                if dir not in lib_path_set:
+                    lib_path.appendleft(dir)
+                    lib_path_set.add(dir)
 
         # Do this even if running as a file, for sanity (mainly because with
         # multiple builds, there could be a mix of files/modules, so its easier
@@ -227,20 +230,20 @@ def compute_lib_path(sources: List[BuildSource],
         # to the lib_path
         # TODO: Don't do this in some cases; for motivation see see
         # https://github.com/python/mypy/issues/4195#issuecomment-341915031
-        lib_path.insert(0, os.getcwd())
+        lib_path.appendleft(os.getcwd())
 
     # Prepend a config-defined mypy path.
-    lib_path[:0] = options.mypy_path
+    lib_path.extendleft(options.mypy_path)
 
     # Add MYPYPATH environment variable to front of library path, if defined.
-    lib_path[:0] = mypy_path()
+    lib_path.extendleft(mypy_path())
 
     # If provided, insert the caller-supplied extra module path to the
     # beginning (highest priority) of the search path.
     if alt_lib_path:
-        lib_path.insert(0, alt_lib_path)
+        lib_path.appendleft(alt_lib_path)
 
-    return lib_path
+    return list(lib_path)
 
 
 def _build(sources: List[BuildSource],
@@ -256,7 +259,7 @@ def _build(sources: List[BuildSource],
     data_dir = default_data_dir(bin_dir)
     fscache = fscache or FileSystemCache()
 
-    lib_path = compute_lib_path(sources, options, alt_lib_path, data_dir, fscache)
+    lib_path = compute_lib_path(sources, options, data_dir, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
@@ -791,10 +794,8 @@ class BuildManager:
         return self.stats
 
 
-def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
+def remove_cwd_prefix_from_path(p: str) -> str:
     """Remove current working directory prefix from p, if present.
-
-    Also crawl up until a directory without __init__.py is found.
 
     If the result would be empty, return '.' instead.
     """
@@ -802,14 +803,6 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     # Add separator to the end of the path, unless one is already present.
     if basename(cur) != '':
         cur += os.sep
-    # Compute root path.
-    while (p and
-           (fscache.isfile(os.path.join(p, '__init__.py')) or
-            fscache.isfile(os.path.join(p, '__init__.pyi')))):
-        dir, base = os.path.split(p)
-        if not base:
-            break
-        p = dir
     # Remove current directory prefix from the path, if present.
     if p.startswith(cur):
         p = p[len(cur):]
@@ -817,6 +810,7 @@ def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
     if p == '':
         p = '.'
     return p
+
 
 
 @functools.lru_cache(maxsize=None)

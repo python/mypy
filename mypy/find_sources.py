@@ -30,9 +30,10 @@ def create_source_list(files: Sequence[str], options: Options,
     for f in files:
         if f.endswith(PY_EXTENSIONS):
             # Can raise InvalidSourceList if a directory doesn't have a valid module name.
-            targets.append(BuildSource(f, finder.crawl_up(f), None))
+            name, base_dir = finder.crawl_up(os.path.normpath(f))
+            targets.append(BuildSource(f, name, None, base_dir))
         elif fscache.isdir(f):
-            sub_targets = finder.expand_dir(f)
+            sub_targets = finder.expand_dir(os.path.normpath(f))
             if not sub_targets and not allow_empty_dir:
                 raise InvalidSourceList("There are no .py[i] files in directory '{}'"
                                         .format(f))
@@ -58,8 +59,8 @@ def keyfunc(name: str) -> Tuple[int, str]:
 class SourceFinder:
     def __init__(self, fscache: FileSystemCache) -> None:
         self.fscache = fscache
-        # A cache for package names, mapping from module id to directory path
-        self.package_cache = {}  # type: Dict[str, str]
+        # A cache for package names, mapping from directory path to module id and base dir
+        self.package_cache = {}  # type: Dict[str, Tuple[str, str]]
 
     def expand_dir(self, arg: str, mod_prefix: str = '') -> List[BuildSource]:
         """Convert a directory name to a list of sources to build."""
@@ -68,11 +69,11 @@ class SourceFinder:
             return []
         seen = set()  # type: Set[str]
         sources = []
+        top_mod, base_dir = self.crawl_up_dir(arg)
         if f and not mod_prefix:
-            top_mod = self.crawl_up(f)
             mod_prefix = top_mod + '.'
         if mod_prefix:
-            sources.append(BuildSource(f, mod_prefix.rstrip('.'), None))
+            sources.append(BuildSource(f, mod_prefix.rstrip('.'), None, base_dir))
         names = self.fscache.listdir(arg)
         names.sort(key=keyfunc)
         for name in names:
@@ -88,28 +89,28 @@ class SourceFinder:
                     continue
                 if base not in seen and '.' not in base and suffix in PY_EXTENSIONS:
                     seen.add(base)
-                    src = BuildSource(path, mod_prefix + base, None)
+                    src = BuildSource(path, mod_prefix + base, None, base_dir)
                     sources.append(src)
         return sources
 
-    def crawl_up(self, arg: str) -> str:
-        """Given a .py[i] filename, return module.
+    def crawl_up(self, arg: str) -> Tuple[str, str]:
+        """Given a .py[i] filename, return module and base directory
 
         We crawl up the path until we find a directory without
         __init__.py[i], or until we run out of path components.
         """
         dir, mod = os.path.split(arg)
         mod = strip_py(mod) or mod
-        base = self.crawl_up_dir(dir)
+        base, base_dir = self.crawl_up_dir(dir)
         if mod == '__init__' or not mod:
             mod = base
         else:
             mod = module_join(base, mod)
 
-        return mod
+        return mod, base_dir
 
-    def crawl_up_dir(self, dir: str) -> str:
-        """Given a directory name, return the corresponding module name.
+    def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
+        """Given a directory name, return the corresponding module name and base directory
 
         Use package_cache to cache results.
         """
@@ -119,15 +120,16 @@ class SourceFinder:
         parent_dir, base = os.path.split(dir)
         if not dir or not self.get_init_file(dir) or not base:
             res = ''
+            base_dir = dir or '.'
         else:
             # Ensure that base is a valid python module name
             if not base.isidentifier():
                 raise InvalidSourceList('{} is not a valid Python package name'.format(base))
-            parent = self.crawl_up_dir(parent_dir)
+            parent, base_dir = self.crawl_up_dir(parent_dir)
             res = module_join(parent, base)
 
-        self.package_cache[dir] = res
-        return res
+        self.package_cache[dir] = res, base_dir
+        return res, base_dir
 
     def get_init_file(self, dir: str) -> Optional[str]:
         """Check whether a directory contains a file named __init__.py[i].
