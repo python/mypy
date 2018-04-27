@@ -195,19 +195,11 @@ def build(sources: List[BuildSource],
         raise
 
 
-def _build(sources: List[BuildSource],
-           options: Options,
-           alt_lib_path: Optional[str],
-           bin_dir: Optional[str],
-           flush_errors: Callable[[List[str], bool], None],
-           fscache: Optional[FileSystemCache],
-           ) -> BuildResult:
-    # This seems the most reasonable place to tune garbage collection.
-    gc.set_threshold(50000)
-
-    data_dir = default_data_dir(bin_dir)
-    fscache = fscache or FileSystemCache()
-
+def compute_lib_path(sources: List[BuildSource],
+                     options: Options,
+                     alt_lib_path: Optional[str],
+                     data_dir: str,
+                     fscache: FileSystemCache) -> List[str]:
     # Determine the default module search path.
     lib_path = default_lib_path(data_dir,
                                 options.python_version,
@@ -219,7 +211,9 @@ def _build(sources: List[BuildSource],
         # as in the source tree.
         root_dir = dirname(dirname(__file__))
         lib_path.insert(0, os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
-    else:
+    # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
+    # If we don't have one, grab directories of source files.
+    if not alt_lib_path:
         for source in sources:
             if source.path:
                 # Include directory of the program file in the module search path.
@@ -245,6 +239,24 @@ def _build(sources: List[BuildSource],
     # beginning (highest priority) of the search path.
     if alt_lib_path:
         lib_path.insert(0, alt_lib_path)
+
+    return lib_path
+
+
+def _build(sources: List[BuildSource],
+           options: Options,
+           alt_lib_path: Optional[str],
+           bin_dir: Optional[str],
+           flush_errors: Callable[[List[str], bool], None],
+           fscache: Optional[FileSystemCache],
+           ) -> BuildResult:
+    # This seems the most reasonable place to tune garbage collection.
+    gc.set_threshold(50000)
+
+    data_dir = default_data_dir(bin_dir)
+    fscache = fscache or FileSystemCache()
+
+    lib_path = compute_lib_path(sources, options, alt_lib_path, data_dir, fscache)
 
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
