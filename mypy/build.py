@@ -219,7 +219,7 @@ def compute_lib_path(sources: List[BuildSource],
         for source in sources:
             # Include directory of the program file in the module search path.
             if source.base_dir:
-                dir = remove_cwd_prefix_from_path(source.base_dir)
+                dir = source.base_dir
                 if dir not in lib_path_set:
                     lib_path.appendleft(dir)
                     lib_path_set.add(dir)
@@ -792,25 +792,6 @@ class BuildManager:
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
-
-
-def remove_cwd_prefix_from_path(p: str) -> str:
-    """Remove current working directory prefix from p, if present.
-
-    If the result would be empty, return '.' instead.
-    """
-    cur = os.getcwd()
-    # Add separator to the end of the path, unless one is already present.
-    if basename(cur) != '':
-        cur += os.sep
-    # Remove current directory prefix from the path, if present.
-    if p.startswith(cur):
-        p = p[len(cur):]
-    # Avoid returning an empty path; replace that with '.'.
-    if p == '':
-        p = '.'
-    return p
-
 
 
 @functools.lru_cache(maxsize=None)
