@@ -946,7 +946,8 @@ from parent import b
 
 [file parent/b.py.2]
 
-[stale parent, parent.a, parent.b]
+[stale parent.a, parent.b]
+[rechecked parent, parent.a, parent.b]
 
 [case testIncrementalReferenceExistingFileWithImportFrom]
 from parent import a, b
