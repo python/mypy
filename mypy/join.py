@@ -391,14 +391,19 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
 
 
 def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
-    """Takes two callables and produces the meet of their argument names.
+    """Produces a list of argument names compatible with both callables.
 
-    For example, if 't' had the signature (a: int, b: str, c: str) -> None
-    and 's' had the signature (a: int, b: str, z: str) -> None, the
-    join of their argument names would be ["a", "b", None].
+    For example, suppose 't' and 's' have the following signatures:
 
-    This information is then used to compute more accurate joins for
-    callables up above.
+    - t: (a: int, b: str, X: str) -> None
+    - s: (a: int, b: str, Y: str) -> None
+
+    This function would return ["a", "b", None]. This information
+    is then used above to compute the join of t and s, which results
+    in a signature of (a: int, b: str, str) -> None.
+
+    Note that the third argument's name is omitted and 't' and 's'
+    are both valid subtypes of this inferred signature.
 
     Precondition: is_similar_types(t, s) is true.
     """
