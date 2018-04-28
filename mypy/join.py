@@ -13,6 +13,7 @@ from mypy.subtypes import (
     is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
     is_protocol_implementation
 )
+from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT
 
 from mypy import experiments
 
@@ -348,7 +349,6 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     """Return True if t and s have identical numbers of
     arguments, default arguments and varargs.
     """
-
     return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args and
             t.is_var_arg == s.is_var_arg)
 
@@ -366,6 +366,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     else:
         fallback = s.fallback
     return t.copy_modified(arg_types=arg_types,
+                           arg_names=combine_arg_names(t, s),
                            ret_type=join_types(t.ret_type, s.ret_type),
                            fallback=fallback,
                            name=None)
@@ -383,9 +384,40 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     else:
         fallback = s.fallback
     return t.copy_modified(arg_types=arg_types,
+                           arg_names=combine_arg_names(t, s),
                            ret_type=join_types(t.ret_type, s.ret_type),
                            fallback=fallback,
                            name=None)
+
+
+def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
+    """Produces a list of argument names compatible with both callables.
+
+    For example, suppose 't' and 's' have the following signatures:
+
+    - t: (a: int, b: str, X: str) -> None
+    - s: (a: int, b: str, Y: str) -> None
+
+    This function would return ["a", "b", None]. This information
+    is then used above to compute the join of t and s, which results
+    in a signature of (a: int, b: str, str) -> None.
+
+    Note that the third argument's name is omitted and 't' and 's'
+    are both valid subtypes of this inferred signature.
+
+    Precondition: is_similar_types(t, s) is true.
+    """
+    num_args = len(t.arg_types)
+    new_names = []
+    named = (ARG_NAMED, ARG_NAMED_OPT)
+    for i in range(num_args):
+        t_name = t.arg_names[i]
+        s_name = s.arg_names[i]
+        if t_name == s_name or t.arg_kinds[i] in named or s.arg_kinds[i] in named:
+            new_names.append(t_name)
+        else:
+            new_names.append(None)
+    return new_names
 
 
 def object_from_instance(instance: Instance) -> Instance:
