@@ -174,8 +174,8 @@ script will decompress the data so that mypy will start with a fresh
 Caching with mypy daemon
 ========================
 
-You can use the :ref:`mypy daemon <mypy_daemon>` for faster
-incremental mypy runs, and it also supports remote caching. The remote
+You can also use remote caching with the :ref:`mypy daemon <mypy_daemon>`.
+The remote
 cache will significantly speed up the the first ``dmypy check`` run
 after starting or restarting the daemon.
 
@@ -186,8 +186,10 @@ build::
 
     $ mypy --cache-fine-grained <args...>
 
-You will also need to use the ``--use-fine-grained-cache`` option
-with ``dymypy start`` or ``dmypy restart``. Example::
+This flag adds extra information for the daemon to the cache. In
+order to use this extra information, you will also need to use the
+``--use-fine-grained-cache`` option with ``dymypy start`` or
+``dmypy restart``. Example::
 
     $ dmypy start -- --use-fine-grained-cache <options...>
 

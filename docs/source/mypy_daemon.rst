@@ -5,8 +5,9 @@ Mypy daemon (mypy server)
 
 Instead of running mypy as a command-line tool, you can also run it as
 a long-running daemon (server) process and use a command-line client to
-control the server.  This way mypy can perform type checking much faster,
-since program state cached from previous runs is kept in memory and doesn't
+send type-checking requests to the server.  This way mypy can perform type
+checking much faster, since program state cached from previous runs is kept
+in memory and doesn't
 have to be read from the file system on each run. The server also uses
 finer-grained dependency tracking to reduce the amount of work that needs
 to be done.
@@ -26,6 +27,12 @@ you'll find errors sooner.
 
     The mypy daemon currently supports macOS and Linux only.
 
+.. note::
+
+    Each mypy daemon process supports one user and one set of source files,
+    and it can only process one type checking request at a time. You can
+    run multiple mypy daemon processes to type check multiple repositories.
+
 Basic usage
 ***********
 
@@ -38,20 +45,26 @@ current host. Example::
 
 .. note::
    You'll need to use either the ``--follow-imports=skip`` or the
-   ``--follow-imports=error`` option with dmypy.
+   ``--follow-imports=error`` option with dmypy because the current
+   implementation can't follow imports.
    See :ref:`follow-imports` for details on how these work.
+   You can also define these using a
+   :ref:`configuration file <config-file>`.
 
-The daemon will not type check anything after the start command.
+The daemon will not type check anything when it's started.
 Use ``dmypy check <files>`` to check some files (or directories)::
 
     dmypy check prog.py pkg1/ pkg2/
 
 You need to provide all files or directories you want to type check
-(other than stubs) as arguments.
+(other than stubs) as arguments. This is a result of the
+``--follow-imports`` restriction mentioned above.
 
 The initial run will process all the code and may take a while to
 finish, but subsequent runs will be quick, especially if you've only
-changed a few files.
+changed a few files. You can use :ref:`remote caching <remote-cache>`
+to speed up the initial run. The speedup can be significant if
+you have a large codebase.
 
 Additional features
 *******************
@@ -61,19 +74,17 @@ You have precise control over the lifetime of the daemon process:
 * ``dymypy stop`` stops the daemon.
 
 * ``dmypy restart -- <flags>`` restarts the daemon. The flags are the same
-  as with ``dmypy start``.
+  as with ``dmypy start``. This is equivalent to a stop command followed
+  by a start.
 
 * Use ``dmypy start --timeout SECONDS -- <flags>`` (or
   ``dmypy restart --timeout SECONDS -- <flags>``) to automatically
-  shut down the daemon after inactivity.
+  shut down the daemon after inactivity. By default, the daemon runs
+  until it's explicitly stopped.
 
 Use ``dmypy --help`` for help on additional commands and command-line
 options not discussed here, and ``dmypy <command> --help`` for help on
 command-specific options.
-
-You can use a :ref:`remote cache <remote-cache>` to speed up the
-initial ``dmypy check`` run. The speedup can be significant if
-you have a large codebase.
 
 Limitations
 ***********
@@ -81,7 +92,8 @@ Limitations
 * Changes related to protocol classes are not reliably propagated.
 
 * You have to use either the ``--follow-imports=skip`` or
-  the ``--follow-imports=error`` option. This can be defined
+  the ``--follow-imports=error`` option because of an implementation
+  limitation. This can be defined
   through the command line or through a
   :ref:`configuration file <config-file>`.
 
