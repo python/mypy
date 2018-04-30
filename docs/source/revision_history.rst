@@ -262,7 +262,7 @@ List of major changes:
 - Mar 2015
     Update documentation to reflect PEP 484:
 
-    * Add :ref:`named-tuples` and :ref:`optional`.
+    * Add :ref:`named-tuples` and :ref:`Optional types <strict_optional>`.
 
     * Do not mention type application syntax (for
       example, ``List[int]()``), as it's no longer supported,
