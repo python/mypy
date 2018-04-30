@@ -1,18 +1,27 @@
 sudo: false
 language: python
 cache: pip
+cache:
+  directories:
+    - /home/travis/python-debug
 
 python:
   - "3.5"
   - "3.6"
+env:
+  - PYTHON_DEBUG_BUILD=0
+  - PYTHON_DEBUG_BUILD=1
 
 install:
+  - export PYTHONVERSION=`python --version | awk '{ print $2 }'`
+  - if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then export PYTHONDIR=~/python-debug/python-$PYTHONVERSION; else export PYTHONDIR="/opt/python/$PYTHONVERSION"; fi
+  - if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then VENV=$PYTHONDIR/env; scripts/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV; source $VENV/bin/activate; fi
   - pip install -U pip setuptools wheel
   - pip install -r external/mypy/test-requirements.txt
 
 script:
   - export PYTHONPATH=`pwd`/external/mypy
-  - export PYTHONVERSION=`python --version | awk '{ print $2 }'`
-  - export PYTHONCONFIG="/opt/python/$PYTHONVERSION/bin/python-config"
-  - export LD_LIBRARY_PATH="/opt/python/$PYTHONVERSION/lib"
-  - pytest -n4 mypyc
+  - export PYTHONCONFIG="$PYTHONDIR/bin/python-config"
+  - export LD_LIBRARY_PATH="$PYTHONDIR/lib"
+  - if [[ $PYTHON_DEBUG_BUILD != 1 ]]; then pytest -n4 mypyc; fi
+  - if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then pytest -n4 mypyc/test/test_run.py mypyc/test/test_external.py -k 'not test_self_type_check'; fi
