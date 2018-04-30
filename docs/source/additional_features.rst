@@ -175,9 +175,8 @@ Caching with mypy daemon
 ========================
 
 You can also use remote caching with the :ref:`mypy daemon <mypy_daemon>`.
-The remote
-cache will significantly speed up the the first ``dmypy check`` run
-after starting or restarting the daemon.
+The remote cache will significantly speed up the the first ``dmypy check``
+run after starting or restarting the daemon.
 
 The mypy daemon requires extra fine-grained dependency data in
 the cache files which aren't included by default. To use caching with
