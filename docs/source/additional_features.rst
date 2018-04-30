@@ -207,9 +207,9 @@ at least if your codebase is hundreds of thousands of lines or more:
   it's better to instead reuse the existing local cache data.
 
 * If you use the mypy daemon, you may want to restart the daemon each time
-  after the merge base has changed to avoid processing a potentially large
-  number of changes in an incremental build, as this can be much slower
-  than downloading cache data and restarting the daemon.
+  after the merge base or local branch has changed to avoid processing a
+  potentially large number of changes in an incremental build, as this can
+  be much slower than downloading cache data and restarting the daemon.
 
 * If the current local branch is based on a very recent master commit,
   the remote cache data may not yet be available for that commit, as
