@@ -7,10 +7,9 @@ Instead of running mypy as a command-line tool, you can also run it as
 a long-running daemon (server) process and use a command-line client to
 send type-checking requests to the server.  This way mypy can perform type
 checking much faster, since program state cached from previous runs is kept
-in memory and doesn't
-have to be read from the file system on each run. The server also uses
-finer-grained dependency tracking to reduce the amount of work that needs
-to be done.
+in memory and doesn't have to be read from the file system on each run.
+The server also uses finer-grained dependency tracking to reduce the amount
+of work that needs to be done.
 
 If you have a large codebase to check, running mypy using the mypy
 daemon can be *10 or more times faster* than the regular command-line
