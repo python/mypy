@@ -34,6 +34,11 @@
 --
 -- Test runner can parse options from mypy.ini file. Updating this file in between
 -- incremental runs is not yet supported.
+--
+-- Each test case run without caching and with caching (if the initial run passes),
+-- unless it has one a --skip-cache or --skip-nocache suffix. We sometimes
+-- skip caching test cases to speed up tests, if the caching variant is not useful.
+-- The caching test case variants get an implicit _cached suffix.
 
 [case testReprocessFunction]
 import m
@@ -5801,6 +5806,254 @@ class M(type):
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
 
+[case testYieldFrom]
+from typing import Iterator
+from a import f
+
+def g() -> Iterator[int]:
+    a = "string"
+    a = yield from f()
+
+[file a.py]
+from typing import Generator
+
+def f() -> Generator[int, None, str]:
+    yield 5
+    return "ham"
+
+[file a.py.2]
+from typing import Generator
+
+class A: pass
+
+def f() -> Generator[int, None, A]:
+    yield 5
+    return A()
+
+[out]
+==
+main:6: error: Incompatible types in assignment (expression has type "A", variable has type "str")
+
+[case testFString]
+from a import g
+f'{g(1)}'
+[file a.py]
+def g(x: int) -> str: pass
+[file a.py.2]
+def g(x: str) -> str: pass
+[builtins fixtures/f_string.pyi]
+[out]
+==
+main:2: error: Argument 1 to "g" has incompatible type "int"; expected "str"
+
+[case testExtendedUnpacking-skip-cache]
+from typing import List
+from a import g
+def f() -> List[int]:
+    a, *b = g()
+    return b
+
+[file a.py]
+from typing import Tuple
+def g() -> Tuple[str, int, int]: pass
+
+[file a.py.2]
+from typing import Tuple
+def g() -> Tuple[str, str]: pass
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "List[str]", expected "List[int]")
+
+[case testUnpackInExpression1-skip-cache]
+from typing import Tuple, List
+from a import t
+
+def f() -> Tuple[int, int]:
+    return (1, *t())
+
+def g() -> List[int]:
+    return [1, *t()]
+
+[file a.py]
+from typing import Tuple
+def t() -> Tuple[int]: ...
+
+[file a.py.2]
+from typing import Tuple
+def t() -> Tuple[str]: ...
+
+[builtins fixtures/list.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "Tuple[int, str]", expected "Tuple[int, int]")
+main:8: error: List item 1 has incompatible type "Tuple[str]"; expected "int"
+
+[case testUnpackInExpression2-skip-cache]
+from typing import Set
+from a import t
+
+def f() -> Set[int]:
+    return {1, *t()}
+
+[file a.py]
+from typing import Tuple
+def t() -> Tuple[int]: pass
+
+[file a.py.2]
+from typing import Tuple
+def t() -> Tuple[str]: pass
+
+[builtins fixtures/set.pyi]
+[out]
+==
+main:5: error: Argument 2 to <set> has incompatible type "*Tuple[str]"; expected "int"
+
+[case testUnpackInExpression3-skip-cache]
+from typing import Dict
+from a import d
+
+def f() -> Dict[int, str]:
+    return {1: '', **d()}
+
+[file a.py]
+from typing import Dict
+def d() -> Dict[int, str]: pass
+
+[file a.py.2]
+from typing import Dict
+def d() -> Dict[int, int]: pass
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+
+[case testAwaitAndAsyncDef-skip-cache]
+from a import g
+
+async def f() -> int:
+    return await g()
+
+[file a.py]
+async def g() -> int:
+    return 0
+
+[file a.py.2]
+async def g() -> str:
+    return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case testAwaitAnd__await__-skip-cache]
+from a import C
+
+async def f(c: C) -> int:
+    return await c
+
+[file a.py]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, int]:
+        yield
+        return 0
+
+[file a.py.2]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, str]:
+        yield
+        return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case test__aiter__and__anext__]
+from a import C
+
+async def f() -> int:
+    async for x in C():
+        pass
+    return x
+
+[file a.py]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> int: return 0
+
+[file a.py.2]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> str: return ''
+
+[file a.py.3]
+class C:
+    def __aiter__(self) -> E: pass
+class E:
+    def __aiter__(self) -> E: pass
+    async def __anext__(self) -> object: return 0
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:6: error: Incompatible return value type (got "str", expected "int")
+==
+main:6: error: Incompatible return value type (got "object", expected "int")
+
+[case testAsyncWith2-skip-cache]
+from a import C
+
+async def f() -> int:
+    async with C() as x:
+        return x
+
+async def g() -> None:
+    async with C(): pass
+
+[file a.py]
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.2]
+class C:
+    async def __aenter__(self) -> str: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.3]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.4]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "str", expected "int")
+==
+==
+main:4: error: "C" has no attribute "__aexit__"
+main:8: error: "C" has no attribute "__aexit__"
+
 [case testLiskovFineVariable]
 import b
 class A(b.B):
@@ -5950,3 +6203,110 @@ def deco(f: F) -> F:
 [out]
 ==
 main:5: error: Return type of "m" incompatible with supertype "B"
+
+[case testAddAbstractMethod]
+from b import D
+D()
+[file b.py]
+from a import C
+class D(C):
+    def f(self) -> None: pass
+[file a.py]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+[file a.py.2]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file a.py.3]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[out]
+==
+main:2: error: Cannot instantiate abstract class 'D' with abstract attribute 'g'
+==
+
+[case testMakeClassAbstract]
+from a import C
+c = C()
+[file a.py]
+from abc import abstractmethod
+class C: pass
+[file a.py.2]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+[out]
+==
+main:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+
+[case testMakeMethodNoLongerAbstract1]
+[file z.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file b.py]
+import z
+def x() -> Foo: return Foo()
+class Foo(z.I):
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+
+[file z.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+
+[file b.py.2]
+import z
+def x() -> Foo: return Foo()
+class Foo(z.I):
+    def g(self) -> None: pass
+[out]
+==
+
+[case testMakeMethodNoLongerAbstract2]
+-- this version never failed, but it is just a file-renaming
+-- away from the above test that did
+[file a.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file b.py]
+import a
+def x() -> Foo: return Foo()
+class Foo(a.I):
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+
+[file a.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+
+[file b.py.2]
+import a
+def x() -> Foo: return Foo()
+class Foo(a.I):
+    def g(self) -> None: pass
+[out]
+==

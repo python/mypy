@@ -399,8 +399,9 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
     """Ensure that the modules in initial and their deps have loaded trees."""
     to_process = find_unloaded_deps(manager, graph, initial)
     if to_process:
-        manager.log_fine_grained("Calling process_fresh_modules on set of size {} ({})".format(
-            len(to_process), to_process))
+        if is_verbose(manager):
+            manager.log_fine_grained("Calling process_fresh_modules on set of size {} ({})".format(
+                len(to_process), sorted(to_process)))
         process_fresh_modules(graph, to_process, manager)
 
 
@@ -460,7 +461,7 @@ def update_module_isolated(module: str,
         manager.log_fine_grained('new module %r' % module)
 
     if not manager.fscache.isfile(path) or force_removed:
-        delete_module(module, graph, manager)
+        delete_module(module, path, graph, manager)
         return NormalUpdate(module, path, [], None)
 
     sources = get_sources(manager.fscache, previous_modules, [(module, path)])
@@ -578,6 +579,7 @@ def find_relative_leaf_module(modules: List[Tuple[str, str]], graph: Graph) -> T
 
 
 def delete_module(module_id: str,
+                  path: str,
                   graph: Graph,
                   manager: BuildManager) -> None:
     manager.log_fine_grained('delete module %r' % module_id)
@@ -595,6 +597,10 @@ def delete_module(module_id: str,
             parent = manager.modules[parent_id]
             if components[-1] in parent.names:
                 del parent.names[components[-1]]
+    # If the module is removed from the build but still exists, then
+    # we mark it as missing so that it will get picked up by import from still.
+    if manager.fscache.isfile(path):
+        manager.missing_modules.add(module_id)
 
 
 def dedupe_modules(modules: List[Tuple[str, str]]) -> List[Tuple[str, str]]:

@@ -31,6 +31,7 @@ class TypeExportSuite(DataSuite):
 
             src = '\n'.join(testcase.input)
             options = Options()
+            options.strict_optional = False  # TODO: Enable strict optional checking
             options.use_builtins_fixtures = True
             options.show_traceback = True
             result = build.build(sources=[BuildSource('main', None, src)],

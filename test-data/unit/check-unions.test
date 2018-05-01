@@ -869,8 +869,7 @@ a: Any
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
 x, _ = d.get(a, (None, None))
 
-for y in x: pass # E: Iterable expected \
-                 # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__"
+for y in x: pass # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__" (not iterable)
 if x:
     for s, t in x:
         reveal_type(s) # E: Revealed type is 'builtins.str'
@@ -886,8 +885,7 @@ x = None
 d: Dict[str, Tuple[List[Tuple[str, str]], str]]
 x, _ = d.get(a, (None, None))
 
-for y in x: pass # E: Iterable expected \
-                 # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__"
+for y in x: pass # E: Item "None" of "Optional[List[Tuple[str, str]]]" has no attribute "__iter__" (not iterable)
 if x:
     for s, t in x:
         reveal_type(s) # E: Revealed type is 'builtins.str'

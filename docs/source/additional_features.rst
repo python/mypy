@@ -1,13 +1,7 @@
 Additional features
 -------------------
 
-Several mypy features are not currently covered by this tutorial,
-including the following:
-
-- inheritance between generic classes
-- compatibility and subtyping of generic types, including covariance of generic types
-- ``super()``
-
+This section discusses various features outside core mypy features.
 
 .. _attrs_package:
 
@@ -177,6 +171,30 @@ commit id of the merge base produced by the git command above. The
 script will decompress the data so that mypy will start with a fresh
 ``.mypy_cache``. Finally, the script runs mypy normally. And that's all!
 
+Caching with mypy daemon
+========================
+
+You can also use remote caching with the :ref:`mypy daemon <mypy_daemon>`.
+The remote cache will significantly speed up the the first ``dmypy check``
+run after starting or restarting the daemon.
+
+The mypy daemon requires extra fine-grained dependency data in
+the cache files which aren't included by default. To use caching with
+the mypy daemon, use the ``--cache-fine-grained`` option in your CI
+build::
+
+    $ mypy --cache-fine-grained <args...>
+
+This flag adds extra information for the daemon to the cache. In
+order to use this extra information, you will also need to use the
+``--use-fine-grained-cache`` option with ``dymypy start`` or
+``dmypy restart``. Example::
+
+    $ dmypy start -- --use-fine-grained-cache <options...>
+
+Now your first ``dmypy check`` run should be much faster, as it can use
+cache information to avoid processing the whole program.
+
 Refinements
 ===========
 
@@ -186,6 +204,11 @@ at least if your codebase is hundreds of thousands of lines or more:
 * If the wrapper script determines that the merge base hasn't changed
   from a previous run, there's no need to download the cache data and
   it's better to instead reuse the existing local cache data.
+
+* If you use the mypy daemon, you may want to restart the daemon each time
+  after the merge base or local branch has changed to avoid processing a
+  potentially large number of changes in an incremental build, as this can
+  be much slower than downloading cache data and restarting the daemon.
 
 * If the current local branch is based on a very recent master commit,
   the remote cache data may not yet be available for that commit, as
