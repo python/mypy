@@ -92,9 +92,6 @@ The following global flags may only be set in the global section
   per-module sections in the config file that didn't match any
   files processed in the current run.
 
-- ``strict_optional`` (Boolean, default False) enables experimental
-  strict Optional checks.
-
 - ``scripts_are_modules`` (Boolean, default False) makes script ``x``
   become module ``x`` instead of ``__main__``.  This is useful when
   checking multiple scripts in a single run.
@@ -179,6 +176,13 @@ overridden by the pattern sections matching the module name.
 
 - ``almost_silent`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip``.
+
+- ``strict_optional`` (Boolean, default True) enables or disables
+  strict Optional checks. If False, mypy treats ``None`` as
+  compatible with every type.
+
+  **Note::** This was False by default
+  in mypy versions earlier than 0.600.
 
 - ``disallow_any_unimported`` (Boolean, default false) disallows usage of types that come
   from unfollowed imports (such types become aliases for ``Any``).

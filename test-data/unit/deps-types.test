@@ -383,6 +383,7 @@ class I: pass
 [out]
 <m.C> -> m.C
 <a.A> -> m
+<mod.I.(abstract)> -> <m.C.__init__>, m
 <mod.I.__init__> -> <m.C.__init__>
 <mod.I.__new__> -> <m.C.__new__>
 <mod.I> -> m, m.C
@@ -571,6 +572,7 @@ class I: pass
 <m.A> -> m
 <m.B> -> m
 <m.C> -> m.C
+<mod.I.(abstract)> -> <m.C.__init__>, m
 <mod.I.__init__> -> <m.C.__init__>, m
 <mod.I.__new__> -> <m.C.__new__>, m
 <mod.I> -> m, m.C

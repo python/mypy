@@ -225,7 +225,7 @@ List of major changes:
 - July 2016
     * Publish ``mypy-lang`` version 0.4.3 on PyPI.
 
-    * Add :ref:`strict_optional`.
+    * Add :ref:`strict optional checking <strict_optional>`.
 
     * Add :ref:`multi_line_annotation`.
 
@@ -262,7 +262,7 @@ List of major changes:
 - Mar 2015
     Update documentation to reflect PEP 484:
 
-    * Add :ref:`named-tuples` and :ref:`optional`.
+    * Add :ref:`named-tuples` and :ref:`Optional types <strict_optional>`.
 
     * Do not mention type application syntax (for
       example, ``List[int]()``), as it's no longer supported,

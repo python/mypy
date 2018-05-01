@@ -856,12 +856,58 @@ s = s_s() # E: Incompatible types in assignment (expression has type "Set[str]",
 [builtins fixtures/set.pyi]
 
 [case testSetWithStarExpr]
-
 s = {1, 2, *(3, 4)}
 t = {1, 2, *s}
 reveal_type(s)  # E: Revealed type is 'builtins.set[builtins.int*]'
 reveal_type(t)  # E: Revealed type is 'builtins.set[builtins.int*]'
 [builtins fixtures/set.pyi]
+
+[case testListLiteralWithFunctionsErasesNames]
+def f1(x: int) -> int: ...
+def g1(y: int) -> int: ...
+def h1(x: int) -> int: ...
+
+list_1 = [f1, g1]
+list_2 = [f1, h1]
+reveal_type(list_1)  # E: Revealed type is 'builtins.list[def (builtins.int) -> builtins.int]'
+reveal_type(list_2)  # E: Revealed type is 'builtins.list[def (x: builtins.int) -> builtins.int]'
+
+def f2(x: int, z: str) -> int: ...
+def g2(y: int, z: str) -> int: ...
+def h2(x: int, z: str) -> int: ...
+
+list_3 = [f2, g2]
+list_4 = [f2, h2]
+reveal_type(list_3)  # E: Revealed type is 'builtins.list[def (builtins.int, z: builtins.str) -> builtins.int]'
+reveal_type(list_4)  # E: Revealed type is 'builtins.list[def (x: builtins.int, z: builtins.str) -> builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testListLiteralWithSimilarFunctionsErasesName]
+from typing import Union
+
+class A: ...
+class B(A): ...
+class C: ...
+class D: ...
+
+def f(x: Union[A, C], y: B) -> A: ...
+def g(z: Union[B, D], y: A) -> B: ...
+def h(x: Union[B, D], y: A) -> B: ...
+
+list_1 = [f, g]
+list_2 = [f, h]
+reveal_type(list_1)  # E: Revealed type is 'builtins.list[def (__main__.B, y: __main__.B) -> __main__.A]'
+reveal_type(list_2)  # E: Revealed type is 'builtins.list[def (x: __main__.B, y: __main__.B) -> __main__.A]'
+[builtins fixtures/list.pyi]
+
+[case testListLiteralWithNameOnlyArgsDoesNotEraseNames]
+def f(*, x: int) -> int: ...
+def g(*, y: int) -> int: ...
+def h(*, x: int) -> int: ...
+
+list_1 = [f, g]  # E: List item 0 has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[NamedArg(int, 'y')], int]"
+list_2 = [f, h]
+[builtins fixtures/list.pyi]
 
 
 -- For statements
@@ -1563,7 +1609,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:5: error: "None" has no attribute "__iter__"
+main:5: error: "None" has no attribute "__iter__" (not iterable)
 
 [case testPartialTypeErrorSpecialCase2]
 # This used to crash.
@@ -1584,7 +1630,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:4: error: "None" has no attribute "__iter__"
+main:4: error: "None" has no attribute "__iter__" (not iterable)
 
 
 -- Multipass
@@ -2056,7 +2102,7 @@ def f():
 reveal_type(x) # E: Revealed type is 'builtins.None'
 
 [case testLocalPartialTypesWithGlobalInitializedToNone3]
-# flags: --local-partial-types
+# flags: --local-partial-types --no-strict-optional
 x = None
 
 def f() -> None:
@@ -2079,7 +2125,7 @@ def g() -> None:
     reveal_type(x) # E: Revealed type is 'Union[builtins.str, builtins.None]'
 
 [case testLocalPartialTypesWithGlobalInitializedToNone4]
-# flags: --local-partial-types
+# flags: --local-partial-types --no-strict-optional
 a = None
 
 def f() -> None:
@@ -2197,7 +2243,7 @@ def f() -> None:
 [builtins fixtures/list.pyi]
 
 [case testLocalPartialTypesWithNestedFunction3]
-# flags: --local-partial-types
+# flags: --local-partial-types --no-strict-optional
 def f() -> None:
     a = None
     def g() -> None:

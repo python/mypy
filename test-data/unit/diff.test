@@ -925,3 +925,19 @@ class P2(Protocol[T]):
 __main__.P
 __main__.P.x
 __main__.P2.y
+
+[case testAddAbstractMethod]
+from abc import abstractmethod
+class A:
+    @abstractmethod
+    def f(self) -> None: pass
+[file next.py]
+from abc import abstractmethod
+class A:
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[out]
+__main__.A.(abstract)
+__main__.A.g

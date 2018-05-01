@@ -271,7 +271,7 @@ class B: pass
 [builtins fixtures/tuple.pyi]
 
 [case testMultipleAssignmentWithSquareBracketTuplesPython2]
-# flags: --python-version 2.7
+# flags: --python-version 2.7 --no-strict-optional
 from typing import Tuple
 
 def avoid_confusing_test_parser():

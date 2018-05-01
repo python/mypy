@@ -60,7 +60,7 @@ from mypy.types import (
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType
 )
-from mypy.util import get_prefix
+from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
 
 
@@ -271,7 +271,7 @@ class NodeReplaceVisitor(TraverserVisitor):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            new.__dict__ = node.__dict__
+            replace_object_state(new, node)
             return cast(SN, new)
         return node
 
@@ -432,7 +432,8 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
         if node.node:
             if node.node in replacements:
                 new = replacements[node.node]
-                new.__dict__ = node.node.__dict__
+                old = node.node
+                replace_object_state(new, old)
                 node.node = new
             if isinstance(node.node, Var):
                 # Handle them here just in case these aren't exposed through the AST.

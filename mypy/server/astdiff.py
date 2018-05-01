@@ -212,6 +212,8 @@ def snapshot_definition(node: Optional[SymbolNode],
                  snapshot_optional_type(node._promote))
         prefix = node.fullname()
         symbol_table = snapshot_symbol_table(prefix, node.names)
+        # Special dependency for abstract attribute handling.
+        symbol_table['(abstract)'] = ('Abstract', tuple(sorted(node.abstract_attributes)))
         return ('TypeInfo', common, attrs, symbol_table)
     else:
         # Other node types are handled elsewhere.
