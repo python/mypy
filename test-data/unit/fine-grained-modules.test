@@ -134,6 +134,25 @@ b.py:1: error: Name 'f' is not defined
 ==
 b.py:1: error: Name 'f' is not defined
 
+[case testRemoveSubmoduleFromBuild1]
+# cmd1: mypy a.py b/__init__.py b/c.py
+# cmd2: mypy a.py b/__init__.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file a.py]
+from b import c
+x=1
+[file a.py.2]
+from b import c
+x=2
+[file a.py.3]
+from b import c
+x=3
+[file b/__init__.py]
+[file b/c.py]
+[out]
+==
+==
+
 [case testImportLineNumber1]
 import b
 [file b.py]
