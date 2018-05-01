@@ -6172,8 +6172,7 @@ class A:
     pass
 [out]
 ==
-main:3: error: Iterable expected
-main:3: error: "A" has no attribute "__iter__"
+main:3: error: "A" has no attribute "__iter__" (not iterable)
 
 [case testWeAreCarefullWithBuiltinProtocolsBase]
 import a
@@ -6194,8 +6193,7 @@ class B:
         pass
 [out]
 ==
-main:3: error: Iterable expected
-main:3: error: "A" has no attribute "__iter__"
+main:3: error: "A" has no attribute "__iter__" (not iterable)
 
 [case testOverloadsSimpleFrom]
 import a

@@ -53,9 +53,9 @@ def g() -> None:
 [builtins fixtures/list.pyi]
 [out]
 <m.A.__init__> -> m.g
-<m.A.__iter__> -> <m.A>, m.g
+<m.A.__iter__> -> m.g
 <m.A.__new__> -> m.g
-<m.A> -> m.A, m.g, typing.Iterable
+<m.A> -> m.A, m.g
 <m.f1> -> m.g
 <m.f2> -> m.g
 
@@ -86,9 +86,9 @@ def g() -> None:
 [builtins fixtures/dict.pyi]
 [out]
 <m.A.__init__> -> m.g
-<m.A.__iter__> -> <m.A>, m.g
+<m.A.__iter__> -> m.g
 <m.A.__new__> -> m.g
-<m.A> -> m.A, m.g, typing.Iterable
+<m.A> -> m.A, m.g
 <m.f1> -> m.g
 <m.f2> -> m.g
 <m.f3> -> m.g

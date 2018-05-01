@@ -947,6 +947,7 @@ class P(PBase, Protocol):
 <m.x> -> m
 <mod.P.y> -> mod
 <mod.P> -> <m.x>, m, mod.P
+<mod.PBase.(abstract)> -> <mod.P.__init__>, mod
 <mod.PBase.__init__> -> <mod.P.__init__>
 <mod.PBase.__new__> -> <mod.P.__new__>
 <mod.PBase.x> -> <mod.P.x>
@@ -1017,6 +1018,7 @@ from typing import Protocol
 class P(Protocol):
     x: int
 [out]
+<m.B.(abstract)> -> <m.C.__init__>, m
 <m.B.__init__> -> <m.C.__init__>
 <m.B.__new__> -> <m.C.__new__>
 <m.B.x> -> <m.C.x>, <m.C>
