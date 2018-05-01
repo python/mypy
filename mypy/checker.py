@@ -67,11 +67,12 @@ DEFAULT_LAST_PASS = 1  # Pass numbers start at 0
 
 # A node which is postponed to be processed during the next pass.
 # This is used for both batch mode and fine-grained incremental mode.
+DeferrableNode = Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef, Decorator]
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
         # In batch mode only FuncDef and LambdaExpr are supported
-        ('node', Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]),
+        ('node', DeferrableNode),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
@@ -286,7 +287,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 assert not self.deferred_nodes
             self.deferred_nodes = []
-            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]]
+            done = set()  # type: Set[DeferrableNode]
             for node, type_name, active_typeinfo in todo:
                 if node in done:
                     continue
@@ -300,10 +301,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.tscope.leave()
             return True
 
-    def check_partial(self, node: Union[FuncDef,
-                                        LambdaExpr,
-                                        MypyFile,
-                                        OverloadedFuncDef]) -> None:
+    def check_partial(self, node: DeferrableNode) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
         else:
