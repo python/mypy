@@ -40,14 +40,16 @@ class TypeState:
     # `proto_deps` can be None if after deserialization it turns out that they are
     # inconsistent with the other cache files (or an error occurred during deserialization).
     # A blocking error will be generated in this case, since we can't proceed safely.
+    # For the description of kinds of protocol dependencies and corresponding examples,
+    # see _snapshot_protocol_deps.
     proto_deps = {}  # type: Optional[Dict[str, Set[str]]]
 
     # Protocols (full names) a given class attempted to implement.
     # Used to calculate fine grained protocol dependencies and optimize protocol
     # subtype cache invalidation in fine grained mode.
-    _attempted_protocols = {}  # type: Dict[TypeInfo, Set[str]]
+    _attempted_protocols = {}  # type: Dict[str, Set[str]]
     # We also snapshot protocol members of the above protocols.
-    _checked_against_members = {}  # type: Dict[TypeInfo, Set[str]]
+    _checked_against_members = {}  # type: Dict[str, Set[str]]
     # TypeInfos that have been type-checked since latest dependency snapshot update.
     # This is an optimisation for fine grained mode; during a full run we only take
     # a dependency snapshot at the very end, so this set will contain all type-checked
@@ -102,8 +104,8 @@ class TypeState:
     def record_protocol_subtype_check(cls, left_type: TypeInfo, right_type: TypeInfo) -> None:
         assert right_type.is_protocol
         cls._rechecked_types.add(left_type)
-        cls._attempted_protocols.setdefault(left_type, set()).add(right_type.fullname())
-        cls._checked_against_members.setdefault(left_type,
+        cls._attempted_protocols.setdefault(left_type.fullname(), set()).add(right_type.fullname())
+        cls._checked_against_members.setdefault(left_type.fullname(),
                                                 set()).update(right_type.protocol_members)
 
     @classmethod
@@ -125,7 +127,7 @@ class TypeState:
         """
         deps = {}  # type: Dict[str, Set[str]]
         for info in cls._rechecked_types:
-            for attr in cls._checked_against_members[info]:
+            for attr in cls._checked_against_members[info.fullname()]:
                 # The need for full MRO here is subtle, during an update, base classes of
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
                 # are added.
@@ -135,7 +137,7 @@ class TypeState:
                         # TODO: avoid everything from typeshed
                         continue
                     deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
-            for proto in cls._attempted_protocols[info]:
+            for proto in cls._attempted_protocols[info.fullname()]:
                 trigger = make_trigger(info.fullname())
                 if 'typing' in trigger or 'builtins' in trigger:
                     continue
