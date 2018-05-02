@@ -970,7 +970,7 @@ def lookup_target(manager: BuildManager,
 
     The first item in the return tuple is a list of deferred nodes that
     needs to be reprocessed. If the target represents a TypeInfo corresponding
-    to a protocol. Return it as a second item in the return tuple, otherwise None.
+    to a protocol, return it as a second item in the return tuple, otherwise None.
     """
     def not_found() -> None:
         manager.log_fine_grained(
