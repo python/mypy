@@ -1439,6 +1439,36 @@ a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 ==
 ==
 
+[case testDecoratorMethodCompat]
+from typing import Callable, List, TypeVar
+import x
+
+class Base: pass
+_Base = TypeVar('_Base', bound=Base)
+
+def dec(f: Callable[[_Base], int]) -> Callable[[_Base], List[int]]: pass
+
+class B(Base):
+    def foo(self) -> List[int]: pass
+
+class A(B):
+    @dec
+    def foo(self) -> int:
+        x.lol()
+        return 12
+
+[file x.py]
+def lol() -> str: pass
+[file x.py.2]
+def lol() -> int: pass
+[file x.py.3]
+def lol() -> str: pass
+
+[builtins fixtures/list.pyi]
+[out]
+==
+==
+
 [case testPreviousErrorInDecoratedFunction]
 import a
 [file a.py]
