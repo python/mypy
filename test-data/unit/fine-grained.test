@@ -6314,7 +6314,7 @@ class Foo(a.I):
 [case testImplicitOptionalRefresh1]
 # flags: --strict-optional
 from x import f
-def foo(x: int=None) -> None:
+def foo(x: int = None) -> None:
     f()
 [file x.py]
 def f() -> int: return 0
