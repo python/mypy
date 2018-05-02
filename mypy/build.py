@@ -1034,8 +1034,10 @@ def _load_json_file(file: str, manager: BuildManager,
                     log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
     """A simple helper to read a JSON file with logging."""
     try:
-        data = manager.fscache.read(file).decode()
-    except (IOError, UnicodeDecodeError):
+        with open(file, 'r') as f:
+            data = f.read()
+        # TODO: Try using manager.fscache.read(file).decode()
+    except IOError:
         manager.log(log_error + file)
         return None
     manager.trace(log_sucess + data.rstrip())
