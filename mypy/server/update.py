@@ -125,7 +125,7 @@ from mypy.build import (
     process_fresh_modules,
     PRI_INDIRECT, DEBUG_FINE_GRAINED,
 )
-from mypy.checker import DeferrableNode, DeferredNode
+from mypy.checker import DeferredNode
 from mypy.errors import Errors, CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
@@ -1002,10 +1002,12 @@ def lookup_target(manager: BuildManager,
             if isinstance(node, FuncDef):
                 result.extend(lookup_target(manager, target + '.' + name))
         return result
+    if isinstance(node, Decorator):
+        # Decorator targets actually refer to the function definition only.
+        node = node.func
     if not isinstance(node, (FuncDef,
                              MypyFile,
-                             OverloadedFuncDef,
-                             Decorator)):
+                             OverloadedFuncDef)):
         # The target can't be refreshed. It's possible that the target was
         # changed to another type and we have a stale dependency pointing to it.
         not_found()
@@ -1023,7 +1025,7 @@ def is_verbose(manager: BuildManager) -> bool:
 
 
 def target_from_node(module: str,
-                     node: DeferrableNode
+                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]
                      ) -> Optional[str]:
     """Return the target name corresponding to a deferred node.
 
@@ -1038,7 +1040,7 @@ def target_from_node(module: str,
             # Actually a reference to another module -- likely a stale dependency.
             return None
         return module
-    elif isinstance(node, (OverloadedFuncDef, FuncDef, Decorator)):
+    elif isinstance(node, (OverloadedFuncDef, FuncDef)):
         if node.info is not None:
             return '%s.%s' % (node.info.fullname(), node.name())
         else:

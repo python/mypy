@@ -1461,10 +1461,12 @@ class A(B):
 def lol() -> str: pass
 [file x.py.2]
 def lol() -> int: pass
-
+[file x.py.3]
+def lol() -> str: pass
 
 [builtins fixtures/list.pyi]
 [out]
+==
 ==
 
 [case testPreviousErrorInDecoratedFunction]

@@ -74,7 +74,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         del self.cur_mod_node
         self.patches = []
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef, Decorator],
+    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches

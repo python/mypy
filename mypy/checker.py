@@ -67,12 +67,11 @@ DEFAULT_LAST_PASS = 1  # Pass numbers start at 0
 
 # A node which is postponed to be processed during the next pass.
 # This is used for both batch mode and fine-grained incremental mode.
-DeferrableNode = Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef, Decorator]
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
         # In batch mode only FuncDef and LambdaExpr are supported
-        ('node', DeferrableNode),
+        ('node', Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
@@ -287,7 +286,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 assert not self.deferred_nodes
             self.deferred_nodes = []
-            done = set()  # type: Set[DeferrableNode]
+            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]]
             for node, type_name, active_typeinfo in todo:
                 if node in done:
                     continue
@@ -301,7 +300,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.tscope.leave()
             return True
 
-    def check_partial(self, node: DeferrableNode) -> None:
+    def check_partial(self, node: Union[FuncDef,
+                                        LambdaExpr,
+                                        MypyFile,
+                                        OverloadedFuncDef]) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
         else:
@@ -608,9 +610,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name())
         if defn.info:
-            if not defn.is_dynamic() and not defn.is_overload:
-                # If the definition is the implementation for an overload, the legality
-                # of the override has already been typechecked.
+            if not defn.is_dynamic() and not defn.is_overload and not defn.is_decorated:
+                # If the definition is the implementation for an
+                # overload, the legality of the override has already
+                # been typechecked, and decorated methods will be
+                # checked when the decorator is.
                 self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
