@@ -81,7 +81,7 @@ class FileSystemCache:
         if not self.package_root:
             return False
         dirname, basename = os.path.split(path)
-        if basename not in ('__init__.py', '__init__.pyi'):
+        if basename != '__init__.py':
             return False
         try:
             st = self.stat(dirname)
@@ -104,7 +104,10 @@ class FileSystemCache:
         return ok
 
     def _fake_init(self, path: str) -> os.stat_result:
-        dirname = os.path.normpath(os.path.dirname(path))
+        dirname, basename = os.path.split(path)
+        assert basename == '__init__.py', path
+        assert not os.path.exists(path), path  # Not cached!
+        dirname = os.path.normpath(dirname)
         st = self.stat(dirname)  # May raise OSError
         # Get stat result as a sequence so we can modify it.
         # (Alas, typeshed's os.stat_result is not a sequence yet.)
