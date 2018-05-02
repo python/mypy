@@ -46,16 +46,24 @@ class TypeState:
 
     # Protocols (full names) a given class attempted to implement.
     # Used to calculate fine grained protocol dependencies and optimize protocol
-    # subtype cache invalidation in fine grained mode.
+    # subtype cache invalidation in fine grained mode. For example, if we pass a value
+    # of type a.A to a function expecting something compatible with protocol p.P,
+    # we'd have 'a.A' -> {'p.P', ...} in the map. This map is flushed after every incremental
+    # update.
     _attempted_protocols = {}  # type: Dict[str, Set[str]]
-    # We also snapshot protocol members of the above protocols.
+    # We also snapshot protocol members of the above protocols. For example, if we pass
+    # a value of type a.A to a function expecting something compatible with Iterable, we'd have
+    # 'a.A' -> {'__iter__', ...} in the map. This map is also flushed after every incremental
+    # update. This map is needed to only generate dependencies like <a.A.__iter__> -> <a.A>
+    # instead of a wildcard to avoid unnecessary invalidating classes.
     _checked_against_members = {}  # type: Dict[str, Set[str]]
-    # TypeInfos that have been type-checked since latest dependency snapshot update.
-    # This is an optimisation for fine grained mode; during a full run we only take
-    # a dependency snapshot at the very end, so this set will contain all type-checked
-    # TypeInfos. After a fine grained update however, we can gather new dependencies only
-    # from few TypeInfos that were type-checked during this update, because these are
-    # the only that can generate new protocol dependencies.
+    # TypeInfos that appeared as a left type (subtype) in a subytpe check since latest
+    # dependency snapshot update. This is an optimisation for fine grained mode; during a full
+    # run we only take a dependency snapshot at the very end, so this set will contain all
+    # subtype-checked TypeInfos. After a fine grained update however, we can gather only new
+    # dependencies generated from (typically) few TypeInfos that were subtype-checked
+    # (i.e. appeared as r.h.snin an assignment or an argument in a function call in
+    # a re-checked target) during the update.
     _rechecked_types = set()  # type: Set[TypeInfo]
 
     @classmethod
@@ -121,9 +129,20 @@ class TypeState:
             2. ..., <B.attr>, <C.attr> -> <C> [for every attr in Proto members]
             3. <C> -> Proto  # this one to invalidate the subtype cache
 
-        The first kind is generated immediately per-module in deps.py. While two other kinds are
-        generated here after all modules are type checked anf we have recorded all the subtype
-        checks.
+        The first kind is generated immediately per-module in deps.py (see also an example there
+        for motivation why it is needed). While two other kinds are generated here after all
+        modules are type checked anf we have recorded all the subtype checks. To understand these
+        two kinds, consider a simple example:
+
+            class A:
+                def __iter__(self) -> Iterator[int]:
+                    ...
+
+            it: Iterable[int] = A()
+
+        We add <a.A.__iter__> -> <a.A> to invalidate the assignment (module target in this case),
+        whenever the signature of a.A.__iter__ changes. We also add <a.A> -> typing.Iterable,
+        to invalidate the subtype caches of the latter.
         """
         deps = {}  # type: Dict[str, Set[str]]
         for info in cls._rechecked_types:
@@ -158,9 +177,7 @@ class TypeState:
         type checked types. If second_map is given, update it as well. This is currently used
         by FineGrainedBuildManager that maintains normal (non-protocol) dependencies.
         """
-        if cls.proto_deps is None:
-            # Unsuccesful cache loading, nothing to do.
-            return
+        assert cls.proto_deps is not None, "This should not be called after failed cache load"
         new_deps = cls._snapshot_protocol_deps()
         for trigger, targets in new_deps.items():
             cls.proto_deps.setdefault(trigger, set()).update(targets)
@@ -180,9 +197,8 @@ class TypeState:
         in its __init__.
         """
         cls.update_protocol_deps()  # just in case
-        if TypeState.proto_deps is None:
-            return
-        for trigger, targets in TypeState.proto_deps.items():
+        assert cls.proto_deps is not None, "This should not be called after failed cache load"
+        for trigger, targets in cls.proto_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
