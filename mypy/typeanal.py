@@ -174,12 +174,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used = set()  # type: Set[str]
 
-    def visit_unbound_type(self, t: UnboundType) -> Type:
-        if t.optional:
-            t.optional = False
+    def visit_unbound_type(self, t: UnboundType, ignore_optional: bool = False) -> Type:
+        if t.optional and not ignore_optional:
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
-            return make_optional_type(self.visit_unbound_type(t))
+            return make_optional_type(self.visit_unbound_type(t, ignore_optional=True))
         sym = self.lookup(t.name, t, suppress_errors=self.third_pass)
         if '.' in t.name:
             # Handle indirect references to imported names.

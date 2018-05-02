@@ -6310,3 +6310,15 @@ class Foo(a.I):
     def g(self) -> None: pass
 [out]
 ==
+
+[case testImplicitOptionalRefresh1]
+# flags: --strict-optional
+from x import f
+def foo(x: int=None) -> None:
+    f()
+[file x.py]
+def f() -> int: return 0
+[file x.py.2]
+def f() -> str: return '0'
+[out]
+==
