@@ -669,12 +669,13 @@ def calculate_active_triggers(manager: BuildManager,
                 # Activate catch-all wildcard trigger for top-level module changes (used for
                 # "from m import *"). This also gets triggered by changes to module-private
                 # entries, but as these unneeded dependencies only result in extra processing,
-                # it's a minor problem. Also used by protocols.
+                # it's a minor problem.
                 #
                 # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
                 #     special casing them here.
                 diff.add(id + WILDCARD_TAG)
             if item.count('.') > package_nesting_level + 1:
+                # These are for changes within classes, used by protocols.
                 diff.add(item.rsplit('.', 1)[0] + WILDCARD_TAG)
 
         names |= diff

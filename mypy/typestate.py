@@ -14,17 +14,15 @@ from mypy.server.trigger import make_trigger
 
 
 class TypeState:
-    """
-    This class provides subtype caching to improve performance of subtype checks.
-    As well it holds protocol fine grained dependencies.
+    """This class provides subtype caching to improve performance of subtype checks.
+    It also holds protocol fine grained dependencies.
 
     Note: to avoid leaking global state, 'reset_all_subtype_caches()' should be called
     after a build has finished and after a daemon shutdown. This subtype cache only exists for
     performance reasons, resetting subtype caches for a class has no semantic effect.
     The protocol dependencies however are only stored here, and shouldn't be deleted unless
-    no more needed (e.g. during daemon shutdown).
+    not needed any more (e.g. during daemon shutdown).
     """
-
     # 'caches' and 'caches_proper' are subtype caches, implemented as sets of pairs
     # of (subtype, supertype), where supertypes are instances of given TypeInfo.
     # We need the caches, since subtype checks for structural types are very slow.
@@ -50,7 +48,7 @@ class TypeState:
     _attempted_protocols = {}  # type: Dict[TypeInfo, Set[str]]
     # We also snapshot protocol members of the above protocols.
     _checked_against_members = {}  # type: Dict[TypeInfo, Set[str]]
-    # TypeInfos that has been type-checked since latest dependency snapshot update.
+    # TypeInfos that have been type-checked since latest dependency snapshot update.
     # This is an optimisation for fine grained mode; during a full run we only take
     # a dependency snapshot at the very end, so this set will contain all type-checked
     # TypeInfos. After a fine grained update however, we can gather new dependencies only
@@ -94,6 +92,7 @@ class TypeState:
 
     @classmethod
     def reset_protocol_deps(cls) -> None:
+        """Reset dependencies after a full run or before a daemon shutdown."""
         cls.proto_deps = {}
         cls._attempted_protocols = {}
         cls._checked_against_members = {}
@@ -167,6 +166,8 @@ class TypeState:
             for trigger, targets in new_deps.items():
                 second_map.setdefault(trigger, set()).update(targets)
         cls._rechecked_types.clear()
+        cls._attempted_protocols.clear()
+        cls._checked_against_members.clear()
 
     @classmethod
     def add_all_protocol_deps(cls, deps: Dict[str, Set[str]]) -> None:
@@ -184,6 +185,10 @@ class TypeState:
 
 
 def reset_global_state() -> None:
-    """Reset all existing global states. Currently they are all in this module."""
+    """Reset most existing global state.
+
+    Currently most of it is in this module. Few exceptions are strict optional status and
+    and functools.lru_cache.
+    """
     TypeState.reset_all_subtype_caches()
     TypeState.reset_protocol_deps()

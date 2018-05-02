@@ -235,6 +235,16 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
         if info.is_protocol:
             for base_info in info.mro[:-1]:
+                # We add dependencies from whole MRO to cover explicit subprotocols.
+                # For example:
+                #
+                #     class Super(Protocol):
+                #         x: int
+                #     class Sub(Super, Protocol):
+                #         y: int
+                #
+                # In this example we add <Super[wildcard]> -> <Sub>, to invalidate Sub if
+                # a new member is added to Super.
                 self.add_dependency(make_wildcard_trigger(base_info.fullname()),
                                     target=make_trigger(target))
                 # More protocol dependencies are collected in TypeState._snapshot_protocol_deps
