@@ -1588,6 +1588,39 @@ x = ''
 ==
 ==
 
+[case testImportStarSomethingMoved1]
+[file p.py]
+from r2 import *
+[file r2.py]
+class A: pass
+
+[file p.py.2]
+from r1 import *
+from r2 import *
+[file r2.py.2]
+
+[file r1.py.2]
+class A: pass
+
+[out]
+==
+
+[case testImportPartialAssign]
+import a
+[file a.py]
+from c import *
+from b import A, x
+[file b.py]
+A = 10
+x = 1
+[file b.py.2]
+class A: pass
+x = 1
+[file c.py]
+x = 10
+[out]
+==
+
 [case testDeleteFileWithErrors]
 # cmd: mypy main a.py
 # cmd2: mypy main
