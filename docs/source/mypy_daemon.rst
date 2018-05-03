@@ -88,8 +88,6 @@ command-specific options.
 Limitations
 ***********
 
-* Changes related to protocol classes are not reliably propagated.
-
 * You have to use either the ``--follow-imports=skip`` or
   the ``--follow-imports=error`` option because of an implementation
   limitation. This can be defined
