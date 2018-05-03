@@ -1588,7 +1588,8 @@ x = ''
 ==
 ==
 
-[case testImportStarSomethingMoved1]
+[case testImportStarSomethingMoved]
+import p
 [file p.py]
 from r2 import *
 [file r2.py]

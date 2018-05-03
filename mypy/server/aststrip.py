@@ -180,6 +180,8 @@ class NodeStripVisitor(TraverserVisitor):
                 self.process_lvalue_in_method(item)
 
     def visit_import_from(self, node: ImportFrom) -> None:
+        # Imports can include both overriding symbols and fresh ones,
+        # and we need to clear both.
         node.assignments = []
 
         # If the node is unreachable, don't reset entries: they point to something else!
@@ -200,7 +202,7 @@ class NodeStripVisitor(TraverserVisitor):
                     self.names[imported_name] = sym
 
     def visit_import(self, node: Import) -> None:
-        node.assignments = []
+        assert not node.assignments
 
         # If the node is unreachable, don't reset entries: they point to something else!
         if node.is_unreachable: return
@@ -216,6 +218,8 @@ class NodeStripVisitor(TraverserVisitor):
                 symnode.node = None
 
     def visit_import_all(self, node: ImportAll) -> None:
+        # Imports can include both overriding symbols and fresh ones,
+        # and we need to clear both.
         node.assignments = []
 
         # If the node is unreachable, we don't want to reset entries from a reachable import.
