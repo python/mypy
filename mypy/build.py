@@ -1036,7 +1036,6 @@ def _load_json_file(file: str, manager: BuildManager,
     try:
         with open(file, 'r') as f:
             data = f.read()
-        # TODO: Try using manager.fscache.read(file).decode()
     except IOError:
         manager.log(log_error + file)
         return None
