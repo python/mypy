@@ -30,7 +30,8 @@ flagged as an error.
   do not have any annotations (neither for any argument nor for the
   return type) are not type-checked, and even the most blatant type
   errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
-  annotations.
+  annotations. Where that isn't possible, functions without annotations
+  can be checked using ``--check-untyped-defs``.
 
   Example:
 
