@@ -26,15 +26,16 @@ def f(d):
     r1 :: object
     r2 :: bool
     r3 :: object
-    r4 :: None
+    r4 :: bool
+    r5 :: None
 L0:
     r0 = 0
     r1 = box(int, r0)
     r2 = False
     r3 = box(bool, r2)
-    d[r1] = r3 :: dict
-    r4 = None
-    return r4
+    d[r1] = r3 :: dict; r4 = is_error
+    r5 = None
+    return r5
 
 [case testNewEmptyDict]
 from typing import Dict
@@ -112,8 +113,9 @@ def f(a: Dict[int, int], b: Dict[int, int]) -> None:
 [out]
 def f(a, b):
     a, b :: dict
-    r0 :: None
+    r0 :: bool
+    r1 :: None
 L0:
-    a.update b :: dict
-    r0 = None
-    return r0
+    r0 = a.update b :: dict
+    r1 = None
+    return r1

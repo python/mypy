@@ -36,7 +36,13 @@ class TestRun(MypycDataSuite):
             options.show_traceback = True
             options.strict_optional = True
             options.python_version = (3, 6)
-            source = build.BuildSource('native.py', 'native', text)
+
+            os.mkdir('tmp/py')
+            source_path = 'tmp/py/native.py'
+            with open(source_path, 'w') as f:
+                f.write(text)
+
+            source = build.BuildSource(source_path, 'native', text)
 
             try:
                 ctext = emitmodule.compile_module_to_c(

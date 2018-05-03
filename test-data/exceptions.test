@@ -1,0 +1,137 @@
+-- Test cases for exception handling insertion transform.
+--
+-- The result includes refcount handling since these two transforms interact.
+
+[case testListGetAndUnboxError]
+from typing import List
+def f(x: List[int]) -> int:
+    return x[0]
+[out]
+L0:
+    r0 = 0
+    r1 = x[r0] :: list
+    dec_ref r0 :: int
+    if is_error(r1) goto L3 (error at f:3) else goto L1
+L1:
+    r2 = unbox(int, r1)
+    dec_ref r1
+    if is_error(r2) goto L3 (error at f:3) else goto L2
+L2:
+    return r2
+L3:
+    r3 = <error> :: int
+    return r3
+
+[case testListAppendAndSetItemError]
+from typing import List
+def f(x: List[int], y: int, z: int) -> None:
+    x.append(y)
+    x[y] = z
+[out]
+L0:
+    inc_ref y :: int
+    r1 = box(int, y)
+    r0 = x.append(r1)
+    dec_ref r1
+    if not r0 goto L3 (error at f:3) else goto L1 :: bool
+L1:
+    inc_ref z :: int
+    r2 = box(int, z)
+    x[y] = r2 :: list; r3 = is_error
+    dec_ref r2
+    if not r3 goto L3 (error at f:4) else goto L2 :: bool
+L2:
+    r4 = None
+    return r4
+L3:
+    r5 = <error> :: None
+    return r5
+
+[case testOptionalHandling]
+from typing import Optional
+
+class A: pass
+
+def f(x: Optional[A]) -> int:
+    if x is None:
+        return 1
+    if x is not None:
+        return 2
+    return 3
+[out]
+L0:
+    if x is None goto L1 else goto L2 :: object
+L1:
+    r0 = 1
+    return r0
+L2:
+    inc_ref x
+    r1 = cast(A, x)
+    if is_error(r1) goto L6 (error at f:8) else goto L3
+L3:
+    if not r1 is None goto L7 else goto L8 :: object
+L4:
+    r2 = 2
+    return r2
+L5:
+    r3 = 3
+    return r3
+L6:
+    r4 = <error> :: int
+    return r4
+L7:
+    dec_ref r1
+    goto L4
+L8:
+    dec_ref r1
+    goto L5
+
+[case testListSum]
+from typing import List
+def sum(a: List[int], l: int) -> int:
+    sum = 0
+    i = 0
+    while i < l:
+        sum = sum + a[i]
+        i = i + 1
+    return sum
+[out]
+L0:
+    sum = 0
+    i = 0
+L1:
+    if i < l goto L2 else goto L7 :: int
+L2:
+    r0 = a[i] :: list
+    if is_error(r0) goto L8 (error at sum:6) else goto L3
+L3:
+    r1 = unbox(int, r0)
+    dec_ref r0
+    if is_error(r1) goto L9 (error at sum:6) else goto L4
+L4:
+    r4 = sum
+    sum = sum + r1 :: int
+    dec_ref r1 :: int
+    dec_ref r4 :: int
+    r2 = 1
+    r5 = i
+    i = i + r2 :: int
+    dec_ref r2 :: int
+    dec_ref r5 :: int
+    goto L1
+L5:
+    return sum
+L6:
+    r3 = <error> :: int
+    return r3
+L7:
+    dec_ref i :: int
+    goto L5
+L8:
+    dec_ref sum :: int
+    dec_ref i :: int
+    goto L6
+L9:
+    dec_ref sum :: int
+    dec_ref i :: int
+    goto L6

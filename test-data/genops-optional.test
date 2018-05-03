@@ -64,7 +64,10 @@ def f(x, y, z):
     a :: A
     r1 :: int
     r2 :: object
-    r3, r4 :: None
+    r3 :: bool
+    r4 :: None
+    r5 :: bool
+    r6 :: None
 L0:
     x = None
     x = A()
@@ -74,11 +77,11 @@ L0:
     a = A()
     r1 = 1
     r2 = box(int, r1)
-    a.a = r2
-    r3 = None
-    a.a = r3
+    a.a = r2; r3 = is_error
     r4 = None
-    return r4
+    a.a = r4; r5 = is_error
+    r6 = None
+    return r6
 
 [case testBoxOptionalListItem]
 from typing import List, Optional
@@ -91,18 +94,21 @@ def f(x):
     x :: list
     r0, r1 :: int
     r2 :: object
-    r3 :: int
-    r4, r5 :: None
+    r3 :: bool
+    r4 :: int
+    r5 :: None
+    r6 :: bool
+    r7 :: None
 L0:
     r0 = 0
     r1 = 0
     r2 = box(int, r1)
-    x[r0] = r2 :: list
-    r3 = 1
-    r4 = None
-    x[r3] = r4 :: list
+    x[r0] = r2 :: list; r3 = is_error
+    r4 = 1
     r5 = None
-    return r5
+    x[r4] = r5 :: list; r6 = is_error
+    r7 = None
+    return r7
 
 [case testNarrowDownFromOptional]
 from typing import Optional

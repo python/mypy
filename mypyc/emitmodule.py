@@ -1,6 +1,7 @@
 """Generate C code for a Python C extension module from Python source code."""
 
-from typing import List, Tuple
+from collections import OrderedDict
+from typing import List, Tuple, Dict
 
 from mypy.build import BuildSource, build
 from mypy.errors import CompileError
@@ -14,6 +15,7 @@ from mypyc.emitclass import generate_class
 from mypyc.emitwrapper import generate_wrapper_function, wrapper_function_header
 from mypyc.ops import c_module_name, FuncIR, ClassIR, ModuleIR
 from mypyc.refcount import insert_ref_count_opcodes
+from mypyc.exceptions import insert_exception_handling
 
 
 class MarkedDeclaration:
@@ -33,11 +35,17 @@ def compile_module_to_c(sources: List[BuildSource], module_name: str, options: O
     if result.errors:
         raise CompileError(result.errors)
 
+    # Generate basic IR, with missing exception and refcount handling.
     module = genops.build_ir(result.files[module_name], result.types)
+    # Insert exception handling.
+    for fn in module.functions:
+        insert_exception_handling(fn)
+    # Insert refcount handling.
     for fn in module.functions:
         insert_ref_count_opcodes(fn)
-
-    generator = ModuleGenerator(module_name, module)
+    # Generate C code.
+    source_path = result.files[module_name].path
+    generator = ModuleGenerator(module_name, module, source_path)
     return generator.generate_c_module()
 
 
@@ -46,6 +54,7 @@ def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
         '{};'.format(native_function_header(fn)),
         '{};'.format(wrapper_function_header(fn)))
 
+
 def encode_as_c_string(s: str) -> Tuple[str, int]:
     """Produce a utf-8 encoded, escaped, quoted C string and its size from a string"""
     # This is a kind of abusive way to do this...
@@ -53,14 +62,18 @@ def encode_as_c_string(s: str) -> Tuple[str, int]:
     escaped = str(b)[2:-1].replace('"', '\\"')
     return '"{}"'.format(escaped), len(b)
 
+
 class ModuleGenerator:
-    def __init__(self, module_name: str, module: ModuleIR) -> None:
+    def __init__(self, module_name: str, module: ModuleIR, source_path: str) -> None:
         self.module_name = module_name
         self.module = module
+        self.source_path = source_path
         self.context = EmitterContext()
 
     def generate_c_module(self) -> str:
         emitter = Emitter(self.context)
+
+        self.declare_internal_globals()
 
         self.declare_imports(self.module.imports)
 
@@ -79,7 +92,7 @@ class ModuleGenerator:
 
         for fn in self.module.functions:
             emitter.emit_line()
-            generate_native_function(fn, emitter)
+            generate_native_function(fn, emitter, self.source_path)
             emitter.emit_line()
             generate_wrapper_function(fn, emitter)
 
@@ -94,6 +107,7 @@ class ModuleGenerator:
         return ''.join(declarations.fragments + emitter.fragments)
 
     def generate_module_def(self, emitter: Emitter) -> None:
+        # Emit module methods
         emitter.emit_line('static PyMethodDef module_methods[] = {')
         for fn in self.module.functions:
             emitter.emit_line(
@@ -105,6 +119,7 @@ class ModuleGenerator:
         emitter.emit_line('};')
         emitter.emit_line()
 
+        # Emit module definition struct
         emitter.emit_lines('static struct PyModuleDef module = {',
                            'PyModuleDef_HEAD_INIT,',
                            '"{}",'.format(self.module_name),
@@ -114,6 +129,8 @@ class ModuleGenerator:
                            'module_methods',
                            '};')
         emitter.emit_line()
+
+        # Emit module init function
         emitter.emit_lines('PyMODINIT_FUNC PyInit_{}(void)'.format(self.module_name),
                            '{',
                            'PyObject *m;')
@@ -123,6 +140,9 @@ class ModuleGenerator:
                                 '    return NULL;')
         emitter.emit_lines('m = PyModule_Create(&module);',
                            'if (m == NULL)',
+                           '    return NULL;')
+        emitter.emit_lines('_globals = PyModule_GetDict(m);',
+                           'if (_globals == NULL)',
                            '    return NULL;')
         self.generate_imports_init_section(self.module.imports, emitter)
 
@@ -153,8 +173,9 @@ class ModuleGenerator:
         This runs in O(V + E).
         """
         result = []
-        marked_declarations = {k: MarkedDeclaration(v, False)
-                               for k, v in self.context.declarations.items()}
+        marked_declarations = OrderedDict()  # type: Dict[str, MarkedDeclaration]
+        for k, v in self.context.declarations.items():
+            marked_declarations[k] = MarkedDeclaration(v, False)
 
         def _toposort_visit(name):
             decl = marked_declarations[name]
@@ -179,6 +200,9 @@ class ModuleGenerator:
                 set(),
                 ['{}{}{};'.format(static_str, type_spaced, name)],
             )
+
+    def declare_internal_globals(self) -> None:
+        self.declare_global('PyObject *', '_globals')
 
     def declare_import(self, imp: str) -> None:
         self.declare_global('CPyModule *', c_module_name(imp))

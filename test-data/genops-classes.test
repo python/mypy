@@ -22,12 +22,13 @@ def f(a: A) -> None:
 def f(a):
     a :: A
     r0 :: int
-    r1 :: None
+    r1 :: bool
+    r2 :: None
 L0:
     r0 = 1
-    a.x = r0
-    r1 = None
-    return r1
+    a.x = r0; r1 = is_error
+    r2 = None
+    return r2
 
 [case testUserClassInList]
 class C:
@@ -43,20 +44,21 @@ def f() -> int:
 def f():
     c :: C
     r0 :: int
+    r1 :: bool
     a :: list
     d :: C
-    r1 :: int
-    r2 :: object
-    r3, r4, r5 :: int
+    r2 :: int
+    r3 :: object
+    r4, r5, r6 :: int
 L0:
     c = C()
     r0 = 5
-    c.x = r0
+    c.x = r0; r1 = is_error
     a = [c]
-    r1 = 0
-    r2 = a[r1] :: list
-    d = cast(C, r2)
-    r3 = d.x
-    r4 = 1
-    r5 = r3 + r4 :: int
-    return r5
+    r2 = 0
+    r3 = a[r2] :: list
+    d = cast(C, r3)
+    r4 = d.x
+    r5 = 1
+    r6 = r4 + r5 :: int
+    return r6

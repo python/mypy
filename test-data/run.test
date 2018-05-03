@@ -334,3 +334,28 @@ assert f(l) == 10
 assert f(l) == 1
 g(l, [11, 12])
 assert l == [11, 12]
+
+[case testException]
+from typing import List
+def f(x: List[int]) -> None:
+    g(x)
+
+def g(x: List[int]) -> bool:
+    x[5] = 2
+    return True
+[file driver.py]
+from native import f
+import traceback
+try:
+    f([])
+except IndexError:
+    traceback.print_exc()
+[out]
+Traceback (most recent call last):
+  File "tmp/driver.py", line 4, in <module>
+    f([])
+  File "tmp/py/native.py", line 3, in f
+    g(x)
+  File "tmp/py/native.py", line 6, in g
+    x[5] = 2
+IndexError: list assignment index out of range

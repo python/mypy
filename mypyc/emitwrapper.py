@@ -41,7 +41,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
                                                         NATIVE_PREFIX, fn.name,
                                                         native_args))
         emitter.emit_error_check('retval', ret_type, 'return NULL;')
-        emitter.emit_box('retval', 'retbox', ret_type, 'return NULL;', declare_dest=True)
+        emitter.emit_box('retval', 'retbox', ret_type, declare_dest=True)
         emitter.emit_lines('return retbox;')
     else:
         emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX, fn.name, native_args))
@@ -61,5 +61,6 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter) -> None:
         emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                            'return NULL;', declare_dest=True, borrow=True)
     else:
-        emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ, 'return NULL;',
+        emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                           declare_dest=True)
+        emitter.emit_line('if (arg_{} == NULL) return NULL;'.format(name))

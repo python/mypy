@@ -61,14 +61,15 @@ def f(x):
     x :: list
     r0, r1 :: int
     r2 :: object
-    r3 :: None
+    r3 :: bool
+    r4 :: None
 L0:
     r0 = 0
     r1 = 1
     r2 = box(int, r1)
-    x[r0] = r2 :: list
-    r3 = None
-    return r3
+    x[r0] = r2 :: list; r3 = is_error
+    r4 = None
+    return r4
 
 [case testNewListEmpty]
 from typing import List
@@ -148,10 +149,11 @@ def f(a: List[int], x: int) -> None:
 def f(a, x):
     a :: list
     x :: int
-    r0 :: object
-    r1 :: None
+    r0 :: bool
+    r1 :: object
+    r2 :: None
 L0:
-    r0 = box(int, x)
-    a.append(r0)
-    r1 = None
-    return r1
+    r1 = box(int, x)
+    r0 = a.append(r1)
+    r2 = None
+    return r2

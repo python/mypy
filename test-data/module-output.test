@@ -8,6 +8,7 @@ def f(x: int) -> int:
 #include <Python.h>
 #include <CPy.h>
 
+static PyObject *_globals;
 static CPyModule *module_builtins;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
@@ -32,6 +33,9 @@ PyMODINIT_FUNC PyInit_prog(void)
     m = PyModule_Create(&module);
     if (m == NULL)
         return NULL;
+    _globals = PyModule_GetDict(m);
+    if (_globals == NULL)
+        return NULL;
     module_builtins = PyImport_ImportModule("builtins");
     if (module_builtins == NULL)
         return NULL;
@@ -53,8 +57,10 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     CPyTagged arg_x;
     if (PyLong_Check(obj_x))
         arg_x = CPyTagged_BorrowFromObject(obj_x);
-    else
+    else {
+        PyErr_SetString(PyExc_TypeError, "int object expected");
         return NULL;
+    }
     CPyTagged retval = CPyDef_f(arg_x);
     if (retval == CPY_INT_TAG) {
         return NULL;

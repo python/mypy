@@ -27,7 +27,7 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Register, Label, Cast, Box, Unbox, PrimitiveOp, LoadStatic,
+    Return, Op, Register, Label, Cast, Box, Unbox, PrimitiveOp, LoadStatic, RType,
 )
 
 
@@ -51,6 +51,18 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
         transform_block(block, live.before, live.after, borrow.before, ir.env)
 
 
+def maybe_append_dec_ref(ops: List[Op], dest: Register, env: Environment) -> None:
+    rtype = env.types[dest]
+    if rtype.is_refcounted:
+        ops.append(DecRef(dest, rtype))
+
+
+def maybe_append_inc_ref(ops: List[Op], dest: Register, env: Environment) -> None:
+    rtype = env.types[dest]
+    if rtype.is_refcounted:
+        ops.append(IncRef(dest, rtype))
+
+
 def transform_block(block: BasicBlock,
                     pre_live: AnalysisDict[Register],
                     post_live: AnalysisDict[Register],
@@ -64,20 +76,20 @@ def transform_block(block: BasicBlock,
             # These operations just copy/steal a reference and don't create new
             # references.
             if op.src in post_live[key] or op.src in pre_borrow[key]:
-                ops.append(IncRef(op.src, env.types[op.src]))
+                maybe_append_inc_ref(ops, op.src, env)
                 if (op.dest not in pre_borrow[key] and
                         op.dest in pre_live[key]):
-                    ops.append(DecRef(op.dest, env.types[op.dest]))
+                    maybe_append_dec_ref(ops, op.dest, env)
             ops.append(op)
             if op.dest not in post_live[key]:
-                ops.append(DecRef(op.dest, env.types[op.dest]))
+                maybe_append_dec_ref(ops, op.dest, env)
         elif isinstance(op, RegisterOp):
             # These operations construct a new reference.
             tmp_reg = None  # type: Optional[Register]
             if (op.dest not in pre_borrow[key] and
                     op.dest in pre_live[key]):
                 if op.dest not in op.sources():
-                    ops.append(DecRef(op.dest, env.types[op.dest]))
+                    maybe_append_dec_ref(ops, op.dest, env)
                 else:
                     tmp_reg = env.add_temp(env.types[op.dest])
                     ops.append(Assign(tmp_reg, op.dest))
@@ -86,17 +98,17 @@ def transform_block(block: BasicBlock,
                 # Decrement source that won't be live afterwards.
                 if src not in post_live[key] and src not in pre_borrow[key]:
                     if src != op.dest:
-                        ops.append(DecRef(src, env.types[src]))
+                        maybe_append_dec_ref(ops, src, env)
             # TODO: Analyze LoadStatics as being borrowed! (#66)
             if isinstance(op, LoadStatic):
-                ops.append(IncRef(op.dest, env.types[op.dest]))
+                maybe_append_inc_ref(ops, op.dest, env)
             if op.dest is not None and op.dest not in post_live[key]:
-                ops.append(DecRef(op.dest, env.types[op.dest]))
+                maybe_append_dec_ref(ops, op.dest, env)
             if tmp_reg is not None:
-                ops.append(DecRef(tmp_reg, env.types[tmp_reg]))
+                maybe_append_dec_ref(ops, tmp_reg, env)
         elif isinstance(op, Return) and op.reg in pre_borrow[key]:
             # The return op returns a new reference.
-            ops.append(IncRef(op.reg, env.types[op.reg]))
+            maybe_append_inc_ref(ops, op.reg, env)
             ops.append(op)
         else:
             ops.append(op)
@@ -131,10 +143,17 @@ def insert_branch_inc_and_decrefs(
     source_borrowed = post_borrow[prev_key]
     if isinstance(block.ops[-1], Branch):
         branch = block.ops[-1]
-
+        # HAX: After we've checked against an error value the value we must not touch the
+        #      refcount since it will be a null pointer. The correct way to do this would be
+        #      to perform data flow analysis on whether a value can be null (or is always
+        #      null).
+        if branch.op == Branch.IS_ERROR:
+            omitted = {branch.left}
+        else:
+            omitted = set()
         true_opcodes = (
             after_branch_decrefs(
-                branch.true, pre_live, source_borrowed, source_live_regs, env) +
+                branch.true, pre_live, source_borrowed, source_live_regs, env, omitted) +
             after_branch_increfs(
                 branch.true, pre_borrow, source_borrowed, env))
         if true_opcodes:
@@ -159,11 +178,14 @@ def after_branch_decrefs(label: Label,
                          pre_live: AnalysisDict,
                          source_borrowed: Set[Register],
                          source_live_regs: Set[Register],
-                         env: Environment) -> List[Op]:
+                         env: Environment,
+                         omitted: Iterable[Register] = ()) -> List[Op]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
     if decref:
-        return [DecRef(reg, env.types[reg]) for reg in sorted(decref)]
+        return [DecRef(reg, env.types[reg])
+                for reg in sorted(decref)
+                if env.types[reg].is_refcounted and reg not in omitted]
     return []
 
 
@@ -174,7 +196,9 @@ def after_branch_increfs(label: Label,
     target_borrowed = pre_borrow[label, 0]
     incref = source_borrowed - target_borrowed
     if incref:
-        return [IncRef(reg, env.types[reg]) for reg in sorted(incref)]
+        return [IncRef(reg, env.types[reg])
+                for reg in sorted(incref)
+                if env.types[reg].is_refcounted]
     return []
 
 

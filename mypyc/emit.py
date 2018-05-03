@@ -1,6 +1,7 @@
 """Utilities for emitting C code."""
 
-from typing import List, Set, Dict
+from collections import OrderedDict
+from typing import List, Set, Dict, Optional
 
 from mypyc.common import REG_PREFIX
 from mypyc.ops import (
@@ -24,7 +25,7 @@ class EmitterContext:
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
-        self.declarations = {} # type: Dict[str, HeaderDeclaration]
+        self.declarations = OrderedDict()  # type: Dict[str, HeaderDeclaration]
 
 
 class Emitter:
@@ -124,11 +125,19 @@ class Emitter:
             self.emit_line('Py_DECREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
-    def emit_cast(self, src: str, dest: str, typ: RType, failure: str,
-                  declare_dest: bool = False) -> None:
+    def pretty_name(self, typ: RType) -> str:
+        pretty_name = typ.name
+        if pretty_name == 'sequence_tuple':
+            pretty_name = 'tuple'
+        elif isinstance(typ, OptionalRType):
+            pretty_name = '%s or None' % self.pretty_name(typ.value_type)
+        return pretty_name
+
+    def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
+                  custom_message: Optional[str] = None) -> None:
         """Emit code for casting a value of given type (works for boxed types only).
 
-        Evaluate C code in 'failure' if the value has an incompatible type.
+        Assign NULL (error value) to dest if the value has an incompatible type.
 
         Always copy/steal the reference in src.
 
@@ -136,11 +145,14 @@ class Emitter:
             src: Name of source C variable
             dest: Name of target C variable
             typ: Type of value
-            failure: What happens on error
             declare_dest: If True, also declare the variable 'dest'
         """
+        if custom_message is not None:
+            err = custom_message
+        else:
+            err = 'PyErr_SetString(PyExc_TypeError, "{} object expected");'.format(
+                self.pretty_name(typ))
         # TODO: Verify refcount handling.
-        failure = '    ' + failure
         if typ.name in ('list', 'dict'):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
@@ -153,32 +165,40 @@ class Emitter:
             self.emit_lines(
                 'if ({}_Check({}))'.format(prefix, src),
                 '    {} = {};'.format(dest, src),
-                'else',
-                failure)
+                'else {',
+                err,
+                '{} = NULL;'.format(dest),
+                '}')
         elif typ.name == 'sequence_tuple':
-            self.emit_lines(
-                'if (!PyTuple_Check({}))'.format(src),
-                failure)
             if declare_dest:
-                self.emit_line('{} {} = {};'.format(typ.ctype, dest, src))
-            else:
-                self.emit_line('{} = {};'.format(dest, src))
+                self.emit_line('{} {};'.format(typ.ctype, dest))
+            self.emit_lines(
+                'if (PyTuple_Check({}))'.format(src),
+                '    {} = {};'.format(dest, src),
+                'else {',
+                err,
+                '{} = NULL;'.format(dest),
+                '}')
         elif isinstance(typ, UserRType):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
                 'if (PyObject_TypeCheck({}, &{}))'.format(src, type_struct_name(typ.name)),
                 '    {} = {};'.format(dest, src),
-                'else',
-                failure)
+                'else {',
+                err,
+                '{} = NULL;'.format(dest),
+                '}')
         elif typ.name == 'None':
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
                 'if ({} == Py_None)'.format(src),
                 '    {} = {};'.format(dest, src),
-                'else',
-                failure)
+                'else {',
+                err,
+                '{} = NULL;'.format(dest),
+                '}')
         elif isinstance(typ, OptionalRType):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
@@ -186,12 +206,12 @@ class Emitter:
                 'if ({} == Py_None)'.format(src),
                 '    {} = {};'.format(dest, src),
                 'else {')
-            self.emit_cast(src, dest, typ.value_type, failure.lstrip())
+            self.emit_cast(src, dest, typ.value_type, custom_message=err)
             self.emit_line('}')
         else:
             assert False, 'Cast not implemented: %s' % typ
 
-    def emit_unbox(self, src: str, dest: str, typ: RType, failure: str,
+    def emit_unbox(self, src: str, dest: str, typ: RType, custom_failure: Optional[str] = None,
                    declare_dest: bool = False, borrow: bool = False) -> None:
         """Emit code for unboxing a value of given type (from PyObject *).
 
@@ -207,8 +227,16 @@ class Emitter:
             declare_dest: If True, also declare the variable 'dest'
             borrow: If True, create a borrowed reference
         """
+        # TODO: Raise exception on failure.
         # TODO: Verify refcount handling.
-        failure = '    ' + failure
+        raise_exc = 'PyErr_SetString(PyExc_TypeError, "%s object expected");' % (
+            self.pretty_name(typ))
+        if custom_failure is not None:
+            failure = [raise_exc,
+                       custom_failure]
+        else:
+            failure = [raise_exc,
+                       '%s = %s;' % (dest, typ.c_error_value)]
         if typ.name == 'int':
             if declare_dest:
                 self.emit_line('CPyTagged {};'.format(dest))
@@ -217,50 +245,52 @@ class Emitter:
                 self.emit_line('    {} = CPyTagged_BorrowFromObject({});'.format(dest, src))
             else:
                 self.emit_line('    {} = CPyTagged_FromObject({});'.format(dest, src))
-            self.emit_lines('else',
-                            failure)
+            self.emit_line('else {')
+            self.emit_lines(*failure)
+            self.emit_line('}')
         elif typ.name == 'bool':
             # Whether we are borrowing or not makes no difference.
-            self.emit_lines(
-                'if (!PyBool_Check({}))'.format(src),
-                failure)
-            conversion = 'PyObject_IsTrue({})'.format(src)
             if declare_dest:
-                self.emit_line('char {} = {};'.format(dest, conversion))
-            else:
-                self.emit_line('{} = {};'.format(dest, conversion))
+                self.emit_line('char {};'.format(dest))
+            self.emit_line('if (!PyBool_Check(%s)) {' % src)
+            self.emit_lines(*failure)
+            self.emit_line('} else')
+            conversion = 'PyObject_IsTrue({})'.format(src)
+            self.emit_line('    {} = {};'.format(dest, conversion))
         elif isinstance(typ, TupleRType):
             self.declare_tuple_struct(typ)
-            self.emit_lines(
-                'if (!PyTuple_Check({}) || PyTuple_Size({}) != {})'.format(src, src,
-                                                                           len(typ.types)),
-                failure)  # TODO: Decrease refcount?
             if declare_dest:
                 self.emit_line('{} {};'.format(typ.ctype, dest))
+            self.emit_line(
+                'if (!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(src, src,
+                                                                              len(typ.types)))
+            self.emit_lines(*failure)  # TODO: Decrease refcount?
+            self.emit_line('} else {')
             for i, item_type in enumerate(typ.types):
                 temp = self.temp_name()
                 self.emit_line('PyObject *{} = PyTuple_GetItem({}, {});'.format(temp, src, i))
                 temp2 = self.temp_name()
                 # Unbox or check the item.
                 if item_type.supports_unbox:
-                    self.emit_unbox(temp, temp2, item_type, failure, declare_dest=True,
+                    self.emit_unbox(temp, temp2, item_type, custom_failure, declare_dest=True,
                                     borrow=borrow)
                 else:
                     if not borrow:
                         self.emit_inc_ref(temp, ObjectRType())
-                    self.emit_cast(temp, temp2, item_type, failure, declare_dest=True)
+                    self.emit_cast(temp, temp2, item_type, declare_dest=True)
                 self.emit_line('{}.f{} = {};'.format(dest, i, temp2))
+            self.emit_line('}')
         else:
             assert False, 'Unboxing not implemented: %s' % typ
 
-    def emit_box(self, src: str, dest: str, typ: RType, failure: str,
-                 declare_dest: bool = False) -> None:
+    def emit_box(self, src: str, dest: str, typ: RType, declare_dest: bool = False) -> None:
         """Emit code for boxing a value of give type.
 
         Generate a simple assignment if no boxing is needed.
 
         The source reference count is stolen for the result (no need to decref afterwards).
         """
+        # TODO: Always generate a new reference (if a reference type)
         if declare_dest:
             declaration = 'PyObject *'
         else:
@@ -275,16 +305,15 @@ class Emitter:
         elif isinstance(typ, TupleRType):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))
-            self.emit_line('if ({} == NULL) {{'.format(dest))
-            self.emit_line('{}'.format(failure)) # TODO: Decrease refcounts?
-            self.emit_line('}')
+            self.emit_line('if ({} == NULL)'.format(dest))
+            self.emit_line('    CPyError_OutOfMemory();')
             # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):
                 if not typ.supports_unbox:
                     self.emit_line('PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
                 else:
                     inner_name = self.temp_name()
-                    self.emit_box('{}.f{}'.format(src, i), inner_name, typ.types[i], failure,
+                    self.emit_box('{}.f{}'.format(src, i), inner_name, typ.types[i],
                                   declare_dest=True)
                     self.emit_line('PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
         else:

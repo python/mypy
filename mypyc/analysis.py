@@ -5,7 +5,7 @@ from abc import abstractmethod
 from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic
 
 from mypyc.ops import (
-    BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, RegisterOp, Goto,
+    BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
     TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register,
     PyMethodCall,
@@ -25,6 +25,13 @@ class CFG:
         self.succ = succ
         self.pred = pred
         self.exits = exits
+
+    def __str__(self) -> str:
+        lines = []
+        lines.append('exits: %s' % sorted(self.exits))
+        lines.append('succ: %s' % self.succ)
+        lines.append('pred: %s' % self.pred)
+        return '\n'.join(lines)
 
 
 def get_cfg(blocks: List[BasicBlock]) -> CFG:
@@ -65,6 +72,9 @@ class AnalysisResult(Generic[T]):
         self.before = before
         self.after = after
 
+    def __str__(self) -> str:
+        return 'before: %s\nafter: %s\n' % (self.before, self.after)
+
 GenAndKill = Tuple[Set[Register], Set[Register]]
 
 
@@ -92,6 +102,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_load_int(self, op: LoadInt) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_load_error_value(self, op: LoadErrorValue) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_get_attr(self, op: GetAttr) -> GenAndKill:
@@ -247,7 +260,9 @@ def analyze_undefined_regs(blocks: List[BasicBlock],
     A register is undefined if there is some path from initial block
     where it has an undefined value.
     """
-    initial_undefined = {Register(reg) for reg in range(len(env.names)) if Register(reg) not in initial_defined}
+    initial_undefined = {Register(reg)
+                         for reg in range(len(env.names))
+                         if Register(reg) not in initial_defined}
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=UndefinedVisitor(),
@@ -379,7 +394,7 @@ def run_analysis(blocks: List[BasicBlock],
         else:
             new_before = set(initial)
         before[label] = new_before
-        new_after = (new_before | block_gen[label]) - block_kill[label]
+        new_after = (new_before - block_kill[label]) | block_gen[label]
         if new_after != after[label]:
             for succ in succ_map[label]:
                 if succ not in workset:

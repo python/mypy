@@ -492,11 +492,11 @@ L0:
     r3 = unbox(int, r2)
     dec_ref r2
     r4 = box(int, r3)
-    a[r0] = r4 :: list
+    a[r0] = r4 :: list; r5 = is_error
     dec_ref r0 :: int
     dec_ref r4
-    r5 = None
-    return r5
+    r6 = None
+    return r6
 
 [case testTupleRefcount]
 from typing import Tuple
@@ -519,11 +519,11 @@ def f() -> None:
 L0:
     c = C()
     r0 = C()
-    c.x = r0
+    c.x = r0; r1 = is_error
     dec_ref c
     dec_ref r0
-    r1 = None
-    return r1
+    r2 = None
+    return r2
 
 [case testCastRefCount]
 class C: pass
@@ -591,8 +591,8 @@ def f(a: List[int], x: int) -> None:
 [out]
 L0:
     inc_ref x :: int
-    r0 = box(int, x)
-    a.append(r0)
-    dec_ref r0
-    r1 = None
-    return r1
+    r1 = box(int, x)
+    r0 = a.append(r1)
+    dec_ref r1
+    r2 = None
+    return r2
