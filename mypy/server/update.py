@@ -117,7 +117,7 @@ import time
 import os.path
 from typing import (
     Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable,
-    Sequence,
+    Sequence
 )
 
 from mypy.build import (
@@ -140,9 +140,10 @@ from mypy.server.astdiff import (
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import get_dependencies, get_dependencies_of_target
+from mypy.server.deps import get_dependencies_of_target
 from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
+from mypy.typestate import TypeState
 
 
 MAX_ITER = 1000
@@ -410,6 +411,7 @@ def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict
     # Deps for each module were computed during build() or loaded from the cache.
     deps = {}  # type: Dict[str, Set[str]]
     collect_dependencies(graph, deps, graph)
+    TypeState.add_all_protocol_deps(deps)
     return deps
 
 
@@ -636,6 +638,8 @@ def collect_dependencies(new_modules: Iterable[str],
             continue
         for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
+    # Merge also the newly added protocol deps.
+    TypeState.update_protocol_deps(deps)
 
 
 def calculate_active_triggers(manager: BuildManager,
@@ -660,7 +664,7 @@ def calculate_active_triggers(manager: BuildManager,
             snapshot2 = snapshot_symbol_table(id, new.names)
         diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
         package_nesting_level = id.count('.')
-        for item in diff:
+        for item in diff.copy():
             if (item.count('.') <= package_nesting_level + 1
                     and item.split('.')[-1] not in ('__builtins__',
                                                     '__file__',
@@ -675,7 +679,10 @@ def calculate_active_triggers(manager: BuildManager,
                 # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
                 #     special casing them here.
                 diff.add(id + WILDCARD_TAG)
-                break
+            if item.count('.') > package_nesting_level + 1:
+                # These are for changes within classes, used by protocols.
+                diff.add(item.rsplit('.', 1)[0] + WILDCARD_TAG)
+
         names |= diff
     return {make_trigger(name) for name in names}
 
@@ -726,8 +733,8 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo, unloaded = find_targets_recursive(manager, graph,
-                                                triggered, deps, up_to_date_modules)
+        todo, unloaded, stale_protos = find_targets_recursive(manager, graph,
+                                                              triggered, deps, up_to_date_modules)
         # TODO: we sort to make it deterministic, but this is *incredibly* ad hoc
         remaining_modules.extend((id, graph[id].xpath) for id in sorted(unloaded))
         # Also process targets that used to have errors, as otherwise some
@@ -738,8 +745,15 @@ def propagate_changes_using_dependencies(
                 if id not in todo:
                     todo[id] = set()
                 manager.log_fine_grained('process target with error: %s' % target)
-                todo[id].update(lookup_target(manager, target))
+                more_nodes, _ = lookup_target(manager, target)
+                todo[id].update(more_nodes)
         triggered = set()
+        # First invalidate subtype caches in all stale protocols.
+        # We need to do this to avoid false negatives if the protocol itself is
+        # unchanged, but was marked stale because its sub- (or super-) type changed.
+        for info in stale_protos:
+            TypeState.reset_subtype_caches_for(info)
+        # Then fully reprocess all targets.
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
@@ -761,7 +775,7 @@ def find_targets_recursive(
         triggers: Set[str],
         deps: Dict[str, Set[str]],
         up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]],
-                                               Set[str]]:
+                                               Set[str], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
     Returns: A tuple containing a:
@@ -771,6 +785,7 @@ def find_targets_recursive(
     result = {}  # type: Dict[str, Set[DeferredNode]]
     worklist = triggers
     processed = set()  # type: Set[str]
+    stale_protos = set()  # type: Set[TypeInfo]
     unloaded_files = set()  # type: Set[str]
 
     # Find AST nodes corresponding to each target.
@@ -802,10 +817,12 @@ def find_targets_recursive(
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained('process: %s' % target)
-                deferred = lookup_target(manager, target)
+                deferred, stale_proto = lookup_target(manager, target)
+                if stale_proto:
+                    stale_protos.add(stale_proto)
                 result[module_id].update(deferred)
 
-    return (result, unloaded_files)
+    return result, unloaded_files, stale_protos
 
 
 def reprocess_nodes(manager: BuildManager,
@@ -949,12 +966,18 @@ def update_deps(module_id: str,
                                               options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
+    # Merge also the newly added protocol deps (if any).
+    TypeState.update_protocol_deps(deps)
 
 
 def lookup_target(manager: BuildManager,
-                  target: str) -> List[DeferredNode]:
-    """Look up a target by fully-qualified name."""
+                  target: str) -> Tuple[List[DeferredNode], Optional[TypeInfo]]:
+    """Look up a target by fully-qualified name.
 
+    The first item in the return tuple is a list of deferred nodes that
+    needs to be reprocessed. If the target represents a TypeInfo corresponding
+    to a protocol, return it as a second item in the return tuple, otherwise None.
+    """
     def not_found() -> None:
         manager.log_fine_grained(
             "Can't find matching target for %s (stale dependency?)" % target)
@@ -963,7 +986,7 @@ def lookup_target(manager: BuildManager,
     items = split_target(modules, target)
     if items is None:
         not_found()  # Stale dependency
-        return []
+        return [], None
     module, rest = items
     if rest:
         components = rest.split('.')
@@ -982,7 +1005,7 @@ def lookup_target(manager: BuildManager,
         if (not isinstance(node, (MypyFile, TypeInfo))
                 or c not in node.names):
             not_found()  # Stale dependency
-            return []
+            return [], None
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
@@ -995,13 +1018,17 @@ def lookup_target(manager: BuildManager,
             # Processing them would spell trouble -- for example, we could be refreshing
             # a deserialized TypeInfo with missing attributes.
             not_found()
-            return []
+            return [], None
         result = [DeferredNode(file, None, None)]
+        stale_info = None  # type: Optional[TypeInfo]
+        if node.is_protocol:
+            stale_info = node
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                result.extend(lookup_target(manager, target + '.' + name))
-        return result
+                method, _ = lookup_target(manager, target + '.' + name)
+                result.extend(method)
+        return result, stale_info
     if isinstance(node, Decorator):
         # Decorator targets actually refer to the function definition only.
         node = node.func
@@ -1011,13 +1038,13 @@ def lookup_target(manager: BuildManager,
         # The target can't be refreshed. It's possible that the target was
         # changed to another type and we have a stale dependency pointing to it.
         not_found()
-        return []
+        return [], None
     if node.fullname() != target:
         # Stale reference points to something unexpected. We shouldn't process since the
         # context will be wrong and it could be a partially initialized deserialized node.
         not_found()
-        return []
-    return [DeferredNode(node, active_class_name, active_class)]
+        return [], None
+    return [DeferredNode(node, active_class_name, active_class)], None
 
 
 def is_verbose(manager: BuildManager) -> bool:

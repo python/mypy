@@ -306,8 +306,8 @@ def f() -> None:
     a: A
     x, y = a
 [out]
-<m.A.__iter__> -> m.f
-<m.A> -> m.A, m.f
+<m.A.__iter__> -> <m.A>, m.f
+<m.A> -> m.A, m.f, typing.Iterable
 
 [case testMultipleLvalues]
 class A:
@@ -377,8 +377,8 @@ def g() -> None:
 <m.A.y> -> m.A.f, m.g
 <m.A> -> m.A, m.g
 <m.B.__getitem__> -> m.g
-<m.B.__iter__> -> m.g
-<m.B> -> <m.f>, m.B, m.f
+<m.B.__iter__> -> <m.B>, m.g
+<m.B> -> <m.f>, m.B, m.f, typing.Iterable
 <m.f> -> m.g
 
 [case testNestedSetItem]
@@ -499,9 +499,9 @@ def f() -> Iterator[int]:
     yield from A()
 [out]
 <m.A.__init__> -> m.f
-<m.A.__iter__> -> m.f
+<m.A.__iter__> -> <m.A>, m.f
 <m.A.__new__> -> m.f
-<m.A> -> m.A, m.f
+<m.A> -> m.A, m.f, typing.Iterable
 
 [case testFunctionDecorator]
 from typing import Callable

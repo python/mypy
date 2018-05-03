@@ -2065,9 +2065,6 @@ class TypeInfo(SymbolNode):
     is_protocol = False                    # Is this a protocol class?
     runtime_protocol = False               # Does this protocol support isinstance checks?
     abstract_attributes = None  # type: List[str]
-    # Protocol members are names of all attributes/methods defined in a protocol
-    # and in all its supertypes (except for 'object').
-    protocol_members = None  # type: List[str]
 
     # The attributes 'assuming' and 'assuming_proper' represent structural subtype matrices.
     #
@@ -2211,6 +2208,18 @@ class TypeInfo(SymbolNode):
                 return cls
         return None
 
+    @property
+    def protocol_members(self) -> List[str]:
+        # Protocol members are names of all attributes/methods defined in a protocol
+        # and in all its supertypes (except for 'object').
+        members = set()  # type: Set[str]
+        assert self.mro, "This property can be only acessed after MRO is (re-)calculated"
+        for base in self.mro[:-1]:  # we skip "object" since everyone implements it
+            if base.is_protocol:
+                for name in base.names:
+                    members.add(name)
+        return sorted(list(members))
+
     def __getitem__(self, name: str) -> 'SymbolTableNode':
         n = self.get(name)
         if n:
@@ -2331,7 +2340,6 @@ class TypeInfo(SymbolNode):
                 'names': self.names.serialize(self.fullname()),
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
-                'protocol_members': self.protocol_members,
                 'type_vars': self.type_vars,
                 'bases': [b.serialize() for b in self.bases],
                 'mro': [c.fullname() for c in self.mro],
@@ -2357,7 +2365,6 @@ class TypeInfo(SymbolNode):
         ti._fullname = data['fullname']
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
-        ti.protocol_members = data['protocol_members']
         ti.type_vars = data['type_vars']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None

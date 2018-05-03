@@ -918,3 +918,116 @@ class B: pass
 <m.A.__new__> -> m.g
 <m.A> -> <m.f>, m.f, m.g
 <mod.B> -> m
+
+[case testProtocolDepsWildcard]
+# __dump_all__
+import mod
+x: mod.P
+[file mod.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+<m.x> -> m
+<mod.P> -> <m.x>, m, mod.P
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
+
+[case testProtocolDepsWildcardSupertype]
+# __dump_all__
+import mod
+x: mod.P
+[file mod.py]
+from typing import Protocol
+class PBase(Protocol):
+    x: int
+class P(PBase, Protocol):
+    y: int
+[out]
+<m.x> -> m
+<mod.P.y> -> mod
+<mod.P> -> <m.x>, m, mod.P
+<mod.PBase.(abstract)> -> <mod.P.__init__>, mod
+<mod.PBase.__init__> -> <mod.P.__init__>
+<mod.PBase.__new__> -> <mod.P.__new__>
+<mod.PBase.x> -> <mod.P.x>
+<mod.PBase.y> -> <mod.P.y>
+<mod.PBase> -> mod, mod.P, mod.PBase
+<mod.PBase[wildcard]> -> <mod.P>, <mod.PBase>
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
+
+[case testProtocolDepsPositive]
+# __dump_all__
+import mod
+class C:
+    x: int
+x: mod.P = C()
+[file mod.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+<m.C.__init__> -> m
+<m.C.__new__> -> m
+<m.C.x> -> <m.C>
+<m.C> -> m, m.C, mod.P
+<m.x> -> m
+<mod.P> -> <m.x>, m, mod.P
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
+
+[case testProtocolDepsNegative]
+# __dump_all__
+import mod
+from typing import overload
+class C:
+    y: int
+@overload
+def func(x: C) -> int: ...
+@overload
+def func(x: mod.P) -> str: ...
+def func(x):
+    pass
+
+func(C())
+[file mod.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+<m.C.__init__> -> m
+<m.C.__new__> -> m
+<m.C.x> -> <m.C>
+<m.C> -> <m.func>, m, m.C, m.func, mod.P
+<m.func> -> m
+<mod.P> -> <m.func>, m.func, mod.P
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
+
+[case testProtocolDepsConcreteSuperclass]
+# __dump_all__
+import mod
+class B:
+    x: int
+class C(B):
+    pass
+x: mod.P = C()
+[file mod.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+<m.B.(abstract)> -> <m.C.__init__>, m
+<m.B.__init__> -> <m.C.__init__>
+<m.B.__new__> -> <m.C.__new__>
+<m.B.x> -> <m.C.x>, <m.C>
+<m.B> -> m, m.B, m.C
+<m.C.__init__> -> m
+<m.C.__new__> -> m
+<m.C.x> -> <m.C>
+<m.C> -> m, m.C, mod.P
+<m.x> -> m
+<mod.P> -> <m.x>, m, mod.P
+<mod.P[wildcard]> -> <mod.P>
+<mod> -> m
