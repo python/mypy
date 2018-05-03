@@ -5445,10 +5445,11 @@ import a
 import b
 class C:
     x: int
+c: C
 def f() -> None:
     def g(x: b.P) -> None:
         pass
-    g(C())
+    g(c)
 [file b.py]
 from typing import Protocol
 class P(Protocol):
@@ -5459,9 +5460,9 @@ class P(Protocol):
     x: str
 [out]
 ==
-a.py:7: error: Argument 1 to "g" has incompatible type "C"; expected "P"
-a.py:7: note: Following member(s) of "C" have conflicts:
-a.py:7: note:     x: expected "str", got "int"
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "str", got "int"
 
 [case testProtocolUpdateTypeInClass]
 import a
@@ -5495,9 +5496,10 @@ import b
 class C:
     x: int
 def f() -> None:
+    c: C
     def g(x: b.P) -> None:
         pass
-    g(C())
+    g(c)
 [file b.py]
 from typing import Protocol
 class P(Protocol):
@@ -5509,9 +5511,9 @@ class P(Protocol):
     y: str
 [out]
 ==
-a.py:7: error: Argument 1 to "g" has incompatible type "C"; expected "P"
-a.py:7: note: 'C' is missing following 'P' protocol member:
-a.py:7: note:     y
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: 'C' is missing following 'P' protocol member:
+a.py:8: note:     y
 
 [case testProtocolRemoveAttrInClass]
 import a
@@ -5562,7 +5564,7 @@ a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
 a.py:8: note: Following member(s) of "C" have conflicts:
 a.py:8: note:     x: expected "int", got "str"
 
-[case testProtocolConcreteUpdateTypeMetodGeneric]
+[case testProtocolConcreteUpdateTypeMethodGeneric]
 import a
 [file a.py]
 import b
@@ -5591,7 +5593,8 @@ a.py:10: note:     x: expected "int", got "str"
 import a
 [file a.py]
 import b, c
-x: b.P = c.C()
+cc: c.C
+x: b.P = cc
 [file b.py]
 from typing import Protocol
 class P(Protocol):
@@ -5604,7 +5607,7 @@ class C:
     pass
 [out]
 ==
-a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:3: error: Incompatible types in assignment (expression has type "C", variable has type "P")
 
 [case testProtocolUpdateBaseGeneric]
 import a
@@ -5816,7 +5819,8 @@ import a
 import b
 def func(x: b.P) -> None:
     pass
-func(b.B())
+bb: b.B
+func(bb)
 [file b.py]
 from typing import Protocol
 import c
@@ -5831,7 +5835,7 @@ class C:
 class C:
     x: int
 [out]
-a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+a.py:5: error: Argument 1 to "func" has incompatible type "B"; expected "P"
 ==
 
 [case testProtocolInvalidateConcreteViaSuperClassRemoveAttr]
@@ -6157,7 +6161,7 @@ a.py:2: error: Incompatible types in assignment (expression has type "C", variab
 a.py:2: note: Following member(s) of "C" have conflicts:
 a.py:2: note:     z: expected "int", got "str"
 
-[case testWeAreCarefullWithBuiltinProtocols]
+[case testWeAreCarefulWithBuiltinProtocols]
 import a
 x: a.A
 for i in x:

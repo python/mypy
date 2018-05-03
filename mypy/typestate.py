@@ -55,14 +55,14 @@ class TypeState:
     # a value of type a.A to a function expecting something compatible with Iterable, we'd have
     # 'a.A' -> {'__iter__', ...} in the map. This map is also flushed after every incremental
     # update. This map is needed to only generate dependencies like <a.A.__iter__> -> <a.A>
-    # instead of a wildcard to avoid unnecessary invalidating classes.
+    # instead of a wildcard to avoid unnecessarily invalidating classes.
     _checked_against_members = {}  # type: Dict[str, Set[str]]
-    # TypeInfos that appeared as a left type (subtype) in a subytpe check since latest
+    # TypeInfos that appeared as a left type (subtype) in a subtype check since latest
     # dependency snapshot update. This is an optimisation for fine grained mode; during a full
     # run we only take a dependency snapshot at the very end, so this set will contain all
     # subtype-checked TypeInfos. After a fine grained update however, we can gather only new
     # dependencies generated from (typically) few TypeInfos that were subtype-checked
-    # (i.e. appeared as r.h.snin an assignment or an argument in a function call in
+    # (i.e. appeared as r.h.s. in an assignment or an argument in a function call in
     # a re-checked target) during the update.
     _rechecked_types = set()  # type: Set[TypeInfo]
 
@@ -142,7 +142,9 @@ class TypeState:
 
         We add <a.A.__iter__> -> <a.A> to invalidate the assignment (module target in this case),
         whenever the signature of a.A.__iter__ changes. We also add <a.A> -> typing.Iterable,
-        to invalidate the subtype caches of the latter.
+        to invalidate the subtype caches of the latter. (Note that the same logic applies to
+        proper subtype checks, and calculating meets and joins, if this involves calling
+        'subtypes.is_protocol_implementation').
         """
         deps = {}  # type: Dict[str, Set[str]]
         for info in cls._rechecked_types:
