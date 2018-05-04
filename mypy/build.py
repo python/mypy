@@ -965,6 +965,7 @@ def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
 
 
 def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
+                              old_meta_snapshot: Dict[str, str],
                               manager: BuildManager, graph: Graph) -> None:
     """Write cache files for protocol dependencies.
 
@@ -981,7 +982,7 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
     meta_snapshot = {}  # type: Dict[str, str]
     error = False
     for id in graph:
-        meta_snapshot[id] = graph[id].source_hash
+        meta_snapshot[id] = graph[id].source_hash or old_meta_snapshot[id]
     if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
         manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
         error = True
@@ -996,7 +997,7 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
 
 
 def read_protocol_cache(manager: BuildManager,
-                        graph: Graph) -> Optional[Dict[str, Set[str]]]:
+                        graph: Graph) -> Optional[Tuple[Dict[str, str], Dict[str, Set[str]]]]:
     """Read and validate protocol dependencies cache.
 
     See docstring for write_protocol_cache for details about which kinds of
@@ -1011,8 +1012,8 @@ def read_protocol_cache(manager: BuildManager,
     current_meta_snapshot = {}  # type: Dict[str, str]
     for id in graph:
         meta = graph[id].meta
-        assert meta is not None, 'Protocol cache should be read after all other'
-        current_meta_snapshot[id] = meta.hash
+        if meta:
+            current_meta_snapshot[id] = meta.hash
     common = set(meta_snapshot.keys()) & set(current_meta_snapshot.keys())
     if any(meta_snapshot[id] != current_meta_snapshot[id] for id in common):
         # TODO: invalidate also if options changed (like --strict-optional)?
@@ -1027,7 +1028,7 @@ def read_protocol_cache(manager: BuildManager,
         manager.log('Could not load protocol cache: cache is not a dict: {}'
                     .format(type(deps)))
         return None
-    return {k: set(v) for (k, v) in deps.items()}
+    return (meta_snapshot, {k: set(v) for (k, v) in deps.items()})
 
 
 def _load_json_file(file: str, manager: BuildManager,
@@ -1608,7 +1609,7 @@ class State:
     path = None  # type: Optional[str]  # Path to module source
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
-    source_hash = None  # type: str  # Hash calculated based on the source code
+    source_hash = None  # type: Optional[str]  # Hash calculated based on the source code
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
@@ -2089,6 +2090,7 @@ class State:
             return
         dep_prios = self.dependency_priorities()
         dep_lines = self.dependency_lines()
+        assert self.source_hash is not None
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             {k: list(v) for k, v in self.fine_grained_deps.items()},
@@ -2333,23 +2335,30 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_graph:
         dump_graph(graph)
         return graph
+
+    # Fine grained protocol dependencies are serialized separately, so we read them
+    # after we load the cache for whole graph.
+    # We need to read them both for running in daemon mode and if we are generating
+    # a fine-grained cache (so that we can properly update them incrementally).
+    # The `read_protocol_cache` will also validate
+    # the protocol cache against the loaded individual cache files.
+    old_proto_snapshot = {}  # type: Dict[str, str]
+    if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
+        res = read_protocol_cache(manager, graph)
+        if res:
+            old_proto_snapshot, TypeState.proto_deps = res
+        elif manager.stats.get('fresh_metas', 0) > 0:
+            # There were some cache files read, but no protocol dependencies loaded.
+            manager.log("Error reading protocol dependencies cache -- aborting cache load")
+            manager.cache_enabled = False
+            manager.log("Falling back to full run -- reloading graph...")
+            return dispatch(sources, manager)
+
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the graph---we
     # just want to load in all of the cache information.
     if manager.use_fine_grained_cache():
         process_fine_grained_cache_graph(graph, manager)
-        # Fine grained protocol dependencies are serialized separately, so we read them
-        # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
-        # the protocol cache against the loaded individual cache files.
-        TypeState.proto_deps = read_protocol_cache(manager, graph)
-        if TypeState.proto_deps is None and manager.stats.get('fresh_metas', 0) > 0:
-            # There were some cache files read, but no protocol dependencies loaded.
-            manager.log("Error reading protocol dependencies cache -- aborting cache load")
-            manager.cache_enabled = False
-            TypeState.proto_deps = {}
-            manager.log("Falling back to full run -- reloading graph...")
-            return dispatch(sources, manager)
-
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
@@ -2359,7 +2368,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # processed the whole graph.
             TypeState.update_protocol_deps()
             if TypeState.proto_deps is not None and not manager.options.fine_grained_incremental:
-                write_protocol_deps_cache(TypeState.proto_deps, manager, graph)
+                write_protocol_deps_cache(TypeState.proto_deps, old_proto_snapshot, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
