@@ -13,6 +13,7 @@ import os
 import shutil
 import socket
 import sys
+import tempfile
 import time
 import traceback
 
@@ -81,7 +82,7 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 
 # Server code.
 
-SOCKET_NAME = '/tmp/dmypy.sock'
+SOCKET_NAME = 'dmypy.sock'
 
 
 def process_start_options(flags: List[str]) -> Options:
