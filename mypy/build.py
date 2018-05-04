@@ -58,7 +58,7 @@ from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
-from mypy.typestate import TypeState
+from mypy.typestate import TypeState, reset_global_state
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -291,7 +291,7 @@ def _build(sources: List[BuildSource],
                            flush_errors=flush_errors,
                            fscache=fscache)
 
-    TypeState.reset_all_subtype_caches()
+    reset_global_state()
     try:
         graph = dispatch(sources, manager)
         if not options.fine_grained_incremental:
@@ -620,7 +620,9 @@ class BuildManager:
                        but is disabled if fine-grained cache loading fails
                        and after an initial fine-grained load. This doesn't
                        determine whether we write cache files or not.
-      stats:           Dict with various instrumentation numbers
+      stats:           Dict with various instrumentation numbers, it is used
+                       not only for debugging, but also required for correctness,
+                       in particular to check consistency of the protocol dependency cache.
       fscache:         A file system cacher
     """
 
@@ -973,6 +975,96 @@ def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
     return True
 
 
+def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
+                              manager: BuildManager, graph: Graph) -> None:
+    """Write cache files for protocol dependencies.
+
+    Serialize protocol dependencies map for fine grained mode. Also take the snapshot
+    of current sources to later check consistency between protocol cache and individual
+    cache files.
+
+    Out of three kinds of protocol dependencies described in TypeState._snapshot_protocol_deps,
+    only the last two kinds are stored in global protocol caches, dependencies of the first kind
+    (i.e. <SuperProto[wildcard]>, <Proto[wildcard]> -> <Proto>) are written to the normal
+    per-file fine grained dependency caches.
+    """
+    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    meta_snapshot = {}  # type: Dict[str, str]
+    error = False
+    for id in graph:
+        meta_snapshot[id] = graph[id].source_hash
+    if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
+        manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
+        error = True
+    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
+    if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
+        manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
+        error = True
+    if error:
+        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.report(0, 0, "Error writing protocol dependencies cache",
+                              blocker=True)
+
+
+def read_protocol_cache(manager: BuildManager,
+                        graph: Graph) -> Optional[Dict[str, Set[str]]]:
+    """Read and validate protocol dependencies cache.
+
+    See docstring for write_protocol_cache for details about which kinds of
+    dependencies are read.
+    """
+    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    meta_snapshot = _load_json_file(proto_meta, manager,
+                                    log_sucess='Proto meta ',
+                                    log_error='Could not load protocol metadata: ')
+    if meta_snapshot is None:
+        return None
+    current_meta_snapshot = {}  # type: Dict[str, str]
+    for id in graph:
+        meta = graph[id].meta
+        assert meta is not None, 'Protocol cache should be read after all other'
+        current_meta_snapshot[id] = meta.hash
+    common = set(meta_snapshot.keys()) & set(current_meta_snapshot.keys())
+    if any(meta_snapshot[id] != current_meta_snapshot[id] for id in common):
+        # TODO: invalidate also if options changed (like --strict-optional)?
+        manager.log('Protocol cache inconsistent, ignoring')
+        return None
+    deps = _load_json_file(proto_cache, manager,
+                           log_sucess='Proto deps ',
+                           log_error='Could not load protocol cache: ')
+    if deps is None:
+        return None
+    if not isinstance(deps, dict):
+        manager.log('Could not load protocol cache: cache is not a dict: {}'
+                    .format(type(deps)))
+        return None
+    return {k: set(v) for (k, v) in deps.items()}
+
+
+def _load_json_file(file: str, manager: BuildManager,
+                    log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
+    """A simple helper to read a JSON file with logging."""
+    try:
+        with open(file, 'r') as f:
+            data = f.read()
+    except IOError:
+        manager.log(log_error + file)
+        return None
+    manager.trace(log_sucess + data.rstrip())
+    result = json.loads(data)  # TODO: Errors
+    return result
+
+
+def _cache_dir_prefix(manager: BuildManager, id: Optional[str] = None) -> str:
+    """Get current cache directory (or file if id is given)."""
+    cache_dir = manager.options.cache_dir
+    pyversion = manager.options.python_version
+    base = os.path.join(cache_dir, '%d.%d' % pyversion)
+    if id is None:
+        return base
+    return os.path.join(base, *id.split('.'))
+
+
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
     """Return the file names for the cache files.
 
@@ -989,9 +1081,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     pair = manager.options.cache_map.get(path)
     if pair is not None:
         return (pair[0], pair[1], None)
-    cache_dir = manager.options.cache_dir
-    pyversion = manager.options.python_version
-    prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
+    prefix = _cache_dir_prefix(manager, id)
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
@@ -1000,6 +1090,20 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     if manager.options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
+
+
+def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
+    """Return file names for fine grained protocol dependencies cache.
+
+    Since these dependencies represent a global state of the program, they
+    are serialized per program, not per module, and the corresponding files
+    live at the root of the cache folder for a given Python version.
+    Return a tuple ('meta file path', 'data file path'), where the meta file
+    contains hashes of all source files at the time the protocol dependencies
+    were written, and data file contains the protocol dependencies.
+    """
+    name = os.path.join(_cache_dir_prefix(manager), '@proto_deps')
+    return name + '.meta.json', name + '.data.json'
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
@@ -1017,13 +1121,10 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # TODO: May need to take more build options into account
     meta_json, data_json, deps_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
-    try:
-        with open(meta_json, 'r') as f:
-            meta_str = f.read()
-            manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
-            meta = json.loads(meta_str)  # TODO: Errors
-    except IOError:
-        manager.log('Could not load cache for {}: could not find {}'.format(id, meta_json))
+    meta = _load_json_file(meta_json, manager,
+                           log_sucess='Meta {} '.format(id),
+                           log_error='Could not load cache for {}: '.format(id))
+    if meta is None:
         return None
     if not isinstance(meta, dict):
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
@@ -2263,8 +2364,28 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # just want to load in all of the cache information.
     if manager.use_fine_grained_cache():
         process_fine_grained_cache_graph(graph, manager)
+        # Fine grained protocol dependencies are serialized separately, so we read them
+        # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
+        # the protocol cache against the loaded individual cache files.
+        TypeState.proto_deps = read_protocol_cache(manager, graph)
+        if TypeState.proto_deps is None and manager.stats.get('fresh_metas', 0) > 0:
+            # There were some cache files read, but no protocol dependencies loaded.
+            manager.log("Error reading protocol dependencies cache -- aborting cache load")
+            manager.cache_enabled = False
+            TypeState.proto_deps = {}
+            manager.log("Falling back to full run -- reloading graph...")
+            return dispatch(sources, manager)
+
     else:
         process_graph(graph, manager)
+        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
+            # If we are running a daemon or are going to write cache for further fine grained use,
+            # then we need to collect fine grained protocol dependencies.
+            # Since these are a global property of the program, they are calculated after we
+            # processed the whole graph.
+            TypeState.update_protocol_deps()
+            if TypeState.proto_deps is not None and not manager.options.fine_grained_incremental:
+                write_protocol_deps_cache(TypeState.proto_deps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.

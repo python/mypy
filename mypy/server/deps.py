@@ -104,6 +104,7 @@ from mypy.types import (
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
+from mypy.typestate import TypeState
 
 
 def get_dependencies(target: MypyFile,
@@ -164,9 +165,6 @@ class DependencyVisitor(TraverserVisitor):
         self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
         self.is_package_init_file = False
-
-    # TODO (incomplete):
-    #   protocols
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
@@ -235,6 +233,23 @@ class DependencyVisitor(TraverserVisitor):
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(target))
         if info.declared_metaclass:
             self.add_type_dependencies(info.declared_metaclass, target=make_trigger(target))
+        if info.is_protocol:
+            for base_info in info.mro[:-1]:
+                # We add dependencies from whole MRO to cover explicit subprotocols.
+                # For example:
+                #
+                #     class Super(Protocol):
+                #         x: int
+                #     class Sub(Super, Protocol):
+                #         y: int
+                #
+                # In this example we add <Super[wildcard]> -> <Sub>, to invalidate Sub if
+                # a new member is added to Super.
+                self.add_dependency(make_wildcard_trigger(base_info.fullname()),
+                                    target=make_trigger(target))
+                # More protocol dependencies are collected in TypeState._snapshot_protocol_deps
+                # after a full run or update is finished.
+
         self.add_type_alias_deps(self.scope.current_target())
         for name, node in info.names.items():
             if isinstance(node.node, Var):
@@ -810,6 +825,7 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
         deps = get_dependencies(node, type_map, python_version)
         for trigger, targets in deps.items():
             all_deps.setdefault(trigger, set()).update(targets)
+    TypeState.add_all_protocol_deps(all_deps)
 
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)
