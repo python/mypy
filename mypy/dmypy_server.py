@@ -10,8 +10,10 @@ import gc
 import io
 import json
 import os
+import shutil
 import socket
 import sys
+import tempfile
 import time
 import traceback
 
@@ -80,7 +82,7 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 
 # Server code.
 
-SOCKET_NAME = 'dmypy.sock'  # In current directory.
+SOCKET_NAME = 'dmypy.sock'
 
 
 def process_start_options(flags: List[str]) -> Options:
@@ -187,18 +189,17 @@ class Server:
             finally:
                 os.unlink(STATUS_FILE)
         finally:
-            os.unlink(self.sockname)
+            shutil.rmtree(self.sock_directory)
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)  # type: ignore
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
-        self.sockname = os.path.abspath(SOCKET_NAME)
-        if os.path.exists(self.sockname):
-            os.unlink(self.sockname)
+        self.sock_directory = tempfile.mkdtemp()
+        sockname = os.path.join(self.sock_directory, SOCKET_NAME)
         sock = socket.socket(socket.AF_UNIX)
-        sock.bind(self.sockname)
+        sock.bind(sockname)
         sock.listen(1)
         return sock
 
