@@ -1088,7 +1088,7 @@ def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
     contains hashes of all source files at the time the protocol dependencies
     were written, and data file contains the protocol dependencies.
     """
-    name = os.path.join(_cache_dir_prefix(manager), 'proto_deps')
+    name = os.path.join(_cache_dir_prefix(manager), '@proto_deps')
     return name + '.meta.json', name + '.data.json'
 
 
@@ -2342,11 +2342,14 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         # after we loaded cache for whole graph. The `read_protocol_cache` will also validate
         # the protocol cache against the loaded individual cache files.
         TypeState.proto_deps = read_protocol_cache(manager, graph)
-        if TypeState.proto_deps is None and manager.stats.get('fresh_trees', 0) > 0:
+        if TypeState.proto_deps is None and manager.stats.get('fresh_metas', 0) > 0:
             # There were some cache files read, but no protocol dependencies loaded.
-            manager.errors.set_file(_cache_dir_prefix(manager), None)
-            manager.errors.report(0, 0, "Error reading protocol dependencies cache -- aborting",
-                                  blocker=True)
+            manager.log("Error reading protocol dependencies cache -- aborting cache load")
+            manager.cache_enabled = False
+            TypeState.proto_deps = {}
+            manager.log("Falling back to full run -- reloading graph...")
+            return dispatch(sources, manager)
+
     else:
         process_graph(graph, manager)
         if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
