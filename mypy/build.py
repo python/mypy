@@ -2348,8 +2348,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             manager.cache_enabled = False
             TypeState.proto_deps = {}
             manager.log("Falling back to full run -- reloading graph...")
-            graph = load_graph(sources, manager)
-            process_graph(graph, manager)
+            return dispatch(sources, manager)
 
     else:
         process_graph(graph, manager)
