@@ -45,7 +45,7 @@ class Options:
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                                {"quick_and_dirty", "platform", "cache_fine_grained"})
+                                {"quick_and_dirty", "platform"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
@@ -120,7 +120,7 @@ class Options:
         self.strict_boolean = False
 
         # Apply strict None checking
-        self.strict_optional = False
+        self.strict_optional = True
 
         # Show "note: In function "foo":" messages.
         self.show_error_context = False

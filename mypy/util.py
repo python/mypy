@@ -68,40 +68,27 @@ class DecodeError(Exception):
     """
 
 
-def read_with_python_encoding(path: str, pyversion: Tuple[int, int]) -> Tuple[str, str]:
+def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
     Returns:
       A tuple: the source as a string, and the hash calculated from the binary representation.
     """
-    source_bytearray = bytearray()
     encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
 
-    with open(path, 'rb') as f:
-        # read first two lines and check if PEP-263 coding is present
-        source_bytearray.extend(f.readline())
-        source_bytearray.extend(f.readline())
-        m = hashlib.md5(source_bytearray)
+    # check for BOM UTF-8 encoding and strip it out if present
+    if source.startswith(b'\xef\xbb\xbf'):
+        encoding = 'utf8'
+        source = source[3:]
+    else:
+        # look at first two lines and check if PEP-263 coding is present
+        encoding, _ = find_python_encoding(source, pyversion)
 
-        # check for BOM UTF-8 encoding and strip it out if present
-        if source_bytearray.startswith(b'\xef\xbb\xbf'):
-            encoding = 'utf8'
-            source_bytearray = source_bytearray[3:]
-        else:
-            _encoding, _ = find_python_encoding(source_bytearray, pyversion)
-            # check that the coding isn't mypy. We skip it since
-            # registering may not have happened yet
-            if _encoding != 'mypy':
-                encoding = _encoding
-
-        remainder = f.read()
-        m.update(remainder)
-        source_bytearray.extend(remainder)
-        try:
-            source_text = source_bytearray.decode(encoding)
-        except LookupError as lookuperr:
-            raise DecodeError(str(lookuperr))
-        return source_text, m.hexdigest()
+    try:
+        source_text = source.decode(encoding)
+    except LookupError as lookuperr:
+        raise DecodeError(str(lookuperr))
+    return source_text
 
 
 _python2_interpreter = None  # type: Optional[str]
@@ -200,3 +187,23 @@ def correct_relative_import(cur_mod_id: str,
     if rel != 0:
         cur_mod_id = ".".join(parts[:-rel])
     return cur_mod_id + (("." + target) if target else ""), ok
+
+
+def replace_object_state(new: object, old: object) -> None:
+    """Copy state of old node to the new node.
+
+    This handles cases where there is __slots__ and/or __dict__.
+
+    Assume that both objects have the same __class__.
+    """
+    if hasattr(old, '__dict__'):
+        new.__dict__ = old.__dict__
+    if hasattr(old, '__slots__'):
+        # Use __mro__ since some classes override 'mro' with something different.
+        for base in type(old).__mro__:
+            if '__slots__' in base.__dict__:
+                for attr in getattr(base, '__slots__'):
+                    if hasattr(old, attr):
+                        setattr(new, attr, getattr(old, attr))
+                    elif hasattr(new, attr):
+                        delattr(new, attr)

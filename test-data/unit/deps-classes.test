@@ -115,6 +115,7 @@ class D:
         class S2(C): pass
 [out]
 -- TODO: Is it okay to have targets like m.S1@4.__init__?
+<m.C.(abstract)> -> <m.S1@4.__init__>, <m.S2@8.__init__>, m.D.g, m.f
 <m.C.__init__> -> <m.S1@4.__init__>, <m.S2@8.__init__>
 <m.C.__new__> -> <m.S1@4.__new__>, <m.S2@8.__new__>
 <m.C> -> m.C, m.D.g, m.f
@@ -132,6 +133,7 @@ class D(C):
         super().__init__(x)
         super().foo()
 [out]
+<m.C.(abstract)> -> <m.D.__init__>, m
 <m.C.__init__> -> <m.D.__init__>, m.D.__init__
 <m.C.__new__> -> <m.D.__new__>
 <m.C.foo> -> <m.D.foo>
@@ -150,6 +152,7 @@ class D(C):
 def foo() -> None:
     D(6)
 [out]
+<m.C.(abstract)> -> <m.D.__init__>, m
 <m.C.__init__> -> <m.D.__init__>
 <m.C.__new__> -> <m.D.__new__>
 <m.C> -> m, m.C, m.D

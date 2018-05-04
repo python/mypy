@@ -26,6 +26,7 @@ from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
+from mypy.typestate import reset_global_state
 
 
 MEM_PROFILE = False  # If True, dump memory profile after initialization
@@ -111,24 +112,24 @@ class Server:
     # serve() is called in the grandchild (by daemonize()).
 
     def __init__(self, options: Options,
-                 timeout: Optional[int] = None,
-                 alt_lib_path: Optional[str] = None) -> None:
+                 timeout: Optional[int] = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.options = options
         self.timeout = timeout
-        self.alt_lib_path = alt_lib_path
         self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
 
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
 
-        self.fscache = FileSystemCache(self.options.python_version)
+        self.fscache = FileSystemCache()
 
         options.incremental = True
         options.fine_grained_incremental = True
         options.show_traceback = True
         if options.use_fine_grained_cache:
-            options.cache_fine_grained = True  # set this so that cache options match
+            # Using fine_grained_cache implies generating and caring
+            # about the fine grained cache
+            options.cache_fine_grained = True
         else:
             options.cache_dir = os.devnull
         # Fine-grained incremental doesn't support general partial types
@@ -150,6 +151,7 @@ class Server:
                         conn, addr = sock.accept()
                     except socket.timeout:
                         print("Exiting due to inactivity.")
+                        reset_global_state()
                         sys.exit(0)
                     try:
                         data = receive(conn)
@@ -180,6 +182,7 @@ class Server:
                     conn.close()
                     if command == 'stop':
                         sock.close()
+                        reset_global_state()
                         sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)
@@ -251,8 +254,7 @@ class Server:
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
-                                      fscache=self.fscache,
-                                      alt_lib_path=self.alt_lib_path)
+                                      fscache=self.fscache)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
             if e.use_stdout:
@@ -301,14 +303,17 @@ class Server:
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         assert self.fine_grained_manager is not None
+        manager = self.fine_grained_manager.manager
 
         t0 = time.time()
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
+        manager.lib_path = tuple(mypy.build.compute_lib_path(
+            sources, manager.options, manager.data_dir))
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        self.fine_grained_manager.manager.log(
+        manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
                 t1 - t0, t2 - t1))
         status = 1 if messages else 0

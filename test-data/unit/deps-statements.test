@@ -306,8 +306,8 @@ def f() -> None:
     a: A
     x, y = a
 [out]
-<m.A.__iter__> -> m.f
-<m.A> -> m.A, m.f
+<m.A.__iter__> -> <m.A>, m.f
+<m.A> -> m.A, m.f, typing.Iterable
 
 [case testMultipleLvalues]
 class A:
@@ -377,8 +377,8 @@ def g() -> None:
 <m.A.y> -> m.A.f, m.g
 <m.A> -> m.A, m.g
 <m.B.__getitem__> -> m.g
-<m.B.__iter__> -> m.g
-<m.B> -> <m.f>, m.B, m.f
+<m.B.__iter__> -> <m.B>, m.g
+<m.B> -> <m.f>, m.B, m.f, typing.Iterable
 <m.f> -> m.g
 
 [case testNestedSetItem]
@@ -499,9 +499,9 @@ def f() -> Iterator[int]:
     yield from A()
 [out]
 <m.A.__init__> -> m.f
-<m.A.__iter__> -> m.f
+<m.A.__iter__> -> <m.A>, m.f
 <m.A.__new__> -> m.f
-<m.A> -> m.A, m.f
+<m.A> -> m.A, m.f, typing.Iterable
 
 [case testFunctionDecorator]
 from typing import Callable
@@ -581,6 +581,7 @@ def f(x: A) -> A:
 def g() -> None: pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.f>, m, m.A, m.B, m.f
@@ -606,6 +607,7 @@ class C:
     def g(self) -> None: pass
 [builtins fixtures/isinstancelist.pyi]
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> <m.C.f>, m, m.A, m.B, m.C.f
@@ -674,6 +676,7 @@ class C:
     x: int
 [out]
 <m.N> -> <m.f>, m, m.f
+<m.C.(abstract)> -> <m.N.__init__>, m
 <m.C.__init__> -> <m.N.__init__>
 <m.C.__new__> -> <m.N.__new__>
 <m.C.x> -> <m.N.x>

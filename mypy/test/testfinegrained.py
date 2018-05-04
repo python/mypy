@@ -5,6 +5,11 @@ incremental steps. We verify that each step produces the expected output.
 
 See the comment at the top of test-data/unit/fine-grained.test for more
 information.
+
+N.B.: Unlike most of the other test suites, testfinegrained does not
+rely on an alt_lib_path for finding source files. This means that they
+can test interactions with the lib_path that is built implicitly based
+on specified sources.
 """
 
 import os
@@ -28,7 +33,6 @@ from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
 from mypy.main import parse_config_file
 from mypy.find_sources import create_source_list
-from mypy.fscache import FileSystemMetaCache
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -85,7 +89,7 @@ class FineGrainedSuite(DataSuite):
             config = None
         if config:
             parse_config_file(options, config)
-        server = Server(options, alt_lib_path=test_temp_dir)
+        server = Server(options)
 
         step = 1
         sources = self.parse_sources(main_src, step, options)
@@ -187,8 +191,7 @@ class FineGrainedSuite(DataSuite):
               sources: List[BuildSource]) -> List[str]:
         try:
             result = build.build(sources=sources,
-                                 options=options,
-                                 alt_lib_path=test_temp_dir)
+                                 options=options)
         except CompileError as e:
             return e.messages
         return result.errors

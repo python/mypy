@@ -139,8 +139,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
             mypy.semanal.calculate_class_mro(tdef, self.fail_blocker)
-            if tdef.info.is_protocol:
-                add_protocol_members(tdef.info)
         if tdef.analyzed is not None:
             # Also check synthetic types associated with this ClassDef.
             # Currently these are TypedDict, and NamedTuple.
@@ -485,16 +483,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             return Instance(node, args)
         any_type = AnyType(TypeOfAny.special_form)
         return Instance(node, [any_type] * len(node.defn.type_vars))
-
-
-def add_protocol_members(typ: TypeInfo) -> None:
-    members = set()  # type: Set[str]
-    if typ.mro:
-        for base in typ.mro[:-1]:  # we skip "object" since everyone implements it
-            if base.is_protocol:
-                for name in base.names:
-                    members.add(name)
-    typ.protocol_members = sorted(list(members))
 
 
 def is_identity_signature(sig: Type) -> bool:

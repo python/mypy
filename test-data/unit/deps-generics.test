@@ -93,6 +93,7 @@ class A(Generic[T]): pass
 class B(A[C]): pass
 class C: pass
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> m.A, m.B
@@ -108,6 +109,7 @@ T = TypeVar('T')
 class A(Generic[T]): pass
 class B(A[T]): pass
 [out]
+<m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
 <m.A> -> m.A, m.B

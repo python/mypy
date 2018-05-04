@@ -17,6 +17,7 @@ from mypy import experiments
 from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
 from mypy.report import reporter_classes
@@ -66,7 +67,9 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
-    sources, options = process_options(args)
+
+    fscache = FileSystemCache()
+    sources, options = process_options(args, fscache=fscache)
 
     messages = []
 
@@ -85,7 +88,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = type_check_only(sources, bin_dir, options, flush_errors)  # noqa
+        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -135,12 +138,14 @@ def readlinkabs(link: str) -> str:
 
 def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
                     options: Options,
-                    flush_errors: Optional[Callable[[List[str], bool], None]]) -> BuildResult:
+                    flush_errors: Optional[Callable[[List[str], bool], None]],
+                    fscache: FileSystemCache) -> BuildResult:
     # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
                        options=options,
-                       flush_errors=flush_errors)
+                       flush_errors=flush_errors,
+                       fscache=fscache)
 
 
 FOOTER = """environment variables:
@@ -242,7 +247,7 @@ def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
         return ast.literal_eval(check)
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise PythonExecutableInferenceError(
-            'Error: invalid Python executable {}'.format(python_executable))
+            'invalid Python executable {}'.format(python_executable))
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
@@ -256,7 +261,7 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
         return sys_exe
     except (subprocess.CalledProcessError, FileNotFoundError):
         raise PythonExecutableInferenceError(
-            'Error: failed to find a Python executable matching version {},'
+            'failed to find a Python executable matching version {},'
             ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
 
 
@@ -296,6 +301,7 @@ def infer_python_version_and_executable(options: Options,
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
+                    fscache: Optional[FileSystemCache] = None,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments."""
 
@@ -418,8 +424,10 @@ def process_options(args: List[str],
                         help="include fine-grained dependency information in the cache")
     parser.add_argument('--skip-version-check', action='store_true',
                         help="allow using cache written by older mypy version")
-    add_invertible_flag('--strict-optional', default=False, strict_flag=True,
-                        help="enable experimental strict Optional checks")
+    parser.add_argument('--strict-optional', action='store_true',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--no-strict-optional', action='store_false', dest='strict_optional',
+                        help="disable strict Optional checks (inverse: --strict-optional)")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
                         "(experimental -- read documentation before using!).  "
@@ -444,7 +452,7 @@ def process_options(args: List[str],
                         help="Script x becomes module x instead of __main__")
     parser.add_argument('--config-file',
                         help="Configuration file, must have a [mypy] section "
-                        "(defaults to {})".format(defaults.CONFIG_FILE))
+                        "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
     add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages")
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
@@ -634,7 +642,7 @@ def process_options(args: List[str],
         lib_path = [os.getcwd()] + build.mypy_path()
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = build.FindModuleCache()
+        cache = build.FindModuleCache(fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p))
@@ -651,8 +659,7 @@ def process_options(args: List[str],
         return targets, options
     else:
         try:
-            # TODO: use the same cache that the BuildManager will
-            targets = create_source_list(special_opts.files, options)
+            targets = create_source_list(special_opts.files, options, fscache)
         except InvalidSourceList as e:
             fail(str(e))
         return targets, options
@@ -677,21 +684,18 @@ config_types = {
     'always_false': lambda s: [p.strip() for p in s.split(',')],
 }
 
-SHARED_CONFIG_FILES = ('setup.cfg',)
-
 
 def parse_config_file(options: Options, filename: Optional[str]) -> None:
     """Parse a config file into an Options object.
 
     Errors are written to stderr but are not fatal.
 
-    If filename is None, fall back to default config file and then
-    to setup.cfg.
+    If filename is None, fall back to default config files.
     """
     if filename is not None:
         config_files = (filename,)  # type: Tuple[str, ...]
     else:
-        config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
+        config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
 
     parser = configparser.RawConfigParser()
 
@@ -710,7 +714,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
         return
 
     if 'mypy' not in parser:
-        if filename or file_read not in SHARED_CONFIG_FILES:
+        if filename or file_read not in defaults.SHARED_CONFIG_FILES:
             print("%s: No [mypy] section in config file" % file_read, file=sys.stderr)
     else:
         section = parser['mypy']

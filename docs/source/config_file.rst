@@ -4,9 +4,10 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` (with fallback to ``setup.cfg``) in the
-current directory; the ``--config-file`` command-line flag can be used to
-read a different file instead (see :ref:`--config-file <config-file-flag>`).
+it uses the file ``mypy.ini`` with fallback to ``setup.cfg`` in the current
+directory, or ``.mypy.ini`` in the user home directory if none of them are
+found; the ``--config-file`` command-line flag can be used to read a different
+file instead (see :ref:`--config-file <config-file-flag>`).
 
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity.  The ``--config-file`` flag
@@ -90,9 +91,6 @@ The following global flags may only be set in the global section
 - ``warn_unused_configs`` (Boolean, default False) warns about
   per-module sections in the config file that didn't match any
   files processed in the current run.
-
-- ``strict_optional`` (Boolean, default False) enables experimental
-  strict Optional checks.
 
 - ``scripts_are_modules`` (Boolean, default False) makes script ``x``
   become module ``x`` instead of ``__main__``.  This is useful when
@@ -178,6 +176,13 @@ overridden by the pattern sections matching the module name.
 
 - ``almost_silent`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip``.
+
+- ``strict_optional`` (Boolean, default True) enables or disables
+  strict Optional checks. If False, mypy treats ``None`` as
+  compatible with every type.
+
+  **Note::** This was False by default
+  in mypy versions earlier than 0.600.
 
 - ``disallow_any_unimported`` (Boolean, default false) disallows usage of types that come
   from unfollowed imports (such types become aliases for ``Any``).

@@ -946,7 +946,8 @@ from parent import b
 
 [file parent/b.py.2]
 
-[stale parent, parent.a, parent.b]
+[stale parent.a, parent.b]
+[rechecked parent, parent.a, parent.b]
 
 [case testIncrementalReferenceExistingFileWithImportFrom]
 from parent import a, b
@@ -4271,3 +4272,50 @@ pass
 [out2]
 [out3]
 tmp/a.py:1: note: unused 'type: ignore' comment
+
+-- Test that a non cache_fine_grained run can use a fine-grained cache
+[case testRegularUsesFgCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+x = 0
+[file mypy.ini]
+[[mypy]
+cache_fine_grained = True
+[file mypy.ini.2]
+[[mypy]
+cache_fine_grained = False
+-- Nothing should get rechecked
+[rechecked]
+[stale]
+
+[case testFgCacheNeedsFgCache]
+# flags: --config-file tmp/mypy.ini
+import a
+[file a.py]
+x = 0
+[file mypy.ini]
+[[mypy]
+cache_fine_grained = False
+[file mypy.ini.2]
+[[mypy]
+cache_fine_grained = True
+[rechecked a, builtins]
+[stale a, builtins]
+
+[case testIncrementalPackageNameOverload]
+# cmd: mypy -m main a
+# flags: --follow-imports=skip
+[file main.py]
+from a import x
+x.foo()
+[file a/__init__.py]
+pass
+[file a/__init__.py.2]
+x = 10
+[file a/x.py]
+def foo() -> None:
+    pass
+[out]
+[out2]
+tmp/main.py:2: error: "int" has no attribute "foo"
