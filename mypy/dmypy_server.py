@@ -80,7 +80,7 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 
 # Server code.
 
-SOCKET_NAME = 'dmypy.sock'  # In current directory.
+SOCKET_NAME = '/tmp/dmypy.sock'
 
 
 def process_start_options(flags: List[str]) -> Options:
