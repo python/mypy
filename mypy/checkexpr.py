@@ -2445,9 +2445,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(typ, TypeType):
             # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
             # so we don't need to care about unions here.
-            if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
-                return self.has_member(typ.item.type.metaclass_type, member)
-            if isinstance(typ.item, AnyType):
+            item = typ.item
+            if isinstance(item, TypeVarType):
+                item = item.upper_bound
+            if isinstance(item, TupleType):
+                item = item.fallback
+            if isinstance(item, Instance) and item.type.metaclass_type is not None:
+                return self.has_member(item.type.metaclass_type, member)
+            if isinstance(item, AnyType):
                 return True
             return False
         else:
