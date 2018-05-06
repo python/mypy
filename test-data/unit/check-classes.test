@@ -3474,7 +3474,7 @@ S = TypeVar("S", bound=Test)
 def f(x: Type[Test]) -> str:
     return x * 0
 def g(x: Type[S]) -> str:
-    return x * 0
+    return reveal_type(x * 0)  # E: Revealed type is 'builtins.str'
 
 [case testMetaclassGetitem]
 class M(type):
