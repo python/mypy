@@ -2431,6 +2431,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Does type have member with the given name?"""
         # TODO: refactor this to use checkmember.analyze_member_access, otherwise
         # these two should be carefully kept in sync.
+        if isinstance(typ, TypeVarType):
+            typ = typ.upper_bound
+        if isinstance(typ, TupleType):
+            typ = typ.fallback
         if isinstance(typ, Instance):
             return typ.type.has_readable_member(member)
         if isinstance(typ, CallableType) and typ.is_type_obj():
@@ -2440,8 +2444,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(typ, UnionType):
             result = all(self.has_member(x, member) for x in typ.relevant_items())
             return result
-        elif isinstance(typ, TupleType):
-            return self.has_member(typ.fallback, member)
         elif isinstance(typ, TypeType):
             # Type[Union[X, ...]] is always normalized to Union[Type[X], ...],
             # so we don't need to care about unions here.
