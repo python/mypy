@@ -1,0 +1,362 @@
+[case testDataclassesBasic]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass
+class Person:
+    name: str
+    age: int
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
+Person('John', 32)
+Person('Jonh', 21, None)  # E: Too many arguments for "Person"
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesBasicInheritance]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class Mammal:
+    age: int
+
+
+@dataclass
+class Person(Mammal):
+    name: str
+
+    def summary(self):
+        return "%s is %d years old." % (self.name, self.age)
+
+reveal_type(Person)  # E: Revealed type is 'def (age: builtins.int, name: builtins.str) -> __main__.Person'
+Mammal(10)
+Person(32, 'John')
+Person(21, 'Jonh', None)  # E: Too many arguments for "Person"
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesDeepInheritance]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class A:
+    a: int
+
+
+@dataclass
+class B(A):
+    b: int
+
+
+@dataclass
+class C(B):
+    c: int
+
+
+@dataclass
+class D(C):
+    d: int
+
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> __main__.A'
+reveal_type(B)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int) -> __main__.B'
+reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int, c: builtins.int) -> __main__.C'
+reveal_type(D)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int, c: builtins.int, d: builtins.int) -> __main__.D'
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesOverriding]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class Mammal:
+    age: int
+
+
+@dataclass
+class Person(Mammal):
+    name: str
+    age: int
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, age: builtins.int) -> __main__.Person'
+Person('John', 32)
+Person('John', 21, None)  # E: Too many arguments for "Person"
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesFreezing]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class Person:
+    name: str
+
+john = Person('John')
+john.name = 'Ben'  # E: Property "name" defined in "Person" is read-only
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesFields]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(default=0, init=False)
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str) -> __main__.Person'
+john = Person('John')
+john.age = 'invalid'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+john.age = 24
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesBadInit]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(init=None)  # E: Argument "init" to "field" has incompatible type "None"; expected "bool"
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesDefaults]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = 0
+
+reveal_type(Application)  # E: Revealed type is 'def (name: builtins.str =, rating: builtins.int =) -> __main__.Application'
+app = Application()
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesDefaultFactories]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = field(default_factory=int)
+    rating_count: int = field()  # E: Attributes without a default cannot follow attributes with one
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesDefaultFactoryTypeChecking]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int = field(default_factory=str)  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesDefaultOrdering]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class Application:
+    name: str = 'Unnamed'
+    rating: int  # E: Attributes without a default cannot follow attributes with one
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassesClassmethods]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class Application:
+    name: str
+
+    @classmethod
+    def parse(cls, request: str) -> "Application":
+        return cls(name='...')
+
+app = Application.parse('')
+
+[builtins fixtures/list.pyi]
+[builtins fixtures/classmethod.pyi]
+
+
+[case testDataclassesClassVars]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import ClassVar
+
+
+@dataclass
+class Application:
+  name: str
+
+  COUNTER: ClassVar[int] = 0
+
+reveal_type(Application)  # E: Revealed type is 'def (name: builtins.str) -> __main__.Application'
+application = Application("example")
+application.COUNTER = 1  # E: Cannot assign to class variable "COUNTER" via instance
+Application.COUNTER = 1
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassEquality]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class Application:
+  name: str
+  rating: int
+
+app1 = Application("example-1", 5)
+app2 = Application("example-2", 5)
+app1 == app2
+app1 != app2
+app1 == None  # E: Unsupported operand types for == ("Application" and "None")
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassCustomEquality]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass
+class Application:
+  name: str
+  rating: int
+
+  def __eq__(self, other: 'Application') -> bool:
+     ...
+
+app1 = Application("example-1", 5)
+app2 = Application("example-2", 5)
+app1 == app2
+app1 != app2  # E: Unsupported left operand type for != ("Application")
+app1 == None  # E: Unsupported operand types for == ("Application" and "None")
+
+
+class SpecializedApplication(Application):
+  ...
+
+app1 == SpecializedApplication("example-3", 5)
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassOrdering]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass(order=True)
+class Application:
+  name: str
+  rating: int
+
+app1 = Application('example-1', 5)
+app2 = Application('example-2', 5)
+app1 < app2
+app1 > app2
+app1 <= app2
+app1 >= app2
+app1 < 5  # E: Unsupported operand types for < ("Application" and "int")
+app1 > 5  # E: Unsupported operand types for > ("Application" and "int")
+app1 <= 5  # E: Unsupported operand types for <= ("Application" and "int")
+app1 >= 5  # E: Unsupported operand types for >= ("Application" and "int")
+
+
+class SpecializedApplication(Application):
+  ...
+
+app3 = SpecializedApplication('example-3', 5)
+app1 < app3
+app1 > app3
+app1 <= app3
+app1 >= app3
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassOrderingWithoutEquality]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass(eq=False, order=True)  # E: eq must be True if order is True
+class Application:
+   ...
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassOrderingWithCustomMethods]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+
+
+@dataclass(order=True)
+class Application:
+  def __lt__(self, other: 'Application') -> bool: # E: You may not have a custom __lt__ method when order=True
+    ...
+
+[builtins fixtures/list.pyi]
+
+
+[case testDataclassDefaultsInheritance]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass(order=True)
+class Application:
+  id: Optional[int]
+  name: str
+
+
+@dataclass
+class SpecializedApplication(Application):
+  rating: int = 0
+
+
+reveal_type(SpecializedApplication)  # E: Revealed type is 'def (id: Union[builtins.int, None], name: builtins.str, rating: builtins.int =) -> __main__.SpecializedApplication'
+
+[builtins fixtures/list.pyi]
