@@ -793,7 +793,10 @@ class A:
 
 [case testAttrsFactoryBadReturn]
 import attr
+def my_factory() -> int:
+    return 7
 @attr.s
 class A:
     x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
+    y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/list.pyi]

@@ -37,7 +37,6 @@ def attrib(default: _T,
            factory: Optional[Callable[[], _T]] = ...,
            ) -> _T: ...
 # This form catches explicit None or no default but with no other arguments returns Any.
-# This form catches explicit None or no default but with no other arguments returns Any.
 @overload
 def attrib(default: None = ...,
            validator: None = ...,
