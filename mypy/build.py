@@ -1257,7 +1257,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         return None
 
     mtime = 0 if bazel else int(st.st_mtime)
-    if mtime != meta.mtime or path != meta.path:
+    if not bazel and (mtime != meta.mtime or path != meta.path):
         try:
             source_hash = manager.fscache.md5(path)
         except (OSError, UnicodeDecodeError, DecodeError):
