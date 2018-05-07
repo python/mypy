@@ -3459,6 +3459,23 @@ class Concrete(metaclass=Meta):
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
 Concrete + "hello"  # E: Unsupported operand types for + ("Type[Concrete]" and "str")
 
+[case testMetaclassOperatorTypeVar]
+from typing import Type, TypeVar
+
+class MetaClass(type):
+    def __mul__(cls, other: int) -> str:
+        return ""
+
+class Test(metaclass=MetaClass):
+    pass
+
+S = TypeVar("S", bound=Test)
+
+def f(x: Type[Test]) -> str:
+    return x * 0
+def g(x: Type[S]) -> str:
+    return reveal_type(x * 0)  # E: Revealed type is 'builtins.str'
+
 [case testMetaclassGetitem]
 class M(type):
     def __getitem__(self, key) -> int: return 1
