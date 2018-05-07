@@ -1604,17 +1604,33 @@ def f(a: T, b: T) -> T:
         return b
 [builtins fixtures/ops.pyi]
 
-[case testTypeVariableTypeLessThan]
+[case testTypeVarLessThan]
 from typing import TypeVar
 T = TypeVar('T')
 def f(a: T, b: T) -> T:
-    if a < b:
+    if a < b:  # E: Unsupported left operand type for < ("T")
         return a
     else:
         return b
 [builtins fixtures/ops.pyi]
-[out]
-main:4: error: Unsupported left operand type for < ("T")
+
+[case testTypeVarReversibleOperator]
+from typing import TypeVar
+class A:
+    def __mul__(cls, other: int) -> str: return ""
+T = TypeVar("T", bound=A)
+def f(x: T) -> str:
+    return reveal_type(x * 0)  # E: Revealed type is 'builtins.str'
+
+[case testTypeVarReversibleOperatorTuple]
+from typing import TypeVar, Tuple
+class A(Tuple[int, int]):
+    def __mul__(cls, other: Tuple[int, int]) -> str: return ""
+T = TypeVar("T", bound=A)
+def f(x: T) -> str:
+    return reveal_type(x * (1, 2) )  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/tuple.pyi]
 
 
 -- Subtyping generic callables
