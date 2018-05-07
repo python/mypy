@@ -815,3 +815,32 @@ class FFrozen(F):
     def bar(self) -> bool:
         return self._cb(5, 6)
 [builtins fixtures/callable.pyi]
+
+[case testAttrsWithFactory]
+from typing import List
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: List[int] = attr.ib(factory=list)
+    y: int = attr.ib(factory=my_factory)
+A()
+[builtins fixtures/list.pyi]
+
+[case testAttrsFactoryAndDefault]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both `default` and `factory`.
+[builtins fixtures/bool.pyi]
+
+[case testAttrsFactoryBadReturn]
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
+    y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/list.pyi]

@@ -340,6 +340,12 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     init = _get_bool_argument(ctx, rvalue, 'init', True)
     # TODO: Check for attr.NOTHING
     attr_has_default = bool(_get_argument(rvalue, 'default'))
+    attr_has_factory = bool(_get_argument(rvalue, 'factory'))
+
+    if attr_has_default and attr_has_factory:
+        ctx.api.fail("Can't pass both `default` and `factory`.", rvalue)
+    elif attr_has_factory:
+        attr_has_default = True
 
     # If the type isn't set through annotation but is passed through `type=` use that.
     type_arg = _get_argument(rvalue, 'type')
