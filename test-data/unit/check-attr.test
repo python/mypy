@@ -783,3 +783,17 @@ class A:
     y: int = attr.ib(factory=my_factory)
 A()
 [builtins fixtures/list.pyi]
+
+[case testAttrsFactoryAndDefault]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both `default` and `factory`.
+[builtins fixtures/bool.pyi]
+
+[case testAttrsFactoryBadReturn]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
+[builtins fixtures/list.pyi]
