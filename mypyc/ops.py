@@ -555,7 +555,13 @@ class RegisterOp(Op):
         super().__init__(line)
         assert dest != INVALID_REGISTER
         assert self.error_kind != -1, 'error_kind not defined'
-        self.dest = dest
+        self._dest = dest
+
+    # This is a read-only property so that subclasses can override it
+    # without the Optional.
+    @property
+    def dest(self) -> Optional[Register]:
+        return self._dest
 
     @abstractmethod
     def sources(self) -> List[Register]:
@@ -572,7 +578,23 @@ class RegisterOp(Op):
         return result
 
 
-class IncRef(RegisterOp):
+class StrictRegisterOp(RegisterOp):
+    """An operation that can be written as r1 = f(r2, ..., rn), where r1 must exist.
+
+    Like RegisterOp but without the option of r1 being None.
+    """
+
+    def __init__(self, dest: Register, line: int) -> None:
+        super().__init__(dest, line)
+
+    @property
+    def dest(self) -> Register:
+        # We could do this soundly without any checks by duplicating
+        # the _dest field, but that is kind of silly...
+        assert self._dest is not None
+        return self._dest
+
+class IncRef(StrictRegisterOp):
     """inc_ref r"""
 
     error_kind = ERR_NEVER
@@ -595,7 +617,7 @@ class IncRef(RegisterOp):
         return visitor.visit_inc_ref(self)
 
 
-class DecRef(RegisterOp):
+class DecRef(StrictRegisterOp):
     """dec_ref r"""
 
     error_kind = ERR_NEVER
@@ -714,7 +736,7 @@ class PyMethodCall(RegisterOp):
         return visitor.visit_py_method_call(self)
 
 
-class PyGetAttr(RegisterOp):
+class PyGetAttr(StrictRegisterOp):
     """dest = left.right :: py"""
 
     error_kind = ERR_MAGIC
@@ -753,7 +775,7 @@ OpDesc = NamedTuple('OpDesc', [('name', str),        # Symbolic name of the oper
                                ('error_kind', int)])
 
 
-def make_op(name: str, num_args: int, typ: str, format_str: str = None,
+def make_op(name: str, num_args: int, typ: str, format_str: Optional[str] = None,
             is_void: bool = False, kind: int = OP_MISC, error_kind: int = ERR_NEVER) -> OpDesc:
     if format_str is None:
         # Default format strings for some common things.
@@ -853,7 +875,7 @@ class PrimitiveOp(RegisterOp):
         return list(self.args)
 
     def __repr__(self) -> str:
-        return '<PrimiveOp name=%r type=%s dest=%d args=%s>' % (self.desc.name,
+        return '<PrimiveOp name=%r type=%s dest=%s args=%s>' % (self.desc.name,
                                                                 self.desc.type,
                                                                 self.dest,
                                                                 self.args)
@@ -871,7 +893,7 @@ class PrimitiveOp(RegisterOp):
         return visitor.visit_primitive_op(self)
 
 
-class Assign(RegisterOp):
+class Assign(StrictRegisterOp):
     """dest = int"""
 
     error_kind = ERR_NEVER
@@ -890,7 +912,7 @@ class Assign(RegisterOp):
         return visitor.visit_assign(self)
 
 
-class LoadInt(RegisterOp):
+class LoadInt(StrictRegisterOp):
     """dest = int"""
 
     error_kind = ERR_NEVER
@@ -909,7 +931,7 @@ class LoadInt(RegisterOp):
         return visitor.visit_load_int(self)
 
 
-class LoadErrorValue(RegisterOp):
+class LoadErrorValue(StrictRegisterOp):
     """dest = <error value for type>"""
 
     error_kind = ERR_NEVER
@@ -928,7 +950,7 @@ class LoadErrorValue(RegisterOp):
         return visitor.visit_load_error_value(self)
 
 
-class GetAttr(RegisterOp):
+class GetAttr(StrictRegisterOp):
     """dest = obj.attr (for a native object)"""
 
     error_kind = ERR_MAGIC
@@ -950,7 +972,7 @@ class GetAttr(RegisterOp):
         return visitor.visit_get_attr(self)
 
 
-class SetAttr(RegisterOp):
+class SetAttr(StrictRegisterOp):
     """obj.attr = src (for a native object)"""
 
     error_kind = ERR_FALSE
@@ -973,7 +995,7 @@ class SetAttr(RegisterOp):
         return visitor.visit_set_attr(self)
 
 
-class LoadStatic(RegisterOp):
+class LoadStatic(StrictRegisterOp):
     """dest = name :: static"""
 
     error_kind = ERR_NEVER
@@ -992,7 +1014,7 @@ class LoadStatic(RegisterOp):
         return visitor.visit_load_static(self)
 
 
-class TupleGet(RegisterOp):
+class TupleGet(StrictRegisterOp):
     """dest = src[n] (for fixed-length tuple)"""
 
     error_kind = ERR_NEVER
@@ -1014,7 +1036,7 @@ class TupleGet(RegisterOp):
         return visitor.visit_tuple_get(self)
 
 
-class Cast(RegisterOp):
+class Cast(StrictRegisterOp):
     """dest = cast(type, src)
 
     Perform a runtime type check (no representation or value conversion).
@@ -1039,7 +1061,7 @@ class Cast(RegisterOp):
         return visitor.visit_cast(self)
 
 
-class Box(RegisterOp):
+class Box(StrictRegisterOp):
     """dest = box(type, src)
 
     This converts from a potentially unboxed representation to a straight Python object.
@@ -1063,7 +1085,7 @@ class Box(RegisterOp):
         return visitor.visit_box(self)
 
 
-class Unbox(RegisterOp):
+class Unbox(StrictRegisterOp):
     """dest = unbox(type, src)
 
     This is similar to a cast, but it also changes to a (potentially) unboxed runtime

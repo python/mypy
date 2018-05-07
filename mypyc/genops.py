@@ -160,6 +160,7 @@ class IRBuilder(NodeVisitor[Register]):
         attributes = []
         for name, node in cdef.info.names.items():
             if isinstance(node.node, Var):
+                assert node.node.type, "Class member missing type"
                 attributes.append((name, self.type_to_rtype(node.node.type)))
         ir = self.mapper.type_to_ir[cdef.info]
         ir.attributes = attributes
@@ -200,6 +201,7 @@ class IRBuilder(NodeVisitor[Register]):
         self.enter()
 
         for arg in fdef.arguments:
+            assert arg.variable.type, "Function argument missing type"
             self.environment.add_local(arg.variable, self.type_to_rtype(arg.variable.type))
         fdef.body.accept(self)
 
@@ -644,6 +646,7 @@ class IRBuilder(NodeVisitor[Register]):
 
     def is_native_name_expr(self, expr: NameExpr) -> bool:
         # TODO later we want to support cross-module native calls too
+        assert expr.node, "RefExpr not resolved"
         if '.' in expr.node.fullname():
             module_name = '.'.join(expr.node.fullname().split('.')[:-1])
             return module_name == self.current_module_name
@@ -651,6 +654,7 @@ class IRBuilder(NodeVisitor[Register]):
         return True
 
     def visit_name_expr(self, expr: NameExpr) -> Register:
+        assert expr.node, "RefExpr not resolved"
         if expr.node.fullname() == 'builtins.None':
             target = self.alloc_target(NoneRType())
             self.add(PrimitiveOp(target, PrimitiveOp.NONE, [], expr.line))
@@ -674,6 +678,7 @@ class IRBuilder(NodeVisitor[Register]):
         return self.get_using_binder(reg, expr.node, expr)
 
     def get_using_binder(self, reg: Register, var: Var, expr: Expression) -> Register:
+        assert var.type, "Variable missing type"
         var_type = self.type_to_rtype(var.type)
         target_type = self.node_type(expr)
         if var_type != target_type:
@@ -710,6 +715,7 @@ class IRBuilder(NodeVisitor[Register]):
             return target
 
     def load_static_module_attr(self, expr: RefExpr) -> Register:
+        assert expr.node, "RefExpr not resolved"
         target = self.alloc_target(self.node_type(expr))
         module = '.'.join(expr.node.fullname().split('.')[:-1])
         right = expr.node.fullname().split('.')[-1]

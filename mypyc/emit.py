@@ -31,7 +31,7 @@ class EmitterContext:
 class Emitter:
     """Helper for C code generation."""
 
-    def __init__(self, context: EmitterContext, env: Environment = None) -> None:
+    def __init__(self, context: EmitterContext, env: Optional[Environment] = None) -> None:
         self.context = context
         self.env = env or Environment()
         self.fragments = []  # type: List[str]

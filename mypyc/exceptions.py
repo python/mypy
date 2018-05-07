@@ -28,7 +28,8 @@ def insert_exception_handling(ir: FuncIR) -> None:
         if can_raise:
             error_label = add_handler_block(ir)
             break
-    ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.name)
+    if error_label:
+        ir.blocks = split_blocks_at_errors(ir.blocks, error_label, ir.name)
 
 
 def add_handler_block(ir: FuncIR) -> Label:

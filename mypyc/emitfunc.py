@@ -130,11 +130,17 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     }
 
     def visit_primitive_op(self, op: PrimitiveOp) -> None:
-        dest = self.reg(op.dest) if op.dest is not None else None
+        # N.B: PrimitiveOp has support for is_void ops that don't have
+        # destinations, but none currently exist.
+        # So that we can assert that op.desc isn't None, we can handle
+        # is_void ops first.
+        if op.desc.is_void:
+            assert False, "No is_void ops implemented yet"
+
+        assert op.dest is not None
+        dest = self.reg(op.dest)
 
         if op.desc.kind == OP_BINARY:
-            assert op.dest is not None
-
             left = self.reg(op.args[0])
             right = self.reg(op.args[1])
             if op.desc in FunctionEmitterVisitor.OP_MAP:
@@ -230,7 +236,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         else:
             assert len(op.args) == 1
-            assert dest is not None
             src = self.reg(op.args[0])
             if op.desc is PrimitiveOp.LIST_LEN:
                 temp = self.temp_name()

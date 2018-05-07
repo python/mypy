@@ -2,7 +2,7 @@
 
 from abc import abstractmethod
 
-from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic
+from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional
 
 from mypyc.ops import (
     BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto,
@@ -248,7 +248,7 @@ class UndefinedVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
-        return set(), {op.dest}
+        return set(), {op.dest} if op.dest is not None else set()
 
 
 def analyze_undefined_regs(blocks: List[BasicBlock],
@@ -318,7 +318,7 @@ def run_analysis(blocks: List[BasicBlock],
                  initial: Set[T],
                  kind: int,
                  backward: bool,
-                 universe: Set[T] = None) -> AnalysisResult[T]:
+                 universe: Optional[Set[T]] = None) -> AnalysisResult[T]:
     """Run a general set-based data flow analysis.
 
     Args:
@@ -336,9 +336,6 @@ def run_analysis(blocks: List[BasicBlock],
 
     Return analysis results: (before, after)
     """
-    if kind == MUST_ANALYSIS:
-        assert universe is not None, "Universe must be defined for a must analysis"
-
     block_gen = {}
     block_kill = {}
 
@@ -368,6 +365,7 @@ def run_analysis(blocks: List[BasicBlock],
             before[block.label] = set()
             after[block.label] = set()
         else:
+            assert universe is not None, "Universe must be defined for a must analysis"
             before[block.label] = set(universe)
             after[block.label] = set(universe)
 
@@ -391,6 +389,7 @@ def run_analysis(blocks: List[BasicBlock],
                     new_before |= after[pred]
                 else:
                     new_before &= after[pred]
+            assert new_before is not None
         else:
             new_before = set(initial)
         before[label] = new_before
