@@ -167,7 +167,6 @@ a.py:8: note: Following member(s) of "C" have conflicts:
 a.py:8: note:     x: expected "int", got "str"
 
 [case testIncrCacheBustedProtocol]
-# flags: --verbose
 [file a.py]
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering

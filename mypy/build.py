@@ -965,7 +965,6 @@ def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
 
 
 def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
-                              old_meta_snapshot: Dict[str, str],
                               manager: BuildManager, graph: Graph) -> None:
     """Write cache files for protocol dependencies.
 
@@ -981,8 +980,16 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
     proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
     meta_snapshot = {}  # type: Dict[str, str]
     error = False
-    for id in graph:
-        meta_snapshot[id] = graph[id].source_hash or old_meta_snapshot[id]
+    for id, st in graph.items():
+        # If we didn't parse a file (so it doesn't have a
+        # source_hash), then it must be a module with a fresh cache,
+        # so use the hash from that.
+        if st.source_hash:
+            meta_snapshot[id] = st.source_hash
+        else:
+            assert st.meta, "Module must be either parsed or cached"
+            meta_snapshot[id] = st.meta.hash
+
     if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
         manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
         error = True
@@ -997,7 +1004,7 @@ def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
 
 
 def read_protocol_cache(manager: BuildManager,
-                        graph: Graph) -> Optional[Tuple[Dict[str, str], Dict[str, Set[str]]]]:
+                        graph: Graph) -> Optional[Dict[str, Set[str]]]:
     """Read and validate protocol dependencies cache.
 
     See docstring for write_protocol_cache for details about which kinds of
@@ -1009,11 +1016,12 @@ def read_protocol_cache(manager: BuildManager,
                                     log_error='Could not load protocol metadata: ')
     if meta_snapshot is None:
         return None
-    current_meta_snapshot = {}  # type: Dict[str, str]
-    for id in graph:
-        meta = graph[id].meta
-        if meta:
-            current_meta_snapshot[id] = meta.hash
+    # Take a snapshot of the source hashes from all of the metas we found.
+    # (Including the ones we rejected because they were out of date.)
+    # We use this to verify that the match up with the proto_deps.
+    current_meta_snapshot = { id: st.meta_source_hash for id, st in graph.items()
+                              if st.meta_source_hash is not None }
+
     common = set(meta_snapshot.keys()) & set(current_meta_snapshot.keys())
     if any(meta_snapshot[id] != current_meta_snapshot[id] for id in common):
         # TODO: invalidate also if options changed (like --strict-optional)?
@@ -1028,7 +1036,7 @@ def read_protocol_cache(manager: BuildManager,
         manager.log('Could not load protocol cache: cache is not a dict: {}'
                     .format(type(deps)))
         return None
-    return (meta_snapshot, {k: set(v) for (k, v) in deps.items()})
+    return {k: set(v) for (k, v) in deps.items()}
 
 
 def _load_json_file(file: str, manager: BuildManager,
@@ -1610,6 +1618,7 @@ class State:
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
     source_hash = None  # type: Optional[str]  # Hash calculated based on the source code
+    meta_source_hash = None  # type: Optional[str]  # Hash of the source given in the meta, if any
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
@@ -1700,6 +1709,7 @@ class State:
             # TODO: Get mtime if not cached.
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
+                self.meta_source_hash = self.meta.hash
         self.add_ancestors()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
         if self.meta:
@@ -2342,11 +2352,10 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     # a fine-grained cache (so that we can properly update them incrementally).
     # The `read_protocol_cache` will also validate
     # the protocol cache against the loaded individual cache files.
-    old_proto_snapshot = {}  # type: Dict[str, str]
     if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
-        res = read_protocol_cache(manager, graph)
-        if res:
-            old_proto_snapshot, TypeState.proto_deps = res
+        proto_deps = read_protocol_cache(manager, graph)
+        if proto_deps is not None:
+            TypeState.proto_deps = proto_deps
         elif manager.stats.get('fresh_metas', 0) > 0:
             # There were some cache files read, but no protocol dependencies loaded.
             manager.log("Error reading protocol dependencies cache -- aborting cache load")
@@ -2368,7 +2377,7 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
             # processed the whole graph.
             TypeState.update_protocol_deps()
             if TypeState.proto_deps is not None and not manager.options.fine_grained_incremental:
-                write_protocol_deps_cache(TypeState.proto_deps, old_proto_snapshot, manager, graph)
+                write_protocol_deps_cache(TypeState.proto_deps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
