@@ -4291,9 +4291,9 @@ import b
 [file a.py]
 [file b.py]
 -- This is a heinous hack, but we simulate having a invalid cache by clobbering
--- the proto deps file with something with a hash mismatch.
+-- the proto deps file with something with hash mismatches.
 [file ../.mypy_cache/3.6/@proto_deps.meta.json.2]
-{"__main__": "00000000000000000000000000000000", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "3d22863e34b3d846306e1e76ebc82407"}
+{"__main__": "00000000000000000000000000000000", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "00000000000000000000000000000000"}
 [file b.py.2]
 # uh
 -- Every file should get reloaded, since the cache was invalidated
@@ -4311,3 +4311,17 @@ import b
 -- Every file should get reloaded, since the settings changed
 [stale a, b, builtins]
 [rechecked a, b, builtins]
+
+[case testIncrementalWorkingFineGrainedCache]
+# flags: --cache-fine-grained
+# flags2: --cache-fine-grained
+import a
+import b
+[file a.py]
+[file b.py]
+[file b.py.2]
+# uh
+-- b gets rechecked because it changed, but nothing is stale
+-- since the interface didn't change
+[stale]
+[rechecked b]
