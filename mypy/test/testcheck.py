@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from mypy import build, defaults
 from mypy.build import BuildSource, Graph
 from mypy.test.config import test_temp_dir
-from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, DeleteFile
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
@@ -93,7 +93,6 @@ class TypeCheckSuite(DataSuite):
             # Incremental tests are run once with a cold cache, once with a warm cache.
             # Expect success on first run, errors from testcase.output (if any) on second run.
             # We briefly sleep to make sure file timestamps are distinct.
-            self.clear_cache()
             num_steps = max([2] + list(testcase.output2.keys()))
             # Check that there are no file changes beyond the last run (they would be ignored).
             for dn, dirs, files in os.walk(os.curdir):
@@ -103,18 +102,16 @@ class TypeCheckSuite(DataSuite):
                         raise ValueError(
                             'Output file {} exists though test case only has {} runs'.format(
                                 file, num_steps))
+            steps = testcase.find_steps()
             for step in range(1, num_steps + 1):
-                self.run_case_once(testcase, step)
+                ops = steps[step - 2] if step - 2 < len(steps) else []
+                self.run_case_once(testcase, ops, step)
         else:
             self.run_case_once(testcase)
 
-    def clear_cache(self) -> None:
-        dn = defaults.CACHE_DIR
-
-        if os.path.exists(dn):
-            shutil.rmtree(dn)
-
-    def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
+    def run_case_once(self, testcase: DataDrivenTestCase,
+                      operations: List[FileOperation] = [],
+                      incremental_step: int = 0) -> None:
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
@@ -127,16 +124,15 @@ class TypeCheckSuite(DataSuite):
                     break
         elif incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
-            for dn, dirs, files in os.walk(os.curdir):
-                for file in files:
-                    if file.endswith('.' + str(incremental_step)):
-                        full = os.path.join(dn, file)
-                        target = full[:-2]
-                        copy_and_fudge_mtime(full, target)
-            # Delete files scheduled to be deleted in [delete <path>.num] sections.
-            for path in testcase.deleted_paths.get(incremental_step, set()):
-                # Use retries to work around potential flakiness on Windows (AppVeyor).
-                retry_on_error(lambda: os.remove(path))
+            for op in operations:
+                if isinstance(op, UpdateFile):
+                    # Modify/create file
+                    copy_and_fudge_mtime(op.source_path, op.target_path)
+                else:
+                    # Delete file
+                    # Use retries to work around potential flakiness on Windows (AppVeyor).
+                    path = op.path
+                    retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
