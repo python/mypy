@@ -1019,8 +1019,8 @@ def read_protocol_cache(manager: BuildManager,
     # Take a snapshot of the source hashes from all of the metas we found.
     # (Including the ones we rejected because they were out of date.)
     # We use this to verify that the match up with the proto_deps.
-    current_meta_snapshot = { id: st.meta_source_hash for id, st in graph.items()
-                              if st.meta_source_hash is not None }
+    current_meta_snapshot = {id: st.meta_source_hash for id, st in graph.items()
+                             if st.meta_source_hash is not None}
 
     common = set(meta_snapshot.keys()) & set(current_meta_snapshot.keys())
     if any(meta_snapshot[id] != current_meta_snapshot[id] for id in common):
