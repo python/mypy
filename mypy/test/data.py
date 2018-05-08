@@ -308,6 +308,11 @@ class DataDrivenTestCase:
                 pycache = os.path.join(path, '__pycache__')
                 if os.path.isdir(pycache):
                     shutil.rmtree(pycache)
+                # As a somewhat nasty hack, ignore any dirs with .mypy_cache in the path,
+                # to allow test cases to intentionally corrupt the cache without provoking
+                # the test suite when there are still files left over.
+                if '/.mypy_cache' in path:
+                    continue
                 try:
                     rmdir(path)
                 except OSError as error:

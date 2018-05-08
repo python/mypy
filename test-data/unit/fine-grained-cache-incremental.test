@@ -165,3 +165,20 @@ class C:
 a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
 a.py:8: note: Following member(s) of "C" have conflicts:
 a.py:8: note:     x: expected "int", got "str"
+
+[case testIncrCacheBustedProtocol]
+# flags: --verbose
+[file a.py]
+[file b.py]
+-- This is a heinous hack, but we simulate having a invalid cache by clobbering
+-- the proto deps file with something with a hash mismatch.
+[file ../.mypy_cache/3.6/@proto_deps.meta.json.2]
+{"__main__": "00000000000000000000000000000000", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "3d22863e34b3d846306e1e76ebc82407"}
+[file b.py.2]
+# uh
+-- A full reload shows up as nothing getting rechecked by fine-grained mode.
+-- If we did not do a full reload, b would be stale and checked in fine-grained mode
+[stale]
+[rechecked]
+[out]
+==
