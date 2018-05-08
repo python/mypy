@@ -17,7 +17,7 @@ def native_function_header(fn: FuncIR) -> str:
     return 'static {ret_type}{prefix}{name}({args})'.format(
         ret_type=fn.ret_type.ctype_spaced,
         prefix=NATIVE_PREFIX,
-        name=fn.name,
+        name=fn.cname,
         args=', '.join(args) or 'void')
 
 

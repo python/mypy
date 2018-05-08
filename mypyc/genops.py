@@ -158,12 +158,18 @@ class IRBuilder(NodeVisitor[Register]):
 
     def visit_class_def(self, cdef: ClassDef) -> Register:
         attributes = []
+        methods = []
         for name, node in cdef.info.names.items():
             if isinstance(node.node, Var):
                 assert node.node.type, "Class member missing type"
                 attributes.append((name, self.type_to_rtype(node.node.type)))
+            elif isinstance(node.node, FuncDef):
+                func = self.gen_func_def(node.node, cdef.name)
+                self.functions.append(func)
+                methods.append(func)
         ir = self.mapper.type_to_ir[cdef.info]
         ir.attributes = attributes
+        ir.methods = methods
         return INVALID_REGISTER
 
     def visit_import(self, node: Import) -> Register:
@@ -197,7 +203,7 @@ class IRBuilder(NodeVisitor[Register]):
 
         return INVALID_REGISTER
 
-    def visit_func_def(self, fdef: FuncDef) -> Register:
+    def gen_func_def(self, fdef: FuncDef, class_name: Optional[str] = None) -> FuncIR:
         self.enter()
 
         for arg in fdef.arguments:
@@ -213,8 +219,10 @@ class IRBuilder(NodeVisitor[Register]):
 
         blocks, env = self.leave()
         args = self.convert_args(fdef)
-        func = FuncIR(fdef.name(), args, ret_type, blocks, env)
-        self.functions.append(func)
+        return FuncIR(fdef.name(), class_name, args, ret_type, blocks, env)
+
+    def visit_func_def(self, fdef: FuncDef) -> Register:
+        self.functions.append(self.gen_func_def(fdef))
         return INVALID_REGISTER
 
     def convert_args(self, fdef: FuncDef) -> List[RuntimeArg]:

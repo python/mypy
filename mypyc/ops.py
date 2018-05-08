@@ -1144,11 +1144,15 @@ class FuncIR:
 
     def __init__(self,
                  name: str,
+                 class_name: Optional[str],
                  args: List[RuntimeArg],
                  ret_type: RType,
                  blocks: List[BasicBlock],
                  env: Environment) -> None:
         self.name = name
+        self.class_name = class_name
+        # TODO: escape ___ in names
+        self.cname = name if not class_name else class_name + '___' + name
         self.args = args
         self.ret_type = ret_type
         self.blocks = blocks
@@ -1171,6 +1175,7 @@ class ClassIR:
                  attributes: List[Tuple[str, RType]]) -> None:
         self.name = name
         self.attributes = attributes
+        self.methods = []  # type: List[FuncIR]
 
     @property
     def struct_name(self) -> str:

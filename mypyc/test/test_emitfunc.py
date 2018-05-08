@@ -237,7 +237,7 @@ class TestGenerateFunction(unittest.TestCase):
 
     def test_simple(self) -> None:
         self.block.ops.append(Return(self.reg))
-        fn = FuncIR('myfunc', [self.arg], IntRType(), [self.block], self.env)
+        fn = FuncIR('myfunc', None, [self.arg], IntRType(), [self.block], self.env)
         emitter = Emitter(EmitterContext())
         generate_native_function(fn, emitter, 'prog.py')
         result = emitter.fragments
@@ -253,7 +253,7 @@ class TestGenerateFunction(unittest.TestCase):
     def test_register(self) -> None:
         self.temp = self.env.add_temp(IntRType())
         self.block.ops.append(LoadInt(self.temp, 5))
-        fn = FuncIR('myfunc', [self.arg], ListRType(), [self.block], self.env)
+        fn = FuncIR('myfunc', None, [self.arg], ListRType(), [self.block], self.env)
         emitter = Emitter(EmitterContext())
         generate_native_function(fn, emitter, 'prog.py')
         result = emitter.fragments

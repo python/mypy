@@ -2,7 +2,7 @@
 
 import textwrap
 
-from mypyc.common import NATIVE_PREFIX
+from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import ClassIR, FuncIR, RType, ObjectRType, Environment, type_struct_name
@@ -20,6 +20,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     clear_name = '{}_clear'.format(name)
     dealloc_name = '{}_dealloc'.format(name)
     getseters_name = '{}_getseters'.format(name)
+    methods_name = '{}_methods'.format(name)
     vtable_name = '{}_vtable'.format(name)
 
     def emit_line() -> None:
@@ -27,7 +28,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     # Use dummy empty __init__ for now.
     # TODO: Use UserRType
-    init = FuncIR(cl.name, [], ObjectRType(), [], Environment())
+    init = FuncIR(cl.name, None, [], ObjectRType(), [], Environment())
     emitter.emit_line(native_function_header(init) + ';')
     emit_line()
     generate_object_struct(cl, emitter)
@@ -46,6 +47,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     generate_getseter_declarations(cl, emitter)
     emit_line()
     generate_getseters_table(cl, getseters_name, emitter)
+    emit_line()
+    generate_methods_table(cl, methods_name, emitter)
     emit_line()
 
     emitter.emit_line(textwrap.dedent("""\
@@ -77,7 +80,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             0,                         /* tp_weaklistoffset */
             0,                         /* tp_iter */
             0,                         /* tp_iternext */
-            0,                         /* tp_methods */
+            {methods_name},            /* tp_methods */
             0,                         /* tp_members */
             {getseters_name},          /* tp_getset */
             0,                         /* tp_base */
@@ -96,6 +99,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
                     clear_name=clear_name,
                     dealloc_name=dealloc_name,
                     new_name=new_name,
+                    methods_name=methods_name,
                     getseters_name=getseters_name))
     emitter.emit_line()
     generate_constructor_for_class(cl, new_name, vtable_name, emitter)
@@ -246,6 +250,18 @@ def generate_dealloc_for_class(cl: ClassIR,
     emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
     emitter.emit_line('}')
 
+
+def generate_methods_table(cl: ClassIR,
+                           name: str,
+                           emitter: Emitter) -> None:
+
+    emitter.emit_line('static PyMethodDef {}[] = {{'.format(name))
+    for fn in cl.methods:
+        emitter.emit_line('{{"{}",'.format(fn.name))
+        emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname))
+        emitter.emit_line(' METH_VARARGS | METH_KEYWORDS, NULL},')
+    emitter.emit_line('{NULL}  /* Sentinel */')
+    emitter.emit_line('};')
 
 def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
     for attr, rtype in cl.attributes:

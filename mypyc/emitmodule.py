@@ -80,11 +80,12 @@ class ModuleGenerator:
         for symbol in self.module.unicode_literals.values():
             self.declare_static_pyobject(symbol)
 
+        for fn in self.module.functions:
+            generate_function_declaration(fn, emitter)
+
         for cl in self.module.classes:
             generate_class(cl, self.module_name, emitter)
 
-        for fn in self.module.functions:
-            generate_function_declaration(fn, emitter)
 
         emitter.emit_line()
 
@@ -113,7 +114,7 @@ class ModuleGenerator:
             emitter.emit_line(
                 ('{{"{name}", (PyCFunction){prefix}{name}, METH_VARARGS | METH_KEYWORDS, '
                  'NULL /* docstring */}},').format(
-                    name=fn.name,
+                    name=fn.cname,
                     prefix=PREFIX))
         emitter.emit_line('{NULL, NULL, 0, NULL}')
         emitter.emit_line('};')

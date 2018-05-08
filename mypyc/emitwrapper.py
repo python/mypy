@@ -8,7 +8,7 @@ from mypyc.ops import FuncIR, RType
 def wrapper_function_header(fn: FuncIR) -> str:
     return 'static PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
             prefix=PREFIX,
-            name=fn.name)
+            name=fn.cname)
 
 
 def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
@@ -18,12 +18,19 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     then boxing the return value.
     """
     emitter.emit_line('{} {{'.format(wrapper_function_header(fn)))
-    arg_names = ''.join('"{}", '.format(arg.name) for arg in fn.args)
+
+    # If fn is a method, then the first argument is a self param
+    real_args = fn.args[:]
+    if fn.class_name:
+        arg = real_args.pop(0)
+        emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
+
+    arg_names = ''.join('"{}", '.format(arg.name) for arg in real_args)
     emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
-    for arg in fn.args:
+    for arg in real_args:
         emitter.emit_line('PyObject *obj_{};'.format(arg.name))
-    arg_spec = 'O' * len(fn.args)
-    arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in fn.args)
+    arg_spec = 'O' * len(real_args)
+    arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in real_args)
     emitter.emit_lines(
         'if (!PyArg_ParseTupleAndKeywords(args, kw, "{}:f", kwlist{})) {{'.format(
             arg_spec, arg_ptrs),
@@ -38,13 +45,13 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         #       Are they relevant?
         ret_type = fn.ret_type
         emitter.emit_line('{}retval = {}{}({});'.format(ret_type.ctype_spaced,
-                                                        NATIVE_PREFIX, fn.name,
+                                                        NATIVE_PREFIX, fn.cname,
                                                         native_args))
         emitter.emit_error_check('retval', ret_type, 'return NULL;')
         emitter.emit_box('retval', 'retbox', ret_type, declare_dest=True)
         emitter.emit_lines('return retbox;')
     else:
-        emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX, fn.name, native_args))
+        emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX, fn.cname, native_args))
         # TODO: Tracebacks?
     emitter.emit_line('}')
 
