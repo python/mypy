@@ -1,0 +1,55 @@
+[case testTree]
+from typing import Optional
+# This is bullshit
+class Node:
+    def __init__(self) -> None:
+        self.value = 0
+        self.left = None  # type: Optional[Node]
+        self.right = None  # type: Optional[Node]
+    def sum(self) -> int:
+        left = 0
+        if self.left is not None:
+            left = self.left.sum()
+        right = 0
+        if self.right is not None:
+            right = self.right.sum()
+        return self.value + left + right
+def node(v: int) -> Node:
+    x = Node()
+    x.value = v
+    x.left = None
+    x.right = None
+    return x
+def sum_tree(x: Optional[Node]) -> int:
+    if x is None:
+        return 0
+    return x.value + sum_tree(x.left) + sum_tree(x.right)
+def lol(n: int) -> Optional[Node]:
+    if n == 0:
+        return None
+    x = node(n)
+    x.left = lol(n - 1)
+    x.right = x.left
+    return x
+[file driver.py]
+from typing import Optional
+import native
+import interpreted
+from timeit import timeit
+
+def test(m):
+    tree = m.lol(5)
+    assert(m.sum_tree(tree) == 57)
+    assert(tree.sum() == 57)
+
+    g = {**globals(), **locals()}
+    sum = timeit('m.sum_tree(tree)', globals=g)
+    sum2 = timeit('tree.sum()', globals=g)
+    build = timeit('m.lol(5)', globals=g)
+    return (sum, sum2, build)
+
+nsum, nsum2, nbuild = test(native)
+isum, isum2, ibuild = test(interpreted)
+print("Sum speedup:", isum/nsum)
+print("Sum method speedup:", isum2/nsum2)
+print("Build speedup:", ibuild/nbuild)

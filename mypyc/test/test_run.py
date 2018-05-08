@@ -17,18 +17,22 @@ from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output,
 )
 
+import pytest  # type: ignore  # no pytest in typeshed
 
 files = ['run.test',
          'run-classes.test']
-
 
 class TestRun(MypycDataSuite):
     """Test cases that build a C extension and run code."""
     files = files
     base_path = test_temp_dir
     optional_out = True
+    benchmark = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if self.benchmark and not testcase.config.getoption('--bench', False):
+            pytest.skip()
+
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             text = '\n'.join(testcase.input)
 
@@ -41,6 +45,8 @@ class TestRun(MypycDataSuite):
             os.mkdir('tmp/py')
             source_path = 'tmp/py/native.py'
             with open(source_path, 'w') as f:
+                f.write(text)
+            with open('tmp/interpreted.py', 'w') as f:
                 f.write(text)
 
             source = build.BuildSource(source_path, 'native', text)
@@ -90,7 +96,11 @@ class TestRun(MypycDataSuite):
                 print('*** Exit status: %d' % proc.returncode)
 
             # Verify output.
-            assert_test_output(testcase, outlines, 'Invalid output')
+            if self.benchmark:
+                print('Test output:')
+                print(output)
+            else:
+                assert_test_output(testcase, outlines, 'Invalid output')
 
             assert proc.returncode == 0
 
