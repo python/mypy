@@ -1001,7 +1001,7 @@ from foo import bar
 [file foo/bar.py]
 pass
 
-[case testImportReExportFromChildrentInCycle]
+[case testImportReExportFromChildrenInCycle]
 # cmd: mypy -m project.root project.study.a project.neighbor
 [file project/__init__.py]
 from project.study import CustomType

@@ -696,6 +696,7 @@ class BuildManager:
                                    blocker=True)
 
             return new_id
+
         res = []  # type: List[Tuple[int, str, int]]
         for imp in file.imports:
             if not imp.is_unreachable:
@@ -721,15 +722,14 @@ class BuildManager:
                             res.append((pri, sub_id, imp.line))
                         else:
                             all_are_submodules = False
-                    # If all imported names are submodules, don't add
-                    # cur_id as a dependency. This is basically a workaround
-                    # of bugs in cycle handling (#4498).
-                    # Otherwise (i.e., if at least one imported name
-                    # isn't a submodule) cur_id is also a dependency,
-                    # and we should insert it *before* any submodules.
-                    if not all_are_submodules:
-                        pri = import_priority(imp, PRI_HIGH)
-                        res.insert(pos, ((pri, cur_id, imp.line)))
+                    # Add cur_id as a dependency, even if all of the
+                    # imports are submodules. Processing import from will try
+                    # to look through cur_id, so we should depend on it.
+                    # As a workaround for for some bugs in cycle handling (#4498),
+                    # if all of the imports are submodules, do the import at a lower
+                    # priority.
+                    pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_MED)
+                    res.insert(pos, ((pri, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
