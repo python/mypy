@@ -55,6 +55,8 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
         # Handle some aliases that Python is happy to accept and that are used in the wild.
         if encoding.startswith(('iso-latin-1-', 'latin-1-')) or encoding == 'iso-latin-1':
             encoding = 'latin-1'
+        elif encoding.startswith('utf-8-'):
+            encoding = 'utf8'
         return encoding, line
     else:
         default_encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
