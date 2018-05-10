@@ -3,7 +3,7 @@
 --
 -- These tests are run only with the cache.
 --
--- '# num_build_steps: N' specifies how many regulal build steps (without the daemon)
+-- '# num_build_steps: N' specifies how many regular build steps (without the daemon)
 -- to do before switching to running using the daemon. Default is 1.
 
 
