@@ -463,7 +463,7 @@ def process_options(args: List[str],
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
                         help=strict_help)
     parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
-                        dest='shadow_file',
+                        dest='shadow_file', action='append',
                         help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
     # hidden options
     # --debug-cache will disable any cache-related compressions/optimizations,

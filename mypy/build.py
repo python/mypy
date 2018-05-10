@@ -655,9 +655,14 @@ class BuildManager:
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
 
-        # a mapping from files to their corresponding shadow files
+        # a mapping from source files to their corresponding shadow files
+        # for efficient lookup
         self.shadow_map = {}  # type: Dict[str, str]
-        # a mapping from incoming files to files that exist in the shadow map
+        if self.options.shadow_file is not None:
+            self.shadow_map = {source_file: shadow_file
+                               for (source_file, shadow_file)
+                               in self.options.shadow_file}
+        # a mapping from typechecked files to files to their possible shadow files
         self.shadow_equivalence_map = {}  # type: Dict[str, Optional[str]]
 
     def use_fine_grained_cache(self) -> bool:
