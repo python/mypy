@@ -308,6 +308,13 @@ class DataDrivenTestCase:
                 pycache = os.path.join(path, '__pycache__')
                 if os.path.isdir(pycache):
                     shutil.rmtree(pycache)
+                # As a somewhat nasty hack, ignore any dirs with .mypy_cache in the path,
+                # to allow test cases to intentionally corrupt the cache without provoking
+                # the test suite when there are still files left over.
+                # (Looking at / should be fine on windows because these are paths specified
+                # in the test cases.)
+                if '/.mypy_cache' in path:
+                    continue
                 try:
                     rmdir(path)
                 except OSError as error:
@@ -342,6 +349,8 @@ class DataDrivenTestCase:
         The first list item corresponds to the first incremental step, the second for the
         second step, etc. Each operation can either be a file modification/creation (UpdateFile)
         or deletion (DeleteFile).
+
+        Defaults to having two steps if there aern't any operations.
         """
         steps = {}  # type: Dict[int, List[FileOperation]]
         for path, _ in self.files:
@@ -358,8 +367,8 @@ class DataDrivenTestCase:
             for path in paths:
                 module = module_from_path(path)
                 steps.setdefault(num, []).append(DeleteFile(module, path))
-        max_step = max(steps)
-        return [steps[num] for num in range(2, max_step + 1)]
+        max_step = max(steps) if steps else 2
+        return [steps.get(num, []) for num in range(2, max_step + 1)]
 
 
 def module_from_path(path: str) -> str:

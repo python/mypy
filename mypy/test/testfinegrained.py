@@ -81,22 +81,13 @@ class FineGrainedSuite(DataSuite):
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
-        for name, _ in testcase.files:
-            if 'mypy.ini' in name:
-                config = name  # type: Optional[str]
-                break
-        else:
-            config = None
-        if config:
-            parse_config_file(options, config)
+        build_options = self.get_options(main_src, testcase, build_cache=True)
         server = Server(options)
 
+        num_regular_incremental_steps = self.get_build_steps(main_src)
         step = 1
         sources = self.parse_sources(main_src, step, options)
-        if self.use_cache:
-            build_options = self.get_options(main_src, testcase, build_cache=True)
-            if config:
-                parse_config_file(build_options, config)
+        if step <= num_regular_incremental_steps:
             messages = self.build(build_options, sources)
         else:
             messages = self.run_check(server, sources)
@@ -122,7 +113,11 @@ class FineGrainedSuite(DataSuite):
                     # Delete file
                     os.remove(op.path)
             sources = self.parse_sources(main_src, step, options)
-            new_messages = self.run_check(server, sources)
+
+            if step <= num_regular_incremental_steps:
+                new_messages = self.build(build_options, sources)
+            else:
+                new_messages = self.run_check(server, sources)
 
             updated = []  # type: List[str]
             changed = []  # type: List[str]
@@ -179,6 +174,11 @@ class FineGrainedSuite(DataSuite):
         if options.follow_imports == 'normal':
             options.follow_imports = 'error'
 
+        for name, _ in testcase.files:
+            if 'mypy.ini' in name:
+                parse_config_file(options, name)
+                break
+
         return options
 
     def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
@@ -204,6 +204,15 @@ class FineGrainedSuite(DataSuite):
             filtered = sorted(filtered)
             result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
         return result
+
+    def get_build_steps(self, program_text: str) -> int:
+        """Get the number of regular incremental steps to run, from the test source"""
+        if not self.use_cache:
+            return 0
+        m = re.search('# num_build_steps: ([0-9]+)$', program_text, flags=re.MULTILINE)
+        if m is not None:
+            return int(m.group(1))
+        return 1
 
     def parse_sources(self, program_text: str,
                       incremental_step: int,
