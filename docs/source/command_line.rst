@@ -468,7 +468,8 @@ Here are some more useful flags:
   make transformations to a file before type checking without having to change
   the file in-place.  (For example, tooling could use this to display the type
   of an expression by wrapping it with a call to reveal_type in the shadow
-  file and then parsing the output.)
+  file and then parsing the output.) This argument may be specified multiple times
+  to make mypy substitute multiple different files with their shadow replacements.
 
 .. _no-implicit-optional:
 
