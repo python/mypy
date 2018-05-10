@@ -311,6 +311,8 @@ class DataDrivenTestCase:
                 # As a somewhat nasty hack, ignore any dirs with .mypy_cache in the path,
                 # to allow test cases to intentionally corrupt the cache without provoking
                 # the test suite when there are still files left over.
+                # (Looking at / should be fine on windows because these are paths specified
+                # in the test cases.)
                 if '/.mypy_cache' in path:
                     continue
                 try:
@@ -347,6 +349,8 @@ class DataDrivenTestCase:
         The first list item corresponds to the first incremental step, the second for the
         second step, etc. Each operation can either be a file modification/creation (UpdateFile)
         or deletion (DeleteFile).
+
+        Defaults to having two steps if there aern't any operations.
         """
         steps = {}  # type: Dict[int, List[FileOperation]]
         for path, _ in self.files:

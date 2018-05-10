@@ -104,7 +104,8 @@ class TypeCheckSuite(DataSuite):
                                 file, num_steps))
             steps = testcase.find_steps()
             for step in range(1, num_steps + 1):
-                ops = steps[step - 2] if step - 2 < len(steps) else []
+                idx = step - 2
+                ops = steps[idx] if idx < len(steps) and idx > 0 else []
                 self.run_case_once(testcase, ops, step)
         else:
             self.run_case_once(testcase)

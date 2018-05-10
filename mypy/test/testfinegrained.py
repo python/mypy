@@ -84,10 +84,10 @@ class FineGrainedSuite(DataSuite):
         build_options = self.get_options(main_src, testcase, build_cache=True)
         server = Server(options)
 
-        build_steps = self.get_build_steps(main_src)
+        num_regular_incremental_steps = self.get_build_steps(main_src)
         step = 1
         sources = self.parse_sources(main_src, step, options)
-        if step <= build_steps:
+        if step <= num_regular_incremental_steps:
             messages = self.build(build_options, sources)
         else:
             messages = self.run_check(server, sources)
@@ -114,7 +114,7 @@ class FineGrainedSuite(DataSuite):
                     os.remove(op.path)
             sources = self.parse_sources(main_src, step, options)
 
-            if step <= build_steps:
+            if step <= num_regular_incremental_steps:
                 new_messages = self.build(build_options, sources)
             else:
                 new_messages = self.run_check(server, sources)
@@ -206,6 +206,7 @@ class FineGrainedSuite(DataSuite):
         return result
 
     def get_build_steps(self, program_text: str) -> int:
+        """Get the number of regular incremental steps to run, from the test source"""
         if not self.use_cache:
             return 0
         m = re.search('# num_build_steps: ([0-9]+)$', program_text, flags=re.MULTILINE)

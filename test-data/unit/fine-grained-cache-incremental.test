@@ -1,8 +1,10 @@
 -- Test cases for building caches for fine-grained mode using incremental
 -- builds.
 --
--- '# num_build_steps: N' specifies how many build steps to do before
--- switching to running using the daemon.
+-- These tests are run only with the cache.
+--
+-- '# num_build_steps: N' specifies how many regulal build steps (without the daemon)
+-- to do before switching to running using the daemon. Default is 1.
 
 
 -- Add file
