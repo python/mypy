@@ -2232,9 +2232,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # If any of the comprehensions use async for, the expression will return an async generator
         # object
         if any(e.is_async):
-            typ = 'typing.AsyncIterator'
+            typ = 'typing.AsyncGenerator'
         else:
-            typ = 'typing.Iterator'
+            typ = 'typing.Generator'
         return self.check_generator_or_comprehension(e, typ, '<generator>')
 
     def check_generator_or_comprehension(self, gen: GeneratorExpr,
