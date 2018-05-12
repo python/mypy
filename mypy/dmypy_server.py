@@ -1,8 +1,8 @@
-"""Client for mypy daemon mode.
+"""Server for mypy daemon mode.
 
 Highly experimental!  Only supports UNIX-like systems.
 
-This manages a daemon process which keeps useful state in memory
+This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
