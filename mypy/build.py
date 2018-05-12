@@ -662,7 +662,7 @@ class BuildManager:
             self.shadow_map = {source_file: shadow_file
                                for (source_file, shadow_file)
                                in self.options.shadow_file}
-        # a mapping from typechecked files to files to their possible shadow files
+        # a mapping from each file being typechecked to its possible shadow file
         self.shadow_equivalence_map = {}  # type: Dict[str, Optional[str]]
 
     def use_fine_grained_cache(self) -> bool:
