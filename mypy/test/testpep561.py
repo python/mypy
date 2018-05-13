@@ -52,7 +52,7 @@ class TestPEP561(TestCase):
         if use_pip:
             install_cmd = ['-m', 'pip', 'install']
             if editable:
-                install_cmd.append('e')
+                install_cmd.append('-e')
             install_cmd.append('.')
         else:
             install_cmd = ['setup.py', 'install']
@@ -105,7 +105,7 @@ class TestPEP561(TestCase):
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
             # Uncompressed egg install (setuptools with zip_safe=False)
-            with self.install_package('typedpkg-stubs', editable=True, use_pip=False):
+            with self.install_package('typedpkg-stubs', use_pip=False):
                 check_mypy_run(
                     [test_file],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"

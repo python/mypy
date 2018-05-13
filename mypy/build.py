@@ -887,16 +887,20 @@ class FindModuleCache:
                     # this should never happen
                     continue
                 if self.fscache.isdir(path):
-                    if path.endswith('.egg'):
+                    if path.endswith('.egg') and self.fscache.isdir(path):
                         # if the symlink points directly to an egg, we can just add that directory
                         egg_dirs.append(path)
                     elif path.endswith('.egg-info'):
                         # if it is an egg-info directory, we need to add the directory above
                         egg_dirs.append(os.path.dirname(path))
                     else:
-                        # Otherwise, we were given the directory above an egg or egg-info,
-                        # so we need to search for one of them.
-                        egg_dirs.extend(self._get_egg_packages(path))
+                        if self.fscache.exists(os.path.join(path, item[:-9])):
+                            # Egg links share the same prefix, so we can guess if they exist.
+                            egg_dirs.append(path)
+                        else:
+                            # Otherwise, we were given the directory above an egg,
+                            # so we need to search for one of them.
+                            egg_dirs.extend(self._get_egg_packages(path))
         return egg_dirs
 
     def get_package_dirs(self, python_executable: Optional[str]) -> List[str]:
