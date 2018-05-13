@@ -6,10 +6,12 @@ from typing import Iterator, List
 from unittest import TestCase, main
 
 import mypy.api
-from mypy.build import FindModuleCache, _get_site_packages_dirs
-from mypy.test.config import package_path
+from mypy.build import _get_site_packages_dirs
+from mypy.test.config import package_path, test_temp_dir
 from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
+
+test_dir = 'test-packages-data'
 
 SIMPLE_PROGRAM = """
 from typedpkg.sample import ex
@@ -43,16 +45,22 @@ def is_in_venv() -> bool:
 
 class TestPEP561(TestCase):
     @contextmanager
-    def install_package(self, pkg: str,
+    def install_package(self, pkg: str, editable: bool = False, use_pip: bool = True,
                         python_executable: str = sys.executable) -> Iterator[None]:
         """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
-        install_cmd = [python_executable, '-m', 'pip', 'install', '.']
+        if use_pip:
+            install_cmd = ['-m', 'pip', 'install']
+            if editable:
+                install_cmd.append('e')
+            install_cmd.append('.')
+        else:
+            install_cmd = ['setup.py', 'install']
         # if we aren't in a virtualenv, install in the
         # user package directory so we don't need sudo
         if not is_in_venv() or python_executable != sys.executable:
             install_cmd.append('--user')
-        returncode, lines = run_command(install_cmd, cwd=working_dir)
+        returncode, lines = run_command([sys.executable] + install_cmd, cwd=working_dir)
         if returncode != 0:
             self.fail('\n'.join(lines))
         try:
@@ -75,41 +83,45 @@ class TestPEP561(TestCase):
         installing/uninstalling will break tests.
         """
         test_file = 'simple.py'
-        if not os.path.isdir('test-packages-data'):
-            os.mkdir('test-packages-data')
+        if not os.path.isdir(test_dir):
+            os.mkdir(test_dir)
         old_cwd = os.getcwd()
-        os.chdir('test-packages-data')
+        os.chdir(test_dir)
         with open(test_file, 'w') as f:
             f.write(SIMPLE_PROGRAM)
         try:
+            # First test each type of install works
+
+            # Normal pip and install (most packages are installed this way)
             with self.install_package('typedpkg-stubs'):
                 check_mypy_run(
                     [test_file],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
+            # Editable install (test egg-links)
+            with self.install_package('typedpkg-stubs', editable=True):
+                check_mypy_run(
+                    [test_file],
+                    "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                )
+            # Uncompressed egg install (setuptools with zip_safe=False)
+            with self.install_package('typedpkg-stubs', editable=True, use_pip=False):
+                check_mypy_run(
+                    [test_file],
+                    "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                )
 
-            # The Python 2 tests are intentionally placed after a Python 3 test to check
+            # The Python 2 tests are intentionally placed after Python 3 tests to check
             # the package_dir_cache is behaving correctly.
             python2 = try_find_python2_interpreter()
             if python2:
-                with self.install_package('typedpkg-stubs', python2):
+                with self.install_package('typedpkg-stubs', python_executable=python2):
                     check_mypy_run(
                         ['--python-executable={}'.format(python2), test_file],
                         "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                     )
-                with self.install_package('typedpkg', python2):
-                    check_mypy_run(
-                        ['--python-executable={}'.format(python2), 'simple.py'],
-                        "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
-                    )
 
-                with self.install_package('typedpkg', python2):
-                    with self.install_package('typedpkg-stubs', python2):
-                        check_mypy_run(
-                            ['--python-executable={}'.format(python2), test_file],
-                            "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
-                        )
-
+            # Now test ordering of module resolution order
             with self.install_package('typedpkg'):
                 check_mypy_run(
                     [test_file],
@@ -124,7 +136,7 @@ class TestPEP561(TestCase):
                     )
         finally:
             os.chdir(old_cwd)
-            shutil.rmtree('test-packages-data')
+            shutil.rmtree(test_dir)
 
 
 if __name__ == '__main__':
