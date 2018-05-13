@@ -60,7 +60,7 @@ class TestPEP561(TestCase):
         # user package directory so we don't need sudo
         if not is_in_venv() or python_executable != sys.executable:
             install_cmd.append('--user')
-        returncode, lines = run_command([sys.executable] + install_cmd, cwd=working_dir)
+        returncode, lines = run_command([python_executable] + install_cmd, cwd=working_dir)
         if returncode != 0:
             self.fail('\n'.join(lines))
         try:
