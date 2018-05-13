@@ -13,6 +13,9 @@ you can install mypy with:
 
     $ python3 -m pip install mypy
 
+Note that ``mypy`` itself requires Python 3, but you can still check Python 2
+code using ``mypy`` as discussed in :ref:`python2`.
+
 Installing from source
 **********************
 
