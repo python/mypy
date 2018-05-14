@@ -20,6 +20,16 @@ reveal_type(a)
 """
 
 
+def make_venv(pkg: str, python_executable: str) -> str:
+    """Create virtualenv and return path to new executable"""
+    base = pkg + 'venv'
+    run_command([sys.executable, '-m', 'virtualenv', '-p={}'.format(python_executable), base])
+    if sys.platform == 'win32':
+        return os.path.join(base, 'Scripts', 'python.exe')
+    else:
+        return os.path.join(base, 'bin', 'python')
+
+
 def check_mypy_run(cmd_line: List[str],
                    expected_out: str,
                    expected_err: str = '',
@@ -115,11 +125,13 @@ class TestPEP561(TestCase):
             # the package_dir_cache is behaving correctly.
             python2 = try_find_python2_interpreter()
             if python2:
-                with self.install_package('typedpkg-stubs', python_executable=python2):
+                py2 = make_venv('typedpkg-stubs', python2)
+                with self.install_package('typedpkg-stubs', python_executable=py2):
                     check_mypy_run(
-                        ['--python-executable={}'.format(python2), test_file],
+                        ['--python-executable={}'.format(py2), test_file],
                         "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                     )
+                shutil.rmtree('typedpkg-stubsvenv')
 
             # Now test ordering of module resolution order
             with self.install_package('typedpkg'):
