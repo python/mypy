@@ -1328,9 +1328,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         tvars = info.defn.type_vars
         for i, tvar in enumerate(tvars):
             up_args = [object_type if i == j else AnyType(TypeOfAny.special_form)
-                       for j, _ in enumerate(tvars)]
+                       for j, _ in enumerate(tvars)]  # type: List[Type]
             down_args = [UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
-                         for j, _ in enumerate(tvars)]
+                         for j, _ in enumerate(tvars)]  # type: List[Type]
             up, down = Instance(info, up_args), Instance(info, down_args)
             # TODO: add advanced variance checks for recursive protocols
             if is_subtype(down, up, ignore_declared_variance=True):
