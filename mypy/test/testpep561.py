@@ -23,7 +23,7 @@ reveal_type(a)
 def make_venv(pkg: str, python_executable: str) -> str:
     """Create virtualenv and return path to new executable"""
     base = pkg + 'venv'
-    run_command([sys.executable, '-m', 'virtualenv', '-p={}'.format(python_executable), base])
+    run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable), base])
     if sys.platform == 'win32':
         return os.path.join(base, 'Scripts', 'python.exe')
     else:
