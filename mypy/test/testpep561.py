@@ -77,10 +77,11 @@ class TestPEP561(TestCase):
         try:
             yield
         finally:
-            returncode, lines = run_command([python_executable, '-m', 'pip', 'uninstall',
-                                             '-y', pkg], cwd=package_path)
-            if returncode != 0:
-                self.fail('\n'.join(lines))
+            if not virtualenv:
+                returncode, lines = run_command([python_executable, '-m', 'pip', 'uninstall',
+                                                '-y', pkg], cwd=package_path)
+                if returncode != 0:
+                    self.fail('\n'.join(lines))
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
