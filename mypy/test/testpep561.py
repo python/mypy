@@ -120,14 +120,6 @@ class TestPEP561(TestCase):
                     [test_file],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
-            # Uncompressed egg install (setuptools with zip_safe=False)
-            python = make_venv('typedpkg-stubs', False, sys.executable)
-            with self.install_package('typedpkg-stubs', use_pip=False, python_executable=python, virtualenv=True):
-                check_mypy_run(
-                    ['--python-executable={}'.format(python), test_file],
-                    "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
-                )
-            shutil.rmtree(os.path.join(package_path, 'typedpkg-stubsvenv'))
 
             # The Python 2 tests are intentionally placed after Python 3 tests to check
             # the package_dir_cache is behaving correctly.
