@@ -38,7 +38,6 @@ class Driver:
         self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail, lf=lf, ff=ff)
         self.versions = get_versions()
         self.cwd = os.getcwd()
-        self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
         self.coverage = coverage
 
@@ -67,7 +66,7 @@ class Driver:
         full_name = 'check %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, self.mypy] + mypy_args
+        args = [sys.executable, '-m', 'mypy'] + mypy_args
         args.append('--show-traceback')
         args.append('--no-site-packages')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
@@ -196,18 +195,17 @@ def add_stubs(driver: Driver) -> None:
 
 def add_stdlibsamples(driver: Driver) -> None:
     seen = set()  # type: Set[str]
-    for version in driver.versions:
-        stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', version)
-        modules = []  # type: List[str]
-        for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
-            module = file_to_module(f[len(stdlibsamples_dir) + 1:])
-            if module not in seen:
-                seen.add(module)
-                modules.append(module)
-        if modules:
-            # TODO: Remove need for --no-strict-optional
-            driver.add_mypy_modules('stdlibsamples (%s)' % (version,), modules,
-                                    cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
+    stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', '3.2', 'test')
+    modules = []  # type: List[str]
+    for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
+        module = file_to_module(f[len(stdlibsamples_dir) + 1:])
+        if module not in seen:
+            seen.add(module)
+            modules.append(module)
+    if modules:
+        # TODO: Remove need for --no-strict-optional
+        driver.add_mypy_modules('stdlibsamples (3.2)', modules,
+                                cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
 
 
 def add_samples(driver: Driver) -> None:

@@ -49,8 +49,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     args.append('--show-traceback')
     args.append('--no-site-packages')
     # Type check the program.
-    fixed = [python3_path,
-             os.path.join(testcase.old_cwd, 'scripts', 'mypy')]
+    fixed = [python3_path, '-m', 'mypy']
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
