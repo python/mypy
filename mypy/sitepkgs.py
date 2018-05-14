@@ -7,7 +7,8 @@ library found in Python 2. This file is run each mypy run, so it should be kept 
 possible.
 """
 
-
+import sys
+sys.path = sys.path[1:]  # remove current directory to avoid importing mypy.types
 from distutils.sysconfig import get_python_lib
 import site
 MYPY = False

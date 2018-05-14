@@ -20,14 +20,18 @@ reveal_type(a)
 """
 
 
-def make_venv(pkg: str, python_executable: str) -> str:
+def make_venv(pkg: str, py2: bool, python_executable: str) -> str:
     """Create virtualenv and return path to new executable"""
     base = os.path.join(package_path, pkg + 'venv')
     run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable), base], cwd=package_path)
     if sys.platform == 'win32':
         return os.path.abspath(os.path.join(base, 'Scripts', 'python.exe'))
     else:
-        return os.path.abspath(os.path.join(base, 'bin', 'python2'))
+        if py2:
+            exe = 'python2'
+        else:
+            exe = 'python3'
+        return os.path.abspath(os.path.join(base, 'bin', exe))
 
 
 def check_mypy_run(cmd_line: List[str],
@@ -117,17 +121,19 @@ class TestPEP561(TestCase):
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
             # Uncompressed egg install (setuptools with zip_safe=False)
-            with self.install_package('typedpkg-stubs', use_pip=False):
+            python = make_venv('typedpkg-stubs', False, sys.executable)
+            with self.install_package('typedpkg-stubs', use_pip=False, python_executable=python, virtualenv=True):
                 check_mypy_run(
-                    [test_file],
+                    ['--python-executable={}'.format(python), test_file],
                     "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                 )
+            shutil.rmtree(os.path.join(package_path, 'typedpkg-stubsvenv'))
 
             # The Python 2 tests are intentionally placed after Python 3 tests to check
             # the package_dir_cache is behaving correctly.
             python2 = try_find_python2_interpreter()
             if python2:
-                py2 = make_venv('typedpkg-stubs', python2)
+                py2 = make_venv('typedpkg-stubs', True, python2)
                 with self.install_package('typedpkg-stubs', python_executable=py2, virtualenv=True):
                     check_mypy_run(
                         ['--python-executable={}'.format(py2), test_file],
