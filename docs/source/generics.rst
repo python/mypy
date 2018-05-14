@@ -1,6 +1,11 @@
 Generics
 ========
 
+This section explains how you can define your own generic classes that take
+one or more type parameters, similar to built-in types such as ``List[X]``.
+User-defined generics is a moderately advanced feature and you can get far
+without ever using them -- feel free to skip this section and come back later.
+
 .. _generic-classes:
 
 Defining generic classes
@@ -23,7 +28,7 @@ generic class that represents a stack:
    class Stack(Generic[T]):
        def __init__(self) -> None:
            # Create an empty list with items of type T
-           self.items = []  # type: List[T]
+           self.items: List[T] = []
 
        def push(self, item: T) -> None:
            self.items.append(item)
@@ -644,3 +649,69 @@ Generic protocols can also be recursive. Example:
        ...  # implementation omitted
 
    result = last(L())  # Inferred type of 'result' is 'int'
+
+Generic type aliases
+********************
+
+Type aliases can be generic, in this case they could be used in two variants:
+Subscripted aliases are equivalent to original types with substituted type variables,
+number of type arguments must match the number of free type variables
+in generic type alias. Unsubscripted aliases are treated as original types with free
+variables replaced with ``Any``. Examples (following `PEP 484
+<https://www.python.org/dev/peps/pep-0484/#type-aliases>`_):
+
+.. code-block:: python
+
+    from typing import TypeVar, Iterable, Tuple, Union, Callable
+    S = TypeVar('S')
+    TInt = Tuple[int, S]
+    UInt = Union[S, int]
+    CBack = Callable[..., S]
+
+    def response(query: str) -> UInt[str]:  # Same as Union[str, int]
+        ...
+    def activate(cb: CBack[S]) -> S:        # Same as Callable[..., S]
+        ...
+    table_entry: TInt  # Same as Tuple[int, Any]
+
+    T = TypeVar('T', int, float, complex)
+    Vec = Iterable[Tuple[T, T]]
+
+    def inproduct(v: Vec[T]) -> T:
+        return sum(x*y for x, y in v)
+
+    def dilate(v: Vec[T], scale: T) -> Vec[T]:
+        return ((x * scale, y * scale) for x, y in v)
+
+    v1: Vec[int] = []      # Same as Iterable[Tuple[int, int]]
+    v2: Vec = []           # Same as Iterable[Tuple[Any, Any]]
+    v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
+
+Type aliases can be imported from modules like any names. Aliases can target another
+aliases (although building complex chains of aliases is not recommended, this
+impedes code readability, thus defeating the purpose of using aliases).
+Following previous examples:
+
+.. code-block:: python
+
+    from typing import TypeVar, Generic, Optional
+    from first_example import AliasType
+    from second_example import Vec
+
+    def fun() -> AliasType:
+        ...
+
+    T = TypeVar('T')
+    class NewVec(Generic[T], Vec[T]):
+        ...
+    for i, j in NewVec[int]():
+        ...
+
+    OIntVec = Optional[Vec[int]]
+
+.. note::
+
+    A type alias does not defined a new type. For generic type aliases
+    this means that variance of type variables used for alias definition does not
+    apply to aliases. A parameterized generic alias is treated simply as an original
+    type with the corresponding type variables substituted.

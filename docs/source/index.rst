@@ -19,19 +19,20 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    type_inference_and_annotations
    kinds_of_types
    class_basics
+   protocols
    dynamic_typing
-   function_overloading
    casts
    duck_type_compatibility
    common_issues
    generics
+   more_types
    supported_python_features
-   additional_features
    command_line
    config_file
    mypy_daemon
    python36
    installed_packages
+   additional_features
    faq
    cheat_sheet
    cheat_sheet_py3

@@ -1,7 +1,124 @@
 Additional features
 -------------------
 
-This section discusses various features outside core mypy features.
+This section discusses various features that did not fit in naturally in one
+of the previous sections.
+
+.. _function-overloading:
+
+Function overloading
+********************
+
+Sometimes the types in a function depend on each other in ways that
+can't be captured with a ``Union``.  For example, the ``__getitem__``
+(``[]`` bracket indexing) method can take an integer and return a
+single item, or take a ``slice`` and return a ``Sequence`` of items.
+You might be tempted to annotate it like so:
+
+.. code-block:: python
+
+    from typing import Sequence, TypeVar, Union
+    T = TypeVar('T')
+
+    class MyList(Sequence[T]):
+        def __getitem__(self, index: Union[int, slice]) -> Union[T, Sequence[T]]:
+            if isinstance(index, int):
+                ...  # Return a T here
+            elif isinstance(index, slice):
+                ...  # Return a sequence of Ts here
+            else:
+                raise TypeError(...)
+
+But this is too loose, as it implies that when you pass in an ``int``
+you might sometimes get out a single item and sometimes a sequence.
+The return type depends on the parameter type in a way that can't be
+expressed using a type variable.  Instead, we can use `overloading
+<https://www.python.org/dev/peps/pep-0484/#function-method-overloading>`_
+to give the same function multiple type annotations (signatures) and
+accurately describe the function's behavior.
+
+.. code-block:: python
+
+    from typing import overload, Sequence, TypeVar, Union
+    T = TypeVar('T')
+
+    class MyList(Sequence[T]):
+
+        # The @overload definitions are just for the type checker,
+        # and overwritten by the real implementation below.
+        @overload
+        def __getitem__(self, index: int) -> T:
+            pass  # Don't put code here
+
+        # All overloads and the implementation must be adjacent
+        # in the source file, and overload order may matter:
+        # when two overloads may overlap, the more specific one
+        # should come first.
+        @overload
+        def __getitem__(self, index: slice) -> Sequence[T]:
+            pass  # Don't put code here
+
+        # The implementation goes last, without @overload.
+        # It may or may not have type hints; if it does,
+        # these are checked against the overload definitions
+        # as well as against the implementation body.
+        def __getitem__(self, index: Union[int, slice]) -> Union[T, Sequence[T]]:
+            # This is exactly the same as before.
+            if isinstance(index, int):
+                ...  # Return a T here
+            elif isinstance(index, slice):
+                ...  # Return a sequence of Ts here
+            else:
+                raise TypeError(...)
+
+Calls to overloaded functions are type checked against the variants,
+not against the implementation. A call like ``my_list[5]`` would have
+type ``T``, not ``Union[T, Sequence[T]]`` because it matches the
+first overloaded definition, and ignores the type annotations on the
+implementation of ``__getitem__``. The code in the body of the
+definition of ``__getitem__`` is checked against the annotations on
+the the corresponding declaration. In this case the body is checked
+with ``index: Union[int, slice]`` and a return type
+``Union[T, Sequence[T]]``. If there are no annotations on the
+corresponding definition, then code in the function body is not type
+checked.
+
+The annotations on the function body must be compatible with the
+types given for the overloaded variants listed above it. The type
+checker will verify that all the types listed the overloaded variants
+are compatible with the types given for the implementation. In this
+case it checks that the parameter type ``int`` and the return type
+``T`` are compatible with ``Union[int, slice]`` and
+``Union[T, Sequence[T]]`` for the first variant. For the second
+variant it verifies that the parameter type ``slice`` are the return
+type ``Sequence[T]`` are compatible with ``Union[int, slice]`` and
+``Union[T, Sequence[T]]``.
+
+Overloaded function variants are still ordinary Python functions and
+they still define a single runtime object. There is no automatic
+dispatch happening, and you must manually handle the different types
+in the implementation (usually with :func:`isinstance` checks, as
+shown in the example).
+
+The overload variants must be adjacent in the code. This makes code
+clearer, as you don't have to hunt for overload variants across the
+file.
+
+Overloads in stub files are exactly the same, except there is no
+implementation.
+
+.. note::
+
+   As generic type variables are erased at runtime when constructing
+   instances of generic types, an overloaded function cannot have
+   variants that only differ in a generic type argument,
+   e.g. ``List[int]`` and ``List[str]``.
+
+.. note::
+
+   If you just need to constrain a type variable to certain types or
+   subtypes, you can use a :ref:`value restriction
+   <type-variable-value-restriction>`.
 
 .. _attrs_package:
 
@@ -17,6 +134,7 @@ Type annotations can be added as follows:
 .. code-block:: python
 
     import attr
+
     @attr.s
     class A:
         one: int = attr.ib()          # Variable annotation (Python 3.6+)
@@ -28,6 +146,7 @@ If you're using ``auto_attribs=True`` you must use variable annotations.
 .. code-block:: python
 
     import attr
+
     @attr.s(auto_attribs=True)
     class A:
         one: int
@@ -43,6 +162,7 @@ That enables this to work:
 
     import attr
     from typing import Dict
+
     @attr.s(auto_attribs=True)
     class A:
         one: int = attr.ib(8)
@@ -231,3 +351,129 @@ at least if your codebase is hundreds of thousands of lines or more:
   mypy build to create the cache data, as repeatedly updating cache
   data incrementally could result in drift over a long time period (due
   to a mypy caching issue, perhaps).
+
+.. _extended_callable:
+
+Extended Callable types
+***********************
+
+As an experimental mypy extension, you can specify ``Callable`` types
+that support keyword arguments, optional arguments, and more.  Where
+you specify the arguments of a Callable, you can choose to supply just
+the type of a nameless positional argument, or an "argument specifier"
+representing a more complicated form of argument.  This allows one to
+more closely emulate the full range of possibilities given by the
+``def`` statement in Python.
+
+As an example, here's a complicated function definition and the
+corresponding ``Callable``:
+
+.. code-block:: python
+
+   from typing import Callable
+   from mypy_extensions import (Arg, DefaultArg, NamedArg,
+                                DefaultNamedArg, VarArg, KwArg)
+
+   def func(__a: int,  # This convention is for nameless arguments
+            b: int,
+            c: int = 0,
+            *args: int,
+            d: int,
+            e: int = 0,
+            **kwargs: int) -> int:
+       ...
+
+   F = Callable[[int,  # Or Arg(int)
+                 Arg(int, 'b'),
+                 DefaultArg(int, 'c'),
+                 VarArg(int),
+                 NamedArg(int, 'd'),
+                 DefaultNamedArg(int, 'e'),
+                 KwArg(int)],
+                int]
+
+   f: F = func
+
+Argument specifiers are special function calls that can specify the
+following aspects of an argument:
+
+- its type (the only thing that the basic format supports)
+
+- its name (if it has one)
+
+- whether it may be omitted
+
+- whether it may or must be passed using a keyword
+
+- whether it is a ``*args`` argument (representing the remaining
+  positional arguments)
+
+- whether it is a ``**kwargs`` argument (representing the remaining
+  keyword arguments)
+
+The following functions are available in ``mypy_extensions`` for this
+purpose:
+
+.. code-block:: python
+
+   def Arg(type=Any, name=None):
+       # A normal, mandatory, positional argument.
+       # If the name is specified it may be passed as a keyword.
+
+   def DefaultArg(type=Any, name=None):
+       # An optional positional argument (i.e. with a default value).
+       # If the name is specified it may be passed as a keyword.
+
+   def NamedArg(type=Any, name=None):
+       # A mandatory keyword-only argument.
+
+   def DefaultNamedArg(type=Any, name=None):
+       # An optional keyword-only argument (i.e. with a default value).
+
+   def VarArg(type=Any):
+       # A *args-style variadic positional argument.
+       # A single VarArg() specifier represents all remaining
+       # positional arguments.
+
+   def KwArg(type=Any):
+       # A **kwargs-style variadic keyword argument.
+       # A single KwArg() specifier represents all remaining
+       # keyword arguments.
+
+In all cases, the ``type`` argument defaults to ``Any``, and if the
+``name`` argument is omitted the argument has no name (the name is
+required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
+``Callable`` such as
+
+.. code-block:: python
+
+   MyFunc = Callable[[int, str, int], float]
+
+is equivalent to the following:
+
+.. code-block:: python
+
+   MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
+
+A ``Callable`` with unspecified argument types, such as
+
+.. code-block:: python
+
+   MyOtherFunc = Callable[..., int]
+
+is (roughly) equivalent to
+
+.. code-block:: python
+
+   MyOtherFunc = Callable[[VarArg(), KwArg()], int]
+
+.. note::
+
+   This feature is experimental.  Details of the implementation may
+   change and there may be unknown limitations. **IMPORTANT:**
+   Each of the functions above currently just returns its ``type``
+   argument, so the information contained in the argument specifiers
+   is not available at runtime.  This limitation is necessary for
+   backwards compatibility with the existing ``typing.py`` module as
+   present in the Python 3.5+ standard library and distributed via
+   PyPI.

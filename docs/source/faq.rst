@@ -6,7 +6,8 @@ Why have both dynamic and static typing?
 
 Dynamic typing can be flexible, powerful, convenient and easy. But
 it's not always the best approach; there are good reasons why many
-developers choose to use statically typed languages.
+developers choose to use statically typed languages or static typing
+for Python.
 
 Here are some potential benefits of mypy-style static typing:
 
@@ -54,26 +55,25 @@ may be useful:
 
 - Multiple developers are working on the same code.
 
-- Running tests takes a lot of time or work (type checking may help
-  you find errors early in development, reducing the number of testing
-  iterations).
+- Running tests takes a lot of time or work (type checking helps
+  you find errors quickly early in development, reducing the number of
+  testing iterations).
 
 - Some project members (devs or management) don't like dynamic typing,
   but others prefer dynamic typing and Python syntax. Mypy could be a
   solution that everybody finds easy to accept.
 
 - You want to future-proof your project even if currently none of the
-  above really apply.
+  above really apply. The earlier you start, the easier it will be to
+  adopt static typing.
 
 Can I use mypy to type check my existing Python code?
 *****************************************************
 
-It depends. Compatibility is pretty good, but some Python features are
-not yet implemented or fully supported. The ultimate goal is to make
-using mypy practical for most Python code. Code that uses complex
-introspection or metaprogramming may be impractical to type check, but
-it should still be possible to use static typing in other parts of a
-program.
+Compatibility is pretty good, and many large Python projects are using
+mypy successfully. Code that uses complex introspection or
+metaprogramming may be impractical to type check, but it should still
+be possible to use static typing in other parts of a program.
 
 Will static typing make my programs run faster?
 ***********************************************
@@ -82,10 +82,7 @@ Mypy only does static type checking and it does not improve
 performance. It has a minimal performance impact. In the future, there
 could be other tools that can compile statically typed mypy code to C
 modules or to efficient JVM bytecode, for example, but this is outside
-the scope of the mypy project. It may also be possible to modify
-existing Python VMs to take advantage of static type information, but
-whether this is feasible is still unknown. This is nontrivial since
-the runtime types do not necessarily correspond to the static types.
+the scope of the mypy project.
 
 How do I type check my Python 2 code?
 *************************************
@@ -101,13 +98,14 @@ Is mypy free?
 Yes. Mypy is free software, and it can also be used for commercial and
 proprietary projects. Mypy is available under the MIT license.
 
-Can I use structural subtyping?
-*******************************
+Can I use duck typing with mypy?
+********************************
 
 Mypy provides support for both `nominal subtyping
 <https://en.wikipedia.org/wiki/Nominative_type_system>`_ and
 `structural subtyping
 <https://en.wikipedia.org/wiki/Structural_type_system>`_.
+Structural subtyping can be thought of as "static duck typing".
 Some argue that structural subtyping is better suited for languages with duck
 typing such as Python. Mypy however primarily uses nominal subtyping,
 leaving structural subtyping mostly opt-in (except for built-in protocols
@@ -138,11 +136,12 @@ subtyping see :ref:`protocol-types` and
 I like Python and I have no need for static typing
 **************************************************
 
-That wasn't really a question, was it? Mypy is not aimed at replacing
-Python. The goal is to give more options for Python programmers, to
+The aim of mypy is not to convince everybody to write statically typed
+Python -- static typing is entirely optional, now and in the
+future. The goal is to give more options for Python programmers, to
 make Python a more competitive alternative to other statically typed
-languages in large projects, to improve programmer productivity and to
-improve software quality.
+languages in large projects, to improve programmer productivity, and
+to improve software quality.
 
 How are mypy programs different from normal Python?
 ***************************************************
@@ -156,16 +155,11 @@ supported by mypy, but this is gradually improving.
 The obvious difference is the availability of static type
 checking. The section :ref:`common_issues` mentions some
 modifications to Python code that may be required to make code type
-check without errors. Also, your code must make attributes explicit and
-use a explicit protocol representation. For example, you may want to
-subclass an Abstract Base Class such as ``typing.Iterable``.
+check without errors. Also, your code must make attributes explicit.
 
-Mypy will support modular, efficient type checking, and this seems to
+Mypy supports modular, efficient type checking, and this seems to
 rule out type checking some language features, such as arbitrary
-runtime addition of methods. However, it is likely that many of these
-features will be supported in a restricted form (for example, runtime
-modification is only supported for classes or methods registered as
-dynamic or 'patchable').
+monkey patching of methods.
 
 How is mypy different from Cython?
 **********************************
@@ -204,53 +198,6 @@ the following aspects, among others:
   defined in terms of translating them to C or C++. Mypy just uses
   Python semantics, and mypy does not deal with accessing C library
   functionality.
-
-How is mypy different from Nuitka?
-**********************************
-
-`Nuitka <http://nuitka.net/>`_ is a static compiler that can translate
-Python programs to C++. Nuitka integrates with the CPython
-runtime. Nuitka has additional future goals, such as using type
-inference and whole-program analysis to further speed up code. Here
-are some differences:
-
-- Nuitka is primarily focused on speeding up Python code. Mypy focuses
-  on static type checking and facilitating better tools.
-
-- Whole-program analysis tends to be slow and scale poorly to large or
-  complex programs. It is still unclear if Nuitka can solve these
-  issues. Mypy does not use whole-program analysis and will support
-  modular type checking (though this has not been implemented yet).
-
-How is mypy different from RPython or Shed Skin?
-************************************************
-
-`RPython <http://doc.pypy.org/en/latest/coding-guide.html>`_ and `Shed
-Skin <http://shed-skin.blogspot.co.uk/>`_ are basically statically
-typed subsets of Python. Mypy does the following important things
-differently:
-
-- RPython is primarily designed for implementing virtual machines;
-  mypy is a general-purpose tool.
-
-- Mypy supports both static and dynamic typing. Dynamically typed and
-  statically typed code can be freely mixed and can interact
-  seamlessly.
-
-- Mypy aims to support (in the future) fast and modular type
-  checking. Both RPython and Shed Skin use whole-program type
-  inference which is very slow, does not scale well to large programs
-  and often produces confusing error messages. Mypy can support
-  modularity since it only uses local type inference; static type
-  checking depends on having type annotations for functions
-  signatures.
-
-- Mypy will support introspection, dynamic loading of code and many
-  other dynamic language features (though using these may make static
-  typing less effective). RPython and Shed Skin only support a
-  restricted Python subset without several of these features.
-
-- Mypy supports user-defined generic types.
 
 Mypy is a cool project. Can I help?
 ***********************************
