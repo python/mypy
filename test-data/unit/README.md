@@ -117,21 +117,20 @@ You can also run the type checker for manual testing without
 installing it by setting up the Python module search path suitably:
 
     $ export PYTHONPATH=$PWD
-    $ python<version> -m mypy PROGRAM.py
+    $ python3 -m mypy PROGRAM.py
 
 You will have to manually install the `typing` module if you're running Python
 3.4 or earlier.
 
-You can add the entry scripts to PATH for a single python3 version:
+You can also execute mypy as a module
 
-    $ export PATH=$PWD/scripts
-    $ mypy PROGRAM.py
+    $ python3 -m mypy PROGRAM.py
 
 You can check a module or string instead of a file:
 
-    $ mypy PROGRAM.py
-    $ mypy -m MODULE
-    $ mypy -c 'import MODULE'
+    $ python3 -m mypy PROGRAM.py
+    $ python3 -m mypy -m MODULE
+    $ python3 -m mypy -c 'import MODULE'
 
 To run the linter:
 
