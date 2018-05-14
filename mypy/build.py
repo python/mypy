@@ -728,7 +728,7 @@ class BuildManager:
                     # As a workaround for for some bugs in cycle handling (#4498),
                     # if all of the imports are submodules, do the import at a lower
                     # priority.
-                    pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_MED)
+                    pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
                     res.insert(pos, ((pri, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)

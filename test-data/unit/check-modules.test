@@ -1001,7 +1001,7 @@ from foo import bar
 [file foo/bar.py]
 pass
 
-[case testImportReExportFromChildrenInCycle]
+[case testImportReExportFromChildrenInCycle1]
 # cmd: mypy -m project.root project.study.a project.neighbor
 [file project/__init__.py]
 from project.study import CustomType
@@ -1022,6 +1022,26 @@ CustomType = str
 from project.study import CustomType
 def m(arg: CustomType) -> str:
     return 'test'
+
+[case testImportReExportFromChildrenInCycle2]
+# cmd: mypy -m project project.b project.ba project.c
+# See comments in above test about this being a workaround.
+[file foo.py]
+def get_foo() -> int: return 12
+
+[file project/ba.py]
+from . import b
+b.FOO
+
+[file project/b.py]
+import foo
+from . import c
+FOO = foo.get_foo()
+
+[file project/c.py]
+
+[file project/__init__.py]
+from . import ba
 
 [case testSuperclassInImportCycle]
 import a
