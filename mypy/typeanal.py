@@ -419,9 +419,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
         # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
         if t.implicit and not self.allow_tuple_literal:
-            self.fail('Invalid tuple literal type', t)
+            self.fail('Syntax error in type annotation', t)
             if len(t.items) == 1:
                 self.note_func('Suggestion: Is there a spurious trailing comma?', t)
+            else:
+                self.note_func('Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)', t)
             return AnyType(TypeOfAny.from_error)
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:

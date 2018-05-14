@@ -335,7 +335,7 @@ async def f() -> None:
     async with C() as y, C() as z:  # type: str, int  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         pass
 
-    async with C() as a:  # type: int, int  # E: Invalid tuple literal type
+    async with C() as a:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
         pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
