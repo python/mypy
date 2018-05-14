@@ -8,7 +8,7 @@ import socket
 
 from typing import Any
 
-STATUS_FILE = 'dmypy.json'
+STATUS_FILE = '.dmypy.json'
 
 
 def receive(sock: socket.socket) -> Any:
