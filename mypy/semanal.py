@@ -828,6 +828,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """
         concrete = set()  # type: Set[str]
         abstract = []  # type: List[str]
+        abstract_in_this_class = []  # type: List[str]
         for base in typ.mro:
             for name, symnode in base.names.items():
                 node = symnode.node
@@ -844,13 +845,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                        if base is typ:
+                            abstract_in_this_class.append(name)
                 elif isinstance(node, Var):
                     if node.is_abstract_var and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                        if base is typ:
+                            abstract_in_this_class.append(name)
                 concrete.add(name)
         typ.abstract_attributes = sorted(abstract)
-        if abstract:
+        if abstract and not abstract_in_this_class:
             self.fail('Class {} has abstract attributes {}'.format(typ.fullname(), sorted(abstract)), typ)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
