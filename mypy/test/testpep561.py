@@ -22,12 +22,12 @@ reveal_type(a)
 
 def make_venv(pkg: str, python_executable: str) -> str:
     """Create virtualenv and return path to new executable"""
-    base = pkg + 'venv'
-    run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable), base])
+    base = os.path.join(package_path, pkg + 'venv')
+    run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable), base], cwd=package_path)
     if sys.platform == 'win32':
-        return os.path.join(base, 'Scripts', 'python.exe')
+        return os.path.abspath(os.path.join(base, 'Scripts', 'python.exe'))
     else:
-        return os.path.join(base, 'bin', 'python')
+        return os.path.abspath(os.path.join(base, 'bin', 'python2'))
 
 
 def check_mypy_run(cmd_line: List[str],
@@ -55,7 +55,8 @@ def is_in_venv() -> bool:
 
 class TestPEP561(TestCase):
     @contextmanager
-    def install_package(self, pkg: str, editable: bool = False, use_pip: bool = True,
+    def install_package(self, pkg: str, editable: bool = False,
+                        use_pip: bool = True, virtualenv: bool = False,
                         python_executable: str = sys.executable) -> Iterator[None]:
         """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
@@ -68,7 +69,7 @@ class TestPEP561(TestCase):
             install_cmd = ['setup.py', 'install']
         # if we aren't in a virtualenv, install in the
         # user package directory so we don't need sudo
-        if not is_in_venv() or python_executable != sys.executable:
+        if (not is_in_venv() or python_executable != sys.executable) and not virtualenv:
             install_cmd.append('--user')
         returncode, lines = run_command([python_executable] + install_cmd, cwd=working_dir)
         if returncode != 0:
@@ -126,12 +127,12 @@ class TestPEP561(TestCase):
             python2 = try_find_python2_interpreter()
             if python2:
                 py2 = make_venv('typedpkg-stubs', python2)
-                with self.install_package('typedpkg-stubs', python_executable=py2):
+                with self.install_package('typedpkg-stubs', python_executable=py2, virtualenv=True):
                     check_mypy_run(
                         ['--python-executable={}'.format(py2), test_file],
                         "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
                     )
-                shutil.rmtree('typedpkg-stubsvenv')
+                shutil.rmtree(os.path.join(package_path, 'typedpkg-stubsvenv'))
 
             # Now test ordering of module resolution order
             with self.install_package('typedpkg'):
