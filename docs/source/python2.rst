@@ -120,8 +120,8 @@ Additional notes
 - The annotation can be on the same line as the function header or on
   the following line.
 
-- Use the same comment-based type syntax for variables as in Python 3
-  versions earlier than 3.6 (this is explained later in this document).
+- Variables use a comment-based type syntax (explained in
+  :ref:`explicit-var-types`).
 
 - You don't need to use string literal escapes for forward references
   within comments (string literal escapes are explained later).

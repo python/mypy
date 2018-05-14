@@ -28,6 +28,6 @@ statically typed object-oriented language, such as Java, are assumed.
 .. note::
 
    Mypy is used in production by many companies and projects, but mypy is
-   officially alpha software. There will be occasional changes
+   officially beta software. There will be occasional changes
    that break backward compatibility. The mypy development team tries to
    minimize the impact of changes to user code.

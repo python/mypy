@@ -18,6 +18,8 @@ Type inference is not used in dynamically typed functions (those
 without a function type annotation) — every local variable type defaults
 to ``Any`` in such functions. ``Any`` is discussed later in more detail.
 
+.. _explicit-var-types:
+
 Explicit types for variables
 ****************************
 
