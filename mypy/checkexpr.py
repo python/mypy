@@ -1278,7 +1278,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Return:
             The return type of the appropriate ``__get__`` overload for the descriptor.
         """
-        if not isinstance(descriptor_type, Instance):
+        if isinstance(descriptor_type, UnionType):
+            # Map the access over union types
+            return UnionType.make_simplified_union([
+                self.analyze_descriptor_access(instance_type, typ, context)
+                for typ in descriptor_type.items
+            ])
+        elif not isinstance(descriptor_type, Instance):
             return descriptor_type
 
         if not descriptor_type.type.has_readable_member('__get__'):

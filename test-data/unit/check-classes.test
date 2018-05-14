@@ -1495,6 +1495,20 @@ a = A()
 a.f = 1
 reveal_type(a.f)  # E: Revealed type is 'builtins.str'
 
+[case testDescriptorGetUnion]
+from typing import Any, Union
+class String:
+    def __get__(self, inst: Any, owner: Any) -> str:
+        return ''
+
+class A:
+    attr: str
+
+class B:
+    attr = String()
+
+def foo(x: Union[A, B]) -> None:
+    reveal_type(x.attr)  # E: Revealed type is 'builtins.str'
 
 -- _promote decorators
 -- -------------------
