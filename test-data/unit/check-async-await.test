@@ -632,7 +632,7 @@ def plain_host_generator() -> Generator[str, None, None]:
     x = yield from plain_generator()
     x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Coroutine[int, Any, Any]"
     x = yield from decorated_generator()
-    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Awaitable[int]]"
+    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Coroutine[int, Any, Any]]"
     x = yield from other_iterator()
     x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
 
