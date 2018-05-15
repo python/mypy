@@ -46,6 +46,49 @@ Arguments with default values can be annotated as follows:
    def greeting(name: str, prefix: str = 'Mr.') -> str:
       return 'Hello, {} {}'.format(name, prefix)
 
+Running mypy
+************
+
+You can type check a program by using the ``mypy`` tool, which is
+basically a linter -- it checks your program for errors without actually
+running it::
+
+   $ mypy program.py
+
+All errors reported by mypy are essentially warnings that you are free
+to ignore, if you so wish.
+
+The next chapter explains how to download and install mypy:
+:ref:`getting-started`.
+
+More command line options are documented in :ref:`command-line`.
+
+.. note::
+
+   Depending on how mypy is configured, you may have to run mypy like
+   this::
+
+     $ python3 -m mypy program.py
+
+The typing module
+*****************
+
+The ``typing`` module contains many definitions that are useful in
+statically typed code. You typically use ``from ... import`` to import
+them (we'll explain ``Iterable`` later in this document):
+
+.. code-block:: python
+
+   from typing import Iterable
+
+   def greet_all(names: Iterable[str]) -> None:
+       for name in names:
+           print('Hello, {}'.format(name))
+
+For brevity, we often omit the ``typing`` import in code examples, but
+mypy will give an error if you use definitions such as ``Iterable``
+without first importing them.
+
 Mixing dynamic and static typing
 ********************************
 
@@ -70,54 +113,6 @@ more stable.
    The earlier stages of mypy, known as the semantic analysis, may
    report errors even for dynamically typed functions. However, you
    should not rely on this, as this may change in the future.
-
-The typing module
-*****************
-
-The ``typing`` module contains many definitions that are useful in
-statically typed code. You typically use ``from ... import`` to import
-them (we'll explain ``Iterable`` later in this document):
-
-.. code-block:: python
-
-   from typing import Iterable
-
-   def greet_all(names: Iterable[str]) -> None:
-       for name in names:
-           print('Hello, {}'.format(name))
-
-For brevity, we often omit the ``typing`` import in code examples, but
-you should always include it in modules that contain statically typed
-code.
-
-The presence or absence of the ``typing`` module does not affect
-whether your code is type checked; it is only required when you use
-one or more special features it defines.
-
-Type checking programs
-**********************
-
-You can type check a program by using the ``mypy`` tool, which is
-basically a linter -- it checks your program for errors without actually
-running it::
-
-   $ mypy program.py
-
-All errors reported by mypy are essentially warnings that you are free
-to ignore, if you so wish.
-
-The next chapter explains how to download and install mypy:
-:ref:`getting-started`.
-
-More command line options are documented in :ref:`command-line`.
-
-.. note::
-
-   Depending on how mypy is configured, you may have to explicitly use
-   the Python 3 interpreter to run mypy. The mypy tool is an ordinary
-   mypy (and so also Python) program. For example::
-
-     $ python3 -m mypy program.py
 
 .. _library-stubs:
 
@@ -147,7 +142,7 @@ the builtins contains a definition like this for ``chr``:
 
     def chr(code: int) -> str: ...
 
-In stub files we don't care about the function bodies, so we use 
+In stub files we don't care about the function bodies, so we use
 an ellipsis instead.  That ``...`` is three literal dots!
 
 Mypy complains if it can't find a stub (or a real module) for a
@@ -175,7 +170,7 @@ typeshed yet).
 
 That's it! Now you can access the module in mypy programs and type check
 code that uses the library. If you write a stub for a library module,
-consider making it available for other programmers that use mypy 
+consider making it available for other programmers that use mypy
 by contributing it back to the typeshed repo.
 
 There is more information about creating stubs in the
