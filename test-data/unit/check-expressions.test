@@ -1456,6 +1456,28 @@ x = [1]
 x = ['x'] # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
+[case testConditionalExpressionUnion]
+reveal_type(1 if bool() else 2) # E: Revealed type is 'builtins.int'
+reveal_type(1 if bool() else '') # E: Revealed type is 'Union[builtins.int, builtins.str]'
+class A:
+    pass
+class B(A):
+    pass
+class C:
+    pass
+class D(A):
+    pass
+a = A()
+b = B()
+c = C()
+d = D()
+reveal_type(a if bool() else b) # E: Revealed type is '__main__.A'
+reveal_type(b if bool() else c) # E: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(c if bool() else b) # E: Revealed type is 'Union[__main__.C, __main__.B]'
+reveal_type(c if bool() else a) # E: Revealed type is 'Union[__main__.C, __main__.A]'
+reveal_type(d if bool() else b) # E: Revealed type is 'Union[__main__.D, __main__.B]'
+[builtins fixtures/bool.pyi]
+
 
 -- Special cases
 -- -------------

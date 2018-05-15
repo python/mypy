@@ -74,8 +74,6 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     Returns:
       A tuple: the source as a string, and the hash calculated from the binary representation.
     """
-    encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
-
     # check for BOM UTF-8 encoding and strip it out if present
     if source.startswith(b'\xef\xbb\xbf'):
         encoding = 'utf8'

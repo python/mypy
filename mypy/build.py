@@ -713,16 +713,22 @@ class BuildManager:
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
                     pos = len(res)
+                    all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
                     for name, __ in imp.names:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
                             res.append((pri, sub_id, imp.line))
+                        else:
+                            all_are_submodules = False
                     # Add cur_id as a dependency, even if all of the
                     # imports are submodules. Processing import from will try
                     # to look through cur_id, so we should depend on it.
-                    pri = import_priority(imp, PRI_HIGH)
+                    # As a workaround for for some bugs in cycle handling (#4498),
+                    # if all of the imports are submodules, do the import at a lower
+                    # priority.
+                    pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
                     res.insert(pos, ((pri, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)

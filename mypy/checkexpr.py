@@ -2342,7 +2342,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # branch's type.
             else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type)
 
-        res = join.join_types(if_type, else_type)
+        res = UnionType.make_simplified_union([if_type, else_type])
 
         return res
 

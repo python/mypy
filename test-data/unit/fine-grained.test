@@ -3872,9 +3872,11 @@ def inner():
     # type: () -> (str, int)
     return 'lol', 10
 [out]
-a.py:1: error: Invalid tuple literal type
+a.py:1: error: Syntax error in type annotation
+a.py:1: note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 ==
-a.py:2: error: Invalid tuple literal type
+a.py:2: error: Syntax error in type annotation
+a.py:2: note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 
 [case testImplicitTuple3]
 import a

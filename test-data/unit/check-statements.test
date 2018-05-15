@@ -182,7 +182,7 @@ for z in x:  # type: int
 for w in x:  # type: Union[int, str]
     reveal_type(w)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
 
-for v in x:  # type: int, int  # E: Invalid tuple literal type
+for v in x:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 [builtins fixtures/list.pyi]
 
@@ -191,7 +191,7 @@ for v in x:  # type: int, int  # E: Invalid tuple literal type
 from typing import List, Tuple
 x = []  # type: List[Tuple[int, int]]
 
-for y in x:  # type: int, int  # E: Invalid tuple literal type
+for y in x:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
 for z in x:  # type: Tuple[int, int]
@@ -1331,7 +1331,7 @@ with A() as a:  # type: int
 with A() as b:  # type: str  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
     pass
 
-with A() as c:  # type: int, int  # E: Invalid tuple literal type
+with A() as c:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
 with A() as d:  # type: Union[int, str]
@@ -1386,7 +1386,7 @@ with A() as a, A() as (b, c), B() as d:  # type: Tuple[int, int], (int, int), st
 with A() as e, A() as (f, g), B() as h:  # type: Tuple[int, int], Tuple[int, int], str
     pass
 
-with A() as i, A() as (j, k), B() as l:  # type: (int, int), (int, int), str  # E: Invalid tuple literal type
+with A() as i, A() as (j, k), B() as l:  # type: (int, int), (int, int), str  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
     pass
 
 with A(), A(), B() as m, A() as n, B(), B() as o:  # type: int, Tuple[int, int]  # E: Incompatible number of types for `with` targets
@@ -1615,4 +1615,3 @@ N = TypedDict('N', {'x': int})
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-
