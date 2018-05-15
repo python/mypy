@@ -581,7 +581,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_coroutine_return_type(self, return_type: Type) -> Type:
         if isinstance(return_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=return_type)
-        return return_type.args[0]
+        assert isinstance(return_type, Instance), "Should only be called on coroutine functions!"
+        # return type is 3rd type specification in Coroutine!
+        return return_type.args[2]
 
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
@@ -888,7 +890,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if is_unannotated_any(ret_type):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 elif (fdef.is_coroutine and isinstance(ret_type, Instance) and
-                      is_unannotated_any(ret_type.args[0])):
+                      is_unannotated_any(ret_type.args[2])):
+                    # NOTE: Coroutine is [Any, Any, T]
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)

@@ -101,7 +101,7 @@ class Awaitable(Protocol[T]):
 class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
     pass
 
-class Coroutine(Awaitable[T], Generic[T, U, V]):
+class Coroutine(Awaitable[V], Generic[T, U, V]):
     @abstractmethod
     def send(self, value: U) -> T: pass
 
