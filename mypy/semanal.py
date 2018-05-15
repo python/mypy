@@ -431,10 +431,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     pass
                 else:
                     # A coroutine defined as `async def foo(...) -> T: ...`
-                    # has external return type `Coroutine[T, Any, Any]`.
+                    # has external return type `Coroutine[Any, Any, T]`.
                     any_type = AnyType(TypeOfAny.special_form)
-                    ret_type = self.named_type_or_none('typing.Coroutine', [
-                        any_type, any_type, defn.type.ret_type])
+                    ret_type = self.named_type_or_none('typing.Coroutine',
+                        [any_type, any_type, defn.type.ret_type])
                     assert ret_type is not None, "Internal error: typing.Coroutine not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
 
