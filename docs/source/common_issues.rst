@@ -437,8 +437,10 @@ to see the types of all local varaibles at once. Example:
 
    a = 1
    b = 'one'
-   reveal_locals()  # Revealed local types are '{'a': builtins.int, 'b': builtins.str}'
-
+   reveal_locals()
+   # Revealed local types are:
+   # a: builtins.int
+   # b: builtins.str
 .. note::
 
    ``reveal_type`` and ``reveal_locals`` are only understood by mypy and

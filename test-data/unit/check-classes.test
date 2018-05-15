@@ -4314,4 +4314,9 @@ class D(B, C):
 class C1(object):
     t = 'a'
     y = 3.0
-    reveal_locals()  # E: Revealed local types are '{'t': builtins.str, 'y': builtins.float}'
+    reveal_locals()
+
+[out]
+main:4: error: Revealed local types are:
+main:4: error: t: builtins.str
+main:4: error: y: builtins.float

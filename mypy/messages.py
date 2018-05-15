@@ -974,11 +974,11 @@ class MessageBuilder:
         # To ensure that the output is predictable on Python < 3.6,
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
-        # Format the OrderedDict to look like a regular dict
-        s = "{{{}}}".format(
-            ', '.join("'{}': {}".format(k, v) for k, v in sorted_locals.items())
-        )
-        self.fail('Revealed local types are \'{}\''.format(s), context)
+        self.fail("Revealed local types are:", context)
+        # Note that self.fail does a strip() on the message, so we cannot prepend with spaces
+        # for indentation
+        for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
+            self.fail(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)

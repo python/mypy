@@ -2307,9 +2307,19 @@ main:2: error: Revealed type is 'def () -> builtins.int'
 a = 1.0
 
 def f(a: int, b: int) -> int:
-    reveal_locals() # E: Revealed local types are '{'a': builtins.int, 'b': builtins.int}'
+    reveal_locals()
     c = a + b
-    reveal_locals() # E: Revealed local types are '{'a': builtins.int, 'b': builtins.int, 'c': builtins.int}'
+    reveal_locals()
     return c
 
-reveal_locals() # E: Revealed local types are '{'a': builtins.float}'
+reveal_locals()
+[out]
+main:4: error: Revealed local types are:
+main:4: error: a: builtins.int
+main:4: error: b: builtins.int
+main:6: error: Revealed local types are:
+main:6: error: a: builtins.int
+main:6: error: b: builtins.int
+main:6: error: c: builtins.int
+main:9: error: Revealed local types are:
+main:9: error: a: builtins.float
