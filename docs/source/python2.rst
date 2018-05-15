@@ -89,10 +89,10 @@ function using the form ``# type: (...) -> rt``, where ``rt`` is the
 return type. Note that the  return type annotation contains literal
 three dots.
 
-Note that when using multi-line comments, you do not need to prefix the
+When using multi-line comments, you do not need to prefix the
 types of your ``*arg`` and ``**kwarg`` parameters with ``*`` or ``**``.
 For example, here is how you would annotate the first example using
-multi-line comments.
+multi-line comments:
 
 .. code-block:: python
 
@@ -120,10 +120,11 @@ Additional notes
 - The annotation can be on the same line as the function header or on
   the following line.
 
-- The type syntax for variables is the same as for Python 3.
+- Variables use a comment-based type syntax (explained in
+  :ref:`explicit-var-types`).
 
 - You don't need to use string literal escapes for forward references
-  within comments.
+  within comments (string literal escapes are explained later).
 
 - Mypy uses a separate set of library stub files in `typeshed
   <https://github.com/python/typeshed>`_ for Python 2. Library support

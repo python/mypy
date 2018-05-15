@@ -18,7 +18,7 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
-    TupleExpr, RevealTypeExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
+    TupleExpr, RevealExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
     MDEF,
 )
 from mypy.types import (
@@ -278,8 +278,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         self.analyze(e.type, e)
         super().visit_cast_expr(e)
 
-    def visit_reveal_type_expr(self, e: RevealTypeExpr) -> None:
-        super().visit_reveal_type_expr(e)
+    def visit_reveal_expr(self, e: RevealExpr) -> None:
+        super().visit_reveal_expr(e)
 
     def visit_type_application(self, e: TypeApplication) -> None:
         for type in e.types:

@@ -2064,8 +2064,8 @@ def f() -> None:
 def g(x: int) -> None:
     pass
 h = f if bool() else g
-reveal_type(h) # E: Revealed type is 'builtins.function'
-h(7) # E: Cannot call function of unknown type
+reveal_type(h) # E: Revealed type is 'Union[def (), def (x: builtins.int)]'
+h(7) # E: Too many arguments for "f"
 [builtins fixtures/bool.pyi]
 
 -- Positional-only arguments
@@ -2212,7 +2212,7 @@ foo(y=2)  # E: Missing positional arguments
 def dec(f): pass
 
 @dec
-def test(a: str) -> (str,): # E: Invalid tuple literal type # N: Suggestion: Is there a spurious trailing comma?
+def test(a: str) -> (str,): # E: Syntax error in type annotation # N: Suggestion: Is there a spurious trailing comma?
     return None
 
 [case testReturnTypeLineNumberNewLine]
@@ -2302,3 +2302,24 @@ f = lambda: 5
 reveal_type(f)
 [out]
 main:2: error: Revealed type is 'def () -> builtins.int'
+
+[case testRevealLocalsFunction]
+a = 1.0
+
+def f(a: int, b: int) -> int:
+    reveal_locals()
+    c = a + b
+    reveal_locals()
+    return c
+
+reveal_locals()
+[out]
+main:4: error: Revealed local types are:
+main:4: error: a: builtins.int
+main:4: error: b: builtins.int
+main:6: error: Revealed local types are:
+main:6: error: a: builtins.int
+main:6: error: b: builtins.int
+main:6: error: c: builtins.int
+main:9: error: Revealed local types are:
+main:9: error: a: builtins.float

@@ -1,7 +1,7 @@
 """Generic abstract syntax tree node visitor"""
 
 from abc import abstractmethod
-from typing import TypeVar, Generic
+from typing import Dict, TypeVar, Generic
 
 if False:
     # break import cycle only needed for mypy
@@ -77,7 +77,7 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
-    def visit_reveal_type_expr(self, o: 'mypy.nodes.RevealTypeExpr') -> T:
+    def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> T:
         pass
 
     @abstractmethod
@@ -458,7 +458,7 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> T:
         pass
 
-    def visit_reveal_type_expr(self, o: 'mypy.nodes.RevealTypeExpr') -> T:
+    def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> T:
         pass
 
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> T:

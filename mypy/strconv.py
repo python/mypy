@@ -406,8 +406,12 @@ class StrConv(NodeVisitor[str]):
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> str:
         return self.dump([o.expr, o.type], o)
 
-    def visit_reveal_type_expr(self, o: 'mypy.nodes.RevealTypeExpr') -> str:
-        return self.dump([o.expr], o)
+    def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> str:
+        if o.kind == mypy.nodes.REVEAL_TYPE:
+            return self.dump([o.expr], o)
+        else:
+            # REVEAL_LOCALS
+            return self.dump([o.local_nodes], o)
 
     def visit_unary_expr(self, o: 'mypy.nodes.UnaryExpr') -> str:
         return self.dump([o.op, o.expr], o)

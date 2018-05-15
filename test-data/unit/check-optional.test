@@ -385,7 +385,7 @@ def lookup_field(name, obj):
         attr = None
 
 [case testTernaryWithNone]
-reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(None if bool() else 0)  # E: Revealed type is 'Union[builtins.None, builtins.int]'
 [builtins fixtures/bool.pyi]
 
 [case testListWithNone]

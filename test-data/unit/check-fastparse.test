@@ -433,5 +433,5 @@ def update_state(tid,                # type: int
                  ):         # type: (...) -> str
     pass
 [out]
-main:3: error: Invalid tuple literal type
+main:3: error: Syntax error in type annotation
 main:3: note: Suggestion: Is there a spurious trailing comma?
