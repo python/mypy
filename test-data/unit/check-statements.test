@@ -410,8 +410,19 @@ raise object # E: Exception must be derived from BaseException
 raise f # E: Exception must be derived from BaseException
 [builtins fixtures/exception.pyi]
 
-[case testRaiseFromStatement]
+[case testRaiseExceptionType]
+import typing
+x = None # type: typing.Type[BaseException]
+raise x
+[builtins fixtures/exception.pyi]
 
+[case testRaiseNonExceptionTypeFails]
+import typing
+x = int # type: typing.Type[int]
+raise x # E: Exception must be derived from BaseException
+[builtins fixtures/exception.pyi]
+
+[case testRaiseFromStatement]
 e = None # type: BaseException
 f = None # type: MyError
 a = None # type: A
@@ -626,6 +637,16 @@ except (E1, (E2,)): pass  # E: Exception type must be derived from BaseException
 except (E1, E2): pass
 except ((E1, E2)): pass
 except (((E1, E2))): pass
+[builtins fixtures/exception.pyi]
+
+[case testExceptWithTypeType]
+import typing
+E = BaseException  # type: typing.Type[BaseException]
+
+try:
+    pass
+except E:
+    pass
 [builtins fixtures/exception.pyi]
 
 [case testExceptWithMultipleTypes2]
