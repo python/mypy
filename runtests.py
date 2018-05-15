@@ -196,7 +196,8 @@ def add_stubs(driver: Driver) -> None:
     for version in ["3.3", "3.4", "3.5", "3.6", "3.7"]:
         check_stubs(version)
     sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
-    check_stubs(sys_ver_str, name="2and3")
+    check_stubs(sys_ver_str, name="2and3-3.x")
+    check_stubs("2.7", name="2and3-2.7")
     check_stubs("2.7", name="2")
     check_stubs("3")
 
