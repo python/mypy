@@ -6302,6 +6302,11 @@ def f(x):
 [out]
 ==
 main:3: error: No overload variant of "f" matches argument types [builtins.str]
+main:3: note: Possible overload variants:
+main:3: note:     @overload
+main:3: note:     def f(x: int) -> None
+main:3: note:     @overload
+main:3: note:     def f(x: C) -> int
 
 [case testOverloadsDeleted]
 import mod
@@ -6411,6 +6416,11 @@ T = TypeVar('T', bound=str)
 [out]
 ==
 a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+a.py:2: note: Possible overload variants:
+a.py:2: note:     @overload
+a.py:2: note:     def f(x: C) -> None
+a.py:2: note:     @overload
+a.py:2: note:     def [c.T <: str] f(x: c.T) -> c.T
 
 [case testOverloadsGenericToNonGeneric]
 import a
@@ -6436,6 +6446,11 @@ class T: pass
 [out]
 ==
 a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+a.py:2: note: Possible overload variants:
+a.py:2: note:     @overload
+a.py:2: note:     def f(x: C) -> None
+a.py:2: note:     @overload
+a.py:2: note:     def f(x: T) -> T
 
 [case testOverloadsToNonOverloaded]
 import a
@@ -6591,6 +6606,11 @@ class C:
 [out]
 ==
 a.py:2: error: No overload variant of "B" matches argument types [builtins.int]
+a.py:2: note: Possible overload variants:
+a.py:2: note:     @overload
+a.py:2: note:     def __init__(self, x: str) -> B
+a.py:2: note:     @overload
+a.py:2: note:     def __init__(self, x: str, y: int) -> B
 
 [case testOverloadedToNormalMethodMetaclass]
 import a

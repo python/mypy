@@ -906,15 +906,31 @@ reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.i
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
-d.get() # E: No overload variant of "get" of "Mapping" matches argument types []
-d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types [builtins.str, builtins.int, builtins.int]
-x = d.get('z') # E: TypedDict "D" has no key 'z'
-reveal_type(x) # E: Revealed type is 'Any'
+d.get()
+d.get('x', 1, 2)
+x = d.get('z')
+reveal_type(x)
 s = ''
 y = d.get(s)
-reveal_type(y) # E: Revealed type is 'builtins.object*'
+reveal_type(y)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+[out]
+main:4: error: No overload variant of "get" of "Mapping" matches argument types []
+main:4: note: Possible overload variants:
+main:4: note:     @overload
+main:4: note:     def get(self, k: str) -> object
+main:4: note:     @overload
+main:4: note:     def [V] get(self, k: str, default: object) -> object
+main:5: error: No overload variant of "get" of "Mapping" matches argument types [builtins.str, builtins.int, builtins.int]
+main:5: note: Possible overload variants:
+main:5: note:     @overload
+main:5: note:     def get(self, k: str) -> object
+main:5: note:     @overload
+main:5: note:     def [V] get(self, k: str, default: Union[int, V]) -> object
+main:6: error: TypedDict "D" has no key 'z'
+main:7: error: Revealed type is 'Any'
+main:10: error: Revealed type is 'builtins.object*'
 
 [case testTypedDictMissingMethod]
 from mypy_extensions import TypedDict
@@ -1205,9 +1221,16 @@ def f(x: int) -> None: ...
 def f(x): pass
 
 a: A
-f(a)  # E: No overload variant of "f" matches argument types [TypedDict('__main__.A', {'x': builtins.int})]
+f(a)
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+[out]
+main:13: error: No overload variant of "f" matches argument types [TypedDict('__main__.A', {'x': builtins.int})]
+main:13: note: Possible overload variants:
+main:13: note:     @overload
+main:13: note:     def f(x: str) -> None
+main:13: note:     @overload
+main:13: note:     def f(x: int) -> None
 
 [case testTypedDictOverloading4]
 from typing import overload

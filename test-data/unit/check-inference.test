@@ -1469,10 +1469,17 @@ def f(blocks: Any): # E: Name 'Any' is not defined
 
 [case testSpecialCaseEmptyListInitialization2]
 def f(blocks: object):
-    to_process = [] # E: Need type annotation for 'to_process'
-    to_process = list(blocks) # E: No overload variant of "list" matches argument types [builtins.object]
+    to_process = []
+    to_process = list(blocks)
 [builtins fixtures/list.pyi]
 [out]
+main:2: error: Need type annotation for 'to_process'
+main:3: error: No overload variant of "list" matches argument types [builtins.object]
+main:3: note: Possible overload variants:
+main:3: note:     @overload
+main:3: note:     def [T] __init__(self) -> List[T]
+main:3: note:     @overload
+main:3: note:     def [T] __init__(self, x: Iterable[T]) -> List[T]
 
 
 -- Inferring types of variables first initialized to None (partial types)

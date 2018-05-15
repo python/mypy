@@ -534,7 +534,14 @@ class A:
 a = None # type: A
 a.g()
 a.g(B())
-a.g(a) # E: No overload variant matches argument types [foo.A]
+a.g(a)
+[out]
+tmp/foo.pyi:12: error: No overload variant matches argument types [foo.A]
+tmp/foo.pyi:12: note: Possible overload variants:
+tmp/foo.pyi:12: note:     @overload
+tmp/foo.pyi:12: note:     def f(self) -> None
+tmp/foo.pyi:12: note:     @overload
+tmp/foo.pyi:12: note:     def f(self, b: B) -> None
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
 
