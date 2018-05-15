@@ -58,6 +58,17 @@ p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # 
 p.add_argument('--junit-xml', help="write junit.xml to the given file")
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
+auto_parser = p = subparsers.add_parser('auto',
+                                        help="Check some files, starting daemon if necessary")
+p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
+p.add_argument('--junit-xml', help="write junit.xml to the given file")
+p.add_argument('--timeout', metavar='TIMEOUT', type=int,
+               help="Server shutdown timeout (in seconds)")
+p.add_argument('--log-file', metavar='FILE', type=str,
+               help="Direct daemon stdout/stderr to FILE")
+p.add_argument('flags', metavar='flags', nargs='*', type=str,
+               help="Regular mypy flags and files (precede with --)")
+
 recheck_parser = p = subparsers.add_parser('recheck',
     help="Check the same files as the most previous  check run (requires running daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
@@ -136,25 +147,31 @@ def do_start(args: argparse.Namespace) -> None:
 
 
 @action(restart_parser)
-def do_restart(args: argparse.Namespace) -> None:
+def do_restart(args: argparse.Namespace, allow_sources: bool = False) -> None:
     """Restart daemon (it may or may not be running; but not hanging).
 
     We first try to stop it politely if it's running.  This also sets
     mypy flags from the command line (see do_start()).
     """
+    restart_server(args)
+
+
+def restart_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
+    """Restart daemon (it may or may not be running; but not hanging)."""
     try:
         do_stop(args)
     except BadStatus:
         # Bad or missing status file or dead process; good to start.
         pass
-    start_server(args)
+    start_server(args, allow_sources)
 
 
-def start_server(args: argparse.Namespace) -> None:
+def start_server(args: argparse.Namespace, allow_sources: bool = False) -> None:
     """Start the server from command arguments and wait for it."""
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import daemonize, Server, process_start_options
-    if daemonize(Server(process_start_options(args.flags), timeout=args.timeout).serve,
+    if daemonize(Server(process_start_options(args.flags, allow_sources),
+                        timeout=args.timeout).serve,
                  args.log_file) != 0:
         sys.exit(1)
     wait_for_server()
@@ -178,6 +195,39 @@ def wait_for_server(timeout: float = 5.0) -> None:
         print("Daemon started")
         return
     sys.exit("Timed out waiting for daemon to start")
+
+
+@action(auto_parser)
+def do_auto(args: argparse.Namespace) -> None:
+    """Do a check, starting (or restarting) the daemon as necessary
+
+    Restarts the daemon if the running daemon reports that it is
+    required (due to a configuration change, for example).
+
+    Setting flags is a bit awkward; you have to use e.g.:
+
+      dmypy auto -- --strict a.py b.py ...
+
+    since we don't want to duplicate mypy's huge list of flags.
+
+    """
+    try:
+        get_status()
+    except BadStatus as err:
+        # Bad or missing status file or dead process; good to start.
+        start_server(args, allow_sources=True)
+
+    t0 = time.time()
+    response = request('auto', args=args.flags)
+    # If the daemon signals that a restart is necessary, do it
+    if 'error' in response and response['error'] == 'Must restart':
+        print('Restarting: {}'.format(response['out']))
+        restart_server(args, allow_sources=True)
+        response = request('auto', args=args.flags)
+
+    t1 = time.time()
+    response['roundtrip_time'] = t1 - t0
+    check_output(response, args.verbose, args.junit_xml)
 
 
 @action(status_parser)
@@ -291,7 +341,7 @@ def do_daemon(args: argparse.Namespace) -> None:
     """Serve requests in the foreground."""
     # Lazy import so this import doesn't slow down other commands.
     from mypy.dmypy_server import Server, process_start_options
-    Server(process_start_options(args.flags), timeout=args.timeout).serve()
+    Server(process_start_options(args.flags, allow_sources=False), timeout=args.timeout).serve()
 
 
 @action(help_parser)
