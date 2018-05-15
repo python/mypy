@@ -203,8 +203,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
-            return is_callable_subtype(
+            return is_callable_compatible(
                 left, right,
+                is_compat=is_subtype,
                 ignore_pos_arg_names=self.ignore_pos_arg_names)
         elif isinstance(right, Overloaded):
             return all(is_subtype(left, item, self.check_type_parameter,
@@ -310,10 +311,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     else:
                         # If this one overlaps with the supertype in any way, but it wasn't
                         # an exact match, then it's a potential error.
-                        if (is_callable_subtype(left_item, right_item, ignore_return=True,
-                                            ignore_pos_arg_names=self.ignore_pos_arg_names) or
-                                is_callable_subtype(right_item, left_item, ignore_return=True,
-                                                ignore_pos_arg_names=self.ignore_pos_arg_names)):
+                        if (is_callable_compatible(left_item, right_item,
+                                    is_compat=is_subtype, ignore_return=True,
+                                    ignore_pos_arg_names=self.ignore_pos_arg_names) or
+                                is_callable_compatible(right_item, left_item,
+                                        is_compat=is_subtype, ignore_return=True,
+                                        ignore_pos_arg_names=self.ignore_pos_arg_names)):
                             # If this is an overload that's already been matched, there's no
                             # problem.
                             if left_item not in matched_overloads:
@@ -568,16 +571,22 @@ def non_method_protocol_members(tp: TypeInfo) -> List[str]:
     return result
 
 
-def is_callable_subtype(left: CallableType, right: CallableType,
-                        ignore_return: bool = False,
-                        ignore_pos_arg_names: bool = False,
-                        use_proper_subtype: bool = False) -> bool:
-    """Is left a subtype of right?"""
+def is_callable_compatible(left: CallableType, right: CallableType,
+                           *,
+                           is_compat: Callable[[Type, Type], bool],
+                           ignore_return: bool = False,
+                           ignore_pos_arg_names: bool = False,
+                           check_args_covariantly: bool = False) -> bool:
+    """Is the left compatible with the right, using the provided compatibility check?
 
-    if use_proper_subtype:
-        is_compat = is_proper_subtype
-    else:
-        is_compat = is_subtype
+    If 'check_args_covariantly' is set to True, check if the left's args is
+    compatible with the right's instead of the other way around (contravariantly).
+
+    This function is mostly used to check if the left is a subtype of the right which
+    is why the default is to check the args covariantly. However, it's occasionally
+    useful to check the args using some other check, so we leave the variance
+    configurable.
+    """
 
     # If either function is implicitly typed, ignore positional arg names too
     if left.implicit or right.implicit:
@@ -609,6 +618,9 @@ def is_callable_subtype(left: CallableType, right: CallableType,
     # Check return types.
     if not ignore_return and not is_compat(left.ret_type, right.ret_type):
         return False
+
+    if check_args_covariantly:
+        is_compat = flip_compat_check(is_compat)
 
     if right.is_ellipsis_args:
         return True
@@ -664,7 +676,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_by_position = right.argument_by_position(j)
                 assert right_by_position is not None
                 if not are_args_compatible(left_by_position, right_by_position,
-                                           ignore_pos_arg_names, use_proper_subtype):
+                                           ignore_pos_arg_names, is_compat):
                     return False
                 j += 1
             continue
@@ -687,7 +699,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
                 right_by_name = right.argument_by_name(name)
                 assert right_by_name is not None
                 if not are_args_compatible(left_by_name, right_by_name,
-                                           ignore_pos_arg_names, use_proper_subtype):
+                                           ignore_pos_arg_names, is_compat):
                     return False
             continue
 
@@ -696,7 +708,7 @@ def is_callable_subtype(left: CallableType, right: CallableType,
         if left_arg is None:
             return False
 
-        if not are_args_compatible(left_arg, right_arg, ignore_pos_arg_names, use_proper_subtype):
+        if not are_args_compatible(left_arg, right_arg, ignore_pos_arg_names, is_compat):
             return False
 
     done_with_positional = False
@@ -748,7 +760,7 @@ def are_args_compatible(
         left: FormalArgument,
         right: FormalArgument,
         ignore_pos_arg_names: bool,
-        use_proper_subtype: bool) -> bool:
+        is_compat: Callable[[Type, Type], bool]) -> bool:
     # If right has a specific name it wants this argument to be, left must
     # have the same.
     if right.name is not None and left.name != right.name:
@@ -759,16 +771,18 @@ def are_args_compatible(
     if right.pos is not None and left.pos != right.pos:
         return False
     # Left must have a more general type
-    if use_proper_subtype:
-        if not is_proper_subtype(right.typ, left.typ):
-            return False
-    else:
-        if not is_subtype(right.typ, left.typ):
-            return False
+    if not is_compat(right.typ, left.typ):
+        return False
     # If right's argument is optional, left's must also be.
     if not right.required and left.required:
         return False
     return True
+
+
+def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type, Type], bool]:
+    def new_is_compat(left: Type, right: Type) -> bool:
+        return is_compat(right, left)
+    return new_is_compat
 
 
 def unify_generic_callable(type: CallableType, target: CallableType,
@@ -913,10 +927,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
-            return is_callable_subtype(
-                left, right,
-                ignore_pos_arg_names=False,
-                use_proper_subtype=True)
+            return is_callable_compatible(left, right, is_compat=is_proper_subtype)
         elif isinstance(right, Overloaded):
             return all(is_proper_subtype(left, item)
                        for item in right.items())
