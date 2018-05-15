@@ -29,6 +29,7 @@ from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
 from mypy.typestate import reset_global_state
+from mypy.version import __version__
 
 
 MEM_PROFILE = False  # If True, dump memory profile after initialization
@@ -228,7 +229,7 @@ class Server:
 
     last_sources = None  # type: List[mypy.build.BuildSource]
 
-    def cmd_auto(self, args: Sequence[str]) -> Dict[str, object]:
+    def cmd_auto(self, version: str, args: Sequence[str]) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
             self.last_sources, options = mypy.main.process_options(
@@ -239,6 +240,8 @@ class Server:
             # Signal that we need to restart if the options have changed
             if self.options_snapshot != options.__dict__:
                 return {'error': 'Must restart', 'out': 'configuration changed'}
+            if __version__ != version:
+                return {'error': 'Must restart', 'out': 'mypy version changed'}
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)

@@ -18,6 +18,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.util import write_junit_xml
+from mypy.version import __version__
 
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
@@ -218,12 +219,12 @@ def do_auto(args: argparse.Namespace) -> None:
         start_server(args, allow_sources=True)
 
     t0 = time.time()
-    response = request('auto', args=args.flags)
+    response = request('auto', version=__version__, args=args.flags)
     # If the daemon signals that a restart is necessary, do it
     if 'error' in response and response['error'] == 'Must restart':
         print('Restarting: {}'.format(response['out']))
         restart_server(args, allow_sources=True)
-        response = request('auto', args=args.flags)
+        response = request('auto', version=__version__, args=args.flags)
 
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
