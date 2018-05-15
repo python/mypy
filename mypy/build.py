@@ -669,23 +669,19 @@ class BuildManager:
         return self.cache_enabled and self.options.use_fine_grained_cache
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
-        if not self.options.shadow_file:
+        if not self.shadow_map:
             return path
 
         previously_checked = path in self.shadow_equivalence_map
         if not previously_checked:
-            for k in self.shadow_map.keys():
-                if self.fscache.samefile(path, k):
-                    self.shadow_equivalence_map[path] = self.shadow_map.get(k)
+            for source, shadow in self.shadow_map.items():
+                if self.fscache.samefile(path, source):
+                    self.shadow_equivalence_map[path] = shadow
                     break
                 else:
                     self.shadow_equivalence_map[path] = None
 
-        shadow_file = self.shadow_equivalence_map.get(path)
-        if shadow_file:
-            path = shadow_file
-
-        return path
+        return self.shadow_equivalence_map.get(path, path)
 
     def get_stat(self, path: str) -> os.stat_result:
         return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
