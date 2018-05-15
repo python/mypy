@@ -180,7 +180,7 @@ detailed release notes):
 - November 2016
     * Publish ``mypy-lang`` version 0.4.6 on PyPI.
 
-    * Add :ref:`getting-started`.
+    * Add Getting started.
 
     * Add :ref:`generic-methods-and-generic-self` (experimental).
 

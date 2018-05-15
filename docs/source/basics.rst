@@ -46,6 +46,20 @@ Arguments with default values can be annotated as follows:
    def greeting(name: str, prefix: str = 'Mr.') -> str:
       return 'Hello, {} {}'.format(name, prefix)
 
+Installing mypy
+***************
+
+Mypy requires Python 3.4 or later to run.  Once you've
+`installed Python 3 <https://www.python.org/downloads/>`_,
+you can install mypy with:
+
+.. code-block:: text
+
+    python3 -m pip install mypy
+
+Note that even though you need Python 3 to run ``mypy``, type checking
+Python 2 code is fully supported, as discussed in :ref:`python2`.
+
 Running mypy
 ************
 
@@ -57,9 +71,6 @@ running it::
 
 All errors reported by mypy are essentially warnings that you are free
 to ignore, if you so wish.
-
-The next chapter explains how to download and install mypy:
-:ref:`getting-started`.
 
 More command line options are documented in :ref:`command-line`.
 
@@ -114,7 +125,7 @@ more stable.
    report errors even for dynamically typed functions. However, you
    should not rely on this, as this may change in the future.
 
-.. _library-stubs:
+.. _stubs-intro:
 
 Library stubs and the Typeshed repo
 ***********************************
@@ -146,44 +157,40 @@ In stub files we don't care about the function bodies, so we use
 an ellipsis instead.  That ``...`` is three literal dots!
 
 Mypy complains if it can't find a stub (or a real module) for a
-library module that you import. You can create a stub easily; here is
-an overview:
+library module that you import. You can
+:ref:`create a stub easily <stub-files>`.
 
-* Write a stub file for the library and store it as a ``.pyi`` file in
-  the same directory as the library module.
-* Alternatively, put your stubs (``.pyi`` files) in a directory
-  reserved for stubs (e.g., ``myproject/stubs``). In this case you
-  have to set the environment variable ``MYPYPATH`` to refer to the
-  directory.  For example::
+Next steps
+**********
 
-    $ export MYPYPATH=~/work/myproject/stubs
+If you are in a hurry and don't want to read lots of documentation
+before getting started, here are some pointers to quick learning
+resources:
 
-Use the normal Python file name conventions for modules, e.g. ``csv.pyi``
-for module ``csv``. Use a subdirectory with ``__init__.pyi`` for packages.
+* Read the :ref:`mypy cheatsheet <cheat-sheet-py3>` (also for
+  :ref:`Python 2 <cheat-sheet-py2>`).
 
-If a directory contains both a ``.py`` and a ``.pyi`` file for the
-same module, the ``.pyi`` file takes precedence. This way you can
-easily add annotations for a module even if you don't want to modify
-the source code. This can be useful, for example, if you use 3rd party
-open source libraries in your program (and there are no stubs in
-typeshed yet).
+* Read :ref:`existing-code` if you have existing code without annotations.
 
-That's it! Now you can access the module in mypy programs and type check
-code that uses the library. If you write a stub for a library module,
-consider making it available for other programmers that use mypy
-by contributing it back to the typeshed repo.
+* Read the `blog post <http://blog.zulip.org/2016/10/13/static-types-in-python-oh-mypy/>`_
+  about the Zulip project's experiences with adopting mypy.
 
-There is more information about creating stubs in the
-`mypy wiki <https://github.com/python/mypy/wiki/Creating-Stubs-For-Python-Modules>`_.
-The following sections explain the kinds of type annotations you can use
-in your programs and stub files.
+* If you prefer watching talks instead of reading, here are
+  some ideas:
 
-.. note::
+  * Carl Meyer:
+    `Type Checked Python in the Real World <https://us.pycon.org/2018/schedule/presentation/102/>`_
+    (PyCon 2018)
 
-   You may be tempted to point ``MYPYPATH`` to the standard library or
-   to the ``site-packages`` directory where your 3rd party packages
-   are installed. This is almost always a bad idea -- you will likely
-   get tons of error messages about code you didn't write and that
-   mypy can't analyze all that well yet, and in the worst case
-   scenario mypy may crash due to some construct in a 3rd party
-   package that it didn't expect.
+  * Greg Price:
+    `Clearer Code at Scale: Static Types at Zulip and Dropbox <https://www.youtube.com/watch?v=0c46YHS3RY8>`_
+    (PyCon 2018)
+
+* Look at :ref:`solutions to common issues <common_issues>` with mypy if
+  you encounter problems.
+
+* You can ask questions about mypy in mypy issue tracker and
+  typing `Gitter chat <https://gitter.im/python/typing>`_.
+
+You can also continue reading this document and skip sections that
+aren't relevant for you. You don't need to read sections in order.

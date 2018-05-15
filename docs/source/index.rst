@@ -14,7 +14,7 @@ Mypy is a static type checker for Python 3 and Python 2.7.
 
    introduction
    basics
-   getting_started
+   existing_code
 
 .. toctree::
    :maxdepth: 2
@@ -27,15 +27,16 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    :maxdepth: 2
    :caption: Type system reference
 
-   python2
    builtin_types
    type_inference_and_annotations
    kinds_of_types
    class_basics
    protocols
+   python2
    dynamic_typing
    casts
    duck_type_compatibility
+   stubs
    generics
    more_types
 
