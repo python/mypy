@@ -578,6 +578,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # values.  IOW, tc is None.
             return NoneTyp()
 
+    def get_coroutine_return_type(self, return_type: Type) -> Type:
+        if isinstance(return_type, AnyType):
+            return AnyType(TypeOfAny.from_another_any, source_any=return_type)
+        return return_type.args[0]
+
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
         if isinstance(return_type, AnyType):
@@ -2211,6 +2216,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if defn.is_generator:
                 return_type = self.get_generator_return_type(self.return_types[-1],
                                                              defn.is_coroutine)
+            elif defn.is_coroutine:
+                return_type = self.get_coroutine_return_type(self.return_types[-1])
             else:
                 return_type = self.return_types[-1]
 
