@@ -464,7 +464,8 @@ def process_options(args: List[str],
                         help=strict_help)
     parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
                         dest='shadow_file', action='append',
-                        help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
+                        help='When encountering SOURCE_FILE, read and typecheck'
+                             'the contents of SHADOW_FILE instead.')
     # hidden options
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which

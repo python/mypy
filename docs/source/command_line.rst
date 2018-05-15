@@ -463,13 +463,20 @@ Here are some more useful flags:
 
 .. _shadow-file:
 
-- ``--shadow-file SOURCE_FILE SHADOW_FILE`` makes mypy typecheck SHADOW_FILE in
-  place of SOURCE_FILE.  Primarily intended for tooling.  Allows tooling to
-  make transformations to a file before type checking without having to change
-  the file in-place.  (For example, tooling could use this to display the type
-  of an expression by wrapping it with a call to reveal_type in the shadow
-  file and then parsing the output.) This argument may be specified multiple times
-  to make mypy substitute multiple different files with their shadow replacements.
+- ``--shadow-file SOURCE_FILE SHADOW_FILE``: when mypy is asked to typecheck
+  ``SOURCE_FILE``, this makes it read from and typecheck the contents of
+  ``SHADOW_FILE`` instead. However, diagnostics will continue to refer to
+  ``SOURCE_FILE``. Specifying this argument multiple times
+  (``--shadow-file X1 Y1 --shadow-file X2 Y2``)
+  will allow mypy to perform multiple substitutions.
+
+  This allows tooling to create temporary files with helpful modifications
+  without having to change the source file in place. For example, suppose we
+  have a pipeline that adds ``reveal_type`` for certain variables.
+  This pipeline is run on ``original.py`` to produce ``temp.py``.
+  Running ``mypy --shadow-file original.py temp.py original.py`` will then
+  cause mypy to typecheck the contents of ``temp.py`` instead of  ``original.py``,
+  but error messages will still reference ``original.py``.
 
 .. _no-implicit-optional:
 
