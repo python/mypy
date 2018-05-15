@@ -103,6 +103,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     # reveal_type is a mypy-only function that gives an error with
                     # the type of its arg.
                     ('reveal_type', AnyType(TypeOfAny.special_form)),
+                    # reveal_locals is a mypy-only function that gives an error with the types of
+                    # locals
+                    ('reveal_locals', AnyType(TypeOfAny.special_form)),
                 ]  # type: List[Tuple[str, Type]]
 
                 # TODO(ddfisher): This guard is only needed because mypy defines

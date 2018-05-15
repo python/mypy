@@ -2302,3 +2302,24 @@ f = lambda: 5
 reveal_type(f)
 [out]
 main:2: error: Revealed type is 'def () -> builtins.int'
+
+[case testRevealLocalsFunction]
+a = 1.0
+
+def f(a: int, b: int) -> int:
+    reveal_locals()
+    c = a + b
+    reveal_locals()
+    return c
+
+reveal_locals()
+[out]
+main:4: error: Revealed local types are:
+main:4: error: a: builtins.int
+main:4: error: b: builtins.int
+main:6: error: Revealed local types are:
+main:6: error: a: builtins.int
+main:6: error: b: builtins.int
+main:6: error: c: builtins.int
+main:9: error: Revealed local types are:
+main:9: error: a: builtins.float
