@@ -12,7 +12,7 @@ async def f() -> int:
 
 async def f() -> int:
     return 0
-reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+reveal_type(f())  # E: Revealed type is 'typing.Coroutine[builtins.int, Any, Any]'
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
