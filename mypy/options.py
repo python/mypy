@@ -42,6 +42,7 @@ class Options:
         "always_false",
         "strict_optional",
         "disallow_untyped_decorators",
+        "local_partial_types",
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
