@@ -846,6 +846,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         is_named_instance(self.return_types[-1], 'typing.AwaitableGenerator')):
                     return_type = self.get_generator_return_type(self.return_types[-1],
                                                                  defn.is_coroutine)
+                elif defn.is_coroutine:
+                    return_type = self.get_coroutine_return_type(self.return_types[-1])
                 else:
                     return_type = self.return_types[-1]
 
