@@ -761,7 +761,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     c = defn.is_coroutine
                     ty = self.get_generator_yield_type(t, c)
                     tc = self.get_generator_receive_type(t, c)
-                    tr = self.get_generator_return_type(t, c)
+                    if c:
+                        tr = self.get_coroutine_return_type(t)
+                    else:
+                        tr = self.get_generator_return_type(t, c)
                     ret_type = self.named_generic_type('typing.AwaitableGenerator',
                                                        [ty, tc, tr, t])
                     typ = typ.copy_modified(ret_type=ret_type)
