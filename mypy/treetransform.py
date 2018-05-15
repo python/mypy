@@ -379,7 +379,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_reveal_expr(self, node: RevealExpr) -> RevealExpr:
         if node.kind == REVEAL_TYPE:
-            return RevealExpr(kind=REVEAL_TYPE, expr=self.expr(cast(Expression, node.expr)))
+            assert node.expr is not None
+            return RevealExpr(kind=REVEAL_TYPE, expr=self.expr(node.expr))
         else:
             # Reveal locals expressions don't have any sub expressions
             return node

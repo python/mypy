@@ -1799,8 +1799,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_reveal_expr(self, expr: RevealExpr) -> Type:
         """Type check a reveal_type expression."""
         if expr.kind == REVEAL_TYPE:
-            if expr.expr is not None:
-                revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
+            assert expr.expr is not None
+            revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
             if not self.chk.current_node_deferred:
                 self.msg.reveal_type(revealed_type, expr)
                 if not self.chk.in_checked_function():

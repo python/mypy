@@ -183,10 +183,8 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_reveal_expr(self, o: RevealExpr) -> None:
         if o.kind == REVEAL_TYPE:
-            from mypy.nodes import Expression
-            from typing import cast
-            expr = cast(Expression, o.expr)
-            expr.accept(self)
+            assert o.expr is not None
+            o.expr.accept(self)
         else:
             # RevealLocalsExpr doesn't have an inner expression
             pass
