@@ -177,20 +177,28 @@ def add_pytest(driver: Driver) -> None:
 
 
 def add_stubs(driver: Driver) -> None:
-    # We only test each module in the one version mypy prefers to find.
-    # TODO: test stubs for other versions, especially Python 2 stubs.
-
-    modules = {'typing'}
-    # TODO: This should also test Python 2, and pass pyversion accordingly.
-    for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
-        for stub_type in ['builtins', 'stdlib', 'third_party']:
-            stubdir = join('typeshed', stub_type, version)
+    def check_stubs(version: str, name: str = None) -> None:
+        if name is None:
+            name = version
+        modules = {'typing', '__builtin__', 'builtins'}
+        for stub_type in ['stdlib', 'third_party']:
+            stubdir = join('typeshed', stub_type, name)
             for f in find_files(stubdir, suffix='.pyi'):
                 module = file_to_module(f[len(stubdir) + 1:])
                 modules.add(module)
+        modules.remove('__builtin__')
+        modules.remove('builtins')
+        if version == "3":
+            version = "3.3"
+        driver.add_mypy_modules('stubs Python {}'.format(name), sorted(modules),
+                                extra_args=['--python-version={}'.format(version)])
 
-    # these require at least 3.5 otherwise it will fail trying to import zipapp
-    driver.add_mypy_modules('stubs', sorted(modules), extra_args=['--python-version=3.5'])
+    for version in ["3.3", "3.4", "3.5", "3.6", "3.7"]:
+        check_stubs(version)
+    sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
+    check_stubs(sys_ver_str, name="2and3")
+    check_stubs("2.7", name="2")
+    check_stubs("3")
 
 
 def add_stdlibsamples(driver: Driver) -> None:
