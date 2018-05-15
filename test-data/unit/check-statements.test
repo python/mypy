@@ -639,6 +639,16 @@ except ((E1, E2)): pass
 except (((E1, E2))): pass
 [builtins fixtures/exception.pyi]
 
+[case testExceptWithTypeType]
+import typing
+E = BaseException  # type: typing.Type[BaseException]
+
+try:
+    pass
+except E:
+    pass
+[builtins fixtures/exception.pyi]
+
 [case testExceptWithMultipleTypes2]
 import typing
 class E1(BaseException): pass
