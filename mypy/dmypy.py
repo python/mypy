@@ -59,8 +59,8 @@ p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # 
 p.add_argument('--junit-xml', help="write junit.xml to the given file")
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
-auto_parser = p = subparsers.add_parser('auto',
-                                        help="Check some files, starting daemon if necessary")
+run_parser = p = subparsers.add_parser('run',
+                                       help="Check some files, [re]starting daemon if necessary")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('--junit-xml', help="write junit.xml to the given file")
 p.add_argument('--timeout', metavar='TIMEOUT', type=int,
@@ -198,8 +198,8 @@ def wait_for_server(timeout: float = 5.0) -> None:
     sys.exit("Timed out waiting for daemon to start")
 
 
-@action(auto_parser)
-def do_auto(args: argparse.Namespace) -> None:
+@action(run_parser)
+def do_run(args: argparse.Namespace) -> None:
     """Do a check, starting (or restarting) the daemon as necessary
 
     Restarts the daemon if the running daemon reports that it is
@@ -207,10 +207,10 @@ def do_auto(args: argparse.Namespace) -> None:
 
     Setting flags is a bit awkward; you have to use e.g.:
 
-      dmypy auto -- --strict a.py b.py ...
+      dmypy run -- --strict a.py b.py ...
 
     since we don't want to duplicate mypy's huge list of flags.
-
+    (The -- is only necessary if flags are specified.)
     """
     try:
         get_status()
@@ -219,12 +219,12 @@ def do_auto(args: argparse.Namespace) -> None:
         start_server(args, allow_sources=True)
 
     t0 = time.time()
-    response = request('auto', version=__version__, args=args.flags)
+    response = request('run', version=__version__, args=args.flags)
     # If the daemon signals that a restart is necessary, do it
-    if 'error' in response and response['error'] == 'Must restart':
-        print('Restarting: {}'.format(response['out']))
+    if 'restart' in response:
+        print('Restarting: {}'.format(response['restart']))
         restart_server(args, allow_sources=True)
-        response = request('auto', version=__version__, args=args.flags)
+        response = request('run', version=__version__, args=args.flags)
 
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0

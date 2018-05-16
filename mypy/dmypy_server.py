@@ -119,7 +119,7 @@ class Server:
         """Initialize the server with the desired mypy flags."""
         self.options = options
         # Snapshot the options info before we muck with it, to detect changes
-        self.options_snapshot = dict(options.__dict__)
+        self.options_snapshot = options.snapshot()
         self.timeout = timeout
         self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
 
@@ -229,7 +229,7 @@ class Server:
 
     last_sources = None  # type: List[mypy.build.BuildSource]
 
-    def cmd_auto(self, version: str, args: Sequence[str]) -> Dict[str, object]:
+    def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
             self.last_sources, options = mypy.main.process_options(
@@ -238,10 +238,10 @@ class Server:
                 server_options=True,
                 fscache=self.fscache)
             # Signal that we need to restart if the options have changed
-            if self.options_snapshot != options.__dict__:
-                return {'error': 'Must restart', 'out': 'configuration changed'}
+            if self.options_snapshot != options.snapshot():
+                return {'restart': 'configuration changed'}
             if __version__ != version:
-                return {'error': 'Must restart', 'out': 'mypy version changed'}
+                return {'restart': 'mypy version changed'}
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(self.last_sources)
