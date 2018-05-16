@@ -866,12 +866,12 @@ from typing import overload
 a, b, c = None, None, None  # type: (A, B, C)
 a[b]
 a[c]
-a[1]  # E: No overload variant of "__getitem__" of "A" matches argument types [builtins.int]
+a[1]
 
 i, s = None, None  # type: (int, str)
 i = a[b]
-s = a[b]  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-i = a[c]  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+s = a[b]
+i = a[c]
 s = a[c]
 
 class A:
@@ -884,6 +884,14 @@ class A:
 class B: pass
 class C: pass
 [out]
+tmp/foo.pyi:6: error: No overload variant of "__getitem__" of "A" matches argument types [builtins.int]
+tmp/foo.pyi:6: note: Possible overload variants:
+tmp/foo.pyi:6: note:     @overload
+tmp/foo.pyi:6: note:     def __getitem__(self, B) -> int
+tmp/foo.pyi:6: note:     @overload
+tmp/foo.pyi:6: note:     def __getitem__(self, C) -> str
+tmp/foo.pyi:10: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+tmp/foo.pyi:11: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 
 -- Cast expression

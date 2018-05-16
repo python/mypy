@@ -1041,11 +1041,16 @@ d.get()
 s = ''
 reveal_type(d.get(s))
 [out]
-_testTypedDictGet.py:7: error: Revealed type is 'builtins.int'
-_testTypedDictGet.py:8: error: Revealed type is 'builtins.str'
-_testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
-_testTypedDictGet.py:10: error: No overload variant of "get" of "Mapping" matches argument types []
-_testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'
+_program.py:7: error: Revealed type is 'builtins.int'
+_program.py:8: error: Revealed type is 'builtins.str'
+_program.py:9: error: TypedDict "D" has no key 'z'
+_program.py:10: error: No overload variant of "get" of "Mapping" matches argument types []
+_program.py:10: note: Possible overload variants:
+_program.py:10: note:     @overload
+_program.py:10: note:     def get(self, k: str) -> object
+_program.py:10: note:     @overload
+_program.py:10: note:     def [_T] get(self, k: str, default: object) -> object
+_program.py:12: error: Revealed type is 'builtins.object*'
 
 [case testTypedDictMappingMethods]
 from mypy_extensions import TypedDict

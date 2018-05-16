@@ -752,6 +752,10 @@ class MessageBuilder:
                       .format(name, arg_types), context)
         else:
             self.fail('No overload variant matches argument types {}'.format(arg_types), context)
+        OFFSET = 2
+        MAX_ITEMS = 2
+        self.note('Possible overload variants:', context)
+        self.pretty_overload(overload, context, OFFSET, MAX_ITEMS)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
