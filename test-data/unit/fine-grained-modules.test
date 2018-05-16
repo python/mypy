@@ -1606,6 +1606,23 @@ class A: pass
 [out]
 ==
 
+[case testImportStarOverlap]
+from b import *
+from c import *  # type: ignore
+[file b.py]
+from d import T
+[file c.py]
+from d import T
+[file c.py.2]
+from d import T
+z = 10
+[file d.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out]
+==
+
+
 [case testImportPartialAssign]
 import a
 [file a.py]
