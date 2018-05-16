@@ -63,14 +63,17 @@ class TestPEP561(TestCase):
         yield
 
     def setUp(self) -> None:
-        self.tempfile = tempfile.NamedTemporaryFile()
-        with open(self.tempfile.name, 'w') as f:
-            f.write(SIMPLE_PROGRAM)
-        self.msg_list = "{}:4: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile.name)
-        self.msg_tuple = "{}:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile.name)
+        self.temp_file_dir = tempfile.TemporaryDirectory()
+        self.tempfile = os.path.join(self.temp_file_dir.name, 'simple.py')
+        with open(self.tempfile, 'w+') as file:
+            file.write(SIMPLE_PROGRAM)
+        self.msg_list = \
+            "{}:4: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile)
+        self.msg_tuple = \
+            "{}:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile)
 
     def tearDown(self) -> None:
-        self.tempfile.close()
+        self.temp_file_dir.cleanup()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
@@ -81,7 +84,7 @@ class TestPEP561(TestCase):
         with self.virtualenv() as python_executable:
             with self.install_package('typedpkg-stubs', python_executable):
                 check_mypy_run(
-                    [self.tempfile.name],
+                    [self.tempfile],
                     python_executable,
                     self.msg_list,
                 )
@@ -90,7 +93,7 @@ class TestPEP561(TestCase):
         with self.virtualenv() as python_executable:
             with self.install_package('typedpkg', python_executable):
                 check_mypy_run(
-                    [self.tempfile.name],
+                    [self.tempfile],
                     python_executable,
                     self.msg_tuple,
                 )
@@ -100,7 +103,7 @@ class TestPEP561(TestCase):
             with self.install_package('typedpkg', python_executable):
                 with self.install_package('typedpkg-stubs', python_executable):
                     check_mypy_run(
-                        [self.tempfile.name],
+                        [self.tempfile],
                         python_executable,
                         self.msg_list,
                     )
@@ -111,7 +114,7 @@ class TestPEP561(TestCase):
             with self.virtualenv(python2) as py2:
                 with self.install_package('typedpkg-stubs', py2):
                     check_mypy_run(
-                        [self.tempfile.name],
+                        [self.tempfile],
                         py2,
                         self.msg_list,
                     )
@@ -122,7 +125,7 @@ class TestPEP561(TestCase):
             with self.virtualenv(python2) as py2:
                 with self.install_package('typedpkg', py2):
                     check_mypy_run(
-                        [self.tempfile.name],
+                        [self.tempfile],
                         py2,
                         self.msg_tuple,
                     )
