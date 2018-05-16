@@ -2358,6 +2358,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = self.expr_checker.accept(e)
+        if isinstance(typ, TypeType):
+            if isinstance(typ.item, AnyType):
+                return
+            typ = typ.item
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
                 # Cases like "raise/from ExceptionClass".
