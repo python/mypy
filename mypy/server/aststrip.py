@@ -229,7 +229,8 @@ class NodeStripVisitor(TraverserVisitor):
         # (The description in visit_import is relevant here as well.)
         if self.names:
             for name in node.imported_names:
-                del self.names[name]
+                if name in self.names:
+                    del self.names[name]
         node.imported_names = []
 
     def visit_for_stmt(self, node: ForStmt) -> None:
