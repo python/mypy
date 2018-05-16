@@ -193,6 +193,12 @@ class Options:
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
 
+    def snapshot(self) -> object:
+        """Produce a comparable snapshot of this Option"""
+        d = dict(self.__dict__)
+        del d['per_module_cache']
+        return d
+
     def __eq__(self, other: object) -> bool:
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
@@ -200,9 +206,7 @@ class Options:
         return not self == other
 
     def __repr__(self) -> str:
-        d = dict(self.__dict__)
-        del d['per_module_cache']
-        return 'Options({})'.format(pprint.pformat(d))
+        return 'Options({})'.format(pprint.pformat(self.snapshot()))
 
     def build_per_module_cache(self) -> None:
         self.per_module_cache = {}
