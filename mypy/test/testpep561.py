@@ -4,12 +4,13 @@ import random
 import shutil
 import string
 import sys
+import tempfile
 from typing import Iterator, List, Generator
 from unittest import TestCase, main
 
 import mypy.api
 from mypy.build import FindModuleCache, _get_site_packages_dirs
-from mypy.test.config import package_path
+from mypy.test.config import package_path, test_temp_dir
 from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
 
@@ -34,28 +35,21 @@ def check_mypy_run(cmd_line: List[str],
     assert returncode == expected_returncode, returncode
 
 
-def random_dir() -> str:
-    dir = ''.join(random.sample(string.ascii_lowercase + string.digits + '_-.', 10))
-    return dir
-
-
 class TestPEP561(TestCase):
-    test_file = 'simple.py'
-    base_dir = 'test-packages-data'
 
     @contextmanager
     def virtualenv(self, python_executable: str = sys.executable) -> Generator[str, None, None]:
-        """Context manager that creates a virtualenv in a randomly named directory
+        """Context manager that creates a virtualenv in a temporary directory
 
         returns the path to the created Python executable"""
-        venv_dir = random_dir()  # a unique name for the virtualenv directory
-        run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable),
-                    venv_dir], cwd=os.getcwd())
-        if sys.platform == 'win32':
-            yield os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
-        else:
-            yield os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
-        shutil.rmtree(venv_dir)
+        with tempfile.TemporaryDirectory() as venv_dir:
+            run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable),
+                        venv_dir], cwd=os.getcwd())
+            if sys.platform == 'win32':
+                python = os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
+            else:
+                python = os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
+            yield python
 
     @contextmanager
     def install_package(self, pkg: str,
@@ -69,17 +63,14 @@ class TestPEP561(TestCase):
         yield
 
     def setUp(self) -> None:
-        self.test_dir = os.path.abspath(random_dir())
-        if not os.path.exists(self.test_dir):
-            os.mkdir(self.test_dir)
-        self.old_cwd = os.getcwd()
-        os.chdir(self.test_dir)
-        with open(self.test_file, 'w') as f:
+        self.tempfile = tempfile.NamedTemporaryFile()
+        with open(self.tempfile.name, 'w') as f:
             f.write(SIMPLE_PROGRAM)
+        self.msg_list = "{}:4: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile.name)
+        self.msg_tuple = "{}:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile.name)
 
     def tearDown(self) -> None:
-        os.chdir(self.old_cwd)
-        shutil.rmtree(self.test_dir)
+        self.tempfile.close()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
@@ -90,18 +81,18 @@ class TestPEP561(TestCase):
         with self.virtualenv() as python_executable:
             with self.install_package('typedpkg-stubs', python_executable):
                 check_mypy_run(
-                    [self.test_file],
+                    [self.tempfile.name],
                     python_executable,
-                    "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                    self.msg_list,
                 )
 
     def test_typedpkg(self) -> None:
         with self.virtualenv() as python_executable:
             with self.install_package('typedpkg', python_executable):
                 check_mypy_run(
-                    [self.test_file],
+                    [self.tempfile.name],
                     python_executable,
-                    "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
+                    self.msg_tuple,
                 )
 
     def test_stub_and_typed_pkg(self) -> None:
@@ -109,9 +100,9 @@ class TestPEP561(TestCase):
             with self.install_package('typedpkg', python_executable):
                 with self.install_package('typedpkg-stubs', python_executable):
                     check_mypy_run(
-                        [self.test_file],
+                        [self.tempfile.name],
                         python_executable,
-                        "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                        self.msg_list,
                     )
 
     def test_typedpkg_stubs_python2(self) -> None:
@@ -120,9 +111,9 @@ class TestPEP561(TestCase):
             with self.virtualenv(python2) as py2:
                 with self.install_package('typedpkg-stubs', py2):
                     check_mypy_run(
-                        [self.test_file],
+                        [self.tempfile.name],
                         py2,
-                        "simple.py:4: error: Revealed type is 'builtins.list[builtins.str]'\n"
+                        self.msg_list,
                     )
 
     def test_typedpkg_python2(self) -> None:
@@ -131,9 +122,9 @@ class TestPEP561(TestCase):
             with self.virtualenv(python2) as py2:
                 with self.install_package('typedpkg', py2):
                     check_mypy_run(
-                        [self.test_file],
+                        [self.tempfile.name],
                         py2,
-                        "simple.py:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n"
+                        self.msg_tuple,
                     )
 
 
