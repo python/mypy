@@ -1083,7 +1083,7 @@ from typing import overload
 def dec(x): pass
 @dec
 def f(): pass
-@dec  # E: Name 'f' already defined
+@dec  # E: Name 'f' already defined on line 3
 def f(): pass
 [out]
 
@@ -1347,7 +1347,7 @@ def dec(x: Any) -> Any:
 @dec
 def f() -> None:
     pass
-@dec  # E: Name 'f' already defined
+@dec  # E: Name 'f' already defined on line 4
 def f() -> None:
     pass
 [out]
