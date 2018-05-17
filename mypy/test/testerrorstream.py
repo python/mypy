@@ -40,7 +40,6 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     try:
         build.build(sources=sources,
                     options=options,
-                    alt_lib_path=test_temp_dir,
                     flush_errors=flush_errors)
     except CompileError as e:
         assert e.messages == []

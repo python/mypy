@@ -175,11 +175,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.aliases_used = set()  # type: Set[str]
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
+        typ = self.visit_unbound_type_nonoptional(t)
         if t.optional:
-            t.optional = False
             # We don't need to worry about double-wrapping Optionals or
             # wrapping Anys: Union simplification will take care of that.
-            return make_optional_type(self.visit_unbound_type(t))
+            return make_optional_type(typ)
+        return typ
+
+    def visit_unbound_type_nonoptional(self, t: UnboundType) -> Type:
         sym = self.lookup(t.name, t, suppress_errors=self.third_pass)
         if '.' in t.name:
             # Handle indirect references to imported names.
@@ -416,9 +419,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Types such as (t1, t2, ...) only allowed in assignment statements. They'll
         # generate errors elsewhere, and Tuple[t1, t2, ...] must be used instead.
         if t.implicit and not self.allow_tuple_literal:
-            self.fail('Invalid tuple literal type', t)
+            self.fail('Syntax error in type annotation', t)
             if len(t.items) == 1:
                 self.note_func('Suggestion: Is there a spurious trailing comma?', t)
+            else:
+                self.note_func('Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)', t)
             return AnyType(TypeOfAny.from_error)
         star_count = sum(1 for item in t.items if isinstance(item, StarType))
         if star_count > 1:

@@ -44,11 +44,12 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr
+    ListExpr, ForStmt
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
+from mypy.typestate import TypeState
 
 
 def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
@@ -101,8 +102,7 @@ class NodeStripVisitor(TraverserVisitor):
         info.tuple_type = None
         info.typeddict_type = None
         info.tuple_type = None
-        info._cache = set()
-        info._cache_proper = set()
+        TypeState.reset_subtype_caches_for(info)
         info.declared_metaclass = None
         info.metaclass_type = None
 
@@ -180,44 +180,48 @@ class NodeStripVisitor(TraverserVisitor):
                 self.process_lvalue_in_method(item)
 
     def visit_import_from(self, node: ImportFrom) -> None:
-        if node.assignments:
-            node.assignments = []
-        else:
-            # If the node is unreachable, don't reset entries: they point to something else!
-            if node.is_unreachable: return
-            if self.names:
-                # Reset entries in the symbol table. This is necessary since
-                # otherwise the semantic analyzer will think that the import
-                # assigns to an existing name instead of defining a new one.
-                for name, as_name in node.names:
-                    imported_name = as_name or name
-                    # This assert is safe since we check for self.names above.
-                    assert self.file_node is not None
-                    sym = create_indirect_imported_name(self.file_node,
-                                                        node.id,
-                                                        node.relative,
-                                                        name)
-                    if sym:
-                        self.names[imported_name] = sym
+        # Imports can include both overriding symbols and fresh ones,
+        # and we need to clear both.
+        node.assignments = []
+
+        # If the node is unreachable, don't reset entries: they point to something else!
+        if node.is_unreachable: return
+        if self.names:
+            # Reset entries in the symbol table. This is necessary since
+            # otherwise the semantic analyzer will think that the import
+            # assigns to an existing name instead of defining a new one.
+            for name, as_name in node.names:
+                imported_name = as_name or name
+                # This assert is safe since we check for self.names above.
+                assert self.file_node is not None
+                sym = create_indirect_imported_name(self.file_node,
+                                                    node.id,
+                                                    node.relative,
+                                                    name)
+                if sym:
+                    self.names[imported_name] = sym
 
     def visit_import(self, node: Import) -> None:
-        if node.assignments:
-            node.assignments = []
-        else:
-            # If the node is unreachable, don't reset entries: they point to something else!
-            if node.is_unreachable: return
-            if self.names:
-                # Reset entries in the symbol table. This is necessary since
-                # otherwise the semantic analyzer will think that the import
-                # assigns to an existing name instead of defining a new one.
-                for name, as_name in node.ids:
-                    imported_name = as_name or name
-                    initial = imported_name.split('.')[0]
-                    symnode = self.names[initial]
-                    symnode.kind = UNBOUND_IMPORTED
-                    symnode.node = None
+        assert not node.assignments
+
+        # If the node is unreachable, don't reset entries: they point to something else!
+        if node.is_unreachable: return
+        if self.names:
+            # Reset entries in the symbol table. This is necessary since
+            # otherwise the semantic analyzer will think that the import
+            # assigns to an existing name instead of defining a new one.
+            for name, as_name in node.ids:
+                imported_name = as_name or name
+                initial = imported_name.split('.')[0]
+                symnode = self.names[initial]
+                symnode.kind = UNBOUND_IMPORTED
+                symnode.node = None
 
     def visit_import_all(self, node: ImportAll) -> None:
+        # Imports can include both overriding symbols and fresh ones,
+        # and we need to clear both.
+        node.assignments = []
+
         # If the node is unreachable, we don't want to reset entries from a reachable import.
         if node.is_unreachable:
             return
@@ -225,8 +229,14 @@ class NodeStripVisitor(TraverserVisitor):
         # (The description in visit_import is relevant here as well.)
         if self.names:
             for name in node.imported_names:
-                del self.names[name]
+                if name in self.names:
+                    del self.names[name]
         node.imported_names = []
+
+    def visit_for_stmt(self, node: ForStmt) -> None:
+        node.index_type = None
+        node.inferred_item_type = None
+        super().visit_for_stmt(node)
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1 [*], and we

@@ -1001,6 +1001,48 @@ from foo import bar
 [file foo/bar.py]
 pass
 
+[case testImportReExportFromChildrenInCycle1]
+# cmd: mypy -m project.root project.study.a project.neighbor
+[file project/__init__.py]
+from project.study import CustomType
+x = 10
+[file project/root.py]
+[file project/study/__init__.py]
+from project.study.a import CustomType
+[file project/study/a.py]
+from project import root
+# TODO (#4498): This test is basically testing the `all_are_submodules` logic
+# in build, which skips generating a dependenecy to a module if
+# everything in it is a submodule. But that is still all just a
+# workaround for bugs in cycle handling. If we uncomment the next
+# line, we'll still break:
+# from project import x
+CustomType = str
+[file project/neighbor/__init__.py]
+from project.study import CustomType
+def m(arg: CustomType) -> str:
+    return 'test'
+
+[case testImportReExportFromChildrenInCycle2]
+# cmd: mypy -m project project.b project.ba project.c
+# See comments in above test about this being a workaround.
+[file foo.py]
+def get_foo() -> int: return 12
+
+[file project/ba.py]
+from . import b
+b.FOO
+
+[file project/b.py]
+import foo
+from . import c
+FOO = foo.get_foo()
+
+[file project/c.py]
+
+[file project/__init__.py]
+from . import ba
+
 [case testSuperclassInImportCycle]
 import a
 import d

@@ -91,6 +91,10 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        raise NotImplementedError
+
+    @abstractmethod
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         raise NotImplementedError
 

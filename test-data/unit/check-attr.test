@@ -532,6 +532,32 @@ class C:
 
 [builtins fixtures/list.pyi]
 
+[case testAttrsUsingBadConverter]
+import attr
+from typing import overload
+@overload
+def bad_overloaded_converter(x: int, y: int) -> int:
+    ...
+@overload
+def bad_overloaded_converter(x: str, y: str) -> str:
+    ...
+def bad_overloaded_converter(x, y=7):
+    return x
+def bad_converter() -> str:
+    return ''
+@attr.dataclass
+class A:
+    bad: str = attr.ib(converter=bad_converter)
+    bad_overloaded: int = attr.ib(converter=bad_overloaded_converter)
+reveal_type(A)
+[out]
+main:15: error: Cannot determine __init__ type from converter
+main:15: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:16: error: Cannot determine __init__ type from converter
+main:16: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:17: error: Revealed type is 'def (bad: Any, bad_overloaded: Any) -> __main__.A'
+[builtins fixtures/list.pyi]
+
 [case testAttrsUsingUnsupportedConverter]
 import attr
 class Thing:
@@ -542,9 +568,9 @@ def factory(default: int):
    ...
 @attr.s
 class C:
-    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter function, only named functions are currently supported
-    y: str = attr.ib(converter=lambda x: x)  # E: Unsupported converter function, only named functions are currently supported
-    z: str = attr.ib(converter=factory(8))  # E: Unsupported converter function, only named functions are currently supported
+    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter, only named functions and types are currently supported
+    y: str = attr.ib(converter=lambda x: x)  # E: Unsupported converter, only named functions and types are currently supported
+    z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions and types are currently supported
 reveal_type(C)  # E: Revealed type is 'def (x: Any, y: Any, z: Any) -> __main__.C'
 [builtins fixtures/list.pyi]
 
@@ -566,6 +592,24 @@ class A(C):
 reveal_type(A)  # E: Revealed type is 'def (x: builtins.int) -> __main__.A'
 reveal_type(A(15).x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/list.pyi]
+
+[case testAttrsUsingConverterWithTypes]
+from typing import overload
+import attr
+
+@attr.dataclass
+class A:
+    x: str
+
+@attr.s
+class C:
+    x: complex = attr.ib(converter=complex)
+    y: int = attr.ib(converter=int)
+    z: A = attr.ib(converter=A)
+
+o = C("1", "2", "3")
+o = C(1, 2, "3")
+[builtins fixtures/attr.pyi]
 
 [case testAttrsCmpWithSubclasses]
 import attr
@@ -771,3 +815,32 @@ class FFrozen(F):
     def bar(self) -> bool:
         return self._cb(5, 6)
 [builtins fixtures/callable.pyi]
+
+[case testAttrsWithFactory]
+from typing import List
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: List[int] = attr.ib(factory=list)
+    y: int = attr.ib(factory=my_factory)
+A()
+[builtins fixtures/list.pyi]
+
+[case testAttrsFactoryAndDefault]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both `default` and `factory`.
+[builtins fixtures/bool.pyi]
+
+[case testAttrsFactoryBadReturn]
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
+    y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/list.pyi]

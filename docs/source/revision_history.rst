@@ -1,7 +1,24 @@
 Revision history
 ================
 
-List of major changes:
+List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
+detailed release notes):
+
+- May 2018
+    * Publish ``mypy`` version 0.600 on PyPI.
+
+      * Enable :ref:`strict optional checking <strict_optional>` by default.
+
+      * Document :ref:`disabling strict optional checking <no_strict_optional>`.
+
+      * Add :ref:`mypy_daemon`.
+
+      * Add :ref:`remote-cache`.
+
+      * Support user-specific configuration file (:ref:`docs <config-file>`).
+
+      * Changes to section pattern semantics in configuration files
+        (:ref:`docs <config-file>` and :ref:`more docs <per-module-flags>`).
 
 - April 2018
     * Publish ``mypy`` version 0.590 on PyPI.
@@ -225,7 +242,7 @@ List of major changes:
 - July 2016
     * Publish ``mypy-lang`` version 0.4.3 on PyPI.
 
-    * Add :ref:`strict_optional`.
+    * Add :ref:`strict optional checking <strict_optional>`.
 
     * Add :ref:`multi_line_annotation`.
 
@@ -262,7 +279,7 @@ List of major changes:
 - Mar 2015
     Update documentation to reflect PEP 484:
 
-    * Add :ref:`named-tuples` and :ref:`optional`.
+    * Add :ref:`named-tuples` and :ref:`Optional types <strict_optional>`.
 
     * Do not mention type application syntax (for
       example, ``List[int]()``), as it's no longer supported,

@@ -503,7 +503,7 @@ class XRepr(NamedTuple):
         return 0
 
 reveal_type(XMeth(1).double()) # E: Revealed type is 'builtins.int'
-reveal_type(XMeth(1).asyncdouble())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+reveal_type(XMeth(1).asyncdouble())  # E: Revealed type is 'typing.Coroutine[Any, Any, builtins.int]'
 reveal_type(XMeth(42).x)  # E: Revealed type is 'builtins.int'
 reveal_type(XRepr(42).__str__())  # E: Revealed type is 'builtins.str'
 reveal_type(XRepr(1, 2).__add__(XRepr(3)))  # E: Revealed type is 'builtins.int'

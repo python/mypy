@@ -46,17 +46,17 @@ from mypy.nodes import (
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
-    SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
+    SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, MroError, type_aliases,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
-    collections_type_aliases, get_member_expr_fullname,
+    collections_type_aliases, get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -89,6 +89,7 @@ from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NA
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
+from mypy.typestate import TypeState
 
 
 T = TypeVar('T')
@@ -430,9 +431,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     pass
                 else:
                     # A coroutine defined as `async def foo(...) -> T: ...`
-                    # has external return type `Awaitable[T]`.
-                    ret_type = self.named_type_or_none('typing.Awaitable', [defn.type.ret_type])
-                    assert ret_type is not None, "Internal error: typing.Awaitable not found"
+                    # has external return type `Coroutine[Any, Any, T]`.
+                    any_type = AnyType(TypeOfAny.special_form)
+                    ret_type = self.named_type_or_none('typing.Coroutine',
+                        [any_type, any_type, defn.type.ret_type])
+                    assert ret_type is not None, "Internal error: typing.Coroutine not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
@@ -995,7 +998,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn.info._fullname = defn.info.name()
         if self.is_func_scope() or self.type:
             kind = MDEF
-            if self.is_func_scope():
+            if self.is_nested_within_func_scope():
                 kind = LDEF
             node = SymbolTableNode(kind, defn.info)
             self.add_symbol(defn.name, node, defn)
@@ -1854,7 +1857,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
             if not add_global:
-                self.analyze_member_lvalue(lval)
+                self.analyze_member_lvalue(lval, explicit_type)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
@@ -1892,12 +1895,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type = explicit_type)
 
-    def analyze_member_lvalue(self, lval: MemberExpr) -> None:
+    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False) -> None:
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"
+            cur_node = self.type.names.get(lval.name, None)
             node = self.type.get(lval.name)
-            if node is None or isinstance(node.node, Var) and node.node.is_abstract_var:
+            # If the attribute of self is not defined in superclasses, create a new Var, ...
+            if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
+                    # ... also an explicit declaration on self also creates a new Var.
+                    (cur_node is None and explicit_type)):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
@@ -1911,6 +1918,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     v.is_ready = False
                     lval.def_var = v
                     lval.node = v
+                    # TODO: should we also set lval.kind = MDEF?
                     self.type.names[lval.name] = SymbolTableNode(MDEF, v, implicit=True)
         self.check_lvalue_validity(lval.node, lval)
 
@@ -2568,7 +2576,38 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif refers_to_fullname(expr.callee, 'builtins.reveal_type'):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
-            expr.analyzed = RevealTypeExpr(expr.args[0])
+            expr.analyzed = RevealExpr(kind=REVEAL_TYPE, expr=expr.args[0])
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'builtins.reveal_locals'):
+            # Store the local variable names into the RevealExpr for use in the
+            # type checking pass
+            local_nodes = []  # type: List[Var]
+            if self.is_module_scope():
+                # try to determine just the variable declarations in module scope
+                # self.globals.values() contains SymbolTableNode's
+                # Each SymbolTableNode has an attribute node that is nodes.Var
+                # look for variable nodes that marked as is_inferred
+                # Each symboltable node has a Var node as .node
+                local_nodes = cast(
+                    List[Var],
+                    [
+                        n.node for name, n in self.globals.items()
+                        if getattr(n.node, 'is_inferred', False)
+                    ]
+                )
+            elif self.is_class_scope():
+                # type = None  # type: Optional[TypeInfo]
+                if self.type is not None:
+                    local_nodes = cast(List[Var], [st.node for st in self.type.names.values()])
+            elif self.is_func_scope():
+                # locals = None  # type: List[Optional[SymbolTable]]
+                if self.locals is not None:
+                    symbol_table = self.locals[-1]
+                    if symbol_table is not None:
+                        local_nodes = cast(List[Var], [st.node for st in symbol_table.values()])
+            expr.analyzed = RevealExpr(kind=REVEAL_LOCALS, local_nodes=local_nodes)
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
@@ -2826,8 +2865,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         expr.expr.accept(self)
         expr.type = self.anal_type(expr.type)
 
-    def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> None:
-        expr.expr.accept(self)
+    def visit_reveal_expr(self, expr: RevealExpr) -> None:
+        if expr.kind == REVEAL_TYPE:
+            if expr.expr is not None:
+                expr.expr.accept(self)
+        else:
+            # Reveal locals doesn't have an inner expression, there's no
+            # need to traverse inside it
+            pass
 
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)
@@ -3115,6 +3160,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def is_func_scope(self) -> bool:
         return self.locals[-1] is not None
 
+    def is_nested_within_func_scope(self) -> bool:
+        """Are we underneath a function scope, even if we are in a nested class also"""
+        return any(l is not None for l in self.locals)
+
     def is_class_scope(self) -> bool:
         return self.type is not None and not self.is_func_scope()
 
@@ -3277,11 +3326,60 @@ def refers_to_class_or_function(node: Expression) -> bool:
 
 def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) -> None:
     try:
-        defn.info.calculate_mro()
+        calculate_mro(defn.info)
     except MroError:
         fail("Cannot determine consistent method resolution order "
              '(MRO) for "%s"' % defn.name, defn)
         defn.info.mro = []
+
+
+def calculate_mro(info: TypeInfo) -> None:
+    """Calculate and set mro (method resolution order).
+
+    Raise MroError if cannot determine mro.
+    """
+    mro = linearize_hierarchy(info)
+    assert mro, "Could not produce a MRO at all for %s" % (info,)
+    info.mro = mro
+    # The property of falling back to Any is inherited.
+    info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in info.mro)
+    TypeState.reset_all_subtype_caches_for(info)
+
+
+class MroError(Exception):
+    """Raised if a consistent mro cannot be determined for a class."""
+
+
+def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
+    # TODO describe
+    if info.mro:
+        return info.mro
+    bases = info.direct_base_classes()
+    lin_bases = []
+    for base in bases:
+        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
+        lin_bases.append(linearize_hierarchy(base))
+    lin_bases.append(bases)
+    return [info] + merge(lin_bases)
+
+
+def merge(seqs: List[List[TypeInfo]]) -> List[TypeInfo]:
+    seqs = [s[:] for s in seqs]
+    result = []  # type: List[TypeInfo]
+    while True:
+        seqs = [s for s in seqs if s]
+        if not seqs:
+            return result
+        for seq in seqs:
+            head = seq[0]
+            if not [s for s in seqs if head in s[1:]]:
+                break
+        else:
+            raise MroError()
+        result.append(head)
+        for s in seqs:
+            if s[0] is head:
+                del s[0]
 
 
 def find_duplicate(list: List[T]) -> Optional[T]:

@@ -44,7 +44,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError
+from mypy.util import DecodeError, decode_python_encoding
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -57,7 +57,8 @@ from mypy.version import __version__
 from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
-from mypy.fscache import FileSystemCache, FileSystemMetaCache
+from mypy.fscache import FileSystemCache
+from mypy.typestate import TypeState, reset_global_state
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -100,10 +101,11 @@ class BuildResult:
 
 class BuildSource:
     def __init__(self, path: Optional[str], module: Optional[str],
-            text: Optional[str]) -> None:
+                 text: Optional[str], base_dir: Optional[str] = None) -> None:
         self.path = path
         self.module = module or '__main__'
         self.text = text
+        self.base_dir = base_dir
 
     def __repr__(self) -> str:
         return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
@@ -194,6 +196,56 @@ def build(sources: List[BuildSource],
         raise
 
 
+def compute_lib_path(sources: List[BuildSource],
+                     options: Options,
+                     data_dir: str,
+                     alt_lib_path: Optional[str] = None) -> List[str]:
+    # Determine the default module search path.
+    lib_path = collections.deque(
+        default_lib_path(data_dir,
+                         options.python_version,
+                         custom_typeshed_dir=options.custom_typeshed_dir))
+
+    if options.use_builtins_fixtures:
+        # Use stub builtins (to speed up test cases and to make them easier to
+        # debug).  This is a test-only feature, so assume our files are laid out
+        # as in the source tree.
+        root_dir = dirname(dirname(__file__))
+        lib_path.appendleft(os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
+    # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
+    # If we don't have one, grab directories of source files.
+    lib_path_set = set(lib_path)
+    if not alt_lib_path:
+        for source in sources:
+            # Include directory of the program file in the module search path.
+            if source.base_dir:
+                dir = source.base_dir
+                if dir not in lib_path_set:
+                    lib_path.appendleft(dir)
+                    lib_path_set.add(dir)
+
+        # Do this even if running as a file, for sanity (mainly because with
+        # multiple builds, there could be a mix of files/modules, so its easier
+        # to just define the semantics that we always add the current director
+        # to the lib_path
+        # TODO: Don't do this in some cases; for motivation see see
+        # https://github.com/python/mypy/issues/4195#issuecomment-341915031
+        lib_path.appendleft(os.getcwd())
+
+    # Prepend a config-defined mypy path.
+    lib_path.extendleft(options.mypy_path)
+
+    # Add MYPYPATH environment variable to front of library path, if defined.
+    lib_path.extendleft(mypy_path())
+
+    # If provided, insert the caller-supplied extra module path to the
+    # beginning (highest priority) of the search path.
+    if alt_lib_path:
+        lib_path.appendleft(alt_lib_path)
+
+    return list(lib_path)
+
+
 def _build(sources: List[BuildSource],
            options: Options,
            alt_lib_path: Optional[str],
@@ -205,45 +257,9 @@ def _build(sources: List[BuildSource],
     gc.set_threshold(50000)
 
     data_dir = default_data_dir(bin_dir)
-    fscache = fscache or FileSystemCache(options.python_version)
+    fscache = fscache or FileSystemCache()
 
-    # Determine the default module search path.
-    lib_path = default_lib_path(data_dir,
-                                options.python_version,
-                                custom_typeshed_dir=options.custom_typeshed_dir)
-
-    if options.use_builtins_fixtures:
-        # Use stub builtins (to speed up test cases and to make them easier to
-        # debug).  This is a test-only feature, so assume our files are laid out
-        # as in the source tree.
-        root_dir = dirname(dirname(__file__))
-        lib_path.insert(0, os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
-    else:
-        for source in sources:
-            if source.path:
-                # Include directory of the program file in the module search path.
-                dir = remove_cwd_prefix_from_path(fscache, dirname(source.path))
-                if dir not in lib_path:
-                    lib_path.insert(0, dir)
-
-        # Do this even if running as a file, for sanity (mainly because with
-        # multiple builds, there could be a mix of files/modules, so its easier
-        # to just define the semantics that we always add the current director
-        # to the lib_path
-        # TODO: Don't do this in some cases; for motivation see see
-        # https://github.com/python/mypy/issues/4195#issuecomment-341915031
-        lib_path.insert(0, os.getcwd())
-
-    # Prepend a config-defined mypy path.
-    lib_path[:0] = options.mypy_path
-
-    # Add MYPYPATH environment variable to front of library path, if defined.
-    lib_path[:0] = mypy_path()
-
-    # If provided, insert the caller-supplied extra module path to the
-    # beginning (highest priority) of the search path.
-    if alt_lib_path:
-        lib_path.insert(0, alt_lib_path)
+    lib_path = compute_lib_path(sources, options, data_dir, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
@@ -264,8 +280,11 @@ def _build(sources: List[BuildSource],
                            flush_errors=flush_errors,
                            fscache=fscache)
 
+    reset_global_state()
     try:
         graph = dispatch(sources, manager)
+        if not options.fine_grained_incremental:
+            TypeState.reset_all_subtype_caches()
         return BuildResult(manager, graph)
     finally:
         manager.log("Build finished in %.3f seconds with %d modules, and %d errors" %
@@ -590,7 +609,9 @@ class BuildManager:
                        but is disabled if fine-grained cache loading fails
                        and after an initial fine-grained load. This doesn't
                        determine whether we write cache files or not.
-      stats:           Dict with various instrumentation numbers
+      stats:           Dict with various instrumentation numbers, it is used
+                       not only for debugging, but also required for correctness,
+                       in particular to check consistency of the protocol dependency cache.
       fscache:         A file system cacher
     """
 
@@ -634,14 +655,34 @@ class BuildManager:
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
 
+        # a mapping from source files to their corresponding shadow files
+        # for efficient lookup
+        self.shadow_map = {}  # type: Dict[str, str]
+        if self.options.shadow_file is not None:
+            self.shadow_map = {source_file: shadow_file
+                               for (source_file, shadow_file)
+                               in self.options.shadow_file}
+        # a mapping from each file being typechecked to its possible shadow file
+        self.shadow_equivalence_map = {}  # type: Dict[str, Optional[str]]
+
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
 
     def maybe_swap_for_shadow_path(self, path: str) -> str:
-        if (self.options.shadow_file and
-                os.path.samefile(self.options.shadow_file[0], path)):
-            path = self.options.shadow_file[1]
-        return path
+        if not self.shadow_map:
+            return path
+
+        previously_checked = path in self.shadow_equivalence_map
+        if not previously_checked:
+            for source, shadow in self.shadow_map.items():
+                if self.fscache.samefile(path, source):
+                    self.shadow_equivalence_map[path] = shadow
+                    break
+                else:
+                    self.shadow_equivalence_map[path] = None
+
+        shadow_file = self.shadow_equivalence_map.get(path)
+        return shadow_file if shadow_file else path
 
     def get_stat(self, path: str) -> os.stat_result:
         return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
@@ -701,14 +742,14 @@ class BuildManager:
                             res.append((pri, sub_id, imp.line))
                         else:
                             all_are_submodules = False
-                    # If all imported names are submodules, don't add
-                    # cur_id as a dependency.  Otherwise (i.e., if at
-                    # least one imported name isn't a submodule)
-                    # cur_id is also a dependency, and we should
-                    # insert it *before* any submodules.
-                    if not all_are_submodules:
-                        pri = import_priority(imp, PRI_HIGH)
-                        res.insert(pos, ((pri, cur_id, imp.line)))
+                    # Add cur_id as a dependency, even if all of the
+                    # imports are submodules. Processing import from will try
+                    # to look through cur_id, so we should depend on it.
+                    # As a workaround for for some bugs in cycle handling (#4498),
+                    # if all of the imports are submodules, do the import at a lower
+                    # priority.
+                    pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
+                    res.insert(pos, ((pri, cur_id, imp.line)))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
@@ -781,34 +822,6 @@ class BuildManager:
         return self.stats
 
 
-def remove_cwd_prefix_from_path(fscache: FileSystemCache, p: str) -> str:
-    """Remove current working directory prefix from p, if present.
-
-    Also crawl up until a directory without __init__.py is found.
-
-    If the result would be empty, return '.' instead.
-    """
-    cur = os.getcwd()
-    # Add separator to the end of the path, unless one is already present.
-    if basename(cur) != '':
-        cur += os.sep
-    # Compute root path.
-    while (p and
-           (fscache.isfile(os.path.join(p, '__init__.py')) or
-            fscache.isfile(os.path.join(p, '__init__.pyi')))):
-        dir, base = os.path.split(p)
-        if not base:
-            break
-        p = dir
-    # Remove current directory prefix from the path, if present.
-    if p.startswith(cur):
-        p = p[len(cur):]
-    # Avoid returning an empty path; replace that with '.'.
-    if p == '':
-        p = '.'
-    return p
-
-
 @functools.lru_cache(maxsize=None)
 def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
     """Find package directories for given python.
@@ -838,8 +851,8 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemMetaCache] = None) -> None:
-        self.fscache = fscache or FileSystemMetaCache()
+    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
+        self.fscache = fscache or FileSystemCache()
         # Cache find_lib_path_dirs: (dir_chain, lib_path)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
         # Cache find_module: (id, lib_path, python_version) -> result.
@@ -965,7 +978,7 @@ class FindModuleCache:
         return result
 
 
-def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
+def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = dirname(path)
@@ -975,6 +988,105 @@ def verify_module(fscache: FileSystemMetaCache, id: str, path: str) -> bool:
                    for extension in PYTHON_EXTENSIONS):
             return False
     return True
+
+
+def write_protocol_deps_cache(proto_deps: Dict[str, Set[str]],
+                              manager: BuildManager, graph: Graph) -> None:
+    """Write cache files for protocol dependencies.
+
+    Serialize protocol dependencies map for fine grained mode. Also take the snapshot
+    of current sources to later check consistency between protocol cache and individual
+    cache files.
+
+    Out of three kinds of protocol dependencies described in TypeState._snapshot_protocol_deps,
+    only the last two kinds are stored in global protocol caches, dependencies of the first kind
+    (i.e. <SuperProto[wildcard]>, <Proto[wildcard]> -> <Proto>) are written to the normal
+    per-file fine grained dependency caches.
+    """
+    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    meta_snapshot = {}  # type: Dict[str, str]
+    error = False
+    for id, st in graph.items():
+        # If we didn't parse a file (so it doesn't have a
+        # source_hash), then it must be a module with a fresh cache,
+        # so use the hash from that.
+        if st.source_hash:
+            meta_snapshot[id] = st.source_hash
+        else:
+            assert st.meta, "Module must be either parsed or cached"
+            meta_snapshot[id] = st.meta.hash
+
+    if not atomic_write(proto_meta, json.dumps(meta_snapshot), '\n'):
+        manager.log("Error writing protocol meta JSON file {}".format(proto_cache))
+        error = True
+    listed_proto_deps = {k: list(v) for (k, v) in proto_deps.items()}
+    if not atomic_write(proto_cache, json.dumps(listed_proto_deps), '\n'):
+        manager.log("Error writing protocol deps JSON file {}".format(proto_cache))
+        error = True
+    if error:
+        manager.errors.set_file(_cache_dir_prefix(manager), None)
+        manager.errors.report(0, 0, "Error writing protocol dependencies cache",
+                              blocker=True)
+
+
+def read_protocol_cache(manager: BuildManager,
+                        graph: Graph) -> Optional[Dict[str, Set[str]]]:
+    """Read and validate protocol dependencies cache.
+
+    See docstring for write_protocol_cache for details about which kinds of
+    dependencies are read.
+    """
+    proto_meta, proto_cache = get_protocol_deps_cache_name(manager)
+    meta_snapshot = _load_json_file(proto_meta, manager,
+                                    log_sucess='Proto meta ',
+                                    log_error='Could not load protocol metadata: ')
+    if meta_snapshot is None:
+        return None
+    # Take a snapshot of the source hashes from all of the metas we found.
+    # (Including the ones we rejected because they were out of date.)
+    # We use this to verify that they match up with the proto_deps.
+    current_meta_snapshot = {id: st.meta_source_hash for id, st in graph.items()
+                             if st.meta_source_hash is not None}
+
+    common = set(meta_snapshot.keys()) & set(current_meta_snapshot.keys())
+    if any(meta_snapshot[id] != current_meta_snapshot[id] for id in common):
+        # TODO: invalidate also if options changed (like --strict-optional)?
+        manager.log('Protocol cache inconsistent, ignoring')
+        return None
+    deps = _load_json_file(proto_cache, manager,
+                           log_sucess='Proto deps ',
+                           log_error='Could not load protocol cache: ')
+    if deps is None:
+        return None
+    if not isinstance(deps, dict):
+        manager.log('Could not load protocol cache: cache is not a dict: {}'
+                    .format(type(deps)))
+        return None
+    return {k: set(v) for (k, v) in deps.items()}
+
+
+def _load_json_file(file: str, manager: BuildManager,
+                    log_sucess: str, log_error: str) -> Optional[Dict[str, Any]]:
+    """A simple helper to read a JSON file with logging."""
+    try:
+        with open(file, 'r') as f:
+            data = f.read()
+    except IOError:
+        manager.log(log_error + file)
+        return None
+    manager.trace(log_sucess + data.rstrip())
+    result = json.loads(data)  # TODO: Errors
+    return result
+
+
+def _cache_dir_prefix(manager: BuildManager, id: Optional[str] = None) -> str:
+    """Get current cache directory (or file if id is given)."""
+    cache_dir = manager.options.cache_dir
+    pyversion = manager.options.python_version
+    base = os.path.join(cache_dir, '%d.%d' % pyversion)
+    if id is None:
+        return base
+    return os.path.join(base, *id.split('.'))
 
 
 def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str, Optional[str]]:
@@ -990,9 +1102,7 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
       A tuple with the file names to be used for the meta JSON, the
       data JSON, and the fine-grained deps JSON, respectively.
     """
-    cache_dir = manager.options.cache_dir
-    pyversion = manager.options.python_version
-    prefix = os.path.join(cache_dir, '%d.%d' % pyversion, *id.split('.'))
+    prefix = _cache_dir_prefix(manager, id)
     is_package = os.path.basename(path).startswith('__init__.py')
     if is_package:
         prefix = os.path.join(prefix, '__init__')
@@ -1001,6 +1111,20 @@ def get_cache_names(id: str, path: str, manager: BuildManager) -> Tuple[str, str
     if manager.options.cache_fine_grained:
         deps_json = prefix + '.deps.json'
     return (prefix + '.meta.json', prefix + '.data.json', deps_json)
+
+
+def get_protocol_deps_cache_name(manager: BuildManager) -> Tuple[str, str]:
+    """Return file names for fine grained protocol dependencies cache.
+
+    Since these dependencies represent a global state of the program, they
+    are serialized per program, not per module, and the corresponding files
+    live at the root of the cache folder for a given Python version.
+    Return a tuple ('meta file path', 'data file path'), where the meta file
+    contains hashes of all source files at the time the protocol dependencies
+    were written, and data file contains the protocol dependencies.
+    """
+    name = os.path.join(_cache_dir_prefix(manager), '@proto_deps')
+    return name + '.meta.json', name + '.data.json'
 
 
 def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[CacheMeta]:
@@ -1018,13 +1142,10 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     # TODO: May need to take more build options into account
     meta_json, data_json, deps_json = get_cache_names(id, path, manager)
     manager.trace('Looking for {} at {}'.format(id, meta_json))
-    try:
-        with open(meta_json, 'r') as f:
-            meta_str = f.read()
-            manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
-            meta = json.loads(meta_str)  # TODO: Errors
-    except IOError:
-        manager.log('Could not load cache for {}: could not find {}'.format(id, meta_json))
+    meta = _load_json_file(meta_json, manager,
+                           log_sucess='Meta {} '.format(id),
+                           log_error='Could not load cache for {}: '.format(id))
+    if meta is None:
         return None
     if not isinstance(meta, dict):
         manager.log('Could not load cache for {}: meta cache is not a dict: {}'
@@ -1522,7 +1643,8 @@ class State:
     path = None  # type: Optional[str]  # Path to module source
     xpath = None  # type: str  # Path or '<string>'
     source = None  # type: Optional[str]  # Module source code
-    source_hash = None  # type: str  # Hash calculated based on the source code
+    source_hash = None  # type: Optional[str]  # Hash calculated based on the source code
+    meta_source_hash = None  # type: Optional[str]  # Hash of the source given in the meta, if any
     meta = None  # type: Optional[CacheMeta]
     data = None  # type: Optional[str]
     tree = None  # type: Optional[MypyFile]
@@ -1613,6 +1735,7 @@ class State:
             # TODO: Get mtime if not cached.
             if self.meta is not None:
                 self.interface_hash = self.meta.interface_hash
+                self.meta_source_hash = self.meta.hash
         self.add_ancestors()
         self.meta = validate_meta(self.meta, self.id, self.path, self.ignore_all, manager)
         if self.meta:
@@ -1671,10 +1794,6 @@ class State:
     def is_interface_fresh(self) -> bool:
         return self.externally_same
 
-    def has_new_submodules(self) -> bool:
-        """Return if this module has new submodules after being loaded from a warm cache."""
-        return self.meta is not None and self.child_modules != set(self.meta.child_modules)
-
     def mark_as_rechecked(self) -> None:
         """Marks this module as having been fully re-analyzed by the type-checker."""
         self.manager.rechecked_modules.add(self.id)
@@ -1731,7 +1850,7 @@ class State:
         # cache load because we need to gracefully handle missing modules.
         fixup_module(self.tree, self.manager.modules,
                      self.manager.options.quick_and_dirty or
-                     self.manager.use_fine_grained_cache())
+                     self.options.use_fine_grained_cache)
 
     def patch_dependency_parents(self) -> None:
         """
@@ -1810,7 +1929,8 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = manager.fscache.read_with_python_encoding(path)
+                    source = decode_python_encoding(manager.fscache.read(path),
+                                                    manager.options.python_version)
                     self.source_hash = manager.fscache.md5(path)
                 except IOError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
@@ -2006,6 +2126,7 @@ class State:
             return
         dep_prios = self.dependency_priorities()
         dep_lines = self.dependency_lines()
+        assert self.source_hash is not None
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             {k: list(v) for k, v in self.fine_grained_deps.items()},
@@ -2250,6 +2371,24 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_graph:
         dump_graph(graph)
         return graph
+
+    # Fine grained protocol dependencies are serialized separately, so we read them
+    # after we load the cache for whole graph.
+    # We need to read them both for running in daemon mode and if we are generating
+    # a fine-grained cache (so that we can properly update them incrementally).
+    # The `read_protocol_cache` will also validate
+    # the protocol cache against the loaded individual cache files.
+    if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
+        proto_deps = read_protocol_cache(manager, graph)
+        if proto_deps is not None:
+            TypeState.proto_deps = proto_deps
+        elif manager.stats.get('fresh_metas', 0) > 0:
+            # There were some cache files read, but no protocol dependencies loaded.
+            manager.log("Error reading protocol dependencies cache -- aborting cache load")
+            manager.cache_enabled = False
+            manager.log("Falling back to full run -- reloading graph...")
+            return dispatch(sources, manager)
+
     # If we are loading a fine-grained incremental mode cache, we
     # don't want to do a real incremental reprocess of the graph---we
     # just want to load in all of the cache information.
@@ -2257,6 +2396,14 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         process_fine_grained_cache_graph(graph, manager)
     else:
         process_graph(graph, manager)
+        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
+            # If we are running a daemon or are going to write cache for further fine grained use,
+            # then we need to collect fine grained protocol dependencies.
+            # Since these are a global property of the program, they are calculated after we
+            # processed the whole graph.
+            TypeState.update_protocol_deps()
+            if TypeState.proto_deps is not None and not manager.options.fine_grained_incremental:
+                write_protocol_deps_cache(TypeState.proto_deps, manager, graph)
 
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
@@ -2322,11 +2469,16 @@ def dump_graph(graph: Graph) -> None:
 
 
 def load_graph(sources: List[BuildSource], manager: BuildManager,
-               old_graph: Optional[Graph] = None) -> Graph:
+               old_graph: Optional[Graph] = None,
+               new_modules: Optional[List[State]] = None) -> Graph:
     """Given some source files, load the full dependency graph.
 
     If an old_graph is passed in, it is used as the starting point and
     modified during graph loading.
+
+    If a new_modules is passed in, any modules that are loaded are
+    added to the list. This is an argument and not a return value
+    so that the caller can access it even if load_graph fails.
 
     As this may need to parse files, this can raise CompileError in case
     there are syntax errors.
@@ -2337,7 +2489,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
     # The deque is used to implement breadth-first traversal.
     # TODO: Consider whether to go depth-first instead.  This may
     # affect the order in which we process files within import cycles.
-    new = collections.deque()  # type: Deque[State]
+    new = new_modules if new_modules is not None else []
     entry_points = set()  # type: Set[str]
     # Seed the graph with the initial root sources.
     for bs in sources:
@@ -2354,8 +2506,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         new.append(st)
         entry_points.add(bs.module)
     # Collect dependencies.  We go breadth-first.
-    while new:
-        st = new.popleft()
+    # More nodes might get added to new as we go, but that's fine.
+    for st in new:
         assert st.ancestors is not None
         # Strip out indirect dependencies.  These will be dealt with
         # when they show up as direct dependencies, and there's a
@@ -2401,11 +2553,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                 if dep in st.suppressed:
                     st.suppressed.remove(dep)
                     st.dependencies.append(dep)
-    for id, g in graph.items():
-        if g.has_new_submodules():
-            g.parse_file()
-            g.fix_suppressed_dependencies(graph)
-            g.mark_interface_stale()
     return graph
 
 
@@ -2534,7 +2681,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 # TODO: see if it's possible to determine if we need to process only a
                 # _subset_ of the past SCCs instead of having to process them all.
                 for prev_scc in fresh_scc_queue:
-                    process_fresh_scc(graph, prev_scc, manager)
+                    process_fresh_modules(graph, prev_scc, manager)
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:
@@ -2558,21 +2705,10 @@ def process_fine_grained_cache_graph(graph: Graph, manager: BuildManager) -> Non
     """Finish loading everything for use in the fine-grained incremental cache"""
 
     # If we are running in fine-grained incremental mode with caching,
-    # we process all SCCs as fresh SCCs so that we have all of the symbol
-    # tables and fine-grained dependencies available.
-    # We fail the loading of any SCC that we can't load a meta for, so we
-    # don't have anything *but* fresh SCCs.
-    sccs = sorted_components(graph)
-    manager.log("Found %d SCCs; largest has %d nodes" %
-                (len(sccs), max(len(scc) for scc in sccs)))
-
-    for ascc in sccs:
-        # Order the SCC's nodes using a heuristic.
-        # Note that ascc is a set, and scc is a list.
-        scc = order_ascc(graph, ascc)
-        process_fresh_scc(graph, scc, manager)
-        for id in scc:
-            graph[id].load_fine_grained_deps()
+    # we don't actually have much to do: just load the fine-grained
+    # deps.
+    for id, state in graph.items():
+        state.load_fine_grained_deps()
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
@@ -2622,16 +2758,17 @@ def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> 
     return [s for ss in sccs for s in order_ascc(graph, ss, pri_max)]
 
 
-def process_fresh_scc(graph: Graph, scc: List[str], manager: BuildManager) -> None:
-    """Process the modules in one SCC from their cached data.
+def process_fresh_modules(graph: Graph, modules: List[str], manager: BuildManager) -> None:
+    """Process the modules in one group of modules from their cached data.
 
+    This can be used to process an SCC of modules
     This involves loading the tree from JSON and then doing various cleanups.
     """
-    for id in scc:
+    for id in modules:
         graph[id].load_tree()
-    for id in scc:
+    for id in modules:
         graph[id].fix_cross_refs()
-    for id in scc:
+    for id in modules:
         graph[id].patch_dependency_parents()
 
 

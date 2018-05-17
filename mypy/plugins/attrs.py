@@ -9,11 +9,11 @@ from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncBase,
     is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
-    PassStmt, SymbolTableNode, MDEF, JsonDict
+    PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
 )
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
-    Overloaded, Instance
+    Overloaded, Instance, UnionType, FunctionLike
 )
 from mypy.typevars import fill_typevars
 
@@ -60,13 +60,35 @@ class Attribute:
                 # The converter may be a local variable. Check there too.
                 converter = ctx.api.lookup_qualified(self.converter_name, self.info, True)
 
-            if (converter
-                    and converter.type
-                    and isinstance(converter.type, CallableType)
-                    and converter.type.arg_types):
-                init_type = ctx.api.anal_type(converter.type.arg_types[0])
-            else:
-                ctx.api.fail("Cannot determine type of converter function", self.context)
+            # Get the type of the converter.
+            converter_type = None
+            if converter and isinstance(converter.node, TypeInfo):
+                from mypy.checkmember import type_object_type  # To avoid import cycle.
+                converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+            elif converter and isinstance(converter.node, OverloadedFuncDef):
+                converter_type = converter.node.type
+            elif converter and converter.type:
+                converter_type = converter.type
+
+            init_type = None
+            if isinstance(converter_type, CallableType) and converter_type.arg_types:
+                init_type = ctx.api.anal_type(converter_type.arg_types[0])
+            elif isinstance(converter_type, Overloaded):
+                types = []  # type: List[Type]
+                for item in converter_type.items():
+                    # Walk the overloads looking for methods that can accept one argument.
+                    num_arg_types = len(item.arg_types)
+                    if not num_arg_types:
+                        continue
+                    if num_arg_types > 1 and any(kind == ARG_POS for kind in item.arg_kinds[1:]):
+                        continue
+                    types.append(item.arg_types[0])
+                # Make a union of all the valid types.
+                if types:
+                    args = UnionType.make_simplified_union(types)
+                    init_type = ctx.api.anal_type(args)
+            if not init_type:
+                ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
         elif self.converter_name == '':
             # This means we had a converter but it's not of a type we can infer.
@@ -318,6 +340,12 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     init = _get_bool_argument(ctx, rvalue, 'init', True)
     # TODO: Check for attr.NOTHING
     attr_has_default = bool(_get_argument(rvalue, 'default'))
+    attr_has_factory = bool(_get_argument(rvalue, 'factory'))
+
+    if attr_has_default and attr_has_factory:
+        ctx.api.fail("Can't pass both `default` and `factory`.", rvalue)
+    elif attr_has_factory:
+        attr_has_default = True
 
     # If the type isn't set through annotation but is passed through `type=` use that.
     type_arg = _get_argument(rvalue, 'type')
@@ -351,16 +379,17 @@ def _get_converter_name(ctx: 'mypy.plugin.ClassDefContext',
     """Return the full name of the converter if it exists and is a simple function."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if converter:
-        if (isinstance(converter, RefExpr)
-                and converter.node
-                and isinstance(converter.node, FuncBase)
-                and converter.node.type
-                and isinstance(converter.node.type, CallableType)
-                and converter.node.type.arg_types):
-            return converter.node.fullname()
+        if isinstance(converter, RefExpr) and converter.node:
+            if (isinstance(converter.node, FuncBase)
+                    and converter.node.type
+                    and isinstance(converter.node.type, FunctionLike)):
+                return converter.node.fullname()
+            elif isinstance(converter.node, TypeInfo):
+                return converter.node.fullname()
+
         # Signal that we have an unsupported converter.
         ctx.api.fail(
-            "Unsupported converter function, only named functions are currently supported",
+            "Unsupported converter, only named functions and types are currently supported",
             converter
         )
         return ''

@@ -34,6 +34,11 @@
 --
 -- Test runner can parse options from mypy.ini file. Updating this file in between
 -- incremental runs is not yet supported.
+--
+-- Each test case run without caching and with caching (if the initial run passes),
+-- unless it has one a --skip-cache or --skip-nocache suffix. We sometimes
+-- skip caching test cases to speed up tests, if the caching variant is not useful.
+-- The caching test case variants get an implicit _cached suffix.
 
 [case testReprocessFunction]
 import m
@@ -1434,6 +1439,36 @@ a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 ==
 ==
 
+[case testDecoratorMethodCompat]
+from typing import Callable, List, TypeVar
+import x
+
+class Base: pass
+_Base = TypeVar('_Base', bound=Base)
+
+def dec(f: Callable[[_Base], int]) -> Callable[[_Base], List[int]]: pass
+
+class B(Base):
+    def foo(self) -> List[int]: pass
+
+class A(B):
+    @dec
+    def foo(self) -> int:
+        x.lol()
+        return 12
+
+[file x.py]
+def lol() -> str: pass
+[file x.py.2]
+def lol() -> int: pass
+[file x.py.3]
+def lol() -> str: pass
+
+[builtins fixtures/list.pyi]
+[out]
+==
+==
+
 [case testPreviousErrorInDecoratedFunction]
 import a
 [file a.py]
@@ -2123,7 +2158,7 @@ class A:
 
     def g(self): pass
 [triggered]
-2: <a.A.f>, <a.A.z>
+2: <a.A.f>, <a.A.z>, <a.A[wildcard]>
 [out]
 ==
 
@@ -3837,9 +3872,11 @@ def inner():
     # type: () -> (str, int)
     return 'lol', 10
 [out]
-a.py:1: error: Invalid tuple literal type
+a.py:1: error: Syntax error in type annotation
+a.py:1: note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 ==
-a.py:2: error: Invalid tuple literal type
+a.py:2: error: Syntax error in type annotation
+a.py:2: note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 
 [case testImplicitTuple3]
 import a
@@ -5411,6 +5448,789 @@ class C:
 ==
 a.py:4: error: Too many arguments for "C"
 
+-- Protocol tests
+
+[case testProtocolUpdateTypeInVariable]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+x: b.P = C()
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:4: note: Following member(s) of "C" have conflicts:
+a.py:4: note:     x: expected "str", got "int"
+
+[case testProtocolUpdateTypeInFunction]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+c: C
+def f() -> None:
+    def g(x: b.P) -> None:
+        pass
+    g(c)
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: str
+[out]
+==
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "str", got "int"
+
+[case testProtocolUpdateTypeInClass]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+class A:
+    class B:
+        x: b.P
+    y: B
+A().y.x = C()
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: str
+[out]
+==
+a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "str", got "int"
+
+[case testProtocolAddAttrInFunction]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+def f() -> None:
+    c: C
+    def g(x: b.P) -> None:
+        pass
+    g(c)
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: int
+    y: str
+[out]
+==
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: 'C' is missing following 'P' protocol member:
+a.py:8: note:     y
+
+[case testProtocolRemoveAttrInClass]
+import a
+[file a.py]
+import b
+class C:
+    x: int
+class A:
+    class B:
+        x: b.P
+    y: B
+A().y.x = C()
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+    y: str
+[file b.py.2]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[out]
+a.py:8: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:8: note: 'C' is missing following 'P' protocol member:
+a.py:8: note:     y
+==
+
+[case testProtocolConcreteUpdateTypeFunction]
+import a
+[file a.py]
+import b
+from typing import Protocol
+class P(Protocol):
+    x: int
+def f() -> None:
+    def g(x: P) -> None:
+        pass
+    g(b.C())
+[file b.py]
+class C:
+    x: int
+[file b.py.2]
+class C:
+    x: str
+[out]
+==
+a.py:8: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:8: note: Following member(s) of "C" have conflicts:
+a.py:8: note:     x: expected "int", got "str"
+
+[case testProtocolConcreteUpdateTypeMethodGeneric]
+import a
+[file a.py]
+import b
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P(Protocol[T]):
+    x: T
+class C:
+    def g(self, x: P[int]) -> None:
+        pass
+    def do(self) -> None:
+        self.g(b.C())
+[file b.py]
+class C:
+    x: int
+[file b.py.2]
+class C:
+    x: str
+[out]
+==
+a.py:10: error: Argument 1 to "g" of "C" has incompatible type "C"; expected "P[int]"
+a.py:10: note: Following member(s) of "C" have conflicts:
+a.py:10: note:     x: expected "int", got "str"
+
+[case testProtocolConcreteRemoveAttrVariable]
+import a
+[file a.py]
+import b, c
+cc: c.C
+x: b.P = cc
+[file b.py]
+from typing import Protocol
+class P(Protocol):
+    x: int
+[file c.py]
+class C:
+    x: int
+[file c.py.2]
+class C:
+    pass
+[out]
+==
+a.py:3: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+
+[case testProtocolUpdateBaseGeneric]
+import a
+[file a.py]
+import b, c
+def g(x: c.P) -> None:
+    pass
+g(b.C())
+[file b.py]
+class C:
+    x: int
+[file c.py]
+from typing import Protocol
+import d
+class P(d.PBase[int], Protocol):
+    pass
+[file c.py.2]
+from typing import Protocol
+import d
+class P(d.PBase[str], Protocol):
+    pass
+[file d.py]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class PBase(Protocol[T]):
+    x: T
+[out]
+==
+a.py:4: error: Argument 1 to "g" has incompatible type "C"; expected "P"
+a.py:4: note: Following member(s) of "C" have conflicts:
+a.py:4: note:     x: expected "str", got "int"
+
+[case testProtocolConcreteUpdateBaseGeneric]
+import a
+[file a.py]
+import b
+from typing import Protocol
+class P(Protocol):
+    x: int
+def f(x: P) -> None:
+    pass
+f(b.B())
+[file b.py]
+import c
+class B(c.C[int]):
+    pass
+[file b.py.2]
+import c
+class B(c.C[str]):
+    pass
+[file c.py]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]):
+    x: T
+[out]
+==
+a.py:7: error: Argument 1 to "f" has incompatible type "B"; expected "P"
+a.py:7: note: Following member(s) of "B" have conflicts:
+a.py:7: note:     x: expected "int", got "str"
+
+[case testProtocolChangeGeneric]
+import a
+[file a.py]
+import b, c
+x: b.P = c.C()
+[file b.py]
+import b2
+from typing import Protocol
+class P(b2.P2[str], Protocol):
+    pass
+[file b2.py]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P2(Protocol[T]):
+    x: T
+[file b2.py.2]
+from typing import Protocol, TypeVar
+T = TypeVar('T')
+class P2(Protocol):
+    x: int
+[file c.py]
+class C:
+    x: int
+[out]
+a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:2: note: Following member(s) of "C" have conflicts:
+a.py:2: note:     x: expected "str", got "int"
+==
+b.py:3: error: "P2" expects no type arguments, but 1 given
+
+[case testProtocolToNonProtocol]
+import a
+[file a.py]
+import b, c
+b.f(c.C())
+[file b.py]
+import d
+def f(x: d.D) -> None:
+    pass
+[file c.py]
+import d
+class C:
+    x: int
+[file d.py]
+from typing import Protocol
+class D(Protocol):
+    x: int
+[file d.py.2]
+class D:
+    x: int
+[file c.py.3]
+import d
+class C(d.D):
+    pass
+[out]
+==
+a.py:2: error: Argument 1 to "f" has incompatible type "C"; expected "D"
+==
+
+[case testNonProtocolToProtocol]
+import a
+[file a.py]
+import b, c
+b.f(c.C())
+[file b.py]
+import d
+def f(x: d.D) -> None:
+    pass
+[file c.py]
+import d
+class C(d.D):
+    pass
+[file d.py]
+class D:
+    x: int
+[file d.py.2]
+from typing import Protocol
+class D(Protocol):
+    x: int
+[file c.py.3]
+import d
+class C:
+    x: int
+[out]
+==
+a.py:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'x'
+==
+
+[case testInvalidateProtocolViaSuperClass]
+import a
+[file a.py]
+import b, c
+def func(x: c.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+class B:
+    x: int
+    y: str
+[file c.py]
+from typing import Protocol
+import d
+class P(d.PBase, Protocol):
+    x: int
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    y: str
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
+[out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+a.py:4: note: Following member(s) of "B" have conflicts:
+a.py:4: note:     y: expected "int", got "str"
+
+[case testProtocolInvalidateConcreteViaSuperClassUpdateType]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+class C:
+    x: int
+[file c.py.2]
+class C:
+    x: str
+[out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+a.py:4: note: Following member(s) of "B" have conflicts:
+a.py:4: note:     x: expected "int", got "str"
+
+[case testProtocolInvalidateConcreteViaSuperClassAddAttr]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+bb: b.B
+func(bb)
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+class C:
+    pass
+[file c.py.2]
+class C:
+    x: int
+[out]
+a.py:5: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+==
+
+[case testProtocolInvalidateConcreteViaSuperClassRemoveAttr]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+class C:
+    x: int
+[file c.py.2]
+class C:
+    pass
+[out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+
+[case testTwoProtocolsTwoFilesCrossedUpdateType-skip-cache]
+# this test and the next one (TwoProtocolsTwoFilesCrossedDeleteAttr) has errors ordered
+# opposite way with and without cache, therefore skip one of each.
+import a
+[file a.py]
+import b1
+import b2
+[file b1.py]
+import b2, d
+from typing import Protocol
+class P1(Protocol):
+    x: int
+def f(x: b2.P2) -> None:
+    pass
+f(d.D())
+[file b2.py]
+import b1, d
+from typing import Protocol
+class P2(Protocol):
+    x: int
+def f(x: b1.P1) -> None:
+    pass
+f(d.D())
+[file d.py]
+class D:
+    x: int
+[file d.py.2]
+class D:
+    x: str
+[out]
+==
+b1.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P2"
+b1.py:7: note: Following member(s) of "D" have conflicts:
+b1.py:7: note:     x: expected "int", got "str"
+b2.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P1"
+b2.py:7: note: Following member(s) of "D" have conflicts:
+b2.py:7: note:     x: expected "int", got "str"
+
+[case testTwoProtocolsTwoFilesCrossedDeleteAttr-skip-nocache]
+import a
+[file a.py]
+import b1
+import b2
+[file b1.py]
+import b2, d
+from typing import Protocol
+class P1(Protocol):
+    x: int
+def f(x: b2.P2) -> None:
+    pass
+f(d.D())
+[file b2.py]
+import b1, d
+from typing import Protocol
+class P2(Protocol):
+    x: int
+def f(x: b1.P1) -> None:
+    pass
+f(d.D())
+[file d.py]
+class D:
+    x: int
+[file d.py.2]
+class D:
+    y: int
+[out]
+b2.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P2" (diff)
+b1.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P1"
+
+[case testProtocolsInvalidateByRemovingBase]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B())
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+import d
+class C(d.D):
+    pass
+[file c.py.2]
+import d
+class C:
+    pass
+[file d.py]
+class D:
+    x: int
+[out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
+
+[case testProtocolsInvalidateByRemovingMetaclass]
+import a
+[file a.py]
+import b
+def func(x: b.P) -> None:
+    pass
+func(b.B)
+[file b.py]
+from typing import Protocol
+import c
+class P(Protocol):
+    x: int
+class B(c.C):
+    pass
+[file c.py]
+import d
+class C(metaclass=d.M):
+    pass
+[file c.py.2]
+import d
+class C:
+    pass
+[file d.py]
+class M(type):
+    x: int
+[out]
+==
+a.py:4: error: Argument 1 to "func" has incompatible type "Type[B]"; expected "P"
+
+[case testProtocolVsProtocolSubUpdated]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+class SuperP(Protocol):
+    x: int
+[file c.py]
+from typing import Protocol
+import d
+class SubP(d.PBase, Protocol):
+    y: str
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    x: int
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    x: str
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+a.py:4: note: Following member(s) of "SubP" have conflicts:
+a.py:4: note:     x: expected "int", got "str"
+
+[case testProtocolVsProtocolSuperUpdated]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+import d
+class SuperP(d.PBase, Protocol):
+    pass
+[file c.py]
+from typing import Protocol
+class SubP(Protocol):
+    x: int
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    x: int
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+
+[case testProtocolVsProtocolSuperUpdated2]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+import d
+class SuperP(d.PBase, Protocol):
+    x: int
+[file c.py]
+from typing import Protocol
+class SubP(Protocol):
+    x: int
+    y: int
+[file d.py]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
+[file d.py.2]
+from typing import Protocol
+class PBase(Protocol):
+    y: int
+    z: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+a.py:4: note: 'SubP' is missing following 'SuperP' protocol member:
+a.py:4: note:     z
+
+[case testProtocolVsProtocolSuperUpdated3]
+import a
+[file a.py]
+import b, c
+x: b.SuperP
+y: c.SubP
+x = y
+[file b.py]
+from typing import Protocol
+import d
+class SuperP(d.PBase, Protocol):
+    x: int
+[file c.py]
+from typing import Protocol
+class SubP(Protocol):
+    x: int
+    y: int
+[file d.py]
+from typing import Protocol
+import e
+class PBase(Protocol):
+    y: int
+[file d.py.2]
+from typing import Protocol
+import e
+class PBase(e.NewP, Protocol):
+    y: int
+[file e.py]
+from typing import Protocol
+class NewP(Protocol):
+    z: int
+[out]
+==
+a.py:4: error: Incompatible types in assignment (expression has type "SubP", variable has type "SuperP")
+a.py:4: note: 'SubP' is missing following 'SuperP' protocol member:
+a.py:4: note:     z
+
+[case testProtocolMultipleUpdates]
+import a
+[file a.py]
+import b, c
+x: b.P = c.C()
+[file b.py]
+from typing import Protocol
+import b2
+class P(b2.P2, Protocol):
+    x: int
+[file b2.py]
+from typing import Protocol
+class P2(Protocol):
+    y: int
+[file c.py]
+import c2
+class C(c2.C2):
+    x: int
+[file c2.py]
+class C2:
+    y: int
+[file b2.py.2]
+from typing import Protocol
+class P2(Protocol):
+    y: int
+    z: int
+[file c2.py.3]
+class C2:
+    y: int
+    z: int
+[file c2.py.4]
+class C2:
+    y: int
+    z: str
+[out]
+==
+a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:2: note: 'C' is missing following 'P' protocol member:
+a.py:2: note:     z
+==
+==
+a.py:2: error: Incompatible types in assignment (expression has type "C", variable has type "P")
+a.py:2: note: Following member(s) of "C" have conflicts:
+a.py:2: note:     z: expected "int", got "str"
+
+[case testWeAreCarefulWithBuiltinProtocols]
+import a
+x: a.A
+for i in x:
+    pass
+[file a.py]
+from typing import Iterator
+class A:
+    def __iter__(self) -> Iterator[int]:
+        pass
+[file a.py.2]
+class A:
+    pass
+[out]
+==
+main:3: error: "A" has no attribute "__iter__" (not iterable)
+
+[case testWeAreCarefullWithBuiltinProtocolsBase]
+import a
+x: a.A
+for i in x:
+    pass
+[file a.py]
+import b
+class A(b.B):
+    pass
+[file a.py.2]
+class A:
+    pass
+[file b.py]
+from typing import Iterator
+class B:
+    def __iter__(self) -> Iterator[int]:
+        pass
+[out]
+==
+main:3: error: "A" has no attribute "__iter__" (not iterable)
+
 [case testOverloadsSimpleFrom]
 import a
 [file a.py]
@@ -5504,7 +6324,7 @@ from typing import overload
 ==
 main:3: error: Module has no attribute "f"
 
-[case testOverloadsUpdatedTypeRecheckImplementation]
+[case testOverloadsUpdatedTypeRecheckImplementation-skip]
 from typing import overload
 import mod
 class Outer:
@@ -5800,3 +6620,520 @@ class M(type):
 [out]
 ==
 a.py:2: error: Argument 1 to "f" of "M" has incompatible type "int"; expected "str"
+
+[case testYieldFrom]
+from typing import Iterator
+from a import f
+
+def g() -> Iterator[int]:
+    a = "string"
+    a = yield from f()
+
+[file a.py]
+from typing import Generator
+
+def f() -> Generator[int, None, str]:
+    yield 5
+    return "ham"
+
+[file a.py.2]
+from typing import Generator
+
+class A: pass
+
+def f() -> Generator[int, None, A]:
+    yield 5
+    return A()
+
+[out]
+==
+main:6: error: Incompatible types in assignment (expression has type "A", variable has type "str")
+
+[case testFString]
+from a import g
+f'{g(1)}'
+[file a.py]
+def g(x: int) -> str: pass
+[file a.py.2]
+def g(x: str) -> str: pass
+[builtins fixtures/f_string.pyi]
+[out]
+==
+main:2: error: Argument 1 to "g" has incompatible type "int"; expected "str"
+
+[case testExtendedUnpacking-skip-cache]
+from typing import List
+from a import g
+def f() -> List[int]:
+    a, *b = g()
+    return b
+
+[file a.py]
+from typing import Tuple
+def g() -> Tuple[str, int, int]: pass
+
+[file a.py.2]
+from typing import Tuple
+def g() -> Tuple[str, str]: pass
+
+[builtins fixtures/tuple.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "List[str]", expected "List[int]")
+
+[case testUnpackInExpression1-skip-cache]
+from typing import Tuple, List
+from a import t
+
+def f() -> Tuple[int, int]:
+    return (1, *t())
+
+def g() -> List[int]:
+    return [1, *t()]
+
+[file a.py]
+from typing import Tuple
+def t() -> Tuple[int]: ...
+
+[file a.py.2]
+from typing import Tuple
+def t() -> Tuple[str]: ...
+
+[builtins fixtures/list.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "Tuple[int, str]", expected "Tuple[int, int]")
+main:8: error: List item 1 has incompatible type "Tuple[str]"; expected "int"
+
+[case testUnpackInExpression2-skip-cache]
+from typing import Set
+from a import t
+
+def f() -> Set[int]:
+    return {1, *t()}
+
+[file a.py]
+from typing import Tuple
+def t() -> Tuple[int]: pass
+
+[file a.py.2]
+from typing import Tuple
+def t() -> Tuple[str]: pass
+
+[builtins fixtures/set.pyi]
+[out]
+==
+main:5: error: Argument 2 to <set> has incompatible type "*Tuple[str]"; expected "int"
+
+[case testUnpackInExpression3-skip-cache]
+from typing import Dict
+from a import d
+
+def f() -> Dict[int, str]:
+    return {1: '', **d()}
+
+[file a.py]
+from typing import Dict
+def d() -> Dict[int, str]: pass
+
+[file a.py.2]
+from typing import Dict
+def d() -> Dict[int, int]: pass
+
+[builtins fixtures/dict.pyi]
+[out]
+==
+main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+
+[case testAwaitAndAsyncDef-skip-cache]
+from a import g
+
+async def f() -> int:
+    return await g()
+
+[file a.py]
+async def g() -> int:
+    return 0
+
+[file a.py.2]
+async def g() -> str:
+    return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case testAwaitAnd__await__-skip-cache]
+from a import C
+
+async def f(c: C) -> int:
+    return await c
+
+[file a.py]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, int]:
+        yield
+        return 0
+
+[file a.py.2]
+from typing import Any, Generator
+class C:
+    def __await__(self) -> Generator[Any, None, str]:
+        yield
+        return ''
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:4: error: Incompatible return value type (got "str", expected "int")
+
+[case test__aiter__and__anext__]
+from a import C
+
+async def f() -> int:
+    async for x in C():
+        pass
+    return x
+
+[file a.py]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> int: return 0
+
+[file a.py.2]
+class C:
+    def __aiter__(self) -> D: pass
+class D:
+    def __aiter__(self) -> D: pass
+    async def __anext__(self) -> str: return ''
+
+[file a.py.3]
+class C:
+    def __aiter__(self) -> E: pass
+class E:
+    def __aiter__(self) -> E: pass
+    async def __anext__(self) -> object: return 0
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:6: error: Incompatible return value type (got "str", expected "int")
+==
+main:6: error: Incompatible return value type (got "object", expected "int")
+
+[case testAsyncWith2-skip-cache]
+from a import C
+
+async def f() -> int:
+    async with C() as x:
+        return x
+
+async def g() -> None:
+    async with C(): pass
+
+[file a.py]
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.2]
+class C:
+    async def __aenter__(self) -> str: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.3]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+    async def __aexit__(self, x, y, z) -> None: pass
+
+[file a.py.4]
+from typing import Awaitable
+class C:
+    async def __aenter__(self) -> int: pass
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "str", expected "int")
+==
+==
+main:4: error: "C" has no attribute "__aexit__"
+main:8: error: "C" has no attribute "__aexit__"
+
+[case testLiskovFineVariable]
+import b
+class A(b.B):
+    x: str
+def f(x: b.B) -> None:
+    x.x + int()
+f(A())
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+main:5: error: Unsupported operand types for + ("str" and "int")
+==
+main:3: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineVariableInFunction]
+from b import B
+def outer() -> None:
+    class A(B):
+        x: str
+    def f(x: B) -> None:
+        x.x + int()
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+main:6: error: Unsupported operand types for + ("str" and "int")
+==
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineDecorator]
+import b
+from c import deco
+class A(b.B):
+    @deco
+    def m(self) -> str: pass
+def f(x: b.B) -> None:
+    x.m() + int()
+f(A())
+[file b.py]
+from c import deco
+class B:
+    @deco
+    def m(self) -> str: pass
+[file b.py.2]
+from c import deco
+class B:
+    @deco
+    def m(self) -> int: pass
+[file c.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+def deco(f: F) -> F:
+    pass
+[out]
+main:7: error: Unsupported operand types for + ("str" and "int")
+==
+main:5: error: Return type of "m" incompatible with supertype "B"
+
+[case testLiskovFineVariableClean-skip-cache]
+import b
+class A(b.B):
+    x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:3: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineVariableCleanDefInMethod-skip-cache]
+import b
+class A(b.B):
+    def meth(self) -> None:
+        self.x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineVariableCleanDefInMethodNested-skip-cache]
+from b import B
+def outer() -> None:
+    class A(B):
+        def meth(self) -> None:
+            self.x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:5: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineVariableInFunctionClean-skip-cache]
+from b import B
+def outer() -> None:
+    class A(B):
+        x: str
+[file b.py]
+class B:
+    x: str
+[file b.py.2]
+class B:
+    x: int
+[out]
+==
+main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
+
+[case testLiskovFineDecoratorClean-skip-cache]
+import b
+from c import deco
+class A(b.B):
+    @deco
+    def m(self) -> str: pass
+[file b.py]
+from c import deco
+class B:
+    @deco
+    def m(self) -> str: pass
+[file b.py.2]
+from c import deco
+class B:
+    @deco
+    def m(self) -> int: pass
+[file c.py]
+from typing import Callable, TypeVar
+F = TypeVar('F', bound=Callable)
+def deco(f: F) -> F:
+    pass
+[out]
+==
+main:5: error: Return type of "m" incompatible with supertype "B"
+
+[case testAddAbstractMethod]
+from b import D
+D()
+[file b.py]
+from a import C
+class D(C):
+    def f(self) -> None: pass
+[file a.py]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+[file a.py.2]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file a.py.3]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+[out]
+==
+main:2: error: Cannot instantiate abstract class 'D' with abstract attribute 'g'
+==
+
+[case testMakeClassAbstract]
+from a import C
+c = C()
+[file a.py]
+from abc import abstractmethod
+class C: pass
+[file a.py.2]
+from abc import abstractmethod
+class C:
+    @abstractmethod
+    def f(self) -> None: pass
+[out]
+==
+main:2: error: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+
+[case testMakeMethodNoLongerAbstract1]
+[file z.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file b.py]
+import z
+def x() -> Foo: return Foo()
+class Foo(z.I):
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+
+[file z.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+
+[file b.py.2]
+import z
+def x() -> Foo: return Foo()
+class Foo(z.I):
+    def g(self) -> None: pass
+[out]
+==
+
+[case testMakeMethodNoLongerAbstract2]
+-- this version never failed, but it is just a file-renaming
+-- away from the above test that did
+[file a.py]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+[file b.py]
+import a
+def x() -> Foo: return Foo()
+class Foo(a.I):
+    def f(self) -> None: pass
+    def g(self) -> None: pass
+
+[file a.py.2]
+from abc import abstractmethod, ABCMeta
+class I(metaclass=ABCMeta):
+    def f(self) -> None: pass
+    @abstractmethod
+    def g(self) -> None: pass
+
+[file b.py.2]
+import a
+def x() -> Foo: return Foo()
+class Foo(a.I):
+    def g(self) -> None: pass
+[out]
+==
+
+[case testImplicitOptionalRefresh1]
+# flags: --strict-optional
+from x import f
+def foo(x: int = None) -> None:
+    f()
+[file x.py]
+def f() -> int: return 0
+[file x.py.2]
+def f() -> str: return '0'
+[out]
+==

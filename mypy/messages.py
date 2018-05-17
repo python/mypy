@@ -10,6 +10,7 @@ Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
 
+from collections import OrderedDict
 import re
 import difflib
 
@@ -26,9 +27,8 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr
+    CallExpr, Expression
 )
-
 
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.
@@ -63,8 +63,6 @@ INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpol
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
 INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-ITERABLE_EXPECTED = 'Iterable expected'
-ASYNC_ITERABLE_EXPECTED = 'AsyncIterable expected'
 INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
 CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
 CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'
@@ -450,19 +448,27 @@ class MessageBuilder:
                 self.fail('{} not callable'.format(self.format(original_type)), context)
         else:
             # The non-special case: a missing ordinary attribute.
+            extra = ''
+            if member == '__iter__':
+                extra = ' (not iterable)'
+            elif member == '__aiter__':
+                extra = ' (not async iterable)'
             if not self.disable_type_names:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
                     matches = [m for m in COMMON_MISTAKES.get(member, []) if m in alternatives]
                     matches.extend(best_matches(member, alternatives)[:3])
+                    if member == '__aiter__' and matches == ['__iter__']:
+                        matches = []  # Avoid misleading suggestion
                     if matches:
-                        self.fail('{} has no attribute "{}"; maybe {}?'.format(
-                            self.format(original_type), member, pretty_or(matches)), context)
+                        self.fail('{} has no attribute "{}"; maybe {}?{}'.format(
+                            self.format(original_type), member, pretty_or(matches), extra),
+                            context)
                         failed = True
                 if not failed:
-                    self.fail('{} has no attribute "{}"'.format(self.format(original_type),
-                                                                member), context)
+                    self.fail('{} has no attribute "{}"{}'.format(self.format(original_type),
+                                                                  member, extra), context)
             elif isinstance(original_type, UnionType):
                 # The checker passes "object" in lieu of "None" for attribute
                 # checks, so we manually convert it back.
@@ -470,8 +476,8 @@ class MessageBuilder:
                 if typ_format == '"object"' and \
                         any(type(item) == NoneTyp for item in original_type.items):
                     typ_format = '"None"'
-                self.fail('Item {} of {} has no attribute "{}"'.format(
-                    typ_format, self.format(original_type), member), context)
+                self.fail('Item {} of {} has no attribute "{}"{}'.format(
+                    typ_format, self.format(original_type), member, extra), context)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self, op: str, left_type: Any,
@@ -639,7 +645,7 @@ class MessageBuilder:
             # For function calls with keyword arguments, display the argument name rather than the
             # number.
             arg_label = str(n)
-            if isinstance(context, CallExpr):
+            if isinstance(context, CallExpr) and len(context.arg_names) >= n:
                 arg_name = context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = '"{}"'.format(arg_name)
@@ -967,6 +973,16 @@ class MessageBuilder:
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
+
+    def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
+        # To ensure that the output is predictable on Python < 3.6,
+        # use an ordered dictionary sorted by variable name
+        sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
+        self.fail("Revealed local types are:", context)
+        # Note that self.fail does a strip() on the message, so we cannot prepend with spaces
+        # for indentation
+        for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
+            self.fail(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)

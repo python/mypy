@@ -30,7 +30,8 @@ flagged as an error.
   do not have any annotations (neither for any argument nor for the
   return type) are not type-checked, and even the most blatant type
   errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
-  annotations.
+  annotations. Where that isn't possible, functions without annotations
+  can be checked using ``--check-untyped-defs``.
 
   Example:
 
@@ -51,7 +52,7 @@ flagged as an error.
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
-- **One of the values involved has type ``Any``.** Extending the above
+- **One of the values involved has type 'Any'.** Extending the above
   example, if we were to leave out the annotation for ``a``, we'd get
   no error:
 
@@ -85,7 +86,7 @@ flagged as an error.
   clarity about the latter use ``--follow-imports=error``.  You can
   read up about these and other useful flags in :ref:`command-line`.
 
-- **A function annotated as returning a non-optional type returns ``None``
+- **A function annotated as returning a non-optional type returns 'None'
   and mypy doesn't complain**.
 
   .. code-block:: python
@@ -93,9 +94,8 @@ flagged as an error.
       def foo() -> str:
           return None  # No error!
 
-  By default, the ``None`` value is considered compatible with everything. See
-  :ref:`optional` for details on strict optional checking, which allows mypy to
-  check ``None`` values precisely, and will soon become default.
+  You may have disabled strict optional checking (see
+  :ref:`no_strict_optional` for more).
 
 .. _silencing_checker:
 
@@ -130,6 +130,17 @@ The second line is now fine, since the ignore comment causes the name
     type if mypy cannot find information about that particular module. So,
     if we did have a stub available for ``frobnicate`` then mypy would
     ignore the ``# type: ignore`` comment and typecheck the stub as usual.
+
+
+Unexpected errors about 'None' and/or 'Optional' types
+------------------------------------------------------
+
+Starting from mypy 0.600, mypy uses
+:ref:`strict optional checking <strict_optional>` by default,
+and ``None`` is not compatible with non-optional types.  It's
+easy to switch back to the older behavior where ``None`` was
+compatible with arbitrary types (see :ref:`no_strict_optional`).
+
 
 Types of empty collections
 --------------------------
@@ -419,12 +430,25 @@ understand how mypy handles a particular piece of code. Example:
 
    reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
 
+You can also use ``reveal_locals()`` at any line in a file
+to see the types of all local varaibles at once. Example:
+
+.. code-block:: python
+
+   a = 1
+   b = 'one'
+   reveal_locals()
+   # Revealed local types are:
+   # a: builtins.int
+   # b: builtins.str
 .. note::
 
-   ``reveal_type`` is only understood by mypy and doesn't exist
-   in Python, if you try to run your program. You'll have to remove
-   any ``reveal_type`` calls before you can run your code.
-   ``reveal_type`` is always available and you don't need to import it.
+   ``reveal_type`` and ``reveal_locals`` are only understood by mypy and
+   don't exist in Python. If you try to run your program, you'll have to
+   remove any ``reveal_type`` and ``reveal_locals`` calls before you can
+   run your code. Both are always available and you don't need to import
+   them.
+
 
 .. _import-cycles:
 

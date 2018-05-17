@@ -1495,6 +1495,20 @@ a = A()
 a.f = 1
 reveal_type(a.f)  # E: Revealed type is 'builtins.str'
 
+[case testDescriptorGetUnion]
+from typing import Any, Union
+class String:
+    def __get__(self, inst: Any, owner: Any) -> str:
+        return ''
+
+class A:
+    attr: str
+
+class B:
+    attr = String()
+
+def foo(x: Union[A, B]) -> None:
+    reveal_type(x.attr)  # E: Revealed type is 'builtins.str'
 
 -- _promote decorators
 -- -------------------
@@ -2026,7 +2040,7 @@ class C:
 
 x = C(foo=12)
 x.a # E: "C" has no attribute "a"
-C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "int"
+C(foo='') # E: Argument "foo" to "C" has incompatible type "str"; expected "Optional[int]"
 [builtins fixtures/__new__.pyi]
 
 [case testConstructInstanceWithDynamicallyTyped__new__]
@@ -3471,6 +3485,23 @@ class Concrete(metaclass=Meta):
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
 Concrete + "hello"  # E: Unsupported operand types for + ("Type[Concrete]" and "str")
 
+[case testMetaclassOperatorTypeVar]
+from typing import Type, TypeVar
+
+class MetaClass(type):
+    def __mul__(cls, other: int) -> str:
+        return ""
+
+class Test(metaclass=MetaClass):
+    pass
+
+S = TypeVar("S", bound=Test)
+
+def f(x: Type[Test]) -> str:
+    return x * 0
+def g(x: Type[S]) -> str:
+    return reveal_type(x * 0)  # E: Revealed type is 'builtins.str'
+
 [case testMetaclassGetitem]
 class M(type):
     def __getitem__(self, key) -> int: return 1
@@ -4321,3 +4352,14 @@ class C:
     __slots__ = ('x',)
 class D(B, C):
     __slots__ = ('aa', 'bb', 'cc')
+
+[case testRevealLocalsOnClassVars]
+class C1(object):
+    t = 'a'
+    y = 3.0
+    reveal_locals()
+
+[out]
+main:4: error: Revealed local types are:
+main:4: error: t: builtins.str
+main:4: error: y: builtins.float

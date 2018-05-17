@@ -17,6 +17,7 @@ from mypy import experiments
 from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
 from mypy.report import reporter_classes
@@ -66,7 +67,9 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
-    sources, options = process_options(args)
+
+    fscache = FileSystemCache()
+    sources, options = process_options(args, fscache=fscache)
 
     messages = []
 
@@ -85,7 +88,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = type_check_only(sources, bin_dir, options, flush_errors)  # noqa
+        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -135,12 +138,14 @@ def readlinkabs(link: str) -> str:
 
 def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
                     options: Options,
-                    flush_errors: Optional[Callable[[List[str], bool], None]]) -> BuildResult:
+                    flush_errors: Optional[Callable[[List[str], bool], None]],
+                    fscache: FileSystemCache) -> BuildResult:
     # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
                        options=options,
-                       flush_errors=flush_errors)
+                       flush_errors=flush_errors,
+                       fscache=fscache)
 
 
 FOOTER = """environment variables:
@@ -296,6 +301,7 @@ def infer_python_version_and_executable(options: Options,
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
+                    fscache: Optional[FileSystemCache] = None,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments."""
 
@@ -418,8 +424,10 @@ def process_options(args: List[str],
                         help="include fine-grained dependency information in the cache")
     parser.add_argument('--skip-version-check', action='store_true',
                         help="allow using cache written by older mypy version")
-    add_invertible_flag('--strict-optional', default=False, strict_flag=True,
-                        help="enable experimental strict Optional checks")
+    parser.add_argument('--strict-optional', action='store_true',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--no-strict-optional', action='store_false', dest='strict_optional',
+                        help="disable strict Optional checks (inverse: --strict-optional)")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
                         "(experimental -- read documentation before using!).  "
@@ -455,8 +463,9 @@ def process_options(args: List[str],
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
                         help=strict_help)
     parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
-                        dest='shadow_file',
-                        help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
+                        dest='shadow_file', action='append',
+                        help="When encountering SOURCE_FILE, read and typecheck "
+                             "the contents of SHADOW_FILE instead.")
     # hidden options
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
@@ -634,7 +643,7 @@ def process_options(args: List[str],
         lib_path = [os.getcwd()] + build.mypy_path()
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = build.FindModuleCache()
+        cache = build.FindModuleCache(fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p))
@@ -651,8 +660,7 @@ def process_options(args: List[str],
         return targets, options
     else:
         try:
-            # TODO: use the same cache that the BuildManager will
-            targets = create_source_list(special_opts.files, options)
+            targets = create_source_list(special_opts.files, options, fscache)
         except InvalidSourceList as e:
             fail(str(e))
         return targets, options

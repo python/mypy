@@ -339,6 +339,8 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
             raise RuntimeError('Specifying targets via the flags pragma is not supported.')
     else:
         options = Options()
+        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
+        options.strict_optional = False
 
     # Allow custom python version to override testcase_pyversion
     if (not flag_list or

@@ -11,7 +11,7 @@ from mypy.nodes import (
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
     PassStmt, GlobalDecl, WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
-    CastExpr, RevealTypeExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
+    CastExpr, RevealExpr, TupleExpr, GeneratorExpr, ListComprehension, ListExpr,
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, LambdaExpr, TypeApplication, PrintStmt,
@@ -20,11 +20,12 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
-    OverloadPart, EnumCallExpr,
+    OverloadPart, EnumCallExpr, REVEAL_TYPE
 )
 from mypy.types import Type, FunctionLike
 from mypy.traverser import TraverserVisitor
 from mypy.visitor import NodeVisitor
+from mypy.util import replace_object_state
 
 
 class TransformVisitor(NodeVisitor[Node]):
@@ -124,7 +125,7 @@ class TransformVisitor(NodeVisitor[Node]):
             # function. We know that the classes will be identical (otherwise
             # this wouldn't work).
             result = self.func_placeholder_map[node]
-            result.__dict__ = new.__dict__
+            replace_object_state(result, new)
             return result
         else:
             return new
@@ -376,8 +377,13 @@ class TransformVisitor(NodeVisitor[Node]):
         return CastExpr(self.expr(node.expr),
                         self.type(node.type))
 
-    def visit_reveal_type_expr(self, node: RevealTypeExpr) -> RevealTypeExpr:
-        return RevealTypeExpr(self.expr(node.expr))
+    def visit_reveal_expr(self, node: RevealExpr) -> RevealExpr:
+        if node.kind == REVEAL_TYPE:
+            assert node.expr is not None
+            return RevealExpr(kind=REVEAL_TYPE, expr=self.expr(node.expr))
+        else:
+            # Reveal locals expressions don't have any sub expressions
+            return node
 
     def visit_super_expr(self, node: SuperExpr) -> SuperExpr:
         call = self.expr(node.call)

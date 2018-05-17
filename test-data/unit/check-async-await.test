@@ -12,7 +12,7 @@ async def f() -> int:
 
 async def f() -> int:
     return 0
-reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+reveal_type(f())  # E: Revealed type is 'typing.Coroutine[Any, Any, builtins.int]'
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -163,8 +163,7 @@ async def f() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-main:4: error: AsyncIterable expected
-main:4: error: "List[int]" has no attribute "__aiter__"
+main:4: error: "List[int]" has no attribute "__aiter__" (not async iterable)
 
 [case testAsyncForTypeComments]
 
@@ -247,14 +246,10 @@ async def wrong_iterable(obj: Iterable[int]):
     {i: i for i in asyncify(obj)}
 
 [out]
-main:18: error: AsyncIterable expected
-main:18: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"?
-main:19: error: Iterable expected
-main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"?
-main:20: error: AsyncIterable expected
-main:20: error: "Iterable[int]" has no attribute "__aiter__"; maybe "__iter__"?
-main:21: error: Iterable expected
-main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"?
+main:18: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
+main:19: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
+main:20: error: "Iterable[int]" has no attribute "__aiter__" (not async iterable)
+main:21: error: "asyncify[int]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -340,7 +335,7 @@ async def f() -> None:
     async with C() as y, C() as z:  # type: str, int  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         pass
 
-    async with C() as a:  # type: int, int  # E: Invalid tuple literal type
+    async with C() as a:  # type: int, int  # E: Syntax error in type annotation # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
         pass
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
@@ -383,7 +378,7 @@ def g() -> Generator[Any, None, str]:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-main:6: error: "yield from" can't be applied to "Awaitable[str]"
+main:6: error: "yield from" can't be applied to "Coroutine[Any, Any, str]"
 
 [case testAwaitableSubclass]
 
@@ -538,7 +533,7 @@ async def h() -> None:
 from typing import AsyncGenerator
 
 async def gen() -> AsyncGenerator[int, None]:
-    for i in (1, 2, 3):
+    for i in [1, 2, 3]:
         yield i
 
 def h() -> None:
@@ -549,8 +544,7 @@ def h() -> None:
 [typing fixtures/typing-full.pyi]
 
 [out]
-main:9: error: Iterable expected
-main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"?
+main:9: error: "AsyncGenerator[int, None]" has no attribute "__iter__"; maybe "__aiter__"? (not iterable)
 
 [case testAsyncGeneratorNoYieldFrom]
 # flags: --fast-parser --python-version 3.6
@@ -636,9 +630,9 @@ def plain_host_generator() -> Generator[str, None, None]:
     yield 'a'
     x = 0
     x = yield from plain_generator()
-    x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Awaitable[int]"
+    x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Coroutine[Any, Any, int]"
     x = yield from decorated_generator()
-    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Awaitable[int]]"
+    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Coroutine[Any, Any, int]]"
     x = yield from other_iterator()
     x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
 

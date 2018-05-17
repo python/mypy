@@ -6,7 +6,7 @@
 Welcome to Mypy documentation!
 ==============================
 
-Mypy is a static type checker for Python.
+Mypy is a static type checker for Python 3 and Python 2.7.
 
 .. toctree::
    :maxdepth: 2
@@ -29,6 +29,7 @@ Mypy is a static type checker for Python.
    additional_features
    command_line
    config_file
+   mypy_daemon
    python36
    installed_packages
    faq

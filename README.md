@@ -136,7 +136,7 @@ this:
 
     $ python3 -m pip install -U mypy
 
-This should automatically installed the appropriate version of
+This should automatically install the appropriate version of
 mypy's parser, typed-ast.  If for some reason it does not, you
 can install it manually:
 

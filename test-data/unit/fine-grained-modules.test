@@ -134,6 +134,25 @@ b.py:1: error: Name 'f' is not defined
 ==
 b.py:1: error: Name 'f' is not defined
 
+[case testRemoveSubmoduleFromBuild1]
+# cmd1: mypy a.py b/__init__.py b/c.py
+# cmd2: mypy a.py b/__init__.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file a.py]
+from b import c
+x=1
+[file a.py.2]
+from b import c
+x=2
+[file a.py.3]
+from b import c
+x=3
+[file b/__init__.py]
+[file b/c.py]
+[out]
+==
+==
+
 [case testImportLineNumber1]
 import b
 [file b.py]
@@ -436,6 +455,18 @@ main:1: error: Cannot find module named 'p.q'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
+[case testDeleteSubpackageWithNontrivialParent1]
+[file p/__init__.py]
+def g() -> None:
+    pass
+[file p/b.py.2]
+def foo() -> None: pass
+foo()
+[delete p/b.py.3]
+[out]
+==
+==
+
 [case testDeleteModuleWithError]
 import a
 [file a.py]
@@ -481,6 +512,28 @@ import b
 b.f(1)
 [file b.py.2]
 def f(x: int) -> None: pass
+[out]
+==
+
+[case testDeleteSubpackageInit1]
+# cmd: mypy q/r/s.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file q/__init__.py]
+[file q/r/__init__.py]
+[file q/r/s.py]
+[delete q/__init__.py.2]
+[out]
+==
+
+[case testAddSubpackageInit2]
+# cmd: mypy q/r/s.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file q/r/__init__.py]
+[file q/r/s.py]
+1
+[file q/r/s.py.2]
+2
+[file q/__init__.py.2]
 [out]
 ==
 
@@ -1535,6 +1588,57 @@ x = ''
 ==
 ==
 
+[case testImportStarSomethingMoved]
+import p
+[file p.py]
+from r2 import *
+[file r2.py]
+class A: pass
+
+[file p.py.2]
+from r1 import *
+from r2 import *
+[file r2.py.2]
+
+[file r1.py.2]
+class A: pass
+
+[out]
+==
+
+[case testImportStarOverlap]
+from b import *
+from c import *  # type: ignore
+[file b.py]
+from d import T
+[file c.py]
+from d import T
+[file c.py.2]
+from d import T
+z = 10
+[file d.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out]
+==
+
+
+[case testImportPartialAssign]
+import a
+[file a.py]
+from c import *
+from b import A, x
+[file b.py]
+A = 10
+x = 1
+[file b.py.2]
+class A: pass
+x = 1
+[file c.py]
+x = 10
+[out]
+==
+
 [case testDeleteFileWithErrors]
 # cmd: mypy main a.py
 # cmd2: mypy main
@@ -1782,3 +1886,32 @@ reveal_type(b.x)
 ==
 ==
 a.py:2: error: Revealed type is 'builtins.int'
+
+[case testQualifiedSubpackage1]
+[file c/__init__.py]
+[file c/a.py]
+from lurr import x
+from c.d import f
+
+[file c/d.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[file lurr.py]
+x = 10
+[file lurr.py.2]
+x = '10'
+[out]
+==
+
+[case testImportedMissingSubpackage]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy a.py b/__init__.py
+[file a.py]
+from b.foo import bar
+x = 10
+[file b/__init__.py]
+[file a.py.2]
+from b.foo import bar
+x = '10'
+[out]
+==

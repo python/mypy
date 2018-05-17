@@ -190,6 +190,7 @@ def snapshot_definition(node: Optional[SymbolNode],
     elif isinstance(node, TypeInfo):
         attrs = (node.is_abstract,
                  node.is_enum,
+                 node.is_protocol,
                  node.fallback_to_any,
                  node.is_named_tuple,
                  node.is_newtype,
@@ -211,6 +212,8 @@ def snapshot_definition(node: Optional[SymbolNode],
                  snapshot_optional_type(node._promote))
         prefix = node.fullname()
         symbol_table = snapshot_symbol_table(prefix, node.names)
+        # Special dependency for abstract attribute handling.
+        symbol_table['(abstract)'] = ('Abstract', tuple(sorted(node.abstract_attributes)))
         return ('TypeInfo', common, attrs, symbol_table)
     else:
         # Other node types are handled elsewhere.

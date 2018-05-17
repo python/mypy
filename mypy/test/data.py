@@ -28,20 +28,16 @@ DeleteFile = NamedTuple('DeleteFile', [('module', str),
 FileOperation = Union[UpdateFile, DeleteFile]
 
 
-def parse_test_cases(
-        path: str,
-        base_path: str = '.',
-        optional_out: bool = False,
-        native_sep: bool = False) -> List['DataDrivenTestCase']:
-    """Parse a file with test case descriptions.
-
-    Return an array of test cases.
+def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
+                     path: str) -> Iterator['DataDrivenTestCase']:
+    """Parse a single file from suite with test case descriptions.
 
     NB: this function and DataDrivenTestCase were shared between the
     myunit and pytest codepaths -- if something looks redundant,
     that's likely the reason.
     """
-    if native_sep:
+    base_path = suite.base_path
+    if suite.native_sep:
         join = os.path.join
     else:
         join = posixpath.join  # type: ignore
@@ -51,7 +47,6 @@ def parse_test_cases(
     for i in range(len(lst)):
         lst[i] = lst[i].rstrip('\n')
     p = parse_test_data(lst, path)
-    out = []  # type: List[DataDrivenTestCase]
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
@@ -143,7 +138,7 @@ def parse_test_cases(
                     assert passnum > 1
                     output = p[i].data
                     output = [expand_variables(line) for line in output]
-                    if native_sep and os.path.sep == '\\':
+                    if suite.native_sep and os.path.sep == '\\':
                         output = [fix_win_path(line) for line in output]
                     tcout2[passnum] = output
                     ok = True
@@ -167,7 +162,7 @@ def parse_test_cases(
                         ('Stale modules after pass {} must be a subset of rechecked '
                          'modules ({}:{})').format(passnum, path, p[i0].line))
 
-            if optional_out:
+            if suite.optional_out:
                 ok = True
 
             if ok:
@@ -178,24 +173,24 @@ def parse_test_cases(
                 lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
                 arg0 = p[i0].arg
                 assert arg0 is not None
-                tc = DataDrivenTestCase(arg0, input, tcout, tcout2, path,
-                                        p[i0].line, lastline,
-                                        files, output_files, stale_modules,
-                                        rechecked_modules, deleted_paths, native_sep,
-                                        triggered)
-                out.append(tc)
+                case_name = add_test_name_suffix(arg0, suite.test_name_suffix)
+                skip = arg0.endswith('-skip')
+                if skip:
+                    case_name = case_name[:-len('-skip')]
+                yield DataDrivenTestCase(case_name, parent, skip, input, tcout, tcout2, path,
+                                         p[i0].line, lastline,
+                                         files, output_files, stale_modules,
+                                         rechecked_modules, deleted_paths, suite.native_sep,
+                                         triggered)
         if not ok:
             raise ValueError(
                 '{}, line {}: Error in test case description'.format(
                     path, p[i0].line))
 
-    return out
 
+class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
+    """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
-class DataDrivenTestCase:
-    """Holds parsed data and handles directory setup and teardown for MypyDataCase."""
-
-    # TODO: rename to ParsedTestCase or merge with MypyDataCase (yet avoid multiple inheritance)
     # TODO: only create files on setup, not during parsing
 
     input = None  # type: List[str]
@@ -215,6 +210,8 @@ class DataDrivenTestCase:
 
     def __init__(self,
                  name: str,
+                 parent: 'DataSuiteCollector',
+                 skip: bool,
                  input: List[str],
                  output: List[str],
                  output2: Dict[int, List[str]],
@@ -229,7 +226,9 @@ class DataDrivenTestCase:
                  native_sep: bool = False,
                  triggered: Optional[List[str]] = None,
                  ) -> None:
-        self.name = name
+
+        super().__init__(name, parent)
+        self.skip = skip
         self.old_cwd = None  # type: Optional[str]
         self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
         self.input = input
@@ -245,6 +244,14 @@ class DataDrivenTestCase:
         self.deleted_paths = deleted_paths
         self.native_sep = native_sep
         self.triggered = triggered or []
+
+    def runtest(self) -> None:
+        if self.skip:
+            pytest.skip()
+        suite = self.parent.obj()
+        suite.update_data = self.config.getoption('--update-data', False)
+        suite.setup()
+        suite.run_case(self)
 
     def setup(self) -> None:
         self.old_cwd = os.getcwd()
@@ -308,6 +315,13 @@ class DataDrivenTestCase:
                 pycache = os.path.join(path, '__pycache__')
                 if os.path.isdir(pycache):
                     shutil.rmtree(pycache)
+                # As a somewhat nasty hack, ignore any dirs with .mypy_cache in the path,
+                # to allow test cases to intentionally corrupt the cache without provoking
+                # the test suite when there are still files left over.
+                # (Looking at / should be fine on windows because these are paths specified
+                # in the test cases.)
+                if '/.mypy_cache' in path:
+                    continue
                 try:
                     rmdir(path)
                 except OSError as error:
@@ -336,12 +350,30 @@ class DataDrivenTestCase:
         self.old_cwd = None
         self.tmpdir = None
 
+    def reportinfo(self) -> Tuple[str, int, str]:
+        return self.file, self.line, self.name
+
+    def repr_failure(self, excinfo: Any) -> str:
+        if excinfo.errisinstance(SystemExit):
+            # We assume that before doing exit() (which raises SystemExit) we've printed
+            # enough context about what happened so that a stack trace is not useful.
+            # In particular, uncaught exceptions during semantic analysis or type checking
+            # call exit() and they already print out a stack trace.
+            excrepr = excinfo.exconly()
+        else:
+            self.parent._prunetraceback(excinfo)
+            excrepr = excinfo.getrepr(style='short')
+
+        return "data: {}:{}:\n{}".format(self.file, self.line, excrepr)
+
     def find_steps(self) -> List[List[FileOperation]]:
         """Return a list of descriptions of file operations for each incremental step.
 
         The first list item corresponds to the first incremental step, the second for the
         second step, etc. Each operation can either be a file modification/creation (UpdateFile)
         or deletion (DeleteFile).
+
+        Defaults to having two steps if there aern't any operations.
         """
         steps = {}  # type: Dict[int, List[FileOperation]]
         for path, _ in self.files:
@@ -358,8 +390,8 @@ class DataDrivenTestCase:
             for path in paths:
                 module = module_from_path(path)
                 steps.setdefault(num, []).append(DeleteFile(module, path))
-        max_step = max(steps)
-        return [steps[num] for num in range(2, max_step + 1)]
+        max_step = max(steps) if steps else 2
+        return [steps.get(num, []) for num in range(2, max_step + 1)]
 
 
 def module_from_path(path: str) -> str:
@@ -560,7 +592,7 @@ def fix_cobertura_filename(line: str) -> str:
 
 
 # This function name is special to pytest.  See
-# http://doc.pytest.org/en/latest/writing_plugins.html#initialization-command-line-and-configuration-hooks
+# https://docs.pytest.org/en/latest/reference.html#initialization-hooks
 def pytest_addoption(parser: Any) -> None:
     group = parser.getgroup('mypy')
     group.addoption('--update-data', action='store_true', default=False,
@@ -580,26 +612,20 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
         # Only classes derived from DataSuite contain test cases, not the DataSuite class itself
         if issubclass(obj, DataSuite) and obj is not DataSuite:
             # Non-None result means this obj is a test case.
-            # The collect method of the returned MypyDataSuite instance will be called later,
+            # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
-            return MypyDataSuite(name, parent=collector)
+            return DataSuiteCollector(name, parent=collector)
     return None
 
 
-class MypyDataSuite(pytest.Class):  # type: ignore  # inheriting from Any
+class DataSuiteCollector(pytest.Class):  # type: ignore  # inheriting from Any
     def collect(self) -> Iterator[pytest.Item]:  # type: ignore
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
         suite = self.obj  # type: DataSuite
         for f in suite.files:
-            for case in parse_test_cases(os.path.join(suite.data_prefix, f),
-                                         base_path=suite.base_path,
-                                         optional_out=suite.optional_out,
-                                         native_sep=suite.native_sep):
-                if suite.filter(case):
-                    case.name = add_test_name_suffix(case.name, suite.test_name_suffix)
-                    yield MypyDataCase(case.name, self, case)
+            yield from parse_test_cases(self, suite, os.path.join(suite.data_prefix, f))
 
 
 def add_test_name_suffix(name: str, suffix: str) -> str:
@@ -628,47 +654,6 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
     return True
 
 
-class MypyDataCase(pytest.Item):  # type: ignore  # inheriting from Any
-    def __init__(self, name: str, parent: MypyDataSuite, case: DataDrivenTestCase) -> None:
-        self.skip = False
-        if name.endswith('-skip'):
-            self.skip = True
-            name = name[:-len('-skip')]
-
-        super().__init__(name, parent)
-        self.case = case
-
-    def runtest(self) -> None:
-        if self.skip:
-            pytest.skip()
-        suite = self.parent.obj()
-        suite.update_data = self.config.getoption('--update-data', False)
-        suite.setup()
-        suite.run_case(self.case)
-
-    def setup(self) -> None:
-        self.case.setup()
-
-    def teardown(self) -> None:
-        self.case.teardown()
-
-    def reportinfo(self) -> Tuple[str, int, str]:
-        return self.case.file, self.case.line, self.case.name
-
-    def repr_failure(self, excinfo: Any) -> str:
-        if excinfo.errisinstance(SystemExit):
-            # We assume that before doing exit() (which raises SystemExit) we've printed
-            # enough context about what happened so that a stack trace is not useful.
-            # In particular, uncaught exceptions during semantic analysis or type checking
-            # call exit() and they already print out a stack trace.
-            excrepr = excinfo.exconly()
-        else:
-            self.parent._prunetraceback(excinfo)
-            excrepr = excinfo.getrepr(style='short')
-
-        return "data: {}:{}:\n{}".format(self.case.file, self.case.line, excrepr)
-
-
 class DataSuite:
     # option fields - class variables
     files = None  # type: List[str]
@@ -690,7 +675,3 @@ class DataSuite:
     @abstractmethod
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         raise NotImplementedError
-
-    @classmethod
-    def filter(cls, testcase: DataDrivenTestCase) -> bool:
-        return True

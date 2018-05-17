@@ -21,7 +21,7 @@ flag (or its long form ``--help``)::
               [--warn-unused-ignores] [--warn-unused-configs]
               [--show-error-context] [--no-implicit-optional] [--no-incremental]
               [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
-              [--skip-version-check] [--strict-optional]
+              [--skip-version-check] [--no-strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
               [--always-true NAME] [--always-false NAME] [--junit-xml JUNIT_XML]
               [--pdb] [--show-traceback] [--stats] [--inferstats]
@@ -298,11 +298,14 @@ Here are some more useful flags:
 - ``--ignore-missing-imports`` suppresses error messages about imports
   that cannot be resolved (see :ref:`follow-imports` for some examples).
 
-- ``--strict-optional`` enables strict checking of ``Optional[...]``
-  types and ``None`` values. Without this option, mypy doesn't
+- ``--no-strict-optional`` disables strict checking of ``Optional[...]``
+  types and ``None`` values. With this option, mypy doesn't
   generally check the use of ``None`` values -- they are valid
-  everywhere. See :ref:`strict_optional` for more about this feature.
-  This flag will become the default in the near future.
+  everywhere. See :ref:`no_strict_optional` for more about this feature.
+
+  **Note:** Strict optional checking was enabled by default starting in
+  mypy 0.600, and in previous versions it had to be explicitly enabled
+  using ``--strict-optional`` (which is still accepted).
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
@@ -460,12 +463,20 @@ Here are some more useful flags:
 
 .. _shadow-file:
 
-- ``--shadow-file SOURCE_FILE SHADOW_FILE`` makes mypy typecheck SHADOW_FILE in
-  place of SOURCE_FILE.  Primarily intended for tooling.  Allows tooling to
-  make transformations to a file before type checking without having to change
-  the file in-place.  (For example, tooling could use this to display the type
-  of an expression by wrapping it with a call to reveal_type in the shadow
-  file and then parsing the output.)
+- ``--shadow-file SOURCE_FILE SHADOW_FILE``: when mypy is asked to typecheck
+  ``SOURCE_FILE``, this makes it read from and typecheck the contents of
+  ``SHADOW_FILE`` instead. However, diagnostics will continue to refer to
+  ``SOURCE_FILE``. Specifying this argument multiple times
+  (``--shadow-file X1 Y1 --shadow-file X2 Y2``)
+  will allow mypy to perform multiple substitutions.
+
+  This allows tooling to create temporary files with helpful modifications
+  without having to change the source file in place. For example, suppose we
+  have a pipeline that adds ``reveal_type`` for certain variables.
+  This pipeline is run on ``original.py`` to produce ``temp.py``.
+  Running ``mypy --shadow-file original.py temp.py original.py`` will then
+  cause mypy to typecheck the contents of ``temp.py`` instead of  ``original.py``,
+  but error messages will still reference ``original.py``.
 
 .. _no-implicit-optional:
 

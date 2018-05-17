@@ -44,7 +44,7 @@ from mypy.subtypes import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
-from mypy.semanal import set_callable_name, refers_to_fullname
+from mypy.semanal import set_callable_name, refers_to_fullname, calculate_mro
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
@@ -578,6 +578,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # values.  IOW, tc is None.
             return NoneTyp()
 
+    def get_coroutine_return_type(self, return_type: Type) -> Type:
+        if isinstance(return_type, AnyType):
+            return AnyType(TypeOfAny.from_another_any, source_any=return_type)
+        assert isinstance(return_type, Instance), "Should only be called on coroutine functions."
+        # Note: return type is the 3rd type parameter of Coroutine.
+        return return_type.args[2]
+
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
         if isinstance(return_type, AnyType):
@@ -610,9 +617,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Type check a function definition."""
         self.check_func_item(defn, name=defn.name())
         if defn.info:
-            if not defn.is_dynamic() and not defn.is_overload:
-                # If the definition is the implementation for an overload, the legality
-                # of the override has already been typechecked.
+            if not defn.is_dynamic() and not defn.is_overload and not defn.is_decorated:
+                # If the definition is the implementation for an
+                # overload, the legality of the override has already
+                # been typechecked, and decorated methods will be
+                # checked when the decorator is.
                 self.check_method_override(defn)
             self.check_inplace_operator_method(defn)
         if defn.original_def:
@@ -754,7 +763,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     c = defn.is_coroutine
                     ty = self.get_generator_yield_type(t, c)
                     tc = self.get_generator_receive_type(t, c)
-                    tr = self.get_generator_return_type(t, c)
+                    if c:
+                        tr = self.get_coroutine_return_type(t)
+                    else:
+                        tr = self.get_generator_return_type(t, c)
                     ret_type = self.named_generic_type('typing.AwaitableGenerator',
                                                        [ty, tc, tr, t])
                     typ = typ.copy_modified(ret_type=ret_type)
@@ -839,6 +851,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         is_named_instance(self.return_types[-1], 'typing.AwaitableGenerator')):
                     return_type = self.get_generator_return_type(self.return_types[-1],
                                                                  defn.is_coroutine)
+                elif defn.is_coroutine:
+                    return_type = self.get_coroutine_return_type(self.return_types[-1])
                 else:
                     return_type = self.return_types[-1]
 
@@ -876,7 +890,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if is_unannotated_any(ret_type):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 elif (fdef.is_coroutine and isinstance(ret_type, Instance) and
-                      is_unannotated_any(ret_type.args[0])):
+                      is_unannotated_any(self.get_coroutine_return_type(ret_type))):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
@@ -1329,9 +1343,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         tvars = info.defn.type_vars
         for i, tvar in enumerate(tvars):
             up_args = [object_type if i == j else AnyType(TypeOfAny.special_form)
-                       for j, _ in enumerate(tvars)]
+                       for j, _ in enumerate(tvars)]  # type: List[Type]
             down_args = [UninhabitedType() if i == j else AnyType(TypeOfAny.special_form)
-                         for j, _ in enumerate(tvars)]
+                         for j, _ in enumerate(tvars)]  # type: List[Type]
             up, down = Instance(info, up_args), Instance(info, down_args)
             # TODO: add advanced variance checks for recursive protocols
             if is_subtype(down, up, ignore_declared_variance=True):
@@ -1481,6 +1495,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     elif name in ('__getattribute__', '__getattr__'):
                         self.check_getattr_method(rvalue_type, lvalue, name)
 
+            if isinstance(lvalue, RefExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
@@ -1546,13 +1561,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.infer_variable_type(inferred, lvalue, self.expr_checker.accept(rvalue),
                                          rvalue)
 
-    def check_compatibility_all_supers(self, lvalue: NameExpr, lvalue_type: Optional[Type],
+    def check_compatibility_all_supers(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                        rvalue: Expression) -> bool:
         lvalue_node = lvalue.node
-
         # Check if we are a class variable with at least one base class
         if (isinstance(lvalue_node, Var) and
-                lvalue.kind == MDEF and
+                lvalue.kind in (MDEF, None) and  # None for Vars defined via self
                 len(lvalue_node.info.bases) > 0):
 
             for base in lvalue_node.info.mro[1:]:
@@ -1590,7 +1604,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     break
         return False
 
-    def check_compatibility_super(self, lvalue: NameExpr, lvalue_type: Optional[Type],
+    def check_compatibility_super(self, lvalue: RefExpr, lvalue_type: Optional[Type],
                                   rvalue: Expression, base: TypeInfo, base_type: Type,
                                   base_node: Node) -> bool:
         lvalue_node = lvalue.node
@@ -2222,6 +2236,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if defn.is_generator:
                 return_type = self.get_generator_return_type(self.return_types[-1],
                                                              defn.is_coroutine)
+            elif defn.is_coroutine:
+                return_type = self.get_coroutine_return_type(self.return_types[-1])
             else:
                 return_type = self.return_types[-1]
 
@@ -2369,6 +2385,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = self.expr_checker.accept(e)
+        if isinstance(typ, TypeType):
+            if isinstance(typ.item, AnyType):
+                return
+            typ = typ.item
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
                 # Cases like "raise/from ExceptionClass".
@@ -2530,57 +2550,47 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_for_stmt(self, s: ForStmt) -> None:
         """Type check a for statement."""
         if s.is_async:
-            item_type = self.analyze_async_iterable_item_type(s.expr)
+            iterator_type, item_type = self.analyze_async_iterable_item_type(s.expr)
         else:
-            item_type = self.analyze_iterable_item_type(s.expr)
+            iterator_type, item_type = self.analyze_iterable_item_type(s.expr)
         s.inferred_item_type = item_type
+        s.inferred_iterator_type = iterator_type
         self.analyze_index_variables(s.index, item_type, s.index_type is None, s)
         self.accept_loop(s.body, s.else_body)
 
-    def analyze_async_iterable_item_type(self, expr: Expression) -> Type:
-        """Analyse async iterable expression and return iterator item type."""
+    def analyze_async_iterable_item_type(self, expr: Expression) -> Tuple[Type, Type]:
+        """Analyse async iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
-
-        self.check_subtype(iterable,
-                           self.named_generic_type('typing.AsyncIterable',
-                                                   [AnyType(TypeOfAny.special_form)]),
-                           expr, messages.ASYNC_ITERABLE_EXPECTED)
-
         method = echk.analyze_external_member_access('__aiter__', iterable, expr)
         iterator = echk.check_call(method, [], [], expr)[0]
         method = echk.analyze_external_member_access('__anext__', iterator, expr)
         awaitable = echk.check_call(method, [], [], expr)[0]
-        return echk.check_awaitable_expr(awaitable, expr,
-                                         messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+        item_type = echk.check_awaitable_expr(awaitable, expr,
+                                              messages.INCOMPATIBLE_TYPES_IN_ASYNC_FOR)
+        return iterator, item_type
 
-    def analyze_iterable_item_type(self, expr: Expression) -> Type:
-        """Analyse iterable expression and return iterator item type."""
+    def analyze_iterable_item_type(self, expr: Expression) -> Tuple[Type, Type]:
+        """Analyse iterable expression and return iterator and iterator item types."""
         echk = self.expr_checker
         iterable = echk.accept(expr)
+        method = echk.analyze_external_member_access('__iter__', iterable, expr)
+        iterator = echk.check_call(method, [], [], expr)[0]
 
         if isinstance(iterable, TupleType):
             joined = UninhabitedType()  # type: Type
             for item in iterable.items:
                 joined = join_types(joined, item)
-            return joined
+            return iterator, joined
         else:
             # Non-tuple iterable.
-            self.check_subtype(iterable,
-                               self.named_generic_type('typing.Iterable',
-                                                       [AnyType(TypeOfAny.special_form)]),
-                               expr, messages.ITERABLE_EXPECTED)
-
-            method = echk.analyze_external_member_access('__iter__', iterable,
-                                                         expr)
-            iterator = echk.check_call(method, [], [], expr)[0]
             if self.options.python_version[0] >= 3:
                 nextmethod = '__next__'
             else:
                 nextmethod = 'next'
             method = echk.analyze_external_member_access(nextmethod, iterator,
                                                          expr)
-            return echk.check_call(method, [], [], expr)[0]
+            return iterator, echk.check_call(method, [], [], expr)[0]
 
     def analyze_index_variables(self, index: Expression, item_type: Type,
                                 infer_lvalue_type: bool, context: Context) -> None:
@@ -2748,7 +2758,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         info = TypeInfo(SymbolTable(), cdef, cur_module.fullname())
         cdef.info = info
         info.bases = [typ]
-        info.calculate_mro()
+        calculate_mro(info)
         info.calculate_metaclass_type()
 
         # Build up a fake FuncDef so we can populate the symbol table.
@@ -3574,7 +3584,7 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
             # Special case: all args are subtypes, and returns are subtypes
             if (all(is_proper_subtype(s, o)
                     for (s, o) in zip(signature.arg_types, other.arg_types)) and
-                    is_proper_subtype(signature.ret_type, other.ret_type)):
+                    is_subtype(signature.ret_type, other.ret_type)):
                 return False
             return not is_more_precise_signature(signature, other)
     return True

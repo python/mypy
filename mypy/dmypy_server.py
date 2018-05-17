@@ -1,8 +1,8 @@
-"""Client for mypy daemon mode.
+"""Server for mypy daemon mode.
 
 Highly experimental!  Only supports UNIX-like systems.
 
-This manages a daemon process which keeps useful state in memory
+This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
@@ -10,8 +10,10 @@ import gc
 import io
 import json
 import os
+import shutil
 import socket
 import sys
+import tempfile
 import time
 import traceback
 
@@ -26,6 +28,8 @@ from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
+from mypy.typestate import reset_global_state
+from mypy.version import __version__
 
 
 MEM_PROFILE = False  # If True, dump memory profile after initialization
@@ -79,15 +83,15 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 
 # Server code.
 
-SOCKET_NAME = 'dmypy.sock'  # In current directory.
+SOCKET_NAME = 'dmypy.sock'
 
 
-def process_start_options(flags: List[str]) -> Options:
+def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     import mypy.main
     sources, options = mypy.main.process_options(['-i'] + flags,
                                                  require_targets=False,
                                                  server_options=True)
-    if sources:
+    if sources and not allow_sources:
         sys.exit("dmypy: start/restart does not accept sources")
     if options.report_dirs:
         sys.exit("dmypy: start/restart cannot generate reports")
@@ -111,18 +115,18 @@ class Server:
     # serve() is called in the grandchild (by daemonize()).
 
     def __init__(self, options: Options,
-                 timeout: Optional[int] = None,
-                 alt_lib_path: Optional[str] = None) -> None:
+                 timeout: Optional[int] = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.options = options
+        # Snapshot the options info before we muck with it, to detect changes
+        self.options_snapshot = options.snapshot()
         self.timeout = timeout
-        self.alt_lib_path = alt_lib_path
         self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
 
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
 
-        self.fscache = FileSystemCache(self.options.python_version)
+        self.fscache = FileSystemCache()
 
         options.incremental = True
         options.fine_grained_incremental = True
@@ -152,6 +156,7 @@ class Server:
                         conn, addr = sock.accept()
                     except socket.timeout:
                         print("Exiting due to inactivity.")
+                        reset_global_state()
                         sys.exit(0)
                     try:
                         data = receive(conn)
@@ -182,22 +187,22 @@ class Server:
                     conn.close()
                     if command == 'stop':
                         sock.close()
+                        reset_global_state()
                         sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)
         finally:
-            os.unlink(self.sockname)
+            shutil.rmtree(self.sock_directory)
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
                 traceback.print_exception(*exc_info)  # type: ignore
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
-        self.sockname = os.path.abspath(SOCKET_NAME)
-        if os.path.exists(self.sockname):
-            os.unlink(self.sockname)
+        self.sock_directory = tempfile.mkdtemp()
+        sockname = os.path.join(self.sock_directory, SOCKET_NAME)
         sock = socket.socket(socket.AF_UNIX)
-        sock.bind(self.sockname)
+        sock.bind(sockname)
         sock.listen(1)
         return sock
 
@@ -223,6 +228,23 @@ class Server:
         return {}
 
     last_sources = None  # type: List[mypy.build.BuildSource]
+
+    def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
+        """Check a list of files, triggering a restart if needed."""
+        try:
+            self.last_sources, options = mypy.main.process_options(
+                ['-i'] + list(args),
+                require_targets=True,
+                server_options=True,
+                fscache=self.fscache)
+            # Signal that we need to restart if the options have changed
+            if self.options_snapshot != options.snapshot():
+                return {'restart': 'configuration changed'}
+            if __version__ != version:
+                return {'restart': 'mypy version changed'}
+        except InvalidSourceList as err:
+            return {'out': '', 'err': str(err), 'status': 2}
+        return self.check(self.last_sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
@@ -253,8 +275,7 @@ class Server:
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
-                                      fscache=self.fscache,
-                                      alt_lib_path=self.alt_lib_path)
+                                      fscache=self.fscache)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
             if e.use_stdout:
@@ -303,14 +324,17 @@ class Server:
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         assert self.fine_grained_manager is not None
+        manager = self.fine_grained_manager.manager
 
         t0 = time.time()
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
+        manager.lib_path = tuple(mypy.build.compute_lib_path(
+            sources, manager.options, manager.data_dir))
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        self.fine_grained_manager.manager.log(
+        manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
                 t1 - t0, t2 - t1))
         status = 1 if messages else 0

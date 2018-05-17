@@ -1490,3 +1490,17 @@ class Child4(ParentWithDynamicImpl):
 
 [builtins fixtures/tuple.pyi]
 
+[case testOverloadAnyIsConsideredValidReturnSubtype]
+from typing import Any, overload, Optional
+
+@overload
+def foo(x: None) -> Any: ...
+@overload
+def foo(x: Optional[str]) -> str: ...
+def foo(x): pass
+
+@overload
+def bar(x: None) -> object: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def bar(x: Optional[str]) -> str: ...
+def bar(x): pass

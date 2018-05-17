@@ -69,7 +69,7 @@ class NodeFixer(NodeVisitor[None]):
         for key, value in list(symtab.items()):
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
-                del value.cross_ref
+                value.cross_ref = None
                 if cross_ref in self.modules:
                     value.node = self.modules[cross_ref]
                 else:
@@ -152,7 +152,7 @@ class TypeFixer(TypeVisitor[None]):
         type_ref = inst.type_ref
         if type_ref is None:
             return  # We've already been here.
-        del inst.type_ref
+        inst.type_ref = None
         inst.type = lookup_qualified_typeinfo(self.modules, type_ref, self.quick_and_dirty)
         # TODO: Is this needed or redundant?
         # Also fix up the bases, just in case.
@@ -263,10 +263,7 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
     while True:
         if '.' not in head:
             if not quick_and_dirty:
-                # Not yet: assert '.' in head, "Cannot find %s" % (name,)
-                stale = stale_info(modules)
-                stale.fallback_to_any = True
-                return SymbolTableNode(GDEF, stale)
+                assert '.' in head, "Cannot find %s" % (name,)
             return None
         head, tail = head.rsplit('.', 1)
         rest.append(tail)
