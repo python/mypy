@@ -6303,7 +6303,7 @@ def f(x):
     pass
 [out]
 ==
-main:3: error: No overload variant of "f" matches argument types [str]
+main:3: error: No overload variant of "f" matches argument type "str"
 
 [case testOverloadsDeleted]
 import mod
@@ -6412,7 +6412,7 @@ from typing import TypeVar
 T = TypeVar('T', bound=str)
 [out]
 ==
-a.py:2: error: No overload variant of "f" matches argument types [int]
+a.py:2: error: No overload variant of "f" matches argument type "int"
 
 [case testOverloadsGenericToNonGeneric]
 import a
@@ -6437,7 +6437,7 @@ from typing import TypeVar
 class T: pass
 [out]
 ==
-a.py:2: error: No overload variant of "f" matches argument types [int]
+a.py:2: error: No overload variant of "f" matches argument type "int"
 
 [case testOverloadsToNonOverloaded]
 import a
@@ -6592,7 +6592,7 @@ class C:
 [builtins fixtures/dict.pyi]
 [out]
 ==
-a.py:2: error: No overload variant of "B" matches argument types [int]
+a.py:2: error: No overload variant of "B" matches argument type "int"
 
 [case testOverloadedToNormalMethodMetaclass]
 import a

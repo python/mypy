@@ -747,12 +747,20 @@ class MessageBuilder:
     def no_variant_matches_arguments(self, overload: Overloaded, arg_types: List[Type],
                                      context: Context) -> None:
         name = callable_name(overload)
-        arg_types_str = "[{}]".format(', '.join(self.format_bare(arg) for arg in arg_types))
         if name:
-            self.fail('No overload variant of {} matches argument types {}'
-                      .format(name, arg_types_str), context)
+            name_str = ' of {}'.format(name)
         else:
-            self.fail('No overload variant matches argument types {}'.format(arg_types_str), context)
+            name_str = ''
+        arg_types_str = ', '.join(self.format(arg) for arg in arg_types)
+        num_args = len(arg_types)
+        if num_args == 0:
+            self.fail('All overload variants{} require at least one argument'.format(name_str))
+        elif num_args == 1:
+            self.fail('No overload variant{} matches argument type {}'
+                      .format(name_str, arg_types_str), context)
+        else:
+            self.fail('No overload variant{} matches argument types {}'
+                      .format(name_str, arg_types_str), context)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:

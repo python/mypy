@@ -1224,9 +1224,9 @@ class D:
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types [None, Type[A]]
+main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
 main:6: error: Revealed type is 'Any'
-main:6: error: No overload variant of "__get__" of "D" matches argument types [A, Type[A]]
+main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
 
 
 [case testAccessingGenericNonDataDescriptor]
@@ -1324,7 +1324,7 @@ class D(Generic[T, V]):
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types [None, Type[A]]
+main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -2094,7 +2094,7 @@ class C:
 c = C(1)
 c.a # E: "C" has no attribute "a"
 C('', '')
-C('') # E: No overload variant of "C" matches argument types [str]
+C('') # E: No overload variant of "C" matches argument type "str"
 [builtins fixtures/__new__.pyi]
 
 
@@ -2516,7 +2516,7 @@ def new(uc: Type[U]) -> U:
 u = new(User)
 [builtins fixtures/classmethod.pyi]
 [out]
-tmp/foo.pyi:16: error: No overload variant of "User" matches argument types [str]
+tmp/foo.pyi:16: error: No overload variant of "User" matches argument type "str"
 tmp/foo.pyi:17: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -2712,7 +2712,7 @@ def f(a: int) -> None: pass
 def mock() -> type: return User
 
 f(User)
-f(mock())  # E: No overload variant of "f" matches argument types [type]
+f(mock())  # E: No overload variant of "f" matches argument type "type"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2728,7 +2728,7 @@ def f(a: Type[User]) -> None: pass
 @overload
 def f(a: type) -> None: pass
 
-f(3)  # E: No overload variant of "f" matches argument types [int]
+f(3)  # E: No overload variant of "f" matches argument type "int"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2745,7 +2745,7 @@ def f(a: Type[User]) -> None: pass
 def f(a: int) -> None: pass
 
 f(User)
-f(User())  # E: No overload variant of "f" matches argument types [User]
+f(User())  # E: No overload variant of "f" matches argument type "User"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2766,10 +2766,10 @@ def f(a: Type[B]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
-f(A)  # E: No overload variant of "f" matches argument types [Type[A]]
+f(A)  # E: No overload variant of "f" matches argument type "Type[A]"
 f(B)
 f(C)
-f(AType)  # E: No overload variant of "f" matches argument types [Type[A]]
+f(AType)  # E: No overload variant of "f" matches argument type "Type[A]"
 f(BType)
 f(CType)
 [builtins fixtures/classmethod.pyi]

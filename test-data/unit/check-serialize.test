@@ -293,8 +293,8 @@ class A:
     @overload
     def __init__(self, x: str) -> None: pass
 [out2]
-tmp/a.py:2: error: No overload variant of "A" matches argument types [object]
-tmp/a.py:7: error: No overload variant of "__init__" of "A" matches argument types [object]
+tmp/a.py:2: error: No overload variant of "A" matches argument type "object"
+tmp/a.py:7: error: No overload variant of "__init__" of "A" matches argument type "object"
 
 [case testSerialize__new__]
 import a

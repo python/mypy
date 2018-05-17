@@ -319,7 +319,7 @@ def f(x): # type: (unicode) -> int
 def f(x): # type: (bytearray) -> int
   pass
 [out]
-_program.py:2: error: No overload variant of "f" matches argument types [int]
+_program.py:2: error: No overload variant of "f" matches argument type "int"
 
 [case testByteArrayStrCompatibility_python2]
 def f(x): # type: (str) -> None

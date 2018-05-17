@@ -1303,7 +1303,7 @@ reveal_type(f(C2())) # E: Revealed type is 'builtins.str'
 class D(C1, C2): pass # Compatible with both P1 and P2
 # FIXME: the below is not right, see #1322
 reveal_type(f(D())) # E: Revealed type is 'Any'
-f(C()) # E: No overload variant of "f" matches argument types [C]
+f(C()) # E: No overload variant of "f" matches argument type "C"
 [builtins fixtures/isinstance.pyi]
 
 -- Unions of protocol types

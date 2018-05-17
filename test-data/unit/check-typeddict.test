@@ -906,8 +906,8 @@ reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.i
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
-d.get() # E: No overload variant of "get" of "Mapping" matches argument types []
-d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types [str, int, int]
+d.get() # E: All overload variants of "get" of "Mapping" take at least one argument
+d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int"
 x = d.get('z') # E: TypedDict "D" has no key 'z'
 reveal_type(x) # E: Revealed type is 'Any'
 s = ''
@@ -1205,7 +1205,7 @@ def f(x: int) -> None: ...
 def f(x): pass
 
 a: A
-f(a)  # E: No overload variant of "f" matches argument types [A]
+f(a)  # E: No overload variant of "f" matches argument type "A"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
