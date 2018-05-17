@@ -1351,13 +1351,13 @@ def f() -> Iterator[None]:
 2: <b>, __main__
 3: <b>, __main__, a
 [out]
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
 a.py:3: error: Cannot find module named 'b'
 a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
 
 [case testDecoratorSpecialCase1]
 import a

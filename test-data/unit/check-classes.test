@@ -1224,7 +1224,7 @@ class D:
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types [builtins.None, Type[__main__.A]]
+main:5: error: No overload variant of "__get__" of "D" matches argument types [None, Type[__main__.A]]
 main:6: error: Revealed type is 'Any'
 main:6: error: No overload variant of "__get__" of "D" matches argument types [__main__.A, Type[__main__.A]]
 
@@ -1324,7 +1324,7 @@ class D(Generic[T, V]):
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types [builtins.None, Type[__main__.A]]
+main:5: error: No overload variant of "__get__" of "D" matches argument types [None, Type[__main__.A]]
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any

@@ -728,7 +728,7 @@ from typing import Optional
 x: Optional[int]
 def f(x: int) -> None: pass
 [out2]
-tmp/a.py:2: error: Revealed type is 'Union[builtins.int, builtins.None]'
+tmp/a.py:2: error: Revealed type is 'Union[builtins.int, None]'
 tmp/a.py:3: error: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
 
 --
@@ -1017,7 +1017,7 @@ reveal_type(b.x)
 [file b.py]
 x: None
 [out2]
-tmp/a.py:2: error: Revealed type is 'builtins.None'
+tmp/a.py:2: error: Revealed type is 'None'
 
 --
 -- TypedDict

@@ -3798,9 +3798,9 @@ class A:
 
 [builtins fixtures/list.pyi]
 [out1]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+main:2: error: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
 [out2]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+main:2: error: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
 
 [case testAttrsIncrementalConverterManyStyles]
 import a

@@ -1680,8 +1680,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return 'Any'
 
     def visit_none_type(self, t: NoneTyp) -> str:
-        # Fully qualify to make this distinct from the None value.
-        return "builtins.None"
+        return "None"
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
         return "<nothing>"
