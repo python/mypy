@@ -82,8 +82,6 @@ typecheck_files = [
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
-    base_path = test_temp_dir
-    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()
@@ -180,7 +178,7 @@ class TypeCheckSuite(DataSuite):
         else:
             raise AssertionError()
 
-        if output != a and self.update_data:
+        if output != a and testcase.config.getoption('--update-data', False):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 

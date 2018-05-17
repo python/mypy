@@ -45,8 +45,6 @@ NOT_DUMPED_MODULES = (
 
 class ASTMergeSuite(DataSuite):
     files = ['merge.test']
-    base_path = test_temp_dir
-    optional_out = True
 
     def setup(self) -> None:
         super().setup()

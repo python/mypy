@@ -162,7 +162,7 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                         ('Stale modules after pass {} must be a subset of rechecked '
                          'modules ({}:{})').format(passnum, path, p[i0].line))
 
-            if suite.optional_out:
+            if not suite.required_out_section:
                 ok = True
 
             if ok:
@@ -249,7 +249,6 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         if self.skip:
             pytest.skip()
         suite = self.parent.obj()
-        suite.update_data = self.config.getoption('--update-data', False)
         suite.setup()
         suite.run_case(self)
 
@@ -657,16 +656,19 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
 class DataSuite:
     # option fields - class variables
     files = None  # type: List[str]
-    base_path = '.'
+
+    base_path = test_temp_dir
+
+    # Allow mypyc to update to using a recent version of mypy. See #4779
     data_prefix = test_data_prefix
-    optional_out = False
+
+    required_out_section = False
+
     native_sep = False
+
     # Name suffix automatically added to each test case in the suite (can be
     # used to distinguish test cases in suites that share data files)
     test_name_suffix = ''
-
-    # Assigned from MypyDataCase.runtest
-    update_data = False
 
     def setup(self) -> None:
         """Setup fixtures (ad-hoc)"""

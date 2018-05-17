@@ -35,8 +35,6 @@ class PythonEvaluationSuite(DataSuite):
     files = ['pythoneval.test',
              'python2eval.test',
              'pythoneval-asyncio.test']
-    base_path = test_temp_dir
-    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_python_evaluation(testcase)

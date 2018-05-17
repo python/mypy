@@ -4,7 +4,6 @@ from typing import List, Callable, Optional
 import os
 
 from mypy import defaults, build
-from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.build import BuildSource
@@ -15,6 +14,8 @@ from mypy.types import Type
 
 
 class ErrorStreamSuite(DataSuite):
+    required_out_section = True
+    base_path = '.'
     files = ['errorstream.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
