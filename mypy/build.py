@@ -857,10 +857,12 @@ class FindModuleCache:
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
         # Cache find_module: (id, lib_path, python_version) -> result.
         self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...], Optional[str]], Optional[str]]
+        self.package_dirs = {}  # type: Dict[Optional[str], List[str]]
 
     def clear(self) -> None:
         self.results.clear()
         self.dirs.clear()
+        self.package_dirs.clear()
 
     def find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> List[str]:
         # Cache some repeated work within distinct find_module calls: finding which
@@ -880,6 +882,73 @@ class FindModuleCache:
             if self.fscache.isdir(dir):
                 dirs.append(dir)
         return dirs
+
+    def _get_egg_packages(self, base_dir: str) -> List[str]:
+        egg_dirs = []
+        for item in self.fscache.listdir(base_dir):
+            if item.endswith('.egg'):
+                # eggs are either directories with packages and distribution data,
+                # or zipped versions of the same.
+                # TODO(ethanhs) support zip eggs?
+                absitem = os.path.join(base_dir, item)
+                if self.fscache.isdir(absitem):
+                    egg_dirs.append(absitem)
+            elif item.endswith('.egg-link') and self.fscache.isfile(os.path.join(base_dir, item)):
+                # egg-links are portable "symlink" stand-ins. The first line is a relative
+                # or absolute path to an egg distribution, the second line is the base of
+                # the relative path, if applicable.
+                src_lines = self.fscache.read(os.path.join(base_dir, item)).decode().splitlines()
+                if len(src_lines) == 1:
+                    # For backwards compatibility, it is possible there is
+                    # only one line in the link.
+                    path = src_lines[0]
+                elif len(src_lines) == 2:
+                    # This is the more common "relative" path form.
+                    rel_path, base = src_lines
+                    if not os.path.abspath(rel_path):
+                        path = os.path.normpath(os.path.join(base, rel_path))
+                    else:
+                        path = rel_path
+                else:
+                    # this should never happen
+                    continue
+                if self.fscache.isdir(path):
+                    if path.endswith('.egg') and self.fscache.isdir(path):
+                        # if the symlink points directly to an egg, we can just add that directory
+                        egg_dirs.append(path)
+                    elif path.endswith('.egg-info'):
+                        # if it is an egg-info directory, we need to add the directory above
+                        egg_dirs.append(os.path.dirname(path))
+                    else:
+                        if self.fscache.exists(os.path.join(path, item[:-9])):
+                            # Egg links share the same prefix, so we can guess if they exist.
+                            egg_dirs.append(path)
+                        else:
+                            # Otherwise, we were given the directory above an egg,
+                            # so we need to search for one of them.
+                            egg_dirs.extend(self._get_egg_packages(path))
+        return egg_dirs
+
+    def get_package_dirs(self, python_executable: Optional[str]) -> List[str]:
+        """Find all directories packages could be installed in.
+
+        This includes *.egg directories, *.egg-links, and site-package directories"""
+        # Cache finding package directories, as this sometimes requires reading
+        # a file (which is expensive!)
+        if python_executable not in self.package_dirs:
+            self.package_dirs[python_executable] = self._get_package_dirs(python_executable)
+        return self.package_dirs[python_executable]
+
+    def _get_package_dirs(self, python_executable: Optional[str]) -> List[str]:
+        # Search for egg directories. This is an annoying complexity introduced by setuptools.
+        # It is documented here: https://github.com/pypa/setuptools/blob/master/docs/formats.txt
+        possible_package_dirs = _get_site_packages_dirs(python_executable)
+        # annoyingly, Debian based OSes list non-existent site-package directories...
+        site_dirs = [dir for dir in possible_package_dirs if self.fscache.exists(dir)]
+        package_dirs = site_dirs[:]
+        for dir in site_dirs:
+            package_dirs.extend(self._get_egg_packages(dir))
+        return package_dirs
 
     def find_module(self, id: str, lib_path: Tuple[str, ...],
                     python_executable: Optional[str]) -> Optional[str]:
@@ -906,7 +975,7 @@ class FindModuleCache:
         third_party_inline_dirs = []
         third_party_stubs_dirs = []
         # Third-party stub/typed packages
-        for pkg_dir in _get_site_packages_dirs(python_executable):
+        for pkg_dir in self.get_package_dirs(python_executable):
             stub_name = components[0] + '-stubs'
             typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_dir = os.path.join(pkg_dir, stub_name)
@@ -918,6 +987,7 @@ class FindModuleCache:
             elif fscache.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
                 third_party_inline_dirs.append(path)
+
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + \
             third_party_stubs_dirs + third_party_inline_dirs
 
