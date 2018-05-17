@@ -12,7 +12,7 @@ async def f() -> int:
 
 async def f() -> int:
     return 0
-reveal_type(f())  # E: Revealed type is 'typing.Awaitable[builtins.int]'
+reveal_type(f())  # E: Revealed type is 'typing.Coroutine[Any, Any, builtins.int]'
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -378,7 +378,7 @@ def g() -> Generator[Any, None, str]:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
-main:6: error: "yield from" can't be applied to "Awaitable[str]"
+main:6: error: "yield from" can't be applied to "Coroutine[Any, Any, str]"
 
 [case testAwaitableSubclass]
 
@@ -630,9 +630,9 @@ def plain_host_generator() -> Generator[str, None, None]:
     yield 'a'
     x = 0
     x = yield from plain_generator()
-    x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Awaitable[int]"
+    x = yield from plain_coroutine()  # E: "yield from" can't be applied to "Coroutine[Any, Any, int]"
     x = yield from decorated_generator()
-    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Awaitable[int]]"
+    x = yield from decorated_coroutine()  # E: "yield from" can't be applied to "AwaitableGenerator[Any, Any, int, Coroutine[Any, Any, int]]"
     x = yield from other_iterator()
     x = yield from other_coroutine()  # E: "yield from" can't be applied to "Aw"
 

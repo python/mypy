@@ -2688,7 +2688,7 @@ def is_async_def(t: Type) -> bool:
             and t.type.fullname() == 'typing.AwaitableGenerator'
             and len(t.args) >= 4):
         t = t.args[3]
-    return isinstance(t, Instance) and t.type.fullname() == 'typing.Awaitable'
+    return isinstance(t, Instance) and t.type.fullname() == 'typing.Coroutine'
 
 
 def map_actuals_to_formals(caller_kinds: List[int],

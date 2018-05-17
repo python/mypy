@@ -398,8 +398,7 @@ class ASTConverter(ast3.NodeTransformer):
                        self.as_required_block(n.body, n.lineno),
                        func_type)
         if is_coroutine:
-            # A coroutine is also a generator, mostly for internal reasons.
-            func_def.is_generator = func_def.is_coroutine = True
+            func_def.is_coroutine = True
         if func_type is not None:
             func_type.definition = func_def
             func_type.line = n.lineno

@@ -101,6 +101,16 @@ class Awaitable(Protocol[T]):
 class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
     pass
 
+class Coroutine(Awaitable[V], Generic[T, U, V]):
+    @abstractmethod
+    def send(self, value: U) -> T: pass
+
+    @abstractmethod
+    def throw(self, typ: Any, val: Any=None, tb: Any=None) -> None: pass
+
+    @abstractmethod
+    def close(self) -> None: pass
+
 @runtime
 class AsyncIterable(Protocol[T]):
     @abstractmethod
