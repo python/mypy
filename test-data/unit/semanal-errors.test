@@ -141,7 +141,7 @@ class A: pass
 x = 0 # type: A
 x = 0 # type: A
 [out]
-main:4: error: Name 'x' already defined
+main:4: error: Name 'x' already defined on line 3
 
 [case testLocalVarRedefinition]
 import typing
@@ -150,7 +150,7 @@ def f() -> None:
   x = 0 # type: A
   x = 0 # type: A
 [out]
-main:5: error: Name 'x' already defined
+main:5: error: Name 'x' already defined on line 4
 
 [case testClassVarRedefinition]
 import typing
@@ -158,7 +158,7 @@ class A:
   x = 0 # type: object
   x = 0 # type: object
 [out]
-main:4: error: Name 'x' already defined
+main:4: error: Name 'x' already defined on line 3
 
 [case testMultipleClassDefinitions]
 import typing
@@ -551,7 +551,7 @@ class A:
   def g(self) -> None: pass
   def f(self, x: object) -> None: pass
 [out]
-main:5: error: Name 'f' already defined
+main:5: error: Name 'f' already defined on line 3
 
 [case testInvalidGlobalDecl]
 import typing
@@ -1328,8 +1328,8 @@ a = 's'  # type: str
 a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
 
 [out]
-main:3: error: Name 'a' already defined
-main:4: error: Name 'a' already defined
+main:3: error: Name 'a' already defined on line 2
+main:4: error: Name 'a' already defined on line 2
 
 [case testDuplicateDefFromImport]
 from m import A
