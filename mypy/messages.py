@@ -754,7 +754,8 @@ class MessageBuilder:
         arg_types_str = ', '.join(self.format(arg) for arg in arg_types)
         num_args = len(arg_types)
         if num_args == 0:
-            self.fail('All overload variants{} require at least one argument'.format(name_str))
+            self.fail('All overload variants{} require at least one argument'.format(name_str),
+                      context)
         elif num_args == 1:
             self.fail('No overload variant{} matches argument type {}'
                       .format(name_str, arg_types_str), context)
