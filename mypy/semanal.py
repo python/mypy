@@ -406,7 +406,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         # Redefinition. Conditional redefinition is okay.
                         n = self.locals[-1][defn.name()].node
                         if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn)
+                            self.name_already_defined(defn.name(), defn, self.locals[-1][defn.name()])
                     else:
                         self.add_local(defn, defn)
             else:
@@ -3172,7 +3172,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.locals[-1][name].node == node.node):
-                    self.name_already_defined(name, context)
+                    self.name_already_defined(name, context, self.locals[-1][name])
             self.locals[-1][name] = node
         elif self.type:
             self.type.names[name] = node
@@ -3196,7 +3196,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
         if name in self.locals[-1]:
-            self.name_already_defined(name, ctx)
+            self.name_already_defined(name, ctx, self.locals[-1][name])
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 

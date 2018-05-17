@@ -1310,7 +1310,7 @@ if x:
     def f(x: int) -> None: pass
 else:
     # TODO: This should be okay.
-    @dec # E: Name 'f' already defined
+    @dec # E: Name 'f' already defined on line 7
     def f(): pass
 
 [case testConditionalFunctionDefinitionUsingDecorator4]
@@ -1323,7 +1323,7 @@ if x:
     def f(x: str) -> None: pass
 else:
     # TODO: We should report an incompatible redefinition.
-    @dec # E: Name 'f' already defined
+    @dec # E: Name 'f' already defined on line 7
     def f(): pass
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]

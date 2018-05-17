@@ -9,7 +9,7 @@ f(0)
 
 @overload  # E: Name 'overload' is not defined
 def g(a:int): pass
-def g(a): pass  # E: Name 'g' already defined
+def g(a): pass  # E: Name 'g' already defined on line 9
 g(0)
 
 @something  # E: Name 'something' is not defined
@@ -1089,7 +1089,7 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:3: error: Name 'f' already defined
+tmp/foo.pyi:3: error: Name 'f' already defined on line 2
 tmp/foo.pyi:3: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloads]
@@ -1103,7 +1103,7 @@ def f(a: int) -> None: pass
 def f(a: str) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
-tmp/foo.pyi:5: error: Name 'f' already defined
+tmp/foo.pyi:5: error: Name 'f' already defined on line 2
 tmp/foo.pyi:5: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingFirstOverload]
@@ -1115,7 +1115,7 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:4: error: Name 'f' already defined
+tmp/foo.pyi:4: error: Name 'f' already defined on line 2
 tmp/foo.pyi:4: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingLaterOverload]

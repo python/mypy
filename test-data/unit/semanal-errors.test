@@ -640,7 +640,7 @@ def f(x) -> None:
     x = 1
     def g(): pass
 [out]
-main:5: error: Name 'g' already defined
+main:5: error: Name 'g' already defined on line 3
 
 [case testRedefinedOverloadedFunction]
 from typing import overload, Any
@@ -653,7 +653,7 @@ def f() -> None:
     def p(): pass # fail
 [out]
 main:3: error: An overloaded function outside a stub file must have an implementation
-main:8: error: Name 'p' already defined
+main:8: error: Name 'p' already defined on line 3
 
 [case testNestedFunctionInMethod]
 import typing
@@ -1049,7 +1049,7 @@ class t: pass # E: Name 't' already defined on line 2
 [case testRedefineTypevar4]
 from typing import TypeVar
 t = TypeVar('t')
-from typing import Generic as t # E: Name 't' already defined
+from typing import Generic as t # E: Name 't' already defined on line 2
 [out]
 
 [case testInvalidStrLiteralType]
@@ -1180,7 +1180,7 @@ class A:
 import typing
 def f() -> None:
     import x
-    import y as x # E: Name 'x' already defined
+    import y as x # E: Name 'x' already defined on line 3
     x.y
 [file x.py]
 y = 1
@@ -1190,7 +1190,7 @@ y = 1
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
 import x
-import y as x # E: Name 'x' already defined
+import y as x # E: Name 'x' already defined on line 2
 x.y
 [file x.py]
 y = 1

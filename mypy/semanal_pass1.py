@@ -337,7 +337,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.sem.locals[-1][name].node == node.node):
-                    self.sem.name_already_defined(name, context)
+                    self.sem.name_already_defined(name, context, self.sem.locals[-1][name])
             self.sem.locals[-1][name] = node
         else:
             assert self.sem.type is None  # Pass 1 doesn't look inside classes
@@ -353,6 +353,6 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 if existing.type and node.type and is_same_type(existing.type, node.type):
                     ok = True
                 if not ok:
-                    self.sem.name_already_defined(name, context)
+                    self.sem.name_already_defined(name, context, existing)
             elif not existing:
                 self.sem.globals[name] = node
