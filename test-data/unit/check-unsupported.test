@@ -14,4 +14,4 @@ def g(): pass
 def g(x): pass
 [out]
 tmp/foo.pyi:5: error: Name 'f' already defined
-tmp/foo.pyi:7: error: Name 'g' already defined
+tmp/foo.pyi:7: error: Name 'g' already defined on line 6
