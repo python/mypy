@@ -10,7 +10,7 @@ from unittest import TestCase, main
 
 import mypy.api
 from mypy.build import FindModuleCache, _get_site_packages_dirs
-from mypy.test.config import package_path, test_temp_dir
+from mypy.test.config import package_path
 from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
 
@@ -46,10 +46,9 @@ class TestPEP561(TestCase):
             run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable),
                         venv_dir], cwd=os.getcwd())
             if sys.platform == 'win32':
-                python = os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
+                yield os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
             else:
-                python = os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
-            yield python
+                yield os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
 
     @contextmanager
     def install_package(self, pkg: str,
