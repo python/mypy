@@ -1490,7 +1490,7 @@ x = None # type: Any
 class A:
     if x:
         def f(self): pass
-    def f(self): pass # E: Name 'f' already defined
+    def f(self): pass # E: Name 'f' already defined on line 5
 
 [case testIncompatibleConditionalMethodDefinition]
 from typing import Any
