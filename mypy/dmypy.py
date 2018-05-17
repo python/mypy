@@ -212,9 +212,7 @@ def do_run(args: argparse.Namespace) -> None:
     since we don't want to duplicate mypy's huge list of flags.
     (The -- is only necessary if flags are specified.)
     """
-    try:
-        get_status()
-    except BadStatus as err:
+    if not is_running():
         # Bad or missing status file or dead process; good to start.
         start_server(args, allow_sources=True)
 
@@ -439,6 +437,15 @@ def read_status() -> Dict[str, object]:
     if not isinstance(data, dict):
         raise BadStatus("Invalid status file (not a dict)")
     return data
+
+
+def is_running() -> bool:
+    """Check if the server is running cleanly"""
+    try:
+        get_status()
+    except BadStatus as err:
+        return False
+    return True
 
 
 # Run main().
