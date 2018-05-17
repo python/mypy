@@ -3189,7 +3189,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if existing.type and node.type and is_same_type(existing.type, node.type):
                     ok = True
                 if not ok:
-                    self.name_already_defined(name, context)
+                    self.name_already_defined(name, context, existing)
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
