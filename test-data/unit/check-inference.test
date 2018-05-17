@@ -1470,7 +1470,7 @@ def f(blocks: Any): # E: Name 'Any' is not defined
 [case testSpecialCaseEmptyListInitialization2]
 def f(blocks: object):
     to_process = [] # E: Need type annotation for 'to_process'
-    to_process = list(blocks) # E: No overload variant of "list" matches argument types [builtins.object]
+    to_process = list(blocks) # E: No overload variant of "list" matches argument types [object]
 [builtins fixtures/list.pyi]
 [out]
 

@@ -866,7 +866,7 @@ from typing import overload
 a, b, c = None, None, None  # type: (A, B, C)
 a[b]
 a[c]
-a[1]  # E: No overload variant of "__getitem__" of "A" matches argument types [builtins.int]
+a[1]  # E: No overload variant of "__getitem__" of "A" matches argument types [int]
 
 i, s = None, None  # type: (int, str)
 i = a[b]

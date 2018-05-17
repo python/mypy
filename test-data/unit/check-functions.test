@@ -534,7 +534,7 @@ class A:
 a = None # type: A
 a.g()
 a.g(B())
-a.g(a) # E: No overload variant matches argument types [foo.A]
+a.g(a) # E: No overload variant matches argument types [A]
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
 
