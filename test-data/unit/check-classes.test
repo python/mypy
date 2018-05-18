@@ -1970,6 +1970,8 @@ s.success = 4
 s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testSetattrSignature]
+from typing import Any
+
 class Test:
     def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "def ()" for "__setattr__"
 t = Test()
@@ -1989,6 +1991,9 @@ class C:
     def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)" for "__setattr__"
 c = C()
 c.check = 13
+
+class X:
+    __setattr__ = ...  # type: Any
 
 [case testGetattrAndSetattr]
 from typing import Any

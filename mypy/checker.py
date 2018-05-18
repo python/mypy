@@ -1487,13 +1487,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
             if isinstance(lvalue, NameExpr):
-                rvalue_type = self.expr_checker.accept(rvalue)
-                if rvalue_type and lvalue.node and isinstance(lvalue, NameExpr):
+                # If an explicit type is given, use that.
+                if lvalue_type is not None:
+                    signature = lvalue_type
+                else:
+                    signature = self.expr_checker.accept(rvalue)
+                if signature and lvalue.node:
                     name = lvalue.node.name()
                     if name == '__setattr__':
-                        self.check_setattr_method(rvalue_type, lvalue)
+                        self.check_setattr_method(signature, lvalue)
                     elif name in ('__getattribute__', '__getattr__'):
-                        self.check_getattr_method(rvalue_type, lvalue, name)
+                        self.check_getattr_method(signature, lvalue, name)
 
             if isinstance(lvalue, RefExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
