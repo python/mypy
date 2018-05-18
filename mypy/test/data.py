@@ -659,7 +659,7 @@ class DataSuite:
 
     base_path = test_temp_dir
 
-    # Allow mypyc to update to using a recent version of mypy. See #4779
+    # Allow external users of the test code to override the data prefix
     data_prefix = test_data_prefix
 
     required_out_section = False
