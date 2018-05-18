@@ -441,8 +441,8 @@ async def g() -> AsyncGenerator[int, None]:
     yield 'not an int'  # E: Incompatible types in "yield" (actual type "str", expected type "int")
     # return without a value is fine
     return
-reveal_type(g)  # E: Revealed type is 'def () -> typing.AsyncGenerator[builtins.int, builtins.None]'
-reveal_type(g())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int, builtins.None]'
+reveal_type(g)  # E: Revealed type is 'def () -> typing.AsyncGenerator[builtins.int, None]'
+reveal_type(g())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int, None]'
 
 async def h() -> None:
     async for item in g():
@@ -481,7 +481,7 @@ async def genfunc() -> AsyncGenerator[int, None]:
 async def user() -> None:
     gen = genfunc()
 
-    reveal_type(gen.__aiter__())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, builtins.None]'
+    reveal_type(gen.__aiter__())  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, None]'
 
     reveal_type(await gen.__anext__())  # E: Revealed type is 'builtins.int*'
 

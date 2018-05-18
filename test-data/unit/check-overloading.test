@@ -328,7 +328,7 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-f(C()) # E: No overload variant of "f" matches argument types [foo.C]
+f(C()) # E: No overload variant of "f" matches argument type "C"
 f(A())
 f(B())
 
@@ -362,7 +362,7 @@ class B: pass
 from foo import *
 [file foo.pyi]
 from typing import overload
-A().f(C()) # E: No overload variant of "f" of "A" matches argument types [foo.C]
+A().f(C()) # E: No overload variant of "f" of "A" matches argument type "C"
 A().f(A())
 A().f(B())
 
@@ -399,11 +399,11 @@ from typing import overload
 a, b = None, None # type: (A, B)
 a = f(a)
 b = f(a) # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-f(b)     # E: No overload variant of "f" matches argument types [foo.B]
+f(b)     # E: No overload variant of "f" matches argument type "B"
 b = f(b, a)
 a = f(b, a) # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-f(a, a)     # E: No overload variant of "f" matches argument types [foo.A, foo.A]
-f(b, b)     # E: No overload variant of "f" matches argument types [foo.B, foo.B]
+f(a, a)     # E: No overload variant of "f" matches argument types "A", "A"
+f(b, b)     # E: No overload variant of "f" matches argument types "B", "B"
 
 @overload
 def f(x: 'A') -> 'A': pass
@@ -438,7 +438,7 @@ from typing import overload
 a, b = None, None # type: (A, B)
 a = A(a)
 a = A(b)
-a = A(object()) # E: No overload variant of "A" matches argument types [builtins.object]
+a = A(object()) # E: No overload variant of "A" matches argument type "object"
 
 class A:
   @overload
@@ -559,7 +559,7 @@ f(A(), A, A)
 f(B())
 f(B(), B)
 f(B(), B, B)
-f(object()) # E: No overload variant of "f" matches argument types [builtins.object]
+f(object()) # E: No overload variant of "f" matches argument type "object"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -574,8 +574,8 @@ def f(x: 'A', *more: 'B') -> 'A': pass
 def f(x: 'B', *more: 'A') -> 'A': pass
 f(A(), B())
 f(A(), B(), B())
-f(A(), A(), B()) # E: No overload variant of "f" matches argument types [foo.A, foo.A, foo.B]
-f(A(), B(), A()) # E: No overload variant of "f" matches argument types [foo.A, foo.B, foo.A]
+f(A(), A(), B()) # E: No overload variant of "f" matches argument types "A", "A", "B"
+f(A(), B(), A()) # E: No overload variant of "f" matches argument types "A", "B", "A"
 class A: pass
 class B: pass
 [builtins fixtures/list.pyi]
@@ -741,7 +741,7 @@ A() < B()
 B() < A()
 B() < B()
 A() < object() # E: Unsupported operand types for < ("A" and "object")
-B() < object() # E: No overload variant of "__lt__" of "B" matches argument types [builtins.object]
+B() < object() # E: No overload variant of "__lt__" of "B" matches argument type "object"
 
 [case testOverloadedForwardMethodAndCallingReverseMethod]
 from foo import *
@@ -757,7 +757,7 @@ class B:
 A() + A()
 A() + 1
 A() + B()
-A() + '' # E: No overload variant of "__add__" of "A" matches argument types [builtins.str]
+A() + '' # E: No overload variant of "__add__" of "A" matches argument type "str"
 
 [case testOverrideOverloadedMethodWithMoreGeneralArgumentTypes]
 from foo import *
@@ -842,7 +842,7 @@ def f(x: str) -> None: pass
 f(1.1)
 f('')
 f(1)
-f(()) # E: No overload variant of "f" matches argument types [Tuple[]]
+f(()) # E: No overload variant of "f" matches argument type "Tuple[]"
 [builtins fixtures/primitives.pyi]
 [out]
 
@@ -908,10 +908,10 @@ from typing import overload
 def f(x: int, y: str) -> int: pass
 @overload
 def f(*x: str) -> str: pass
-f(*(1,))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int]]
+f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 f(*('',))() # E: "str" not callable
 f(*(1, ''))() # E: "int" not callable
-f(*(1, '', 1))() # E: No overload variant of "f" matches argument types [Tuple[builtins.int, builtins.str, builtins.int]]
+f(*(1, '', 1))() # E: No overload variant of "f" matches argument type "Tuple[int, str, int]"
 
 [case testPreferExactSignatureMatchInOverload]
 from foo import *
@@ -958,7 +958,7 @@ class mystr(str): pass
 
 f('x')() # E: "str" not callable
 f(1)() # E: "bool" not callable
-f(1.1) # E: No overload variant of "f" matches argument types [builtins.float]
+f(1.1) # E: No overload variant of "f" matches argument type "float"
 f(mystr())() # E: "mystr" not callable
 [builtins fixtures/primitives.pyi]
 
@@ -977,7 +977,7 @@ U = TypeVar('U', bound=mystr)
 V = TypeVar('V')
 def g(x: U, y: V) -> None:
     f(x)() # E: "mystr" not callable
-    f(y) # E: No overload variant of "f" matches argument types [V`-2]
+    f(y) # E: No overload variant of "f" matches argument type "V"
     a = f([x]) # E: "f" does not return a value
     f([y]) # E: Value of type variable "T" of "f" cannot be "V"
     f([x, y]) # E: Value of type variable "T" of "f" cannot be "object"
@@ -1011,7 +1011,7 @@ def f(x: AnyStr) -> str: pass
 f(1)() # E: "int" not callable
 f('1')() # E: "str" not callable
 f(b'1')() # E: "str" not callable
-f(1.0) # E: No overload variant of "f" matches argument types [builtins.float]
+f(1.0) # E: No overload variant of "f" matches argument type "float"
 
 @overload
 def g(x: AnyStr, *a: AnyStr) -> None: pass
@@ -1157,7 +1157,7 @@ from typing import overload, Callable
 def f(a: Callable[[], int]) -> None: pass
 @overload
 def f(a: str) -> None: pass
-f(0)  # E: No overload variant of "f" matches argument types [builtins.int]
+f(0)  # E: No overload variant of "f" matches argument type "int"
 
 [case testCustomRedefinitionDecorator]
 from typing import Any, Callable, Type
