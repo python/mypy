@@ -41,7 +41,6 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
         join = os.path.join
     else:
         join = posixpath.join  # type: ignore
-    include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
         lst = f.readlines()
     for i in range(len(lst)):
@@ -166,7 +165,7 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                 ok = True
 
             if ok:
-                input = expand_includes(p[i0].data, include_path)
+                input = p[i0].data
                 expand_errors(input, tcout, 'main')
                 for file_path, contents in files:
                     expand_errors(contents.split('\n'), tcout, file_path)
@@ -503,24 +502,6 @@ def collapse_line_continuation(l: List[str]) -> List[str]:
             r.append(ss)
         cont = s.endswith('\\')
     return r
-
-
-def expand_includes(a: List[str], base_path: str) -> List[str]:
-    """Expand @includes within a list of lines.
-
-    Replace all lies starting with @include with the contents of the
-    file name following the prefix. Look for the files in base_path.
-    """
-
-    res = []  # type: List[str]
-    for s in a:
-        if s.startswith('@include '):
-            fn = s.split(' ', 1)[1].strip()
-            with open(os.path.join(base_path, fn)) as f:
-                res.extend(f.readlines())
-        else:
-            res.append(s)
-    return res
 
 
 def expand_variables(s: str) -> str:
