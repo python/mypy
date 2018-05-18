@@ -1649,8 +1649,14 @@ class B(A):
     def __add__(self, x: 'A') -> 'A': pass
     @overload
     def __add__(self, x: 'B') -> 'B': pass
+class C(A):
+    @overload
+    def __add__(self, x: 'B') -> 'B': pass
+    @overload
+    def __add__(self, x: 'A') -> 'A': pass
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:11: error: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
 
 [case testReverseOperatorMethodArgumentType]
 from typing import Any
@@ -1717,9 +1723,9 @@ from foo import *
 from typing import overload, Any
 class A:
     @overload
-    def __radd__(self, x: 'A') -> str: pass # Error
+    def __radd__(self, x: 'A') -> str: pass
     @overload
-    def __radd__(self, x: 'A') -> Any: pass
+    def __radd__(self, x: 'A') -> Any: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
 [out]
 
 [case testReverseOperatorMethodArgumentTypeAndOverloadedMethod]
@@ -2626,15 +2632,15 @@ class Mbad(type):
 [case testTypeMatchesOverloadedFunctions]
 from foo import *
 [file foo.pyi]
-from typing import Type, overload, Union
+from typing import Type, overload, Any
 
 class User: pass
 UserType = User  # type: Type[User]
 
 @overload
-def f(a: object) -> int: pass
+def f(a: int) -> Any: pass
 @overload
-def f(a: int) -> str: pass
+def f(a: object) -> int: pass
 
 reveal_type(f(User))  # E: Revealed type is 'builtins.int'
 reveal_type(f(UserType))  # E: Revealed type is 'builtins.int'
@@ -2714,10 +2720,10 @@ reveal_type(f("hi"))  # E: Revealed type is 'foo.User'
 [builtins fixtures/classmethod.pyi]
 [out]
 
-[case testGeneralTypeDoesNotMatchSpecificTypeInOverloadedFunctions]
+[case testGeneralTypeMatchesSpecificTypeInOverloadedFunctions]
 from foo import *
 [file foo.pyi]
-from typing import Type, overload
+from typing import Type, Any, overload
 
 class User: pass
 
@@ -2726,10 +2732,12 @@ def f(a: Type[User]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
-def mock() -> type: return User
+def mock_1() -> type: return User
+def mock_2() -> Type[Any]: return User
 
 f(User)
-f(mock())  # E: No overload variant of "f" matches argument type "type"
+f(mock_1())
+f(mock_2())
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2915,7 +2923,7 @@ class Sub(Super):
     @overload  # E: Signature of "foo" incompatible with supertype "Super"
     def foo(self, a: A) -> A: pass
     @overload
-    def foo(self, a: B) -> C: pass
+    def foo(self, a: B) -> C: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
     @overload
     def foo(self, a: C) -> C: pass
 [builtins fixtures/classmethod.pyi]
