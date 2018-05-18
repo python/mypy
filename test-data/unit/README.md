@@ -160,6 +160,18 @@ Note that running more processes than logical cores is likely to
 significantly decrease performance.
 
 
+Debugging
+---------
+
+You can use interactive debuggers like `pdb` to debug failing tests. You
+need to pass the `-n0` option to disable parallelization:
+
+    $ pytest -n0 --pdb -k MethodCall
+
+You can also write `import pdb; pdb.set_trace()` in code to enter the
+debugger.
+
+
 Coverage reports
 ----------------
 
