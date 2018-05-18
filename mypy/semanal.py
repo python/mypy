@@ -2719,10 +2719,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     and '__getattr__' in file.names):
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                getattr_defn = self.normalize_type_alias(getattr_defn, expr)
+                getattr_defn = self.normalize_type_alias(file.names['__getattr__'], expr)
                 if not getattr_defn:
-                    typ = AnyType(TypeOfAny.from_error)
+                    typ = AnyType(TypeOfAny.from_error)  # type: Type
                 elif isinstance(getattr_defn.node, (FuncDef, Var)):
                     if isinstance(getattr_defn.node.type, CallableType):
                         typ = getattr_defn.node.type.ret_type
