@@ -977,6 +977,10 @@ class MessageBuilder:
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
 
+    def invalid_signature_for_special_method(
+            self, func_type: Type, context: Context, method_name: str) -> None:
+        self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
+
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
 

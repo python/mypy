@@ -1335,11 +1335,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
-            # If it is still not resolved, and the module is a stub
-            # check for a module level __getattr__
-            if module and not node and module.is_stub and '__getattr__' in module.names:
+            # If it is still not resolved, check for a module level __getattr__
+            if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in module.names):
                 getattr_defn = module.names['__getattr__']
-                if isinstance(getattr_defn.node, FuncDef):
+                if isinstance(getattr_defn.node, (FuncDef, Var)):
                     if isinstance(getattr_defn.node.type, CallableType):
                         typ = getattr_defn.node.type.ret_type
                     else:
@@ -2715,18 +2715,23 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     expr.kind = n.kind
                     expr.fullname = n.fullname
                     expr.node = n.node
-            elif file is not None and file.is_stub and '__getattr__' in file.names:
+            elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in file.names):
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                if isinstance(getattr_defn.node, FuncDef):
+                getattr_defn = self.normalize_type_alias(file.names['__getattr__'], expr)
+                if not getattr_defn:
+                    typ = AnyType(TypeOfAny.from_error)  # type: Type
+                elif isinstance(getattr_defn.node, (FuncDef, Var)):
                     if isinstance(getattr_defn.node.type, CallableType):
                         typ = getattr_defn.node.type.ret_type
                     else:
-                        typ = AnyType(TypeOfAny.special_form)
-                    expr.kind = MDEF
-                    expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
-                    expr.node = Var(expr.name, type=typ)
+                        typ = AnyType(TypeOfAny.from_error)
+                else:
+                    typ = AnyType(TypeOfAny.from_error)
+                expr.kind = MDEF
+                expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
+                expr.node = Var(expr.name, type=typ)
             else:
                 # We only catch some errors here; the rest will be
                 # caught during type checking.

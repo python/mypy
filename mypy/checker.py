@@ -1076,32 +1076,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
 
-    def check_getattr_method(self, typ: CallableType, context: Context, name: str) -> None:
+    def check_getattr_method(self, typ: Type, context: Context, name: str) -> None:
         if len(self.scope.stack) == 1:
-            # module-level __getattr__
+            # module scope
             if name == '__getattribute__':
                 self.msg.fail('__getattribute__ is not valid at the module level', context)
                 return
-            elif name == '__getattr__' and not self.is_stub:
-                self.msg.fail('__getattr__ is not valid at the module level outside a stub file',
-                              context)
-                return
+            # __getattr__ is fine at the module level as of Python 3.7 (PEP 562). We could
+            # show an error for Python < 3.7, but that would be annoying in code that supports
+            # both 3.7 and older versions.
             method_type = CallableType([self.named_type('builtins.str')],
                                        [nodes.ARG_POS],
                                        [None],
                                        AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
-        else:
+        elif self.scope.active_class():
             method_type = CallableType([AnyType(TypeOfAny.special_form),
                                         self.named_type('builtins.str')],
                                        [nodes.ARG_POS, nodes.ARG_POS],
                                        [None, None],
                                        AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
+        else:
+            return
         if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+            self.msg.invalid_signature_for_special_method(typ, context, name)
 
-    def check_setattr_method(self, typ: CallableType, context: Context) -> None:
+    def check_setattr_method(self, typ: Type, context: Context) -> None:
+        if not self.scope.active_class():
+            return
         method_type = CallableType([AnyType(TypeOfAny.special_form),
                                     self.named_type('builtins.str'),
                                     AnyType(TypeOfAny.special_form)],
@@ -1110,7 +1113,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                    NoneTyp(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+            self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
     def expand_typevars(self, defn: FuncItem,
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
@@ -1483,6 +1486,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
+            # If we're assigning to __getattr__ or similar methods, check that the signature is
+            # valid.
+            if isinstance(lvalue, NameExpr) and lvalue.node:
+                name = lvalue.node.name()
+                if name in ('__setattr__', '__getattribute__', '__getattr__'):
+                    # If an explicit type is given, use that.
+                    if lvalue_type:
+                        signature = lvalue_type
+                    else:
+                        signature = self.expr_checker.accept(rvalue)
+                    if signature:
+                        if name == '__setattr__':
+                            self.check_setattr_method(signature, lvalue)
+                        else:
+                            self.check_getattr_method(signature, lvalue, name)
+
             if isinstance(lvalue, RefExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
@@ -1541,6 +1560,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
+
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
