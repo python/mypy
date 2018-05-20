@@ -1848,3 +1848,102 @@ reveal_type(f(obj1))  # E: Revealed type is '__main__.A'
 obj2: Union[Wrapper1[A], Wrapper2[B]]
 reveal_type(f(obj2))  # E: Revealed type is 'Union[__main__.A, __main__.B]'
 
+[case testOverloadsAndNoneWithoutStrictOptional]
+# flags: --no-strict-optional
+from typing import overload, Optional
+
+@overload
+def f(x: None) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: object) -> str: ...
+def f(x): ...
+
+# We pretend strict-optional is enabled for overload definitions,
+# even in non-strict optional mode
+@overload
+def g(x: None) -> int: ...
+@overload
+def g(x: int) -> str: ...
+def g(x): ...
+
+# Calls are still checked normally though
+a: None
+b: int
+c: Optional[int]
+reveal_type(g(a))  # E: Revealed type is 'builtins.int'
+reveal_type(g(b))  # E: Revealed type is 'builtins.str'
+reveal_type(g(c))  # E: Revealed type is 'builtins.str'
+
+[case testOverloadsAndNoneWithStrictOptional]
+# flags: --strict-optional
+from typing import overload, Optional
+
+@overload
+def f(x: None) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: object) -> str: ...
+def f(x): ...
+
+@overload
+def g(x: None) -> int: ...
+@overload
+def g(x: int) -> str: ...
+def g(x): ...
+
+a: None
+b: int
+c: Optional[int]
+reveal_type(g(a))  # E: Revealed type is 'builtins.int'
+reveal_type(g(b))  # E: Revealed type is 'builtins.str'
+reveal_type(g(c))  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+[case testOverloadsNoneAndTypeVarsWithNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Callable, Iterable, TypeVar, overload, Optional
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+@overload
+def mymap(func: None, seq: Iterable[T]) -> Iterable[T]: ...
+@overload
+def mymap(func: Callable[[T], S], seq: Iterable[T]) -> Iterable[S]: ...
+def mymap(*args): ...
+
+seq = [1, 2, 3]
+f1: Callable[[int], str]
+f2: None
+f3: Optional[Callable[[int], str]]
+
+reveal_type(mymap(f1, seq))  # E: Revealed type is 'typing.Iterable[builtins.str*]'
+reveal_type(mymap(f2, seq))  # E: Revealed type is 'typing.Iterable[builtins.int*]'
+reveal_type(mymap(f3, seq))  # E: Revealed type is 'typing.Iterable[builtins.str*]'
+
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadsNoneAndTypeVarsWithStrictOptional]
+# flags: --strict-optional
+from typing import Callable, Iterable, TypeVar, overload, Optional
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+@overload
+def mymap(func: None, seq: Iterable[T]) -> Iterable[T]: ...
+@overload
+def mymap(func: Callable[[T], S], seq: Iterable[T]) -> Iterable[S]: ...
+def mymap(*args): ...
+
+seq = [1, 2, 3]
+f1: Callable[[int], str]
+f2: None
+f3: Optional[Callable[[int], str]]
+
+reveal_type(mymap(f1, seq))  # E: Revealed type is 'typing.Iterable[builtins.str*]'
+reveal_type(mymap(f2, seq))  # E: Revealed type is 'typing.Iterable[builtins.int*]'
+reveal_type(mymap(f3, seq))  # E: Revealed type is 'Union[typing.Iterable[builtins.int], typing.Iterable[builtins.str]]'
+
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+

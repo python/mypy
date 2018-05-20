@@ -1152,9 +1152,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # TODO: Adjust the error message here to make it clear there was no match.
             target = erased_targets[0]
 
-        '''target = self.overload_call_target(args, arg_types, arg_kinds, arg_names,
-                                           callee, context,
-                                           messages=arg_messages)'''
         return self.check_call(target, args, arg_kinds, context, arg_names,
                                arg_messages=arg_messages,
                                callable_name=callable_name,
@@ -1209,7 +1206,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             try:
                 # Passing `overload_messages` as the `arg_messages` parameter doesn't
                 # seem to reliably catch all possible errors.
-                #
                 # TODO: Figure out why
                 result = self.check_call(
                     callee=typ,

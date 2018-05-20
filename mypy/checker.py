@@ -414,53 +414,56 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         # At this point we should have set the impl already, and all remaining
         # items are decorators
-        for i, item in enumerate(defn.items):
-            # TODO overloads involving decorators
-            assert isinstance(item, Decorator)
-            sig1 = self.function_type(item.func)
+        with experiments.strict_optional_set(True):
+            for i, item in enumerate(defn.items):
+                # TODO overloads involving decorators
+                assert isinstance(item, Decorator)
+                sig1 = self.function_type(item.func)
 
-            for j, item2 in enumerate(defn.items[i + 1:]):
-                assert isinstance(item2, Decorator)
-                sig2 = self.function_type(item2.func)
+                for j, item2 in enumerate(defn.items[i + 1:]):
+                    assert isinstance(item2, Decorator)
+                    sig2 = self.function_type(item2.func)
 
-                assert isinstance(sig1, CallableType)
-                assert isinstance(sig2, CallableType)
+                    assert isinstance(sig1, CallableType)
+                    assert isinstance(sig2, CallableType)
 
-                if not are_argument_counts_overlapping(sig1, sig2):
-                    continue
+                    if not are_argument_counts_overlapping(sig1, sig2):
+                        continue
 
-                if if_overload_can_never_match(sig1, sig2):
-                    self.msg.overloaded_signature_will_never_match(i + 1, i + j + 2, item2.func)
-                elif is_unsafe_overlapping_overload_signatures(sig1, sig2):
-                    self.msg.overloaded_signatures_overlap(i + 1, i + j + 2, item.func)
-            if defn.impl:
-                if isinstance(defn.impl, FuncDef):
-                    impl_type = defn.impl.type
-                elif isinstance(defn.impl, Decorator):
-                    impl_type = defn.impl.var.type
-                else:
-                    assert False, "Impl isn't the right type"
-                # This can happen if we've got an overload with a different
-                # decorator too -- we gave up on the types.
-                if impl_type is None or isinstance(impl_type, AnyType) or sig1 is None:
-                    return
-
-                assert isinstance(impl_type, CallableType)
-                assert isinstance(sig1, CallableType)
-                if not is_callable_compatible(impl_type, sig1,
-                                              is_compat=is_subtype, ignore_return=True):
-                    self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
-                impl_type_subst = impl_type
-                if impl_type.variables:
-                    unified = unify_generic_callable(impl_type, sig1, ignore_return=False)
-                    if unified is None:
-                        self.fail("Type variable mismatch between " +
-                                  "overload signature {} and implementation".format(i + 1),
-                                  defn.impl)
+                    if overload_can_never_match(sig1, sig2):
+                        self.msg.overloaded_signature_will_never_match(
+                            i + 1, i + j + 2, item2.func)
+                    elif is_unsafe_overlapping_overload_signatures(sig1, sig2):
+                        self.msg.overloaded_signatures_overlap(
+                            i + 1, i + j + 2, item.func)
+                if defn.impl:
+                    if isinstance(defn.impl, FuncDef):
+                        impl_type = defn.impl.type
+                    elif isinstance(defn.impl, Decorator):
+                        impl_type = defn.impl.var.type
+                    else:
+                        assert False, "Impl isn't the right type"
+                    # This can happen if we've got an overload with a different
+                    # decorator too -- we gave up on the types.
+                    if impl_type is None or isinstance(impl_type, AnyType) or sig1 is None:
                         return
-                    impl_type_subst = unified
-                if not is_subtype(sig1.ret_type, impl_type_subst.ret_type):
-                    self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
+
+                    assert isinstance(impl_type, CallableType)
+                    assert isinstance(sig1, CallableType)
+                    if not is_callable_compatible(impl_type, sig1,
+                                                  is_compat=is_subtype, ignore_return=True):
+                        self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
+                    impl_type_subst = impl_type
+                    if impl_type.variables:
+                        unified = unify_generic_callable(impl_type, sig1, ignore_return=False)
+                        if unified is None:
+                            self.fail("Type variable mismatch between " +
+                                      "overload signature {} and implementation".format(i + 1),
+                                      defn.impl)
+                            return
+                        impl_type_subst = unified
+                    if not is_subtype(sig1.ret_type, impl_type_subst.ret_type):
+                        self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
     #
@@ -3618,7 +3621,7 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
                                    is_compat_return=lambda l, r: not is_subtype(r, l)))
 
 
-def if_overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
+def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
     """Check if the 'other' method can never be matched due to 'signature'.
 
     This can happen if signature's parameters are all strictly broader then
