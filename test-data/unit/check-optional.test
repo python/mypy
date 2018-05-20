@@ -244,6 +244,17 @@ def f(x: int) -> int: pass
 reveal_type(f(None))  # E: Revealed type is 'builtins.str'
 reveal_type(f(0))  # E: Revealed type is 'builtins.int'
 
+[case testOverloadWithObject]
+from foo import *
+[file foo.pyi]
+from typing import overload
+@overload
+def f(x: None) -> str: pass
+@overload
+def f(x: object) -> int: pass
+reveal_type(f(None))  # E: Revealed type is 'builtins.str'
+reveal_type(f(0))  # E: Revealed type is 'builtins.int'
+
 [case testOptionalTypeOrTypePlain]
 from typing import Optional
 def f(a: Optional[int]) -> int:
