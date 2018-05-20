@@ -1497,7 +1497,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         signature = self.expr_checker.accept(rvalue)
                     if signature:
-                        name = lvalue.node.name()
                         if name == '__setattr__':
                             self.check_setattr_method(signature, lvalue)
                         else:
