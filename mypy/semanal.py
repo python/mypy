@@ -1851,7 +1851,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif explicit_type:
                 # Don't re-bind types
                 global_def = self.globals.get(lval.name)
-                local_def = cast(SymbolTable, self.locals[-1]).get(lval.name) if self.locals and self.locals[-1] else None
+                if self.locals:
+                    locals_last = self.locals[-1]
+                    if locals_last:
+                        local_def = locals_last.get(lval.name)
+                    else:
+                        local_def = None
+                else:
+                    local_def = None
                 type_def = self.type.names.get(lval.name) if self.type else None
 
                 original_def = global_def or local_def or type_def
@@ -3238,17 +3245,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def name_already_defined(self, name: str, ctx: Context,
                              original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
-        if original_ctx:
-            if isinstance(original_ctx, SymbolTableNode):
-                node = original_ctx.node
-            elif isinstance(original_ctx, SymbolNode):
-                node = original_ctx
-            else:
-                node = None
-            if node and node.line != -1:
-                extra_msg = ' on line {}'.format(node.line)
-            else:
-                extra_msg = ' (possibly by an import)'
+        if isinstance(original_ctx, SymbolTableNode):
+            node = original_ctx.node
+        elif isinstance(original_ctx, SymbolNode):
+            node = original_ctx
+
+        if isinstance(original_ctx, SymbolTableNode) and original_ctx.kind == MODULE_REF:
+            # Since this is an import, original_ctx.node points to the module definition.
+            # Therefore its line number is always 1, which is not useful for this
+            # error message.
+            extra_msg = ' (by an import)'
+        elif node and node.line != -1:
+            extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ''
         self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)

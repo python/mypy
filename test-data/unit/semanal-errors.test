@@ -1180,7 +1180,7 @@ class A:
 import typing
 def f() -> None:
     import x
-    import y as x # E: Name 'x' already defined on line 3
+    import y as x # E: Name 'x' already defined (by an import)
     x.y
 [file x.py]
 y = 1
@@ -1190,7 +1190,7 @@ y = 1
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
 import x
-import y as x # E: Name 'x' already defined on line 2
+import y as x # E: Name 'x' already defined (by an import)
 x.y
 [file x.py]
 y = 1
