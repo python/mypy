@@ -10,6 +10,7 @@ Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
 
+from collections import OrderedDict
 import re
 import difflib
 
@@ -26,9 +27,8 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr
+    CallExpr, Expression
 )
-
 
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.
@@ -748,10 +748,20 @@ class MessageBuilder:
                                      context: Context) -> None:
         name = callable_name(overload)
         if name:
-            self.fail('No overload variant of {} matches argument types {}'
-                      .format(name, arg_types), context)
+            name_str = ' of {}'.format(name)
         else:
-            self.fail('No overload variant matches argument types {}'.format(arg_types), context)
+            name_str = ''
+        arg_types_str = ', '.join(self.format(arg) for arg in arg_types)
+        num_args = len(arg_types)
+        if num_args == 0:
+            self.fail('All overload variants{} require at least one argument'.format(name_str),
+                      context)
+        elif num_args == 1:
+            self.fail('No overload variant{} matches argument type {}'
+                      .format(name_str, arg_types_str), context)
+        else:
+            self.fail('No overload variant{} matches argument types {}'
+                      .format(name_str, arg_types_str), context)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -967,8 +977,22 @@ class MessageBuilder:
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
 
+    def invalid_signature_for_special_method(
+            self, func_type: Type, context: Context, method_name: str) -> None:
+        self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
+
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
+
+    def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
+        # To ensure that the output is predictable on Python < 3.6,
+        # use an ordered dictionary sorted by variable name
+        sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
+        self.fail("Revealed local types are:", context)
+        # Note that self.fail does a strip() on the message, so we cannot prepend with spaces
+        # for indentation
+        for line in ['{}: {}'.format(k, v) for k, v in sorted_locals.items()]:
+            self.fail(line, context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Unsupported type Type[{}]'.format(self.format(item)), context)

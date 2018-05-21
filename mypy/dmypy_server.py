@@ -1,8 +1,8 @@
-"""Client for mypy daemon mode.
+"""Server for mypy daemon mode.
 
 Highly experimental!  Only supports UNIX-like systems.
 
-This manages a daemon process which keeps useful state in memory
+This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
@@ -29,6 +29,7 @@ from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
 from mypy.typestate import reset_global_state
+from mypy.version import __version__
 
 
 MEM_PROFILE = False  # If True, dump memory profile after initialization
@@ -85,12 +86,12 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 SOCKET_NAME = 'dmypy.sock'
 
 
-def process_start_options(flags: List[str]) -> Options:
+def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     import mypy.main
     sources, options = mypy.main.process_options(['-i'] + flags,
                                                  require_targets=False,
                                                  server_options=True)
-    if sources:
+    if sources and not allow_sources:
         sys.exit("dmypy: start/restart does not accept sources")
     if options.report_dirs:
         sys.exit("dmypy: start/restart cannot generate reports")
@@ -117,6 +118,8 @@ class Server:
                  timeout: Optional[int] = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.options = options
+        # Snapshot the options info before we muck with it, to detect changes
+        self.options_snapshot = options.snapshot()
         self.timeout = timeout
         self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
 
@@ -225,6 +228,23 @@ class Server:
         return {}
 
     last_sources = None  # type: List[mypy.build.BuildSource]
+
+    def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
+        """Check a list of files, triggering a restart if needed."""
+        try:
+            self.last_sources, options = mypy.main.process_options(
+                ['-i'] + list(args),
+                require_targets=True,
+                server_options=True,
+                fscache=self.fscache)
+            # Signal that we need to restart if the options have changed
+            if self.options_snapshot != options.snapshot():
+                return {'restart': 'configuration changed'}
+            if __version__ != version:
+                return {'restart': 'mypy version changed'}
+        except InvalidSourceList as err:
+            return {'out': '', 'err': str(err), 'status': 2}
+        return self.check(self.last_sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""

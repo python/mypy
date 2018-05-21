@@ -430,12 +430,25 @@ understand how mypy handles a particular piece of code. Example:
 
    reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
 
+You can also use ``reveal_locals()`` at any line in a file
+to see the types of all local varaibles at once. Example:
+
+.. code-block:: python
+
+   a = 1
+   b = 'one'
+   reveal_locals()
+   # Revealed local types are:
+   # a: builtins.int
+   # b: builtins.str
 .. note::
 
-   ``reveal_type`` is only understood by mypy and doesn't exist
-   in Python, if you try to run your program. You'll have to remove
-   any ``reveal_type`` calls before you can run your code.
-   ``reveal_type`` is always available and you don't need to import it.
+   ``reveal_type`` and ``reveal_locals`` are only understood by mypy and
+   don't exist in Python. If you try to run your program, you'll have to
+   remove any ``reveal_type`` and ``reveal_locals`` calls before you can
+   run your code. Both are always available and you don't need to import
+   them.
+
 
 .. _import-cycles:
 

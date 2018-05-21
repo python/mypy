@@ -37,7 +37,7 @@ with text "abc..."
 stubs from the indicated file (see Fixtures section below)
 - optional `[out]` is an alternative to the "# E:" notation: it indicates that
 any text after it contains the expected type checking error messages.
-usually, "E: " is preferred because it makes it easier to associate the
+Usually, "E: " is preferred because it makes it easier to associate the
 errors with the code generating them at a glance, and to change the code of
 the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
@@ -102,47 +102,35 @@ filters:
 
     $ ./runtests.py lex parse -x lint -x stub
 
-For example, to run unit tests only, which run pretty quickly:
-
-    $ ./runtests.py unit-test
-
 You can get a list of available test suites through the `-l` option
 (though this doesn't show all available subtasks):
 
     $ ./runtests.py -l
 
-The unit test suites are driven by a mixture of test frameworks: `pytest` and
-mypy's own `myunit` framework, which we're in the process of migrating away
-from. Test suites for individual components are in the files
-`mypy/test/test*.py`. You can run many of these individually by doing
-`runtests.py testfoobar`. For finer control over which unit tests are run and
-how, you can run `pytest` directly:
+The unit test suites are driven by the `pytest` framework. Test suites for
+individual components are in the files `mypy/test/test*.py`. To control
+which unit tests are run and how, you can run `pytest` directly:
 
-    $ py.test mypy/test/testcheck.py -v -k MethodCall
-
-You can pass inferior arguments to pytest via `-a` when using `runtests.py`:
-
-    $ ./runtests.py pytest -a -v -a -k -a MethodCall
+    $ pytest -k MethodCall
 
 You can also run the type checker for manual testing without
 installing it by setting up the Python module search path suitably:
 
     $ export PYTHONPATH=$PWD
-    $ python<version> -m mypy PROGRAM.py
+    $ python3 -m mypy PROGRAM.py
 
 You will have to manually install the `typing` module if you're running Python
 3.4 or earlier.
 
-You can add the entry scripts to PATH for a single python3 version:
+You can also execute mypy as a module
 
-    $ export PATH=$PWD/scripts
-    $ mypy PROGRAM.py
+    $ python3 -m mypy PROGRAM.py
 
 You can check a module or string instead of a file:
 
-    $ mypy PROGRAM.py
-    $ mypy -m MODULE
-    $ mypy -c 'import MODULE'
+    $ python3 -m mypy PROGRAM.py
+    $ python3 -m mypy -m MODULE
+    $ python3 -m mypy -c 'import MODULE'
 
 To run the linter:
 
@@ -150,8 +138,7 @@ To run the linter:
 
 Many test suites store test case descriptions in text files
 (`test-data/unit/*.test`). The module `mypy.test.data` parses these
-descriptions. The package `mypy.myunit` contains the test framework used for
-the non-checker test cases.
+descriptions.
 
 Python evaluation test cases are a little different from unit tests
 (`mypy/test/testpythoneval.py`, `test-data/unit/pythoneval.test`). These
@@ -171,6 +158,18 @@ number of logical cores; this can be overridden using `-n` option.
 
 Note that running more processes than logical cores is likely to
 significantly decrease performance.
+
+
+Debugging
+---------
+
+You can use interactive debuggers like `pdb` to debug failing tests. You
+need to pass the `-n0` option to disable parallelization:
+
+    $ pytest -n0 --pdb -k MethodCall
+
+You can also write `import pdb; pdb.set_trace()` in code to enter the
+debugger.
 
 
 Coverage reports

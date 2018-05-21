@@ -1129,6 +1129,45 @@ follow_imports_for_stubs = True
 import math
 math.frobnicate()
 
+[case testShadowFile1]
+# cmd: mypy --shadow-file source.py shadow.py source.py
+[file source.py]
+def foo() -> str:
+    return "bar"
+[file shadow.py]
+def bar() -> str:
+    return 14
+[out]
+source.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testShadowFile2]
+# cmd: mypy --shadow-file s1.py shad1.py --shadow-file s2.py shad2.py --shadow-file s3.py shad3.py s1.py s2.py s3.py s4.py
+[file s1.py]
+def foo() -> str:
+    return "bar"
+[file shad1.py]
+def bar() -> str:
+    return 14
+[file s2.py]
+def baz() -> str:
+    return 14
+[file shad2.py]
+def baz() -> int:
+    return 14
+[file s3.py]
+def qux() -> str:
+    return "bar"
+[file shad3.py]
+def foo() -> int:
+    return [42]
+[file s4.py]
+def foo() -> str:
+    return 9
+[out]
+s4.py:2: error: Incompatible return value type (got "int", expected "str")
+s3.py:2: error: Incompatible return value type (got "List[int]", expected "int")
+s1.py:2: error: Incompatible return value type (got "int", expected "str")
+
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
 [file mypy.ini]

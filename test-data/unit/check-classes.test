@@ -1224,9 +1224,9 @@ class D:
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types [builtins.None, Type[__main__.A]]
+main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
 main:6: error: Revealed type is 'Any'
-main:6: error: No overload variant of "__get__" of "D" matches argument types [__main__.A, Type[__main__.A]]
+main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
 
 
 [case testAccessingGenericNonDataDescriptor]
@@ -1324,7 +1324,7 @@ class D(Generic[T, V]):
 [builtins fixtures/bool.pyi]
 [out]
 main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types [builtins.None, Type[__main__.A]]
+main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -1495,6 +1495,20 @@ a = A()
 a.f = 1
 reveal_type(a.f)  # E: Revealed type is 'builtins.str'
 
+[case testDescriptorGetUnion]
+from typing import Any, Union
+class String:
+    def __get__(self, inst: Any, owner: Any) -> str:
+        return ''
+
+class A:
+    attr: str
+
+class B:
+    attr = String()
+
+def foo(x: Union[A, B]) -> None:
+    reveal_type(x.attr)  # E: Revealed type is 'builtins.str'
 
 -- _promote decorators
 -- -------------------
@@ -1848,7 +1862,7 @@ main:6: error: Return type of "__iadd__" incompatible with "__add__" of supertyp
 main:8: error: Argument 1 of "__iadd__" incompatible with "__add__" of supertype "A"
 main:8: error: Signatures of "__iadd__" and "__add__" are incompatible
 
-[case testGetAttribute]
+[case testGetattribute]
 
 a, b = None, None # type: A, B
 class A:
@@ -1861,7 +1875,7 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-[case testGetAttributeSignature]
+[case testGetattributeSignature]
 class A:
     def __getattribute__(self, x: str) -> A: pass
 class B:
@@ -1871,10 +1885,10 @@ class C:
 class D:
     def __getattribute__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B"
-main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C"
+main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B" for "__getattribute__"
+main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C" for "__getattribute__"
 
-[case testGetAttr]
+[case testGetattr]
 
 a, b = None, None # type: A, B
 class A:
@@ -1887,7 +1901,19 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-[case testGetAttrSignature]
+[case testNestedGetattr]
+def foo() -> object:
+    def __getattr__() -> None:  # no error because not in a class
+        pass
+    return __getattr__
+
+class X:
+    def foo(self) -> object:
+        def __getattr__() -> None:  # no error because not directly inside a class
+            pass
+        return __getattr__
+
+[case testGetattrSignature]
 class A:
     def __getattr__(self, x: str) -> A: pass
 class B:
@@ -1897,10 +1923,10 @@ class C:
 class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B"
-main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C"
+main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B" for "__getattr__"
+main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C" for "__getattr__"
 
-[case testSetAttr]
+[case testSetattr]
 from typing import Union, Any
 class A:
     def __setattr__(self, name: str, value: Any) -> None: ...
@@ -1922,7 +1948,7 @@ c = C()
 c.fail = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 class D:
-    __setattr__ = 'hello'
+    __setattr__ = 'hello'  # E: Invalid signature "builtins.str" for "__setattr__"
 
 d = D()
 d.crash = 4  # E: "D" has no attribute "crash"
@@ -1943,14 +1969,16 @@ s = Sub()
 s.success = 4
 s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
-[case testSetAttrSignature]
+[case testSetattrSignature]
+from typing import Any
+
 class Test:
-    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "def ()"
+    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "def ()" for "__setattr__"
 t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (self: Any) -> Any"
+    def __setattr__(self): ...  # E: Invalid signature "def (self: Any) -> Any" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -1960,11 +1988,14 @@ b = B()
 b.integer = 5
 
 class C:
-    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)"
+    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)" for "__setattr__"
 c = C()
 c.check = 13
 
-[case testGetAttrAndSetattr]
+class X:
+    __setattr__ = ...  # type: Any
+
+[case testGetattrAndSetattr]
 from typing import Any
 class A:
     def __setattr__(self, name: str, value: Any) -> None: ...
@@ -2080,7 +2111,7 @@ class C:
 c = C(1)
 c.a # E: "C" has no attribute "a"
 C('', '')
-C('') # E: No overload variant of "C" matches argument types [builtins.str]
+C('') # E: No overload variant of "C" matches argument type "str"
 [builtins fixtures/__new__.pyi]
 
 
@@ -2502,7 +2533,7 @@ def new(uc: Type[U]) -> U:
 u = new(User)
 [builtins fixtures/classmethod.pyi]
 [out]
-tmp/foo.pyi:16: error: No overload variant of "User" matches argument types [builtins.str]
+tmp/foo.pyi:16: error: No overload variant of "User" matches argument type "str"
 tmp/foo.pyi:17: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -2698,7 +2729,7 @@ def f(a: int) -> None: pass
 def mock() -> type: return User
 
 f(User)
-f(mock())  # E: No overload variant of "f" matches argument types [builtins.type]
+f(mock())  # E: No overload variant of "f" matches argument type "type"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2714,7 +2745,7 @@ def f(a: Type[User]) -> None: pass
 @overload
 def f(a: type) -> None: pass
 
-f(3)  # E: No overload variant of "f" matches argument types [builtins.int]
+f(3)  # E: No overload variant of "f" matches argument type "int"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2731,7 +2762,7 @@ def f(a: Type[User]) -> None: pass
 def f(a: int) -> None: pass
 
 f(User)
-f(User())  # E: No overload variant of "f" matches argument types [foo.User]
+f(User())  # E: No overload variant of "f" matches argument type "User"
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2752,10 +2783,10 @@ def f(a: Type[B]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
-f(A)  # E: No overload variant of "f" matches argument types [def () -> foo.A]
+f(A)  # E: No overload variant of "f" matches argument type "Type[A]"
 f(B)
 f(C)
-f(AType)  # E: No overload variant of "f" matches argument types [Type[foo.A]]
+f(AType)  # E: No overload variant of "f" matches argument type "Type[A]"
 f(BType)
 f(CType)
 [builtins fixtures/classmethod.pyi]
@@ -3458,6 +3489,23 @@ class Concrete(metaclass=Meta):
 
 reveal_type(Concrete + X())  # E: Revealed type is 'builtins.str'
 Concrete + "hello"  # E: Unsupported operand types for + ("Type[Concrete]" and "str")
+
+[case testMetaclassOperatorTypeVar]
+from typing import Type, TypeVar
+
+class MetaClass(type):
+    def __mul__(cls, other: int) -> str:
+        return ""
+
+class Test(metaclass=MetaClass):
+    pass
+
+S = TypeVar("S", bound=Test)
+
+def f(x: Type[Test]) -> str:
+    return x * 0
+def g(x: Type[S]) -> str:
+    return reveal_type(x * 0)  # E: Revealed type is 'builtins.str'
 
 [case testMetaclassGetitem]
 class M(type):
@@ -4309,3 +4357,14 @@ class C:
     __slots__ = ('x',)
 class D(B, C):
     __slots__ = ('aa', 'bb', 'cc')
+
+[case testRevealLocalsOnClassVars]
+class C1(object):
+    t = 'a'
+    y = 3.0
+    reveal_locals()
+
+[out]
+main:4: error: Revealed local types are:
+main:4: error: t: builtins.str
+main:4: error: y: builtins.float

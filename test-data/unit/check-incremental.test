@@ -3798,9 +3798,9 @@ class A:
 
 [builtins fixtures/list.pyi]
 [out1]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+main:2: error: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
 [out2]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+main:2: error: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
 
 [case testAttrsIncrementalConverterManyStyles]
 import a
@@ -3984,6 +3984,42 @@ main:2: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
 [out2]
 main:2: error: Revealed type is 'def (x: builtins.list[builtins.int]) -> a.a.A'
 
+[case testAttrsIncrementalConverterType]
+from a import C
+import attr
+o = C("1", "2", "3", "4")
+o = C(1, 2, "3", 4)
+reveal_type(C)
+@attr.s
+class D(C):
+    x: str = attr.ib()
+reveal_type(D)
+[file a.py]
+from typing import overload
+import attr
+@attr.dataclass
+class A:
+    x: str
+@overload
+def parse(x: int) -> int:
+   ...
+@overload
+def parse(x: str, y: str = '') -> int:
+   ...
+def parse(x, y): ...
+@attr.s
+class C:
+    a: complex = attr.ib(converter=complex)
+    b: int = attr.ib(converter=int)
+    c: A = attr.ib(converter=A)
+    d: int = attr.ib(converter=parse)
+[builtins fixtures/attr.pyi]
+[out1]
+main:5: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+main:9: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
+[out2]
+main:5: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str]) -> a.C'
+main:9: error: Revealed type is 'def (a: Union[builtins.float, builtins.str], b: Union[builtins.str, builtins.bytes, builtins.int], c: builtins.str, d: Union[builtins.int, builtins.str], x: builtins.str) -> __main__.D'
 
 [case testAttrsIncrementalThreeRuns]
 from a import A
@@ -4283,6 +4319,48 @@ def foo() -> None:
 [out]
 [out2]
 tmp/main.py:2: error: "int" has no attribute "foo"
+
+[case testIncrementalBustedFineGrainedCache1]
+# flags: --cache-fine-grained
+import a
+import b
+[file a.py]
+[file b.py]
+-- This is a heinous hack, but we simulate having a invalid cache by clobbering
+-- the proto deps file with something with hash mismatches.
+[file ../.mypy_cache/3.6/@proto_deps.meta.json.2]
+{"__main__": "00000000000000000000000000000000", "a": "d41d8cd98f00b204e9800998ecf8427e", "b": "d41d8cd98f00b204e9800998ecf8427e", "builtins": "00000000000000000000000000000000"}
+[file b.py.2]
+# uh
+-- Every file should get reloaded, since the cache was invalidated
+[stale a, b, builtins]
+[rechecked a, b, builtins]
+
+[case testIncrementalBustedFineGrainedCache2]
+# flags2: --cache-fine-grained
+import a
+import b
+[file a.py]
+[file b.py]
+[file b.py.2]
+# uh
+-- Every file should get reloaded, since the settings changed
+[stale a, b, builtins]
+[rechecked a, b, builtins]
+
+[case testIncrementalWorkingFineGrainedCache]
+# flags: --cache-fine-grained
+# flags2: --cache-fine-grained
+import a
+import b
+[file a.py]
+[file b.py]
+[file b.py.2]
+# uh
+-- b gets rechecked because it changed, but nothing is stale
+-- since the interface didn't change
+[stale]
+[rechecked b]
 
 [case testBazelFlagIgnoresFileChanges]
 -- Since the initial run wrote a cache file, the second run ignores the source

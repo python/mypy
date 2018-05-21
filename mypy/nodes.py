@@ -78,6 +78,9 @@ TYPE_ALIAS = 6  # type: int
 # XXX what?
 UNBOUND_IMPORTED = 7  # type: int
 
+# RevealExpr node kinds
+REVEAL_TYPE = 0  # type: int
+REVEAL_LOCALS = 1  # type: int
 
 LITERAL_YES = 2
 LITERAL_TYPE = 1
@@ -1595,17 +1598,24 @@ class CastExpr(Expression):
         return visitor.visit_cast_expr(self)
 
 
-class RevealTypeExpr(Expression):
-    """Reveal type expression reveal_type(expr)."""
+class RevealExpr(Expression):
+    """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
-    expr = None  # type: Expression
+    expr = None  # type: Optional[Expression]
+    kind = 0  # type: int
+    local_nodes = None  # type: Optional[List[Var]]
 
-    def __init__(self, expr: Expression) -> None:
+    def __init__(
+            self, kind: int,
+            expr: Optional[Expression] = None,
+            local_nodes: 'Optional[List[Var]]' = None) -> None:
         super().__init__()
         self.expr = expr
+        self.kind = kind
+        self.local_nodes = local_nodes
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_reveal_type_expr(self)
+        return visitor.visit_reveal_expr(self)
 
 
 class SuperExpr(Expression):

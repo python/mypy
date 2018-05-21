@@ -219,6 +219,11 @@ class FileSystemCache:
             self.read(path)
         return self.hash_cache[path]
 
+    def samefile(self, f1: str, f2: str) -> bool:
+        s1 = self.stat(f1)
+        s2 = self.stat(f2)
+        return os.path.samestat(s1, s2)  # type: ignore
+
 
 def copy_os_error(e: OSError) -> OSError:
     new = OSError(*e.args)

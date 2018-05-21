@@ -46,7 +46,7 @@ from mypy.nodes import (
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
-    SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
+    SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
@@ -56,7 +56,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
-    collections_type_aliases, get_member_expr_fullname,
+    collections_type_aliases, get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -431,9 +431,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     pass
                 else:
                     # A coroutine defined as `async def foo(...) -> T: ...`
-                    # has external return type `Awaitable[T]`.
-                    ret_type = self.named_type_or_none('typing.Awaitable', [defn.type.ret_type])
-                    assert ret_type is not None, "Internal error: typing.Awaitable not found"
+                    # has external return type `Coroutine[Any, Any, T]`.
+                    any_type = AnyType(TypeOfAny.special_form)
+                    ret_type = self.named_type_or_none('typing.Coroutine',
+                        [any_type, any_type, defn.type.ret_type])
+                    assert ret_type is not None, "Internal error: typing.Coroutine not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
@@ -1333,11 +1335,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
-            # If it is still not resolved, and the module is a stub
-            # check for a module level __getattr__
-            if module and not node and module.is_stub and '__getattr__' in module.names:
+            # If it is still not resolved, check for a module level __getattr__
+            if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in module.names):
                 getattr_defn = module.names['__getattr__']
-                if isinstance(getattr_defn.node, FuncDef):
+                if isinstance(getattr_defn.node, (FuncDef, Var)):
                     if isinstance(getattr_defn.node.type, CallableType):
                         typ = getattr_defn.node.type.ret_type
                     else:
@@ -2574,7 +2576,38 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif refers_to_fullname(expr.callee, 'builtins.reveal_type'):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
-            expr.analyzed = RevealTypeExpr(expr.args[0])
+            expr.analyzed = RevealExpr(kind=REVEAL_TYPE, expr=expr.args[0])
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'builtins.reveal_locals'):
+            # Store the local variable names into the RevealExpr for use in the
+            # type checking pass
+            local_nodes = []  # type: List[Var]
+            if self.is_module_scope():
+                # try to determine just the variable declarations in module scope
+                # self.globals.values() contains SymbolTableNode's
+                # Each SymbolTableNode has an attribute node that is nodes.Var
+                # look for variable nodes that marked as is_inferred
+                # Each symboltable node has a Var node as .node
+                local_nodes = cast(
+                    List[Var],
+                    [
+                        n.node for name, n in self.globals.items()
+                        if getattr(n.node, 'is_inferred', False)
+                    ]
+                )
+            elif self.is_class_scope():
+                # type = None  # type: Optional[TypeInfo]
+                if self.type is not None:
+                    local_nodes = cast(List[Var], [st.node for st in self.type.names.values()])
+            elif self.is_func_scope():
+                # locals = None  # type: List[Optional[SymbolTable]]
+                if self.locals is not None:
+                    symbol_table = self.locals[-1]
+                    if symbol_table is not None:
+                        local_nodes = cast(List[Var], [st.node for st in symbol_table.values()])
+            expr.analyzed = RevealExpr(kind=REVEAL_LOCALS, local_nodes=local_nodes)
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
@@ -2682,18 +2715,23 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     expr.kind = n.kind
                     expr.fullname = n.fullname
                     expr.node = n.node
-            elif file is not None and file.is_stub and '__getattr__' in file.names:
+            elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in file.names):
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                if isinstance(getattr_defn.node, FuncDef):
+                getattr_defn = self.normalize_type_alias(file.names['__getattr__'], expr)
+                if not getattr_defn:
+                    typ = AnyType(TypeOfAny.from_error)  # type: Type
+                elif isinstance(getattr_defn.node, (FuncDef, Var)):
                     if isinstance(getattr_defn.node.type, CallableType):
                         typ = getattr_defn.node.type.ret_type
                     else:
-                        typ = AnyType(TypeOfAny.special_form)
-                    expr.kind = MDEF
-                    expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
-                    expr.node = Var(expr.name, type=typ)
+                        typ = AnyType(TypeOfAny.from_error)
+                else:
+                    typ = AnyType(TypeOfAny.from_error)
+                expr.kind = MDEF
+                expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
+                expr.node = Var(expr.name, type=typ)
             else:
                 # We only catch some errors here; the rest will be
                 # caught during type checking.
@@ -2826,8 +2864,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         expr.expr.accept(self)
         expr.type = self.anal_type(expr.type)
 
-    def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> None:
-        expr.expr.accept(self)
+    def visit_reveal_expr(self, expr: RevealExpr) -> None:
+        if expr.kind == REVEAL_TYPE:
+            if expr.expr is not None:
+                expr.expr.accept(self)
+        else:
+            # Reveal locals doesn't have an inner expression, there's no
+            # need to traverse inside it
+            pass
 
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)

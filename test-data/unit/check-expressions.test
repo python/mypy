@@ -866,7 +866,7 @@ from typing import overload
 a, b, c = None, None, None  # type: (A, B, C)
 a[b]
 a[c]
-a[1]  # E: No overload variant of "__getitem__" of "A" matches argument types [builtins.int]
+a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int"
 
 i, s = None, None  # type: (int, str)
 i = a[b]
@@ -1448,6 +1448,28 @@ x = [1]
 x = ['x'] # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
+[case testConditionalExpressionUnion]
+reveal_type(1 if bool() else 2) # E: Revealed type is 'builtins.int'
+reveal_type(1 if bool() else '') # E: Revealed type is 'Union[builtins.int, builtins.str]'
+class A:
+    pass
+class B(A):
+    pass
+class C:
+    pass
+class D(A):
+    pass
+a = A()
+b = B()
+c = C()
+d = D()
+reveal_type(a if bool() else b) # E: Revealed type is '__main__.A'
+reveal_type(b if bool() else c) # E: Revealed type is 'Union[__main__.B, __main__.C]'
+reveal_type(c if bool() else b) # E: Revealed type is 'Union[__main__.C, __main__.B]'
+reveal_type(c if bool() else a) # E: Revealed type is 'Union[__main__.C, __main__.A]'
+reveal_type(d if bool() else b) # E: Revealed type is 'Union[__main__.D, __main__.B]'
+[builtins fixtures/bool.pyi]
+
 
 -- Special cases
 -- -------------
@@ -1707,6 +1729,17 @@ d() # E: "D[str, int]" not callable
 
 [case testRevealType]
 reveal_type(1) # E: Revealed type is 'builtins.int'
+
+[case testRevealLocals]
+x = 1
+y = 2
+z = x + y
+reveal_locals()
+[out]
+main:4: error: Revealed local types are:
+main:4: error: x: builtins.int
+main:4: error: y: builtins.int
+main:4: error: z: builtins.int
 
 [case testUndefinedRevealType]
 reveal_type(x)

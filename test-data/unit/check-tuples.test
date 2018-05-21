@@ -351,7 +351,7 @@ a, b = None, None # type: (A, B)
 a1, b1 = a, a # type: (A, B)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a2, b2 = b, b # type: (A, B)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a3, b3 = a # type: (A, B)     # E: '__main__.A' object is not iterable
-a4, b4 = None # type: (A, B)  # E: 'builtins.None' object is not iterable
+a4, b4 = None # type: (A, B)  # E: 'None' object is not iterable
 a5, b5 = a, b, a # type: (A, B)  # E: Too many values to unpack (2 expected, 3 provided)
 
 ax, bx = a, b # type: (A, B)
@@ -365,7 +365,7 @@ class B: pass
 a, b = None, None # type: (A, B)
 def f(): pass
 
-a, b = None # E: 'builtins.None' object is not iterable
+a, b = None # E: 'None' object is not iterable
 a, b = a   # E: '__main__.A' object is not iterable
 a, b = f   # E: 'def () -> Any' object is not iterable
 

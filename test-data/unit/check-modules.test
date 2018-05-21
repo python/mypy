@@ -1001,6 +1001,48 @@ from foo import bar
 [file foo/bar.py]
 pass
 
+[case testImportReExportFromChildrenInCycle1]
+# cmd: mypy -m project.root project.study.a project.neighbor
+[file project/__init__.py]
+from project.study import CustomType
+x = 10
+[file project/root.py]
+[file project/study/__init__.py]
+from project.study.a import CustomType
+[file project/study/a.py]
+from project import root
+# TODO (#4498): This test is basically testing the `all_are_submodules` logic
+# in build, which skips generating a dependenecy to a module if
+# everything in it is a submodule. But that is still all just a
+# workaround for bugs in cycle handling. If we uncomment the next
+# line, we'll still break:
+# from project import x
+CustomType = str
+[file project/neighbor/__init__.py]
+from project.study import CustomType
+def m(arg: CustomType) -> str:
+    return 'test'
+
+[case testImportReExportFromChildrenInCycle2]
+# cmd: mypy -m project project.b project.ba project.c
+# See comments in above test about this being a workaround.
+[file foo.py]
+def get_foo() -> int: return 12
+
+[file project/ba.py]
+from . import b
+b.FOO
+
+[file project/b.py]
+import foo
+from . import c
+FOO = foo.get_foo()
+
+[file project/c.py]
+
+[file project/__init__.py]
+from . import ba
+
 [case testSuperclassInImportCycle]
 import a
 import d
@@ -1853,7 +1895,7 @@ reveal_type(has_getattr.any_attribute)
 def __getattr__(x: int, y: str) -> str: ...
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str"
+tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str" for "__getattr__"
 main:3: error: Revealed type is 'builtins.str'
 
 [builtins fixtures/module.pyi]
@@ -1861,10 +1903,14 @@ main:3: error: Revealed type is 'builtins.str'
 [case testModuleLevelGetattrNotCallable]
 import has_getattr
 
-reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'  # E: Module has no attribute "any_attribute"
+reveal_type(has_getattr.any_attribute)
 
 [file has_getattr.pyi]
 __getattr__ = 3
+
+[out]
+tmp/has_getattr.pyi:1: error: Invalid signature "builtins.int" for "__getattr__"
+main:3: error: Revealed type is 'Any'
 
 [builtins fixtures/module.pyi]
 
@@ -1877,18 +1923,24 @@ def __getattr__(name): ...
 
 [builtins fixtures/module.pyi]
 
-[case testModuleLevelGetattrNotStub]
-
+[case testModuleLevelGetattrNotStub36]
+# flags: --python-version 3.6
 import has_getattr
-reveal_type(has_getattr.any_attribute)
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'Any'  # E: Module has no attribute "any_attribute"
 
 [file has_getattr.py]
-def __getattr__(name): ...
+def __getattr__(name) -> str: ...
 
-[out]
-tmp/has_getattr.py:1: error: __getattr__ is not valid at the module level outside a stub file
-main:3: error: Revealed type is 'Any'
-main:3: error: Module has no attribute "any_attribute"
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrNotStub37]
+# flags: --python-version 3.7
+
+import has_getattr
+reveal_type(has_getattr.any_attribute)  # E: Revealed type is 'builtins.str'
+
+[file has_getattr.py]
+def __getattr__(name) -> str: ...
 
 [builtins fixtures/module.pyi]
 
@@ -1915,18 +1967,25 @@ def __getattr__(name: str) -> int: ...
 
 [builtins fixtures/module.pyi]
 
-[case testModuleLevelGetattrImportFromNotStub]
-from non_stub import name
-reveal_type(name)
+[case testModuleLevelGetattrImportFromNotStub36]
+# flags: --python-version 3.6
+from non_stub import name  # E: Module 'non_stub' has no attribute 'name'
+reveal_type(name)  # E: Revealed type is 'Any'
 
 [file non_stub.py]
 from typing import Any
 def __getattr__(name: str) -> Any: ...
 
-[out]
-tmp/non_stub.py:2: error: __getattr__ is not valid at the module level outside a stub file
-main:1: error: Module 'non_stub' has no attribute 'name'
-main:2: error: Revealed type is 'Any'
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrImportFromNotStub37]
+# flags: --python-version 3.7
+from non_stub import name
+reveal_type(name)  # E: Revealed type is 'Any'
+
+[file non_stub.py]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
 
 [builtins fixtures/module.pyi]
 
@@ -1943,6 +2002,60 @@ def __getattr__(name: str) -> Any: ...
 main:2: error: Revealed type is 'Any'
 main:2: error: Name 'name' is not defined
 main:3: error: Revealed type is 'Any'
+
+[builtins fixtures/module.pyi]
+
+[case testModuleLevelGetattrAssignedGood]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)  # E: Revealed type is 'builtins.int'
+
+[file non_stub.py]
+from typing import Callable
+
+def make_getattr_good() -> Callable[[str], int]: ...
+__getattr__ = make_getattr_good()  # OK
+
+[case testModuleLevelGetattrAssignedBad]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)
+
+[file non_stub.py]
+from typing import Callable
+
+def make_getattr_bad() -> Callable[[], int]: ...
+__getattr__ = make_getattr_bad()
+
+[out]
+tmp/non_stub.py:4: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+main:3: error: Revealed type is 'builtins.int'
+
+[case testModuleLevelGetattrImportedGood]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)  # E: Revealed type is 'builtins.int'
+
+[file non_stub.py]
+from has_getattr import __getattr__
+
+[file has_getattr.py]
+def __getattr__(name: str) -> int: ...
+
+[case testModuleLevelGetattrImportedBad]
+# flags: --python-version 3.7
+import non_stub
+reveal_type(non_stub.name)
+
+[file non_stub.py]
+from has_getattr import __getattr__
+
+[file has_getattr.py]
+def __getattr__() -> int: ...
+
+[out]
+tmp/has_getattr.py:1: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+main:3: error: Revealed type is 'builtins.int'
 
 [builtins fixtures/module.pyi]
 
