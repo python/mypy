@@ -1449,8 +1449,11 @@ x = ['x'] # E: List item 0 has incompatible type "str"; expected "int"
 [builtins fixtures/list.pyi]
 
 [case testConditionalExpressionUnion]
+from typing import Union
 reveal_type(1 if bool() else 2) # E: Revealed type is 'builtins.int'
-reveal_type(1 if bool() else '') # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(1 if bool() else '') # E: Revealed type is 'builtins.object'
+x: Union[int, str] = reveal_type(1 if bool() else '') \
+    # E: Revealed type is 'Union[builtins.int, builtins.str]'
 class A:
     pass
 class B(A):
@@ -1464,11 +1467,17 @@ b = B()
 c = C()
 d = D()
 reveal_type(a if bool() else b) # E: Revealed type is '__main__.A'
-reveal_type(b if bool() else c) # E: Revealed type is 'Union[__main__.B, __main__.C]'
-reveal_type(c if bool() else b) # E: Revealed type is 'Union[__main__.C, __main__.B]'
-reveal_type(c if bool() else a) # E: Revealed type is 'Union[__main__.C, __main__.A]'
-reveal_type(d if bool() else b) # E: Revealed type is 'Union[__main__.D, __main__.B]'
+reveal_type(b if bool() else c) # E: Revealed type is 'builtins.object'
+reveal_type(c if bool() else b) # E: Revealed type is 'builtins.object'
+reveal_type(c if bool() else a) # E: Revealed type is 'builtins.object'
+reveal_type(d if bool() else b) # E: Revealed type is '__main__.A'
 [builtins fixtures/bool.pyi]
+
+[case testConditionalExpressionUnionWithAny]
+from typing import Union, Any
+a: Any
+x: Union[int, str] = reveal_type(a if int() else 1)  # E: Revealed type is 'Union[Any, builtins.int]'
+reveal_type(a if int() else 1)  # E: Revealed type is 'Any'
 
 
 -- Special cases
