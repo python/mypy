@@ -2357,8 +2357,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # branch's type.
             else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type)
 
-        # Only create a union type if the type context is a union to be mostly
-        # compatibile with older mypy versions where always did a join.
+        # Only create a union type if the type context is a union, to be mostly
+        # compatible with older mypy versions where we always did a join.
         #
         # TODO: Always create a union or at least in more cases?
         if isinstance(self.type_context[-1], UnionType):
