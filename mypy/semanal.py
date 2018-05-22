@@ -1301,7 +1301,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod,
-                                          module_public=module_public)
+                                          module_public=module_public,
+                                          no_serialize=True)
                     parent_mod.names[child] = sym
             id = parent
 
