@@ -2500,6 +2500,7 @@ class SymbolTableNode:
                  'implicit',
                  'is_aliasing',
                  'alias_name',
+                 'no_serialize'
                  )
 
     # TODO: This is a mess. Refactor!
