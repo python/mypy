@@ -578,6 +578,8 @@ def pytest_addoption(parser: Any) -> None:
     group.addoption('--update-data', action='store_true', default=False,
                     help='Update test data to reflect actual output'
                          ' (supported only for certain tests)')
+    group.addoption('--mypy-verbose', action='count',
+                    help='Set the verbose flag when creating mypy Options')
 
 
 # This function name is special to pytest.  See
