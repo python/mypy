@@ -539,21 +539,25 @@ Dealing with conflicting names
 
 Suppose you have a class with a method whose name is the same as an
 imported (or built-in) type, and you want to use the type in another
-method signature.  E.g.
+method signature.  E.g.:
 
 .. code-block:: python
 
-   class C:
-       def str(self): ...
-       def method(self: arg: str): ...
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes):  # error: Invalid type "mod.Message.bytes"
+           ...
 
 The third line elicits an error because mypy sees the argument type
-``str`` as a reference to the method by that name.  Other than
+``bytes`` as a reference to the method by that name.  Other than
 renaming the method, a work-around is to use an alias:
 
 .. code-block:: python
 
-   str_ = str
-   class C:
-       def str(self): ...
-       def method(self: arg: str_): ...
+   bytes_ = bytes
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes_):
+           ...
