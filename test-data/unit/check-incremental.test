@@ -4363,6 +4363,7 @@ import b
 [rechecked b]
 
 [case testParentPatchingMess]
+# flags: --ignore-missing-imports --follow-imports=skip
 # cmd: mypy -m d d.k d.k.a d.k.v t
 [file d/__init__.py]
 [file d/k/__init__.py]
@@ -4370,7 +4371,7 @@ from d.k.a import x
 [file d/k/a.py]
 x = 10
 [file d/k/v.py]
-from d.k.e import x  # type: ignore
+from d.k.e import x
 
 [file t.py]
 from d import k
