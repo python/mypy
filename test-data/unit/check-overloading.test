@@ -1855,22 +1855,76 @@ from typing import overload, Union, TypeVar, Generic
 
 T = TypeVar('T')
 
-class Wrapper1(Generic[T]): pass
-class Wrapper2(Generic[T]): pass
+class W1(Generic[T]): pass
+class W2(Generic[T]): pass
 class A: pass
 class B: pass
 
 @overload
-def f(x: Wrapper1[T]) -> T: ...
+def foo(x: W1[T]) -> T: ...
 @overload
-def f(x: Wrapper2[T]) -> T: ...
-def f(x): ...
+def foo(x: W2[T]) -> T: ...
+def foo(x): ...
 
-obj1: Union[Wrapper1[A], Wrapper2[A]]
-reveal_type(f(obj1))  # E: Revealed type is '__main__.A'
+def bar(x: Union[W1[T], W2[T]]) -> T: ...
 
-obj2: Union[Wrapper1[A], Wrapper2[B]]
-reveal_type(f(obj2))  # E: Revealed type is 'Union[__main__.A, __main__.B]'
+class SomeType(Generic[T]):
+    @overload
+    def foo(self, x: W1[T]) -> T: ...
+    @overload
+    def foo(self, x: W2[T]) -> T: ...
+    def foo(self, x): ...
+
+    def bar(self, x: Union[W1[T], W2[T]]) -> T: ...
+
+def wrapper(mysterious: T) -> T:
+    obj1: Union[W1[A], W2[A]]
+
+    # Phase 1: Things mypy should be able to infer
+
+    a1: A = foo(obj1)
+    a2 = foo(obj1)
+    a3 = SomeType[A]().foo(obj1)
+
+    reveal_type(a1)  # E: Revealed type is '__main__.A'
+    reveal_type(a2)  # E: Revealed type is '__main__.A*'
+    reveal_type(a3)  # E: Revealed type is '__main__.A*'
+
+    # Phase 2: Things mypy should be able to infer, but does not
+    #          due to bugs unrelated to overloads
+    #
+    #          (We confirm this by checking to see that the error
+    #          message is identical to what we would have gotten if
+    #          we manually union the overload)
+
+    a4_overload: A = SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    a4_union: A    = SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+
+    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+
+
+    # Phase 3: Things where type inference is impossible and
+    #          mypy should report an error
+
+    obj2: Union[W1[A], W2[B]]
+
+    foo(obj2)  # E: Cannot infer type argument 1 of "foo"
+    bar(obj2)  # E: Cannot infer type argument 1 of "bar"
+
+    b2_overload: A = foo(obj2)  # E: Cannot infer type argument 1 of "foo"
+    b2_union: A    = bar(obj2)  # E: Cannot infer type argument 1 of "bar"
+
+    SomeType().foo(obj2)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    SomeType().bar(obj2)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+
+    SomeType[A]().foo(obj2)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
+    SomeType[A]().bar(obj2)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
+
+    SomeType[T]().foo(obj2)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
+    SomeType[T]().bar(obj2)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
+
+    return mysterious
 
 [case testOverloadsAndNoneWithoutStrictOptional]
 # flags: --no-strict-optional

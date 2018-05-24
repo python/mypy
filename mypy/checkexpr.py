@@ -42,7 +42,7 @@ from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
-from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
@@ -1143,8 +1143,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             target = AnyType(TypeOfAny.from_error)  # type: Type
         elif any(isinstance(arg, UnionType) for arg in arg_types):
             # Step 4b: Try performing union math
-            unioned_callable = self.union_overload_matches(erased_targets, args, arg_kinds,
-                                                           arg_names, context)
+            unioned_callable = self.union_overload_matches(erased_targets)
             target = unioned_callable if unioned_callable is not None else erased_targets[0]
         else:
             # Step 4c: Use the first matching erased target: it won't match, but at
@@ -1265,12 +1264,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 matches.append(typ)
         return matches
 
-    def union_overload_matches(self,
-                               callables: List[CallableType],
-                               args: List[Expression],
-                               arg_kinds: List[int],
-                               arg_names: Optional[Sequence[Optional[str]]],
-                               context: Context) -> Optional[CallableType]:
+    def union_overload_matches(self, callables: List[CallableType]) -> Optional[CallableType]:
         """Accepts a list of overload signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
 
@@ -1279,9 +1273,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Assumes all of the given callables have argument counts compatible with the caller.
         """
-        assert len(callables) > 0
-        if len(callables) == 1:
+        if len(callables) == 0:
+            return None
+        elif len(callables) == 1:
             return callables[0]
+
+        # Note: we are assuming here that if a user uses some TypeVar 'T' in
+        # two different overloads, they meant for that TypeVar to mean the
+        # same thing.
+        #
+        # This function will make sure that all instances of that TypeVar 'T'
+        # refer to the same underlying TypeVarType and TypeVarDef objects to
+        # simplify the union-ing logic below.
+        #
+        # (If the user did *not* mean for 'T' to be consistently bound to the
+        # same type in their overloads, well, their code is probably too
+        # confusing and ought to be re-written anyways.)
+        callables, variables = merge_typevars_in_callables_by_name(callables)
 
         new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
         new_returns = []  # type: List[Type]
@@ -1294,17 +1302,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # We conservatively end if the overloads do not have the exact same signature.
                 # TODO: Enhance the union overload logic to handle a wider variety of signatures.
                 return None
-
-            if target.is_generic():
-                formal_to_actual = map_actuals_to_formals(
-                    arg_kinds, arg_names,
-                    target.arg_kinds, target.arg_names,
-                    lambda i: self.accept(args[i]))
-
-                target = freshen_function_type_vars(target)
-                target = self.infer_function_type_arguments_using_context(target, context)
-                target = self.infer_function_type_arguments(
-                    target, args, arg_kinds, formal_to_actual, context)
 
             for i, arg in enumerate(target.arg_types):
                 new_args[i].append(arg)
@@ -3171,3 +3168,44 @@ def map_formals_to_actuals(caller_kinds: List[int],
         for actual in actuals:
             actual_to_formal[actual].append(formal)
     return actual_to_formal
+
+
+def merge_typevars_in_callables_by_name(
+        callables: List[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
+    """Takes all the typevars present in the callables and 'combines' the ones with the same name.
+
+    For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and
+    "f(x: List[Tuple[T, S]]) -> Tuple[T, S]". Both callables use typevars named "T" and
+    "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
+    distinct ids.)
+
+    If we pass in both callables into this function, it returns a a list containing two
+    new callables that are identical in signature, but use the same underlying TypeVarDef
+    and TypeVarType objects for T and S.
+
+    This is useful if we want to take the output lists and "merge" them into one callable
+    in some way -- for example, when unioning together overloads.
+
+    Returns both the new list of callables and a list of all distinct TypeVarDef objects used.
+    """
+
+    output = []  # type: List[CallableType]
+    unique_typevars = {}  # type: Dict[str, TypeVarType]
+    variables = []  # type: List[TypeVarDef]
+
+    for target in callables:
+        if target.is_generic():
+            target = freshen_function_type_vars(target)
+
+            rename = {}  # Dict[TypeVarId, TypeVar]
+            for tvdef in target.variables:
+                name = tvdef.fullname
+                if name not in unique_typevars:
+                    unique_typevars[name] = TypeVarType(tvdef)
+                    variables.append(tvdef)
+                rename[tvdef.id] = unique_typevars[name]
+
+            target = cast(CallableType, expand_type(target, rename))
+        output.append(target)
+
+    return output, variables
