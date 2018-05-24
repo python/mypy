@@ -13,6 +13,7 @@ import mypy.nodes
 from mypy import experiments
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+    FuncDef
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
@@ -676,6 +677,8 @@ class CallableType(FunctionLike):
                                     # instantiation?
                  'bound_args',  # Bound type args, mostly unused but may be useful for
                                 # tools that consume mypy ASTs
+                 'def_extras',  # Information about original definition we want to serialize.
+                                # This is used for more detailed error messages.
                  )
 
     def __init__(self,
@@ -721,6 +724,16 @@ class CallableType(FunctionLike):
         if not bound_args:
             bound_args = ()
         self.bound_args = bound_args
+        if isinstance(definition, FuncDef):
+            # This information would be lost if we don't have definition
+            # after serialization, but it is useful in error messages.
+            # TODO: decide how to add more info here (file, line, column)
+            # without changing interface hash.
+            self.def_extras = {'first_arg': definition.arg_names[0]
+                               if definition.arg_names and definition.info and
+                               not definition.is_static else None}  # type: Dict[str, Any]
+        else:
+            self.def_extras = {}
 
     def copy_modified(self,
                       arg_types: List[Type] = _dummy,
@@ -737,7 +750,7 @@ class CallableType(FunctionLike):
                       special_sig: Optional[str] = _dummy,
                       from_type_type: bool = _dummy,
                       bound_args: List[Optional[Type]] = _dummy) -> 'CallableType':
-        return CallableType(
+        call_type = CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
@@ -756,6 +769,9 @@ class CallableType(FunctionLike):
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
         )
+        if not call_type.def_extras:
+            call_type.def_extras = dict(self.def_extras)
+        return call_type
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass()
@@ -907,13 +923,14 @@ class CallableType(FunctionLike):
                 'is_classmethod_class': self.is_classmethod_class,
                 'bound_args': [(None if t is None else t.serialize())
                                for t in self.bound_args],
+                'def_extras': dict(self.def_extras),
                 }
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'CallableType':
         assert data['.class'] == 'CallableType'
         # TODO: Set definition to the containing SymbolNode?
-        return CallableType([deserialize_type(t) for t in data['arg_types']],
+        call_type = CallableType([deserialize_type(t) for t in data['arg_types']],
                             data['arg_kinds'],
                             data['arg_names'],
                             deserialize_type(data['ret_type']),
@@ -926,6 +943,8 @@ class CallableType(FunctionLike):
                             bound_args=[(None if t is None else deserialize_type(t))
                                         for t in data['bound_args']],
                             )
+        call_type.def_extras = data['def_extras']
+        return call_type
 
 
 class Overloaded(FunctionLike):

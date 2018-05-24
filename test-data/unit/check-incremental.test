@@ -4378,3 +4378,35 @@ from d import k
 [file t.py.2]
 from d import k
 # dummy change
+
+[case testCachedBadProtocolNote]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+[file b.py]
+from typing import Iterable
+from a import Point
+p: Point
+it: Iterable[int] = p
+[file b.py.2]
+from typing import Iterable
+from a import Point
+p: Point
+it: Iterable[int] = p  # change
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
+[out]
+tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+tmp/b.py:4: note: Following member(s) of "Point" have conflicts:
+tmp/b.py:4: note:     Expected:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[int]
+tmp/b.py:4: note:     Got:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[str]
+[out2]
+tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+tmp/b.py:4: note: Following member(s) of "Point" have conflicts:
+tmp/b.py:4: note:     Expected:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[int]
+tmp/b.py:4: note:     Got:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[str]
