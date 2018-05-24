@@ -655,7 +655,7 @@ class B(A): pass
 @overload
 def f(x: A) -> A: pass
 @overload
-def f(x: B) -> B: pass   # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def f(x: B) -> B: pass   # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 [case testPartiallyCovariantOverlappingOverloadSignatures]
 from foo import *
@@ -677,7 +677,7 @@ class B(A): pass
 @overload
 def g(x: A) -> int: pass
 @overload
-def g(x: B) -> str: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def g(x: B) -> str: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 [case testCovariantOverlappingOverloadSignatures]
 from foo import *
@@ -717,7 +717,7 @@ from typing import Any, overload
 @overload
 def g(x: Any) -> Any: pass
 @overload
-def g(x: int) -> int: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def g(x: int) -> int: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 [case testOverloadedLtAndGtMethods]
 from foo import *
@@ -983,7 +983,7 @@ def g(x: U, y: V) -> None:
 [builtins fixtures/list.pyi]
 [out]
 
-[case testOverlapWithTypeVars]
+[case testOverloadOverlapWithTypeVars]
 from foo import *
 [file foo.pyi]
 from typing import overload, TypeVar, Sequence, List
@@ -996,12 +996,12 @@ def f(x: Sequence[int]) -> int: pass
 @overload
 def g(x: Sequence[T]) -> None: pass
 @overload
-def g(x: Sequence[str]) -> int: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def g(x: Sequence[str]) -> int: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 @overload
 def h(x: Sequence[str]) -> int: pass
 @overload
-def h(x: Sequence[T]) -> None: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def h(x: Sequence[T]) -> None: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 @overload
 def i(x: List[str]) -> int: pass  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
@@ -1039,7 +1039,7 @@ g(1, 'foo')
 g(1, 'foo', b'bar') # E: Value of type variable "AnyStr" of "g" cannot be "object"
 [builtins fixtures/primitives.pyi]
 
-[case testOverlapWithTypeVarsWithValuesOrdering]
+[case testOverloadOverlapWithTypeVarsWithValuesOrdering]
 from foo import *
 [file foo.pyi]
 from typing import overload, TypeVar
@@ -1048,7 +1048,7 @@ AnyStr = TypeVar('AnyStr', bytes, str)
 @overload
 def f(x: AnyStr) -> AnyStr: pass
 @overload
-def f(x: str) -> str: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def f(x: str) -> str: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 @overload
 def g(x: str) -> str: pass
@@ -1380,11 +1380,11 @@ def r1(x: Any) -> Any: ...
 @overload
 def r2(x: Tuple[A, ...]) -> A: ...
 @overload
-def r2(x: Tuple[A, A]) -> B: ...  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def r2(x: Tuple[A, A]) -> B: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 @overload
-def r2(x: Tuple[A]) -> B: ...  # E: Overloaded function signature 3 will never be matched: function 1's parameter type(s) are the same or broader
+def r2(x: Tuple[A]) -> B: ...  # E: Overloaded function signature 3 will never be matched: signature 1's parameter type(s) are the same or broader
 @overload
-def r2(x: Tuple[()]) -> B: ...  # E: Overloaded function signature 4 will never be matched: function 1's parameter type(s) are the same or broader
+def r2(x: Tuple[()]) -> B: ...  # E: Overloaded function signature 4 will never be matched: signature 1's parameter type(s) are the same or broader
 def r2(x: Any) -> Any: ...
 
 [builtins fixtures/tuple.pyi]
@@ -1551,7 +1551,7 @@ class Y: ...
 @overload
 def f(*, p1: X, p2: A) -> X: ...
 @overload
-def f(*, p2: B, p1: X) -> Y: ...  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def f(*, p2: B, p1: X) -> Y: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 def f(*, p1, p2): ...
 
 @overload
@@ -1631,7 +1631,7 @@ def foo1(x: str, y: str = ...) -> int: ...
 @overload
 def foo2(x: str, y: str = ...) -> int: ...
 @overload
-def foo2(x: str) -> str: ...  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def foo2(x: str) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 @overload
 def foo3(x: str) -> str: ...
@@ -1685,7 +1685,7 @@ class OverloadClass:
     @overload
     def foo(self, value: str) -> None: pass
     @overload
-    def foo(self) -> None: pass  # E: Overloaded function signature 3 will never be matched: function 1's parameter type(s) are the same or broader
+    def foo(self) -> None: pass  # E: Overloaded function signature 3 will never be matched: signature 1's parameter type(s) are the same or broader
     def foo(self, *args): pass
 
 [builtins fixtures/property.pyi]

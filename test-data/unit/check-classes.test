@@ -1656,7 +1656,7 @@ class C(A):
     def __add__(self, x: 'A') -> 'A': pass
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
-tmp/foo.pyi:11: error: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+tmp/foo.pyi:11: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 [case testReverseOperatorMethodArgumentType]
 from typing import Any
@@ -1725,7 +1725,7 @@ class A:
     @overload
     def __radd__(self, x: 'A') -> str: pass
     @overload
-    def __radd__(self, x: 'A') -> Any: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+    def __radd__(self, x: 'A') -> Any: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 [out]
 
 [case testReverseOperatorMethodArgumentTypeAndOverloadedMethod]
@@ -2923,7 +2923,7 @@ class Sub(Super):
     @overload  # E: Signature of "foo" incompatible with supertype "Super"
     def foo(self, a: A) -> A: pass
     @overload
-    def foo(self, a: B) -> C: pass  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+    def foo(self, a: B) -> C: pass  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
     @overload
     def foo(self, a: C) -> C: pass
 [builtins fixtures/classmethod.pyi]

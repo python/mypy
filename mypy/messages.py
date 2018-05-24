@@ -950,7 +950,7 @@ class MessageBuilder:
                                               context: Context) -> None:
         self.fail(
             'Overloaded function signature {index2} will never be matched: '
-            'function {index1}\'s parameter type(s) are the same or broader'.format(
+            'signature {index1}\'s parameter type(s) are the same or broader'.format(
                 index1=index1,
                 index2=index2),
             context)
