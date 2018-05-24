@@ -595,6 +595,27 @@ def is_callable_compatible(left: CallableType, right: CallableType,
         is why the default is to check the args contravariantly. However, it's occasionally
         useful to check the args using some other check, so we leave the variance
         configurable.
+
+        For example, when checking the validity of overloads, it's useful to see if
+        the first overload alternative has more precise arguments then the second.
+        We would want to check the arguments covariantly in that case.
+
+        Note! The following two function calls are NOT equivalent:
+
+            is_callable_compatible(f, g, is_compat=is_subtype, check_args_covariantly=False)
+            is_callable_compatible(g, f, is_compat=is_subtype, check_args_covariantly=True)
+
+        The two calls are similar in that they both check the function arguments in
+        the same direction: they both run `is_subtype(argument_from_g, argument_from_f)`.
+
+        However, the two calls differ in which direction they check things likee
+        keyword arguments. For example, suppose f and g are defined like so:
+
+            def f(x: int, *y: int) -> int: ...
+            def g(x: int) -> int: ...
+
+        In this case, the first call will succeed and the second will fail: f is a
+        valid stand-in for g but not vice-versa.
     """
     if is_compat_return is None:
         is_compat_return = is_compat

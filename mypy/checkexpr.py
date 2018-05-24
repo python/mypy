@@ -1188,6 +1188,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    ) -> Optional[Tuple[Type, Type]]:
         """Attempts to find the first matching callable from the given list.
 
+        If a match is found, returns a tuple containing the result type and the inferred
+        callee type. (This tuple is meant to be eventually returned by check_call.)
         If multiple targets match due to ambiguous Any parameters, returns (AnyType, AnyType).
         If no targets match, returns None.
 

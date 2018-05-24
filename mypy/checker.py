@@ -414,6 +414,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         # At this point we should have set the impl already, and all remaining
         # items are decorators
+        #
+        # Note: we force mypy to check overload signatures in strict-optional mode
+        # so we don't incorrectly report errors when a user tries typing an overload
+        # that happens to have a 'if the argument is None' fallback.
+        #
+        # For example, the following is fine in strict-optional mode but would throw
+        # the unsafe overlap error when strict-optional is disabled:
+        #
+        #     @overload
+        #     def foo(x: None) -> int: ...
+        #     @overload
+        #     def foo(x: str) -> str: ...
+        #
+        # See Python 2's map function for a concrete example of this kind of overload.
         with experiments.strict_optional_set(True):
             for i, item in enumerate(defn.items):
                 # TODO overloads involving decorators
@@ -3581,14 +3595,11 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
                                               other: CallableType) -> bool:
     """Check if two overloaded function signatures may be unsafely overlapping.
 
-    We consider two functions 's' and 't' to be unsafely overlapping both
+    We consider two functions 's' and 't' to be unsafely overlapping both if
     of the following are true:
 
     1.  s's parameters are all more precise or partially overlapping with t's
-    1.  s's return type is NOT a subtype of t's.
-
-    both can be valid for the same
-    statically typed values and the return types are incompatible.
+    2.  s's return type is NOT a subtype of t's.
 
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
