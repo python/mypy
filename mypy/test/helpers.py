@@ -347,6 +347,9 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
             all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
+    if testcase.config.getoption('--mypy-verbose'):
+        options.verbosity = testcase.config.getoption('--mypy-verbose')
+
     return options
 
 
