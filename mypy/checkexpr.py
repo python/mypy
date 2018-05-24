@@ -1342,8 +1342,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return callables[0].copy_modified(
             arg_types=final_args,
             ret_type=UnionType.make_simplified_union(new_returns),
-            implicit=True,
-            from_overloads=True)
+            variables=variables,
+            implicit=True)
 
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
                                     arg_names: Optional[Sequence[Optional[str]]],
