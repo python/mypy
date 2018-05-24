@@ -151,6 +151,7 @@ class ASTConverter(ast27.NodeTransformer):
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
+        self.unicode_literals = False
 
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
@@ -657,6 +658,8 @@ class ASTConverter(ast27.NodeTransformer):
                            n.level,
                            [(a.name, a.asname) for a in n.names])
         self.imports.append(i)
+        if n.module == '__future__' and any(nm.name == 'unicode_literals' for nm in n.names):
+            self.unicode_literals = True
         return i
 
     # Global(identifier* names)
@@ -884,6 +887,8 @@ class ASTConverter(ast27.NodeTransformer):
             contents = str(n)[2:-1]
             return StrExpr(contents)
         else:
+            if self.unicode_literals and all(ord(c) < 128 for c in s.s):  # ASCII only
+                return StrExpr(s.s)
             return UnicodeExpr(s.s)
 
     # Ellipsis
