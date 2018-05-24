@@ -429,6 +429,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         #
         # See Python 2's map function for a concrete example of this kind of overload.
         with experiments.strict_optional_set(True):
+            is_descriptor_get = defn.info is not None and defn.name() == "__get__"
             for i, item in enumerate(defn.items):
                 # TODO overloads involving decorators
                 assert isinstance(item, Decorator)
@@ -447,7 +448,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if overload_can_never_match(sig1, sig2):
                         self.msg.overloaded_signature_will_never_match(
                             i + 1, i + j + 2, item2.func)
-                    elif is_unsafe_overlapping_overload_signatures(sig1, sig2):
+                    elif (not is_descriptor_get
+                          and is_unsafe_overlapping_overload_signatures(sig1, sig2)):
                         self.msg.overloaded_signatures_overlap(
                             i + 1, i + j + 2, item.func)
                 if defn.impl:

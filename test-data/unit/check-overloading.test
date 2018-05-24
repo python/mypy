@@ -2163,3 +2163,78 @@ def test_narrow_none() -> None:
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testOverloadWithNonGenericDescriptor]
+from typing import overload, Any, Optional, Union
+
+class FakeAttribute:
+    @overload
+    def dummy(self, instance: None, owner: Any) -> 'FakeAttribute': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    @overload
+    def dummy(self, instance: object, owner: Any) -> int: ...
+    def dummy(self, instance: Optional[object], owner: Any) -> Union['FakeAttribute', int]: ...
+
+class NumberAttribute:
+    @overload
+    def __get__(self, instance: None, owner: Any) -> 'NumberAttribute': ...
+    @overload
+    def __get__(self, instance: object, owner: Any) -> int: ...
+    def __get__(self, instance: Optional[object], owner: Any) -> Union['NumberAttribute', int]:
+        if instance is None:
+            return self
+        else:
+            return 3
+
+    def foo(self) -> str: ...
+
+class MyModel:
+    my_number = NumberAttribute()
+
+reveal_type(MyModel().my_number)  # E: Revealed type is 'builtins.int'
+MyModel().my_number.foo()         # E: "int" has no attribute "foo"
+
+reveal_type(MyModel.my_number)        # E: Revealed type is '__main__.NumberAttribute'
+reveal_type(MyModel.my_number.foo())  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadWithGenericDescriptor]
+from typing import overload, Any, Optional, TypeVar, Type, Union, Generic
+
+T = TypeVar('T')
+
+class FakeAttribute(Generic[T]):
+    @overload
+    def dummy(self, instance: None, owner: Type[T]) -> 'FakeAttribute[T]': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    @overload
+    def dummy(self, instance: T, owner: Type[T]) -> int: ...
+    def dummy(self, instance: Optional[T], owner: Type[T]) -> Union['FakeAttribute[T]', int]: ...
+
+class NumberAttribute(Generic[T]):
+    @overload
+    def __get__(self, instance: None, owner: Type[T]) -> 'NumberAttribute[T]': ...
+    @overload
+    def __get__(self, instance: T, owner: Type[T]) -> int: ...
+    def __get__(self, instance: Optional[T], owner: Type[T]) -> Union['NumberAttribute[T]', int]:
+        if instance is None:
+            return self
+        else:
+            return 3
+
+    def foo(self) -> str: ...
+
+class MyModel:
+    my_number = NumberAttribute[MyModel]()
+
+reveal_type(MyModel().my_number)  # E: Revealed type is 'builtins.int'
+MyModel().my_number.foo()         # E: "int" has no attribute "foo"
+
+reveal_type(MyModel.my_number)        # E: Revealed type is '__main__.NumberAttribute[__main__.MyModel*]'
+reveal_type(MyModel.my_number.foo())  # E: Revealed type is 'builtins.str'
+
+reveal_type(NumberAttribute[MyModel]().__get__(None, MyModel))  # E: Revealed type is '__main__.NumberAttribute[__main__.MyModel*]'
+reveal_type(NumberAttribute[str]().__get__(None, str))      # E: Revealed type is '__main__.NumberAttribute[builtins.str*]'
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
