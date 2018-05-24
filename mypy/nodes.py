@@ -2487,6 +2487,18 @@ class SymbolTableNode:
             (This is currently used for simple aliases like `A = int` instead
             of .type_override)
         alias_name: TODO
+        no_serialize: Do not serialize this node if True. This is used to prevent
+            keys in the cache that refer to modules on which this file does not
+            depend. Currently this can happen if there is a module not in build
+            used e.g. like this:
+                import a.b.c # type: ignore
+            This will add a submodule symbol to parent module `a` symbol table,
+            but `a.b` is _not_ added as its dependency. Therefore, we should
+            not serialize these symbols as they may not be found during fixup
+            phase, instead they will be re-added during subsequent patch parents
+            phase.
+            TODO: Refactor build.py to make dependency tracking more transparent
+            and/or refactor look-up functions to not require parent patching.
     """
 
     __slots__ = ('kind',
@@ -2500,7 +2512,7 @@ class SymbolTableNode:
                  'implicit',
                  'is_aliasing',
                  'alias_name',
-                 'no_serialize'
+                 'no_serialize',
                  )
 
     # TODO: This is a mess. Refactor!
