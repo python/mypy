@@ -1,7 +1,7 @@
 .. _cheat-sheet-py3:
 
-Mypy syntax cheat sheet (Python 3)
-==================================
+Type hints cheat sheet (Python 3)
+=================================
 
 This document is a quick cheat sheet showing how the `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
 language represents various common types in Python 3. Unless otherwise noted, the syntax is valid on all versions of Python 3.
