@@ -931,18 +931,18 @@ class CallableType(FunctionLike):
         assert data['.class'] == 'CallableType'
         # TODO: Set definition to the containing SymbolNode?
         call_type = CallableType([deserialize_type(t) for t in data['arg_types']],
-                            data['arg_kinds'],
-                            data['arg_names'],
-                            deserialize_type(data['ret_type']),
-                            Instance.deserialize(data['fallback']),
-                            name=data['name'],
-                            variables=[TypeVarDef.deserialize(v) for v in data['variables']],
-                            is_ellipsis_args=data['is_ellipsis_args'],
-                            implicit=data['implicit'],
-                            is_classmethod_class=data['is_classmethod_class'],
-                            bound_args=[(None if t is None else deserialize_type(t))
-                                        for t in data['bound_args']],
-                            )
+                                 data['arg_kinds'],
+                                 data['arg_names'],
+                                 deserialize_type(data['ret_type']),
+                                 Instance.deserialize(data['fallback']),
+                                 name=data['name'],
+                                 variables=[TypeVarDef.deserialize(v) for v in data['variables']],
+                                 is_ellipsis_args=data['is_ellipsis_args'],
+                                 implicit=data['implicit'],
+                                 is_classmethod_class=data['is_classmethod_class'],
+                                 bound_args=[(None if t is None else deserialize_type(t))
+                                            for t in data['bound_args']],
+                                 )
         call_type.def_extras = data['def_extras']
         return call_type
 
