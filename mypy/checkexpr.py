@@ -1196,9 +1196,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
 
         arg_messages = self.msg if arg_messages is None else arg_messages
-        matches = []  # type: List[CallableType]
-        inferred = []  # type: List[Tuple[Type, Type]]
-        args_contain_any = any(isinstance(arg, AnyType) for arg in arg_types)
+        matches = []         # type: List[CallableType]
+        return_types = []    # type: List[Type]
+        inferred_types = []  # type: List[Type]
+        args_contain_any = any(map(has_any_type, arg_types))
 
         for typ in plausible_targets:
             overload_messages = self.msg.clean_copy()
@@ -1208,7 +1209,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Passing `overload_messages` as the `arg_messages` parameter doesn't
                 # seem to reliably catch all possible errors.
                 # TODO: Figure out why
-                result = self.check_call(
+                ret_type, infer_type = self.check_call(
                     callee=typ,
                     args=args,
                     arg_kinds=arg_kinds,
@@ -1222,31 +1223,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             is_match = not overload_messages.is_errors()
             if is_match:
+                # Return early if possible; otherwise record info so we can
+                # check for ambiguity due to 'Any' below.
                 if not args_contain_any:
-                    # There is no possibility of ambiguity due to 'Any', so we can
-                    # just end right away:
-                    return result
-                elif (args_contain_any and matches
-                        and not is_same_type(matches[-1].ret_type, typ.ret_type)
-                        and any_arg_causes_overload_ambiguity(
-                            matches + [typ], arg_types, arg_kinds, arg_names)):
-                    # Ambiguous return type. The caller has provided some
-                    # Any argument types (which are okay to use in calls),
-                    # so we fall back to returning 'Any'.
-                    source = AnyType(TypeOfAny.special_form)
-                    return self.check_call(callee=source,
-                                           args=args,
-                                           arg_kinds=arg_kinds,
-                                           arg_names=arg_names,
-                                           context=context,
-                                           arg_messages=arg_messages,
-                                           callable_name=callable_name,
-                                           object_type=object_type)
-                else:
-                    matches.append(typ)
-                    inferred.append(result)
-
-        return inferred[0] if len(inferred) > 0 else None
+                    return ret_type, infer_type
+                matches.append(typ)
+                return_types.append(ret_type)
+                inferred_types.append(infer_type)
+ 
+        if len(matches) == 0:
+            # No match was found
+            return None
+        elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
+            # An argument of type or containing the type 'Any' caused ambiguity.
+            # We infer a type of 'Any'
+            return self.check_call(callee=AnyType(TypeOfAny.special_form),
+                                   args=args,
+                                   arg_kinds=arg_kinds,
+                                   arg_names=arg_names,
+                                   context=context,
+                                   arg_messages=arg_messages,
+                                   callable_name=callable_name,
+                                   object_type=object_type)
+        else:
+            # Success! No ambiguity; return the first match.
+            return return_types[0], inferred_types[0]
 
     def overload_erased_call_targets(self,
                                      plausible_targets: List[CallableType],
@@ -3101,11 +3102,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
 
 
-def any_arg_causes_overload_ambiguity(items: List[CallableType],
-                                      arg_types: List[Type],
-                                      arg_kinds: List[int],
-                                      arg_names: Optional[Sequence[Optional[str]]]) -> bool:
-    """May an Any actual argument cause ambiguous result type on call to overloaded function?
+def any_causes_overload_ambiguity(items: List[CallableType],
+                                  return_types: List[Type],
+                                  arg_types: List[Type],
+                                  arg_kinds: List[int],
+                                  arg_names: Optional[Sequence[Optional[str]]]) -> bool:
+    """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
 
     Note that this sometimes returns True even if there is no ambiguity, since a correct
     implementation would be complex (and the call would be imprecisely typed due to Any
@@ -3117,6 +3119,9 @@ def any_arg_causes_overload_ambiguity(items: List[CallableType],
         arg_kinds: Actual argument kinds
         arg_names: Actual argument names
     """
+    if all_same_types(return_types):
+        return False
+
     actual_to_formal = [
         map_formals_to_actuals(
             arg_kinds, arg_names, item.arg_kinds, item.arg_names, lambda i: arg_types[i])
@@ -3124,7 +3129,7 @@ def any_arg_causes_overload_ambiguity(items: List[CallableType],
     ]
 
     for arg_idx, arg_type in enumerate(arg_types):
-        if isinstance(arg_type, AnyType):
+        if has_any_type(arg_type):
             matching_formals_unfiltered = [(item_idx, lookup[arg_idx])
                                            for item_idx, lookup in enumerate(actual_to_formal)
                                            if lookup[arg_idx]]

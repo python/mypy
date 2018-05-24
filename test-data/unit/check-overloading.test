@@ -1056,6 +1056,43 @@ def g(x: str) -> str: pass
 def g(x: AnyStr) -> AnyStr: pass
 [builtins fixtures/primitives.pyi]
 
+[case testOverloadsUsingAny]
+from typing import overload, List, Any, Union
+
+@overload
+def foo(x: List[int]) -> int: ...
+@overload
+def foo(x: List[str]) -> str: ...
+def foo(x): pass
+
+a: List[int]
+b: List[str]
+c: List[Any]
+d: Union[List[int], List[str]]
+e: List[bool]
+f: List[object]
+g: List[Union[int, str]]
+
+reveal_type(foo(a))
+reveal_type(foo(b))
+reveal_type(foo(c))
+reveal_type(foo(d))
+foo(e)
+foo(f)
+foo(g)
+
+[builtins fixtures/list.pyi]
+[out]
+main:17: error: Revealed type is 'builtins.int'
+main:18: error: Revealed type is 'builtins.str'
+main:19: error: Revealed type is 'Any'
+main:20: error: Revealed type is 'Union[builtins.int, builtins.str]'
+main:21: error: Argument 1 to "foo" has incompatible type "List[bool]"; expected "List[int]"
+main:21: note: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+main:21: note: Consider using "Sequence" instead, which is covariant
+main:22: error: Argument 1 to "foo" has incompatible type "List[object]"; expected "List[int]"
+main:23: error: Argument 1 to "foo" has incompatible type "List[Union[int, str]]"; expected "List[int]"
+
 [case testOverlappingOverloadCounting]
 from foo import *
 [file foo.pyi]
