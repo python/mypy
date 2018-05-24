@@ -2057,8 +2057,109 @@ f3: Optional[Callable[[int], str]]
 
 reveal_type(mymap(f1, seq))  # E: Revealed type is 'typing.Iterable[builtins.str*]'
 reveal_type(mymap(f2, seq))  # E: Revealed type is 'typing.Iterable[builtins.int*]'
-reveal_type(mymap(f3, seq))  # E: Revealed type is 'Union[typing.Iterable[builtins.int], typing.Iterable[builtins.str]]'
+reveal_type(mymap(f3, seq))  # E: Revealed type is 'Union[typing.Iterable[builtins.int], typing.Iterable[builtins.str*]]'
 
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testOverloadsAndNoReturnNarrowTypeNoStrictOptional]
+# flags: --no-strict-optional
+from typing import overload, Union, TypeVar, NoReturn, Optional
+
+@overload
+def narrow_int(x: str) -> NoReturn: ...
+@overload
+def narrow_int(x: int) -> int: ...
+def narrow_int(x):
+    assert isinstance(x, int)
+    return x
+
+T = TypeVar('T')
+@overload
+def narrow_none(x: None) -> NoReturn: ...
+@overload
+def narrow_none(x: T) -> T: ...
+def narrow_none(x):
+    assert x is not None
+    return x
+
+def test_narrow_int() -> None:
+    a: Union[int, str]
+    a = narrow_int(a)
+    reveal_type(a)  # E: Revealed type is 'builtins.int'
+
+    b: int
+    b = narrow_int(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: str
+    c = narrow_int(c)
+    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+                    # TODO: maybe we should make mypy report a warning instead?
+
+def test_narrow_none() -> None:
+    a: Optional[int]
+    a = narrow_none(a)
+    reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
+
+    b: int
+    b = narrow_none(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: None
+    c = narrow_none(c)
+    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadsAndNoReturnNarrowTypeWithStrictOptional]
+# flags: --strict-optional
+from typing import overload, Union, TypeVar, NoReturn, Optional
+
+@overload
+def narrow_int(x: str) -> NoReturn: ...
+@overload
+def narrow_int(x: int) -> int: ...
+def narrow_int(x):
+    assert isinstance(x, int)
+    return x
+
+T = TypeVar('T')
+@overload
+def narrow_none(x: None) -> NoReturn: ...
+@overload
+def narrow_none(x: T) -> T: ...
+def narrow_none(x):
+    assert x is not None
+    return x
+
+def test_narrow_int() -> None:
+    a: Union[int, str]
+    a = narrow_int(a)
+    reveal_type(a)  # E: Revealed type is 'builtins.int'
+
+    b: int
+    b = narrow_int(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: str
+    c = narrow_int(c)
+    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+                    # TODO: maybe we should make mypy report a warning instead?
+
+def test_narrow_none() -> None:
+    a: Optional[int]
+    a = narrow_none(a)
+    reveal_type(a)  # E: Revealed type is 'builtins.int'
+
+    b: int
+    b = narrow_none(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: None
+    c = narrow_none(c)
+    reveal_type(c)  # Branch is now dead
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]

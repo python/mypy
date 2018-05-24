@@ -1121,7 +1121,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         plausible_targets = self.plausible_overload_call_targets(arg_types, arg_kinds,
                                                                  arg_names, callee)
 
-        # Step 2: Attempt to find a matching overload
+        # Step 2: If the arguments contain a union, we try performing union math first.
+        erased_targets = None  # type: Optional[List[CallableType]]
+        unioned_result = None  # type: Optional[Tuple[Type, Type]]
+        unioned_errors = None  # type: Optional[MessageBuilder]
+        if any(isinstance(arg, UnionType) for arg in arg_types):
+            erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
+                                                               arg_kinds, arg_names, context)
+            unioned_callable = self.union_overload_matches(erased_targets)
+
+            if unioned_callable is not None:
+                unioned_errors = arg_messages.clean_copy()
+                unioned_result = self.check_call(unioned_callable, args, arg_kinds,
+                                                 context, arg_names,
+                                                 arg_messages=unioned_errors,
+                                                 callable_name=callable_name,
+                                                 object_type=object_type)
+                if not unioned_errors.is_errors():
+                    # Success! Stop early.
+                    return unioned_result
+
+        # Step 3: If the union math fails, or if there was no union in the argument types,
+        #         we fall back to checking each branch one-by-one.
         inferred_result = self.infer_overload_return_type(plausible_targets, args, arg_types,
                                                           arg_kinds, arg_names, callable_name,
                                                           object_type, context, arg_messages)
@@ -1129,27 +1150,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Success! Stop early.
             return inferred_result
 
-        # Step 3: At this point, we know none of the overload alternatives exactly match.
-        #         We fall back to using the erased types to help with union math/help us
-        #         produce a better error message.
-        erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
-                                                           arg_kinds, arg_names, context)
+        # Step 4: Failure. At this point, we know there is no match. We fall back to trying
+        #         to find a somewhat plausible overload target using the erased types
+        #         so we can produce a nice error message.
+        #
+        #         For example, suppose the user passes a value of type 'List[str]' into an
+        #         overload with signatures f(x: int) -> int and f(x: List[int]) -> List[int].
+        #
+        #         Neither alternative matches, but we can guess the user probably wants the
+        #         second one.
+        if erased_targets is None:
+            erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
+                                                               arg_kinds, arg_names, context)
 
-        # Step 4: Try and infer a second-best alternative.
-        if len(erased_targets) == 0:
-            # Step 4a: There are no viable targets, even if we relax our constraints. Give up.
+        # Step 5: We try and infer a second-best alternative if possible. If not, fall back
+        #         to using 'Any'.
+        if unioned_result is not None:
+            # When possible, return the error messages generated from the union-math attempt:
+            # they tend to be a little nicer.
+            assert unioned_errors is not None
+            arg_messages.add_errors(unioned_errors)
+            return unioned_result
+        elif len(erased_targets) > 0:
+            # Pick the first plausible erased target as the fallback
+            # TODO: Adjust the error message here to make it clear there was no match.
+            target = erased_targets[0]  # type: Type
+        else:
+            # There was no plausible match: give up
             if not self.chk.should_suppress_optional_error(arg_types):
                 arg_messages.no_variant_matches_arguments(callee, arg_types, context)
-            target = AnyType(TypeOfAny.from_error)  # type: Type
-        elif any(isinstance(arg, UnionType) for arg in arg_types):
-            # Step 4b: Try performing union math
-            unioned_callable = self.union_overload_matches(erased_targets)
-            target = unioned_callable if unioned_callable is not None else erased_targets[0]
-        else:
-            # Step 4c: Use the first matching erased target: it won't match, but at
-            #          least we can have a nicer error message.
-            # TODO: Adjust the error message here to make it clear there was no match.
-            target = erased_targets[0]
+            target = AnyType(TypeOfAny.from_error)
 
         return self.check_call(target, args, arg_kinds, context, arg_names,
                                arg_messages=arg_messages,
@@ -1230,7 +1260,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 matches.append(typ)
                 return_types.append(ret_type)
                 inferred_types.append(infer_type)
- 
+
         if len(matches) == 0:
             # No match was found
             return None
