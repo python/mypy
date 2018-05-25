@@ -11,7 +11,7 @@ import sys
 
 from typing import List
 
-from mypy.test.config import test_temp_dir
+from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
@@ -48,10 +48,12 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     args.append('--no-site-packages')
     # Type check the program.
     fixed = [python3_path, '-m', 'mypy']
+    env = {'PYTHONPATH': PREFIX}
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
-                               cwd=test_temp_dir)
+                               cwd=test_temp_dir,
+                               env=env)
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
