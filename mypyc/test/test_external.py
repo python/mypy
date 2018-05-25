@@ -45,7 +45,7 @@ class TestExternal(unittest.TestCase):
                'MYPYPATH': '%s:%s' % (mypy_dir, base_dir)}
         status = subprocess.call(
                 [sys.executable,
-                 os.path.join(mypy_dir, 'scripts', 'mypy'),
+                 '-m', 'mypy',
                  '--config-file', 'mypy.ini', '-p', 'mypyc'],
                 env=env)
         if status != 0:
