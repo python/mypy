@@ -270,7 +270,7 @@ reveal_type(f(B())) # E: Revealed type is '__main__.B'
 [builtins fixtures/isinstance.pyi]
 
 [case testTypeCheckOverloadWithImplTypeVarProblems]
-from typing import overload, Any, TypeVar
+from typing import overload, Any, TypeVar, Union
 
 T = TypeVar('T', bound='A')
 
@@ -284,7 +284,7 @@ def f(x: 'A') -> 'A': ...
 @overload
 def f(x: 'B') -> 'B': ...
 
-def f(x: Any) -> T:  # E: Type variable mismatch between overload signature 2 and implementation
+def f(x: Union[T, B]) -> T:  # E: Overloaded function implementation cannot produce return type of signature 2
     ...
 
 reveal_type(f(A())) # E: Revealed type is '__main__.A'
@@ -2070,7 +2070,7 @@ from typing import overload, Union, TypeVar, NoReturn, Optional
 def narrow_int(x: str) -> NoReturn: ...
 @overload
 def narrow_int(x: int) -> int: ...
-def narrow_int(x):
+def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
     assert isinstance(x, int)
     return x
 
@@ -2079,7 +2079,15 @@ T = TypeVar('T')
 def narrow_none(x: None) -> NoReturn: ...
 @overload
 def narrow_none(x: T) -> T: ...
-def narrow_none(x):
+def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
+    assert x is not None
+    return x
+
+@overload
+def narrow_none_v2(x: None) -> NoReturn: ...
+@overload
+def narrow_none_v2(x: T) -> T: ...
+def narrow_none_v2(x: Optional[T]) -> T:
     assert x is not None
     return x
 
@@ -2110,6 +2118,19 @@ def test_narrow_none() -> None:
     c = narrow_none(c)
     reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
+def test_narrow_none_v2() -> None:
+    a: Optional[int]
+    a = narrow_none_v2(a)
+    reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
+
+    b: int
+    b = narrow_none_v2(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: None
+    c = narrow_none_v2(c)
+    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2121,7 +2142,7 @@ from typing import overload, Union, TypeVar, NoReturn, Optional
 def narrow_int(x: str) -> NoReturn: ...
 @overload
 def narrow_int(x: int) -> int: ...
-def narrow_int(x):
+def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
     assert isinstance(x, int)
     return x
 
@@ -2130,7 +2151,15 @@ T = TypeVar('T')
 def narrow_none(x: None) -> NoReturn: ...
 @overload
 def narrow_none(x: T) -> T: ...
-def narrow_none(x):
+def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
+    assert x is not None
+    return x
+
+@overload
+def narrow_none_v2(x: None) -> NoReturn: ...
+@overload
+def narrow_none_v2(x: T) -> T: ...
+def narrow_none_v2(x: Optional[T]) -> T:
     assert x is not None
     return x
 
@@ -2160,6 +2189,64 @@ def test_narrow_none() -> None:
     c: None
     c = narrow_none(c)
     reveal_type(c)  # Branch is now dead
+
+def test_narrow_none_v2() -> None:
+    a: Optional[int]
+    a = narrow_none_v2(a)
+    reveal_type(a)  # E: Revealed type is 'builtins.int'
+
+    b: int
+    b = narrow_none_v2(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: None
+    c = narrow_none_v2(c)
+    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype]
+from typing import TypeVar, NoReturn, Union, overload
+
+class Parent: ...
+class A(Parent): ...
+class B(Parent): ...
+T = TypeVar('T', bound=Parent)
+
+@overload
+def narrow_to_not_a(x: A) -> NoReturn: ...
+@overload
+def narrow_to_not_a(x: T) -> T: ...
+def narrow_to_not_a(x: T) -> Union[NoReturn, T]:
+    assert not isinstance(x, A)
+    return x
+
+@overload
+def narrow_to_not_a_v2(x: A) -> NoReturn: ...
+@overload
+def narrow_to_not_a_v2(x: T) -> T: ...
+def narrow_to_not_a_v2(x: T) -> T:
+    assert not isinstance(x, A)
+    return x
+
+def test() -> None:
+    val: Union[A, B]
+    val = narrow_to_not_a(val)
+    reveal_type(val)   # E: Revealed type is '__main__.B'
+
+    val2: A
+    val2 = narrow_to_not_a(val2)
+    reveal_type(val2)  # Branch now dead
+
+def test_v2() -> None:
+    val: Union[A, B]
+    val = narrow_to_not_a_v2(val)
+    reveal_type(val)   # E: Revealed type is '__main__.B'
+
+    val2: A
+    val2 = narrow_to_not_a_v2(val2)
+    reveal_type(val2)  # Branch now dead
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
