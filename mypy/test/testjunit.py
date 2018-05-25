@@ -34,8 +34,7 @@ class JUnitXMLSuite(DataSuite):
         ] + files
 
         assert testcase.old_cwd is not None
-        fixed = [python3_path,
-                 os.path.join(testcase.old_cwd, 'scripts', 'mypy')]
+        fixed = [python3_path, '-m', 'mypy']
         process = subprocess.Popen(fixed + args,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.STDOUT,
