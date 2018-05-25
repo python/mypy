@@ -12,3 +12,4 @@ test_capi
 /.cache
 /.pytest_cache
 /dmypy.json
+/.dmypy.json
