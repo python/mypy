@@ -48,7 +48,8 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     args.append('--no-site-packages')
     # Type check the program.
     fixed = [python3_path, '-m', 'mypy']
-    env = {'PYTHONPATH': PREFIX}
+    env = os.environ.copy()
+    env['PYTHONPATH'] = PREFIX
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
