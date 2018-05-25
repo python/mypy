@@ -76,30 +76,37 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_branch(self, op: Branch) -> None:
         neg = '!' if op.negated else ''
 
+        cond = ''
         if op.op == Branch.BOOL_EXPR:
             expr_result = self.reg(op.left) # right isn't used
-            self.emit_line('if ({}({})) {{'.format(neg, expr_result))
+            cond = '{}({})'.format(neg, expr_result)
         elif op.op == Branch.IS_NONE:
             compare = '!=' if op.negated else '=='
-            self.emit_line('if ({} {} Py_None) {{'.format(self.reg(op.left), compare))
+            cond = '{} {} Py_None'.format(self.reg(op.left), compare)
         elif op.op == Branch.IS_ERROR:
             typ = self.env.types[op.left]
             compare = '!=' if op.negated else '=='
             if isinstance(typ, RTuple):
                 # TODO: What about empty tuple?
                 item_type = typ.types[0]
-                self.emit_line('if ({}.f0 {} {}) {{'.format(self.reg(op.left),
-                                                         compare,
-                                                         item_type.c_error_value()))
+                cond = '{}.f0 {} {}'.format(self.reg(op.left),
+                                            compare,
+                                            item_type.c_error_value())
             else:
-                self.emit_line('if ({} {} {}) {{'.format(self.reg(op.left),
-                                                      compare,
-                                                      typ.c_error_value()))
+                cond = '{} {} {}'.format(self.reg(op.left),
+                                         compare,
+                                         typ.c_error_value())
         else:
             left = self.reg(op.left)
             right = self.reg(op.right)
             fn = FunctionEmitterVisitor.BRANCH_OP_MAP[op.op]
-            self.emit_line('if (%s%s(%s, %s)) {' % (neg, fn, left, right))
+            cond = '%s%s(%s, %s)' % (neg, fn, left, right)
+
+        # For error checks, tell the compiler the branch is unlikely
+        if op.traceback_entry is not None:
+            cond = 'unlikely({})'.format(cond)
+
+        self.emit_line('if ({}) {{'.format(cond))
 
         if op.traceback_entry is not None:
             self.emit_line('CPy_AddTraceback("%s", "%s", %d, _globals);' % (self.source_path,

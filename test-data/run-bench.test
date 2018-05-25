@@ -50,6 +50,7 @@ def test(m):
 
 nsum, nsum2, nbuild = test(native)
 isum, isum2, ibuild = test(interpreted)
+print(nsum, nsum2, nbuild)
 print("Sum speedup:", isum/nsum)
 print("Sum method speedup:", isum2/nsum2)
 print("Build speedup:", ibuild/nbuild)
