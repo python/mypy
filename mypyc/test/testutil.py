@@ -3,13 +3,14 @@
 import contextlib
 import os.path
 import shutil
-from typing import List, Callable, Iterator
+from typing import List, Callable, Iterator, Optional
 
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
+from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc import genops
 from mypyc.ops import FuncIR
@@ -93,3 +94,16 @@ def build_ir_for_single_file(input_lines: List[str]) -> List[FuncIR]:
         raise CompileError(result.errors)
     module = genops.build_ir(result.files['__main__'], result.types)
     return module.functions
+
+
+def assert_test_output(testcase: DataDrivenTestCase, actual: List[str],
+                       message: str,
+                       expected: Optional[List[str]] = None) -> None:
+    expected_output = expected if expected is not None else testcase.output
+    if expected_output != actual and testcase.config.getoption('--update-data', False):
+        print('Actual output:')
+        print('\n'.join(actual))
+
+    assert_string_arrays_equal(
+        expected_output, actual,
+        '{} ({}, line {})'.format(message, testcase.file, testcase.line))

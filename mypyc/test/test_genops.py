@@ -6,7 +6,6 @@ import shutil
 from typing import List
 
 from mypy import build
-from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
@@ -16,7 +15,9 @@ from mypy import experiments
 from mypyc import genops
 from mypyc.ops import format_func
 
-from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite
+from mypyc.test.testutil import (
+    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
+)
 
 files = [
     'genops-basic.test',
@@ -65,10 +66,10 @@ class TestGenOps(MypycDataSuite):
                     actual = []
                     for fn in module.functions:
                         actual.extend(format_func(fn))
-            assert_string_arrays_equal(
-                expected_output, actual,
-                'Invalid source code output ({}, line {})'.format(testcase.file,
-                                                                  testcase.line))
+
+
+            assert_test_output(testcase, actual, 'Invalid source code output',
+                               expected_output)
 
 
 def get_func_names(expected: List[str]) -> List[str]:

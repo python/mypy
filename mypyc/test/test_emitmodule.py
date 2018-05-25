@@ -12,7 +12,9 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc import emitmodule
-from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite
+from mypyc.test.testutil import (
+    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
+)
 
 
 files = ['module-output.test']
@@ -48,6 +50,4 @@ class TestCompiler(MypycDataSuite):
                 out = e.messages
 
             # Verify output.
-            assert_string_arrays_equal(testcase.output, out,
-                                       'Invalid output ({}, line {})'.format(
-                                           testcase.file, testcase.line))
+            assert_test_output(testcase, out, 'Invalid output')

@@ -6,7 +6,6 @@ import shutil
 from typing import List
 
 from mypy import build
-from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
@@ -16,7 +15,9 @@ from mypy import experiments
 from mypyc import analysis
 from mypyc import genops
 from mypyc.ops import format_func, Register
-from mypyc.test.testutil import ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite
+from mypyc.test.testutil import (
+    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
+)
 
 files = [
     'analysis.test'
@@ -32,7 +33,6 @@ class TestAnalysis(MypycDataSuite):
         """Perform a data-flow analysis test case."""
 
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
-            expected_output = testcase.output
             program_text = '\n'.join(testcase.input)
 
             options = Options()
@@ -84,7 +84,4 @@ class TestAnalysis(MypycDataSuite):
                         pre = ', '.join(fn.env.names[reg] for reg in analysis_result.before[key])
                         post = ', '.join(fn.env.names[reg] for reg in analysis_result.after[key])
                         actual.append('%-8s %-23s %s' % (key, '{%s}' % pre, '{%s}' % post))
-            assert_string_arrays_equal(
-                expected_output, actual,
-                'Invalid source code output ({}, line {})'.format(testcase.file,
-                                                                  testcase.line))
+            assert_test_output(testcase, actual, 'Invalid source code output')
