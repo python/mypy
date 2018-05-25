@@ -5,7 +5,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.emit import Emitter, EmitterContext
 from mypyc.emitwrapper import generate_arg_check
-from mypyc.ops import ListRType, IntRType
+from mypyc.ops import list_rprimitive, int_rprimitive
 
 
 class TestArgCheck(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestArgCheck(unittest.TestCase):
 
     def test_check_list(self) -> None:
         emitter = Emitter(self.context)
-        generate_arg_check('x', ListRType(), emitter)
+        generate_arg_check('x', list_rprimitive, emitter)
         lines = emitter.fragments
         self.assert_lines([
             'PyObject *arg_x;',
@@ -29,7 +29,7 @@ class TestArgCheck(unittest.TestCase):
 
     def test_check_int(self) -> None:
         emitter = Emitter(self.context)
-        generate_arg_check('x', IntRType(), emitter)
+        generate_arg_check('x', int_rprimitive, emitter)
         lines = emitter.fragments
         self.assert_lines([
             'CPyTagged arg_x;',

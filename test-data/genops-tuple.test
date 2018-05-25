@@ -50,7 +50,7 @@ def f(x: List[bool]) -> bool:
 [out]
 def f(x):
     x :: list
-    r0 :: sequence_tuple
+    r0 :: tuple
     r1 :: int
     r2 :: object
     r3 :: bool
@@ -67,7 +67,7 @@ def f(x: Tuple[int, ...]) -> int:
   return len(x)
 [out]
 def f(x):
-    x :: sequence_tuple
+    x :: tuple
     r0 :: int
 L0:
     r0 = len x :: sequence_tuple
@@ -80,7 +80,7 @@ def f() -> int:
     return t[1]
 [out]
 def f():
-    t :: sequence_tuple
+    t :: tuple
     r0 :: tuple[int, int]
     r1, r2, r3 :: int
     r4 :: object

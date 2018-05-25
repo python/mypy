@@ -5,8 +5,10 @@ from typing import List, Set, Dict, Optional
 
 from mypyc.common import REG_PREFIX
 from mypyc.ops import (
-    Environment, Label, Register, RType, ObjectRType, TupleRType, UserRType, OptionalRType,
-    IntRType, type_struct_name
+    Environment, Label, Register, RType, RTuple, RInstance, ROptional,
+    RPrimitive, type_struct_name, is_int_rprimitive, is_bool_rprimitive, short_name,
+    is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
+    object_rprimitive
 )
 
 
@@ -82,15 +84,15 @@ class Emitter:
 
     # Higher-level operations
 
-    def declare_tuple_struct(self, tuple_type: TupleRType) -> None:
-        if tuple_type.struct_name not in self.context.declarations:
+    def declare_tuple_struct(self, tuple_type: RTuple) -> None:
+        if tuple_type.struct_name() not in self.context.declarations:
             dependencies = set()
             for typ in tuple_type.types:
                 # XXX other types might eventually need similar behavior
-                if isinstance(typ, TupleRType):
-                    dependencies.add(typ.struct_name)
+                if isinstance(typ, RTuple):
+                    dependencies.add(typ.struct_name())
 
-            self.context.declarations[tuple_type.struct_name] = HeaderDeclaration(
+            self.context.declarations[tuple_type.struct_name()] = HeaderDeclaration(
                 dependencies,
                 tuple_type.get_c_declaration(),
             )
@@ -101,12 +103,12 @@ class Emitter:
         For composite unboxed structures (e.g. tuples) recursively
         increment reference counts for each component.
         """
-        if rtype.name == 'int':
+        if is_int_rprimitive(rtype):
             self.emit_line('CPyTagged_IncRef(%s);' % dest)
-        elif isinstance(rtype, TupleRType):
+        elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref('{}.f{}'.format(dest, i), item_type)
-        elif not rtype.supports_unbox:
+        elif not rtype.is_unboxed:
             self.emit_line('Py_INCREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
@@ -116,22 +118,20 @@ class Emitter:
         For composite unboxed structures (e.g. tuples) recursively
         decrement reference counts for each component.
         """
-        if rtype.name == 'int':
+        if is_int_rprimitive(rtype):
             self.emit_line('CPyTagged_DecRef(%s);' % dest)
-        elif isinstance(rtype, TupleRType):
+        elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref('{}.f{}'.format(dest, i), item_type)
-        elif not rtype.supports_unbox:
+        elif not rtype.is_unboxed:
             self.emit_line('Py_DECREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
         pretty_name = typ.name
-        if pretty_name == 'sequence_tuple':
-            pretty_name = 'tuple'
-        elif isinstance(typ, OptionalRType):
+        if isinstance(typ, ROptional):
             pretty_name = '%s or None' % self.pretty_name(typ.value_type)
-        return pretty_name
+        return short_name(pretty_name)
 
     def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
                   custom_message: Optional[str] = None) -> None:
@@ -153,12 +153,12 @@ class Emitter:
             err = 'PyErr_SetString(PyExc_TypeError, "{} object expected");'.format(
                 self.pretty_name(typ))
         # TODO: Verify refcount handling.
-        if typ.name in ('list', 'dict'):
+        if is_list_rprimitive(typ) or is_dict_rprimitive(typ):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
-            if typ.name == 'list':
+            if is_list_rprimitive(typ):
                 prefix = 'PyList'
-            elif typ.name == 'dict':
+            elif is_dict_rprimitive(typ):
                 prefix = 'PyDict'
             else:
                 assert False, prefix
@@ -169,7 +169,7 @@ class Emitter:
                 err,
                 '{} = NULL;'.format(dest),
                 '}')
-        elif typ.name == 'sequence_tuple':
+        elif is_tuple_rprimitive(typ):
             if declare_dest:
                 self.emit_line('{} {};'.format(typ.ctype, dest))
             self.emit_lines(
@@ -179,7 +179,7 @@ class Emitter:
                 err,
                 '{} = NULL;'.format(dest),
                 '}')
-        elif isinstance(typ, UserRType):
+        elif isinstance(typ, RInstance):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
@@ -189,7 +189,7 @@ class Emitter:
                 err,
                 '{} = NULL;'.format(dest),
                 '}')
-        elif typ.name == 'None':
+        elif is_none_rprimitive(typ):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
@@ -199,7 +199,7 @@ class Emitter:
                 err,
                 '{} = NULL;'.format(dest),
                 '}')
-        elif isinstance(typ, OptionalRType):
+        elif isinstance(typ, ROptional):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
@@ -236,8 +236,8 @@ class Emitter:
                        custom_failure]
         else:
             failure = [raise_exc,
-                       '%s = %s;' % (dest, typ.c_error_value)]
-        if typ.name == 'int':
+                       '%s = %s;' % (dest, typ.c_error_value())]
+        if is_int_rprimitive(typ):
             if declare_dest:
                 self.emit_line('CPyTagged {};'.format(dest))
             self.emit_line('if (PyLong_Check({}))'.format(src))
@@ -248,7 +248,7 @@ class Emitter:
             self.emit_line('else {')
             self.emit_lines(*failure)
             self.emit_line('}')
-        elif typ.name == 'bool':
+        elif is_bool_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line('char {};'.format(dest))
@@ -257,7 +257,7 @@ class Emitter:
             self.emit_line('} else')
             conversion = 'PyObject_IsTrue({})'.format(src)
             self.emit_line('    {} = {};'.format(dest, conversion))
-        elif isinstance(typ, TupleRType):
+        elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
                 self.emit_line('{} {};'.format(typ.ctype, dest))
@@ -271,12 +271,12 @@ class Emitter:
                 self.emit_line('PyObject *{} = PyTuple_GetItem({}, {});'.format(temp, src, i))
                 temp2 = self.temp_name()
                 # Unbox or check the item.
-                if item_type.supports_unbox:
+                if item_type.is_unboxed:
                     self.emit_unbox(temp, temp2, item_type, custom_failure, declare_dest=True,
                                     borrow=borrow)
                 else:
                     if not borrow:
-                        self.emit_inc_ref(temp, ObjectRType())
+                        self.emit_inc_ref(temp, object_rprimitive)
                     self.emit_cast(temp, temp2, item_type, declare_dest=True)
                 self.emit_line('{}.f{} = {};'.format(dest, i, temp2))
             self.emit_line('}')
@@ -295,21 +295,21 @@ class Emitter:
             declaration = 'PyObject *'
         else:
             declaration = ''
-        if typ.name == 'int':
+        if is_int_rprimitive(typ):
             # Steal the existing reference if it exists.
             self.emit_line('{}{} = CPyTagged_StealAsObject({});'.format(declaration, dest, src))
-        elif typ.name == 'bool':
+        elif is_bool_rprimitive(typ):
             # TODO: The Py_RETURN macros return the correct PyObject * with reference count
             #       handling. Relevant here?
             self.emit_lines('{}{} = PyBool_FromLong({});'.format(declaration, dest, src))
-        elif isinstance(typ, TupleRType):
+        elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))
             self.emit_line('if ({} == NULL)'.format(dest))
             self.emit_line('    CPyError_OutOfMemory();')
             # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):
-                if not typ.supports_unbox:
+                if not typ.is_unboxed:
                     self.emit_line('PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
                 else:
                     inner_name = self.temp_name()
@@ -317,16 +317,16 @@ class Emitter:
                                   declare_dest=True)
                     self.emit_line('PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
         else:
-            assert not typ.supports_unbox
+            assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.
             self.emit_line('{}{} = {};'.format(declaration, dest, src))
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if not isinstance(rtype, TupleRType):
-            self.emit_line('if ({} == {}) {{'.format(value, rtype.c_error_value))
+        if not isinstance(rtype, RTuple):
+            self.emit_line('if ({} == {}) {{'.format(value, rtype.c_error_value()))
         else:
-            self.emit_line('if ({}.f0 == {}) {{'.format(value, rtype.types[0].c_error_value))
+            self.emit_line('if ({}.f0 == {}) {{'.format(value, rtype.types[0].c_error_value()))
         self.emit_lines(failure, '}')
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:
@@ -338,11 +338,11 @@ class Emitter:
         if not rtype.is_refcounted:
             # Not refcounted -> no pointers -> no GC interaction.
             return
-        elif isinstance(rtype, IntRType):
+        elif isinstance(rtype, RPrimitive) and rtype.name == 'builtins.int':
             self.emit_line('if (CPyTagged_CheckLong({})) {{'.format(target))
             self.emit_line('Py_VISIT(CPyTagged_LongAsObject({}));'.format(target))
             self.emit_line('}')
-        elif isinstance(rtype, TupleRType):
+        elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit('{}.f{}'.format(target, i), item_type)
         elif rtype.ctype == 'PyObject *':
@@ -360,16 +360,16 @@ class Emitter:
         if not rtype.is_refcounted:
             # Not refcounted -> no pointers -> no GC interaction.
             return
-        elif isinstance(rtype, IntRType):
+        elif isinstance(rtype, RPrimitive) and rtype.name == 'builtins.int':
             self.emit_line('if (CPyTagged_CheckLong({})) {{'.format(target))
             self.emit_line('CPyTagged __tmp = {};'.format(target))
-            self.emit_line('{} = {};'.format(target, rtype.c_undefined_value))
+            self.emit_line('{} = {};'.format(target, rtype.c_undefined_value()))
             self.emit_line('Py_XDECREF(CPyTagged_LongAsObject(__tmp));')
             self.emit_line('}')
-        elif isinstance(rtype, TupleRType):
+        elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear('{}.f{}'.format(target, i), item_type)
-        elif rtype.ctype == 'PyObject *' and rtype.c_undefined_value == 'NULL':
+        elif rtype.ctype == 'PyObject *' and rtype.c_undefined_value() == 'NULL':
             # The simplest case.
             self.emit_line('Py_CLEAR({});'.format(target))
         else:

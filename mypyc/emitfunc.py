@@ -5,17 +5,17 @@ from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, PrimitiveOp, Assign, LoadInt, LoadErrorValue, GetAttr,
     SetAttr, LoadStatic, TupleGet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast, Unbox, Label,
-    Register, RType, OP_BINARY, TupleRType, PyMethodCall
+    Register, RType, OP_BINARY, RTuple, PyMethodCall
 )
 
 
 def native_function_header(fn: FuncIR) -> str:
     args = []
     for arg in fn.args:
-        args.append('{}{}{}'.format(arg.type.ctype_spaced, REG_PREFIX, arg.name))
+        args.append('{}{}{}'.format(arg.type.ctype_spaced(), REG_PREFIX, arg.name))
 
     return 'static {ret_type}{prefix}{name}({args})'.format(
-        ret_type=fn.ret_type.ctype_spaced,
+        ret_type=fn.ret_type.ctype_spaced(),
         prefix=NATIVE_PREFIX,
         name=fn.cname,
         args=', '.join(args) or 'void')
@@ -85,16 +85,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         elif op.op == Branch.IS_ERROR:
             typ = self.env.types[op.left]
             compare = '!=' if op.negated else '=='
-            if isinstance(typ, TupleRType):
+            if isinstance(typ, RTuple):
                 # TODO: What about empty tuple?
                 item_type = typ.types[0]
                 self.emit_line('if ({}.f0 {} {}) {{'.format(self.reg(op.left),
                                                          compare,
-                                                         item_type.c_error_value))
+                                                         item_type.c_error_value()))
             else:
                 self.emit_line('if ({} {} {}) {{'.format(self.reg(op.left),
                                                       compare,
-                                                      typ.c_error_value))
+                                                      typ.c_error_value()))
         else:
             left = self.reg(op.left)
             right = self.reg(op.right)
@@ -113,7 +113,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_return(self, op: Return) -> None:
         typ = self.type(op.reg)
-        assert typ.name != 'object'
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 
@@ -210,7 +209,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         elif op.desc is PrimitiveOp.NEW_TUPLE:
             tuple_type = self.env.types[op.dest]
-            assert isinstance(tuple_type, TupleRType)
+            assert isinstance(tuple_type, RTuple)
             self.emitter.declare_tuple_struct(tuple_type)
             for i, arg in enumerate(op.args):
                 self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(arg)))
@@ -264,14 +263,14 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emit_line('%s = %d;' % (dest, op.value * 2))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
-        if isinstance(op.rtype, TupleRType):
-            values = [item.c_undefined_value for item in op.rtype.types]
+        if isinstance(op.rtype, RTuple):
+            values = [item.c_undefined_value() for item in op.rtype.types]
             tmp = self.temp_name()
             self.emit_line('%s %s = { %s };' % (op.rtype.ctype, tmp, ', '.join(values)))
             self.emit_line('%s = %s;' % (self.reg(op.dest), tmp))
         else:
             self.emit_line('%s = %s;' % (self.reg(op.dest),
-                                         op.rtype.c_error_value))
+                                         op.rtype.c_error_value()))
 
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op.dest)
@@ -280,7 +279,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emit_line('%s = CPY_GET_ATTR(%s, %d, %s, %s);' % (
             dest, obj,
             rtype.getter_index(op.attr),
-            rtype.struct_name,
+            rtype.struct_name(),
             rtype.attr_type(op.attr).ctype))
 
     def visit_set_attr(self, op: SetAttr) -> None:
@@ -294,7 +293,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             obj,
             rtype.setter_index(op.attr),
             src,
-            rtype.struct_name,
+            rtype.struct_name(),
             rtype.attr_type(op.attr).ctype))
 
     def visit_load_static(self, op: LoadStatic) -> None:

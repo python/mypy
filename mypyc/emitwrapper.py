@@ -40,11 +40,11 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         generate_arg_check(arg.name, arg.type, emitter)
     native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
 
-    if fn.ret_type.supports_unbox:
+    if fn.ret_type.is_unboxed:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
         #       Are they relevant?
         ret_type = fn.ret_type
-        emitter.emit_line('{}retval = {}{}({});'.format(ret_type.ctype_spaced,
+        emitter.emit_line('{}retval = {}{}({});'.format(ret_type.ctype_spaced(),
                                                         NATIVE_PREFIX, fn.cname,
                                                         native_args))
         emitter.emit_error_check('retval', ret_type, 'return NULL;')
@@ -63,7 +63,7 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter) -> None:
     a value of name arg_{} (unboxed if necessary). For each primitive a runtime
     check ensures the correct type.
     """
-    if typ.supports_unbox:
+    if typ.is_unboxed:
         # Borrow when unboxing to avoid reference count manipulation.
         emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                            'return NULL;', declare_dest=True, borrow=True)

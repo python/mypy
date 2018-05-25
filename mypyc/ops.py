@@ -11,6 +11,7 @@ can hold various things:
 """
 
 from abc import abstractmethod
+import re
 from typing import List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, NewType
 
 from mypy.nodes import Var
@@ -41,20 +42,29 @@ def c_module_name(module_name: str) -> str:
     return 'module_{}'.format(module_name.replace('.', '__dot__'))
 
 
+def short_name(name: str) -> str:
+    if name.startswith('builtins.'):
+        return name[9:]
+    return name
+
+
 class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
     name = None  # type: str
+    ctype = None  # type: str
+    is_unboxed = False
+    c_undefined = None  # type: str
+    is_refcounted = True  # If unboxed: does the unboxed version use reference counting?
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         raise NotImplementedError
 
-    @property
-    def supports_unbox(self) -> bool:
+    @abstractmethod
+    def c_undefined_value(self) -> str:
         raise NotImplementedError
 
-    @property
     def ctype_spaced(self) -> str:
         """Adds a space after ctype for non-pointers."""
         if self.ctype[-1] == '*':
@@ -62,25 +72,14 @@ class RType:
         else:
             return self.ctype + ' '
 
-    @property
-    def ctype(self) -> str:
-        raise NotImplementedError
-
-    @property
-    def c_undefined_value(self) -> str:
-        raise NotImplementedError
-
-    @property
     def c_error_value(self) -> str:
-        return self.c_undefined_value
+        return self.c_undefined_value()
 
-    @property
-    def is_refcounted(self) -> bool:
-        """Does the unboxed representation of the type use reference counting?"""
-        return True
+    def short_name(self) -> str:
+        return short_name(self.name)
 
     def __str__(self) -> str:
-        return self.name
+        return short_name(self.name)
 
     def __repr__(self) -> str:
         return '<%s>' % self.__class__.__name__
@@ -92,86 +91,112 @@ class RType:
         return hash(self.name)
 
 
-class IntRType(RType):
-    """int"""
+class RPrimitive(RType):
+    """Primitive type such as 'object' or 'int'.
 
-    def __init__(self) -> None:
-        self.name = 'int'
+    These often have custom ops associated with them.
+    """
+
+    def __init__(self,
+                 name: str,
+                 is_unboxed: bool,
+                 is_refcounted: bool,
+                 ctype: str = 'PyObject *') -> None:
+        self.name = name
+        self.is_unboxed = is_unboxed
+        self.ctype = ctype
+        self.is_refcounted = is_refcounted
+        if ctype == 'CPyTagged':
+            self.c_undefined = 'CPY_INT_TAG'
+        elif ctype == 'PyObject *':
+            self.c_undefined = 'NULL'
+        elif ctype == 'char':
+            self.c_undefined = '2'
+        else:
+            assert False, 'Uncognized ctype: %r' % ctype
+
+    def c_undefined_value(self) -> str:
+        return self.c_undefined
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_int_rtype(self)
-
-    @property
-    def supports_unbox(self) -> bool:
-        return True
-
-    @property
-    def ctype(self) -> str:
-        return 'CPyTagged'
-
-    @property
-    def c_undefined_value(self) -> str:
-        return 'CPY_INT_TAG'
+        return visitor.visit_rprimitive(self)
 
     def __repr__(self) -> str:
-        return '<IntRType>'
+        return '<RPrimitive %s>'% self.name
 
 
-class BoolRType(RType):
-    """bool"""
+# Used to represent arbitrary objects and dynamically typed values
+object_rprimitive = RPrimitive('builtins.object', is_unboxed=False, is_refcounted=True)
 
-    def __init__(self) -> None:
-        self.name = 'bool'
+int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True, ctype='CPyTagged')
 
-    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_bool_rtype(self)
+bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False, ctype='char')
 
-    @property
-    def supports_unbox(self) -> bool:
-        return True
+none_rprimitive = RPrimitive('builtins.None', is_unboxed=False, is_refcounted=True)
 
-    @property
-    def ctype(self) -> str:
-        return 'char'
+list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)
 
-    @property
-    def c_undefined_value(self) -> str:
-        return '2'
+dict_rprimitive = RPrimitive('builtins.dict', is_unboxed=False, is_refcounted=True)
 
-    @property
-    def is_refcounted(self) -> bool:
-        return False
+# At the C layer, str is refered to as unicode (PyUnicode)
+str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True)
+
+# Tuple of an arbitrary length (corresponds to Tuple[t, ...], with explicit '...')
+tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False, is_refcounted=True)
 
 
-class TupleRType(RType):
+def is_int_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.int'
+
+
+def is_bool_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.bool'
+
+
+def is_object_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.object'
+
+
+def is_none_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.None'
+
+
+def is_list_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.list'
+
+
+def is_dict_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.dict'
+
+
+def is_str_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.str'
+
+
+def is_tuple_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.tuple'
+
+
+class RTuple(RType):
     """Fixed-length tuple."""
+
+    is_unboxed = True
 
     def __init__(self, types: List[RType]) -> None:
         self.name = 'tuple'
         self.types = tuple(types)
+        self.ctype = 'struct {}'.format(self.struct_name())
+        self.is_refcounted = any(t.is_refcounted for t in self.types)
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_tuple_rtype(self)
+        return visitor.visit_rtuple(self)
 
-    @property
-    def supports_unbox(self) -> bool:
-        return True
-
-    @property
     def c_undefined_value(self) -> str:
         # This doesn't work since this is expected to return a C expression, but
         # defining an undefined tuple requires declaring a temp variable, such as:
         #
         #    struct foo _tmp = { <item0-undefined>, <item1-undefined>, ... };
         assert False, "Tuple undefined value can't be represented as a C expression"
-
-    @property
-    def ctype(self) -> str:
-        return 'struct {}'.format(self.struct_name)
-
-    @property
-    def is_refcounted(self) -> bool:
-        return any(t.is_refcounted for t in self.types)
 
     @property
     def unique_id(self) -> str:
@@ -184,7 +209,6 @@ class TupleRType(RType):
         """
         return str(abs(hash(self)))[0:15]
 
-    @property
     def struct_name(self) -> str:
         # max c length is 31 charas, this should be enough entropy to be unique.
         return 'tuple_def_' + self.unique_id
@@ -193,19 +217,19 @@ class TupleRType(RType):
         return 'tuple[%s]' % ', '.join(str(typ) for typ in self.types)
 
     def __repr__(self) -> str:
-        return '<TupleRType %s>' % ', '.join(repr(typ) for typ in self.types)
+        return '<RTuple %s>' % ', '.join(repr(typ) for typ in self.types)
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, TupleRType) and self.types == other.types
+        return isinstance(other, RTuple) and self.types == other.types
 
     def __hash__(self) -> int:
         return hash((self.name, self.types))
 
     def get_c_declaration(self) -> List[str]:
-        result = ['struct {} {{'.format(self.struct_name)]
+        result = ['struct {} {{'.format(self.struct_name())]
         i = 0
         for typ in self.types:
-            result.append('    {}f{};'.format(typ.ctype_spaced, i))
+            result.append('    {}f{};'.format(typ.ctype_spaced(), i))
             i += 1
         result.append('};')
         result.append('')
@@ -213,91 +237,24 @@ class TupleRType(RType):
         return result
 
 
-class PyObjectRType(RType):
-    """Abstract base class for PyObject * types."""
+class RInstance(RType):
+    """Instance of user-defined class (compiled to C extension class)."""
 
-    @property
-    def supports_unbox(self) -> bool:
-        return False
-
-    @property
-    def ctype(self) -> str:
-        return 'PyObject *'
-
-    @property
-    def c_undefined_value(self) -> str:
-        return 'NULL'
-
-
-class ObjectRType(PyObjectRType):
-    """Arbitrary object (PyObject *)"""
-
-    def __init__(self) -> None:
-        self.name = 'object'
-
-    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_object_rtype(self)
-
-
-class SequenceTupleRType(PyObjectRType):
-    """Uniform tuple"""
-
-    def __init__(self) -> None:
-        self.name = 'sequence_tuple'
-
-    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_sequence_tuple_rtype(self)
-
-
-class NoneRType(PyObjectRType):
-    def __init__(self) -> None:
-        self.name = 'None'
-
-    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_none_rtype(self)
-
-
-class ListRType(PyObjectRType):
-    def __init__(self) -> None:
-        self.name = 'list'
-
-    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_list_rtype(self)
-
-
-class DictRType(PyObjectRType):
-    def __init__(self) -> None:
-        self.name = 'dict'
-
-    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_dict_rtype(self)
-
-
-class UnicodeRType(PyObjectRType):
-    """str in python 3; but at the c layer, its refered to as unicode (PyUnicode)
-
-    Referring to these as Unicode and as Bytes leaves zero room for confusion.
-    """
-    def __init__(self) -> None:
-        self.name = 'unicode'
-
-    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_unicode_rtype(self)
-
-
-class UserRType(PyObjectRType):
-    """Instance of user-defined class."""
+    is_unboxed = False
 
     def __init__(self, class_ir: 'ClassIR') -> None:
         self.name = class_ir.name
         self.class_ir = class_ir
+        self.ctype = 'PyObject *'
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_user_rtype(self)
+        return visitor.visit_rinstance(self)
 
-    @property
+    def c_undefined_value(self) -> str:
+        return 'NULL'
+
     def struct_name(self) -> str:
-        return self.class_ir.struct_name
+        return self.class_ir.struct_name()
 
     def getter_index(self, name: str) -> int:
         for i, (attr, _) in enumerate(self.class_ir.attributes):
@@ -315,27 +272,33 @@ class UserRType(PyObjectRType):
         assert False, '%r has no attribute %r' % (self.name, name)
 
     def __repr__(self) -> str:
-        return '<UserRType %s>' % self.name
+        return '<RInstance %s>' % self.name
 
 
-class OptionalRType(PyObjectRType):
+class ROptional(RType):
     """Optional[x]"""
+
+    is_unboxed = False
 
     def __init__(self, value_type: RType) -> None:
         self.name = 'optional'
         self.value_type = value_type
+        self.ctype = 'PyObject *'
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
-        return visitor.visit_optional_rtype(self)
+        return visitor.visit_roptional(self)
+
+    def c_undefined_value(self) -> str:
+        return 'NULL'
 
     def __repr__(self) -> str:
-        return '<OptionalRType %s>' % self.value_type
+        return '<ROptional %s>' % self.value_type
 
     def __str__(self) -> str:
         return 'optional[%s]' % self.value_type
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, OptionalRType) and other.value_type == self.value_type
+        return isinstance(other, ROptional) and other.value_type == self.value_type
 
     def __hash__(self) -> int:
         return hash(('optional', self.value_type))
@@ -644,8 +607,8 @@ class IncRef(StrictRegisterOp):
 
     def to_str(self, env: Environment) -> str:
         s = env.format('inc_ref %r', self.dest)
-        if self.target_type.name in ['bool', 'int']:
-            s += ' :: {}'.format(self.target_type.name)
+        if is_bool_rprimitive(self.target_type) or is_int_rprimitive(self.target_type):
+            s += ' :: {}'.format(short_name(self.target_type.name))
         return s
 
     def sources(self) -> List[Register]:
@@ -670,8 +633,8 @@ class DecRef(StrictRegisterOp):
 
     def to_str(self, env: Environment) -> str:
         s = env.format('dec_ref %r', self.dest)
-        if self.target_type.name in ['bool', 'int']:
-            s += ' :: {}'.format(self.target_type.name)
+        if is_bool_rprimitive(self.target_type) or is_int_rprimitive(self.target_type):
+            s += ' :: {}'.format(short_name(self.target_type.name))
         return s
 
     def sources(self) -> List[Register]:
@@ -993,7 +956,7 @@ class GetAttr(StrictRegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Register, obj: Register, attr: str, rtype: UserRType,
+    def __init__(self, dest: Register, obj: Register, attr: str, rtype: RInstance,
                  line: int) -> None:
         super().__init__(dest, line)
         self.obj = obj
@@ -1015,7 +978,7 @@ class SetAttr(StrictRegisterOp):
 
     error_kind = ERR_FALSE
 
-    def __init__(self, dest: Register, obj: Register, attr: str, src: Register, rtype: UserRType,
+    def __init__(self, dest: Register, obj: Register, attr: str, src: Register, rtype: RInstance,
                  line: int) -> None:
         super().__init__(dest, line)
         self.obj = obj
@@ -1093,7 +1056,7 @@ class Cast(StrictRegisterOp):
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = cast(%s, %r)', self.dest, self.typ.name, self.src)
+        return env.format('%r = cast(%s, %r)', self.dest, self.typ, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_cast(self)
@@ -1215,7 +1178,6 @@ class ClassIR:
         self.attributes = attributes
         self.methods = []  # type: List[FuncIR]
 
-    @property
     def struct_name(self) -> str:
         return '{}Object'.format(self.name)
 
@@ -1343,35 +1305,18 @@ def format_func(fn: FuncIR) -> List[str]:
 
 
 class RTypeVisitor(Generic[T]):
-    def visit_object_rtype(self, typ: ObjectRType) -> T:
-        pass
+    @abstractmethod
+    def visit_rprimitive(self, typ: RPrimitive) -> T:
+        raise NotImplementedError
 
-    def visit_user_rtype(self, typ: UserRType) -> T:
-        pass
+    @abstractmethod
+    def visit_rinstance(self, typ: RInstance) -> T:
+        raise NotImplementedError
 
-    def visit_optional_rtype(self, typ: OptionalRType) -> T:
-        pass
+    @abstractmethod
+    def visit_roptional(self, typ: ROptional) -> T:
+        raise NotImplementedError
 
-    def visit_int_rtype(self, typ: IntRType) -> T:
-        pass
-
-    def visit_bool_rtype(self, typ: BoolRType) -> T:
-        pass
-
-    def visit_tuple_rtype(self, typ: TupleRType) -> T:
-        pass
-
-    def visit_sequence_tuple_rtype(self, typ: SequenceTupleRType) -> T:
-        pass
-
-    def visit_none_rtype(self, typ: NoneRType) -> T:
-        pass
-
-    def visit_list_rtype(self, typ: ListRType) -> T:
-        pass
-
-    def visit_dict_rtype(self, typ: DictRType) -> T:
-        pass
-
-    def visit_unicode_rtype(self, typ: UnicodeRType) -> T:
-        pass
+    @abstractmethod
+    def visit_rtuple(self, typ: RTuple) -> T:
+        raise NotImplementedError

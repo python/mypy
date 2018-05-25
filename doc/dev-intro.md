@@ -176,9 +176,9 @@ Here are some hints about how to add support for a new primitive type
 * Decide whether the primitive type has an "unboxed" representation
   (a representation that is not just `PyObject *`).
 
-* Create a subclass of `RType` to support the primitive type. Make sure
-  `supports_unbox`, `ctype` and various other properties work
-  correctly for the new type.
+* Create a new instance of `RPrimitive` to support the primitive type.
+  Make sure all the attributes are set correctly and also define
+  `<foo>_rprimitive` and `is_<foo>_rprimitive`.
 
 * Update `mypyc.genops.Mapper.type_to_rtype()`.
 

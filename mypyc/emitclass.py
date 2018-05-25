@@ -5,7 +5,7 @@ import textwrap
 from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
-from mypyc.ops import ClassIR, FuncIR, RType, ObjectRType, Environment, type_struct_name
+from mypyc.ops import ClassIR, FuncIR, RType, Environment, type_struct_name, object_rprimitive
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -27,8 +27,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emitter.emit_line()
 
     # Use dummy empty __init__ for now.
-    # TODO: Use UserRType
-    init = FuncIR(cl.name, None, [], ObjectRType(), [], Environment())
+    # TODO: Use RInstance
+    init = FuncIR(cl.name, None, [], object_rprimitive, [], Environment())
     emitter.emit_line(native_function_header(init) + ';')
     emit_line()
     generate_object_struct(cl, emitter)
@@ -93,7 +93,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             {new_name},                /* tp_new */
         }};\
         """).format(type_struct=type_struct_name(cl.name),
-                    struct_name=cl.struct_name,
+                    struct_name=cl.struct_name(),
                     fullname=fullname,
                     traverse_name=traverse_name,
                     clear_name=clear_name,
@@ -128,21 +128,21 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
                        'PyObject_HEAD',
                        'CPyVTableItem *vtable;')
     for attr, rtype in cl.attributes:
-        emitter.emit_line('{}{};'.format(rtype.ctype_spaced, attr))
-    emitter.emit_line('}} {};'.format(cl.struct_name))
+        emitter.emit_line('{}{};'.format(rtype.ctype_spaced(), attr))
+    emitter.emit_line('}} {};'.format(cl.struct_name()))
 
 
 def generate_native_getters_and_setters(cl: ClassIR,
                                         emitter: Emitter) -> None:
     for attr, rtype in cl.attributes:
         # Native getter
-        emitter.emit_line('{}{}({} *self)'.format(rtype.ctype_spaced,
+        emitter.emit_line('{}{}({} *self)'.format(rtype.ctype_spaced(),
                                                native_getter_name(cl.name, attr),
-                                               cl.struct_name))
+                                               cl.struct_name()))
         emitter.emit_line('{')
         if rtype.is_refcounted:
             emitter.emit_lines(
-                'if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value),
+                'if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value()),
                 'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
                     repr(attr), repr(cl.name)),
                 '} else {')
@@ -154,11 +154,11 @@ def generate_native_getters_and_setters(cl: ClassIR,
 
         # Native setter
         emitter.emit_line('bool {}({} *self, {}value)'.format(native_setter_name(cl.name, attr),
-                                                          cl.struct_name,
-                                                          rtype.ctype_spaced))
+                                                          cl.struct_name(),
+                                                          rtype.ctype_spaced()))
         emitter.emit_line('{')
         if rtype.is_refcounted:
-            emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+            emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value()))
             emitter.emit_dec_ref('self->{}'.format(attr), rtype)
             emitter.emit_line('}')
         emitter.emit_inc_ref('value'.format(attr), rtype)
@@ -186,15 +186,15 @@ def generate_constructor_for_class(cl: ClassIR,
     emitter.emit_line('static PyObject *')
     emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, cl.name))
     emitter.emit_line('{')
-    emitter.emit_line('{} *self;'.format(cl.struct_name))
-    emitter.emit_line('self = ({} *){}.tp_alloc(&{}, 0);'.format(cl.struct_name,
+    emitter.emit_line('{} *self;'.format(cl.struct_name()))
+    emitter.emit_line('self = ({} *){}.tp_alloc(&{}, 0);'.format(cl.struct_name(),
                                                                  cl.type_struct,
                                                                  cl.type_struct))
     emitter.emit_line('if (self == NULL)')
     emitter.emit_line('    return NULL;')
     emitter.emit_line('self->vtable = {};'.format(vtable_name))
     for attr, rtype in cl.attributes:
-        emitter.emit_line('self->{} = {};'.format(attr, rtype.c_undefined_value))
+        emitter.emit_line('self->{} = {};'.format(attr, rtype.c_undefined_value()))
     emitter.emit_line('return (PyObject *)self;')
     emitter.emit_line('}')
 
@@ -218,7 +218,7 @@ def generate_traverse_for_class(cl: ClassIR,
     """Emit function that performs cycle GC traversal of an instance."""
     emitter.emit_line('static int')
     emitter.emit_line('{}({} *self, visitproc visit, void *arg)'.format(func_name,
-                                                                        cl.struct_name))
+                                                                        cl.struct_name()))
     emitter.emit_line('{')
     for attr, rtype in cl.attributes:
         emitter.emit_gc_visit('self->{}'.format(attr), rtype)
@@ -230,7 +230,7 @@ def generate_clear_for_class(cl: ClassIR,
                              func_name: str,
                              emitter: Emitter) -> None:
     emitter.emit_line('static int')
-    emitter.emit_line('{}({} *self)'.format(func_name, cl.struct_name))
+    emitter.emit_line('{}({} *self)'.format(func_name, cl.struct_name()))
     emitter.emit_line('{')
     for attr, rtype in cl.attributes:
         emitter.emit_gc_clear('self->{}'.format(attr), rtype)
@@ -243,7 +243,7 @@ def generate_dealloc_for_class(cl: ClassIR,
                                clear_func_name: str,
                                emitter: Emitter) -> None:
     emitter.emit_line('static void')
-    emitter.emit_line('{}({} *self)'.format(dealloc_func_name, cl.struct_name))
+    emitter.emit_line('{}({} *self)'.format(dealloc_func_name, cl.struct_name()))
     emitter.emit_line('{')
     emitter.emit_line('PyObject_GC_UnTrack(self);')
     emitter.emit_line('{}(self);'.format(clear_func_name))
@@ -267,11 +267,11 @@ def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
     for attr, rtype in cl.attributes:
         emitter.emit_line('static PyObject *')
         emitter.emit_line('{}({} *self, void *closure);'.format(getter_name(cl.name, attr),
-                                                            cl.struct_name))
+                                                            cl.struct_name()))
         emitter.emit_line('static int')
         emitter.emit_line('{}({} *self, PyObject *value, void *closure);'.format(
             setter_name(cl.name, attr),
-            cl.struct_name))
+            cl.struct_name()))
 
 
 def generate_getseters_table(cl: ClassIR,
@@ -303,9 +303,9 @@ def generate_getter(cl: ClassIR,
                     emitter: Emitter) -> None:
     emitter.emit_line('static PyObject *')
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl.name, attr),
-                                                                        cl.struct_name))
+                                                                        cl.struct_name()))
     emitter.emit_line('{')
-    emitter.emit_line('if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value))
+    emitter.emit_line('if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value()))
     emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
     emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
                                                                         repr(cl.name)))
@@ -324,14 +324,14 @@ def generate_setter(cl: ClassIR,
     emitter.emit_line('static int')
     emitter.emit_line('{}({} *self, PyObject *value, void *closure)'.format(
         setter_name(cl.name, attr),
-        cl.struct_name))
+        cl.struct_name()))
     emitter.emit_line('{')
     if rtype.is_refcounted:
-        emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value))
+        emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value()))
         emitter.emit_dec_ref('self->{}'.format(attr), rtype)
         emitter.emit_line('}')
     emitter.emit_line('if (value != NULL) {')
-    if rtype.supports_unbox:
+    if rtype.is_unboxed:
         emitter.emit_unbox('value', 'tmp', rtype, custom_failure='return -1;', declare_dest=True)
     else:
         emitter.emit_cast('value', 'tmp', rtype, declare_dest=True)
@@ -340,6 +340,6 @@ def generate_setter(cl: ClassIR,
         emitter.emit_inc_ref('tmp', rtype)
     emitter.emit_line('self->{} = tmp;'.format(attr))
     emitter.emit_line('} else')
-    emitter.emit_line('    self->{} = {};'.format(attr, rtype.c_undefined_value))
+    emitter.emit_line('    self->{} = {};'.format(attr, rtype.c_undefined_value()))
     emitter.emit_line('return 0;')
     emitter.emit_line('}')

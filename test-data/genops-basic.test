@@ -489,7 +489,7 @@ def f() -> str:
     return "some string"
 [out]
 def f():
-    r0 :: unicode
+    r0 :: str
 L0:
     r0 = __unicode_0 :: static
     return r0
@@ -501,7 +501,7 @@ def f(x: List[int]) -> int:
 [out]
 def f(x):
     x :: list
-    r0 :: unicode
+    r0 :: str
     r1 :: object
     r2 :: int
 L0:
@@ -635,7 +635,7 @@ def f(o: Optional[A], n: int, t: Tuple[int, ...]) -> None:
 def f(o, n, t):
     o :: optional[A]
     n :: int
-    t :: sequence_tuple
+    t :: tuple
     a :: A
     m :: bool
     r0 :: object
@@ -677,7 +677,7 @@ def f(o, p, n, b, t, s, a, l, d):
     p :: optional[A]
     n :: int
     b :: bool
-    t :: sequence_tuple
+    t :: tuple
     s :: tuple[int, int]
     a :: A
     l :: list
