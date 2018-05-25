@@ -486,29 +486,40 @@ L0:
 
 [case testUnicodeLiteral]
 def f() -> str:
-    return "some string"
+    x = "some string"
+    return "some other string"
 [out]
 def f():
-    r0 :: str
+    x, r0 :: str
 L0:
-    r0 = __unicode_0 :: static
+    x = __unicode_0 :: static
+    r0 = __unicode_1 :: static
     return r0
 
 [case testPyMethodCall1]
 from typing import List
 def f(x: List[int]) -> int:
+    y = x.pop()
     return x.pop()
 [out]
 def f(x):
     x :: list
+    y :: int
     r0 :: str
     r1 :: object
     r2 :: int
+    r3 :: str
+    r4 :: object
+    r5 :: int
 L0:
     r0 = __unicode_0 :: static
     r1 = x.r0() :: py
     r2 = unbox(int, r1)
-    return r2
+    y = r2
+    r3 = __unicode_0 :: static
+    r4 = x.r3() :: py
+    r5 = unbox(int, r4)
+    return r5
 
 [case testObjectType]
 def g(y: object) -> None:

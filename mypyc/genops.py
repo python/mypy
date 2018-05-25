@@ -706,17 +706,17 @@ class IRBuilder(NodeVisitor[Register]):
         target_type = self.node_type(expr)
         if var_type != target_type:
             # Cast/unbox to the narrower given by the binder.
-            if self.targets[-1] < 0:
+            if self.cur_target() < 0:
                 target = self.alloc_temp(target_type)
             else:
-                target = self.targets[-1]
+                target = self.cur_target()
             return self.unbox_or_cast(reg, target_type, expr.line, target)
         else:
             # Regular register access -- binder is not active.
-            if self.targets[-1] < 0:
+            if self.cur_target() < 0:
                 return reg
             else:
-                target = self.targets[-1]
+                target = self.cur_target()
                 self.add(Assign(target, reg))
                 return target
 
@@ -931,7 +931,7 @@ class IRBuilder(NodeVisitor[Register]):
     }
 
     def visit_str_expr(self, expr: StrExpr) -> Register:
-        return self.load_static_unicode(expr.value)
+        return self.load_static_unicode(expr.value, self.cur_target())
 
     def process_conditional(self, e: Node) -> List[Branch]:
         if isinstance(e, ComparisonExpr):
@@ -1040,16 +1040,26 @@ class IRBuilder(NodeVisitor[Register]):
         self.targets.append(target)
         actual = node.accept(self)
         self.targets.pop()
+        if target != INVALID_REGISTER and target != actual:
+            self.add(Assign(target, actual))
+
         return actual
 
+    def cur_target(self) -> Register:
+        return self.targets[-1]
+
     def alloc_target(self, type: RType) -> Register:
-        if self.targets[-1] < 0:
+        """Get the current target, or if there is not a specified one, a temp"""
+        # XXX: This is a somewhat dangerous method!
+        # Only call it if you definitely own the target!
+        # This means generally *not* in helper methods!
+        return self.alloc_temp(type, self.cur_target())
+
+    def alloc_temp(self, type: RType, target: Register = INVALID_REGISTER) -> Register:
+        if target < 0:
             return self.environment.add_temp(type)
         else:
-            return self.targets[-1]
-
-    def alloc_temp(self, type: RType) -> Register:
-        return self.environment.add_temp(type)
+            return target
 
     def type_to_rtype(self, typ: Type) -> RType:
         return self.mapper.type_to_rtype(typ)
@@ -1090,7 +1100,7 @@ class IRBuilder(NodeVisitor[Register]):
         typ = self.node_type(expr)
         return self.box(self.accept(expr), typ)
 
-    def load_static_unicode(self, value: str) -> Register:
+    def load_static_unicode(self, value: str, target: Register = INVALID_REGISTER) -> Register:
         """Loads a static unicode value into a register.
 
         This is useful for more than just unicode literals; for example, method calls
@@ -1099,7 +1109,7 @@ class IRBuilder(NodeVisitor[Register]):
         if value not in self.unicode_literals:
             self.unicode_literals[value] = '__unicode_' + str(len(self.unicode_literals))
         static_symbol = self.unicode_literals[value]
-        target = self.alloc_target(str_rprimitive)
+        target = self.alloc_temp(str_rprimitive, target)
         self.add(LoadStatic(target, static_symbol))
         return target
 
