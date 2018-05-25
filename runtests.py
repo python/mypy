@@ -71,17 +71,11 @@ class Driver:
         args.append('--no-site-packages')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
-    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_cmd(name, list(args), cwd=cwd)
-
     def add_mypy_modules(self, name: str, modules: Iterable[str], cwd: Optional[str] = None,
                          extra_args: Optional[List[str]] = None) -> None:
         args = extra_args or []
         args.extend(list(itertools.chain(*(['-m', mod] for mod in modules))))
         self.add_mypy_cmd(name, args, cwd=cwd)
-
-    def add_mypy_package(self, name: str, packagename: str, *flags: str) -> None:
-        self.add_mypy_cmd(name, ['-p', packagename] + list(flags))
 
     def add_pytest(self, files: List[Tuple[str, str]], coverage: bool = True) -> None:
         pytest_files = [name for kind, name in files
@@ -111,12 +105,6 @@ class Driver:
             print('{id}:{task}'.format(id=id, task=task.name))
 
 
-def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy('file runtests.py', 'runtests.py')
-    driver.add_mypy('file waiter.py', 'waiter.py')
-    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_self_check.ini')
-
-
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
     return [join(root, f)
             for root, dirs, files in os.walk(base)
@@ -131,7 +119,7 @@ def file_to_module(file: str) -> str:
     return rv
 
 
-def test_path(*names: str):
+def test_path(*names: str) -> List[str]:
     return [os.path.join('mypy', 'test', '{}.py'.format(name))
             for name in names]
 
@@ -168,12 +156,17 @@ SLOW_FILES = test_path(
     'teststubgen',
 )
 
+SELFCHECK_FILES = test_path(
+    'testselfcheck',
+)
+
 
 def add_pytest(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
-        assert f in PYTEST_FILES + SLOW_FILES, f
+        assert f in PYTEST_FILES + SLOW_FILES + SELFCHECK_FILES, f
     driver.add_pytest([('unit-test', name) for name in PYTEST_FILES] +
-                      [('integration', name) for name in SLOW_FILES])
+                      [('integration', name) for name in SLOW_FILES] +
+                      [('self-check', name) for name in SELFCHECK_FILES])
 
 
 def add_stubs(driver: Driver) -> None:
@@ -354,7 +347,6 @@ def main() -> None:
 
     driver.add_flake8()
     add_pytest(driver)
-    add_selftypecheck(driver)
     add_stubs(driver)
     add_stdlibsamples(driver)
     add_samples(driver)
