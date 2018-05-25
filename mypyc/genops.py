@@ -21,7 +21,7 @@ from mypy.nodes import (
     IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
-    Import, ImportFrom, ImportAll, DictExpr, StrExpr, ARG_POS, MODULE_REF
+    Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode, ARG_POS, MODULE_REF
 )
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType
 from mypy.visitor import NodeVisitor
@@ -35,6 +35,8 @@ from mypyc.ops import (
     OptionalRType, DictRType, UnicodeRType, c_module_name, PyMethodCall,
     INVALID_REGISTER, INVALID_LABEL
 )
+from mypyc.subtype import is_subtype
+from mypyc.sametype import is_same_type
 
 
 def build_ir(module: MypyFile,
@@ -261,7 +263,7 @@ class IRBuilder(NodeVisitor[Register]):
     def visit_return_stmt(self, stmt: ReturnStmt) -> Register:
         if stmt.expr:
             retval = self.accept(stmt.expr)
-            retval = self.coerce(retval, self.node_type(stmt.expr), self.ret_type)
+            retval = self.coerce(retval, self.node_type(stmt.expr), self.ret_type, stmt.line)
         else:
             retval = self.environment.add_temp(NoneRType())
             self.add(PrimitiveOp(retval, PrimitiveOp.NONE, [], line=-1))
@@ -273,6 +275,12 @@ class IRBuilder(NodeVisitor[Register]):
         lvalue = stmt.lvalues[0]
         if stmt.type:
             lvalue_type = self.type_to_rtype(stmt.type)
+            if isinstance(stmt.rvalue, TempNode):
+                # This is actually a variable annotation without initializer. Don't generate
+                # an assignment but we need to call get_assignment_target since it adds a
+                # name binding as a side effect.
+                self.get_assignment_target(lvalue, declare_new=True)
+                return INVALID_REGISTER
         else:
             if isinstance(lvalue, IndexExpr):
                 # TODO: This won't be right for user-defined classes. Store the
@@ -765,6 +773,8 @@ class IRBuilder(NodeVisitor[Register]):
         return self.unbox_or_cast(target_box, target_type, line)
 
     def visit_call_expr(self, expr: CallExpr) -> Register:
+        if isinstance(expr.analyzed, CastExpr):
+            return self.translate_cast_expr(expr.analyzed)
         if isinstance(expr.callee, MemberExpr):
             is_module_call = self.is_module_member_expr(expr.callee)
             if expr.callee.expr in self.types and not is_module_call:
@@ -820,10 +830,17 @@ class IRBuilder(NodeVisitor[Register]):
             for arg_expr, arg_type in zip(expr.args, formal_arg_types):
                 reg = self.accept(arg_expr)
                 typ = self.environment.types[reg]
-                reg = self.coerce(reg, typ, arg_type)
+                reg = self.coerce(reg, typ, arg_type, expr.line)
                 args.append(reg)
             self.add(Call(target, fn, args, expr.line))
         return target
+
+    def translate_cast_expr(self, expr: CastExpr) -> Register:
+        src = self.accept(expr.expr)
+        target_type = self.type_to_rtype(expr.type)
+        source_type = self.node_type(expr.expr)
+        target = self.alloc_target(target_type)
+        return self.coerce(src, source_type, target_type, expr.line, target=target)
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> Register:
         branches = self.process_conditional(expr.cond)
@@ -847,7 +864,8 @@ class IRBuilder(NodeVisitor[Register]):
 
         return target
 
-    def translate_special_method_call(self, callee: MemberExpr, expr: CallExpr) -> Optional[Register]:
+    def translate_special_method_call(self, callee: MemberExpr,
+                                      expr: CallExpr) -> Optional[Register]:
         """Translate a method call which is handled nongenerically.
 
         These are special in the sense that we have code generated specifically for them.
@@ -1082,15 +1100,28 @@ class IRBuilder(NodeVisitor[Register]):
         self.add(LoadStatic(target, static_symbol))
         return target
 
-    def coerce(self, src: Register, src_type: RType, target_type: RType) -> Register:
-        """Generate a trivial conversion from one type to other (only if needed).
+    def coerce(self, src: Register, src_type: RType, target_type: RType, line: int,
+               target: Optional[Register] = None) -> Register:
+        """Generate a coercion/cast from one type to other (only if needed).
 
-        For example, int -> object boxes the source int; int -> int emits nothing.
-        All conversions preserve object value.
+        For example, int -> object boxes the source int; int -> int emits nothing;
+        object -> int unboxes the object. All conversions preserve object value.
 
         Returns the register with the converted value (may be same as src).
         """
-        # TODO: Also handle object -> int and similar (unbox/cast).
         if src_type.supports_unbox and not target_type.supports_unbox:
-            return self.box(src, src_type)
-        return src
+            return self.box(src, src_type, target=target)
+        if ((src_type.supports_unbox and target_type.supports_unbox)
+                and not is_same_type(src_type, target_type)):
+            # To go from one unboxed type to another, we go through a boxed
+            # in-between value, for simplicity.
+            tmp = self.box(src, src_type)
+            return self.unbox_or_cast(tmp, target_type, line, target=target)
+        if ((not src_type.supports_unbox and target_type.supports_unbox)
+                or not is_subtype(src_type, target_type)):
+            return self.unbox_or_cast(src, target_type, line, target=target)
+        if target is None:
+            return src
+        else:
+            self.add(Assign(target, src))
+            return target

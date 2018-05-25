@@ -595,3 +595,106 @@ L0:
     o = box(int, r3)
     r4 = None
     return r4
+
+[case testDownCast]
+from typing import cast, List, Tuple
+class A: pass
+def f(x: object) -> None:
+    n = cast(int, x)
+    b = cast(bool, x)
+    a = cast(A, x)
+    l = cast(List[int], x)
+    t = cast(Tuple[int, A], x)
+[out]
+def f(x):
+    x :: object
+    n :: int
+    b :: bool
+    a :: A
+    l :: list
+    t :: tuple[int, A]
+    r0 :: None
+L0:
+    n = unbox(int, x)
+    b = unbox(bool, x)
+    a = cast(A, x)
+    l = cast(list, x)
+    t = unbox(tuple[int, A], x)
+    r0 = None
+    return r0
+
+[case testDownCastSpecialCases]
+from typing import cast, Optional, Tuple
+class A: pass
+def f(o: Optional[A], n: int, t: Tuple[int, ...]) -> None:
+    a = cast(A, o)
+    m = cast(bool, n)
+    tt: Tuple[int, int]
+    t = tt
+[out]
+def f(o, n, t):
+    o :: optional[A]
+    n :: int
+    t :: sequence_tuple
+    a :: A
+    m :: bool
+    r0 :: object
+    tt :: tuple[int, int]
+    r1 :: None
+L0:
+    a = cast(A, o)
+    r0 = box(int, n)
+    m = unbox(bool, r0)
+    t = box(tuple[int, int], tt)
+    r1 = None
+    return r1
+
+[case testSuccessfulCast]
+from typing import cast, Optional, Tuple, List, Dict
+class A: pass
+def f(o: object,
+      p: Optional[A],
+      n: int,
+      b: bool,
+      t: Tuple[int, ...],
+      s: Tuple[int, int],
+      a: A,
+      l: List[A],
+      d: Dict[int, str]) -> None:
+    o = cast(object, o)
+    p = cast(Optional[A], p)
+    n = cast(int, n)
+    b = cast(bool, b)
+    t = cast(Tuple[int, ...], t)
+    s = cast(Tuple[int, int], s)
+    o = cast(object, n)
+    a = cast(A, a)
+    l2 = cast(List[object], l)
+    d2 = cast(Dict[object, str], d)
+[out]
+def f(o, p, n, b, t, s, a, l, d):
+    o :: object
+    p :: optional[A]
+    n :: int
+    b :: bool
+    t :: sequence_tuple
+    s :: tuple[int, int]
+    a :: A
+    l :: list
+    d :: dict
+    l2 :: list
+    d2 :: dict
+    r0 :: None
+L0:
+    o = o
+    p = p
+    n = n
+    b = b
+    t = t
+    s = s
+    o = box(int, n)
+    a = a
+    l2 = l
+    d2 = d
+    r0 = None
+    return r0

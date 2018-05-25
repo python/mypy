@@ -46,6 +46,10 @@ class RType:
 
     name = None  # type: str
 
+    @abstractmethod
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        raise NotImplementedError
+
     @property
     def supports_unbox(self) -> bool:
         raise NotImplementedError
@@ -94,6 +98,9 @@ class IntRType(RType):
     def __init__(self) -> None:
         self.name = 'int'
 
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_int_rtype(self)
+
     @property
     def supports_unbox(self) -> bool:
         return True
@@ -116,6 +123,9 @@ class BoolRType(RType):
     def __init__(self) -> None:
         self.name = 'bool'
 
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_bool_rtype(self)
+
     @property
     def supports_unbox(self) -> bool:
         return True
@@ -132,12 +142,16 @@ class BoolRType(RType):
     def is_refcounted(self) -> bool:
         return False
 
+
 class TupleRType(RType):
     """Fixed-length tuple."""
 
     def __init__(self, types: List[RType]) -> None:
         self.name = 'tuple'
         self.types = tuple(types)
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_tuple_rtype(self)
 
     @property
     def supports_unbox(self) -> bool:
@@ -221,6 +235,9 @@ class ObjectRType(PyObjectRType):
     def __init__(self) -> None:
         self.name = 'object'
 
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_object_rtype(self)
+
 
 class SequenceTupleRType(PyObjectRType):
     """Uniform tuple"""
@@ -228,20 +245,32 @@ class SequenceTupleRType(PyObjectRType):
     def __init__(self) -> None:
         self.name = 'sequence_tuple'
 
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_sequence_tuple_rtype(self)
+
 
 class NoneRType(PyObjectRType):
     def __init__(self) -> None:
         self.name = 'None'
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_none_rtype(self)
 
 
 class ListRType(PyObjectRType):
     def __init__(self) -> None:
         self.name = 'list'
 
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_list_rtype(self)
+
 
 class DictRType(PyObjectRType):
     def __init__(self) -> None:
         self.name = 'dict'
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_dict_rtype(self)
 
 
 class UnicodeRType(PyObjectRType):
@@ -252,6 +281,9 @@ class UnicodeRType(PyObjectRType):
     def __init__(self) -> None:
         self.name = 'unicode'
 
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_unicode_rtype(self)
+
 
 class UserRType(PyObjectRType):
     """Instance of user-defined class."""
@@ -259,6 +291,9 @@ class UserRType(PyObjectRType):
     def __init__(self, class_ir: 'ClassIR') -> None:
         self.name = class_ir.name
         self.class_ir = class_ir
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_user_rtype(self)
 
     @property
     def struct_name(self) -> str:
@@ -289,6 +324,9 @@ class OptionalRType(PyObjectRType):
     def __init__(self, value_type: RType) -> None:
         self.name = 'optional'
         self.value_type = value_type
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_optional_rtype(self)
 
     def __repr__(self) -> str:
         return '<OptionalRType %s>' % self.value_type
@@ -1302,3 +1340,38 @@ def format_func(fn: FuncIR) -> List[str]:
     code = format_blocks(fn.blocks, fn.env)
     lines.extend(code)
     return lines
+
+
+class RTypeVisitor(Generic[T]):
+    def visit_object_rtype(self, typ: ObjectRType) -> T:
+        pass
+
+    def visit_user_rtype(self, typ: UserRType) -> T:
+        pass
+
+    def visit_optional_rtype(self, typ: OptionalRType) -> T:
+        pass
+
+    def visit_int_rtype(self, typ: IntRType) -> T:
+        pass
+
+    def visit_bool_rtype(self, typ: BoolRType) -> T:
+        pass
+
+    def visit_tuple_rtype(self, typ: TupleRType) -> T:
+        pass
+
+    def visit_sequence_tuple_rtype(self, typ: SequenceTupleRType) -> T:
+        pass
+
+    def visit_none_rtype(self, typ: NoneRType) -> T:
+        pass
+
+    def visit_list_rtype(self, typ: ListRType) -> T:
+        pass
+
+    def visit_dict_rtype(self, typ: DictRType) -> T:
+        pass
+
+    def visit_unicode_rtype(self, typ: UnicodeRType) -> T:
+        pass
