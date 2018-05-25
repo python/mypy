@@ -46,6 +46,7 @@ It has these passes:
 * Translate the mypy AST into a mypyc-specific intermediate representation (IR).
   * The IR is defined in `mypyc.ops`.
   * The translation happens in `mypyc.genops`.
+* Insert exception handling (`mypyc.exceptions`).
 * Insert explicit reference count inc/dec opcodes (`mypyc.refcount`).
 * Translate the IR into C (`mypyc.emit*`).
 * Compile the generated C code using a C compiler.
@@ -98,9 +99,6 @@ All of these limitations will likely be fixed in the future:
 * There's currently no way to run the compiler other than through
   tests (`test-data/run.test` has end-to-end tests -- use these
   sparingly since they are expensive to run).
-
-* If something goes wrong, we detect the error but instead of
-  raising an exception the compiled program just calls `abort()`.
 
 * We don't detect infinite recursion.
 
