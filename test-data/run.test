@@ -326,9 +326,7 @@ class A:
     def foo(self) -> int:
         return self.x+1
 def foo() -> int:
-    # a = A().init(20) # FIXME: this idiom doesn't work!!
-    a = A()
-    a.init(20)
+    a = A().init(20)
     return a.foo()
 [file driver.py]
 from native import A, foo
