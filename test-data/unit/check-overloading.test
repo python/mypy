@@ -1813,6 +1813,31 @@ main:23: error: Revealed type is 'Union[__main__.B, __main__.D]'
 main:23: error: Argument 2 to "f2" has incompatible type "Union[A, C]"; expected "C"
 main:24: error: Revealed type is 'Union[__main__.B, __main__.D]'
 
+[case testOverloadInferUnionRespectsVariance]
+from typing import overload, TypeVar, Union, Generic
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class WrapperCo(Generic[T_co]): pass
+class WrapperContra(Generic[T_contra]): pass
+
+@overload
+def foo(x: WrapperCo[B]) -> int: ...
+@overload
+def foo(x: WrapperContra[B]) -> str: ...
+def foo(x): pass
+
+compat: Union[WrapperCo[C], WrapperContra[A]]
+reveal_type(foo(compat))  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+
+not_compat: Union[WrapperCo[A], WrapperContra[C]]
+foo(not_compat)  # E: Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "Union[WrapperCo[B], WrapperContra[B]]"
+
 [case testOverloadInferUnionSkipIfParameterNamesAreDifferent]
 from typing import overload, Union
 
@@ -1962,6 +1987,131 @@ def wrapper(mysterious: T) -> T:
     SomeType[T]().bar(obj2)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
 
     return mysterious
+
+[case testOverloadingInferUnionReturnWithMixedTypevars]
+from typing import overload, Generic, TypeVar, List, Tuple, Union
+
+class A: pass
+class B(A): pass
+class C(A): pass
+
+T = TypeVar('T', bound=A)
+S = TypeVar('S')
+
+class Dummy(Generic[T]):
+    @overload
+    def foo(self, x: List[Tuple[T, S]], y: S) -> T: ...
+    @overload
+    def foo(self, x: List[S], y: S) -> S: ...
+    def foo(self, x: Union[List[Tuple[T, S]], List[S]], y: S) -> Union[T, S]: ...
+
+T1 = TypeVar('T1', bound=A)
+
+def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
+    x1: Union[List[S], List[Tuple[T1, S]]]
+    y1: S
+    reveal_type(Dummy[T1]().foo(x1, y1))  # E: Revealed type is 'Union[T1`-1, S`-2]'
+
+    x2: Union[List[T1], List[Tuple[T1, T1]]]
+    y2: T1
+    reveal_type(Dummy[T1]().foo(x2, y2))  # E: Revealed type is 'T1`-1'
+
+    # The arguments in the tuple are swapped
+    x3: Union[List[S], List[Tuple[S, T1]]]
+    y3: S
+    Dummy[T1]().foo(x3, y3)  # E: Argument 1 to "foo" of "Dummy" has incompatible type "Union[List[S], List[Tuple[S, T1]]]"; expected "Union[List[Tuple[T1, S]], List[S]]"
+
+    x4: Union[List[int], List[Tuple[C, int]]]
+    y4: int
+    reveal_type(Dummy[C]().foo(x4, y4))  # E: Revealed type is 'Union[__main__.C, builtins.int*]'
+    Dummy[A]().foo(x4, y4)               # E: Cannot infer type argument 1 of "foo" of "Dummy"
+
+    return arg1, arg2
+
+
+T2 = TypeVar('T2', bound=B)
+
+def t_is_tighter_bound(arg1: T2, arg2: S) -> Tuple[T2, S]:
+    x1: Union[List[S], List[Tuple[T2, S]]]
+    y1: S
+    reveal_type(Dummy[T2]().foo(x1, y1))  # E: Revealed type is 'Union[T2`-1, S`-2]'
+
+    x2: Union[List[T2], List[Tuple[T2, T2]]]
+    y2: T2
+    reveal_type(Dummy[T2]().foo(x2, y2))  # E: Revealed type is 'T2`-1'
+
+    return arg1, arg2
+
+[builtins fixtures/list.pyi]
+
+[case testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions]
+from typing import overload, Generic, TypeVar, List, Tuple, Union
+
+class A: pass
+class B(A): pass
+class C(A): pass
+
+T = TypeVar('T', bound=A)
+S = TypeVar('S')
+
+class Dummy(Generic[T]):
+    @overload
+    def foo(self, x: List[Tuple[T, S]], y: S) -> T: ...
+    @overload
+    def foo(self, x: List[S], y: S) -> S: ...
+    def foo(self, x: Union[List[Tuple[T, S]], List[S]], y: S) -> Union[T, S]: ...
+
+T3 = TypeVar('T3', B, C)
+
+def t_is_compatible_bound(arg1: T3, arg2: S) -> Tuple[T3, S]:
+    x1: Union[List[S], List[Tuple[T3, S]]]
+    y1: S
+    reveal_type(Dummy[T3]().foo(x1, y1))
+
+    x2: Union[List[T3], List[Tuple[T3, T3]]]
+    y2: T3
+    reveal_type(Dummy[T3]().foo(x2, y2))
+
+    return arg1, arg2
+
+[builtins fixtures/list.pyi]
+[out]
+main:22: error: Revealed type is 'Union[__main__.B, S`-2]'
+main:22: error: Revealed type is 'Union[__main__.C, S`-2]'
+main:26: error: Revealed type is '__main__.B'
+main:26: error: Revealed type is '__main__.C'
+
+[case testOverloadInferUnionReturnWithInconsistentTypevarNames]
+from typing import overload, TypeVar, Union
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+@overload
+def consistent(x: T, y: str) -> T: ...
+@overload
+def consistent(x: T, y: int) -> T: ...
+def consistent(x: T, y: Union[str, int]) -> T:
+    return x
+
+@overload
+def inconsistent(x: T, y: str) -> T: ...
+@overload
+def inconsistent(x: S, y: int) -> S: ...
+def inconsistent(x: T, y: Union[str, int]) -> T:
+    return x
+
+def test(x: T) -> T:
+    y: Union[str, int]
+
+    reveal_type(consistent(x, y))  # E: Revealed type is 'T`-1'
+
+    # TODO: Should we try and handle this differently?
+    # On one hand, this overload is defined in a weird way so it's arguably
+    # the user's fault; on the other, there's nothing overtly wrong with it.
+    inconsistent(x, y)   # E: Argument 2 to "inconsistent" has incompatible type "Union[str, int]"; expected "str"
+
+    return x
 
 [case testOverloadsAndNoneWithoutStrictOptional]
 # flags: --no-strict-optional
