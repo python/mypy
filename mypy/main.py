@@ -14,11 +14,11 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Cal
 from mypy import build
 from mypy import defaults
 from mypy import experiments
+from mypy import junit
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
-from mypy.junit import JunitXMLDocument
 from mypy.options import Options, BuildType
 from mypy.report import reporter_classes
 
@@ -102,7 +102,10 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     if options.junit_xml:
         finished_at = datetime.datetime.utcnow()
-        document = JunitXMLDocument(started_at, finished_at, sources, messages, serious)
+        if serious:
+            document = junit.create_serious_error_document(started_at, finished_at, sources, messages)
+        else:
+            document = junit.create_document(started_at, finished_at, sources, messages)
         document.write_to_file(options.junit_xml)
 
     if MEM_PROFILE:
