@@ -510,3 +510,88 @@ L0:
     r2 = unbox(int, r1)
     return r2
 
+[case testObjectType]
+def g(y: object) -> None:
+    g(y)
+    g([1])
+    g(None)
+[out]
+def g(y):
+    y :: object
+    r0, r1 :: None
+    r2 :: list
+    r3 :: int
+    r4 :: object
+    r5, r6, r7 :: None
+L0:
+    r0 = g(y)
+    r3 = 1
+    r4 = box(int, r3)
+    r2 = [r4]
+    r1 = g(r2)
+    r6 = None
+    r5 = g(r6)
+    r7 = None
+    return r7
+
+[case testCoerceToObject1]
+def g(y: object) -> object:
+    g(1)
+    a = [y]
+    a[0] = (1, 2)
+    y = True
+    return 3
+[out]
+def g(y):
+    y, r0 :: object
+    r1 :: int
+    r2 :: object
+    a :: list
+    r3 :: int
+    r4 :: tuple[int, int]
+    r5, r6 :: int
+    r7 :: object
+    r8, r9 :: bool
+    r10 :: int
+    r11 :: object
+L0:
+    r1 = 1
+    r2 = box(int, r1)
+    r0 = g(r2)
+    a = [y]
+    r3 = 0
+    r5 = 1
+    r6 = 2
+    r4 = (r5, r6)
+    r7 = box(tuple[int, int], r4)
+    a[r3] = r7 :: list; r8 = is_error
+    r9 = True
+    y = box(bool, r9)
+    r10 = 3
+    r11 = box(int, r10)
+    return r11
+
+[case testCoerceToObject2]
+class A:
+    x: object
+    n: int
+def f(a: A, o: object) -> None:
+    a.x = 1
+    o = a.n
+[out]
+def f(a, o):
+    a :: A
+    o :: object
+    r0 :: int
+    r1 :: object
+    r2 :: bool
+    r3 :: int
+    r4 :: None
+L0:
+    r0 = 1
+    r1 = box(int, r0)
+    a.x = r1; r2 = is_error
+    r3 = a.n
+    o = box(int, r3)
+    r4 = None
+    return r4

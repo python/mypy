@@ -154,7 +154,6 @@ def f(x: bool) -> bool:
         return False
     else:
         return True
-    return False
 [file driver.py]
 from native import f
 print(f(True))
