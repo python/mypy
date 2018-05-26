@@ -103,7 +103,8 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if options.junit_xml:
         finished_at = datetime.datetime.utcnow()
         if serious:
-            document = junit.create_serious_error_document(started_at, finished_at, sources, messages)
+            document = junit.create_serious_error_document(
+                started_at, finished_at, sources, messages)
         else:
             document = junit.create_document(started_at, finished_at, sources, messages)
         document.write_to_file(options.junit_xml)

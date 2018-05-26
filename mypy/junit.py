@@ -1,4 +1,5 @@
 import datetime
+from typing import Any
 from typing import List
 from typing import MutableMapping
 
@@ -28,7 +29,8 @@ def _group_messages_by_file_path(messages: List[str]) -> MutableMapping[str, Lis
 
 
 class JUnitXMLDocument:
-    def __init__(self, test_suite: TestSuite) -> None:
+    # test_suite should be a junit_xml.TestSuite, but because that's not typed, it becomes Any
+    def __init__(self, test_suite: Any) -> None:
         self._test_suite = test_suite
 
     def write_to_file(self, path: str) -> None:
