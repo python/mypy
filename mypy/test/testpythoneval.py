@@ -14,6 +14,7 @@ import os
 import os.path
 import re
 import sys
+from tempfile import TemporaryDirectory
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -35,12 +36,13 @@ class PythonEvaluationSuite(DataSuite):
     files = ['pythoneval.test',
              'python2eval.test',
              'pythoneval-asyncio.test']
+    cache_dir = TemporaryDirectory()
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        test_python_evaluation(testcase)
+        test_python_evaluation(testcase, os.path.join(self.cache_dir.name, '.mypy_cache'))
 
 
-def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
+def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None:
     """Runs Mypy in a subprocess.
 
     If this passes without errors, executes the script again with a given Python
@@ -69,6 +71,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase) -> None:
     with open(program_path, 'w') as file:
         for s in testcase.input:
             file.write('{}\n'.format(s))
+    mypy_cmdline.append('--cache-dir={}'.format(cache_dir))
     output = []
     # Type check the program.
     out, err, returncode = api.run(mypy_cmdline)
