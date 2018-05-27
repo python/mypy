@@ -1,7 +1,10 @@
-from typing import Any, Callable, Optional, TypeVar, overload
+from typing import Any, Callable, Generic, Optional, TypeVar, overload
 
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
+
+class InitVar(Generic[_T]):
+    ...
 
 
 @overload
