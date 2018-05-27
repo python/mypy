@@ -104,7 +104,6 @@ setup(name='mypy',
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
       install_requires=[
-          'junit-xml >= 1.8, < 1.9',
           'typed-ast >= 1.1.0, < 1.2.0',
       ],
       extras_require = {

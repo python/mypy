@@ -24,7 +24,7 @@ def addition(left: int, right: int) -> int:
 [outfile expected-junit.xml]
 <?xml version="1.0" ?>
 <testsuites disabled="0" errors="0" failures="2" tests="4" time="0.875826">
-	<testsuite disabled="0" errors="0" failures="2" file="None" log="None" name="mypy" skipped="0" tests="4" time="0.875826" timestamp="2017-11-01T01:23:45.000000" url="None">
+	<testsuite disabled="0" errors="0" failures="2" name="mypy" skipped="0" tests="4" time="0.875826" timestamp="2017-11-01T01:23:45.000000">
 		<testcase classname="pkg/__init__.py" name="pkg/__init__.py" time="0.218956"/>
 		<testcase classname="pkg/bar.py" name="pkg/bar.py" time="0.218956">
 			<failure message="mypy produced messages" type="failure">
@@ -35,6 +35,21 @@ pkg/bar.py:2: error: The return type of &quot;__init__&quot; must be None</failu
 			<failure message="mypy produced messages" type="failure">
 pkg/foo.py:3: error: Self argument missing for a non-static method (or an invalid type for self)
 pkg/foo.py:4: error: Incompatible return value type (got &quot;str&quot;, expected &quot;int&quot;)</failure>
+		</testcase>
+	</testsuite>
+</testsuites>
+
+[case testJUnitXMLRenderedForSeriousError]
+# files: pkg
+[file pkg/__init__.py]
+def invalid_syntax:
+[outfile expected-junit.xml]
+<?xml version="1.0" ?>
+<testsuites disabled="0" errors="0" failures="1" tests="1" time="0.005424">
+	<testsuite disabled="0" errors="0" failures="1" name="mypy" skipped="0" tests="1" time="0.005424" timestamp="2018-05-27T03:22:05.044286">
+		<testcase classname="pkg/__init__.py" name="pkg/__init__.py" time="0.005424">
+			<failure message="mypy produced messages" type="failure">
+pkg/__init__.py:1: error: invalid syntax</failure>
 		</testcase>
 	</testsuite>
 </testsuites>
@@ -54,7 +69,7 @@ class Foo:
 [outfile expected-junit.xml]
 <?xml version="1.0" ?>
 <testsuites disabled="0" errors="0" failures="0" tests="3" time="0.803369">
-	<testsuite disabled="0" errors="0" failures="0" file="None" log="None" name="mypy" skipped="0" tests="3" time="0.803369" timestamp="2017-11-18T01:23:45.000000" url="None">
+	<testsuite disabled="0" errors="0" failures="0" name="mypy" skipped="0" tests="3" time="0.803369" timestamp="2017-11-18T01:23:45.000000">
 		<testcase classname="pkg/__init__.py" name="pkg/__init__.py" time="0.267790"/>
 		<testcase classname="pkg/bar.py" name="pkg/bar.py" time="0.267790"/>
 		<testcase classname="pkg/foo.py" name="pkg/foo.py" time="0.267790"/>
