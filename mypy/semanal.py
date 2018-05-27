@@ -3258,7 +3258,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif node and node.line != -1:
             extra_msg = ' on line {}'.format(node.line)
         else:
-            extra_msg = ''
+            extra_msg = ' (possibly by an import)'
         self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
