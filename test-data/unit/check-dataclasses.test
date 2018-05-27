@@ -351,3 +351,34 @@ class SpecializedApplication(Application):
 reveal_type(SpecializedApplication)  # E: Revealed type is 'def (id: Union[builtins.int, None], name: builtins.str, rating: builtins.int =) -> __main__.SpecializedApplication'
 
 [builtins fixtures/list.pyi]
+
+[case testDataclassGenerics]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import Generic, List, Optional, TypeVar
+
+T = TypeVar('T')
+
+@dataclass
+class A(Generic[T]):
+  x: T
+  y: T
+  z: List[T]
+
+  def foo(self) -> List[T]:
+    return [self.x, self.y]
+
+  def bar(self) -> T:
+    return self.z[0]
+
+  def problem(self) -> T:
+    return self.z  # E: Incompatible return value type (got "List[T]", expected "T")
+
+reveal_type(A)  # E: Revealed type is 'def [T] (x: T`1, y: T`1, z: builtins.list[T`1]) -> __main__.A[T`1]'
+a = A(1, 2, [1, 2])
+reveal_type(a)  # E: Revealed type is '__main__.A[builtins.int*]'
+reveal_type(a.x)  # E: Revealed type is 'builtins.int*'
+reveal_type(a.y)  # E: Revealed type is 'builtins.int*'
+reveal_type(a.z)  # E: Revealed type is 'builtins.list[builtins.int*]'
+
+[builtins fixtures/list.pyi]
