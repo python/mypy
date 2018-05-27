@@ -93,11 +93,15 @@ class DataclassTransformer:
 
         # Add an eq method, but only if the class doesn't already have one.
         if decorator_arguments['eq'] and info.get('__eq__') is None:
-            cmp_tvar_def = TypeVarDef('T', 'T', 1, [], ctx.api.named_type('__builtins__.object'))
-            cmp_other_type = TypeVarType(cmp_tvar_def)
-            cmp_return_type = ctx.api.named_type('__builtins__.bool')
-
             for method_name in ['__eq__', '__ne__']:
+                # The TVar is used to enforce that "other" must have
+                # the same type as self (covariant).  Note the
+                # "self_type" parameter to _add_method.
+                obj_type = ctx.api.named_type('__builtins__.object')
+                cmp_tvar_def = TypeVarDef('T', 'T', 1, [], obj_type)
+                cmp_other_type = TypeVarType(cmp_tvar_def)
+                cmp_return_type = ctx.api.named_type('__builtins__.bool')
+
                 _add_method(
                     ctx,
                     method_name,
@@ -107,19 +111,22 @@ class DataclassTransformer:
                     tvar_def=cmp_tvar_def,
                 )
 
-        # Add <,>,<=,>=, but only if the class has an eq method.
+        # Add <, >, <=, >=, but only if the class has an eq method.
         if decorator_arguments['order']:
             if not decorator_arguments['eq']:
                 ctx.api.fail('eq must be True if order is True', ctx.cls)
 
-            order_tvar_def = TypeVarDef('T', 'T', 1, [], ctx.api.named_type('__builtins__.object'))
-            order_other_type = TypeVarType(order_tvar_def)
-            order_return_type = ctx.api.named_type('__builtins__.bool')
-            order_args = [
-                Argument(Var('other', order_other_type), order_other_type, None, ARG_POS)
-            ]
-
             for method_name in ['__lt__', '__gt__', '__le__', '__ge__']:
+                # Like for __eq__ and __ne__, we want "other" to match
+                # the self type.
+                obj_type = ctx.api.named_type('__builtins__.object')
+                order_tvar_def = TypeVarDef('T', 'T', 1, [], obj_type)
+                order_other_type = TypeVarType(order_tvar_def)
+                order_return_type = ctx.api.named_type('__builtins__.bool')
+                order_args = [
+                    Argument(Var('other', order_other_type), order_other_type, None, ARG_POS)
+                ]
+
                 existing_method = info.get(method_name)
                 if existing_method is not None:
                     assert existing_method.node
