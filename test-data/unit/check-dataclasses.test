@@ -124,6 +124,39 @@ class Person:
 
 [builtins fixtures/list.pyi]
 
+[case testDataclassesMultiInit]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(init=False)
+    friend_names: List[str] = field(init=True)
+    enemy_names: List[str]
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, friend_names: builtins.list[builtins.str], enemy_names: builtins.list[builtins.str]) -> __main__.Person'
+
+[builtins fixtures/list.pyi]
+
+[case testDataclassesMultiInitDefaults]
+# flags: --python-version 3.6
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+@dataclass
+class Person:
+    name: str
+    age: int = field(init=False)
+    friend_names: List[str] = field(init=True)
+    enemy_names: List[str]
+    nickname: Optional[str] = None
+
+reveal_type(Person)  # E: Revealed type is 'def (name: builtins.str, friend_names: builtins.list[builtins.str], enemy_names: builtins.list[builtins.str], nickname: Union[builtins.str, None] =) -> __main__.Person'
+
+[builtins fixtures/list.pyi]
+
 [case testDataclassesDefaults]
 # flags: --python-version 3.6
 from dataclasses import dataclass
