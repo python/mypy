@@ -11,7 +11,7 @@ from mypy.plugins.common import _add_method, _get_decorator_bool_argument
 from mypy.types import CallableType, NoneTyp, Type, TypeVarDef, TypeVarType
 from mypy.typevars import fill_typevars
 
-#: The set of decorators that generate dataclasses.
+# The set of decorators that generate dataclasses.
 dataclass_makers = {
     'dataclass',
     'dataclasses.dataclass',
@@ -53,7 +53,7 @@ class DataclassAttribute:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> "DataclassAttribute":
+    def deserialize(cls, data: JsonDict) -> 'DataclassAttribute':
         return cls(**data)
 
 
@@ -62,6 +62,10 @@ class DataclassTransformer:
         self._ctx = ctx
 
     def transform(self) -> None:
+        """Apply all the necessary transformations to the underlying
+        dataclass so as to ensure it is fully type checked according
+        to the rules in PEP 557.
+        """
         ctx = self._ctx
         info = self._ctx.cls.info
         attributes = self.collect_attributes()
@@ -80,6 +84,8 @@ class DataclassTransformer:
                 return_type=NoneTyp(),
             )
             for stmt in self._ctx.cls.defs.body:
+                # Fix up the types of classmethods since, by default,
+                # they will be based on the parent class' init.
                 if isinstance(stmt, Decorator) and stmt.func.is_class:
                     func_type = stmt.func.type
                     if isinstance(func_type, CallableType):
@@ -166,22 +172,22 @@ class DataclassTransformer:
             if not isinstance(lhs, NameExpr):
                 continue
 
-            try:
-                node = cls.info.names[lhs.name].node
-                assert isinstance(node, Var)
+            node = cls.info.names[lhs.name].node
+            assert isinstance(node, Var)
 
-                # x: ClassVar[int] is ignored by dataclasses.
-                if node.is_classvar:
-                    continue
-
-                # Treat the assignment as an instance-level assignment.
-                node.is_initialized_in_class = False
-            except KeyError:
+            # x: ClassVar[int] is ignored by dataclasses.
+            if node.is_classvar:
                 continue
+
+            # Treat the assignment as an instance-level assignment
+            # even though it looks like a class-level assignment.
+            node.is_initialized_in_class = False
 
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 
             try:
+                # parse_bool returns an optional bool, so we corece it
+                # to a bool here in order to appease the type checker.
                 is_in_init = bool(ctx.api.parse_bool(field_args['init']))
             except KeyError:
                 is_in_init = True
@@ -192,7 +198,7 @@ class DataclassTransformer:
             if has_field_call:
                 has_default = 'default' in field_args or 'default_factory' in field_args
 
-            # All other assignments are type checked.
+            # All other assignments are already type checked.
             elif not isinstance(stmt.rvalue, TempNode):
                 has_default = True
 
@@ -225,9 +231,12 @@ class DataclassTransformer:
         # arguments that have a default.
         found_default = False
         for attr in all_attrs:
+            # If we find any attribute that is_in_init but that
+            # doesn't have a default after one that does have one,
+            # then that's an error.
             if found_default and attr.is_in_init and not attr.has_default:
                 ctx.api.fail(
-                    "Attributes without a default cannot follow attributes with one",
+                    'Attributes without a default cannot follow attributes with one',
                     Context(line=attr.line, column=attr.column),
                 )
 
@@ -268,7 +277,7 @@ def _collect_field_args(expr: Expression) -> Tuple[bool, Dict[str, Expression]]:
     if (
             isinstance(expr, CallExpr) and
             isinstance(expr.callee, NameExpr) and
-            expr.callee.fullname == "dataclasses.field"
+            expr.callee.fullname == 'dataclasses.field'
     ):
         # field() only takes keyword arguments.
         args = {}
