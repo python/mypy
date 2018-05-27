@@ -16,16 +16,13 @@ Person('Jonh', 21, None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesBasicInheritance]
 # flags: --python-version 3.6
 from dataclasses import dataclass
 
-
 @dataclass
 class Mammal:
     age: int
-
 
 @dataclass
 class Person(Mammal):
@@ -41,26 +38,21 @@ Person(21, 'Jonh', None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesDeepInheritance]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass
 class A:
     a: int
 
-
 @dataclass
 class B(A):
     b: int
 
-
 @dataclass
 class C(B):
     c: int
-
 
 @dataclass
 class D(C):
@@ -73,16 +65,13 @@ reveal_type(D)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int, c:
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesOverriding]
 # flags: --python-version 3.6
 from dataclasses import dataclass
 
-
 @dataclass
 class Mammal:
     age: int
-
 
 @dataclass
 class Person(Mammal):
@@ -94,7 +83,6 @@ Person('John', 32)
 Person('John', 21, None)  # E: Too many arguments for "Person"
 
 [builtins fixtures/list.pyi]
-
 
 [case testDataclassesFreezing]
 # flags: --python-version 3.6
@@ -108,7 +96,6 @@ john = Person('John')
 john.name = 'Ben'  # E: Property "name" defined in "Person" is read-only
 
 [builtins fixtures/list.pyi]
-
 
 [case testDataclassesFields]
 # flags: --python-version 3.6
@@ -126,7 +113,6 @@ john.age = 24
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesBadInit]
 # flags: --python-version 3.6
 from dataclasses import dataclass, field
@@ -138,11 +124,9 @@ class Person:
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesDefaults]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass
 class Application:
@@ -154,11 +138,9 @@ app = Application()
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesDefaultFactories]
 # flags: --python-version 3.6
 from dataclasses import dataclass, field
-
 
 @dataclass
 class Application:
@@ -168,11 +150,9 @@ class Application:
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesDefaultFactoryTypeChecking]
 # flags: --python-version 3.6
 from dataclasses import dataclass, field
-
 
 @dataclass
 class Application:
@@ -181,11 +161,9 @@ class Application:
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesDefaultOrdering]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass
 class Application:
@@ -194,11 +172,9 @@ class Application:
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassesClassmethods]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass
 class Application:
@@ -213,12 +189,10 @@ app = Application.parse('')
 [builtins fixtures/list.pyi]
 [builtins fixtures/classmethod.pyi]
 
-
 [case testDataclassesClassVars]
 # flags: --python-version 3.6
 from dataclasses import dataclass
 from typing import ClassVar
-
 
 @dataclass
 class Application:
@@ -233,11 +207,9 @@ Application.COUNTER = 1
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassEquality]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass
 class Application:
@@ -252,11 +224,9 @@ app1 == None  # E: Unsupported operand types for == ("Application" and "None")
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassCustomEquality]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass
 class Application:
@@ -272,7 +242,6 @@ app1 == app2
 app1 != app2  # E: Unsupported left operand type for != ("Application")
 app1 == None  # E: Unsupported operand types for == ("Application" and "None")
 
-
 class SpecializedApplication(Application):
   ...
 
@@ -280,11 +249,9 @@ app1 == SpecializedApplication("example-3", 5)
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassOrdering]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass(order=True)
 class Application:
@@ -302,7 +269,6 @@ app1 > 5  # E: Unsupported operand types for > ("Application" and "int")
 app1 <= 5  # E: Unsupported operand types for <= ("Application" and "int")
 app1 >= 5  # E: Unsupported operand types for >= ("Application" and "int")
 
-
 class SpecializedApplication(Application):
   ...
 
@@ -314,11 +280,9 @@ app1 >= app3
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassOrderingWithoutEquality]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass(eq=False, order=True)  # E: eq must be True if order is True
 class Application:
@@ -326,11 +290,9 @@ class Application:
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassOrderingWithCustomMethods]
 # flags: --python-version 3.6
 from dataclasses import dataclass
-
 
 @dataclass(order=True)
 class Application:
@@ -339,23 +301,19 @@ class Application:
 
 [builtins fixtures/list.pyi]
 
-
 [case testDataclassDefaultsInheritance]
 # flags: --python-version 3.6
 from dataclasses import dataclass
 from typing import Optional
-
 
 @dataclass(order=True)
 class Application:
   id: Optional[int]
   name: str
 
-
 @dataclass
 class SpecializedApplication(Application):
   rating: int = 0
-
 
 reveal_type(SpecializedApplication)  # E: Revealed type is 'def (id: Union[builtins.int, None], name: builtins.str, rating: builtins.int =) -> __main__.SpecializedApplication'
 
