@@ -186,10 +186,6 @@ class DataclassTransformer:
             if node.is_classvar:
                 continue
 
-            # Treat the assignment as an instance-level assignment
-            # even though it looks like a class-level assignment.
-            node.is_initialized_in_class = False
-
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 
             try:
