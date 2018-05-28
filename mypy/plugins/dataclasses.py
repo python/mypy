@@ -188,11 +188,11 @@ class DataclassTransformer:
 
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 
-            is_in_init_param = ctx.api.parse_bool(field_args.get('init'))
+            is_in_init_param = field_args.get('init')
             if is_in_init_param is None:
                 is_in_init = True
             else:
-                is_in_init = is_in_init_param
+                is_in_init = bool(ctx.api.parse_bool(is_in_init_param))
 
             has_default = False
             # Ensure that something like x: int = field() is rejected
