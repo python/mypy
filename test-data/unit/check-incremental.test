@@ -4361,3 +4361,294 @@ import b
 -- since the interface didn't change
 [stale]
 [rechecked b]
+
+[case testIncrementalDataclassesSubclassingCached]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    e: str = 'e'
+
+a = B(5, [5], 'foo')
+a.a = 6
+a._b = [2]
+a.c = 'yo'
+a._d = 22
+a.e = 'hi'
+
+[file a.py]
+from dataclasses import dataclass, field
+from typing import ClassVar, List
+
+@dataclass
+class A:
+    a: int
+    _b: List[int]
+    c: str = '18'
+    _d: int = field(default=False)
+    E = 7
+    F: ClassVar[int] = 22
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+
+[case testIncrementalDataclassesSubclassingCachedType]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    pass
+reveal_type(B)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[builtins fixtures/list.pyi]
+[out1]
+main:7: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+[out2]
+main:7: error: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testIncrementalDataclassesArguments]
+from a import Frozen, NoInit, NoCmp
+
+f = Frozen(5)
+f.x = 6
+
+g = NoInit()
+
+Frozen(1) < Frozen(2)
+Frozen(1) <= Frozen(2)
+Frozen(1) > Frozen(2)
+Frozen(1) >= Frozen(2)
+
+NoCmp(1) < NoCmp(2)
+NoCmp(1) <= NoCmp(2)
+NoCmp(1) > NoCmp(2)
+NoCmp(1) >= NoCmp(2)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass(frozen=True, order=True)
+class Frozen:
+    x: int
+
+@dataclass(init=False)
+class NoInit:
+    x: int
+
+@dataclass(order=False)
+class NoCmp:
+    x: int
+
+[builtins fixtures/list.pyi]
+[rechecked]
+[stale]
+[out1]
+main:4: error: Property "x" defined in "Frozen" is read-only
+main:13: error: Unsupported left operand type for < ("NoCmp")
+main:14: error: Unsupported left operand type for <= ("NoCmp")
+main:15: error: Unsupported left operand type for > ("NoCmp")
+main:16: error: Unsupported left operand type for >= ("NoCmp")
+
+[out2]
+main:4: error: Property "x" defined in "Frozen" is read-only
+main:13: error: Unsupported left operand type for < ("NoCmp")
+main:14: error: Unsupported left operand type for <= ("NoCmp")
+main:15: error: Unsupported left operand type for > ("NoCmp")
+main:16: error: Unsupported left operand type for >= ("NoCmp")
+
+[case testIncrementalDataclassesDunder]
+from a import A
+reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> a.A'
+reveal_type(A.__eq__)  # E: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
+reveal_type(A.__ne__)  # E: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+
+A(1) < A(2)
+A(1) <= A(2)
+A(1) > A(2)
+A(1) >= A(2)
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1  # E: Unsupported operand types for < ("A" and "int")
+A(1) <= 1  # E: Unsupported operand types for <= ("A" and "int")
+A(1) > 1  # E: Unsupported operand types for > ("A" and "int")
+A(1) >= 1  # E: Unsupported operand types for >= ("A" and "int")
+A(1) == 1
+A(1) != 1
+
+1 < A(1)  # E: Unsupported operand types for > ("A" and "int")
+1 <= A(1)  # E: Unsupported operand types for >= ("A" and "int")
+1 > A(1)  # E: Unsupported operand types for < ("A" and "int")
+1 >= A(1)  # E: Unsupported operand types for <= ("A" and "int")
+1 == A(1)
+1 != A(1)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class A:
+    a: int
+
+[builtins fixtures/attr.pyi]
+[rechecked]
+[stale]
+[out2]
+main:2: error: Revealed type is 'def (a: builtins.int) -> a.A'
+main:3: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
+main:4: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
+main:5: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+main:6: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+main:7: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+main:8: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+main:17: error: Unsupported operand types for < ("A" and "int")
+main:18: error: Unsupported operand types for <= ("A" and "int")
+main:19: error: Unsupported operand types for > ("A" and "int")
+main:20: error: Unsupported operand types for >= ("A" and "int")
+main:24: error: Unsupported operand types for > ("A" and "int")
+main:25: error: Unsupported operand types for >= ("A" and "int")
+main:26: error: Unsupported operand types for < ("A" and "int")
+main:27: error: Unsupported operand types for <= ("A" and "int")
+
+[case testIncrementalDataclassesSubclassModified]
+from b import B
+B(5, 'foo')
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[file b.py]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: str
+
+[file b.py.2]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: int
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+[rechecked b]
+
+[case testIncrementalDataclassesSubclassModifiedErrorFirst]
+from b import B
+B(5, 'foo')
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[file b.py]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: int
+
+[file b.py.2]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: str
+
+[builtins fixtures/list.pyi]
+[out1]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+
+[out2]
+[rechecked b]
+
+[case testIncrementalDataclassesThreeFiles]
+from c import C
+C(5, 'foo', True)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+[file b.py]
+from dataclasses import dataclass
+
+@dataclass
+class B:
+    b: str
+
+[file c.py]
+from a import A
+from b import B
+from dataclasses import dataclass
+
+@dataclass
+class C(A, B):
+    c: bool
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+
+[case testIncrementalDataclassesThreeRuns]
+from a import A
+A(5)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: str
+
+[file a.py.3]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int = 6
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+[out3]

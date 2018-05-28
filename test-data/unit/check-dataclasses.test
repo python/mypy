@@ -384,3 +384,20 @@ reveal_type(a.z)  # E: Revealed type is 'builtins.list[builtins.int*]'
 s: str = a.bar()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [builtins fixtures/list.pyi]
+
+[case testDataclassesForwardRefs]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+  b: 'B'
+
+@dataclass
+class B:
+  x: int
+
+reveal_type(A)  # E: Revealed type is 'def (b: __main__.B) -> __main__.A'
+A(b=B(42))
+A(b=42)  # E: Argument "b" to "A" has incompatible type "int"; expected "B"
+
+[builtins fixtures/list.pyi]
