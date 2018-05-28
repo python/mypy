@@ -188,12 +188,11 @@ class DataclassTransformer:
 
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 
-            try:
-                # parse_bool returns an optional bool, so we corece it
-                # to a bool here in order to appease the type checker.
-                is_in_init = bool(ctx.api.parse_bool(field_args['init']))
-            except KeyError:
+            is_in_init_param = ctx.api.parse_bool(field_args.get('init'))
+            if is_in_init_param is None:
                 is_in_init = True
+            else:
+                is_in_init = is_in_init_param
 
             has_default = False
             # Ensure that something like x: int = field() is rejected
@@ -253,11 +252,12 @@ class DataclassTransformer:
         """
         info = self._ctx.cls.info
         for attr in attributes:
-            try:
-                node = info.names[attr.name].node
-                assert isinstance(node, Var)
-                node.is_property = True
-            except KeyError:
+            sym_node = info.names.get(attr.name)
+            if sym_node is not None:
+                var = sym_node.node
+                assert isinstance(var, Var)
+                var.is_property = True
+            else:
                 var = attr.to_var(info)
                 var.info = info
                 var.is_property = True
