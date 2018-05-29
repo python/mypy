@@ -41,10 +41,10 @@ characters.
   submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
   ``foo.bar.baz``, and ``foo.bar.baz.quux``).
 
-  Patterns may also be "unstructured" wildcards, in which ``*``s may
+  Patterns may also be "unstructured" wildcards, in which stars may
   appear in the middle of a name (e.g
-  ``site.*.migrations.*``). Internal ``*``s match one or more module
-  component.
+  ``site.*.migrations.*``). Internal stars match one or more module
+  components.
 
   When options conflict, the precedence order for the configuration sections is:
     1. Sections with concrete module names (``foo.bar``)

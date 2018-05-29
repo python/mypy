@@ -1178,6 +1178,9 @@ warn_unused_configs = True
 [[mypy-spam.eggs]
 [[mypy-emarg.*]
 [[mypy-emarg.hatch]
+-- Currently we don't treat an unstructured pattern like a.*.b as unused
+-- if it matches another section (like a.x.b). This would be reasonable
+-- to change.
 [[mypy-a.*.b]
 [[mypy-a.*.c]
 [[mypy-a.x.b]

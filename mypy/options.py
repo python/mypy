@@ -242,7 +242,7 @@ class Options:
         for glob in unstructured_glob_keys:
             self.glob_options.append((glob, re.compile(fnmatch.translate(glob))))
 
-        # We (for ease of implementation), treat unstructured glob
+        # We (for ease of implementation) treat unstructured glob
         # sections as used if any real modules use them or if any
         # concrete config sections use them. This means we need to
         # track which get used while constructing.
@@ -256,7 +256,8 @@ class Options:
             new_options = options.apply_changes(self.per_module_options[key])
             self.per_module_cache[key] = new_options
 
-        # Add the more structured sections into unused configs .
+        # Add the more structured sections into unused configs, since
+        # they only count as used if actually used by a real module.
         self.unused_configs.update(structured_keys)
 
     def clone_for_module(self, module: str) -> 'Options':
