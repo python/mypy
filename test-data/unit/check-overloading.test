@@ -9,18 +9,18 @@ f(0)
 
 @overload  # E: Name 'overload' is not defined
 def g(a:int): pass
-def g(a): pass  # E: Name 'g' already defined
+def g(a): pass  # E: Name 'g' already defined on line 8
 g(0)
 
 @something  # E: Name 'something' is not defined
 def r(a:int): pass
-def r(a): pass  # E: Name 'r' already defined
+def r(a): pass  # E: Name 'r' already defined on line 13
 r(0)
 [out]
 main:1: error: Name 'overload' is not defined
-main:3: error: Name 'f' already defined
+main:3: error: Name 'f' already defined on line 1
 main:3: error: Name 'overload' is not defined
-main:5: error: Name 'f' already defined
+main:5: error: Name 'f' already defined on line 1
 
 [case testTypeCheckOverloadWithImplementation]
 from typing import overload, Any
@@ -143,9 +143,9 @@ def deco(fun): ...
 
 @deco
 def f(x: 'A') -> 'B': ...
-@deco  # E: Name 'f' already defined
+@deco  # E: Name 'f' already defined on line 5
 def f(x: 'B') -> 'A': ...
-@deco  # E: Name 'f' already defined
+@deco  # E: Name 'f' already defined on line 5
 def f(x: Any) -> Any: ...
 
 class A: pass
@@ -1144,7 +1144,7 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:3: error: Name 'f' already defined
+tmp/foo.pyi:3: error: Name 'f' already defined on line 2
 tmp/foo.pyi:3: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloads]
@@ -1158,7 +1158,7 @@ def f(a: int) -> None: pass
 def f(a: str) -> None: pass
 [out]
 tmp/foo.pyi:2: error: Single overload definition, multiple required
-tmp/foo.pyi:5: error: Name 'f' already defined
+tmp/foo.pyi:5: error: Name 'f' already defined on line 2
 tmp/foo.pyi:5: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingFirstOverload]
@@ -1170,7 +1170,7 @@ def f(a: int) -> None: pass
 @overload
 def f(a: str) -> None: pass
 [out]
-tmp/foo.pyi:4: error: Name 'f' already defined
+tmp/foo.pyi:4: error: Name 'f' already defined on line 2
 tmp/foo.pyi:4: error: Single overload definition, multiple required
 
 [case testNonconsecutiveOverloadsMissingLaterOverload]
@@ -1228,7 +1228,7 @@ class Test(object):
     def do_chain(self) -> int:
         return 2
 
-    @do_chain.chain  # E: Name 'do_chain' already defined
+    @do_chain.chain  # E: Name 'do_chain' already defined on line 10
     def do_chain(self) -> int:
         return 3
 

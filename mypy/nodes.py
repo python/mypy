@@ -2487,6 +2487,18 @@ class SymbolTableNode:
             (This is currently used for simple aliases like `A = int` instead
             of .type_override)
         alias_name: TODO
+        no_serialize: Do not serialize this node if True. This is used to prevent
+            keys in the cache that refer to modules on which this file does not
+            depend. Currently this can happen if there is a module not in build
+            used e.g. like this:
+                import a.b.c # type: ignore
+            This will add a submodule symbol to parent module `a` symbol table,
+            but `a.b` is _not_ added as its dependency. Therefore, we should
+            not serialize these symbols as they may not be found during fixup
+            phase, instead they will be re-added during subsequent patch parents
+            phase.
+            TODO: Refactor build.py to make dependency tracking more transparent
+            and/or refactor look-up functions to not require parent patching.
     """
 
     __slots__ = ('kind',
@@ -2500,6 +2512,7 @@ class SymbolTableNode:
                  'implicit',
                  'is_aliasing',
                  'alias_name',
+                 'no_serialize',
                  )
 
     # TODO: This is a mess. Refactor!
@@ -2513,7 +2526,9 @@ class SymbolTableNode:
                  normalized: bool = False,
                  alias_tvars: Optional[List[str]] = None,
                  implicit: bool = False,
-                 module_hidden: bool = False) -> None:
+                 module_hidden: bool = False,
+                 *,
+                 no_serialize: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -2525,6 +2540,7 @@ class SymbolTableNode:
         self.cross_ref = None  # type: Optional[str]
         self.is_aliasing = False
         self.alias_name = None  # type: Optional[str]
+        self.no_serialize = no_serialize
 
     @property
     def fullname(self) -> Optional[str]:
@@ -2660,7 +2676,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             # module that gets added to every module by
             # SemanticAnalyzerPass2.visit_file(), but it shouldn't be
             # accessed by users of the module.
-            if key == '__builtins__':
+            if key == '__builtins__' or value.no_serialize:
                 continue
             data[key] = value.serialize(fullname, key)
         return data

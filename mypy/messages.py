@@ -1267,6 +1267,13 @@ class MessageBuilder:
                     s = ', ' + s
                 s = definition_args[0] + s
             s = '{}({})'.format(tp.definition.name(), s)
+        elif tp.name:
+            first_arg = tp.def_extras.get('first_arg')
+            if first_arg:
+                if s:
+                    s = ', ' + s
+                s = first_arg + s
+            s = '{}({})'.format(tp.name.split()[0], s)  # skip "of Class" part
         else:
             s = '({})'.format(s)
 

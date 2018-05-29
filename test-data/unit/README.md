@@ -171,6 +171,10 @@ need to pass the `-n0` option to disable parallelization:
 You can also write `import pdb; pdb.set_trace()` in code to enter the
 debugger.
 
+The `--mypy-verbose` flag can be used to enable additional debug output from
+most tests (as if `--verbose` had been passed to mypy):
+
+    $ pytest -n0 --mypy-verbose -k MethodCall
 
 Coverage reports
 ----------------

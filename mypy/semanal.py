@@ -395,7 +395,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
                         if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn)
+                            self.name_already_defined(defn.name(), defn,
+                                                      self.type.names[defn.name()])
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
@@ -406,7 +407,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         # Redefinition. Conditional redefinition is okay.
                         n = self.locals[-1][defn.name()].node
                         if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn)
+                            self.name_already_defined(defn.name(), defn,
+                                                      self.locals[-1][defn.name()])
                     else:
                         self.add_local(defn, defn)
             else:
@@ -554,9 +556,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                       "must come last", defn.items[idx])
                 else:
                     for idx in non_overload_indexes[1:]:
-                        self.name_already_defined(defn.name(), defn.items[idx])
+                        self.name_already_defined(defn.name(), defn.items[idx], first_item)
                     if defn.impl:
-                        self.name_already_defined(defn.name(), defn.impl)
+                        self.name_already_defined(defn.name(), defn.impl, first_item)
                 # Remove the non-overloads
                 for idx in reversed(non_overload_indexes):
                     del defn.items[idx]
@@ -1301,7 +1303,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod,
-                                          module_public=module_public)
+                                          module_public=module_public,
+                                          no_serialize=True)
                     parent_mod.names[child] = sym
             id = parent
 
@@ -1850,7 +1853,19 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
             elif explicit_type:
                 # Don't re-bind types
-                self.name_already_defined(lval.name, lval)
+                global_def = self.globals.get(lval.name)
+                if self.locals:
+                    locals_last = self.locals[-1]
+                    if locals_last:
+                        local_def = locals_last.get(lval.name)
+                    else:
+                        local_def = None
+                else:
+                    local_def = None
+                type_def = self.type.names.get(lval.name) if self.type else None
+
+                original_def = global_def or local_def or type_def
+                self.name_already_defined(lval.name, lval, original_def)
             else:
                 # Bind to an existing name.
                 lval.accept(self)
@@ -3179,7 +3194,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.locals[-1][name].node == node.node):
-                    self.name_already_defined(name, context)
+                    self.name_already_defined(name, context, self.locals[-1][name])
             self.locals[-1][name] = node
         elif self.type:
             self.type.names[name] = node
@@ -3196,14 +3211,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if existing.type and node.type and is_same_type(existing.type, node.type):
                     ok = True
                 if not ok:
-                    self.name_already_defined(name, context)
+                    self.name_already_defined(name, context, existing)
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
         assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
         if name in self.locals[-1]:
-            self.name_already_defined(name, ctx)
+            self.name_already_defined(name, ctx, self.locals[-1][name])
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
@@ -3237,14 +3252,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.add_fixture_note(fullname, ctx)
 
     def name_already_defined(self, name: str, ctx: Context,
-                             original_ctx: Optional[SymbolTableNode] = None) -> None:
-        if original_ctx:
-            if original_ctx.node and original_ctx.node.get_line() != -1:
-                extra_msg = ' on line {}'.format(original_ctx.node.get_line())
-            else:
-                extra_msg = ' (possibly by an import)'
+                    original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
+        if isinstance(original_ctx, SymbolTableNode):
+            node = original_ctx.node
+        elif isinstance(original_ctx, SymbolNode):
+            node = original_ctx
+
+        if isinstance(original_ctx, SymbolTableNode) and original_ctx.kind == MODULE_REF:
+            # Since this is an import, original_ctx.node points to the module definition.
+            # Therefore its line number is always 1, which is not useful for this
+            # error message.
+            extra_msg = ' (by an import)'
+        elif node and node.line != -1:
+            extra_msg = ' on line {}'.format(node.line)
         else:
-            extra_msg = ''
+            extra_msg = ' (possibly by an import)'
         self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,
