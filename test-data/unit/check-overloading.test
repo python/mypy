@@ -1009,7 +1009,6 @@ def i(x: List[str]) -> int: pass  # E: Overloaded function signatures 1 and 2 ov
 def i(x: List[T]) -> None: pass
 [builtins fixtures/list.pyi]
 
-
 [case testOverlapWithTypeVarsWithValues]
 from foo import *
 [file foo.pyi]
@@ -1912,7 +1911,7 @@ reveal_type(obj.f(A()))  # E: Revealed type is '__main__.C'
 reveal_type(obj.f(B()))  # E: Revealed type is '__main__.B'
 reveal_type(obj.f(x))    # E: Revealed type is 'Union[__main__.B, __main__.C]'
 
-[case testOverloadingInferUnionReturnWithTypevarReturn]
+[case testOverloadingInferUnionReturnWithFunctionTypevarReturn]
 from typing import overload, Union, TypeVar, Generic
 
 T = TypeVar('T')
@@ -1930,6 +1929,65 @@ def foo(x): ...
 
 def bar(x: Union[W1[T], W2[T]]) -> T: ...
 
+def wrapper() -> None:
+    obj1: Union[W1[A], W2[A]]
+
+    a1: A = foo(obj1)
+    a2 = foo(obj1)
+    reveal_type(a1)  # E: Revealed type is '__main__.A'
+    reveal_type(a2)  # E: Revealed type is '__main__.A*'
+
+    obj2: Union[W1[A], W2[B]]
+
+    foo(obj2)  # E: Cannot infer type argument 1 of "foo"
+    bar(obj2)  # E: Cannot infer type argument 1 of "bar"
+
+    b1_overload: A = foo(obj2)  # E: Cannot infer type argument 1 of "foo"
+    b1_union: A    = bar(obj2)  # E: Cannot infer type argument 1 of "bar"
+
+[case testOverloadingInferUnionReturnWithObjectTypevarReturn]
+from typing import overload, Union, TypeVar, Generic
+
+T = TypeVar('T')
+
+class W1(Generic[T]): pass
+class W2(Generic[T]): pass
+class A: pass
+class B: pass
+
+class SomeType(Generic[T]):
+    @overload
+    def foo(self, x: W1[T]) -> T: ...
+    @overload
+    def foo(self, x: W2[T]) -> T: ...
+    def foo(self, x): ...
+
+    def bar(self, x: Union[W1[T], W2[T]]) -> T: ...
+
+def wrapper() -> None:
+    obj1: Union[W1[A], W2[A]]
+
+    a1 = SomeType[A]().foo(obj1)
+    reveal_type(a1)  # E: Revealed type is '__main__.A*'
+
+    # Note: These should be fine, but mypy has an unrelated bug
+    #       that makes them error out?
+    a2_overload: A = SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    a2_union: A    = SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+
+    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+
+[case testOverloadingInferUnionReturnWithBadObjectTypevarReturn]
+from typing import overload, Union, TypeVar, Generic
+
+T = TypeVar('T')
+
+class W1(Generic[T]): pass
+class W2(Generic[T]): pass
+class A: pass
+class B: pass
+
 class SomeType(Generic[T]):
     @overload
     def foo(self, x: W1[T]) -> T: ...
@@ -1940,51 +1998,16 @@ class SomeType(Generic[T]):
     def bar(self, x: Union[W1[T], W2[T]]) -> T: ...
 
 def wrapper(mysterious: T) -> T:
-    obj1: Union[W1[A], W2[A]]
+    obj1: Union[W1[A], W2[B]]
 
-    # Phase 1: Things mypy should be able to infer
+    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
+    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
 
-    a1: A = foo(obj1)
-    a2 = foo(obj1)
-    a3 = SomeType[A]().foo(obj1)
+    SomeType[A]().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
+    SomeType[A]().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
 
-    reveal_type(a1)  # E: Revealed type is '__main__.A'
-    reveal_type(a2)  # E: Revealed type is '__main__.A*'
-    reveal_type(a3)  # E: Revealed type is '__main__.A*'
-
-    # Phase 2: Things mypy should be able to infer, but does not
-    #          due to bugs unrelated to overloads
-    #
-    #          (We confirm this by checking to see that the error
-    #          message is identical to what we would have gotten if
-    #          we manually union the overload)
-
-    a4_overload: A = SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
-    a4_union: A    = SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
-
-    SomeType().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
-    SomeType().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[A]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
-
-
-    # Phase 3: Things where type inference is impossible and
-    #          mypy should report an error
-
-    obj2: Union[W1[A], W2[B]]
-
-    foo(obj2)  # E: Cannot infer type argument 1 of "foo"
-    bar(obj2)  # E: Cannot infer type argument 1 of "bar"
-
-    b2_overload: A = foo(obj2)  # E: Cannot infer type argument 1 of "foo"
-    b2_union: A    = bar(obj2)  # E: Cannot infer type argument 1 of "bar"
-
-    SomeType().foo(obj2)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
-    SomeType().bar(obj2)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[<nothing>], W2[<nothing>]]"
-
-    SomeType[A]().foo(obj2)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
-    SomeType[A]().bar(obj2)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[A], W2[A]]"
-
-    SomeType[T]().foo(obj2)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
-    SomeType[T]().bar(obj2)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
+    SomeType[T]().foo(obj1)  # E: Argument 1 to "foo" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
+    SomeType[T]().bar(obj1)  # E: Argument 1 to "bar" of "SomeType" has incompatible type "Union[W1[A], W2[B]]"; expected "Union[W1[T], W2[T]]"
 
     return mysterious
 
@@ -2016,6 +2039,30 @@ def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     y2: T1
     reveal_type(Dummy[T1]().foo(x2, y2))  # E: Revealed type is 'T1`-1'
 
+    return arg1, arg2
+
+[builtins fixtures/list.pyi]
+
+[case testOverloadingInferUnionReturnWithMixedTypevarsInnerMismatch]
+from typing import overload, Generic, TypeVar, List, Tuple, Union
+
+class A: pass
+class B(A): pass
+class C(A): pass
+
+T = TypeVar('T', bound=A)
+S = TypeVar('S')
+
+class Dummy(Generic[T]):
+    @overload
+    def foo(self, x: List[Tuple[T, S]], y: S) -> T: ...
+    @overload
+    def foo(self, x: List[S], y: S) -> S: ...
+    def foo(self, x: Union[List[Tuple[T, S]], List[S]], y: S) -> Union[T, S]: ...
+
+T1 = TypeVar('T1', bound=A)
+
+def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
     # The arguments in the tuple are swapped
     x3: Union[List[S], List[Tuple[S, T1]]]
     y3: S
@@ -2028,17 +2075,35 @@ def t_is_same_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
 
     return arg1, arg2
 
+[builtins fixtures/list.pyi]
 
-T2 = TypeVar('T2', bound=B)
+[case testOverloadingInferUnionReturnWithMixedTypevarsTighterBound]
+from typing import overload, Generic, TypeVar, List, Tuple, Union
 
-def t_is_tighter_bound(arg1: T2, arg2: S) -> Tuple[T2, S]:
-    x1: Union[List[S], List[Tuple[T2, S]]]
+class A: pass
+class B(A): pass
+class C(A): pass
+
+T = TypeVar('T', bound=A)
+S = TypeVar('S')
+
+class Dummy(Generic[T]):
+    @overload
+    def foo(self, x: List[Tuple[T, S]], y: S) -> T: ...
+    @overload
+    def foo(self, x: List[S], y: S) -> S: ...
+    def foo(self, x: Union[List[Tuple[T, S]], List[S]], y: S) -> Union[T, S]: ...
+
+T1 = TypeVar('T1', bound=B)
+
+def t_is_tighter_bound(arg1: T1, arg2: S) -> Tuple[T1, S]:
+    x1: Union[List[S], List[Tuple[T1, S]]]
     y1: S
-    reveal_type(Dummy[T2]().foo(x1, y1))  # E: Revealed type is 'Union[T2`-1, S`-2]'
+    reveal_type(Dummy[T1]().foo(x1, y1))  # E: Revealed type is 'Union[T1`-1, S`-2]'
 
-    x2: Union[List[T2], List[Tuple[T2, T2]]]
-    y2: T2
-    reveal_type(Dummy[T2]().foo(x2, y2))  # E: Revealed type is 'T2`-1'
+    x2: Union[List[T1], List[Tuple[T1, T1]]]
+    y2: T1
+    reveal_type(Dummy[T1]().foo(x2, y2))  # E: Revealed type is 'T1`-1'
 
     return arg1, arg2
 
@@ -2212,9 +2277,9 @@ reveal_type(mymap(f3, seq))  # E: Revealed type is 'Union[typing.Iterable[builti
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testOverloadsAndNoReturnNarrowTypeNoStrictOptional]
+[case testOverloadsAndNoReturnNarrowTypeNoStrictOptional1]
 # flags: --no-strict-optional
-from typing import overload, Union, TypeVar, NoReturn, Optional
+from typing import overload, Union, NoReturn
 
 @overload
 def narrow_int(x: str) -> NoReturn: ...
@@ -2222,23 +2287,6 @@ def narrow_int(x: str) -> NoReturn: ...
 def narrow_int(x: int) -> int: ...
 def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
     assert isinstance(x, int)
-    return x
-
-T = TypeVar('T')
-@overload
-def narrow_none(x: None) -> NoReturn: ...
-@overload
-def narrow_none(x: T) -> T: ...
-def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
-    assert x is not None
-    return x
-
-@overload
-def narrow_none_v2(x: None) -> NoReturn: ...
-@overload
-def narrow_none_v2(x: T) -> T: ...
-def narrow_none_v2(x: Optional[T]) -> T:
-    assert x is not None
     return x
 
 def test_narrow_int() -> None:
@@ -2255,6 +2303,51 @@ def test_narrow_int() -> None:
     reveal_type(c)  # Note: branch is now dead, so no type is revealed
                     # TODO: maybe we should make mypy report a warning instead?
 
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadsAndNoReturnNarrowTypeWithStrictOptional1]
+# flags: --strict-optional
+from typing import overload, Union, NoReturn
+
+@overload
+def narrow_int(x: str) -> NoReturn: ...
+@overload
+def narrow_int(x: int) -> int: ...
+def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
+    assert isinstance(x, int)
+    return x
+
+def test_narrow_int() -> None:
+    a: Union[int, str]
+    a = narrow_int(a)
+    reveal_type(a)  # E: Revealed type is 'builtins.int'
+
+    b: int
+    b = narrow_int(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: str
+    c = narrow_int(c)
+    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+                    # TODO: maybe we should make mypy report a warning instead?
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadsAndNoReturnNarrowTypeNoStrictOptional2]
+# flags: --no-strict-optional
+from typing import overload, Union, TypeVar, NoReturn, Optional
+
+T = TypeVar('T')
+@overload
+def narrow_none(x: None) -> NoReturn: ...
+@overload
+def narrow_none(x: T) -> T: ...
+def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
+    assert x is not None
+    return x
+
 def test_narrow_none() -> None:
     a: Optional[int]
     a = narrow_none(a)
@@ -2267,6 +2360,51 @@ def test_narrow_none() -> None:
     c: None
     c = narrow_none(c)
     reveal_type(c)  # Note: branch is now dead, so no type is revealed
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadsAndNoReturnNarrowTypeWithStrictOptional2]
+# flags: --strict-optional
+from typing import overload, Union, TypeVar, NoReturn, Optional
+
+T = TypeVar('T')
+@overload
+def narrow_none(x: None) -> NoReturn: ...
+@overload
+def narrow_none(x: T) -> T: ...
+def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
+    assert x is not None
+    return x
+
+def test_narrow_none() -> None:
+    a: Optional[int]
+    a = narrow_none(a)
+    reveal_type(a)  # E: Revealed type is 'builtins.int'
+
+    b: int
+    b = narrow_none(b)
+    reveal_type(b)  # E: Revealed type is 'builtins.int'
+
+    c: None
+    c = narrow_none(c)
+    reveal_type(c)  # Branch is now dead
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testOverloadsAndNoReturnNarrowTypeNoStrictOptional3]
+# flags: --no-strict-optional
+from typing import overload, TypeVar, NoReturn, Optional
+
+@overload
+def narrow_none_v2(x: None) -> NoReturn: ...
+@overload
+def narrow_none_v2(x: T) -> T: ...
+def narrow_none_v2(x: Optional[T]) -> T:
+    assert x is not None
+    return x
 
 def test_narrow_none_v2() -> None:
     a: Optional[int]
@@ -2284,26 +2422,9 @@ def test_narrow_none_v2() -> None:
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testOverloadsAndNoReturnNarrowTypeWithStrictOptional]
+[case testOverloadsAndNoReturnNarrowTypeWithStrictOptional3]
 # flags: --strict-optional
-from typing import overload, Union, TypeVar, NoReturn, Optional
-
-@overload
-def narrow_int(x: str) -> NoReturn: ...
-@overload
-def narrow_int(x: int) -> int: ...
-def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
-    assert isinstance(x, int)
-    return x
-
-T = TypeVar('T')
-@overload
-def narrow_none(x: None) -> NoReturn: ...
-@overload
-def narrow_none(x: T) -> T: ...
-def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
-    assert x is not None
-    return x
+from typing import overload, TypeVar, NoReturn, Optional
 
 @overload
 def narrow_none_v2(x: None) -> NoReturn: ...
@@ -2312,33 +2433,6 @@ def narrow_none_v2(x: T) -> T: ...
 def narrow_none_v2(x: Optional[T]) -> T:
     assert x is not None
     return x
-
-def test_narrow_int() -> None:
-    a: Union[int, str]
-    a = narrow_int(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
-
-    b: int
-    b = narrow_int(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
-
-    c: str
-    c = narrow_int(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
-                    # TODO: maybe we should make mypy report a warning instead?
-
-def test_narrow_none() -> None:
-    a: Optional[int]
-    a = narrow_none(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
-
-    b: int
-    b = narrow_none(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
-
-    c: None
-    c = narrow_none(c)
-    reveal_type(c)  # Branch is now dead
 
 def test_narrow_none_v2() -> None:
     a: Optional[int]
@@ -2372,14 +2466,6 @@ def narrow_to_not_a(x: T) -> Union[NoReturn, T]:
     assert not isinstance(x, A)
     return x
 
-@overload
-def narrow_to_not_a_v2(x: A) -> NoReturn: ...
-@overload
-def narrow_to_not_a_v2(x: T) -> T: ...
-def narrow_to_not_a_v2(x: T) -> T:
-    assert not isinstance(x, A)
-    return x
-
 def test() -> None:
     val: Union[A, B]
     val = narrow_to_not_a(val)
@@ -2388,6 +2474,25 @@ def test() -> None:
     val2: A
     val2 = narrow_to_not_a(val2)
     reveal_type(val2)  # Branch now dead
+
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2]
+from typing import TypeVar, NoReturn, Union, overload
+
+class Parent: ...
+class A(Parent): ...
+class B(Parent): ...
+T = TypeVar('T', bound=Parent)
+
+@overload
+def narrow_to_not_a_v2(x: A) -> NoReturn: ...
+@overload
+def narrow_to_not_a_v2(x: T) -> T: ...
+def narrow_to_not_a_v2(x: T) -> T:
+    assert not isinstance(x, A)
+    return x
 
 def test_v2() -> None:
     val: Union[A, B]
@@ -2403,13 +2508,6 @@ def test_v2() -> None:
 
 [case testOverloadWithNonGenericDescriptor]
 from typing import overload, Any, Optional, Union
-
-class FakeAttribute:
-    @overload
-    def dummy(self, instance: None, owner: Any) -> 'FakeAttribute': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
-    @overload
-    def dummy(self, instance: object, owner: Any) -> int: ...
-    def dummy(self, instance: Optional[object], owner: Any) -> Union['FakeAttribute', int]: ...
 
 class NumberAttribute:
     @overload
@@ -2436,17 +2534,20 @@ reveal_type(MyModel.my_number.foo())  # E: Revealed type is 'builtins.str'
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testOverloadWithNonGenericDescriptorLookalike]
+from typing import overload, Any, Optional, Union
+
+class FakeAttribute:
+    @overload
+    def dummy(self, instance: None, owner: Any) -> 'FakeAttribute': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    @overload
+    def dummy(self, instance: object, owner: Any) -> int: ...
+    def dummy(self, instance: Optional[object], owner: Any) -> Union['FakeAttribute', int]: ...
+
 [case testOverloadWithGenericDescriptor]
 from typing import overload, Any, Optional, TypeVar, Type, Union, Generic
 
 T = TypeVar('T')
-
-class FakeAttribute(Generic[T]):
-    @overload
-    def dummy(self, instance: None, owner: Type[T]) -> 'FakeAttribute[T]': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
-    @overload
-    def dummy(self, instance: T, owner: Type[T]) -> int: ...
-    def dummy(self, instance: Optional[T], owner: Type[T]) -> Union['FakeAttribute[T]', int]: ...
 
 class NumberAttribute(Generic[T]):
     @overload
@@ -2475,3 +2576,15 @@ reveal_type(NumberAttribute[str]().__get__(None, str))      # E: Revealed type i
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testOverloadWithGenericDescriptorLookalike]
+from typing import overload, Any, Optional, TypeVar, Type, Union, Generic
+
+T = TypeVar('T')
+
+class FakeAttribute(Generic[T]):
+    @overload
+    def dummy(self, instance: None, owner: Type[T]) -> 'FakeAttribute[T]': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    @overload
+    def dummy(self, instance: T, owner: Type[T]) -> int: ...
+    def dummy(self, instance: Optional[T], owner: Type[T]) -> Union['FakeAttribute[T]', int]: ...
