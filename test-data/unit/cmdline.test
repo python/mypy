@@ -1196,19 +1196,19 @@ Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*]
 ignore_errors = true
 [[mypy-emarg.*]
 ignore_errors = false
-[[mypy-emarg.*.vilip.*]
+[[mypy-emarg.*.villip.*]
 ignore_errors = true
-[[mypy-emarg.hatch.vilip.mankangulisk]
+[[mypy-emarg.hatch.villip.mankangulisk]
 ignore_errors = false
 [file emarg/__init__.py]
 [file emarg/foo.py]
 fail
 [file emarg/hatch/__init__.py]
-[file emarg/hatch/vilip/__init__.py]
-[file emarg/hatch/vilip/nus.py]
+[file emarg/hatch/villip/__init__.py]
+[file emarg/hatch/villip/nus.py]
 fail
-[file emarg/hatch/vilip/mankangulisk.py]
+[file emarg/hatch/villip/mankangulisk.py]
 fail
 [out]
 emarg/foo.py:1: error: Name 'fail' is not defined
-emarg/hatch/vilip/mankangulisk.py:1: error: Name 'fail' is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
