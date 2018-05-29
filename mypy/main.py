@@ -746,7 +746,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                     glob = glob.replace(os.altsep, '.')
 
                 if (any(c in glob for c in '?[]!') or
-                    any('*' in x and x != '*' for x in glob.split('.'))):
+                        any('*' in x and x != '*' for x in glob.split('.'))):
                     print("%s: Patterns must be fully-qualified module names, optionally "
                           "with '*' in some components (e.g spam.*.eggs.*)"
                           % prefix,
