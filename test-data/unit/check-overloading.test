@@ -1092,6 +1092,38 @@ main:21: note: Consider using "Sequence" instead, which is covariant
 main:22: error: Argument 1 to "foo" has incompatible type "List[object]"; expected "List[int]"
 main:23: error: Argument 1 to "foo" has incompatible type "List[Union[int, str]]"; expected "List[int]"
 
+[case testOverloadAgainstEmptyCollections]
+from typing import overload, List
+
+@overload
+def f(x: List[int]) -> int: ...
+@overload
+def f(x: List[str]) -> str: ...
+def f(x): pass
+
+reveal_type(f([]))  # E: Revealed type is 'builtins.int'
+[builtins fixtures/list.pyi]
+
+[case testOverloadAgainstEmptyCovariantCollections]
+from typing import overload, TypeVar, Generic
+
+T = TypeVar('T', covariant=True)
+class Wrapper(Generic[T]): pass
+
+class A: pass
+class B(A): pass
+class C: pass
+
+@overload
+def f(x: Wrapper[A]) -> int: ...
+@overload
+def f(x: Wrapper[C]) -> str: ...
+def f(x): pass
+
+reveal_type(f(Wrapper()))     # E: Revealed type is 'builtins.int'
+reveal_type(f(Wrapper[C]()))  # E: Revealed type is 'builtins.str'
+reveal_type(f(Wrapper[B]()))  # E: Revealed type is 'builtins.int'
+
 [case testOverlappingOverloadCounting]
 from foo import *
 [file foo.pyi]
