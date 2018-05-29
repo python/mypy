@@ -1121,7 +1121,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         plausible_targets = self.plausible_overload_call_targets(arg_types, arg_kinds,
                                                                  arg_names, callee)
 
-        # Step 2: If the arguments contain a union, we try performing union math first.
+        # Step 2: If the arguments contain a union, we try performing union math first,
+        #         instead of picking the first matching overload.
+        #         This is because picking the first overload often ends up being too greedy:
+        #         for example, when we have a fallback alternative that accepts an unrestricted
+        #         typevar. See https://github.com/python/mypy/issues/4063 for related discussion.
         erased_targets = None  # type: Optional[List[CallableType]]
         unioned_result = None  # type: Optional[Tuple[Type, Type]]
         unioned_errors = None  # type: Optional[MessageBuilder]

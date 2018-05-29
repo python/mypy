@@ -3667,7 +3667,7 @@ def is_unsafe_overlapping_operator_signatures(signature: Type, other: Type) -> b
     """Check if two operator method signatures may be unsafely overlapping.
 
     Two signatures s and t are overlapping if both can be valid for the same
-        statically typed values and the return types are incompatible.
+    statically typed values and the return types are incompatible.
 
     Assume calls are first checked against 'signature', then against 'other'.
     Thus if 'signature' is more general than 'other', there is no unsafe
