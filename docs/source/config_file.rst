@@ -31,14 +31,30 @@ characters.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
   present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
-  patterns of the form ``dotted_module_name`` or ``dotted_module_name.*``.
+  patterns of fully-qualified module names, with some components optionally
+  replaced by `*`s (e.g. ``foo.bar``, ``foo.bar.*``, ``foo.*.baz``).
   These sections specify additional flags that only apply to *modules*
   whose name matches at least one of the patterns.
 
-  A pattern of the form ``dotted_module_name`` matches only the named module,
-  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
+  A pattern of the form ``qualified_module_name`` matches only the named module,
+  while ``qualified_module_name.*`` matches ``dotted_module_name`` and any
   submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
   ``foo.bar.baz``, and ``foo.bar.baz.quux``).
+
+  Patterns may also be "unstructured" wildcards, in which ``*``s may
+  appear in the middle of a name (e.g
+  ``site.*.migrations.*``). Internal ``*``s match one or more module
+  component.
+
+  When options conflict, the precedence order for the configuration sections is:
+    1. Sections with concrete module names (``foo.bar``)
+    2. Sections with "unstructured" wildcard patterns (``foo.*.baz``),
+       with sections later in the configuration file overriding
+       sections earlier.
+    3. Sections with "well-structured" wildcard patterns
+       (``foo.bar.*``), with more specific overriding more general.
+    4. Command line options.
+    5. Top-level configuration file options.
 
 .. note::
 

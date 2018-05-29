@@ -203,8 +203,8 @@ def g(a: int) -> int: return f(a)
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [out]
-mypy.ini: [mypy-*x*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
-mypy.ini: [mypy-*y*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
+mypy.ini: [mypy-*x*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+mypy.ini: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 == Return code: 0
 
 [case testMultipleGlobConfigSection]
@@ -268,7 +268,7 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
-mypy.ini: [mypy-*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
+mypy.ini: [mypy-*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 == Return code: 0
 
 [case testConfigMypyPath]
@@ -1179,10 +1179,37 @@ warn_unused_configs = True
 [[mypy-spam.eggs]
 [[mypy-emarg.*]
 [[mypy-emarg.hatch]
+[[mypy-a.*.b]
+[[mypy-a.*.c]
+[[mypy-a.x.b]
 [file foo.py]
 [file quux.py]
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch]
+Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
+
+[case testConfigNonsense]
+# cmd: mypy emarg
+[file mypy.ini]
+[[mypy]
+ignore_errors = true
+[[mypy-emarg.*]
+ignore_errors = false
+[[mypy-emarg.*.vilip.*]
+ignore_errors = true
+[[mypy-emarg.hatch.vilip.mankangulisk]
+ignore_errors = false
+[file emarg/__init__.py]
+[file emarg/foo.py]
+fail
+[file emarg/hatch/__init__.py]
+[file emarg/hatch/vilip/__init__.py]
+[file emarg/hatch/vilip/nus.py]
+fail
+[file emarg/hatch/vilip/mankangulisk.py]
+fail
+[out]
+emarg/foo.py:1: error: Name 'fail' is not defined
+emarg/hatch/vilip/mankangulisk.py:1: error: Name 'fail' is not defined

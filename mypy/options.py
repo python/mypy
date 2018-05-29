@@ -1,8 +1,10 @@
 from collections import OrderedDict
+import fnmatch
+import re
 import pprint
 import sys
 
-from typing import Dict, List, Mapping, MutableMapping, Optional, Set, Tuple
+from typing import Dict, List, Mapping, MutableMapping, Optional, Pattern, Set, Tuple
 
 from mypy import defaults
 
@@ -167,8 +169,8 @@ class Options:
         self.plugins = []  # type: List[str]
 
         # Per-module options (raw)
-        pm_opts = OrderedDict()  # type: OrderedDict[str, Dict[str, object]]
-        self.per_module_options = pm_opts
+        self.per_module_options = OrderedDict()  # type: OrderedDict[str, Dict[str, object]]
+        self.glob_options = []  # type: List[Tuple[str, Pattern[str]]]
         self.unused_configs = set()  # type: Set[str]
 
         # -- development options --
@@ -208,27 +210,54 @@ class Options:
     def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.snapshot()))
 
+    def apply_changes(self, changes: Dict[str, object]) -> 'Options':
+        new_options = Options()
+        new_options.__dict__.update(self.__dict__)
+        new_options.__dict__.update(changes)
+        return new_options
+
     def build_per_module_cache(self) -> None:
         self.per_module_cache = {}
-        # Since configs inherit from glob configs above them in the hierarchy,
+
+        # Config precedence is as follows:
+        #  1. Concrete section names: foo.bar.baz
+        #  2. "Unstructured" glob patterns: foo.*.baz, in the order they appear in the file
+        #  3. "Well-structured" wildcard patterns: foo.bar.*, in specificity order.
+
+        # Since structured configs inherit from glob configs above them in the hierarchy,
         # we need to process per-module configs in a careful order.
-        # We have to process foo.* before foo.bar.* before foo.bar.
-        # To do this, process all glob configs before non-glob configs and
+        # We have to process foo.* before foo.bar.* before foo.bar,
+        # and we need to apply *.bar to foo.bar but not to foo.bar.*.
+        # To do this, process all well-structured glob configs before non-glob configs and
         # exploit the fact that foo.* sorts earlier ASCIIbetically (unicodebetically?)
         # than foo.bar.*.
-        keys = (sorted(k for k in self.per_module_options.keys() if k.endswith('.*')) +
-                [k for k in self.per_module_options.keys() if not k.endswith('.*')])
-        for key in keys:
+        # Unstructured glob configs are stored and are all checked for each module.
+        unstructured_glob_keys = [k for k in self.per_module_options.keys()
+                                  if '*' in k[:-1]]
+        structured_keys = [k for k in self.per_module_options.keys()
+                           if '*' not in k[:-1]]
+        wildcards = sorted(k for k in structured_keys if k.endswith('.*'))
+        concrete = [k for k in structured_keys if not k.endswith('.*')]
+
+        for glob in unstructured_glob_keys:
+            self.glob_options.append((glob, re.compile(fnmatch.translate(glob))))
+
+        # We (for ease of implementation), treat unstructured glob
+        # sections as used if any real modules use them or if any
+        # concrete config sections use them. This means we need to
+        # track which get used while constructing.
+        self.unused_configs = set(unstructured_glob_keys)
+
+        for key in wildcards + concrete:
             # Find what the options for this key would be, just based
             # on inheriting from parent configs.
             options = self.clone_for_module(key)
             # And then update it with its per-module options.
-            new_options = Options()
-            new_options.__dict__.update(options.__dict__)
-            new_options.__dict__.update(self.per_module_options[key])
+            new_options = options.apply_changes(self.per_module_options[key])
             self.per_module_cache[key] = new_options
 
-        self.unused_configs = set(keys)
+        # Add the more structured sections into unused configs .
+        self.unused_configs.update(structured_keys)
 
     def clone_for_module(self, module: str) -> 'Options':
         """Create an Options object that incorporates per-module options.
@@ -250,18 +279,33 @@ class Options:
         # in that order, looking for an entry.
         # This is technically quadratic in the length of the path, but module paths
         # don't actually get all that long.
+        options = self
         path = module.split('.')
         for i in range(len(path), 0, -1):
             key = '.'.join(path[:i] + ['*'])
             if key in self.per_module_cache:
                 self.unused_configs.discard(key)
-                return self.per_module_cache[key]
+                options = self.per_module_cache[key]
+                break
+
+        # OK and *now* we need to look for glob matches
+        if not module.endswith('.*'):
+            for key, pattern in self.glob_options:
+                if self.module_matches_pattern(module, pattern):
+                    self.unused_configs.discard(key)
+                    options = options.apply_changes(self.per_module_options[key])
 
         # We could update the cache to directly point to modules once
         # they have been looked up, but in testing this made things
         # slower and not faster, so we don't bother.
 
-        return self
+        return options
+
+    def module_matches_pattern(self, module: str, pattern: Pattern[str]) -> bool:
+        # If the pattern is 'mod.*', we want 'mod' to match that too.
+        # (That's so that a pattern specifying a package also matches
+        # that package's __init__.)
+        return pattern.match(module) is not None or pattern.match(module + '.') is not None
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
