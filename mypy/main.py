@@ -650,56 +650,13 @@ def process_options(args: List[str],
             report_dir = val
             options.report_dirs[report_type] = report_dir
 
-    # Validate and normalize --package-root.
+    # Process --package-root.
     if options.package_root:
-        if fscache is None:
-            parser.error("--package-root does not work here (no fscache)")
-        assert fscache is not None  # Since mypy doesn't know parser.error() raises.
-        # Do some stuff with drive letters to make Windows happy (esp. tests).
-        current_drive, _ = os.path.splitdrive(os.getcwd())
-        dot = os.curdir
-        dotslash = os.curdir + os.sep
-        dotdotslash = os.pardir + os.sep
-        trivial_paths = {dot, dotslash}
-        package_root = []
-        for root in options.package_root:
-            if os.path.isabs(root):
-                parser.error("Package root cannot be absolute: %r" % root)
-            drive, root = os.path.splitdrive(root)
-            if drive and drive != current_drive:
-                parser.error("Package root must be on current drive: %r" % (drive + root))
-            # Empty package root is always okay.
-            if root:
-                root = os.path.relpath(root)  # Normalize the heck out of it.
-                if root.startswith(dotdotslash):
-                    parser.error("Package root cannot be above current directory: %r" % root)
-                if root in trivial_paths:
-                    root = ''
-                elif not root.endswith(os.sep):
-                    root = root + os.sep
-            package_root.append(root)
-        options.package_root = package_root
-        # Pass the package root on the the filesystem cache.
-        fscache.set_package_root(package_root)
+        process_package_roots(fscache, parser, options)
 
-    # Parse cache map.
+    # Process --cache-map.
     if special_opts.cache_map:
-        n = len(special_opts.cache_map)
-        if n % 3 != 0:
-            parser.error("--cache-map requires one or more triples (see source)")
-        for i in range(0, n, 3):
-            source, meta_file, data_file = special_opts.cache_map[i:i + 3]
-            if source in options.cache_map:
-                parser.error("Duplicate --cache-map source %s)" % source)
-            if not source.endswith('.py') and not source.endswith('.pyi'):
-                parser.error("Invalid --cache-map source %s (triple[0] must be *.py[i])" % source)
-            if not meta_file.endswith('.meta.json'):
-                parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
-                             meta_file)
-            if not data_file.endswith('.data.json'):
-                parser.error("Invalid --cache-map data_file %s (triple[2] must be *.data.json)" %
-                             data_file)
-            options.cache_map[source] = (meta_file, data_file)
+        process_cache_map(parser, special_opts, options)
 
     # Let quick_and_dirty imply incremental.
     if options.quick_and_dirty:
@@ -732,6 +689,61 @@ def process_options(args: List[str],
         except InvalidSourceList as e:
             fail(str(e))
         return targets, options
+
+
+def process_package_roots(fscache: Optional[FileSystemCache],
+                          parser: argparse.ArgumentParser,
+                          options: Options) -> None:
+    """Validate and normalize package_root."""
+    if fscache is None:
+        parser.error("--package-root does not work here (no fscache)")
+    assert fscache is not None  # Since mypy doesn't know parser.error() raises.
+    # Do some stuff with drive letters to make Windows happy (esp. tests).
+    current_drive, _ = os.path.splitdrive(os.getcwd())
+    dot = os.curdir
+    dotslash = os.curdir + os.sep
+    dotdotslash = os.pardir + os.sep
+    trivial_paths = {dot, dotslash}
+    package_root = []
+    for root in options.package_root:
+        if os.path.isabs(root):
+            parser.error("Package root cannot be absolute: %r" % root)
+        drive, root = os.path.splitdrive(root)
+        if drive and drive != current_drive:
+            parser.error("Package root must be on current drive: %r" % (drive + root))
+        # Empty package root is always okay.
+        if root:
+            root = os.path.relpath(root)  # Normalize the heck out of it.
+            if root.startswith(dotdotslash):
+                parser.error("Package root cannot be above current directory: %r" % root)
+            if root in trivial_paths:
+                root = ''
+            elif not root.endswith(os.sep):
+                root = root + os.sep
+        package_root.append(root)
+    options.package_root = package_root
+    # Pass the package root on the the filesystem cache.
+    fscache.set_package_root(package_root)
+
+
+def process_cache_map(parser, special_opts, options):
+    """Validate cache_map and copy into options.cache_map."""
+    n = len(special_opts.cache_map)
+    if n % 3 != 0:
+        parser.error("--cache-map requires one or more triples (see source)")
+    for i in range(0, n, 3):
+        source, meta_file, data_file = special_opts.cache_map[i:i + 3]
+        if source in options.cache_map:
+            parser.error("Duplicate --cache-map source %s)" % source)
+        if not source.endswith('.py') and not source.endswith('.pyi'):
+            parser.error("Invalid --cache-map source %s (triple[0] must be *.py[i])" % source)
+        if not meta_file.endswith('.meta.json'):
+            parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
+                         meta_file)
+        if not data_file.endswith('.data.json'):
+            parser.error("Invalid --cache-map data_file %s (triple[2] must be *.data.json)" %
+                         data_file)
+        options.cache_map[source] = (meta_file, data_file)
 
 
 # For most options, the type of the default value set in options.py is

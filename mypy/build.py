@@ -71,17 +71,7 @@ DEBUG_FINE_GRAINED = False
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 
-if os.altsep:
-    SEPARATORS = frozenset([os.sep, os.altsep])
-else:
-    SEPARATORS = frozenset([os.sep])
-
-
 Graph = Dict[str, 'State']
-
-
-def getmtime(name: str) -> int:
-    return int(os.path.getmtime(name))
 
 
 # TODO: Get rid of BuildResult.  We might as well return a BuildManager.
@@ -698,6 +688,32 @@ class BuildManager:
     def get_stat(self, path: str) -> os.stat_result:
         return self.fscache.stat(self.maybe_swap_for_shadow_path(path))
 
+    def getmtime(self, path: str) -> int:
+        """Return a file's mtime; but 0 in bazel mode.
+
+        (Bazel's distributed cache doesn't like filesystem metadata to
+        end up in output files.)
+        """
+        if self.options.bazel:
+            return 0
+        else:
+            st = self.get_stat(path)
+            return int(st.st_mtime)
+
+    def normpath(self, path: str) -> str:
+        """Convert path to absolute; but to relative in bazel mode.
+
+        (Bazel's distributed cache doesn't like filesystem metadata to
+        end up in output files.)
+        """
+        # TODO: Could we always use relpath?  (A worry in non-bazel
+        # mode would be that a moved file may change its full module
+        # name without changing its size, mtime or hash.)
+        if self.options.bazel:
+            return os.path.relpath(path)
+        else:
+            return os.path.abspath(path)
+
     def all_imported_modules_in_file(self,
                                      file: MypyFile) -> List[Tuple[int, str, int]]:
         """Find all reachable import statements in a file.
@@ -1250,19 +1266,19 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     assert path is not None, "Internal error: meta was provided without a path"
     # Check data_json; assume if its mtime matches it's good.
     # TODO: stat() errors
-    data_mtime = 0 if bazel else getmtime(meta.data_json)
+    data_mtime = manager.getmtime(meta.data_json)
     if data_mtime != meta.data_mtime:
         manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
         return None
     deps_mtime = None
     if manager.options.cache_fine_grained:
         assert meta.deps_json
-        deps_mtime = getmtime(meta.deps_json)
+        deps_mtime = manager.getmtime(meta.deps_json)
         if deps_mtime != meta.deps_mtime:
             manager.log('Metadata abandoned for {}: deps cache is modified'.format(id))
             return None
 
-    path = os.path.relpath(path) if bazel else os.path.abspath(path)
+    path = manager.normpath(path)
     try:
         st = manager.get_stat(path)
     except OSError:
@@ -1287,10 +1303,12 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     fine_grained_cache = manager.use_fine_grained_cache()
 
     size = st.st_size
+    # Bazel ensures the cache is valid.
     if size != meta.size and not bazel and not fine_grained_cache:
         manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
         return None
 
+    # Bazel ensures the cache is valid.
     mtime = 0 if bazel else int(st.st_mtime)
     if not bazel and (mtime != meta.mtime or path != meta.path):
         try:
@@ -1391,14 +1409,9 @@ def write_cache(id: str, path: str, tree: MypyFile,
     # For Bazel we use relative paths and zero mtimes.
     bazel = manager.options.bazel
 
-    # Obtain file paths
-    if not bazel:
-        # Normally, make all paths absolute.
-        path = os.path.abspath(path)
-    else:
-        # For Bazel, make all paths relative (else Bazel caching is thwarted).
-        # And also patch tree.path, which might have been made absolute earlier.
-        tree.path = path = os.path.relpath(path)
+    # Obtain file paths.  Update tree.path so that in bazel mode it's
+    # made relative (since sometimes paths leak out).
+    tree.path = path = manager.normpath(path)
     meta_json, data_json, deps_json = get_cache_names(id, path, manager)
     manager.log('Writing {} {} {} {} {}'.format(
         id, path, meta_json, data_json, deps_json))
@@ -1434,7 +1447,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     if old_interface_hash == interface_hash:
         # If the interface is unchanged, the cached data is guaranteed
         # to be equivalent, and we only need to update the metadata.
-        data_mtime = 0 if bazel else getmtime(data_json)
+        data_mtime = manager.getmtime(data_json)
         manager.trace("Interface for {} is unchanged".format(id))
     else:
         manager.trace("Interface for {} has changed".format(id))
@@ -1451,7 +1464,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
             # Both have the effect of slowing down the next run a
             # little bit due to an out-of-date cache file.
             return interface_hash, None
-        data_mtime = 0 if bazel else getmtime(data_json)
+        data_mtime = manager.getmtime(data_json)
 
     deps_mtime = None
     if deps_json:
@@ -1459,7 +1472,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         if not atomic_write(deps_json, deps_str, '\n'):
             manager.log("Error writing deps JSON file {}".format(deps_json))
             return interface_hash, None
-        deps_mtime = getmtime(deps_json)
+        deps_mtime = manager.getmtime(deps_json)
 
     mtime = 0 if bazel else int(st.st_mtime)
     size = st.st_size
@@ -1501,7 +1514,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     This avoids inconsistent states with cache files from different mypy runs,
     see #4043 for an example.
     """
-    path = os.path.relpath(path) if manager.options.bazel else os.path.abspath(path)
+    path = manager.normpath(path)
     cache_paths = get_cache_names(id, path, manager)
     manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
 
