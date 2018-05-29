@@ -46,16 +46,16 @@ Mypy is a static type checker for Python 3 and Python 2.7.
    command_line
    config_file
    mypy_daemon
-   supported_python_features
-   python36
+   installed_packages
 
 .. toctree::
    :maxdepth: 2
    :caption: Miscellaneous
 
-   installed_packages
-   additional_features
    common_issues
+   supported_python_features
+   python36
+   additional_features
    faq
    revision_history
 

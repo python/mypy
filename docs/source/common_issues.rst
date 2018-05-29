@@ -1,7 +1,7 @@
 .. _common_issues:
 
-Common issues
-=============
+Common issues and solutions
+===========================
 
 This section has examples of cases when you need to update your code
 to use static typing, and ideas for working around issues if mypy
