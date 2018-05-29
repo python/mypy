@@ -78,6 +78,9 @@ TYPE_ALIAS = 6  # type: int
 # XXX what?
 UNBOUND_IMPORTED = 7  # type: int
 
+# RevealExpr node kinds
+REVEAL_TYPE = 0  # type: int
+REVEAL_LOCALS = 1  # type: int
 
 LITERAL_YES = 2
 LITERAL_TYPE = 1
@@ -1595,17 +1598,24 @@ class CastExpr(Expression):
         return visitor.visit_cast_expr(self)
 
 
-class RevealTypeExpr(Expression):
-    """Reveal type expression reveal_type(expr)."""
+class RevealExpr(Expression):
+    """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
-    expr = None  # type: Expression
+    expr = None  # type: Optional[Expression]
+    kind = 0  # type: int
+    local_nodes = None  # type: Optional[List[Var]]
 
-    def __init__(self, expr: Expression) -> None:
+    def __init__(
+            self, kind: int,
+            expr: Optional[Expression] = None,
+            local_nodes: 'Optional[List[Var]]' = None) -> None:
         super().__init__()
         self.expr = expr
+        self.kind = kind
+        self.local_nodes = local_nodes
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_reveal_type_expr(self)
+        return visitor.visit_reveal_expr(self)
 
 
 class SuperExpr(Expression):
@@ -2477,6 +2487,18 @@ class SymbolTableNode:
             (This is currently used for simple aliases like `A = int` instead
             of .type_override)
         alias_name: TODO
+        no_serialize: Do not serialize this node if True. This is used to prevent
+            keys in the cache that refer to modules on which this file does not
+            depend. Currently this can happen if there is a module not in build
+            used e.g. like this:
+                import a.b.c # type: ignore
+            This will add a submodule symbol to parent module `a` symbol table,
+            but `a.b` is _not_ added as its dependency. Therefore, we should
+            not serialize these symbols as they may not be found during fixup
+            phase, instead they will be re-added during subsequent patch parents
+            phase.
+            TODO: Refactor build.py to make dependency tracking more transparent
+            and/or refactor look-up functions to not require parent patching.
     """
 
     __slots__ = ('kind',
@@ -2490,6 +2512,7 @@ class SymbolTableNode:
                  'implicit',
                  'is_aliasing',
                  'alias_name',
+                 'no_serialize',
                  )
 
     # TODO: This is a mess. Refactor!
@@ -2503,7 +2526,9 @@ class SymbolTableNode:
                  normalized: bool = False,
                  alias_tvars: Optional[List[str]] = None,
                  implicit: bool = False,
-                 module_hidden: bool = False) -> None:
+                 module_hidden: bool = False,
+                 *,
+                 no_serialize: bool = False) -> None:
         self.kind = kind
         self.node = node
         self.type_override = typ
@@ -2515,6 +2540,7 @@ class SymbolTableNode:
         self.cross_ref = None  # type: Optional[str]
         self.is_aliasing = False
         self.alias_name = None  # type: Optional[str]
+        self.no_serialize = no_serialize
 
     @property
     def fullname(self) -> Optional[str]:
@@ -2650,7 +2676,7 @@ class SymbolTable(Dict[str, SymbolTableNode]):
             # module that gets added to every module by
             # SemanticAnalyzerPass2.visit_file(), but it shouldn't be
             # accessed by users of the module.
-            if key == '__builtins__':
+            if key == '__builtins__' or value.no_serialize:
                 continue
             data[key] = value.serialize(fullname, key)
         return data

@@ -867,7 +867,7 @@ T = TypeVar('T')
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
 reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
 reveal_type(f([])) # E: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(f(None)) # E: Revealed type is 'Union[builtins.None, builtins.list[builtins.int]]'
+reveal_type(f(None)) # E: Revealed type is 'Union[None, builtins.list[builtins.int]]'
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextInMethod]

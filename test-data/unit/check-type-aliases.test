@@ -263,9 +263,9 @@ A = List[T]
 from typing import Union
 void = type(None)
 x: void
-reveal_type(x)  # E: Revealed type is 'builtins.None'
+reveal_type(x)  # E: Revealed type is 'None'
 y: Union[int, void]
-reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]

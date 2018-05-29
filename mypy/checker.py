@@ -578,6 +578,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # values.  IOW, tc is None.
             return NoneTyp()
 
+    def get_coroutine_return_type(self, return_type: Type) -> Type:
+        if isinstance(return_type, AnyType):
+            return AnyType(TypeOfAny.from_another_any, source_any=return_type)
+        assert isinstance(return_type, Instance), "Should only be called on coroutine functions."
+        # Note: return type is the 3rd type parameter of Coroutine.
+        return return_type.args[2]
+
     def get_generator_return_type(self, return_type: Type, is_coroutine: bool) -> Type:
         """Given the declared return type of a generator (t), return the type it returns (tr)."""
         if isinstance(return_type, AnyType):
@@ -756,7 +763,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     c = defn.is_coroutine
                     ty = self.get_generator_yield_type(t, c)
                     tc = self.get_generator_receive_type(t, c)
-                    tr = self.get_generator_return_type(t, c)
+                    if c:
+                        tr = self.get_coroutine_return_type(t)
+                    else:
+                        tr = self.get_generator_return_type(t, c)
                     ret_type = self.named_generic_type('typing.AwaitableGenerator',
                                                        [ty, tc, tr, t])
                     typ = typ.copy_modified(ret_type=ret_type)
@@ -841,6 +851,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         is_named_instance(self.return_types[-1], 'typing.AwaitableGenerator')):
                     return_type = self.get_generator_return_type(self.return_types[-1],
                                                                  defn.is_coroutine)
+                elif defn.is_coroutine:
+                    return_type = self.get_coroutine_return_type(self.return_types[-1])
                 else:
                     return_type = self.return_types[-1]
 
@@ -878,7 +890,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if is_unannotated_any(ret_type):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 elif (fdef.is_coroutine and isinstance(ret_type, Instance) and
-                      is_unannotated_any(ret_type.args[0])):
+                      is_unannotated_any(self.get_coroutine_return_type(ret_type))):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
@@ -1064,32 +1076,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if fail:
                 self.msg.signatures_incompatible(method, other_method, defn)
 
-    def check_getattr_method(self, typ: CallableType, context: Context, name: str) -> None:
+    def check_getattr_method(self, typ: Type, context: Context, name: str) -> None:
         if len(self.scope.stack) == 1:
-            # module-level __getattr__
+            # module scope
             if name == '__getattribute__':
                 self.msg.fail('__getattribute__ is not valid at the module level', context)
                 return
-            elif name == '__getattr__' and not self.is_stub:
-                self.msg.fail('__getattr__ is not valid at the module level outside a stub file',
-                              context)
-                return
+            # __getattr__ is fine at the module level as of Python 3.7 (PEP 562). We could
+            # show an error for Python < 3.7, but that would be annoying in code that supports
+            # both 3.7 and older versions.
             method_type = CallableType([self.named_type('builtins.str')],
                                        [nodes.ARG_POS],
                                        [None],
                                        AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
-        else:
+        elif self.scope.active_class():
             method_type = CallableType([AnyType(TypeOfAny.special_form),
                                         self.named_type('builtins.str')],
                                        [nodes.ARG_POS, nodes.ARG_POS],
                                        [None, None],
                                        AnyType(TypeOfAny.special_form),
                                        self.named_type('builtins.function'))
+        else:
+            return
         if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+            self.msg.invalid_signature_for_special_method(typ, context, name)
 
-    def check_setattr_method(self, typ: CallableType, context: Context) -> None:
+    def check_setattr_method(self, typ: Type, context: Context) -> None:
+        if not self.scope.active_class():
+            return
         method_type = CallableType([AnyType(TypeOfAny.special_form),
                                     self.named_type('builtins.str'),
                                     AnyType(TypeOfAny.special_form)],
@@ -1098,7 +1113,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                    NoneTyp(),
                                    self.named_type('builtins.function'))
         if not is_subtype(typ, method_type):
-            self.msg.invalid_signature(typ, context)
+            self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
     def expand_typevars(self, defn: FuncItem,
                         typ: CallableType) -> List[Tuple[FuncItem, CallableType]]:
@@ -1471,6 +1486,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             lvalue_type, index_lvalue, inferred = self.check_lvalue(lvalue)
 
+            # If we're assigning to __getattr__ or similar methods, check that the signature is
+            # valid.
+            if isinstance(lvalue, NameExpr) and lvalue.node:
+                name = lvalue.node.name()
+                if name in ('__setattr__', '__getattribute__', '__getattr__'):
+                    # If an explicit type is given, use that.
+                    if lvalue_type:
+                        signature = lvalue_type
+                    else:
+                        signature = self.expr_checker.accept(rvalue)
+                    if signature:
+                        if name == '__setattr__':
+                            self.check_setattr_method(signature, lvalue)
+                        else:
+                            self.check_getattr_method(signature, lvalue, name)
+
             if isinstance(lvalue, RefExpr):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
@@ -1529,6 +1560,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     self.binder.assign_type(lvalue, rvalue_type, lvalue_type, False)
+
             elif index_lvalue:
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
@@ -2211,6 +2243,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if defn.is_generator:
                 return_type = self.get_generator_return_type(self.return_types[-1],
                                                              defn.is_coroutine)
+            elif defn.is_coroutine:
+                return_type = self.get_coroutine_return_type(self.return_types[-1])
             else:
                 return_type = self.return_types[-1]
 
@@ -2358,6 +2392,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def type_check_raise(self, e: Expression, s: RaiseStmt,
                          optional: bool = False) -> None:
         typ = self.expr_checker.accept(e)
+        if isinstance(typ, TypeType):
+            if isinstance(typ.item, AnyType):
+                return
+            typ = typ.item
         if isinstance(typ, FunctionLike):
             if typ.is_type_obj():
                 # Cases like "raise/from ExceptionClass".
@@ -3553,7 +3591,7 @@ def is_unsafe_overlapping_signatures(signature: Type, other: Type) -> bool:
             # Special case: all args are subtypes, and returns are subtypes
             if (all(is_proper_subtype(s, o)
                     for (s, o) in zip(signature.arg_types, other.arg_types)) and
-                    is_proper_subtype(signature.ret_type, other.ret_type)):
+                    is_subtype(signature.ret_type, other.ret_type)):
                 return False
             return not is_more_precise_signature(signature, other)
     return True

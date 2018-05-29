@@ -15,14 +15,14 @@ from mypy.types import (
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
-    OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealTypeExpr, TypeApplication, ListExpr,
+    OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, LambdaExpr, SuperExpr, SliceExpr, Context, Expression,
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr,
-    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE,
+    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -1802,14 +1802,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                context=expr)
         return target_type
 
-    def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> Type:
+    def visit_reveal_expr(self, expr: RevealExpr) -> Type:
         """Type check a reveal_type expression."""
-        revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
-        if not self.chk.current_node_deferred:
-            self.msg.reveal_type(revealed_type, expr)
-            if not self.chk.in_checked_function():
-                self.msg.note("'reveal_type' always outputs 'Any' in unchecked functions", expr)
-        return revealed_type
+        if expr.kind == REVEAL_TYPE:
+            assert expr.expr is not None
+            revealed_type = self.accept(expr.expr, type_context=self.type_context[-1])
+            if not self.chk.current_node_deferred:
+                self.msg.reveal_type(revealed_type, expr)
+                if not self.chk.in_checked_function():
+                    self.msg.note("'reveal_type' always outputs 'Any' in unchecked functions",
+                                  expr)
+            return revealed_type
+        else:
+            # REVEAL_LOCALS
+            if not self.chk.current_node_deferred:
+                # the RevealExpr contains a local_nodes attribute,
+                # calculated at semantic analysis time. Use it to pull out the
+                # corresponding subset of variables in self.chk.type_map
+                names_to_types = {
+                    var_node.name(): var_node.type for var_node in expr.local_nodes
+                } if expr.local_nodes is not None else {}
+
+                self.msg.reveal_locals(names_to_types, expr)
+            return NoneTyp()
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""
@@ -2342,7 +2357,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # branch's type.
             else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type)
 
-        res = UnionType.make_simplified_union([if_type, else_type])
+        # Only create a union type if the type context is a union, to be mostly
+        # compatible with older mypy versions where we always did a join.
+        #
+        # TODO: Always create a union or at least in more cases?
+        if isinstance(self.type_context[-1], UnionType):
+            res = UnionType.make_simplified_union([if_type, else_type])
+        else:
+            res = join.join_types(if_type, else_type)
 
         return res
 
@@ -2673,7 +2695,7 @@ def is_async_def(t: Type) -> bool:
             and t.type.fullname() == 'typing.AwaitableGenerator'
             and len(t.args) >= 4):
         t = t.args[3]
-    return isinstance(t, Instance) and t.type.fullname() == 'typing.Awaitable'
+    return isinstance(t, Instance) and t.type.fullname() == 'typing.Coroutine'
 
 
 def map_actuals_to_formals(caller_kinds: List[int],

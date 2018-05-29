@@ -46,7 +46,7 @@ from mypy.nodes import (
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
-    SliceExpr, CastExpr, RevealTypeExpr, TypeApplication, Context, SymbolTable,
+    SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
     LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
@@ -56,7 +56,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
-    collections_type_aliases, get_member_expr_fullname,
+    collections_type_aliases, get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -395,7 +395,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         # Redefinition. Conditional redefinition is okay.
                         n = self.type.names[defn.name()].node
                         if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn)
+                            self.name_already_defined(defn.name(), defn,
+                                                      self.type.names[defn.name()])
                     self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
@@ -406,7 +407,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         # Redefinition. Conditional redefinition is okay.
                         n = self.locals[-1][defn.name()].node
                         if not self.set_original_def(n, defn):
-                            self.name_already_defined(defn.name(), defn)
+                            self.name_already_defined(defn.name(), defn,
+                                                      self.locals[-1][defn.name()])
                     else:
                         self.add_local(defn, defn)
             else:
@@ -431,9 +433,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     pass
                 else:
                     # A coroutine defined as `async def foo(...) -> T: ...`
-                    # has external return type `Awaitable[T]`.
-                    ret_type = self.named_type_or_none('typing.Awaitable', [defn.type.ret_type])
-                    assert ret_type is not None, "Internal error: typing.Awaitable not found"
+                    # has external return type `Coroutine[Any, Any, T]`.
+                    any_type = AnyType(TypeOfAny.special_form)
+                    ret_type = self.named_type_or_none('typing.Coroutine',
+                        [any_type, any_type, defn.type.ret_type])
+                    assert ret_type is not None, "Internal error: typing.Coroutine not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
@@ -552,9 +556,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                       "must come last", defn.items[idx])
                 else:
                     for idx in non_overload_indexes[1:]:
-                        self.name_already_defined(defn.name(), defn.items[idx])
+                        self.name_already_defined(defn.name(), defn.items[idx], first_item)
                     if defn.impl:
-                        self.name_already_defined(defn.name(), defn.impl)
+                        self.name_already_defined(defn.name(), defn.impl, first_item)
                 # Remove the non-overloads
                 for idx in reversed(non_overload_indexes):
                     del defn.items[idx]
@@ -1299,7 +1303,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod,
-                                          module_public=module_public)
+                                          module_public=module_public,
+                                          no_serialize=True)
                     parent_mod.names[child] = sym
             id = parent
 
@@ -1333,11 +1338,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.add_submodules_to_parent_modules(possible_module_id, True)
                 elif possible_module_id in self.missing_modules:
                     missing = True
-            # If it is still not resolved, and the module is a stub
-            # check for a module level __getattr__
-            if module and not node and module.is_stub and '__getattr__' in module.names:
+            # If it is still not resolved, check for a module level __getattr__
+            if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in module.names):
                 getattr_defn = module.names['__getattr__']
-                if isinstance(getattr_defn.node, FuncDef):
+                if isinstance(getattr_defn.node, (FuncDef, Var)):
                     if isinstance(getattr_defn.node.type, CallableType):
                         typ = getattr_defn.node.type.ret_type
                     else:
@@ -1848,7 +1853,19 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
             elif explicit_type:
                 # Don't re-bind types
-                self.name_already_defined(lval.name, lval)
+                global_def = self.globals.get(lval.name)
+                if self.locals:
+                    locals_last = self.locals[-1]
+                    if locals_last:
+                        local_def = locals_last.get(lval.name)
+                    else:
+                        local_def = None
+                else:
+                    local_def = None
+                type_def = self.type.names.get(lval.name) if self.type else None
+
+                original_def = global_def or local_def or type_def
+                self.name_already_defined(lval.name, lval, original_def)
             else:
                 # Bind to an existing name.
                 lval.accept(self)
@@ -2574,7 +2591,38 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif refers_to_fullname(expr.callee, 'builtins.reveal_type'):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
-            expr.analyzed = RevealTypeExpr(expr.args[0])
+            expr.analyzed = RevealExpr(kind=REVEAL_TYPE, expr=expr.args[0])
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, 'builtins.reveal_locals'):
+            # Store the local variable names into the RevealExpr for use in the
+            # type checking pass
+            local_nodes = []  # type: List[Var]
+            if self.is_module_scope():
+                # try to determine just the variable declarations in module scope
+                # self.globals.values() contains SymbolTableNode's
+                # Each SymbolTableNode has an attribute node that is nodes.Var
+                # look for variable nodes that marked as is_inferred
+                # Each symboltable node has a Var node as .node
+                local_nodes = cast(
+                    List[Var],
+                    [
+                        n.node for name, n in self.globals.items()
+                        if getattr(n.node, 'is_inferred', False)
+                    ]
+                )
+            elif self.is_class_scope():
+                # type = None  # type: Optional[TypeInfo]
+                if self.type is not None:
+                    local_nodes = cast(List[Var], [st.node for st in self.type.names.values()])
+            elif self.is_func_scope():
+                # locals = None  # type: List[Optional[SymbolTable]]
+                if self.locals is not None:
+                    symbol_table = self.locals[-1]
+                    if symbol_table is not None:
+                        local_nodes = cast(List[Var], [st.node for st in symbol_table.values()])
+            expr.analyzed = RevealExpr(kind=REVEAL_LOCALS, local_nodes=local_nodes)
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
@@ -2682,18 +2730,23 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     expr.kind = n.kind
                     expr.fullname = n.fullname
                     expr.node = n.node
-            elif file is not None and file.is_stub and '__getattr__' in file.names:
+            elif (file is not None and (file.is_stub or self.options.python_version >= (3, 7))
+                    and '__getattr__' in file.names):
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
-                getattr_defn = file.names['__getattr__']
-                if isinstance(getattr_defn.node, FuncDef):
+                getattr_defn = self.normalize_type_alias(file.names['__getattr__'], expr)
+                if not getattr_defn:
+                    typ = AnyType(TypeOfAny.from_error)  # type: Type
+                elif isinstance(getattr_defn.node, (FuncDef, Var)):
                     if isinstance(getattr_defn.node.type, CallableType):
                         typ = getattr_defn.node.type.ret_type
                     else:
-                        typ = AnyType(TypeOfAny.special_form)
-                    expr.kind = MDEF
-                    expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
-                    expr.node = Var(expr.name, type=typ)
+                        typ = AnyType(TypeOfAny.from_error)
+                else:
+                    typ = AnyType(TypeOfAny.from_error)
+                expr.kind = MDEF
+                expr.fullname = '{}.{}'.format(file.fullname(), expr.name)
+                expr.node = Var(expr.name, type=typ)
             else:
                 # We only catch some errors here; the rest will be
                 # caught during type checking.
@@ -2826,8 +2879,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         expr.expr.accept(self)
         expr.type = self.anal_type(expr.type)
 
-    def visit_reveal_type_expr(self, expr: RevealTypeExpr) -> None:
-        expr.expr.accept(self)
+    def visit_reveal_expr(self, expr: RevealExpr) -> None:
+        if expr.kind == REVEAL_TYPE:
+            if expr.expr is not None:
+                expr.expr.accept(self)
+        else:
+            # Reveal locals doesn't have an inner expression, there's no
+            # need to traverse inside it
+            pass
 
     def visit_type_application(self, expr: TypeApplication) -> None:
         expr.expr.accept(self)
@@ -3135,7 +3194,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.locals[-1][name].node == node.node):
-                    self.name_already_defined(name, context)
+                    self.name_already_defined(name, context, self.locals[-1][name])
             self.locals[-1][name] = node
         elif self.type:
             self.type.names[name] = node
@@ -3152,14 +3211,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if existing.type and node.type and is_same_type(existing.type, node.type):
                     ok = True
                 if not ok:
-                    self.name_already_defined(name, context)
+                    self.name_already_defined(name, context, existing)
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
         assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
         if name in self.locals[-1]:
-            self.name_already_defined(name, ctx)
+            self.name_already_defined(name, ctx, self.locals[-1][name])
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
@@ -3193,14 +3252,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.add_fixture_note(fullname, ctx)
 
     def name_already_defined(self, name: str, ctx: Context,
-                             original_ctx: Optional[SymbolTableNode] = None) -> None:
-        if original_ctx:
-            if original_ctx.node and original_ctx.node.get_line() != -1:
-                extra_msg = ' on line {}'.format(original_ctx.node.get_line())
-            else:
-                extra_msg = ' (possibly by an import)'
+                    original_ctx: Optional[Union[SymbolTableNode, SymbolNode]] = None) -> None:
+        if isinstance(original_ctx, SymbolTableNode):
+            node = original_ctx.node
+        elif isinstance(original_ctx, SymbolNode):
+            node = original_ctx
+
+        if isinstance(original_ctx, SymbolTableNode) and original_ctx.kind == MODULE_REF:
+            # Since this is an import, original_ctx.node points to the module definition.
+            # Therefore its line number is always 1, which is not useful for this
+            # error message.
+            extra_msg = ' (by an import)'
+        elif node and node.line != -1:
+            extra_msg = ' on line {}'.format(node.line)
         else:
-            extra_msg = ''
+            extra_msg = ' (possibly by an import)'
         self.fail("Name '{}' already defined{}".format(name, extra_msg), ctx)
 
     def fail(self, msg: str, ctx: Context, serious: bool = False, *,

@@ -1020,7 +1020,7 @@ import a.b
 [rechecked b]
 [stale]
 [out2]
-tmp/b.py:4: error: Name 'a' already defined
+tmp/b.py:4: error: Name 'a' already defined on line 3
 
 [case testIncrementalSilentImportsAndImportsInClass]
 # flags: --ignore-missing-imports
@@ -3798,9 +3798,9 @@ class A:
 
 [builtins fixtures/list.pyi]
 [out1]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+main:2: error: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
 [out2]
-main:2: error: Revealed type is 'def (x: Union[builtins.int, builtins.None]) -> a.a.A'
+main:2: error: Revealed type is 'def (x: Union[builtins.int, None]) -> a.a.A'
 
 [case testAttrsIncrementalConverterManyStyles]
 import a
@@ -4358,6 +4358,55 @@ import b
 [file b.py.2]
 # uh
 -- b gets rechecked because it changed, but nothing is stale
--- since the interface didn't change
+-- since the interface did not change
 [stale]
 [rechecked b]
+
+[case testParentPatchingMess]
+# flags: --ignore-missing-imports --follow-imports=skip
+# cmd: mypy -m d d.k d.k.a d.k.v t
+[file d/__init__.py]
+[file d/k/__init__.py]
+from d.k.a import x
+[file d/k/a.py]
+x = 10
+[file d/k/v.py]
+from d.k.e import x
+
+[file t.py]
+from d import k
+[file t.py.2]
+from d import k
+# dummy change
+
+[case testCachedBadProtocolNote]
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+Point = TypedDict('Point', {'x': int, 'y': int})
+[file b.py]
+from typing import Iterable
+from a import Point
+p: Point
+it: Iterable[int] = p
+[file b.py.2]
+from typing import Iterable
+from a import Point
+p: Point
+it: Iterable[int] = p  # change
+[typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
+[out]
+tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+tmp/b.py:4: note: Following member(s) of "Point" have conflicts:
+tmp/b.py:4: note:     Expected:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[int]
+tmp/b.py:4: note:     Got:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[str]
+[out2]
+tmp/b.py:4: error: Incompatible types in assignment (expression has type "Point", variable has type "Iterable[int]")
+tmp/b.py:4: note: Following member(s) of "Point" have conflicts:
+tmp/b.py:4: note:     Expected:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[int]
+tmp/b.py:4: note:     Got:
+tmp/b.py:4: note:         def __iter__(self) -> Iterator[str]

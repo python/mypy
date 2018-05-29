@@ -416,12 +416,25 @@ understand how mypy handles a particular piece of code. Example:
 
    reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
 
+You can also use ``reveal_locals()`` at any line in a file
+to see the types of all local varaibles at once. Example:
+
+.. code-block:: python
+
+   a = 1
+   b = 'one'
+   reveal_locals()
+   # Revealed local types are:
+   # a: builtins.int
+   # b: builtins.str
 .. note::
 
-   ``reveal_type`` is only understood by mypy and doesn't exist
-   in Python, if you try to run your program. You'll have to remove
-   any ``reveal_type`` calls before you can run your code.
-   ``reveal_type`` is always available and you don't need to import it.
+   ``reveal_type`` and ``reveal_locals`` are only understood by mypy and
+   don't exist in Python. If you try to run your program, you'll have to
+   remove any ``reveal_type`` and ``reveal_locals`` calls before you can
+   run your code. Both are always available and you don't need to import
+   them.
+
 
 .. _import-cycles:
 
@@ -547,3 +560,32 @@ the protocol definition:
    class C:
        x = 42
    fun(C())  # OK
+
+
+Dealing with conflicting names
+------------------------------
+
+Suppose you have a class with a method whose name is the same as an
+imported (or built-in) type, and you want to use the type in another
+method signature.  E.g.:
+
+.. code-block:: python
+
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes):  # error: Invalid type "mod.Message.bytes"
+           ...
+
+The third line elicits an error because mypy sees the argument type
+``bytes`` as a reference to the method by that name.  Other than
+renaming the method, a work-around is to use an alias:
+
+.. code-block:: python
+
+   bytes_ = bytes
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes_):
+           ...

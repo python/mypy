@@ -1606,6 +1606,57 @@ class A: pass
 [out]
 ==
 
+[case testImportStarOverlap]
+from b import *
+from c import *  # type: ignore
+[file b.py]
+from d import T
+[file c.py]
+from d import T
+[file c.py.2]
+from d import T
+z = 10
+[file d.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out]
+==
+
+[case testImportStarOverlap2]
+from b import *
+import typing
+def foo(x: typing.List[int]) -> int:
+    return x[0]
+[file b.py]
+import typing
+z = 10
+[file b.py.2]
+import typing
+z = '10'
+[builtins fixtures/list.pyi]
+[out]
+==
+
+
+[case testImportStarOverlap3]
+from b import *
+from c import typing
+def foo(x: typing.List[int]) -> int:
+    return x[0]
+[file b.py]
+import typing
+z = 10
+[file b.py.2]
+import typing
+z = '10'
+[file c.py]
+import typing
+z = 10
+[builtins fixtures/list.pyi]
+[out]
+==
+
+
 [case testImportPartialAssign]
 import a
 [file a.py]

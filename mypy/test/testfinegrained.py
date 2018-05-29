@@ -47,8 +47,6 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
     ]
-    base_path = test_temp_dir
-    optional_out = True
     # Whether to use the fine-grained cache in the testing. This is overridden
     # by a trivial subclass to produce a suite that uses the cache.
     use_cache = False

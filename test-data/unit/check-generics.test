@@ -960,7 +960,7 @@ U = Union[int]
 x: O
 y: U
 
-reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
 reveal_type(y)  # E: Revealed type is 'builtins.int'
 
 U[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
