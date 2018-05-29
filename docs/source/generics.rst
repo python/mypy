@@ -693,14 +693,15 @@ variables replaced with ``Any``. Examples (following `PEP 484
 Type aliases can be imported from modules just like other names. An
 alias can also target another alias, although building complex chains
 of aliases is not recommended -- this impedes code readability, thus
-defeating the purpose of using aliases.  Continuing from previous
-examples:
+defeating the purpose of using aliases.  Example:
 
 .. code-block:: python
 
     from typing import TypeVar, Generic, Optional
-    from first_example import AliasType
-    from second_example import Vec
+    from example1 import AliasType
+    from example2 import Vec
+
+    # AliasType and Vec are type aliases (Vec as defined above)
 
     def fun() -> AliasType:
         ...
