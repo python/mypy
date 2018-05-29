@@ -726,7 +726,9 @@ def process_package_roots(fscache: Optional[FileSystemCache],
     fscache.set_package_root(package_root)
 
 
-def process_cache_map(parser, special_opts, options):
+def process_cache_map(parser: argparse.ArgumentParser,
+                      special_opts: argparse.Namespace,
+                      options: Options):
     """Validate cache_map and copy into options.cache_map."""
     n = len(special_opts.cache_map)
     if n % 3 != 0:
