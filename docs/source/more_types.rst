@@ -18,7 +18,7 @@ Here's a quick summary of what's covered here:
 * ``TypedDict`` lets you give precise types for dictionaries that represent
   objects with a fixed schema, such as ``{'id': 1, 'items': ['x']}``.
 
-* Async types let you type check programs using async and await.
+* Async types let you type check programs using ``async`` and ``await``.
 
 .. _noreturn:
 
@@ -30,7 +30,7 @@ example, a function that unconditionally raises an exception:
 
 .. code-block:: python
 
-   from mypy_extensions import NoReturn
+   from typing import NoReturn
 
    def stop() -> NoReturn:
        raise Exception('no way')
@@ -48,29 +48,27 @@ and will behave accordingly:
        stop()
        return 'whatever works'  # No error in an unreachable block
 
-Install ``mypy_extensions`` using pip to use ``NoReturn`` in your code.
-Python 3 command line:
+In earlier Python versions you need to install ``typing_extensions`` using
+pip to use ``NoReturn`` in your code. Python 3 command line:
 
 .. code-block:: text
 
-    python3 -m pip install --upgrade mypy-extensions
+    python3 -m pip install --upgrade typing-extensions
 
 This works for Python 2:
 
 .. code-block:: text
 
-    pip install --upgrade mypy-extensions
+    pip install --upgrade typing-extensions
 
 .. _newtypes:
 
 NewTypes
 ********
 
-(Freely after `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#newtype-helper-function>`_.)
-
-There are also situations where a programmer might want to avoid logical errors by
-creating simple classes. For example:
+There are situations where you may want to avoid programming errors by
+creating simple derived classes that are only used to distinguish
+certain values from base class instances. Example:
 
 .. code-block:: python
 
@@ -144,12 +142,13 @@ Example:
 
     tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
 
-Both ``isinstance`` and ``issubclass``, as well as subclassing will fail for
-``NewType('Derived', Base)`` since function objects don't support these operations.
+You cannot use ``isinstance()`` or ``issubclass()`` on the object returned by
+``NewType()``, because function objects don't support these operations. You cannot
+create subclasses of these objects either.
 
 .. note::
 
-    Note that unlike type aliases, ``NewType`` will create an entirely new and
+    Unlike type aliases, ``NewType`` will create an entirely new and
     unique type when used. The intended purpose of ``NewType`` is to help you
     detect cases where you accidentally mixed together the old base type and the
     new derived type.
@@ -212,19 +211,20 @@ expect to get back when ``await``-ing the coroutine.
    loop.close()
 
 The result of calling an ``async def`` function *without awaiting* will be a
-value of type ``Awaitable[T]``:
+value of type ``typing.Coroutine[Any, Any, T]``, which is a subtype of
+``Awaitable[T]``:
 
 .. code-block:: python
 
    my_coroutine = countdown_1("Millennium Falcon", 5)
-   reveal_type(my_coroutine)  # has type 'Awaitable[str]'
+   reveal_type(my_coroutine)  # has type 'Coroutine[Any, Any, str]'
 
 .. note::
 
     :ref:`reveal_type() <reveal-type>` displays the inferred static type of
     an expression.
 
-If you want to use coroutines in older versions of Python that do not support
+If you want to use coroutines in Python 3.4, which does not support
 the ``async def`` syntax, you can instead use the ``@asyncio.coroutine``
 decorator to convert a generator into a coroutine.
 
@@ -244,7 +244,7 @@ coroutine shouldn't have to know or care about what precisely that type is.
            print('T-minus {} ({})'.format(count, tag))
            yield from asyncio.sleep(0.1)
            count -= 1
-      return "Blastoff!"
+       return "Blastoff!"
 
    loop = asyncio.get_event_loop()
    loop.run_until_complete(countdown_2("USS Enterprise", 5))
@@ -492,16 +492,14 @@ Keys that aren't required are shown with a ``?`` in error messages:
    reveal_type(options)
 
 Totality also affects structural compatibility. You can't use a partial
-TypedDict when a total one is expected. Also, a total typed dict is not
+TypedDict when a total one is expected. Also, a total TypedDict is not
 valid when a partial one is expected.
 
 Class-based syntax
 ------------------
 
-Python 3.6 supports an alternative, class-based syntax to define a
-TypedDict. This means that your code must be checked as if it were
-Python 3.6 (using the ``--python-version`` flag on the command line,
-for example). Simply running mypy on Python 3.6 is insufficient.
+An alternative, class-based syntax to define a TypedDict is supported
+in Python 3.6 and later:
 
 .. code-block:: python
 

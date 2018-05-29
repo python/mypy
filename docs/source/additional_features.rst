@@ -77,7 +77,7 @@ type ``T``, not ``Union[T, Sequence[T]]`` because it matches the
 first overloaded definition, and ignores the type annotations on the
 implementation of ``__getitem__``. The code in the body of the
 definition of ``__getitem__`` is checked against the annotations on
-the the corresponding declaration. In this case the body is checked
+the corresponding declaration. In this case the body is checked
 with ``index: Union[int, slice]`` and a return type
 ``Union[T, Sequence[T]]``. If there are no annotations on the
 corresponding definition, then code in the function body is not type
@@ -85,12 +85,12 @@ checked.
 
 The annotations on the function body must be compatible with the
 types given for the overloaded variants listed above it. The type
-checker will verify that all the types listed the overloaded variants
+checker will verify that all the types for the overloaded variants
 are compatible with the types given for the implementation. In this
 case it checks that the parameter type ``int`` and the return type
 ``T`` are compatible with ``Union[int, slice]`` and
 ``Union[T, Sequence[T]]`` for the first variant. For the second
-variant it verifies that the parameter type ``slice`` are the return
+variant it verifies that the parameter type ``slice`` and the return
 type ``Sequence[T]`` are compatible with ``Union[int, slice]`` and
 ``Union[T, Sequence[T]]``.
 
@@ -295,7 +295,7 @@ Caching with mypy daemon
 ========================
 
 You can also use remote caching with the :ref:`mypy daemon <mypy_daemon>`.
-The remote cache will significantly speed up the the first ``dmypy check``
+The remote cache will significantly speed up the first ``dmypy check``
 run after starting or restarting the daemon.
 
 The mypy daemon requires extra fine-grained dependency data in
@@ -358,7 +358,7 @@ Extended Callable types
 ***********************
 
 As an experimental mypy extension, you can specify ``Callable`` types
-that support keyword arguments, optional arguments, and more.  Where
+that support keyword arguments, optional arguments, and more.  When
 you specify the arguments of a Callable, you can choose to supply just
 the type of a nameless positional argument, or an "argument specifier"
 representing a more complicated form of argument.  This allows one to

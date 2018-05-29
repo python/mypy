@@ -3,7 +3,7 @@ Generics
 
 This section explains how you can define your own generic classes that take
 one or more type parameters, similar to built-in types such as ``List[X]``.
-User-defined generics is a moderately advanced feature and you can get far
+User-defined generics are a moderately advanced feature and you can get far
 without ever using them -- feel free to skip this section and come back later.
 
 .. _generic-classes:
@@ -653,17 +653,19 @@ Generic protocols can also be recursive. Example:
 Generic type aliases
 ********************
 
-Type aliases can be generic, in this case they could be used in two variants:
-Subscripted aliases are equivalent to original types with substituted type variables,
-number of type arguments must match the number of free type variables
-in generic type alias. Unsubscripted aliases are treated as original types with free
+Type aliases can be generic. In this case they can be used in two ways:
+Subscripted aliases are equivalent to original types with substituted type
+variables, so the number of type arguments must match the number of free type variables
+in the generic type alias. Unsubscripted aliases are treated as original types with free
 variables replaced with ``Any``. Examples (following `PEP 484
 <https://www.python.org/dev/peps/pep-0484/#type-aliases>`_):
 
 .. code-block:: python
 
     from typing import TypeVar, Iterable, Tuple, Union, Callable
+
     S = TypeVar('S')
+
     TInt = Tuple[int, S]
     UInt = Union[S, int]
     CBack = Callable[..., S]
@@ -675,6 +677,7 @@ variables replaced with ``Any``. Examples (following `PEP 484
     table_entry: TInt  # Same as Tuple[int, Any]
 
     T = TypeVar('T', int, float, complex)
+
     Vec = Iterable[Tuple[T, T]]
 
     def inproduct(v: Vec[T]) -> T:
@@ -687,10 +690,11 @@ variables replaced with ``Any``. Examples (following `PEP 484
     v2: Vec = []           # Same as Iterable[Tuple[Any, Any]]
     v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
 
-Type aliases can be imported from modules like any names. Aliases can target another
-aliases (although building complex chains of aliases is not recommended, this
-impedes code readability, thus defeating the purpose of using aliases).
-Following previous examples:
+Type aliases can be imported from modules just like other names. An
+alias can also target another alias, although building complex chains
+of aliases is not recommended -- this impedes code readability, thus
+defeating the purpose of using aliases.  Continuing from previous
+examples:
 
 .. code-block:: python
 
@@ -702,8 +706,10 @@ Following previous examples:
         ...
 
     T = TypeVar('T')
-    class NewVec(Generic[T], Vec[T]):
+
+    class NewVec(Vec[T]):
         ...
+
     for i, j in NewVec[int]():
         ...
 
@@ -711,7 +717,7 @@ Following previous examples:
 
 .. note::
 
-    A type alias does not defined a new type. For generic type aliases
+    A type alias does not define a new type. For generic type aliases
     this means that variance of type variables used for alias definition does not
     apply to aliases. A parameterized generic alias is treated simply as an original
     type with the corresponding type variables substituted.

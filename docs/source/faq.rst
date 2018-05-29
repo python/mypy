@@ -70,10 +70,11 @@ may be useful:
 Can I use mypy to type check my existing Python code?
 *****************************************************
 
-Compatibility is pretty good, and many large Python projects are using
-mypy successfully. Code that uses complex introspection or
-metaprogramming may be impractical to type check, but it should still
-be possible to use static typing in other parts of a program.
+Mypy supports most Python features and idioms, and many large Python
+projects are using mypy successfully. Code that uses complex
+introspection or metaprogramming may be impractical to type check, but
+it should still be possible to use static typing in other parts of a
+codebase that are less dynamic.
 
 Will static typing make my programs run faster?
 ***********************************************

@@ -54,7 +54,7 @@ assign a value of type ``Any`` to a variable with a more precise type:
 Declared (and inferred) types are ignored (or *erased*) at runtime. They are
 basically treated as comments, and thus the above code does not
 generate a runtime error, even though ``s`` gets an ``int`` value when
-the program is run, even though the declared type of ``s`` is actually
+the program is run, while the declared type of ``s`` is actually
 ``str``! You need to be careful with ``Any`` types, since they let you
 lie to mypy, and this could easily hide bugs.
 

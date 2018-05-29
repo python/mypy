@@ -264,7 +264,7 @@ You can define your own protocol class by inheriting the special
 
    class SupportsClose(Protocol):
        def close(self) -> None:
-          ...  # Explicit '...'
+          ...  # Empty method body (explicit '...')
 
    class Resource:  # No SupportsClose base class!
        # ... some methods ...
@@ -278,7 +278,7 @@ You can define your own protocol class by inheriting the special
 
    close_all([Resource(), open('some/file')])  # Okay!
 
-``Resource`` is a subtype of the ``SupportClose`` protocol since it defines
+``Resource`` is a subtype of the ``SupportsClose`` protocol since it defines
 a compatible ``close`` method. Regular file objects returned by ``open()`` are
 similarly compatible with the protocol, as they support ``close()``.
 
@@ -324,7 +324,7 @@ be explicitly present if you are defining a protocol:
 
 .. code-block:: python
 
-   class NewProtocol(SupportsClose):  # This is NOT a protocol
+   class NotAProtocol(SupportsClose):  # This is NOT a protocol
        new_attr: int
 
    class Concrete:
@@ -334,7 +334,7 @@ be explicitly present if you are defining a protocol:
           ...
 
    # Error: nominal subtyping used by default
-   x: NewProtocol = Concrete()  # Error!
+   x: NotAProtocol = Concrete()  # Error!
 
 You can also include default implementations of methods in
 protocols. If you explicitly subclass these protocols you can inherit
@@ -377,7 +377,7 @@ such as trees and linked lists:
            self.left: Optional['SimpleTree'] = None
            self.right: Optional['SimpleTree'] = None
 
-   root = SimpleTree(0)  # type: TreeLike  # OK
+   root: TreeLike = SimpleTree(0)  # OK
 
 Using ``isinstance()`` with protocols
 *************************************

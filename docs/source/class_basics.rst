@@ -38,6 +38,9 @@ a type annotation:
    a = A()
    a.x = [1]     # OK
 
+As in Python generally, a variable defined in the class body can used
+as a class or an instance variable.
+
 Type comments work as well, if you need to support Python versions earlier
 than 3.6:
 
@@ -46,8 +49,10 @@ than 3.6:
    class A:
        x = None  # type: List[int]  # Declare attribute 'x' of type List[int]
 
-As in Python, a variable defined in the class body can used as a class
-or an instance variable.
+Note that attribute definitions in the class body that use a type comment
+are special: a ``None`` value is valid as the initializer, even though
+the declared type is not optional. This should be used sparingly, as this can
+result in ``None``-related runtime errors that mypy can't detect.
 
 Similarly, you can give explicit types to instance variables defined
 in a method:
