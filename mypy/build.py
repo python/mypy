@@ -1409,12 +1409,16 @@ def write_cache(id: str, path: str, tree: MypyFile,
     # For Bazel we use relative paths and zero mtimes.
     bazel = manager.options.bazel
 
-    # Obtain file paths.  Update tree.path so that in bazel mode it's
-    # made relative (since sometimes paths leak out).
-    tree.path = path = manager.normpath(path)
+    # Obtain file paths.
+    path = manager.normpath(path)
     meta_json, data_json, deps_json = get_cache_names(id, path, manager)
     manager.log('Writing {} {} {} {} {}'.format(
         id, path, meta_json, data_json, deps_json))
+
+    # Update tree.path so that in bazel mode it's made relative (since
+    # sometimes paths leak out).
+    if bazel:
+        tree.path = path
 
     # Make sure directory for cache files exists
     parent = os.path.dirname(data_json)
