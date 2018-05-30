@@ -929,9 +929,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ret_type = fdef.type.ret_type
                 if is_unannotated_any(ret_type):
                     self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
-                elif (fdef.is_coroutine and isinstance(ret_type, Instance) and
-                      is_unannotated_any(self.get_coroutine_return_type(ret_type))):
-                    self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                elif fdef.is_generator:
+                    if is_unannotated_any(self.get_generator_return_type(ret_type,
+                                                                        fdef.is_coroutine)):
+                        self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
+                elif fdef.is_coroutine and isinstance(ret_type, Instance):
+                    if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
+                        self.fail(messages.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(messages.ARGUMENT_TYPE_EXPECTED, fdef)
 
