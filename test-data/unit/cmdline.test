@@ -1193,10 +1193,12 @@ Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*]
 == Return code: 0
 
 [case testConfigUnstructuredGlob]
-# cmd: mypy emarg
+# cmd: mypy emarg foo
 [file mypy.ini]
 [[mypy]
 ignore_errors = true
+[[mypy-*.lol]
+ignore_errors = false
 [[mypy-emarg.*]
 ignore_errors = false
 [[mypy-emarg.*.villip.*]
@@ -1214,6 +1216,10 @@ fail
 fail
 [file emarg/hatch/villip/mankangulisk.py]
 fail
+[file foo/__init__.py]
+[file foo/lol.py]
+fail
 [out]
+foo/lol.py:1: error: Name 'fail' is not defined
 emarg/foo.py:1: error: Name 'fail' is not defined
 emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined

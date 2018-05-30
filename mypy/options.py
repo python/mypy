@@ -220,7 +220,8 @@ class Options:
 
         # Config precedence is as follows:
         #  1. Concrete section names: foo.bar.baz
-        #  2. "Unstructured" glob patterns: foo.*.baz, in the order they appear in the file (last wins)
+        #  2. "Unstructured" glob patterns: foo.*.baz, in the order
+        #     they appear in the file (last wins)
         #  3. "Well-structured" wildcard patterns: foo.bar.*, in specificity order.
 
         # Since structured configs inherit from structured configs above them in the hierarchy,
@@ -305,10 +306,12 @@ class Options:
     def compile_glob(self, s: str) -> Pattern[str]:
         # Compile one of the glob patterns to a regex so that '.*' can
         # match *zero or more* module sections. This means we compile
-        # '.*' into '(\..*)?'. We also need to escape .s in the glob, so
-        # we hackily rewrite .s to ,s to accomplish this.
-        s = s.replace('.', ',').replace(',*', '(\..*)?').replace(',', '\.')
-        return re.compile(s + '\\Z')
+        # '.*' into '(\..*)?'.
+        parts = s.split('.')
+        expr = re.escape(parts[0]) if parts[0] != '*' else '.*'
+        for part in parts[1:]:
+            expr += re.escape('.' + part) if part != '*' else '(\..*)?'
+        return re.compile(expr + '\\Z')
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
