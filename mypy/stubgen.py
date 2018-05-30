@@ -38,6 +38,7 @@ TODO:
 import glob
 import importlib
 import json
+import os
 import os.path
 import pkgutil
 import subprocess
@@ -59,13 +60,16 @@ from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
     ClassDef, MypyFile, Decorator, AssignmentStmt,
-    IfStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
+    IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
 from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
 from mypy.stubutil import is_c_module, write_header
 from mypy.options import Options as MypyOptions
-from mypy.types import Type, TypeStrVisitor, AnyType, CallableType, UnboundType, NoneTyp, TupleType
+from mypy.types import (
+    Type, TypeStrVisitor, AnyType, CallableType,
+    UnboundType, NoneTyp, TupleType, TypeList,
+)
 from mypy.visitor import NodeVisitor
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
@@ -156,7 +160,8 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        module_path = mypy.build.find_module(module, ['.'] + search_path)
+        module_path = mypy.build.FindModuleCache().find_module(module, ('.',) + tuple(search_path),
+                                                               interpreter)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))
@@ -200,12 +205,14 @@ def generate_stub(path: str,
                   pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                   include_private: bool = False
                   ) -> None:
+
     with open(path, 'rb') as f:
-        source = f.read()
+        data = f.read()
+    source = mypy.util.decode_python_encoding(data, pyversion)
     options = MypyOptions()
     options.python_version = pyversion
     try:
-        ast = mypy.parse.parse(source, fnam=path, errors=None, options=options)
+        ast = mypy.parse.parse(source, fnam=path, module=module, errors=None, options=options)
     except mypy.errors.CompileError as e:
         # Syntax error!
         for m in e.messages:
@@ -251,6 +258,9 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_none_type(self, t: NoneTyp) -> str:
         return "None"
+
+    def visit_type_list(self, t: TypeList) -> str:
+        return '[{}]'.format(self.list_str(t.items))
 
 
 class AliasPrinter(NodeVisitor[str]):
@@ -450,18 +460,25 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             kind = arg_.kind
             name = var.name()
             annotated_type = o.type.arg_types[i] if isinstance(o.type, CallableType) else None
-            if annotated_type and not (
-                    i == 0 and name == 'self' and isinstance(annotated_type, AnyType)):
+            is_self_arg = i == 0 and name == 'self'
+            is_cls_arg = i == 0 and name == 'cls'
+            if (annotated_type is None
+                    and not arg_.initializer
+                    and not is_self_arg
+                    and not is_cls_arg):
+                self.add_typing_import("Any")
+                annotation = ": Any"
+            elif annotated_type and not is_self_arg:
                 annotation = ": {}".format(self.print_annotation(annotated_type))
             else:
                 annotation = ""
-            init_stmt = arg_.initialization_statement
-            if init_stmt:
+            if arg_.initializer:
                 initializer = '...'
-                if kind in (ARG_NAMED, ARG_NAMED_OPT) and '*' not in args:
+                if kind in (ARG_NAMED, ARG_NAMED_OPT) and not any(arg.startswith('*')
+                                                                  for arg in args):
                     args.append('*')
                 if not annotation:
-                    typename = self.get_str_type_of_node(init_stmt.rvalue, True)
+                    typename = self.get_str_type_of_node(arg_.initializer, True)
                     annotation = ': {} = ...'.format(typename)
                 else:
                     annotation += '={}'.format(initializer)
@@ -476,7 +493,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         retname = None
         if isinstance(o.type, CallableType):
             retname = self.print_annotation(o.type.ret_type)
-        elif o.name() == '__init__':
+        elif o.name() == '__init__' or not has_return_statement(o):
             retname = 'None'
         retfield = ''
         if retname is not None:
@@ -594,7 +611,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         name = repr(getattr(rvalue.args[0], 'value', '<ERROR>'))
         if isinstance(rvalue.args[1], StrExpr):
             items = repr(rvalue.args[1].value)
-        elif isinstance(rvalue.args[1], ListExpr):
+        elif isinstance(rvalue.args[1], (ListExpr, TupleExpr)):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = '[%s]' % ', '.join(repr(item.value) for item in list_items)
         else:
@@ -815,6 +832,19 @@ def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
     return results
 
 
+def has_return_statement(fdef: FuncBase) -> bool:
+    class ReturnSeeker(mypy.traverser.TraverserVisitor):
+        def __init__(self) -> None:
+            self.found = False
+
+        def visit_return_stmt(self, o: ReturnStmt) -> None:
+            self.found = True
+
+    seeker = ReturnSeeker()
+    fdef.accept(seeker)
+    return seeker.found
+
+
 def get_qualified_name(o: Expression) -> str:
     if isinstance(o, NameExpr):
         return o.name
@@ -826,9 +856,13 @@ def get_qualified_name(o: Expression) -> str:
 
 def walk_packages(packages: List[str]) -> Iterator[str]:
     for package_name in packages:
-        package = __import__(package_name)
+        package = importlib.import_module(package_name)
         yield package.__name__
-        for importer, qualified_name, ispkg in pkgutil.walk_packages(package.__path__,
+        path = getattr(package, '__path__', None)
+        if path is None:
+            # It's a module inside a package.  There's nothing else to walk/yield.
+            continue
+        for importer, qualified_name, ispkg in pkgutil.walk_packages(path,
                                                                      prefix=package.__name__ + ".",
                                                                      onerror=lambda r: None):
             yield qualified_name
@@ -909,7 +943,7 @@ def parse_options(args: List[str]) -> Options:
         elif args[0] == '--include-private':
             include_private = True
         elif args[0] in ('-h', '--help'):
-            usage()
+            usage(exit_nonzero=False)
         else:
             raise SystemExit('Unrecognized option %s' % args[0])
         args = args[1:]
@@ -944,7 +978,7 @@ def default_python2_interpreter() -> str:
     raise SystemExit("Can't find a Python 2 interpreter -- please use the -p option")
 
 
-def usage() -> None:
+def usage(exit_nonzero: bool=True) -> None:
     usage = textwrap.dedent("""\
         usage: stubgen [--py2] [--no-import] [--doc-dir PATH]
                        [--search-path PATH] [-p PATH] [-o PATH]
@@ -977,7 +1011,13 @@ def usage() -> None:
           -h, --help      print this help message and exit
     """.rstrip())
 
-    raise SystemExit(usage)
+    if exit_nonzero:
+        # The user made a mistake, so we should return with an error code
+        raise SystemExit(usage)
+    else:
+        # The user asked for help specifically, so we should exit with success
+        print(usage, file=sys.stderr)
+        sys.exit()
 
 
 if __name__ == '__main__':

@@ -141,7 +141,7 @@ class A: pass
 x = 0 # type: A
 x = 0 # type: A
 [out]
-main:4: error: Name 'x' already defined
+main:4: error: Name 'x' already defined on line 3
 
 [case testLocalVarRedefinition]
 import typing
@@ -150,7 +150,7 @@ def f() -> None:
   x = 0 # type: A
   x = 0 # type: A
 [out]
-main:5: error: Name 'x' already defined
+main:5: error: Name 'x' already defined on line 4
 
 [case testClassVarRedefinition]
 import typing
@@ -158,7 +158,7 @@ class A:
   x = 0 # type: object
   x = 0 # type: object
 [out]
-main:4: error: Name 'x' already defined
+main:4: error: Name 'x' already defined on line 3
 
 [case testMultipleClassDefinitions]
 import typing
@@ -551,7 +551,7 @@ class A:
   def g(self) -> None: pass
   def f(self, x: object) -> None: pass
 [out]
-main:5: error: Name 'f' already defined
+main:5: error: Name 'f' already defined on line 3
 
 [case testInvalidGlobalDecl]
 import typing
@@ -640,7 +640,7 @@ def f(x) -> None:
     x = 1
     def g(): pass
 [out]
-main:5: error: Name 'g' already defined
+main:5: error: Name 'g' already defined on line 3
 
 [case testRedefinedOverloadedFunction]
 from typing import overload, Any
@@ -653,7 +653,7 @@ def f() -> None:
     def p(): pass # fail
 [out]
 main:3: error: An overloaded function outside a stub file must have an implementation
-main:8: error: Name 'p' already defined
+main:8: error: Name 'p' already defined on line 3
 
 [case testNestedFunctionInMethod]
 import typing
@@ -819,8 +819,8 @@ y = None # type: Callable[int]
 z = None # type: Callable[int, int, int]
 [out]
 main:2: error: The first argument to Callable must be a list of types or "..."
-main:3: error: Invalid function type
-main:4: error: Invalid function type
+main:3: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
+main:4: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 
 [case testAbstractGlobalFunction]
 import typing
@@ -1049,7 +1049,7 @@ class t: pass # E: Name 't' already defined on line 2
 [case testRedefineTypevar4]
 from typing import TypeVar
 t = TypeVar('t')
-from typing import Generic as t # E: Name 't' already defined
+from typing import Generic as t # E: Name 't' already defined on line 2
 [out]
 
 [case testInvalidStrLiteralType]
@@ -1083,7 +1083,7 @@ from typing import overload
 def dec(x): pass
 @dec
 def f(): pass
-@dec  # E: Name 'f' already defined
+@dec  # E: Name 'f' already defined on line 3
 def f(): pass
 [out]
 
@@ -1180,7 +1180,7 @@ class A:
 import typing
 def f() -> None:
     import x
-    import y as x # E: Name 'x' already defined
+    import y as x # E: Name 'x' already defined (by an import)
     x.y
 [file x.py]
 y = 1
@@ -1190,7 +1190,7 @@ y = 1
 [case testImportTwoModulesWithSameNameInGlobalContext]
 import typing
 import x
-import y as x # E: Name 'x' already defined
+import y as x # E: Name 'x' already defined (by an import)
 x.y
 [file x.py]
 y = 1
@@ -1328,8 +1328,8 @@ a = 's'  # type: str
 a = ('spam', 'spam', 'eggs', 'spam')  # type: Tuple[str]
 
 [out]
-main:3: error: Name 'a' already defined
-main:4: error: Name 'a' already defined
+main:3: error: Name 'a' already defined on line 2
+main:4: error: Name 'a' already defined on line 2
 
 [case testDuplicateDefFromImport]
 from m import A
@@ -1347,7 +1347,7 @@ def dec(x: Any) -> Any:
 @dec
 def f() -> None:
     pass
-@dec  # E: Name 'f' already defined
+@dec  # E: Name 'f' already defined on line 4
 def f() -> None:
     pass
 [out]

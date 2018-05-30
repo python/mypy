@@ -1,5 +1,10 @@
-from typing import Dict, List, Set, Iterator, Union, Optional, cast
+from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from contextlib import contextmanager
+from collections import defaultdict
+
+MYPY = False
+if MYPY:
+    from typing import DefaultDict
 
 from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny
 from mypy.subtypes import is_subtype
@@ -37,6 +42,12 @@ class DeclarationsFrame(Dict[Key, Optional[Type]]):
         self.unreachable = False
 
 
+if MYPY:
+    # This is the type of stored assignments for union type rvalues.
+    # We use 'if MYPY: ...' since typing-3.5.1 does not have 'DefaultDict'
+    Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]
+
+
 class ConditionalTypeBinder:
     """Keep track of conditional types of variables.
 
@@ -57,6 +68,9 @@ class ConditionalTypeBinder:
     reveal_type(lst[0].a) # str
     ```
     """
+    # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
+    # This maps an expression to a list of bound types for every item in the union type.
+    type_assignments = None  # type: Optional[Assigns]
 
     def __init__(self) -> None:
         # The stack of frames currently used.  These map
@@ -210,10 +224,30 @@ class ConditionalTypeBinder:
 
         return result
 
+    @contextmanager
+    def accumulate_type_assignments(self) -> 'Iterator[Assigns]':
+        """Push a new map to collect assigned types in multiassign from union.
+
+        If this map is not None, actual binding is deferred until all items in
+        the union are processed (a union of collected items is later bound
+        manually by the caller).
+        """
+        old_assignments = None
+        if self.type_assignments is not None:
+            old_assignments = self.type_assignments
+        self.type_assignments = defaultdict(list)
+        yield self.type_assignments
+        self.type_assignments = old_assignments
+
     def assign_type(self, expr: Expression,
                     type: Type,
                     declared_type: Optional[Type],
                     restrict_any: bool = False) -> None:
+        if self.type_assignments is not None:
+            # We are in a multiassign from union, defer the actual binding,
+            # just collect the types.
+            self.type_assignments[expr].append((type, declared_type))
+            return
         if not isinstance(expr, BindableTypes):
             return None
         if not literal(expr):

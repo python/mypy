@@ -96,6 +96,48 @@ GenAlias = Sequence[T]
 def fun(x: Alias) -> GenAlias[int]: pass
 [out]
 
+[case testCorrectQualifiedAliasesAlsoInFunctions]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+
+class X(Generic[T]):
+    A = X[S]
+    def f(self) -> X[T]:
+        pass
+
+    a: X[T]
+    b: A = a
+    c: A[T] = a
+    d: A[int] = a # E: Incompatible types in assignment (expression has type "X[T]", variable has type "X[int]")
+
+    def g(self) -> None:
+        a: X[T]
+        b: X.A = a
+        c: X.A[T] = a
+        d: X.A[int] = a  # E: Incompatible types in assignment (expression has type "X[T]", variable has type "X[int]")
+
+def g(arg: X[int]) -> None:
+    p: X[int] = arg.f()
+    q: X.A = arg.f()
+    r: X.A[str] = arg.f() # E: Incompatible types in assignment (expression has type "X[int]", variable has type "X[str]")
+[out]
+
+[case testProhibitBoundTypeVariableReuseForAliases]
+from typing import TypeVar, Generic, List
+T = TypeVar('T')
+class C(Generic[T]):
+    A = List[T] # E: Can't use bound type variable "T" to define generic alias
+
+x: C.A
+reveal_type(x) # E: Revealed type is 'builtins.list[Any]'
+
+def f(x: T) -> T:
+    A = List[T] # E: Can't use bound type variable "T" to define generic alias
+    return x
+[builtins fixtures/list.pyi]
+[out]
+
 [case testTypeAliasInBuiltins]
 def f(x: bytes): pass
 bytes
@@ -221,9 +263,9 @@ A = List[T]
 from typing import Union
 void = type(None)
 x: void
-reveal_type(x)  # E: Revealed type is 'builtins.None'
+reveal_type(x)  # E: Revealed type is 'None'
 y: Union[int, void]
-reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]

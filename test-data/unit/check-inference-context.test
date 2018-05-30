@@ -90,7 +90,7 @@ class B: pass
 from typing import TypeVar, Generic
 T = TypeVar('T')
 def g() -> None:
-    x = f() # E: Need type annotation for variable
+    x = f() # E: Need type annotation for 'x'
 
 def f() -> 'A[T]': pass
 class A(Generic[T]): pass
@@ -384,7 +384,7 @@ class B(A): pass
 [case testLocalVariableInferenceFromEmptyList]
 import typing
 def f() -> None:
-    a = []     # E: Need type annotation for variable
+    a = []     # E: Need type annotation for 'a'
     b = [None]
     c = [B()]
     c = [object()] # E: List item 0 has incompatible type "object"; expected "B"
@@ -867,7 +867,7 @@ T = TypeVar('T')
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
 reveal_type(f(1)) # E: Revealed type is 'Union[builtins.int*, builtins.list[builtins.int]]'
 reveal_type(f([])) # E: Revealed type is 'builtins.list[builtins.int]'
-reveal_type(f(None)) # E: Revealed type is 'Union[builtins.None, builtins.list[builtins.int]]'
+reveal_type(f(None)) # E: Revealed type is 'Union[None, builtins.list[builtins.int]]'
 [builtins fixtures/list.pyi]
 
 [case testUnionWithGenericTypeItemContextInMethod]
@@ -911,3 +911,11 @@ class M(Generic[_KT, _VT]):
 
 def f(d: M[_KT, _VT], k: _KT) -> Union[_VT, None]:
     return d.get(k, None)
+
+[case testLambdaDeferredCrash]
+from typing import Callable
+
+class C:
+    def f(self) -> None:
+        g: Callable[[], int] = lambda: 1 or self.x
+        self.x = int()

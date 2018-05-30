@@ -20,6 +20,7 @@ from mypy.nodes import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.sametypes import is_same_type
+from mypy.typestate import TypeState
 
 from mypy import experiments
 
@@ -123,7 +124,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_none_type(self, left: NoneTyp) -> bool:
         if experiments.STRICT_OPTIONAL:
             return (isinstance(self.right, NoneTyp) or
-                    is_named_instance(self.right, 'builtins.object'))
+                    is_named_instance(self.right, 'builtins.object') or
+                    isinstance(self.right, Instance) and self.right.type.is_protocol and
+                    not self.right.type.protocol_members)
         else:
             return True
 
@@ -143,7 +146,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return is_subtype(left, right.fallback)
         if isinstance(right, Instance):
-            if right.type.is_cached_subtype_check(left, right):
+            if TypeState.is_cached_subtype_check(left, right):
                 return True
             # NOTE: left.type.mro may be None in quick mode if there
             # was an error somewhere.
@@ -153,7 +156,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if base._promote and is_subtype(
                             base._promote, self.right, self.check_type_parameter,
                             ignore_pos_arg_names=self.ignore_pos_arg_names):
-                        right.type.record_subtype_cache_entry(left, right)
+                        TypeState.record_subtype_cache_entry(left, right)
                         return True
             rname = right.type.fullname()
             # Always try a nominal check if possible,
@@ -166,7 +169,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                               for lefta, righta, tvar in
                               zip(t.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    right.type.record_subtype_cache_entry(left, right)
+                    TypeState.record_subtype_cache_entry(left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(left, right):
                 return True
@@ -181,10 +184,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if isinstance(item, AnyType):
                     return True
                 if isinstance(item, Instance):
-                    # Special-case enum since we don't have better way of expressing it
-                    if (is_named_instance(left, 'enum.EnumMeta')
-                            and is_named_instance(item, 'enum.Enum')):
-                        return True
                     return is_named_instance(item, 'builtins.object')
         if isinstance(right, CallableType):
             # Special case: Instance can be a subtype of Callable.
@@ -287,13 +286,46 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     return True
             return False
         elif isinstance(right, Overloaded):
-            # TODO: this may be too restrictive
-            if len(left.items()) != len(right.items()):
-                return False
-            for i in range(len(left.items())):
-                if not is_subtype(left.items()[i], right.items()[i], self.check_type_parameter,
-                                  ignore_pos_arg_names=self.ignore_pos_arg_names):
+            # Ensure each overload in the right side (the supertype) is accounted for.
+            previous_match_left_index = -1
+            matched_overloads = set()
+            possible_invalid_overloads = set()
+
+            for right_index, right_item in enumerate(right.items()):
+                found_match = False
+
+                for left_index, left_item in enumerate(left.items()):
+                    subtype_match = is_subtype(left_item, right_item, self.check_type_parameter,
+                                               ignore_pos_arg_names=self.ignore_pos_arg_names)
+
+                    # Order matters: we need to make sure that the index of
+                    # this item is at least the index of the previous one.
+                    if subtype_match and previous_match_left_index <= left_index:
+                        if not found_match:
+                            # Update the index of the previous match.
+                            previous_match_left_index = left_index
+                            found_match = True
+                            matched_overloads.add(left_item)
+                            possible_invalid_overloads.discard(left_item)
+                    else:
+                        # If this one overlaps with the supertype in any way, but it wasn't
+                        # an exact match, then it's a potential error.
+                        if (is_callable_subtype(left_item, right_item, ignore_return=True,
+                                            ignore_pos_arg_names=self.ignore_pos_arg_names) or
+                                is_callable_subtype(right_item, left_item, ignore_return=True,
+                                                ignore_pos_arg_names=self.ignore_pos_arg_names)):
+                            # If this is an overload that's already been matched, there's no
+                            # problem.
+                            if left_item not in matched_overloads:
+                                possible_invalid_overloads.add(left_item)
+
+                if not found_match:
                     return False
+
+            if possible_invalid_overloads:
+                # There were potentially invalid overloads that were never matched to the
+                # supertype.
+                return False
             return True
         elif isinstance(right, UnboundType):
             return True
@@ -360,6 +392,8 @@ def is_protocol_implementation(left: Instance, right: Instance,
     as well.
     """
     assert right.type.is_protocol
+    # We need to record this check to generate protocol fine-grained dependencies.
+    TypeState.record_protocol_subtype_check(left.type, right.type)
     assuming = right.type.assuming_proper if proper_subtype else right.type.assuming
     for (l, r) in reversed(assuming):
         if sametypes.is_same_type(l, left) and sametypes.is_same_type(r, right):
@@ -386,7 +420,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
                 return False
-            if isinstance(subtype, NoneTyp) and member.startswith('__') and member.endswith('__'):
+            if isinstance(subtype, NoneTyp) and isinstance(supertype, CallableType):
                 # We want __hash__ = None idiom to work even without --strict-optional
                 return False
             subflags = get_member_flags(member, left.type)
@@ -402,7 +436,10 @@ def is_protocol_implementation(left: Instance, right: Instance,
             # This rule is copied from nominal check in checker.py
             if IS_CLASS_OR_STATIC in superflags and IS_CLASS_OR_STATIC not in subflags:
                 return False
-    right.type.record_subtype_cache_entry(left, right, proper_subtype)
+    if proper_subtype:
+        TypeState.record_proper_subtype_cache_entry(left, right)
+    else:
+        TypeState.record_subtype_cache_entry(left, right)
     return True
 
 
@@ -514,6 +551,21 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
     itype = map_instance_to_supertype(itype, node.info)
     typ = expand_type_by_instance(typ, itype)
     return typ
+
+
+def non_method_protocol_members(tp: TypeInfo) -> List[str]:
+    """Find all non-callable members of a protocol."""
+
+    assert tp.is_protocol
+    result = []  # type: List[str]
+    anytype = AnyType(TypeOfAny.special_form)
+    instance = Instance(tp, [anytype] * len(tp.defn.type_vars))
+
+    for member in tp.protocol_members:
+        typ = find_member(member, instance, instance)
+        if not isinstance(typ, CallableType):
+            result.append(member)
+    return result
 
 
 def is_callable_subtype(left: CallableType, right: CallableType,
@@ -818,11 +870,11 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if right.type.is_cached_subtype_check(left, right, proper_subtype=True):
+            if TypeState.is_cached_proper_subtype_check(left, right):
                 return True
             for base in left.type.mro:
                 if base._promote and is_proper_subtype(base._promote, right):
-                    right.type.record_subtype_cache_entry(left, right, proper_subtype=True)
+                    TypeState.record_proper_subtype_cache_entry(left, right)
                     return True
 
             if left.type.has_base(right.type.fullname()):
@@ -839,7 +891,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                               zip(left.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    right.type.record_subtype_cache_entry(left, right, proper_subtype=True)
+                    TypeState.record_proper_subtype_cache_entry(left, right)
                 return nominal
             if (right.type.is_protocol and
                     is_protocol_implementation(left, right, proper_subtype=True)):

@@ -12,9 +12,12 @@ class type:
     def __call__(self, *a) -> object: pass
 class tuple(Sequence[Tco], Generic[Tco]):
     def __iter__(self) -> Iterator[Tco]: pass
+    def __contains__(self, item: object) -> bool: pass
     def __getitem__(self, x: int) -> Tco: pass
+    def __rmul__(self, n: int) -> tuple: pass
     def count(self, obj: Any) -> int: pass
 class function: pass
+class ellipsis: pass
 
 # We need int and slice for indexing tuples.
 class int: pass

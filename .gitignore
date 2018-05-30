@@ -13,6 +13,8 @@ docs/build/
 .incremental_checker_cache.json
 .cache
 .runtest_log.json
+dmypy.json
+.dmypy.json
 
 # Packages
 *.egg
@@ -23,8 +25,11 @@ docs/build/
 *.swp
 
 # Operating Systems
-.DS_store
+.DS_Store
 
 # Coverage Files
 htmlcov
 .coverage*
+
+# pytest cache
+.pytest_cache/

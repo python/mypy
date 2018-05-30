@@ -525,7 +525,7 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument type "B"
 
 [case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
 from foo import *
@@ -552,7 +552,7 @@ B().f(1)
 a = B() # type: A
 a.f(1)
 a.f('')
-a.f(B()) # E: No overload variant of "f" of "A" matches argument types [foo.B]
+a.f(B()) # E: No overload variant of "f" of "A" matches argument type "B"
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]
 from foo import *
@@ -637,6 +637,21 @@ class B:
 class C:
     def __add__(self, other: int) -> B: pass
 [out]
+
+[case testAbstractClassWithAnyBase]
+from typing import Any
+from abc import abstractmethod, ABCMeta
+
+A: Any
+
+class D(metaclass=ABCMeta):
+    @abstractmethod
+    def f(self) -> None: pass
+
+class C(A, D):
+    pass
+
+C()  # A might implement 'f'
 
 
 -- Abstract properties
@@ -745,7 +760,7 @@ b = B() # E
 b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
-main:7: error: Property "x" defined in "B" is read-only
+main:7: error: Property "x" defined in "A" is read-only
 main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
 main:9: error: "int" has no attribute "y"
 

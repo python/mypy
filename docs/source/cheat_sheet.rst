@@ -1,7 +1,7 @@
 .. _cheat-sheet-py2:
 
-Mypy syntax cheat sheet (Python 2)
-==================================
+Type hints cheat sheet (Python 2)
+=================================
 
 This document is a quick cheat sheet showing how the `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
 language represents various common types in Python 2.
@@ -32,6 +32,9 @@ Built-in types
    # name of the type inside the collection is in brackets.
    x = [1] # type: List[int]
    x = set([6, 7]) # type: Set[int]
+
+   # Empty Tuple types are a bit special
+   x = ()  # type: Tuple[()]
 
    # For mappings, we need the types of both keys and values.
    x = dict(field=2.0) # type: Dict[str, float]

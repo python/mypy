@@ -4,9 +4,10 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` (with fallback to ``setup.cfg``) in the
-current directory; the ``--config-file`` command-line flag can be used to
-read a different file instead (see :ref:`--config-file <config-file-flag>`).
+it uses the file ``mypy.ini`` with fallback to ``setup.cfg`` in the current
+directory, or ``.mypy.ini`` in the user home directory if none of them are
+found; the ``--config-file`` command-line flag can be used to read a different
+file instead (see :ref:`--config-file <config-file-flag>`).
 
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity.  The ``--config-file`` flag
@@ -29,10 +30,15 @@ characters.
   the global flags. The ``setup.cfg`` file is an exception to this.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
-  present, where ``PATTERN1``, ``PATTERN2`` etc. are `fnmatch patterns
-  <https://docs.python.org/3.6/library/fnmatch.html>`_
-  separated by commas.  These sections specify additional flags that
-  only apply to *modules* whose name matches at least one of the patterns.
+  present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
+  patterns of the form ``dotted_module_name`` or ``dotted_module_name.*``.
+  These sections specify additional flags that only apply to *modules*
+  whose name matches at least one of the patterns.
+
+  A pattern of the form ``dotted_module_name`` matches only the named module,
+  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
+  submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
+  ``foo.bar.baz``, and ``foo.bar.baz.quux``).
 
 .. note::
 
@@ -55,6 +61,14 @@ The following global flags may only be set in the global section
   Windows, respectively).  The default is the current platform as
   revealed by Python's ``sys.platform`` variable.
 
+- ``always_true`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  true.
+
+- ``always_false`` (comma-separated list of strings) gives variable
+  names that will be treated as compile-time constants that are always
+  false.
+
 - ``custom_typing_module`` (string) specifies the name of an
   alternative module which is to be considered equivalent to the
   ``typing`` module.
@@ -74,15 +88,9 @@ The following global flags may only be set in the global section
 - ``warn_redundant_casts`` (Boolean, default False) warns about
   casting an expression to its inferred type.
 
-- ``warn_unused_ignores`` (Boolean, default False) warns about
-  unneeded ``# type: ignore`` comments.
-
 - ``warn_unused_configs`` (Boolean, default False) warns about
   per-module sections in the config file that didn't match any
   files processed in the current run.
-
-- ``strict_optional`` (Boolean, default False) enables experimental
-  strict Optional checks.
 
 - ``scripts_are_modules`` (Boolean, default False) makes script ``x``
   become module ``x`` instead of ``__main__``.  This is useful when
@@ -102,7 +110,7 @@ The following global flags may only be set in the global section
 - ``dump_inference_stats`` (Boolean, default False) dumps stats about
   type inference.
 
-- ``incremental`` (Boolean, default False) enables :ref:`incremental
+- ``incremental`` (Boolean, default True) enables :ref:`incremental
   mode <incremental>`.
 
 - ``cache_dir`` (string, default ``.mypy_cache``) stores module cache
@@ -132,8 +140,12 @@ overridden by the pattern sections matching the module name.
 
 .. note::
 
-   If multiple pattern sections match a module they are processed in
-   order of their occurrence in the config file.
+   If multiple pattern sections match a module, the options from the
+   most specific section are used where they disagree.  This means
+   that ``foo.bar`` will take values from sections with the patterns
+   ``foo.bar``, ``foo.bar.*``, and ``foo.*``, but when they specify
+   different values, it will use values from ``foo.bar`` before
+   ``foo.bar.*`` before ``foo.*``.
 
 - ``follow_imports`` (string, default ``normal``) directs what to do
   with imports when the imported module is found as a ``.py`` file and
@@ -142,13 +154,22 @@ overridden by the pattern sections matching the module name.
   ``error``.  For explanations see the discussion for the
   :ref:`--follow-imports <follow-imports>` command line flag.  Note
   that if pattern matching is used, the pattern should match the name
-  of the _imported_ module, not the module containing the import
+  of the *imported* module, not the module containing the import
   statement.
+
+- ``follow_imports_for_stubs`` (Boolean, default false) determines
+  whether to respect the ``follow_imports`` setting even for stub
+  (``.pyi``) files.
+  Used in conjunction with ``follow_imports=skip``, this can be used
+  to suppress the import of a module from ``typeshed``, replacing it
+  with `Any`.
+  Used in conjuncation with ``follow_imports=error``, this can be used
+  to make any use of a particular ``typeshed`` module an error.
 
 - ``ignore_missing_imports`` (Boolean, default False) suppress error
   messages about imports that cannot be resolved.  Note that if
   pattern matching is used, the pattern should match the name of the
-  _imported_ module, not the module containing the import statement.
+  *imported* module, not the module containing the import statement.
 
 - ``silent_imports`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip`` plus ``ignore_missing_imports=True``.
@@ -156,11 +177,27 @@ overridden by the pattern sections matching the module name.
 - ``almost_silent`` (Boolean, deprecated) equivalent to
   ``follow_imports=skip``.
 
-- ``disallow_any`` (Comma-separated list, default empty) is an option to
-  disallow various types of ``Any`` in a module. The flag takes a
-  comma-separated list of the following arguments: ``unimported``,
-  ``unannotated``, ``expr``, ``decorated``, ``explicit``, ``generics``.
-  For explanations see the discussion for the :ref:`--disallow-any <disallow-any>` option.
+- ``strict_optional`` (Boolean, default True) enables or disables
+  strict Optional checks. If False, mypy treats ``None`` as
+  compatible with every type.
+
+  **Note::** This was False by default
+  in mypy versions earlier than 0.600.
+
+- ``disallow_any_unimported`` (Boolean, default false) disallows usage of types that come
+  from unfollowed imports (such types become aliases for ``Any``).
+
+- ``disallow_any_expr`` (Boolean, default false) disallows all expressions in the module
+  that have type ``Any``.
+
+- ``disallow_any_decorated`` (Boolean, default false) disallows functions that have ``Any``
+  in their signature after decorator transformation.
+
+- ``disallow_any_explicit`` (Boolean, default false) disallows explicit ``Any`` in type
+  positions such as type annotations and generic type parameters.
+
+- ``disallow_any_generics`` (Boolean, default false) disallows usage of generic types that
+  do not specify explicit type parameters.
 
 - ``disallow_subclassing_any`` (Boolean, default False) disallows
   subclassing a value of type ``Any``.  See
@@ -194,14 +231,17 @@ overridden by the pattern sections matching the module name.
   returning a value with type ``Any`` from a function declared with a
   non- ``Any`` return type.
 
+- ``warn_unused_ignores`` (Boolean, default False) warns about
+  unneeded ``# type: ignore`` comments.
+
 - ``strict_boolean`` (Boolean, default False) makes using non-boolean
   expressions in conditions an error.
 
 - ``no_implicit_optional`` (Boolean, default false) changes the treatment of
   arguments with a default value of None by not implicitly making their type Optional
 
-Example
-*******
+Examples
+********
 
 You might put this in your ``mypy.ini`` file at the root of your repo:
 
@@ -217,6 +257,17 @@ for all mypy runs in this tree, and also selectively turns on the
 ``--disallow-untyped-defs`` flag for all modules in the ``foo``
 package.  This issues an error for function definitions without
 type annotations in that subdirectory only.
+
+If you would like to ignore specific imports, instead of ignoring all missing
+imports with ``--ignore-missing-imports``, use a section of the configuration
+file per module such as the following to ignore missing imports from
+``lib_module``:
+
+.. code-block:: text
+
+    [mypy-lib_module]
+    ignore_missing_imports = True
+
 
 .. note::
 

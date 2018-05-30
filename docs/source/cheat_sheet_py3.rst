@@ -1,7 +1,7 @@
 .. _cheat-sheet-py3:
 
-Mypy syntax cheat sheet (Python 3)
-==================================
+Type hints cheat sheet (Python 3)
+=================================
 
 This document is a quick cheat sheet showing how the `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
 language represents various common types in Python 3. Unless otherwise noted, the syntax is valid on all versions of Python 3.
@@ -33,6 +33,9 @@ Built-in types
    # name of the type inside the collection is in brackets.
    x = [1]  # type: List[int]
    x = {6, 7}  # type: Set[int]
+
+   # Empty Tuple types are a bit special
+   x = ()  # type: Tuple[()]
 
    # For mappings, we need the types of both keys and values.
    x = {'field': 2.0}  # type: Dict[str, float]
@@ -102,6 +105,45 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
        
        ...
 
+Coroutines and asyncio
+**********************
+
+See :ref:`async-and-await` for the full detail on typing coroutines and asynchronous code.
+
+.. code-block:: python
+
+   import asyncio
+   from typing import Generator, Any
+
+   # A generator-based coroutine created with @asyncio.coroutine should have a
+   # return type of Generator[Any, None, T], where T is the type it returns.
+   @asyncio.coroutine
+   def countdown34(tag: str, count: int) -> Generator[Any, None, str]:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           yield from asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   # mypy currently does not support converting functions into generator-based
+   # coroutines in Python 3.4, so you need to add a 'yield' to make it
+   # typecheck.
+   @asyncio.coroutine
+   def async1(obj: object) -> Generator[None, None, str]:
+       if False:
+           yield
+       return "placeholder"
+
+   # A Python 3.5+ coroutine is typed like a normal function.
+   async def countdown35(tag: str, count: int) -> str:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           await asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   async def async2(obj: object) -> str:
+       return "placeholder"
 
 When you're puzzled or when things are complicated
 **************************************************
@@ -239,7 +281,7 @@ Other stuff
        else:
            return sys.stdout
 
-   # forward references are useful if you want to referemce a class before it is designed
+   # forward references are useful if you want to reference a class before it is designed
    
    def f(foo: A) -> int:  # this will fail
        ...
@@ -304,4 +346,4 @@ Mypy brings limited support for PEP 526 annotations.
         def __init__(self) -> None:
             self.items: List[str] = []
    
-Please see :ref:`python-36` for more on mypy's compatability with Python 3.6's new features.
+Please see :ref:`python-36` for more on mypy's compatibility with Python 3.6's new features.

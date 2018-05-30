@@ -1,14 +1,13 @@
 """Test cases for the type checker: exporting inferred types"""
 
-import os.path
 import re
 
 from typing import Set, List
 
 from mypy import build
 from mypy.build import BuildSource
-from mypy.test import config
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.util import short_type
 from mypy.nodes import (
@@ -20,16 +19,8 @@ from mypy.options import Options
 
 
 class TypeExportSuite(DataSuite):
-    # List of files that contain test case descriptions.
+    required_out_section = True
     files = ['typexport-basic.test']
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in cls.files:
-            c += parse_test_cases(os.path.join(config.test_data_prefix, f),
-                                  None, config.test_temp_dir)
-        return c
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         try:
@@ -40,11 +31,12 @@ class TypeExportSuite(DataSuite):
 
             src = '\n'.join(testcase.input)
             options = Options()
+            options.strict_optional = False  # TODO: Enable strict optional checking
             options.use_builtins_fixtures = True
             options.show_traceback = True
             result = build.build(sources=[BuildSource('main', None, src)],
                                  options=options,
-                                 alt_lib_path=config.test_temp_dir)
+                                 alt_lib_path=test_temp_dir)
             a = result.errors
             map = result.types
             nodes = map.keys()

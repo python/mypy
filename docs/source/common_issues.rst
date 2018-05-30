@@ -14,7 +14,7 @@ Can't install mypy using pip
 
 If installation fails, you've probably hit one of these issues:
 
-* Mypy needs Python 3.3 or later to run.
+* Mypy needs Python 3.4 or later to run.
 * You may have to run pip like this:
   ``python3 -m pip install mypy``.
 
@@ -30,7 +30,8 @@ flagged as an error.
   do not have any annotations (neither for any argument nor for the
   return type) are not type-checked, and even the most blatant type
   errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
-  annotations.
+  annotations. Where that isn't possible, functions without annotations
+  can be checked using ``--check-untyped-defs``.
 
   Example:
 
@@ -51,7 +52,7 @@ flagged as an error.
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
-- **One of the values involved has type ``Any``.** Extending the above
+- **One of the values involved has type 'Any'.** Extending the above
   example, if we were to leave out the annotation for ``a``, we'd get
   no error:
 
@@ -84,6 +85,17 @@ flagged as an error.
   module found at all) leave out ``--ignore-missing-imports``; to get
   clarity about the latter use ``--follow-imports=error``.  You can
   read up about these and other useful flags in :ref:`command-line`.
+
+- **A function annotated as returning a non-optional type returns 'None'
+  and mypy doesn't complain**.
+
+  .. code-block:: python
+
+      def foo() -> str:
+          return None  # No error!
+
+  You may have disabled strict optional checking (see
+  :ref:`no_strict_optional` for more).
 
 .. _silencing_checker:
 
@@ -118,6 +130,17 @@ The second line is now fine, since the ignore comment causes the name
     type if mypy cannot find information about that particular module. So,
     if we did have a stub available for ``frobnicate`` then mypy would
     ignore the ``# type: ignore`` comment and typecheck the stub as usual.
+
+
+Unexpected errors about 'None' and/or 'Optional' types
+------------------------------------------------------
+
+Starting from mypy 0.600, mypy uses
+:ref:`strict optional checking <strict_optional>` by default,
+and ``None`` is not compatible with non-optional types.  It's
+easy to switch back to the older behavior where ``None`` was
+compatible with arbitrary types (see :ref:`no_strict_optional`).
+
 
 Types of empty collections
 --------------------------
@@ -407,12 +430,25 @@ understand how mypy handles a particular piece of code. Example:
 
    reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
 
+You can also use ``reveal_locals()`` at any line in a file
+to see the types of all local varaibles at once. Example:
+
+.. code-block:: python
+
+   a = 1
+   b = 'one'
+   reveal_locals()
+   # Revealed local types are:
+   # a: builtins.int
+   # b: builtins.str
 .. note::
 
-   ``reveal_type`` is only understood by mypy and doesn't exist
-   in Python, if you try to run your program. You'll have to remove
-   any ``reveal_type`` calls before you can run your code.
-   ``reveal_type`` is always available and you don't need to import it.
+   ``reveal_type`` and ``reveal_locals`` are only understood by mypy and
+   don't exist in Python. If you try to run your program, you'll have to
+   remove any ``reveal_type`` and ``reveal_locals`` calls before you can
+   run your code. Both are always available and you don't need to import
+   them.
+
 
 .. _import-cycles:
 
@@ -472,3 +508,56 @@ Here's the above example modified to use ``MYPY``:
 
    def listify(arg: 'bar.BarClass') -> 'List[bar.BarClass]':
        return [arg]
+
+
+.. _silencing-linters:
+
+Silencing linters
+-----------------
+
+In some cases, linters will complain about unused imports or code. In
+these cases, you can silence them with a comment after type comments, or on
+the same line as the import:
+
+.. code-block:: python
+
+   # to silence complaints about unused imports
+   from typing import List  # noqa
+   a = None  # type: List[int]
+
+
+To silence the linter on the same line as a type comment
+put the linter comment *after* the type comment:
+
+.. code-block:: python
+
+    a = some_complex_thing()  # type: ignore  # noqa
+
+
+Dealing with conflicting names
+------------------------------
+
+Suppose you have a class with a method whose name is the same as an
+imported (or built-in) type, and you want to use the type in another
+method signature.  E.g.:
+
+.. code-block:: python
+
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes):  # error: Invalid type "mod.Message.bytes"
+           ...
+
+The third line elicits an error because mypy sees the argument type
+``bytes`` as a reference to the method by that name.  Other than
+renaming the method, a work-around is to use an alias:
+
+.. code-block:: python
+
+   bytes_ = bytes
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes_):
+           ...

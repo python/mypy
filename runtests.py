@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """Mypy test runner."""
 
-from typing import Dict, List, Optional, Set, Iterable, Tuple
-
-from mypy.waiter import Waiter, LazySubprocess
-from mypy import util
+from typing import List, Optional, Set, Iterable, Tuple
 
 import itertools
 import os
 from os.path import join, isdir
 import sys
 
+from waiter import Waiter, LazySubprocess
 
-def get_versions():  # type: () -> List[str]
+
+def get_versions() -> List[str]:
     major = sys.version_info[0]
     minor = sys.version_info[1]
     if major == 2:
@@ -23,9 +22,6 @@ def get_versions():  # type: () -> List[str]
         # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
         return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
 
-
-# Ideally, all tests would be `discover`able so that they can be driven
-# (and parallelized) by an external test driver.
 
 class Driver:
 
@@ -42,7 +38,6 @@ class Driver:
         self.waiter = Waiter(verbosity=verbosity, limit=parallel_limit, xfail=xfail, lf=lf, ff=ff)
         self.versions = get_versions()
         self.cwd = os.getcwd()
-        self.mypy = os.path.join(self.cwd, 'scripts', 'mypy')
         self.env = dict(os.environ)
         self.coverage = coverage
 
@@ -71,23 +66,16 @@ class Driver:
         full_name = 'check %s' % name
         if not self.allow(full_name):
             return
-        args = [sys.executable, self.mypy] + mypy_args
+        args = [sys.executable, '-m', 'mypy'] + mypy_args
         args.append('--show-traceback')
+        args.append('--no-site-packages')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
-    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_cmd(name, list(args), cwd=cwd)
-
-    def add_mypy_modules(self, name: str, modules: Iterable[str],
-                         cwd: Optional[str] = None) -> None:
-        args = list(itertools.chain(*(['-m', mod] for mod in modules)))
+    def add_mypy_modules(self, name: str, modules: Iterable[str], cwd: Optional[str] = None,
+                         extra_args: Optional[List[str]] = None) -> None:
+        args = extra_args or []
+        args.extend(list(itertools.chain(*(['-m', mod] for mod in modules))))
         self.add_mypy_cmd(name, args, cwd=cwd)
-
-    def add_mypy_package(self, name: str, packagename: str, *flags: str) -> None:
-        self.add_mypy_cmd(name, ['-p', packagename] + list(flags))
-
-    def add_mypy_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_cmd(name, ['-c'] + list(args), cwd=cwd)
 
     def add_pytest(self, files: List[Tuple[str, str]], coverage: bool = True) -> None:
         pytest_files = [name for kind, name in files
@@ -104,48 +92,6 @@ class Driver:
                                        passthrough=self.verbosity),
                         sequential=True)
 
-    def add_python(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'run %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        largs[0:0] = [sys.executable]
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
-    def add_python_mod(self, name: str, *args: str, cwd: Optional[str] = None,
-                       coverage: bool = False) -> None:
-        name = 'run %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        if coverage and self.coverage:
-            largs[0:0] = ['coverage', 'run', '-m']
-        else:
-            largs[0:0] = [sys.executable, '-m']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
-    def add_python_string(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'run %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        largs[0:0] = [sys.executable, '-c']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
-    def add_python2(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        name = 'run2 %s' % name
-        if not self.allow(name):
-            return
-        largs = list(args)
-        python2 = util.try_find_python2_interpreter()
-        assert python2, "Couldn't find a Python 2.7 interpreter"
-        largs[0:0] = [python2]
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
     def add_flake8(self, cwd: Optional[str] = None) -> None:
         name = 'lint'
         if not self.allow(name):
@@ -157,20 +103,6 @@ class Driver:
     def list_tasks(self) -> None:
         for id, task in enumerate(self.waiter.queue):
             print('{id}:{task}'.format(id=id, task=task.name))
-
-
-def add_basic(driver: Driver) -> None:
-    if False:
-        driver.add_mypy('file setup.py', 'setup.py')
-    driver.add_mypy('file runtests.py', 'runtests.py')
-    driver.add_mypy('legacy entry script', 'scripts/mypy')
-    driver.add_mypy('legacy myunit script', 'scripts/myunit')
-    # needs typed_ast installed:
-    driver.add_mypy('fast-parse', '--fast-parse', 'test-data/samples/hello.py')
-
-
-def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_self_check.ini')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -187,17 +119,7 @@ def file_to_module(file: str) -> str:
     return rv
 
 
-def add_imports(driver: Driver) -> None:
-    # Make sure each module can be imported originally.
-    # There is currently a bug in mypy where a module can pass typecheck
-    # because of *implicit* imports from other modules.
-    for f in find_files('mypy', suffix='.py'):
-        mod = file_to_module(f)
-        if not mod.endswith('.__main__'):
-            driver.add_python_string('import %s' % mod, 'import %s' % mod)
-
-
-def test_path(*names: str):
+def test_path(*names: str) -> List[str]:
     return [os.path.join('mypy', 'test', '{}.py'.format(name))
             for name in names]
 
@@ -208,53 +130,50 @@ PYTEST_FILES = test_path(
     'testdeps',
     'testdiff',
     'testfinegrained',
+    'testfinegrainedcache',
     'testmerge',
     'testtransform',
     'testtypegen',
     'testparse',
-    'testsemanal'
-)
-
-SLOW_FILES = test_path(
-    'testpythoneval',
-    'testcmdline',
-    'teststubgen',
-)
-
-MYUNIT_FILES = test_path(
-    'teststubgen',
-    'testargs',
+    'testsemanal',
+    'testerrorstream',
+    # non-data-driven:
     'testgraph',
     'testinfer',
     'testmoduleinfo',
+    'teststubgen',
+    'testargs',
     'testreports',
     'testsolve',
     'testsubtypes',
     'testtypes',
 )
 
-for f in find_files('mypy', prefix='test', suffix='.py'):
-    assert f in PYTEST_FILES + SLOW_FILES + MYUNIT_FILES, f
+SLOW_FILES = test_path(
+    'testpep561',
+    'testpythoneval',
+    'testcmdline',
+    'teststubgen',
+)
+
+SELFCHECK_FILES = test_path(
+    'testselfcheck',
+)
 
 
 def add_pytest(driver: Driver) -> None:
+    for f in find_files('mypy', prefix='test', suffix='.py'):
+        assert f in PYTEST_FILES + SLOW_FILES + SELFCHECK_FILES, f
     driver.add_pytest([('unit-test', name) for name in PYTEST_FILES] +
-                      [('integration', name) for name in SLOW_FILES])
-
-
-def add_myunit(driver: Driver) -> None:
-    for f in MYUNIT_FILES:
-        mod = file_to_module(f)
-        driver.add_python_mod('myunit unit-test %s' % mod, 'mypy.myunit', '-m', mod,
-                              *driver.arglist, coverage=True)
+                      [('integration', name) for name in SLOW_FILES] +
+                      [('self-check', name) for name in SELFCHECK_FILES])
 
 
 def add_stubs(driver: Driver) -> None:
     # We only test each module in the one version mypy prefers to find.
     # TODO: test stubs for other versions, especially Python 2 stubs.
 
-    modules = set()  # type: Set[str]
-    modules.add('typing')
+    modules = {'typing'}
     # TODO: This should also test Python 2, and pass pyversion accordingly.
     for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
         for stub_type in ['builtins', 'stdlib', 'third_party']:
@@ -263,27 +182,32 @@ def add_stubs(driver: Driver) -> None:
                 module = file_to_module(f[len(stubdir) + 1:])
                 modules.add(module)
 
-    driver.add_mypy_modules('stubs', sorted(modules))
+    # these require at least 3.5 otherwise it will fail trying to import zipapp
+    driver.add_mypy_modules('stubs', sorted(modules), extra_args=['--python-version=3.5'])
 
 
 def add_stdlibsamples(driver: Driver) -> None:
     seen = set()  # type: Set[str]
-    for version in driver.versions:
-        stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', version)
-        modules = []  # type: List[str]
-        for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
-            module = file_to_module(f[len(stdlibsamples_dir) + 1:])
-            if module not in seen:
-                seen.add(module)
-                modules.append(module)
-        if modules:
-            driver.add_mypy_modules('stdlibsamples (%s)' % (version,), modules,
-                                    cwd=stdlibsamples_dir)
+    stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', '3.2', 'test')
+    modules = []  # type: List[str]
+    for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
+        module = file_to_module(f[len(stdlibsamples_dir) + 1:])
+        if module not in seen:
+            seen.add(module)
+            modules.append(module)
+    if modules:
+        # TODO: Remove need for --no-strict-optional
+        driver.add_mypy_modules('stdlibsamples (3.2)', modules,
+                                cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
 
 
 def add_samples(driver: Driver) -> None:
     for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        driver.add_mypy('file %s' % f, f)
+        mypy_args = ['--no-strict-optional']
+        if f == os.path.join('test-data', 'samples', 'crawl2.py'):
+            # This test requires 3.5 for async functions
+            mypy_args.append('--python-version=3.5')
+        driver.add_mypy_cmd('file {}'.format(f), mypy_args + [f])
 
 
 def usage(status: int) -> None:
@@ -309,7 +233,6 @@ def usage(status: int) -> None:
     print('  --ff                   run all tests but run the last failures first')
     print('  -q, --quiet            decrease driver verbosity')
     print('  -jN                    run N tasks at once (default: one per CPU)')
-    print('  -a, --argument ARG     pass an argument to myunit tasks')
     print('  -p, --pytest_arg ARG   pass an argument to pytest tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
     print('  -l, --list             list included tasks (after filtering) and exit')
@@ -424,10 +347,6 @@ def main() -> None:
 
     driver.add_flake8()
     add_pytest(driver)
-    add_basic(driver)
-    add_selftypecheck(driver)
-    add_myunit(driver)
-    add_imports(driver)
     add_stubs(driver)
     add_stdlibsamples(driver)
     add_samples(driver)

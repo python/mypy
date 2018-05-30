@@ -16,24 +16,13 @@ from mypy.types import (
 from mypy.visitor import NodeVisitor
 
 
-def fixup_module_pass_one(tree: MypyFile, modules: Dict[str, MypyFile],
-                          quick_and_dirty: bool) -> None:
+# N.B: we do a quick_and_dirty fixup in both quick_and_dirty mode and
+# when fixing up a fine-grained incremental cache load (since there may
+# be cross-refs into deleted modules)
+def fixup_module(tree: MypyFile, modules: Dict[str, MypyFile],
+                 quick_and_dirty: bool) -> None:
     node_fixer = NodeFixer(modules, quick_and_dirty)
     node_fixer.visit_symbol_table(tree.names)
-
-
-def fixup_module_pass_two(tree: MypyFile, modules: Dict[str, MypyFile],
-                          quick_and_dirty: bool) -> None:
-    compute_all_mros(tree.names, modules)
-
-
-def compute_all_mros(symtab: SymbolTable, modules: Dict[str, MypyFile]) -> None:
-    for key, value in symtab.items():
-        if value.kind in (LDEF, MDEF, GDEF) and isinstance(value.node, TypeInfo):
-            info = value.node
-            info.calculate_mro()
-            assert info.mro, "No MRO calculated for %s" % (info.fullname(),)
-            compute_all_mros(info.names, modules)
 
 
 # TODO: Fix up .info when deserializing, i.e. much earlier.
@@ -54,9 +43,6 @@ class NodeFixer(NodeVisitor[None]):
                 info.defn.accept(self)
             if info.names:
                 self.visit_symbol_table(info.names)
-            if info.subtypes:
-                for st in info.subtypes:
-                    self.visit_type_info(st)
             if info.bases:
                 for base in info.bases:
                     base.accept(self.type_fixer)
@@ -70,6 +56,10 @@ class NodeFixer(NodeVisitor[None]):
                 info.declared_metaclass.accept(self.type_fixer)
             if info.metaclass_type:
                 info.metaclass_type.accept(self.type_fixer)
+            if info._mro_refs:
+                info.mro = [lookup_qualified_typeinfo(self.modules, name, self.quick_and_dirty)
+                            for name in info._mro_refs]
+                info._mro_refs = None
         finally:
             self.current_info = save_info
 
@@ -79,7 +69,7 @@ class NodeFixer(NodeVisitor[None]):
         for key, value in list(symtab.items()):
             cross_ref = value.cross_ref
             if cross_ref is not None:  # Fix up cross-reference.
-                del value.cross_ref
+                value.cross_ref = None
                 if cross_ref in self.modules:
                     value.node = self.modules[cross_ref]
                 else:
@@ -90,15 +80,15 @@ class NodeFixer(NodeVisitor[None]):
                         value.type_override = stnode.type_override
                         if (self.quick_and_dirty and value.kind == TYPE_ALIAS and
                                 stnode.type_override is None):
-                            value.type_override = Instance(stale_info(), [])
+                            value.type_override = Instance(stale_info(self.modules), [])
                         value.alias_tvars = stnode.alias_tvars or []
                     elif not self.quick_and_dirty:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
                     else:
                         # We have a missing crossref in quick mode, need to put something
-                        value.node = stale_info()
+                        value.node = stale_info(self.modules)
                         if value.kind == TYPE_ALIAS:
-                            value.type_override = Instance(stale_info(), [])
+                            value.type_override = Instance(stale_info(self.modules), [])
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
@@ -162,19 +152,13 @@ class TypeFixer(TypeVisitor[None]):
         type_ref = inst.type_ref
         if type_ref is None:
             return  # We've already been here.
-        del inst.type_ref
-        node = lookup_qualified(self.modules, type_ref, self.quick_and_dirty)
-        if isinstance(node, TypeInfo):
-            inst.type = node
-            # TODO: Is this needed or redundant?
-            # Also fix up the bases, just in case.
-            for base in inst.type.bases:
-                if base.type is NOT_READY:
-                    base.accept(self)
-        else:
-            # Looks like a missing TypeInfo in quick mode, put something there
-            assert self.quick_and_dirty, "Should never get here in normal mode"
-            inst.type = stale_info()
+        inst.type_ref = None
+        inst.type = lookup_qualified_typeinfo(self.modules, type_ref, self.quick_and_dirty)
+        # TODO: Is this needed or redundant?
+        # Also fix up the bases, just in case.
+        for base in inst.type.bases:
+            if base.type is NOT_READY:
+                base.accept(self)
         for a in inst.args:
             a.accept(self)
 
@@ -252,6 +236,17 @@ class TypeFixer(TypeVisitor[None]):
         t.item.accept(self)
 
 
+def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
+                              quick_and_dirty: bool) -> TypeInfo:
+    node = lookup_qualified(modules, name, quick_and_dirty)
+    if isinstance(node, TypeInfo):
+        return node
+    else:
+        # Looks like a missing TypeInfo in quick mode, put something there
+        assert quick_and_dirty, "Should never get here in normal mode"
+        return stale_info(modules)
+
+
 def lookup_qualified(modules: Dict[str, MypyFile], name: str,
                      quick_and_dirty: bool) -> Optional[SymbolNode]:
     stnode = lookup_qualified_stnode(modules, name, quick_and_dirty)
@@ -290,16 +285,23 @@ def lookup_qualified_stnode(modules: Dict[str, MypyFile], name: str,
         if not rest:
             return stnode
         node = stnode.node
+        # In fine-grained mode, could be a cross-reference to a deleted module
+        if node is None:
+            if not quick_and_dirty:
+                assert node, "Cannot find %s" % (name,)
+            return None
         assert isinstance(node, TypeInfo)
         names = node.names
 
 
-def stale_info() -> TypeInfo:
+def stale_info(modules: Dict[str, MypyFile]) -> TypeInfo:
     suggestion = "<stale cache: consider running mypy without --quick>"
     dummy_def = ClassDef(suggestion, Block([]))
     dummy_def.fullname = suggestion
 
     info = TypeInfo(SymbolTable(), dummy_def, "<stale>")
-    info.mro = [info]
-    info.bases = []
+    obj_type = lookup_qualified(modules, 'builtins.object', False)
+    assert isinstance(obj_type, TypeInfo)
+    info.bases = [Instance(obj_type, [])]
+    info.mro = [info, obj_type]
     return info

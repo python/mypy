@@ -1,6 +1,8 @@
 # Builtins stub used in dictionary-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union
+from typing import (
+    TypeVar, Generic, Iterable, Iterator, Mapping, Tuple, overload, Optional, Union, Sequence
+)
 
 T = TypeVar('T')
 KT = TypeVar('KT')
@@ -11,7 +13,7 @@ class object:
 
 class type: pass
 
-class dict(Generic[KT, VT]):
+class dict(Mapping[KT, VT]):
     @overload
     def __init__(self, **kwargs: VT) -> None: pass
     @overload
@@ -19,6 +21,7 @@ class dict(Generic[KT, VT]):
     def __getitem__(self, key: KT) -> VT: pass
     def __setitem__(self, k: KT, v: VT) -> None: pass
     def __iter__(self) -> Iterator[KT]: pass
+    def __contains__(self, item: object) -> int: pass
     def update(self, a: Mapping[KT, VT]) -> None: pass
     @overload
     def get(self, k: KT) -> Optional[VT]: pass
@@ -32,7 +35,7 @@ class int: # for convenience
 class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
 
-class list(Generic[T]): # needed by some test cases
+class list(Sequence[T]): # needed by some test cases
     def __getitem__(self, x: int) -> T: pass
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass

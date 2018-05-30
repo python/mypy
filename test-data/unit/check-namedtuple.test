@@ -46,8 +46,8 @@ x.z = 5 # E: "X" has no attribute "z"
 
 class A(X): pass
 a = None  # type: A
-a.x = 5 # E: Property "x" defined in "A" is read-only
-a.y = 5 # E: Property "y" defined in "A" is read-only
+a.x = 5 # E: Property "x" defined in "X" is read-only
+a.y = 5 # E: Property "y" defined in "X" is read-only
 -- a.z = 5 # not supported yet
 
 
@@ -111,7 +111,7 @@ from typing import NamedTuple
 N = NamedTuple('N', [('a', int),
                      ('b', str)])
 n = N('x', 'x') # E: Argument 1 to "N" has incompatible type "str"; expected "int"
-n = N(1, b=2)   # E: Argument 2 to "N" has incompatible type "int"; expected "str"
+n = N(1, b=2)   # E: Argument "b" to "N" has incompatible type "int"; expected "str"
 N(1, 'x')
 N(b='x', a=1)
 
@@ -260,8 +260,8 @@ reveal_type(x._replace())  # E: Revealed type is 'Tuple[Any, Any, fallback=__mai
 x._replace(y=5)
 x._replace(x=3)
 x._replace(x=3, y=5)
-x._replace(z=5)  # E: Unexpected keyword argument "z" for X._replace
-x._replace(5)  # E: Too many positional arguments for X._replace
+x._replace(z=5)  # E: Unexpected keyword argument "z" for "_replace" of "X"
+x._replace(5)  # E: Too many positional arguments for "_replace" of "X"
 
 [case testNamedTupleReplaceAsClass]
 from collections import namedtuple
@@ -269,7 +269,7 @@ from collections import namedtuple
 X = namedtuple('X', ['x', 'y'])
 x = None  # type: X
 X._replace(x, x=1, y=2)
-X._replace(x=1, y=2)  # E: Missing positional argument "self" in call to X._replace
+X._replace(x=1, y=2)  # E: Missing positional argument "self" in call to "_replace" of "X"
 
 
 [case testNamedTupleReplaceTyped]
@@ -279,19 +279,19 @@ X = NamedTuple('X', [('x', int), ('y', str)])
 x = None  # type: X
 reveal_type(x._replace())  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
 x._replace(x=5)
-x._replace(y=5)  # E: Argument 1 to X._replace has incompatible type "int"; expected "str"
+x._replace(y=5)  # E: Argument "y" to "_replace" of "X" has incompatible type "int"; expected "str"
 
 [case testNamedTupleMake]
 from typing import NamedTuple
 
 X = NamedTuple('X', [('x', int), ('y', str)])
 reveal_type(X._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
-X._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected "Iterable[Any]"
+X._make('a b')  # E: Argument 1 to "_make" of "X" has incompatible type "str"; expected "Iterable[Any]"
 
 -- # FIX: not a proper class method
 -- x = None  # type: X
 -- reveal_type(x._make([5, 'a']))  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=__main__.X]'
--- x._make('a b')  # E: Argument 1 to X._make has incompatible type "str"; expected Iterable[Any]
+-- x._make('a b')  # E: Argument 1 to "_make" of "X" has incompatible type "str"; expected Iterable[Any]
 
 [builtins fixtures/list.pyi]
 
@@ -629,6 +629,14 @@ my_eval(A([B(1), B(2)])) # OK
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testUnsafeOverlappingNamedTuple]
+from typing import NamedTuple
+
+class Real(NamedTuple):
+    def __sub__(self, other) -> str: return ""
+class Fraction(Real):
+    def __rsub__(self, other: Real) -> Real: return other  # E: Signatures of "__rsub__" of "Fraction" and "__sub__" of "Real" are unsafely overlapping
+
 [case testForwardReferenceInNamedTuple]
 from typing import NamedTuple
 
@@ -638,3 +646,27 @@ class A(NamedTuple):
 
 class B:
     pass
+
+[case testTypeNamedTupleClassmethod]
+from typing import Type, NamedTuple
+class D(NamedTuple):
+    @classmethod
+    def f(cls) -> None: pass
+
+d: Type[D]
+d.g()  # E: "Type[D]" has no attribute "g"
+d.f()
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeNamedTupleCall]
+
+from typing import NamedTuple
+
+Thing = NamedTuple('Thing', [('s', str), ('n', int)])
+
+class CallableTuple(Thing):
+    def __call__(self) -> None:
+        pass
+
+o = CallableTuple('hello ', 12)
+o()

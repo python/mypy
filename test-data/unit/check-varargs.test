@@ -614,6 +614,7 @@ g(d) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "Di
 h(c) # E: Argument 1 to "h" has incompatible type "Dict[str, float]"; expected "Dict[str, int]"
 h(d)
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testInvariantListArgNote]
 from typing import List, Union

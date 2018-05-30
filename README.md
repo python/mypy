@@ -14,7 +14,7 @@ sure you've found a bug please search our issue trackers for a
 duplicate before filing a new issue:
 
 - [mypy tracker](https://github.com/python/mypy/issues)
-  for mypy isues
+  for mypy issues
 - [typeshed tracker](https://github.com/python/typeshed/issues)
   for issues with specific modules
 - [typing tracker](https://github.com/python/typing/issues)
@@ -61,7 +61,7 @@ See 'Development status' below.
 Requirements
 ------------
 
-You need Python 3.3 or later to run mypy.  You can have multiple Python
+You need Python 3.4 or later to run mypy.  You can have multiple Python
 versions (2.x and 3.x) installed on the same system without problems.
 
 In Ubuntu, Mint and Debian you can install Python 3 like this:
@@ -105,7 +105,7 @@ IDE & Linter Integrations
 Mypy can be integrated into popular IDEs:
 
 * Vim: [vim-mypy](https://github.com/Integralist/vim-mypy)
-* Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy/issues)
+* Emacs: using [Flycheck](https://github.com/flycheck/) and [Flycheck-mypy](https://github.com/lbolla/emacs-flycheck-mypy)
 * Sublime Text: [SublimeLinter-contrib-mypy](https://github.com/fredcallaway/SublimeLinter-contrib-mypy)
 * Atom: [linter-mypy](https://atom.io/packages/linter-mypy)
 * PyCharm: PyCharm integrates [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/2017.1/type-hinting-in-pycharm.html).
@@ -136,7 +136,7 @@ this:
 
     $ python3 -m pip install -U mypy
 
-This should automatically installed the appropriate version of
+This should automatically install the appropriate version of
 mypy's parser, typed-ast.  If for some reason it does not, you
 can install it manually:
 

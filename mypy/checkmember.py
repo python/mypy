@@ -20,6 +20,8 @@ from mypy.typevars import fill_typevars
 from mypy.plugin import Plugin, AttributeContext
 from mypy import messages
 from mypy import subtypes
+from mypy import meet
+
 MYPY = False
 if MYPY:  # import for forward declaration only
     import mypy.checker
@@ -177,26 +179,37 @@ def analyze_member_access(name: str,
     elif isinstance(typ, TypeType):
         # Similar to FunctionLike + is_type_obj() above.
         item = None
+        fallback = builtin_type('builtins.type')
+        ignore_messages = msg.copy()
+        ignore_messages.disable_errors()
         if isinstance(typ.item, Instance):
             item = typ.item
         elif isinstance(typ.item, AnyType):
-            fallback = builtin_type('builtins.type')
-            ignore_messages = msg.copy()
-            ignore_messages.disable_errors()
             return analyze_member_access(name, fallback, node, is_lvalue, is_super,
                                      is_operator, builtin_type, not_ready_callback,
                                      ignore_messages, original_type=original_type, chk=chk)
         elif isinstance(typ.item, TypeVarType):
             if isinstance(typ.item.upper_bound, Instance):
                 item = typ.item.upper_bound
+        elif isinstance(typ.item, TupleType):
+            item = typ.item.fallback
+        elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
+            item = typ.item.fallback
+        elif isinstance(typ.item, TypeType):
+            # Access member on metaclass object via Type[Type[C]]
+            if isinstance(typ.item.item, Instance):
+                item = typ.item.item.type.metaclass_type
         if item and not is_operator:
             # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
                                                     builtin_type, not_ready_callback, msg,
                                                     original_type=original_type)
             if result:
-                return result
-        fallback = builtin_type('builtins.type')
+                if not (isinstance(result, AnyType) and item.type.fallback_to_any):
+                    return result
+                else:
+                    # We don't want errors on metaclass lookup for classes with Any fallback
+                    msg = ignore_messages
         if item is not None:
             fallback = item.type.metaclass_type or fallback
         return analyze_member_access(name, fallback, node, is_lvalue, is_super,
@@ -286,6 +299,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
 
     This is conceptually part of analyze_member_access and the arguments are similar.
 
+    itype is the class object in which var is dedined
     original_type is the type of E in the expression E.var
     """
     # Found a member variable.
@@ -297,7 +311,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         t = expand_type_by_instance(typ, itype)
         if is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
-            msg.read_only_property(name, info, node)
+            msg.read_only_property(name, itype.type, node)
         if is_lvalue and var.is_classvar:
             msg.cant_assign_to_classvar(name, node)
         result = t
@@ -305,20 +319,26 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
             if is_lvalue:
                 if var.is_property:
                     if not var.is_settable_property:
-                        msg.read_only_property(name, info, node)
+                        msg.read_only_property(name, itype.type, node)
                 else:
                     msg.cant_assign_to_method(node)
 
             if not var.is_staticmethod:
-                # Class-level function objects and classmethods become bound
-                # methods: the former to the instance, the latter to the
-                # class.
+                # Class-level function objects and classmethods become bound methods:
+                # the former to the instance, the latter to the class.
                 functype = t
-                check_method_type(functype, itype, var.is_classmethod, node, msg)
+                # Use meet to narrow original_type to the dispatched type.
+                # For example, assume
+                # * A.f: Callable[[A1], None] where A1 <: A (maybe A1 == A)
+                # * B.f: Callable[[B1], None] where B1 <: B (maybe B1 == B)
+                # * x: Union[A1, B1]
+                # In `x.f`, when checking `x` against A1 we assume x is compatible with A
+                # and similarly for B1 when checking agains B
+                dispatched_type = meet.meet_types(original_type, itype)
+                check_self_arg(functype, dispatched_type, var.is_classmethod, node, name, msg)
                 signature = bind_self(functype, original_type, var.is_classmethod)
                 if var.is_property:
-                    # A property cannot have an overloaded type => the cast
-                    # is fine.
+                    # A property cannot have an overloaded type => the cast is fine.
                     assert isinstance(signature, CallableType)
                     result = signature.ret_type
                 else:
@@ -346,7 +366,7 @@ def freeze_type_vars(member_type: Type) -> None:
 
 
 def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,
-                                  context: Context) -> Type:
+                                  node: SymbolNode) -> Type:
     if typ.type is None:
         # 'None' partial type. It has a well-defined type -- 'None'.
         # In an lvalue context we want to preserver the knowledge of
@@ -355,7 +375,7 @@ def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: Messag
             return NoneTyp()
         return typ
     else:
-        msg.fail(messages.NEED_ANNOTATION_FOR_VAR, context)
+        msg.need_annotation_for_var(node, node)
         return AnyType(TypeOfAny.from_error)
 
 
@@ -370,33 +390,28 @@ def lookup_member_var_or_accessor(info: TypeInfo, name: str,
         return None
 
 
-def check_method_type(functype: FunctionLike, itype: Instance, is_classmethod: bool,
-                      context: Context, msg: MessageBuilder) -> None:
+def check_self_arg(functype: FunctionLike, dispatched_arg_type: Type, is_classmethod: bool,
+                   context: Context, name: str, msg: MessageBuilder) -> None:
+    """For x.f where A.f: A1 -> T, check that meet(type(x), A) <: A1 for each overload.
+
+    dispatched_arg_type is meet(B, A) in the following example
+
+        def g(x: B): x.f
+        class A:
+            f: Callable[[A1], None]
+    """
+    # TODO: this is too strict. We can return filtered overloads for matching definitions
     for item in functype.items():
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
-            msg.invalid_method_type(item, context)
-        elif not is_classmethod:
-            # Check that self argument has type 'Any' or valid instance type.
-            selfarg = item.arg_types[0]
-            # If this is a method of a tuple class, correct for the fact that
-            # we passed to typ.fallback in analyze_member_access. See #1432.
-            if isinstance(selfarg, TupleType):
-                selfarg = selfarg.fallback
-            if not subtypes.is_subtype(selfarg, itype):
-                msg.invalid_method_type(item, context)
+            msg.no_formal_self(name, item, context)
         else:
-            # Check that cls argument has type 'Any' or valid class type.
-            # (This is sufficient for the current treatment of @classmethod,
-            # but probably needs to be revisited when we implement Type[C]
-            # or advanced variants of it like Type[<args>, C].)
-            clsarg = item.arg_types[0]
-            if isinstance(clsarg, CallableType) and clsarg.is_type_obj():
-                if not subtypes.is_equivalent(clsarg.ret_type, itype):
-                    msg.invalid_class_method_type(item, context)
-            else:
-                if not subtypes.is_equivalent(clsarg, AnyType(TypeOfAny.special_form)):
-                    msg.invalid_class_method_type(item, context)
+            selfarg = item.arg_types[0]
+            if is_classmethod:
+                dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
+            if not subtypes.is_subtype(dispatched_arg_type, erase_to_bound(selfarg)):
+                msg.incompatible_self_argument(name, dispatched_arg_type, item,
+                                               is_classmethod, context)
 
 
 def analyze_class_attribute_access(itype: Instance,
@@ -452,8 +467,12 @@ def analyze_class_attribute_access(itype: Instance,
         return builtin_type('types.ModuleType')
 
     if is_decorated:
-        # TODO: Return type of decorated function. This is quick hack to work around #998.
-        return AnyType(TypeOfAny.special_form)
+        assert isinstance(node.node, Decorator)
+        if node.node.type:
+            return node.node.type
+        else:
+            not_ready_callback(name, context)
+            return AnyType(TypeOfAny.from_error)
     else:
         return function_type(cast(FuncBase, node.node), builtin_type('builtins.function'))
 
@@ -478,7 +497,7 @@ def add_class_tvars(t: Type, itype: Instance, is_classmethod: bool,
     info = itype.type  # type: TypeInfo
     if isinstance(t, CallableType):
         # TODO: Should we propagate type variable values?
-        tvars = [TypeVarDef(n, i + 1, [], builtin_type('builtins.object'), tv.variance)
+        tvars = [TypeVarDef(n, n, i + 1, [], builtin_type('builtins.object'), tv.variance)
                  for (i, n), tv in zip(enumerate(info.type_vars), info.defn.type_vars)]
         if is_classmethod:
             t = bind_self(t, original_type, is_classmethod=True)
@@ -569,7 +588,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     callable_type = init_type.copy_modified(
         ret_type=fill_typevars(info), fallback=type_type, name=None, variables=variables,
         special_sig=special_sig)
-    c = callable_type.with_name('"{}"'.format(info.name()))
+    c = callable_type.with_name(info.name())
     return c
 
 

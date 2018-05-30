@@ -504,6 +504,7 @@ reveal_type(close(arg)) # E: Revealed type is 'builtins.int*'
 reveal_type(close_all([F()])) # E: Revealed type is 'builtins.int*'
 reveal_type(close_all([arg])) # E: Revealed type is 'builtins.int*'
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testProtocolGenericInference2]
 from typing import Generic, TypeVar, Protocol
@@ -767,6 +768,7 @@ t: Traversable
 t = D[int]() # OK
 t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testRecursiveProtocols2]
 from typing import Protocol, TypeVar
@@ -822,6 +824,7 @@ t = A() # OK
 t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
 t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
 [builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
 from typing import Protocol, Sequence, List
@@ -1300,7 +1303,7 @@ reveal_type(f(C2())) # E: Revealed type is 'builtins.str'
 class D(C1, C2): pass # Compatible with both P1 and P2
 # FIXME: the below is not right, see #1322
 reveal_type(f(D())) # E: Revealed type is 'Any'
-f(C()) # E: No overload variant of "f" matches argument types [__main__.C]
+f(C()) # E: No overload variant of "f" matches argument type "C"
 [builtins fixtures/isinstance.pyi]
 
 -- Unions of protocol types
@@ -1737,6 +1740,7 @@ bar((1, 2))
 bar(1) # E: Argument 1 to "bar" has incompatible type "int"; expected "Sized"
 
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testBasicSupportsIntProtocol]
 from typing import SupportsInt
@@ -1752,6 +1756,7 @@ foo(Bar())
 foo('no way') # E: Argument 1 to "foo" has incompatible type "str"; expected "SupportsInt"
 
 [builtins fixtures/isinstancelist.pyi]
+[typing fixtures/typing-full.pyi]
 
 -- Additional tests and corner cases for protocols
 -- ----------------------------------------------
@@ -2118,3 +2123,64 @@ main:10: note:         def other(self, *args: Any, hint: Optional[str] = ..., **
 main:10: note:     Got:
 main:10: note:         def other(self) -> int
 
+[case testObjectAllowedInProtocolBases]
+from typing import Protocol
+class P(Protocol, object):
+    pass
+[out]
+
+[case testNoneSubtypeOfEmptyProtocol]
+from typing import Protocol
+class P(Protocol):
+    pass
+
+x: P = None
+[out]
+
+[case testNoneSubtypeOfAllProtocolsWithoutStrictOptional]
+from typing import Protocol
+class P(Protocol):
+    attr: int
+    def meth(self, arg: str) -> str:
+        pass
+
+x: P = None
+[out]
+
+[case testNoneSubtypeOfEmptyProtocolStrict]
+# flags: --strict-optional
+from typing import Protocol
+class P(Protocol):
+    pass
+x: P = None
+
+class PBad(Protocol):
+    x: int
+y: PBad = None  # E: Incompatible types in assignment (expression has type "None", variable has type "PBad")
+[out]
+
+[case testOnlyMethodProtocolUsableWithIsSubclass]
+from typing import Protocol, runtime, Union, Type
+@runtime
+class P(Protocol):
+    def meth(self) -> int:
+        pass
+@runtime
+class PBad(Protocol):
+    x: str
+
+class C:
+    x: str
+    def meth(self) -> int:
+        pass
+class E: pass
+
+cls: Type[Union[C, E]]
+issubclass(cls, PBad)  # E: Only protocols that don't have non-method members can be used with issubclass() \
+                       # N: Protocol "PBad" has non-method member(s): x
+if issubclass(cls, P):
+    reveal_type(cls)  # E: Revealed type is 'Type[__main__.C]'
+else:
+    reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
+[builtins fixtures/isinstance.pyi]
+[out]

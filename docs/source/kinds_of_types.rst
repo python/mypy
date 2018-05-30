@@ -345,50 +345,206 @@ narrow down the type to a specific type:
    f('x')  # OK
    f(1.1)  # Error
 
-.. _optional:
+.. _strict_optional:
 
-The type of None and optional types
-***********************************
+Optional types and the None type
+********************************
 
-Mypy treats the type of ``None`` as special. ``None`` is a valid value
-for every type, which resembles ``null`` in Java. Unlike Java, mypy
-doesn't treat primitives types
-specially: ``None`` is also valid for primitive types such as ``int``
-and ``float``.
-
-.. note::
-
-   See :ref:`strict_optional` for an experimental mode which allows
-   mypy to check ``None`` values precisely.
-
-When initializing a variable as ``None``, ``None`` is usually an
-empty place-holder value, and the actual value has a different type.
-This is why you need to annotate an attribute in a case like this:
+You can use the ``Optional`` type modifier to define a type variant
+that allows ``None``, such as ``Optional[int]`` (``Optional[X]`` is
+the preferred shorthand for ``Union[X, None]``):
 
 .. code-block:: python
 
-    class A:
-        def __init__(self) -> None:
-            self.count = None  # type: int
+   from typing import Optional
 
-Mypy will complain if you omit the type annotation, as it wouldn't be
-able to infer a non-trivial type for the ``count`` attribute
-otherwise.
+   def strlen(s: str) -> Optional[int]:
+       if not s:
+           return None  # OK
+       return len(s)
+
+   def strlen_invalid(s: str) -> int:
+       if not s:
+           return None  # Error: None not compatible with int
+       return len(s)
+
+Most operations will not be allowed on unguarded ``None`` or ``Optional``
+values:
+
+.. code-block:: python
+
+   def my_inc(x: Optional[int]) -> int:
+       return x + 1  # Error: Cannot add None and int
+
+Instead, an explicit ``None`` check is required. Mypy has
+powerful type inference that lets you use regular Python
+idioms to guard against ``None`` values. For example, mypy
+recognizes ``is None`` checks:
+
+.. code-block:: python
+
+   def my_inc(x: Optional[int]) -> int:
+       if x is None:
+           return 0
+       else:
+           # The inferred type of x is just int here.
+           return x + 1
+
+Mypy will infer the type of ``x`` to be ``int`` in the else block due to the
+check against ``None`` in the if condition.
+
+Other supported checks for guarding against a ``None`` value include
+``if x is not None``, ``if x`` and ``if not x``. Additionally, mypy understands
+``None`` checks within logical expressions:
+
+.. code-block:: python
+
+   def concat(x: Optional[str], y: Optional[str]) -> Optional[str]:
+       if x is not None and y is not None:
+           # Both x and y are not None here
+           return x + y
+       else:
+           return None
+
+Sometimes mypy doesn't realize that a value is never ``None``. This notably
+happens when a class instance can exist in a partially defined state,
+where some attribute is initialized to ``None`` during object
+construction, but a method assumes that the attribute is no longer ``None``. Mypy
+will complain about the possible ``None`` value. You can use
+``assert x is not None`` to work around this in the method:
+
+.. code-block:: python
+
+   class Resource:
+       path: Optional[str] = None
+
+       def initialize(self, path: str) -> None:
+           self.path = path
+
+       def read(self) -> str:
+           # We require that the object has been initialized.
+           assert self.path is not None
+           with open(self.path) as f:  # OK
+              return f.read()
+
+   r = Resource()
+   r.initialize('/foo/bar')
+   r.read()
+
+When initializing a variable as ``None``, ``None`` is usually an
+empty place-holder value, and the actual value has a different type.
+This is why you need to annotate an attribute in a cases like the class
+``Resource`` above:
+
+.. code-block:: python
+
+    class Resource:
+        path: Optional[str] = None
+        ...
+
+This also works for attributes defined within methods:
+
+.. code-block:: python
+
+    class Counter:
+        def __init__(self) -> None:
+            self.count: Optional[int] = None
+
+As a special case, you can use a non-optional type when initializing an
+attribute to ``None`` inside a class body *and* using a type comment,
+since when using a type comment, an initializer is syntacticaly required,
+and ``None`` is used as a dummy, placeholder initializer:
+
+.. code-block:: python
+
+   from typing import List
+
+   class Container:
+       items = None  # type: List[str]  # OK (only with type comment)
+
+This is not a problem when using variable annotations, since no initializer
+is needed:
+
+.. code-block:: python
+
+   from typing import List
+
+   class Container:
+       items: List[str]  # No initializer
 
 Mypy generally uses the first assignment to a variable to
 infer the type of the variable. However, if you assign both a ``None``
-value and a non-``None`` value in the same scope, mypy can often do
-the right thing:
+value and a non-``None`` value in the same scope, mypy can usually do
+the right thing without an annotation:
 
 .. code-block:: python
 
    def f(i: int) -> None:
-       n = None  # Inferred type int because of the assignment below
+       n = None  # Inferred type Optional[int] because of the assignment below
        if i > 0:
             n = i
        ...
 
-Often it's useful to know whether a variable can be
+Sometimes you may get the error "Cannot determine type of <something>". In this
+case you should add an explicit ``Optional[...]`` annotation (or type comment).
+
+.. note::
+
+   ``None`` is a type with only one value, ``None``. ``None`` is also used
+   as the return type for functions that don't return a value, i.e. functions
+   that implicitly return ``None``.
+
+.. note::
+
+   The Python interpreter internally uses the name ``NoneType`` for
+   the type of ``None``, but ``None`` is always used in type
+   annotations. The latter is shorter and reads better. (Besides,
+   ``NoneType`` is not even defined in the standard library.)
+
+.. note::
+
+    ``Optional[...]`` *does not* mean a function argument with a default value.
+    However, if the default value of an argument is ``None``, you can use
+    an optional type for the argument, but it's not enforced by default.
+    You can use the ``--no-implicit-optional`` command-line option to stop
+    treating arguments with a ``None`` default value as having an implicit
+    ``Optional[...]`` type. It's possible that this will become the default
+    behavior in the future.
+
+.. _no_strict_optional:
+
+Disabling strict optional checking
+**********************************
+
+Mypy also has an option to treat ``None`` as a valid value for every
+type (in case you know Java, it's useful to think of it as similar to
+the Java ``null``). In this mode ``None`` is also valid for primitive
+types such as ``int`` and ``float``, and ``Optional[...]`` types are
+not required.
+
+The mode is enabled through the ``--no-strict-optional`` command-line
+option. In mypy versions before 0.600 this was the default mode. You
+can enable this option explicitly for backward compatibility with
+earlier mypy versions, in case you don't want to introduce optional
+types to your codebase yet.
+
+It will cause mypy to silently accept some buggy code, such as
+this example -- it's not recommended if you can avoid it:
+
+.. code-block:: python
+
+   def inc(x: int) -> int:
+       return x + 1
+
+   x = inc(None)  # No error reported by mypy if strict optional mode disabled!
+
+However, making code "optional clean" can take some work! You can also use
+:ref:`the mypy configuration file <config-file>` to migrate your code
+to strict optional checking one file at a time, since there exists
+the :ref:`per-module flag <per-module-flags>` ``strict_optional`` to
+control strict optional mode.
+
+Often it's still useful to document whether a variable can be
 ``None``. For example, this function accepts a ``None`` argument,
 but it's not obvious from its signature:
 
@@ -403,8 +559,9 @@ but it's not obvious from its signature:
     print(greeting('Python'))  # Okay!
     print(greeting(None))      # Also okay!
 
-Mypy lets you use ``Optional[t]`` to document that ``None`` is a
-valid argument type:
+You can still use ``Optional[t]`` to document that ``None`` is a
+valid argument type, even if strict ``None`` checking is not
+enabled:
 
 .. code-block:: python
 
@@ -416,71 +573,11 @@ valid argument type:
         else:
             return 'Hello, stranger'
 
-Mypy treats this as semantically equivalent to the previous example,
-since ``None`` is implicitly valid for any type, but it's much more
-useful for a programmer who is reading the code. You can equivalently
-use ``Union[str, None]``, but ``Optional`` is shorter and more
-idiomatic.
-
-.. note::
-
-    ``None`` is also used as the return type for functions that don't
-    return a value, i.e. that implicitly return ``None``. Mypy doesn't
-    use ``NoneType`` for this, since it would
-    look awkward, even though that is the real name of the type of ``None``
-    (try ``type(None)`` in the interactive interpreter to see for yourself).
-
-.. _strict_optional:
-
-Experimental strict optional type and None checking
-***************************************************
-
-Currently, ``None`` is a valid value for each type, similar to
-``null`` or ``NULL`` in many languages. However, you can use the
-experimental ``--strict-optional`` command line option to tell mypy
-that types should not include ``None``
-by default. The ``Optional`` type modifier is then used to define
-a type variant that includes ``None``, such as ``Optional[int]``:
-
-.. code-block:: python
-
-   from typing import Optional
-
-   def f() -> Optional[int]:
-       return None  # OK
-
-   def g() -> int:
-       ...
-       return None  # Error: None not compatible with int
-
-Also, most operations will not be allowed on unguarded ``None``
-or ``Optional`` values:
-
-.. code-block:: python
-
-   def f(x: Optional[int]) -> int:
-       return x + 1  # Error: Cannot add None and int
-
-Instead, an explicit ``None`` check is required. Mypy has
-powerful type inference that lets you use regular Python
-idioms to guard against ``None`` values. For example, mypy
-recognizes ``is None`` checks:
-
-.. code-block:: python
-
-   def f(x: Optional[int]) -> int:
-       if x is None:
-           return 0
-       else:
-           # The inferred type of x is just int here.
-           return x + 1
-
-Mypy will infer the type of ``x`` to be ``int`` in the else block due to the
-check against ``None`` in the if condition.
-
-.. note::
-
-    ``--strict-optional`` is experimental and still has known issues.
+Mypy treats this as semantically equivalent to the previous example
+if strict optional checking is disabled, since ``None`` is implicitly
+valid for any type, but it's much more
+useful for a programmer who is reading the code. This also makes
+it easier to migrate to strict ``None`` checking in the future.
 
 .. _noreturn:
 
@@ -977,7 +1074,7 @@ a value, you should use the
 Note that unlike many other generics in the typing module, the ``SendType`` of
 ``Generator`` behaves contravariantly, not covariantly or invariantly.
 
-If you do not plan on recieving or returning values, then set the ``SendType``
+If you do not plan on receiving or returning values, then set the ``SendType``
 or ``ReturnType`` to ``None``, as appropriate. For example, we could have
 annotated the first example as the following:
 
@@ -986,6 +1083,11 @@ annotated the first example as the following:
    def squares(n: int) -> Generator[int, None, None]:
        for i in range(n):
            yield i * i
+
+This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
+since generators have ``close()``, ``send()``, and ``throw()`` methods that
+generic iterables don't. If you will call these methods on the returned
+generator, use the ``Generator`` type instead of ``Iterable`` or ``Iterator``.
 
 .. _async-and-await:
 
@@ -1166,8 +1268,8 @@ TypedDict
 
 .. note::
 
-   TypedDict is not yet an officially supported feature.  It may not work reliably,
-   and details of TypedDict may change in future mypy releases.
+   TypedDict is an officially supported feature, but it is still experimental.
+
 
 Python programs often use dictionaries with string keys to represent objects.
 Here is a typical example:
@@ -1307,7 +1409,9 @@ Class-based syntax
 ------------------
 
 Python 3.6 supports an alternative, class-based syntax to define a
-TypedDict:
+TypedDict. This means that your code must be checked as if it were
+Python 3.6 (using the ``--python-version`` flag on the command line,
+for example). Simply running mypy on Python 3.6 is insufficient.
 
 .. code-block:: python
 

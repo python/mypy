@@ -11,26 +11,29 @@ flag (or its long form ``--help``)::
   usage: mypy [-h] [-v] [-V] [--python-version x.y] [--platform PLATFORM] [-2]
               [--ignore-missing-imports]
               [--follow-imports {normal,silent,skip,error}]
-              [--disallow-any {unimported, expr, unannotated, decorated, explicit, generics}]
-              [--disallow-untyped-calls] [--disallow-untyped-defs]
+              [--disallow-any-unimported] [--disallow-any-expr]
+              [--disallow-any-decorated] [--disallow-any-explicit]
+              [--disallow-any-generics] [--disallow-untyped-calls]
+              [--disallow-untyped-defs] [--disallow-incomplete-defs]
               [--check-untyped-defs] [--disallow-subclassing-any]
-              [--warn-incomplete-stub] [--warn-redundant-casts]
-              [--no-warn-no-return] [--warn-return-any] [--warn-unused-ignores]
-              [--show-error-context] [--no-implicit-optional] [-i]
-              [--quick-and-dirty] [--cache-dir DIR] [--skip-version-check]
-              [--strict-optional]
+              [--warn-incomplete-stub] [--disallow-untyped-decorators]
+              [--warn-redundant-casts] [--no-warn-no-return] [--warn-return-any]
+              [--warn-unused-ignores] [--warn-unused-configs]
+              [--show-error-context] [--no-implicit-optional] [--no-incremental]
+              [--quick-and-dirty] [--cache-dir DIR] [--cache-fine-grained]
+              [--skip-version-check] [--no-strict-optional]
               [--strict-optional-whitelist [GLOB [GLOB ...]]]
-              [--junit-xml JUNIT_XML] [--pdb] [--show-traceback] [--stats]
-              [--inferstats] [--custom-typing MODULE]
-              [--custom-typeshed-dir DIR] [--scripts-are-modules]
-              [--config-file CONFIG_FILE] [--show-column-numbers]
-              [--find-occurrences CLASS.MEMBER] [--strict]
-              [--shadow-file SOURCE_FILE SHADOW_FILE] [--any-exprs-report DIR]
-              [--cobertura-xml-report DIR] [--html-report DIR]
-              [--linecount-report DIR] [--linecoverage-report DIR]
-              [--memory-xml-report DIR] [--old-html-report DIR]
+              [--always-true NAME] [--always-false NAME] [--junit-xml JUNIT_XML]
+              [--pdb] [--show-traceback] [--stats] [--inferstats]
+              [--custom-typing MODULE] [--custom-typeshed-dir DIR]
+              [--scripts-are-modules] [--config-file CONFIG_FILE]
+              [--show-column-numbers] [--find-occurrences CLASS.MEMBER]
+              [--strict] [--shadow-file SOURCE_FILE SHADOW_FILE]
+              [--any-exprs-report DIR] [--cobertura-xml-report DIR]
+              [--html-report DIR] [--linecount-report DIR]
+              [--linecoverage-report DIR] [--memory-xml-report DIR]
               [--txt-report DIR] [--xml-report DIR] [--xslt-html-report DIR]
-              [--xslt-txt-report DIR] [-m MODULE] [-c PROGRAM_TEXT] [-p PACKAGE]
+              [--xslt-txt-report DIR] [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT]
               [files [files ...]]
 
   (etc., too long to show everything here)
@@ -100,7 +103,10 @@ and anything imported from there.)  For example::
 
   $ mypy -p html
 
-will type check the entire ``html`` package (of library stubs).
+will type check the entire ``html`` package (of library stubs). One can
+specify multiple packages and modules on the command line, for example::
+
+  $ mypy --package p.a --package p.b --module c
 
 Finally the flag ``-c`` (long form: ``--command``) will take a string
 from the command line and type check it as a small program.  For
@@ -176,7 +182,7 @@ same directory on the search path, only the stub file is used.
 in the earlier directory is used.)
 
 NOTE: These rules are relevant to the following section too:
-the ``--follow-imports`` flag described below is applied _after_ the
+the ``--follow-imports`` flag described below is applied *after* the
 above algorithm has determined which package, stub or module to use.
 
 .. _follow-imports:
@@ -249,6 +255,38 @@ directory.  The four possible values are:
     main.py:1: note: Import of 'submodule' ignored
     main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
+.. _disallow-any:
+
+Disallow Any Flags
+******************
+
+The ``--disallow-any`` family of flags disallows various types of ``Any`` in a module.
+The following options are available:
+
+- ``--disallow-any-unimported`` disallows usage of types that come from unfollowed imports
+  (such types become aliases for ``Any``). Unfollowed imports occur either
+  when the imported module does not exist or when ``--follow-imports=skip``
+  is set.
+
+- ``--disallow-any-expr`` disallows all expressions in the module that have type ``Any``.
+  If an expression of type ``Any`` appears anywhere in the module
+  mypy will output an error unless the expression is immediately
+  used as an argument to ``cast`` or assigned to a variable with an
+  explicit type annotation. In addition, declaring a variable of type ``Any``
+  or casting to type ``Any`` is not allowed. Note that calling functions
+  that take parameters of type ``Any`` is still allowed.
+
+- ``--disallow-any-decorated`` disallows functions that have ``Any`` in their signature
+  after decorator transformation.
+
+- ``--disallow-any-explicit`` disallows explicit ``Any`` in type positions such as type
+  annotations and generic type parameters.
+
+- ``--disallow-any-generics`` disallows usage of generic types that do not specify explicit
+  type parameters. Moreover, built-in collections (such as ``list`` and
+  ``dict``) become disallowed as you should use their aliases from the typing
+  module (such as ``List[int]`` and ``Dict[str, str]``).
+
 
 Additional command line flags
 *****************************
@@ -260,58 +298,14 @@ Here are some more useful flags:
 - ``--ignore-missing-imports`` suppresses error messages about imports
   that cannot be resolved (see :ref:`follow-imports` for some examples).
 
-- ``--strict-optional`` enables experimental strict checking of ``Optional[...]``
-  types and ``None`` values. Without this option, mypy doesn't generally check the
-  use of ``None`` values -- they are valid everywhere. See :ref:`strict_optional` for
-  more about this feature.
+- ``--no-strict-optional`` disables strict checking of ``Optional[...]``
+  types and ``None`` values. With this option, mypy doesn't
+  generally check the use of ``None`` values -- they are valid
+  everywhere. See :ref:`no_strict_optional` for more about this feature.
 
-- ``--strict-optional-whitelist`` attempts to suppress strict Optional-related
-  errors in non-whitelisted files.  Takes an arbitrary number of globs as the
-  whitelist.  This option is intended to be used to incrementally roll out
-  ``--strict-optional`` to a large codebase that already has mypy annotations.
-  However, this flag comes with some significant caveats.  It does not suppress
-  all errors caused by turning on ``--strict-optional``, only most of them, so
-  there may still be a bit of upfront work to be done before it can be used in
-  CI.  It will also suppress some errors that would be caught in a
-  non-strict-Optional run.  Therefore, when using this flag, you should also
-  re-check your code without ``--strict-optional`` to ensure new type errors
-  are not introduced.
-
-.. _disallow-any:
-
-- ``--disallow-any`` disallows various types of ``Any`` in a module.
-  The option takes a comma-separated list of the following values:
-  ``unimported``, ``unannotated``, ``expr``, ``decorated``, ``explicit``,
-  ``generics``.
-
-  ``unimported`` disallows usage of types that come from unfollowed imports
-  (such types become aliases for ``Any``). Unfollowed imports occur either
-  when the imported module does not exist or when ``--follow-imports=skip``
-  is set.
-
-  ``unannotated`` disallows function definitions that are not fully
-  typed (i.e. that are missing an explicit type annotation for any
-  of the parameters or the return type). ``unannotated`` option is
-  interchangeable with ``--disallow-untyped-defs``.
-
-  ``expr`` disallows all expressions in the module that have type ``Any``.
-  If an expression of type ``Any`` appears anywhere in the module
-  mypy will output an error unless the expression is immediately
-  used as an argument to ``cast`` or assigned to a variable with an
-  explicit type annotation. In addition, declaring a variable of type ``Any``
-  or casting to type ``Any`` is not allowed. Note that calling functions
-  that take parameters of type ``Any`` is still allowed.
-
-  ``decorated`` disallows functions that have ``Any`` in their signature
-  after decorator transformation.
-
-  ``explicit`` disallows explicit ``Any`` in type positions such as type
-  annotations and generic type parameters.
-
-  ``generics`` disallows usage of generic types that do not specify explicit
-  type parameters. Moreover, built-in collections (such as ``list`` and
-  ``dict``) become disallowed as you should use their aliases from the typing
-  module (such as ``List[int]`` and ``Dict[str, str]``).
+  **Note:** Strict optional checking was enabled by default starting in
+  mypy 0.600, and in previous versions it had to be explicitly enabled
+  using ``--strict-optional`` (which is still accepted).
 
 - ``--disallow-untyped-defs`` reports an error whenever it encounters
   a function definition without type annotations.
@@ -346,17 +340,23 @@ Here are some more useful flags:
 
 .. _incremental:
 
-- ``--incremental`` is an experimental option that enables a module
-  cache. When enabled, mypy caches results from previous runs
-  to speed up type checking. Incremental mode can help when most parts
-  of your program haven't changed since the previous mypy run.  A
-  companion flag is ``--cache-dir DIR``, which specifies where the
-  cache files are written.  By default this is ``.mypy_cache`` in the
-  current directory.  While the cache is only read in incremental
-  mode, it is written even in non-incremental mode, in order to "warm"
-  the cache.  To disable writing the cache, use
-  ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul`` (Windows).
-  Cache files belonging to a different mypy version are ignored.
+- Incremental mode enables a module cache, using results from
+  previous runs to speed up type checking. Incremental mode can help
+  when most parts of your program haven't changed since the previous
+  mypy run.
+
+  Incremental mode is the default and may be disabled with
+  ``--no-incremental``.
+
+- ``--cache-dir DIR`` is a companion flag to incremental mode, which
+  specifies where the cache files are written.  By default this is
+  ``.mypy_cache`` in the current directory.  While the cache is only
+  read in incremental mode, it is written even in non-incremental
+  mode, in order to "warm" the cache.  To disable writing the cache,
+  use ``--cache-dir=/dev/null`` (UNIX) or ``--cache-dir=nul``
+  (Windows).  Cache files belonging to a different mypy version are
+  ignored.  This flag can be useful for controlling cache use when using
+  :ref:`remote caching <remote-cache>`.
 
 .. _quick-mode:
 
@@ -370,16 +370,40 @@ Here are some more useful flags:
   updates the cache, but regular incremental mode ignores cache files
   written by quick mode.
 
+- ``--python-executable EXECUTABLE`` will have mypy collect type information
+  from `PEP 561`_ compliant packages installed for the Python executable
+  ``EXECUTABLE``. If not provided, mypy will use PEP 561 compliant packages
+  installed for the Python executable running mypy. See
+  :ref:`installed-packages` for more on making PEP 561 compliant packages.
+  This flag will attempt to set ``--python-version`` if not already set.
+
 - ``--python-version X.Y`` will make mypy typecheck your code as if it were
   run under Python version X.Y. Without this option, mypy will default to using
   whatever version of Python is running mypy. Note that the ``-2`` and
   ``--py2`` flags are aliases for ``--python-version 2.7``. See
-  :ref:`version_and_platform_checks` for more about this feature.
+  :ref:`version_and_platform_checks` for more about this feature. This flag
+  will attempt to find a Python executable of the corresponding version to
+  search for `PEP 561`_ compliant packages. If you'd like to disable this,
+  see ``--no-site-packages`` below.
+
+- ``--no-site-packages`` will disable searching for `PEP 561`_ compliant
+  packages. This will also disable searching for a usable Python executable.
+  Use this  flag if mypy cannot find a Python executable for the version of
+  Python being checked, and you don't need to use PEP 561 typed packages.
+  Otherwise, use ``--python-executable``.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
   run under the the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
+
+.. _always-true:
+
+- ``--always-true NAME`` will treat all variables named ``NAME`` as
+  compile-time constants that are always true.  May be repeated.
+
+- ``--always-false NAME`` will treat all variables named ``NAME`` as
+  compile-time constants that are always false.  May be repeated.
 
 - ``--show-column-numbers`` will add column offsets to error messages,
   for example, the following indicates an error in line 12, column 9
@@ -408,9 +432,10 @@ Here are some more useful flags:
 
 - ``--config-file CONFIG_FILE`` causes configuration settings to be
   read from the given file.  By default settings are read from ``mypy.ini``
-  or ``setup.cfg`` in the current directory.  Settings override mypy's
-  built-in defaults and command line flags can override settings.
-  See :ref:`config-file` for the syntax of configuration files.
+  or ``setup.cfg`` in the current directory, or ``.mypy.ini`` in the user home
+  directory.  Settings override mypy's built-in defaults and command line flags
+  can override settings. See :ref:`config-file` for the syntax of configuration
+  files.
 
 - ``--junit-xml JUNIT_XML`` will make mypy generate a JUnit XML test
   result document with type checking results. This can make it easier
@@ -438,12 +463,20 @@ Here are some more useful flags:
 
 .. _shadow-file:
 
-- ``--shadow-file SOURCE_FILE SHADOW_FILE`` makes mypy typecheck SHADOW_FILE in
-  place of SOURCE_FILE.  Primarily intended for tooling.  Allows tooling to
-  make transformations to a file before type checking without having to change
-  the file in-place.  (For example, tooling could use this to display the type
-  of an expression by wrapping it with a call to reveal_type in the shadow
-  file and then parsing the output.)
+- ``--shadow-file SOURCE_FILE SHADOW_FILE``: when mypy is asked to typecheck
+  ``SOURCE_FILE``, this makes it read from and typecheck the contents of
+  ``SHADOW_FILE`` instead. However, diagnostics will continue to refer to
+  ``SOURCE_FILE``. Specifying this argument multiple times
+  (``--shadow-file X1 Y1 --shadow-file X2 Y2``)
+  will allow mypy to perform multiple substitutions.
+
+  This allows tooling to create temporary files with helpful modifications
+  without having to change the source file in place. For example, suppose we
+  have a pipeline that adds ``reveal_type`` for certain variables.
+  This pipeline is run on ``original.py`` to produce ``temp.py``.
+  Running ``mypy --shadow-file original.py temp.py original.py`` will then
+  cause mypy to typecheck the contents of ``temp.py`` instead of  ``original.py``,
+  but error messages will still reference ``original.py``.
 
 .. _no-implicit-optional:
 
@@ -456,6 +489,8 @@ For the remaining flags you can read the full ``mypy -h`` output.
 .. note::
 
    Command line flags are liable to change between releases.
+
+.. _PEP 561: https://www.python.org/dev/peps/pep-0561/
 
 .. _integrating-mypy:
 

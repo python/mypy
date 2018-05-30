@@ -1,7 +1,88 @@
 Revision history
 ================
 
-List of major changes:
+List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
+detailed release notes):
+
+- May 2018
+    * Publish ``mypy`` version 0.600 on PyPI.
+
+      * Enable :ref:`strict optional checking <strict_optional>` by default.
+
+      * Document :ref:`disabling strict optional checking <no_strict_optional>`.
+
+      * Add :ref:`mypy_daemon`.
+
+      * Add :ref:`remote-cache`.
+
+      * Support user-specific configuration file (:ref:`docs <config-file>`).
+
+      * Changes to section pattern semantics in configuration files
+        (:ref:`docs <config-file>` and :ref:`more docs <per-module-flags>`).
+
+- April 2018
+    * Publish ``mypy`` version 0.590 on PyPI.
+
+      * Document :ref:`PEP 561 support <installed-packages>`.
+
+      * Made :ref:`incremental mode <incremental>` the default.
+
+      * Document ``--always-true`` and ``--always-false`` (:ref:`docs <always-true>`).
+
+      * Document ``follow_imports_for_stubs`` (:ref:`docs<per-module-flags>`).
+
+      * Add coroutines to :ref:`Python 3 cheat sheet <cheat-sheet-py3>`.
+
+      * Add ``None`` return/strict-optional to :ref:`common issues <annotations_needed>`.
+
+      * Clarify that ``SupportsInt`` etc. don't support arithmetic operations (see :ref:`docs <supports-int-etc>`).
+
+- March 2018
+    * Publish ``mypy`` version 0.580 on PyPI.
+
+      * Allow specifying multiple packages on the command line with ``-p`` and ``-m`` flags.
+
+    * Publish ``mypy`` version 0.570 on PyPI.
+
+      * Add support for :ref:`attrs_package`.
+
+- December 2017
+    * Publish ``mypy`` version 0.560 on PyPI.
+
+      * Various types in ``typing`` that used to be ABCs
+        :ref:`are now protocols <predefined_protocols>`
+        and support :ref:`structural subtyping <protocol-types>`.
+
+      * Explain how to :ref:`silence invalid complaints <silencing-linters>`
+        by linters about unused imports due to type comments.
+
+- November 2017
+    * Publish ``mypy`` version 0.550 on PyPI.
+
+      * Running mypy now requires Python 3.4 or higher.
+        However Python 3.3 is still valid for the target
+        of the analysis (i.e. the ``--python-version`` flag).
+
+      * Split ``--disallow-any`` flag into
+        :ref:`separate boolean flags <disallow-any>`.
+
+      * The ``--old-html-report`` flag was removed.
+
+- October 2017
+    * Publish ``mypy`` version 0.540 on PyPI.
+
+    * Publish ``mypy`` version 0.530 on PyPI.
+
+- August-September 2017
+    * Add :ref:`protocol-types`.
+
+    * Other updates to :ref:`command-line`:
+
+      * Add ``--warn-unused-configs``.
+
+      * Add ``--disallow-untyped-decorators``.
+
+      * Add ``--disallow-incomplete-defs``.
 
 - July 2017
     * Publish ``mypy`` version 0.521 on PyPI.
@@ -161,7 +242,7 @@ List of major changes:
 - July 2016
     * Publish ``mypy-lang`` version 0.4.3 on PyPI.
 
-    * Add :ref:`strict_optional`.
+    * Add :ref:`strict optional checking <strict_optional>`.
 
     * Add :ref:`multi_line_annotation`.
 
@@ -198,7 +279,7 @@ List of major changes:
 - Mar 2015
     Update documentation to reflect PEP 484:
 
-    * Add :ref:`named-tuples` and :ref:`optional`.
+    * Add :ref:`named-tuples` and :ref:`Optional types <strict_optional>`.
 
     * Do not mention type application syntax (for
       example, ``List[int]()``), as it's no longer supported,

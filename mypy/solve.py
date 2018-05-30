@@ -63,6 +63,7 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
                 # No constraints for type variable -- 'UninhabitedType' is the most specific type.
                 if strict:
                     candidate = UninhabitedType()
+                    candidate.ambiguous = True
                 else:
                     candidate = AnyType(TypeOfAny.special_form)
         elif top is None:

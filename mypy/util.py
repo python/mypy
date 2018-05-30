@@ -2,6 +2,7 @@
 
 import re
 import subprocess
+import hashlib
 from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
 
@@ -10,7 +11,7 @@ T = TypeVar('T')
 
 ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
 
-default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
+default_python2_interpreter = ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -60,6 +61,34 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
         return default_encoding, -1
 
 
+class DecodeError(Exception):
+    """Exception raised when a file cannot be decoded due to an unknown encoding type.
+
+    Essentially a wrapper for the LookupError raised by `bytearray.decode`
+    """
+
+
+def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
+    """Read the Python file with while obeying PEP-263 encoding detection.
+
+    Returns:
+      A tuple: the source as a string, and the hash calculated from the binary representation.
+    """
+    # check for BOM UTF-8 encoding and strip it out if present
+    if source.startswith(b'\xef\xbb\xbf'):
+        encoding = 'utf8'
+        source = source[3:]
+    else:
+        # look at first two lines and check if PEP-263 coding is present
+        encoding, _ = find_python_encoding(source, pyversion)
+
+    try:
+        source_text = source.decode(encoding)
+    except LookupError as lookuperr:
+        raise DecodeError(str(lookuperr))
+    return source_text
+
+
 _python2_interpreter = None  # type: Optional[str]
 
 
@@ -69,10 +98,11 @@ def try_find_python2_interpreter() -> Optional[str]:
         return _python2_interpreter
     for interpreter in default_python2_interpreter:
         try:
-            process = subprocess.Popen([interpreter, '-V'], stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT)
-            stdout, stderr = process.communicate()
-            if b'Python 2.7' in stdout:
+            retcode = subprocess.Popen([
+                interpreter, '-c',
+                'import sys, typing; assert sys.version_info[:2] == (2, 7)'
+            ]).wait()
+            if not retcode:
                 _python2_interpreter = interpreter
                 return interpreter
         except OSError:
@@ -134,3 +164,44 @@ class IdMapper:
             self.id_map[o] = self.next_id
             self.next_id += 1
         return self.id_map[o]
+
+
+def get_prefix(fullname: str) -> str:
+    """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
+    return fullname.rsplit('.', 1)[0]
+
+
+def correct_relative_import(cur_mod_id: str,
+                            relative: int,
+                            target: str,
+                            is_cur_package_init_file: bool) -> Tuple[str, bool]:
+    if relative == 0:
+        return target, True
+    parts = cur_mod_id.split(".")
+    rel = relative
+    if is_cur_package_init_file:
+        rel -= 1
+    ok = len(parts) >= rel
+    if rel != 0:
+        cur_mod_id = ".".join(parts[:-rel])
+    return cur_mod_id + (("." + target) if target else ""), ok
+
+
+def replace_object_state(new: object, old: object) -> None:
+    """Copy state of old node to the new node.
+
+    This handles cases where there is __slots__ and/or __dict__.
+
+    Assume that both objects have the same __class__.
+    """
+    if hasattr(old, '__dict__'):
+        new.__dict__ = old.__dict__
+    if hasattr(old, '__slots__'):
+        # Use __mro__ since some classes override 'mro' with something different.
+        for base in type(old).__mro__:
+            if '__slots__' in base.__dict__:
+                for attr in getattr(base, '__slots__'):
+                    if hasattr(old, attr):
+                        setattr(new, attr, getattr(old, attr))
+                    elif hasattr(new, attr):
+                        delattr(new, attr)

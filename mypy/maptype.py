@@ -10,7 +10,8 @@ def map_instance_to_supertype(instance: Instance,
     """Produce a supertype of `instance` that is an Instance
     of `superclass`, mapping type arguments up the chain of bases.
 
-    `superclass` is required to be a superclass of `instance.type`.
+    If `superclass` is not a nominal superclass of `instance.type`,
+    then all type arguments are mapped to 'Any'.
     """
     if instance.type == superclass:
         # Fast path: `instance` already belongs to `superclass`.

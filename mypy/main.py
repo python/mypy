@@ -1,31 +1,45 @@
 """Mypy type checker command line tool."""
 
 import argparse
+import ast
 import configparser
-import fnmatch
 import os
 import re
+import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple, Callable
 
 from mypy import build
 from mypy import defaults
 from mypy import experiments
 from mypy import util
 from mypy.build import BuildSource, BuildResult, PYTHON_EXTENSIONS
+from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.options import Options, BuildType
 from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
-PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
+
+orig_stat = os.stat
+
+MEM_PROFILE = False  # If True, dump memory profile
 
 
-class InvalidPackageName(Exception):
-    """Exception indicating that a package name was invalid."""
+def stat_proxy(path: str) -> os.stat_result:
+    try:
+        st = orig_stat(path)
+    except os.error as err:
+        print("stat(%r) -> %s" % (path, err))
+        raise
+    else:
+        print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
+              (path, st.st_mode, st.st_mtime, st.st_size))
+        return st
 
 
 def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
@@ -36,7 +50,16 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
         be used.
     """
+    # Check for known bad Python versions.
+    if sys.version_info[:2] < (3, 4):
+        sys.exit("Running mypy with Python 3.3 or lower is not supported; "
+                 "please upgrade to 3.4 or newer")
+    if sys.version_info[:3] == (3, 5, 0):
+        sys.exit("Running mypy with Python 3.5.0 is not supported; "
+                 "please upgrade to 3.5.1 or newer")
+
     t0 = time.time()
+    # To log stat() calls: os.stat = stat_proxy
     if script_path:
         bin_dir = find_bin_directory(script_path)  # type: Optional[str]
     else:
@@ -44,31 +67,49 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
-    sources, options = process_options(args)
+
+    fscache = FileSystemCache()
+    sources, options = process_options(args, fscache=fscache)
+
+    messages = []
+
+    def flush_errors(new_messages: List[str], serious: bool) -> None:
+        messages.extend(new_messages)
+        f = sys.stderr if serious else sys.stdout
+        try:
+            for msg in new_messages:
+                f.write(msg + '\n')
+            f.flush()
+        except BrokenPipeError:
+            sys.exit(2)
+
     serious = False
+    blockers = False
     try:
-        res = type_check_only(sources, bin_dir, options)
-        a = res.errors
+        # Keep a dummy reference (res) for memory profiling below, as otherwise
+        # the result could be freed.
+        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
     except CompileError as e:
-        a = e.messages
+        blockers = True
         if not e.use_stdout:
             serious = True
     if options.warn_unused_configs and options.unused_configs:
         print("Warning: unused section(s) in %s: %s" %
               (options.config_file,
-               ", ".join("[mypy-%s]" % glob for glob in options.unused_configs.values())),
+               ", ".join("[mypy-%s]" % glob for glob in options.per_module_options.keys()
+                         if glob in options.unused_configs)),
               file=sys.stderr)
     if options.junit_xml:
         t1 = time.time()
-        util.write_junit_xml(t1 - t0, serious, a, options.junit_xml)
-    if a:
-        f = sys.stderr if serious else sys.stdout
-        try:
-            for m in a:
-                f.write(m + '\n')
-        except BrokenPipeError:
-            pass
-        sys.exit(1)
+        util.write_junit_xml(t1 - t0, serious, messages, options.junit_xml)
+
+    if MEM_PROFILE:
+        from mypy.memprofile import print_memory_profile
+        print_memory_profile()
+
+    if messages:
+        code = 2 if blockers else 1
+        sys.exit(code)
 
 
 def find_bin_directory(script_path: str) -> str:
@@ -96,29 +137,15 @@ def readlinkabs(link: str) -> str:
 
 
 def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options) -> BuildResult:
+                    options: Options,
+                    flush_errors: Optional[Callable[[List[str], bool], None]],
+                    fscache: FileSystemCache) -> BuildResult:
     # Type-check the program and dependencies.
     return build.build(sources=sources,
                        bin_dir=bin_dir,
-                       options=options)
-
-
-disallow_any_options = ['unimported', 'expr', 'unannotated', 'decorated', 'explicit', 'generics']
-
-
-def disallow_any_argument_type(raw_options: str) -> List[str]:
-    if not raw_options:
-        # empty string disables all options
-        return []
-    flag_options = [o.strip() for o in raw_options.split(',')]
-    for option in flag_options:
-        if option not in disallow_any_options:
-            formatted_valid_options = ', '.join(
-                "'{}'".format(o) for o in disallow_any_options)
-            message = "Invalid '--disallow-any' option '{}' (valid options are: {}).".format(
-                option, formatted_valid_options)
-            raise argparse.ArgumentError(None, message)
-    return flag_options
+                       options=options,
+                       flush_errors=flush_errors,
+                       fscache=fscache)
 
 
 FOOTER = """environment variables:
@@ -197,8 +224,84 @@ def invert_flag_name(flag: str) -> str:
     return '--no-{}'.format(flag[2:])
 
 
+class PythonExecutableInferenceError(Exception):
+    """Represents a failure to infer the version or executable while searching."""
+
+
+def python_executable_prefix(v: str) -> List[str]:
+    if sys.platform == 'win32':
+        # on Windows, all Python executables are named `python`. To handle this, there
+        # is the `py` launcher, which can be passed a version e.g. `py -3.5`, and it will
+        # execute an installed Python 3.5 interpreter. See also:
+        # https://docs.python.org/3/using/windows.html#python-launcher-for-windows
+        return ['py', '-{}'.format(v)]
+    else:
+        return ['python{}'.format(v)]
+
+
+def _python_version_from_executable(python_executable: str) -> Tuple[int, int]:
+    try:
+        check = subprocess.check_output([python_executable, '-c',
+                                         'import sys; print(repr(sys.version_info[:2]))'],
+                                        stderr=subprocess.STDOUT).decode()
+        return ast.literal_eval(check)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise PythonExecutableInferenceError(
+            'invalid Python executable {}'.format(python_executable))
+
+
+def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
+    if sys.version_info[:2] == python_version:
+        return sys.executable
+    str_ver = '.'.join(map(str, python_version))
+    try:
+        sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
+                                          ['-c', 'import sys; print(sys.executable)'],
+                                          stderr=subprocess.STDOUT).decode().strip()
+        return sys_exe
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        raise PythonExecutableInferenceError(
+            'failed to find a Python executable matching version {},'
+            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version))
+
+
+def infer_python_version_and_executable(options: Options,
+                                        special_opts: argparse.Namespace) -> None:
+    """Infer the Python version or executable from each other. Check they are consistent.
+
+    This function mutates options based on special_opts to infer the correct Python version and
+    executable to use.
+    """
+    # Infer Python version and/or executable if one is not given
+
+    # TODO: (ethanhs) Look at folding these checks and the site packages subprocess calls into
+    # one subprocess call for speed.
+    if special_opts.python_executable is not None and special_opts.python_version is not None:
+        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
+        if py_exe_ver != special_opts.python_version:
+            raise PythonExecutableInferenceError(
+                'Python version {} did not match executable {}, got version {}.'.format(
+                    special_opts.python_version, special_opts.python_executable, py_exe_ver
+                ))
+        else:
+            options.python_version = special_opts.python_version
+            options.python_executable = special_opts.python_executable
+    elif special_opts.python_executable is None and special_opts.python_version is not None:
+        options.python_version = special_opts.python_version
+        py_exe = None
+        if not special_opts.no_executable:
+            py_exe = _python_executable_from_version(special_opts.python_version)
+        options.python_executable = py_exe
+    elif special_opts.python_version is None and special_opts.python_executable is not None:
+        options.python_version = _python_version_from_executable(
+            special_opts.python_executable)
+        options.python_executable = special_opts.python_executable
+
+
 def process_options(args: List[str],
-                    require_targets: bool = True
+                    require_targets: bool = True,
+                    server_options: bool = False,
+                    fscache: Optional[FileSystemCache] = None,
                     ) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments."""
 
@@ -223,12 +326,12 @@ def process_options(args: List[str],
         if help is not argparse.SUPPRESS:
             help += " (inverse: {})".format(inverse)
 
-        arg = parser.add_argument(flag,  # type: ignore  # incorrect stub for add_argument
+        arg = parser.add_argument(flag,
                                   action='store_false' if default else 'store_true',
                                   dest=dest,
                                   help=help)
         dest = arg.dest
-        arg = parser.add_argument(inverse,  # type: ignore  # incorrect stub for add_argument
+        arg = parser.add_argument(inverse,
                                   action='store_true' if default else 'store_false',
                                   dest=dest,
                                   help=argparse.SUPPRESS)
@@ -246,20 +349,34 @@ def process_options(args: List[str],
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s ' + __version__)
     parser.add_argument('--python-version', type=parse_version, metavar='x.y',
-                        help='use Python x.y')
+                        help='use Python x.y', dest='special-opts:python_version')
+    parser.add_argument('--python-executable', action='store', metavar='EXECUTABLE',
+                        help="Python executable used for finding PEP 561 compliant installed"
+                             " packages and stubs", dest='special-opts:python_executable')
+    parser.add_argument('--no-site-packages', action='store_true',
+                        dest='special-opts:no_executable',
+                        help="Do not search for installed PEP 561 compliant packages")
     parser.add_argument('--platform', action='store', metavar='PLATFORM',
                         help="typecheck special-cased code for the given OS platform "
-                        "(defaults to sys.platform).")
+                             "(defaults to sys.platform)")
     parser.add_argument('-2', '--py2', dest='python_version', action='store_const',
                         const=defaults.PYTHON2_VERSION, help="use Python 2 mode")
     parser.add_argument('--ignore-missing-imports', action='store_true',
                         help="silently ignore imports of missing modules")
     parser.add_argument('--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
                         default='normal', help="how to treat imports (default normal)")
-    parser.add_argument('--disallow-any', type=disallow_any_argument_type, default=[],
-                        metavar='{{{}}}'.format(', '.join(disallow_any_options)),
-                        help="disallow various types of Any in a module. Takes a comma-separated "
-                             "list of options (defaults to all options disabled)")
+    parser.add_argument('--disallow-any-unimported', default=False, action='store_true',
+                        help="disallow Any types resulting from unfollowed imports")
+    parser.add_argument('--disallow-any-expr', default=False, action='store_true',
+                        help='disallow all expressions that have type Any')
+    parser.add_argument('--disallow-any-decorated', default=False, action='store_true',
+                        help='disallow functions that have Any in their signature '
+                             'after decorator transformation')
+    parser.add_argument('--disallow-any-explicit', default=False, action='store_true',
+                        help='disallow explicit Any in type positions')
+    parser.add_argument('--disallow-any-generics', default=False, action='store_true',
+                        help='disallow usage of generic types that do not specify explicit '
+                             'type parameters')
     add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
                         help="disallow calling functions without type annotations"
                         " from functions with type annotations")
@@ -287,31 +404,39 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
                         help="warn about unneeded '# type: ignore' comments")
     add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="warn about unnused '[mypy-<pattern>]' config sections")
+                        help="warn about unused '[mypy-<pattern>]' config sections")
     add_invertible_flag('--show-error-context', default=False,
                         dest='show_error_context',
                         help='Precede errors with "note:" messages explaining context')
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="don't assume arguments with default values of None are Optional")
     parser.add_argument('-i', '--incremental', action='store_true',
-                        help="enable module cache, (inverse: --no-incremental)")
-    parser.add_argument('--no-incremental', action='store_false', dest='incremental',
                         help=argparse.SUPPRESS)
+    parser.add_argument('--no-incremental', action='store_false', dest='incremental',
+                        help="disable module cache, (inverse: --incremental)")
     parser.add_argument('--quick-and-dirty', action='store_true',
                         help="use cache even if dependencies out of date "
                         "(implies --incremental)")
     parser.add_argument('--cache-dir', action='store', metavar='DIR',
                         help="store module cache info in the given folder in incremental mode "
                         "(defaults to '{}')".format(defaults.CACHE_DIR))
+    parser.add_argument('--cache-fine-grained', action='store_true',
+                        help="include fine-grained dependency information in the cache")
     parser.add_argument('--skip-version-check', action='store_true',
                         help="allow using cache written by older mypy version")
-    add_invertible_flag('--strict-optional', default=False, strict_flag=True,
-                        help="enable experimental strict Optional checks")
+    parser.add_argument('--strict-optional', action='store_true',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--no-strict-optional', action='store_false', dest='strict_optional',
+                        help="disable strict Optional checks (inverse: --strict-optional)")
     parser.add_argument('--strict-optional-whitelist', metavar='GLOB', nargs='*',
                         help="suppress strict Optional errors in all but the provided files "
                         "(experimental -- read documentation before using!).  "
                         "Implies --strict-optional.  Has the undesirable side-effect of "
                         "suppressing other errors in non-whitelisted files.")
+    parser.add_argument('--always-true', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered True (may be repeated)")
+    parser.add_argument('--always-false', metavar='NAME', action='append', default=[],
+                        help="Additional variable to be considered False (may be repeated)")
     parser.add_argument('--junit-xml', help="write junit.xml to the given file")
     parser.add_argument('--pdb', action='store_true', help="invoke pdb on fatal error")
     parser.add_argument('--show-traceback', '--tb', action='store_true',
@@ -327,7 +452,7 @@ def process_options(args: List[str],
                         help="Script x becomes module x instead of __main__")
     parser.add_argument('--config-file',
                         help="Configuration file, must have a [mypy] section "
-                        "(defaults to {})".format(defaults.CONFIG_FILE))
+                        "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
     add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages")
     parser.add_argument('--find-occurrences', metavar='CLASS.MEMBER',
@@ -338,16 +463,26 @@ def process_options(args: List[str],
     parser.add_argument('--strict', action='store_true', dest='special-opts:strict',
                         help=strict_help)
     parser.add_argument('--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
-                        dest='shadow_file',
-                        help='Typecheck SHADOW_FILE in place of SOURCE_FILE.')
+                        dest='shadow_file', action='append',
+                        help="When encountering SOURCE_FILE, read and typecheck "
+                             "the contents of SHADOW_FILE instead.")
     # hidden options
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
     parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
+    # --dump-deps will dump all fine-grained dependencies to stdout
+    parser.add_argument('--dump-deps', action='store_true', help=argparse.SUPPRESS)
     # --dump-graph will dump the contents of the graph of SCCs and exit.
     parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
+    # --semantic-analysis-only does exactly that.
+    parser.add_argument('--semantic-analysis-only', action='store_true', help=argparse.SUPPRESS)
+    # --local-partial-types disallows partial types spanning module top level and a function
+    # (implicitly defined in fine-grained incremental mode)
+    parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
     # deprecated options
+    parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
+                        help=argparse.SUPPRESS)
     add_invertible_flag('--strict-boolean', default=False,
                         help=argparse.SUPPRESS)
     parser.add_argument('-f', '--dirty-stubs', action='store_true',
@@ -367,6 +502,12 @@ def process_options(args: List[str],
     parser.add_argument('--no-fast-parser', action='store_true',
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
+    if server_options:
+        # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
+        parser.add_argument('--experimental', action='store_true', dest='fine_grained_incremental',
+                            help="enable fine-grained incremental mode")
+        parser.add_argument('--use-fine-grained-cache', action='store_true',
+                            help="use the cache in fine-grained incremental mode")
 
     report_group = parser.add_argument_group(
         title='report generation',
@@ -378,16 +519,16 @@ def process_options(args: List[str],
 
     code_group = parser.add_argument_group(title='How to specify the code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
+                            default=[],
                             dest='special-opts:modules',
                             help="type-check module; can repeat for more modules")
-    # TODO: `mypy -p A -p B` currently silently ignores A
-    # (last option wins).  Perhaps -c, -m and -p could just be
-    # command-line flags that modify how we interpret self.files?
+    code_group.add_argument('-p', '--package', action='append', metavar='PACKAGE',
+                            default=[],
+                            dest='special-opts:packages',
+                            help="type-check package recursively; can be repeated")
     code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
                             dest='special-opts:command',
                             help="type-check program passed in as string")
-    code_group.add_argument('-p', '--package', metavar='PACKAGE', dest='special-opts:package',
-                            help="type-check all files in a directory")
     code_group.add_argument(metavar='files', nargs='*', dest='special-opts:files',
                             help="type-check given files or directories")
 
@@ -422,6 +563,9 @@ def process_options(args: List[str],
                      )
 
     # Process deprecated options
+    if special_opts.disallow_any:
+        print("--disallow-any option was split up into multiple flags. "
+              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-any-flags")
     if options.strict_boolean:
         print("Warning: --strict-boolean is deprecated; "
               "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
@@ -446,26 +590,34 @@ def process_options(args: List[str],
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
               "is now mypy's default and only parser.")
 
-    if 'unannotated' in options.disallow_any:
-        options.disallow_untyped_defs = True
+    try:
+        infer_python_version_and_executable(options, special_opts)
+    except PythonExecutableInferenceError as e:
+        parser.error(str(e))
+
+    if special_opts.no_executable:
+        options.python_executable = None
 
     # Check for invalid argument combinations.
     if require_targets:
-        code_methods = sum(bool(c) for c in [special_opts.modules,
+        code_methods = sum(bool(c) for c in [special_opts.modules + special_opts.packages,
                                              special_opts.command,
-                                             special_opts.package,
                                              special_opts.files])
         if code_methods == 0:
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
-            parser.error("May only specify one of: module, package, files, or command.")
+            parser.error("May only specify one of: module/package, files, or command.")
+
+    # Check for overlapping `--always-true` and `--always-false` flags.
+    overlap = set(options.always_true) & set(options.always_false)
+    if overlap:
+        parser.error("You can't make a variable always true and always false (%s)" %
+                     ', '.join(sorted(overlap)))
 
     # Set build flags.
     if options.strict_optional_whitelist is not None:
         # TODO: Deprecate, then kill this flag
         options.strict_optional = True
-    if options.strict_optional:
-        experiments.STRICT_OPTIONAL = True
     if special_opts.find_occurrences:
         experiments.find_occurrences = special_opts.find_occurrences.split('.')
         assert experiments.find_occurrences is not None
@@ -486,138 +638,32 @@ def process_options(args: List[str],
         options.incremental = True
 
     # Set target.
-    if special_opts.modules:
-        options.build_type = BuildType.MODULE
-        targets = [BuildSource(None, m, None) for m in special_opts.modules]
-        return targets, options
-    elif special_opts.package:
-        if os.sep in special_opts.package or os.altsep and os.altsep in special_opts.package:
-            fail("Package name '{}' cannot have a slash in it."
-                 .format(special_opts.package))
+    if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
         lib_path = [os.getcwd()] + build.mypy_path()
-        targets = build.find_modules_recursive(special_opts.package, lib_path)
-        if not targets:
-            fail("Can't find package '{}'".format(special_opts.package))
+        targets = []
+        # TODO: use the same cache that the BuildManager will
+        cache = build.FindModuleCache(fscache)
+        for p in special_opts.packages:
+            if os.sep in p or os.altsep and os.altsep in p:
+                fail("Package name '{}' cannot have a slash in it.".format(p))
+            p_targets = cache.find_modules_recursive(p, tuple(lib_path), options.python_executable)
+            if not p_targets:
+                fail("Can't find package '{}'".format(p))
+            targets.extend(p_targets)
+        for m in special_opts.modules:
+            targets.append(BuildSource(None, m, None))
         return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
         targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
         return targets, options
     else:
-        targets = []
-        for f in special_opts.files:
-            if f.endswith(PY_EXTENSIONS):
-                try:
-                    targets.append(BuildSource(f, crawl_up(f)[1], None))
-                except InvalidPackageName as e:
-                    fail(str(e))
-            elif os.path.isdir(f):
-                try:
-                    sub_targets = expand_dir(f)
-                except InvalidPackageName as e:
-                    fail(str(e))
-                if not sub_targets:
-                    fail("There are no .py[i] files in directory '{}'"
-                         .format(f))
-                targets.extend(sub_targets)
-            else:
-                mod = os.path.basename(f) if options.scripts_are_modules else None
-                targets.append(BuildSource(f, mod, None))
+        try:
+            targets = create_source_list(special_opts.files, options, fscache)
+        except InvalidSourceList as e:
+            fail(str(e))
         return targets, options
-
-
-def keyfunc(name: str) -> Tuple[int, str]:
-    """Determines sort order for directory listing.
-
-    The desirable property is foo < foo.pyi < foo.py.
-    """
-    base, suffix = os.path.splitext(name)
-    for i, ext in enumerate(PY_EXTENSIONS):
-        if suffix == ext:
-            return (i, base)
-    return (-1, name)
-
-
-def expand_dir(arg: str, mod_prefix: str = '') -> List[BuildSource]:
-    """Convert a directory name to a list of sources to build."""
-    f = get_init_file(arg)
-    if mod_prefix and not f:
-        return []
-    seen = set()  # type: Set[str]
-    sources = []
-    if f and not mod_prefix:
-        top_dir, top_mod = crawl_up(f)
-        mod_prefix = top_mod + '.'
-    if mod_prefix:
-        sources.append(BuildSource(f, mod_prefix.rstrip('.'), None))
-    names = os.listdir(arg)
-    names.sort(key=keyfunc)
-    for name in names:
-        path = os.path.join(arg, name)
-        if os.path.isdir(path):
-            sub_sources = expand_dir(path, mod_prefix + name + '.')
-            if sub_sources:
-                seen.add(name)
-                sources.extend(sub_sources)
-        else:
-            base, suffix = os.path.splitext(name)
-            if base == '__init__':
-                continue
-            if base not in seen and '.' not in base and suffix in PY_EXTENSIONS:
-                seen.add(base)
-                src = BuildSource(path, mod_prefix + base, None)
-                sources.append(src)
-    return sources
-
-
-def crawl_up(arg: str) -> Tuple[str, str]:
-    """Given a .py[i] filename, return (root directory, module).
-
-    We crawl up the path until we find a directory without
-    __init__.py[i], or until we run out of path components.
-    """
-    dir, mod = os.path.split(arg)
-    mod = strip_py(mod) or mod
-    while dir and get_init_file(dir):
-        dir, base = os.path.split(dir)
-        if not base:
-            break
-        # Ensure that base is a valid python module name
-        if not base.isidentifier():
-            raise InvalidPackageName('{} is not a valid Python package name'.format(base))
-        if mod == '__init__' or not mod:
-            mod = base
-        else:
-            mod = base + '.' + mod
-
-    return dir, mod
-
-
-def strip_py(arg: str) -> Optional[str]:
-    """Strip a trailing .py or .pyi suffix.
-
-    Return None if no such suffix is found.
-    """
-    for ext in PY_EXTENSIONS:
-        if arg.endswith(ext):
-            return arg[:-len(ext)]
-    return None
-
-
-def get_init_file(dir: str) -> Optional[str]:
-    """Check whether a directory contains a file named __init__.py[i].
-
-    If so, return the file's name (with dir prefixed).  If not, return
-    None.
-
-    This prefers .pyi over .py (because of the ordering of PY_EXTENSIONS).
-    """
-    for ext in PY_EXTENSIONS:
-        f = os.path.join(dir, '__init__' + ext)
-        if os.path.isfile(f):
-            return f
-    return None
 
 
 # For most options, the type of the default value set in options.py is
@@ -631,14 +677,13 @@ config_types = {
     'custom_typeshed_dir': str,
     'mypy_path': lambda s: [p.strip() for p in re.split('[,:]', s)],
     'junit_xml': str,
-    'disallow_any': disallow_any_argument_type,
     # These two are for backwards compatibility
     'silent_imports': bool,
     'almost_silent': bool,
     'plugins': lambda s: [p.strip() for p in s.split(',')],
+    'always_true': lambda s: [p.strip() for p in s.split(',')],
+    'always_false': lambda s: [p.strip() for p in s.split(',')],
 }
-
-SHARED_CONFIG_FILES = ('setup.cfg',)
 
 
 def parse_config_file(options: Options, filename: Optional[str]) -> None:
@@ -646,13 +691,12 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
 
     Errors are written to stderr but are not fatal.
 
-    If filename is None, fall back to default config file and then
-    to setup.cfg.
+    If filename is None, fall back to default config files.
     """
     if filename is not None:
         config_files = (filename,)  # type: Tuple[str, ...]
     else:
-        config_files = (defaults.CONFIG_FILE,) + SHARED_CONFIG_FILES
+        config_files = tuple(map(os.path.expanduser, defaults.CONFIG_FILES))
 
     parser = configparser.RawConfigParser()
 
@@ -671,7 +715,7 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
         return
 
     if 'mypy' not in parser:
-        if filename or file_read not in SHARED_CONFIG_FILES:
+        if filename or file_read not in defaults.SHARED_CONFIG_FILES:
             print("%s: No [mypy] section in config file" % file_read, file=sys.stderr)
     else:
         section = parser['mypy']
@@ -700,9 +744,14 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                 glob = glob.replace(os.sep, '.')
                 if os.altsep:
                     glob = glob.replace(os.altsep, '.')
-                pattern = re.compile(fnmatch.translate(glob))
-                options.per_module_options[pattern] = updates
-                options.unused_configs[pattern] = glob
+
+                if (any(c in glob for c in '?[]!') or
+                        ('*' in glob and (not glob.endswith('.*') or '*' in glob[:-2]))):
+                    print("%s: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'"
+                          % prefix,
+                          file=sys.stderr)
+                else:
+                    options.per_module_options[glob] = updates
 
 
 def parse_section(prefix: str, template: Options,
@@ -714,8 +763,6 @@ def parse_section(prefix: str, template: Options,
     results = {}  # type: Dict[str, object]
     report_dirs = {}  # type: Dict[str, str]
     for key in section:
-        orig_key = key
-        key = key.replace('-', '_')
         if key in config_types:
             ct = config_types[key]
         else:
@@ -724,13 +771,20 @@ def parse_section(prefix: str, template: Options,
                 if key.endswith('_report'):
                     report_type = key[:-7].replace('_', '-')
                     if report_type in reporter_classes:
-                        report_dirs[report_type] = section[orig_key]
+                        report_dirs[report_type] = section[key]
                     else:
-                        print("%s: Unrecognized report type: %s" % (prefix, orig_key),
+                        print("%s: Unrecognized report type: %s" % (prefix, key),
                               file=sys.stderr)
                     continue
-                print("%s: Unrecognized option: %s = %s" % (prefix, key, section[orig_key]),
-                      file=sys.stderr)
+                if key.startswith('x_'):
+                    continue  # Don't complain about `x_blah` flags
+                elif key == 'strict':
+                    print("%s: Strict mode is not supported in configuration files: specify "
+                          "individual flags instead (see 'mypy -h' for the list of flags enabled "
+                          "in strict mode)" % prefix, file=sys.stderr)
+                else:
+                    print("%s: Unrecognized option: %s = %s" % (prefix, key, section[key]),
+                          file=sys.stderr)
                 continue
             ct = type(dv)
         v = None  # type: Any
@@ -749,8 +803,6 @@ def parse_section(prefix: str, template: Options,
         except ValueError as err:
             print("%s: %s: %s" % (prefix, key, err), file=sys.stderr)
             continue
-        if key == 'disallow_any':
-            results['disallow_untyped_defs'] = v and 'unannotated' in v
         if key == 'silent_imports':
             print("%s: silent_imports has been replaced by "
                   "ignore_missing_imports=True; follow_imports=skip" % prefix, file=sys.stderr)

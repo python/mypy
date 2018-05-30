@@ -109,13 +109,6 @@ f(re.match('x*', 'xxy'))
 [out]
 xx
 
-[case testVariableLengthTuple_python2]
-from typing import Tuple, cast
-x = cast(Tuple[int, ...], ())
-print(x)
-[out]
-()
-
 [case testFromFuturePrintFunction_python2]
 from __future__ import print_function
 print('a', 'b')
@@ -162,7 +155,6 @@ _program.py:5: error: Argument 1 to "f" has incompatible type "unicode"; expecte
 _program.py:6: error: Argument 1 to "f" has incompatible type "unicode"; expected "str"
 
 [case testStrUnicodeCompatibility_python2]
-import typing
 def f(s): # type: (unicode) -> None
     pass
 f(u'')
@@ -170,7 +162,6 @@ f('')
 [out]
 
 [case testStrUnicodeCompatibilityInBuiltins_python2]
-import typing
 'x'.count('x')
 'x'.count(u'x')
 [out]
@@ -183,16 +174,6 @@ def f(a): # type: (Sequence[T]) -> None
 f(tuple())
 [out]
 ()
-
-[case testReadOnlyProperty_python2]
-import typing
-class A:
-    @property
-    def foo(self): # type: () -> int
-        return 1
-print(A().foo + 2)
-[out]
-3
 
 [case testIOTypes_python2]
 from typing import IO, TextIO, BinaryIO, Any
@@ -259,19 +240,6 @@ print 'ok'
 [out]
 ok
 
-[case testUnionType_python2]
-from typing import Union
-y = None  # type: Union[int, str]
-def f(x): # type: (Union[int, str]) -> str
-    if isinstance(x, int):
-        x = str(x)
-    return x
-print f(12)
-print f('ab')
-[out]
-12
-ab
-
 [case testStrAdd_python2]
 import typing
 s = ''
@@ -294,21 +262,13 @@ s = ''.join([u''])  # Error
 _program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 _program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
-[case testNamedTuple_python2]
-import typing
-from collections import namedtuple
-X = namedtuple('X', ['a', 'b'])
-x = X(a=1, b='s')
-print x.a, x.b
-[out]
-1 s
-
 [case testNamedTupleError_python2]
 import typing
 from collections import namedtuple
 X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 x.c
+x.a
 [out]
 _program.py:5: error: "X" has no attribute "c"
 
@@ -332,27 +292,6 @@ print 4j / 2.0
 6j
 2j
 
-[case testNamedTupleWithTypes_python2]
-from typing import NamedTuple
-N = NamedTuple('N', [('a', int), ('b', str)])
-n = N(1, 'x')
-print n
-a, b = n
-print a, b
-print n[0]
-[out]
-N(a=1, b='x')
-1 x
-1
-
-[case testUnionTypeAlias_python2]
-from typing import Union
-U = Union[int, str]
-u = 1 # type: U
-u = 1.1
-[out]
-_program.py:4: error: Incompatible types in assignment (expression has type "float", variable has type "Union[int, str]")
-
 [case testSuperNew_python2]
 from typing import Dict, Any
 class MyType(type):
@@ -364,24 +303,6 @@ class A(object):
 print(type(A()).__name__)
 [out]
 Ax
-
-[case testSequenceIndexAndCount_python2]
-from typing import Sequence
-def f(x): # type: (Sequence[int]) -> None
-    print(x.index(1))
-    print(x.count(1))
-f([0, 0, 1, 1, 1])
-[out]
-2
-3
-
-[case testOptional_python2]
-from typing import Optional
-def f(): # type: () -> Optional[int]
-    pass
-x = f()
-y = 1
-y = x
 
 [case testUnicodeAndOverloading_python2]
 from m import f
@@ -398,7 +319,7 @@ def f(x): # type: (unicode) -> int
 def f(x): # type: (bytearray) -> int
   pass
 [out]
-_program.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+_program.py:2: error: No overload variant of "f" matches argument type "int"
 
 [case testByteArrayStrCompatibility_python2]
 def f(x): # type: (str) -> None

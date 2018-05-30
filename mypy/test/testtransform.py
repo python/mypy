@@ -1,16 +1,15 @@
 """Identity AST transform test cases"""
 
 import os.path
-
-from typing import Dict, List
+from typing import List
 
 from mypy import build
 from mypy.build import BuildSource
 from mypy.test.helpers import (
     assert_string_arrays_equal, testfile_pyversion, normalize_error_messages
 )
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
-from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.treetransform import TransformVisitor
 from mypy.types import Type
@@ -18,25 +17,17 @@ from mypy.options import Options
 
 
 class TransformSuite(DataSuite):
+    required_out_section = True
     # Reuse semantic analysis test cases.
-    transform_files = ['semanal-basic.test',
-                       'semanal-expressions.test',
-                       'semanal-classes.test',
-                       'semanal-types.test',
-                       'semanal-modules.test',
-                       'semanal-statements.test',
-                       'semanal-abstractclasses.test',
-                       'semanal-python2.test']
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in cls.transform_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_transform,
-                                  base_path=test_temp_dir,
-                                  native_sep=True)
-        return c
+    files = ['semanal-basic.test',
+             'semanal-expressions.test',
+             'semanal-classes.test',
+             'semanal-types.test',
+             'semanal-modules.test',
+             'semanal-statements.test',
+             'semanal-abstractclasses.test',
+             'semanal-python2.test']
+    native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_transform(testcase)
@@ -72,7 +63,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
-                t = TestTransformVisitor()
+                t = TypeAssertTransformVisitor()
                 f = t.mypyfile(f)
                 a += str(f).split('\n')
     except CompileError as e:
@@ -84,7 +75,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
                                                                 testcase.line))
 
 
-class TestTransformVisitor(TransformVisitor):
+class TypeAssertTransformVisitor(TransformVisitor):
     def type(self, type: Type) -> Type:
         assert type is not None
         return type

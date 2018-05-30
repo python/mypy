@@ -5,12 +5,12 @@ from mypy.nodes import (
     Block, MypyFile, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealTypeExpr,
+    TryStmt, WithStmt, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
     UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr,
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
-    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt,
+    YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, REVEAL_TYPE
 )
 
 
@@ -34,13 +34,14 @@ class TraverserVisitor(NodeVisitor[None]):
             s.accept(self)
 
     def visit_func(self, o: FuncItem) -> None:
-        for arg in o.arguments:
-            init = arg.initialization_statement
-            if init is not None:
-                init.accept(self)
+        if o.arguments is not None:
+            for arg in o.arguments:
+                init = arg.initializer
+                if init is not None:
+                    init.accept(self)
 
-        for arg in o.arguments:
-            self.visit_var(arg.variable)
+            for arg in o.arguments:
+                self.visit_var(arg.variable)
 
         o.body.accept(self)
 
@@ -59,6 +60,8 @@ class TraverserVisitor(NodeVisitor[None]):
         for base in o.base_type_exprs:
             base.accept(self)
         o.defs.accept(self)
+        if o.analyzed:
+            o.analyzed.accept(self)
 
     def visit_decorator(self, o: Decorator) -> None:
         o.func.accept(self)
@@ -126,6 +129,9 @@ class TraverserVisitor(NodeVisitor[None]):
             if tp is not None:
                 tp.accept(self)
             o.handlers[i].accept(self)
+        for v in o.vars:
+            if v is not None:
+                v.accept(self)
         if o.else_body is not None:
             o.else_body.accept(self)
         if o.finally_body is not None:
@@ -175,8 +181,13 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_cast_expr(self, o: CastExpr) -> None:
         o.expr.accept(self)
 
-    def visit_reveal_type_expr(self, o: RevealTypeExpr) -> None:
-        o.expr.accept(self)
+    def visit_reveal_expr(self, o: RevealExpr) -> None:
+        if o.kind == REVEAL_TYPE:
+            assert o.expr is not None
+            o.expr.accept(self)
+        else:
+            # RevealLocalsExpr doesn't have an inner expression
+            pass
 
     def visit_unary_expr(self, o: UnaryExpr) -> None:
         o.expr.accept(self)
@@ -250,6 +261,9 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_await_expr(self, o: AwaitExpr) -> None:
         o.expr.accept(self)
 
+    def visit_super_expr(self, o: SuperExpr) -> None:
+        o.call.accept(self)
+
     def visit_import(self, o: Import) -> None:
         for a in o.assignments:
             a.accept(self)
@@ -264,3 +278,7 @@ class TraverserVisitor(NodeVisitor[None]):
 
     def visit_exec_stmt(self, o: ExecStmt) -> None:
         o.expr.accept(self)
+        if o.globals:
+            o.globals.accept(self)
+        if o.locals:
+            o.locals.accept(self)

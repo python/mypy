@@ -6,11 +6,12 @@ from typing import Dict, List
 
 from mypy import build
 from mypy.build import BuildSource
+from mypy.defaults import PYTHON3_VERSION
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,
 )
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
-from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.nodes import TypeInfo
 from mypy.options import Options
@@ -38,20 +39,13 @@ def get_semanal_options() -> Options:
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
     options.show_traceback = True
+    options.python_version = PYTHON3_VERSION
     return options
 
 
 class SemAnalSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in semanal_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_semanal,
-                                  base_path=test_temp_dir,
-                                  optional_out=True,
-                                  native_sep=True)
-        return c
+    files = semanal_files
+    native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal(testcase)
@@ -101,19 +95,8 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
 # Semantic analyzer error test cases
 
-# Paths to files containing test case descriptions.
-semanal_error_files = ['semanal-errors.test']
-
-
 class SemAnalErrorSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        # Read test cases from test case description files.
-        c = []  # type: List[DataDrivenTestCase]
-        for f in semanal_error_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  test_semanal_error, test_temp_dir, optional_out=True)
-        return c
+    files = ['semanal-errors.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)
@@ -140,18 +123,9 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
 
 # SymbolNode table export test cases
 
-# Test case descriptions
-semanal_symtable_files = ['semanal-symtable.test']
-
-
 class SemAnalSymtableSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in semanal_symtable_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir)
-        return c
+    required_out_section = True
+    files = ['semanal-symtable.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
@@ -179,19 +153,9 @@ class SemAnalSymtableSuite(DataSuite):
 
 
 # Type info export test cases
-
-semanal_typeinfo_files = ['semanal-typeinfo.test']
-
-
 class SemAnalTypeInfoSuite(DataSuite):
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        """Test case descriptions"""
-        c = []  # type: List[DataDrivenTestCase]
-        for f in semanal_typeinfo_files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir)
-        return c
+    required_out_section = True
+    files = ['semanal-typeinfo.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""

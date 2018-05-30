@@ -836,7 +836,7 @@ MypyFile:1(
       ExpressionStmt:4(
         IntExpr(1))))
   ForStmt:5(
-    ListExpr:5(
+    TupleExpr:5(
       NameExpr(x)
       TupleExpr:5(
         NameExpr(y)
@@ -1088,10 +1088,8 @@ MypyFile:1(
   FuncDef:1(
     f
     Args(
-      Var(x))
-    Init(
-      AssignmentStmt:1(
-        NameExpr(x)
+      default(
+        Var(x)
         IntExpr(1)))
     Block:1(
       PassStmt:2()))
@@ -1099,17 +1097,14 @@ MypyFile:1(
     g
     Args(
       Var(x)
-      Var(y)
-      Var(z))
-    Init(
-      AssignmentStmt:3(
-        NameExpr(y)
+      default(
+        Var(y)
         OpExpr:3(
           +
           IntExpr(1)
           IntExpr(2)))
-      AssignmentStmt:3(
-        NameExpr(z)
+      default(
+        Var(z)
         TupleExpr:3(
           IntExpr(1)
           IntExpr(2))))
@@ -1451,10 +1446,8 @@ MypyFile:1(
   ExpressionStmt:1(
     LambdaExpr:1(
       Args(
-        Var(x))
-      Init(
-        AssignmentStmt:1(
-          NameExpr(x)
+        default(
+          Var(x)
           IntExpr(2)))
       Block:1(
         ReturnStmt:1(
@@ -2307,10 +2300,8 @@ MypyFile:1(
     MaxPos(1)
     Args(
       Var(x)
-      Var(y))
-    Init(
-      AssignmentStmt:1(
-        NameExpr(y)
+      default(
+        Var(y)
         IntExpr(1)))
     Block:1(
       PassStmt:1())))
@@ -2324,12 +2315,10 @@ MypyFile:1(
     MaxPos(1)
     Args(
       Var(x)
-      Var(y))
-    def (x: A?, *, y: B? =) -> None?
-    Init(
-      AssignmentStmt:1(
-        NameExpr(y)
+      default(
+        Var(y)
         IntExpr(1)))
+    def (x: A?, *, y: B? =) -> None?
     Block:1(
       PassStmt:1())))
 
@@ -2341,12 +2330,10 @@ MypyFile:1(
     f
     MaxPos(0)
     Args(
-      Var(y))
-    def (*, y: B? =) -> None?
-    Init(
-      AssignmentStmt:1(
-        NameExpr(y)
+      default(
+        Var(y)
         IntExpr(1)))
+    def (*, y: B? =) -> None?
     Block:1(
       PassStmt:1())))
 
@@ -3029,10 +3016,8 @@ MypyFile:1(
     MaxPos(1)
     Args(
       Var(x)
-      Var(y))
-    Init(
-      AssignmentStmt:1(
-        NameExpr(y)
+      default(
+        Var(y)
         NameExpr(None)))
     VarArg(
       Var(args))

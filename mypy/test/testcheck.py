@@ -4,20 +4,17 @@ import os
 import re
 import shutil
 import sys
-import time
-import typed_ast
 
 from typing import Dict, List, Optional, Set, Tuple
 
 from mypy import build, defaults
-from mypy.main import process_options
-from mypy.build import BuildSource, find_module_clear_caches
-from mypy.myunit import AssertionFailure
-from mypy.test.config import test_temp_dir, test_data_prefix
-from mypy.test.data import parse_test_cases, DataDrivenTestCase, DataSuite
+from mypy.build import BuildSource, Graph
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, DeleteFile
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages,
-    retry_on_error, testcase_pyversion, update_testcase_output,
+    assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
+    retry_on_error, update_testcase_output, parse_options,
+    copy_and_fudge_mtime
 )
 from mypy.errors import CompileError
 from mypy.options import Options
@@ -25,7 +22,7 @@ from mypy.options import Options
 from mypy import experiments
 
 # List of files that contain test case descriptions.
-files = [
+typecheck_files = [
     'check-basic.test',
     'check-callable.test',
     'check-classes.test',
@@ -79,91 +76,65 @@ files = [
     'check-incomplete-fixture.test',
     'check-custom-plugin.test',
     'check-default-plugin.test',
+    'check-attr.test',
 ]
 
 
 class TypeCheckSuite(DataSuite):
-
-    @classmethod
-    def cases(cls) -> List[DataDrivenTestCase]:
-        c = []  # type: List[DataDrivenTestCase]
-        for f in files:
-            c += parse_test_cases(os.path.join(test_data_prefix, f),
-                                  None, test_temp_dir, True)
-        return c
+    files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()
                        or 'incremental' in testcase.file
                        or 'serialize' in testcase.file)
-        optional = 'optional' in testcase.file
-        old_strict_optional = experiments.STRICT_OPTIONAL
-        try:
-            if incremental:
-                # Incremental tests are run once with a cold cache, once with a warm cache.
-                # Expect success on first run, errors from testcase.output (if any) on second run.
-                # We briefly sleep to make sure file timestamps are distinct.
-                self.clear_cache()
-                num_steps = max([2] + list(testcase.output2.keys()))
-                # Check that there are no file changes beyond the last run (they would be ignored).
-                for dn, dirs, files in os.walk(os.curdir):
-                    for file in files:
-                        m = re.search(r'\.([2-9])$', file)
-                        if m and int(m.group(1)) > num_steps:
-                            raise ValueError(
-                                'Output file {} exists though test case only has {} runs'.format(
-                                    file, num_steps))
-                for step in range(1, num_steps + 1):
-                    self.run_case_once(testcase, step)
-            elif optional:
-                experiments.STRICT_OPTIONAL = True
-                self.run_case_once(testcase)
-            else:
-                self.run_case_once(testcase)
-        finally:
-            experiments.STRICT_OPTIONAL = old_strict_optional
+        if incremental:
+            # Incremental tests are run once with a cold cache, once with a warm cache.
+            # Expect success on first run, errors from testcase.output (if any) on second run.
+            # We briefly sleep to make sure file timestamps are distinct.
+            num_steps = max([2] + list(testcase.output2.keys()))
+            # Check that there are no file changes beyond the last run (they would be ignored).
+            for dn, dirs, files in os.walk(os.curdir):
+                for file in files:
+                    m = re.search(r'\.([2-9])$', file)
+                    if m and int(m.group(1)) > num_steps:
+                        raise ValueError(
+                            'Output file {} exists though test case only has {} runs'.format(
+                                file, num_steps))
+            steps = testcase.find_steps()
+            for step in range(1, num_steps + 1):
+                idx = step - 2
+                ops = steps[idx] if idx < len(steps) and idx >= 0 else []
+                self.run_case_once(testcase, ops, step)
+        else:
+            self.run_case_once(testcase)
 
-    def clear_cache(self) -> None:
-        dn = defaults.CACHE_DIR
-
-        if os.path.exists(dn):
-            shutil.rmtree(dn)
-
-    def run_case_once(self, testcase: DataDrivenTestCase, incremental_step: int = 0) -> None:
-        find_module_clear_caches()
+    def run_case_once(self, testcase: DataDrivenTestCase,
+                      operations: List[FileOperation] = [],
+                      incremental_step: int = 0) -> None:
         original_program_text = '\n'.join(testcase.input)
         module_data = self.parse_module(original_program_text, incremental_step)
 
-        if incremental_step:
-            if incremental_step == 1:
-                # In run 1, copy program text to program file.
-                for module_name, program_path, program_text in module_data:
-                    if module_name == '__main__':
-                        with open(program_path, 'w') as f:
-                            f.write(program_text)
-                        break
-            elif incremental_step > 1:
-                # In runs 2+, copy *.[num] files to * files.
-                for dn, dirs, files in os.walk(os.curdir):
-                    for file in files:
-                        if file.endswith('.' + str(incremental_step)):
-                            full = os.path.join(dn, file)
-                            target = full[:-2]
-                            # Use retries to work around potential flakiness on Windows (AppVeyor).
-                            retry_on_error(lambda: shutil.copy(full, target))
-
-                            # In some systems, mtime has a resolution of 1 second which can cause
-                            # annoying-to-debug issues when a file has the same size after a
-                            # change. We manually set the mtime to circumvent this.
-                            new_time = os.stat(target).st_mtime + 1
-                            os.utime(target, times=(new_time, new_time))
-                # Delete files scheduled to be deleted in [delete <path>.num] sections.
-                for path in testcase.deleted_paths.get(incremental_step, set()):
+        if incremental_step == 0 or incremental_step == 1:
+            # In run 1, copy program text to program file.
+            for module_name, program_path, program_text in module_data:
+                if module_name == '__main__':
+                    with open(program_path, 'w') as f:
+                        f.write(program_text)
+                    break
+        elif incremental_step > 1:
+            # In runs 2+, copy *.[num] files to * files.
+            for op in operations:
+                if isinstance(op, UpdateFile):
+                    # Modify/create file
+                    copy_and_fudge_mtime(op.source_path, op.target_path)
+                else:
+                    # Delete file
                     # Use retries to work around potential flakiness on Windows (AppVeyor).
+                    path = op.path
                     retry_on_error(lambda: os.remove(path))
 
         # Parse options after moving files (in case mypy.ini is being moved).
-        options = self.parse_options(original_program_text, testcase, incremental_step)
+        options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
         options.show_traceback = True
         if 'optional' in testcase.file:
@@ -171,13 +142,17 @@ class TypeCheckSuite(DataSuite):
         if incremental_step:
             options.incremental = True
         else:
-            options.cache_dir = os.devnull  # Dont waste time writing cache
+            options.incremental = False
+            # Don't waste time writing cache unless we are specifically looking for it
+            if 'writescache' not in testcase.name.lower():
+                options.cache_dir = os.devnull
 
         sources = []
         for module_name, program_path, program_text in module_data:
             # Always set to none so we're forced to reread the module in incremental mode
             sources.append(BuildSource(program_path, module_name,
                                        None if incremental_step else program_text))
+
         res = None
         try:
             res = build.build(sources=sources,
@@ -203,86 +178,61 @@ class TypeCheckSuite(DataSuite):
         else:
             raise AssertionError()
 
-        if output != a and self.update_data:
+        if output != a and testcase.config.getoption('--update-data', False):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
-        if incremental_step and res:
-            if options.follow_imports == 'normal' and testcase.output is None:
-                self.verify_cache(module_data, a, res.manager)
+        if res:
+            if options.cache_dir != os.devnull:
+                self.verify_cache(module_data, res.errors, res.manager, res.graph)
+
             if incremental_step > 1:
                 suffix = '' if incremental_step == 2 else str(incremental_step - 1)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'rechecked' + suffix,
                     testcase.expected_rechecked_modules.get(incremental_step - 1),
                     res.manager.rechecked_modules)
-                self.check_module_equivalence(
+                assert_module_equivalence(
                     'stale' + suffix,
                     testcase.expected_stale_modules.get(incremental_step - 1),
                     res.manager.stale_modules)
 
-    def check_module_equivalence(self, name: str,
-                                 expected: Optional[Set[str]], actual: Set[str]) -> None:
-        if expected is not None:
-            expected_normalized = sorted(expected)
-            actual_normalized = sorted(actual.difference({"__main__"}))
-            assert_string_arrays_equal(
-                expected_normalized,
-                actual_normalized,
-                ('Actual modules ({}) do not match expected modules ({}) '
-                 'for "[{} ...]"').format(
-                    ', '.join(actual_normalized),
-                    ', '.join(expected_normalized),
-                    name))
-
     def verify_cache(self, module_data: List[Tuple[str, str, str]], a: List[str],
-                     manager: build.BuildManager) -> None:
+                     manager: build.BuildManager, graph: Graph) -> None:
         # There should be valid cache metadata for each module except
-        # those in error_paths; for those there should not be.
-        #
-        # NOTE: When A imports B and there's an error in B, the cache
-        # data for B is invalidated, but the cache data for A remains.
-        # However build.process_graphs() will ignore A's cache data.
-        #
-        # Also note that when A imports B, and there's an error in A
-        # _due to a valid change in B_, the cache data for B will be
-        # invalidated and updated, but the old cache data for A will
-        # remain unchanged. As before, build.process_graphs() will
-        # ignore A's (old) cache data.
-        error_paths = self.find_error_paths(a)
-        modules = self.find_module_files()
+        # for those that had an error in themselves or one of their
+        # dependencies.
+        error_paths = self.find_error_message_paths(a)
+        if manager.options.quick_and_dirty:
+            busted_paths = error_paths
+        else:
+            busted_paths = {m.path for id, m in manager.modules.items()
+                            if graph[id].transitive_error}
+        modules = self.find_module_files(manager)
         modules.update({module_name: path for module_name, path, text in module_data})
         missing_paths = self.find_missing_cache_files(modules, manager)
-        if not missing_paths.issubset(error_paths):
-            raise AssertionFailure("cache data discrepancy %s != %s" %
-                                   (missing_paths, error_paths))
+        # We would like to assert error_paths.issubset(busted_paths)
+        # but this runs into trouble because while some 'notes' are
+        # really errors that cause an error to be marked, many are
+        # just notes attached to other errors.
+        assert error_paths or not busted_paths, "Some modules reported error despite no errors"
+        if not missing_paths == busted_paths:
+            raise AssertionError("cache data discrepancy %s != %s" %
+                                 (missing_paths, busted_paths))
 
-    def find_error_paths(self, a: List[str]) -> Set[str]:
+    def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()
         for line in a:
-            m = re.match(r'([^\s:]+):\d+: error:', line)
+            m = re.match(r'([^\s:]+):(\d+:)?(\d+:)? (error|warning|note):', line)
             if m:
-                # Normalize to Linux paths.
-                p = m.group(1).replace(os.path.sep, '/')
+                p = m.group(1)
                 hits.add(p)
         return hits
 
-    def find_module_files(self) -> Dict[str, str]:
+    def find_module_files(self, manager: build.BuildManager) -> Dict[str, str]:
         modules = {}
-        for dn, dirs, files in os.walk(test_temp_dir):
-            dnparts = dn.split(os.sep)
-            assert dnparts[0] == test_temp_dir
-            del dnparts[0]
-            for file in files:
-                if file.endswith('.py'):
-                    if file == "__init__.py":
-                        # If the file path is `a/b/__init__.py`, exclude the file name
-                        # and make sure the module id is just `a.b`, not `a.b.__init__`.
-                        id = '.'.join(dnparts)
-                    else:
-                        base, ext = os.path.splitext(file)
-                        id = '.'.join(dnparts + [base])
-                    modules[id] = os.path.join(dn, file)
+        for id, module in manager.modules.items():
+            modules[id] = module.path
         return modules
 
     def find_missing_cache_files(self, modules: Dict[str, str],
@@ -328,7 +278,8 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             for module_name in module_names.split(' '):
-                path = build.find_module(module_name, [test_temp_dir])
+                path = build.FindModuleCache().find_module(module_name, (test_temp_dir,),
+                                                           sys.executable)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()
@@ -336,30 +287,3 @@ class TypeCheckSuite(DataSuite):
             return out
         else:
             return [('__main__', 'main', program_text)]
-
-    def parse_options(self, program_text: str, testcase: DataDrivenTestCase,
-                      incremental_step: int) -> Options:
-        options = Options()
-        flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
-        if incremental_step > 1:
-            flags2 = re.search('# flags{}: (.*)$'.format(incremental_step), program_text,
-                               flags=re.MULTILINE)
-            if flags2:
-                flags = flags2
-
-        flag_list = None
-        if flags:
-            flag_list = flags.group(1).split()
-            targets, options = process_options(flag_list, require_targets=False)
-            if targets:
-                # TODO: support specifying targets via the flags pragma
-                raise RuntimeError('Specifying targets via the flags pragma is not supported.')
-        else:
-            options = Options()
-
-        # Allow custom python version to override testcase_pyversion
-        if (not flag_list or
-                all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
-            options.python_version = testcase_pyversion(testcase.file, testcase.name)
-
-        return options

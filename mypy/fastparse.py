@@ -68,8 +68,9 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 def parse(source: Union[str, bytes],
           fnam: str,
+          module: Optional[str],
           errors: Optional[Errors] = None,
-          options: Options = Options()) -> MypyFile:
+          options: Optional[Options] = None) -> MypyFile:
 
     """Parse a source file, without doing any semantic analysis.
 
@@ -80,7 +81,9 @@ def parse(source: Union[str, bytes],
     if errors is None:
         errors = Errors()
         raise_on_error = True
-    errors.set_file(fnam, None)
+    if options is None:
+        options = Options()
+    errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
     try:
         if is_stub_file:
@@ -97,7 +100,7 @@ def parse(source: Union[str, bytes],
         tree.path = fnam
         tree.is_stub = is_stub_file
     except SyntaxError as e:
-        errors.report(e.lineno, e.offset, e.msg)
+        errors.report(e.lineno, e.offset, e.msg, blocker=True)
         tree = MypyFile([], [], False, set())
 
     if raise_on_error and errors.is_errors():
@@ -111,7 +114,7 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
         typ = ast3.parse(type_comment, '<type_comment>', 'eval')
     except SyntaxError as e:
         if errors is not None:
-            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR)
+            errors.report(line, e.offset, TYPE_COMMENT_SYNTAX_ERROR, blocker=True)
             return None
         else:
             raise
@@ -157,8 +160,11 @@ class ASTConverter(ast3.NodeTransformer):
         self.is_stub = is_stub
         self.errors = errors
 
+    def note(self, msg: str, line: int, column: int) -> None:
+        self.errors.report(line, column, msg, severity='note')
+
     def fail(self, msg: str, line: int, column: int) -> None:
-        self.errors.report(line, column, msg)
+        self.errors.report(line, column, msg, blocker=True)
 
     def generic_visit(self, node: ast3.AST) -> None:
         raise RuntimeError('AST node not implemented: ' + str(type(node)))
@@ -356,6 +362,9 @@ class ASTConverter(ast3.NodeTransformer):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
+                if n.type_comment and n.type_comment[0] != "(":
+                    self.note('Suggestion: wrap argument types in parentheses',
+                              n.lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
         else:
@@ -389,8 +398,7 @@ class ASTConverter(ast3.NodeTransformer):
                        self.as_required_block(n.body, n.lineno),
                        func_type)
         if is_coroutine:
-            # A coroutine is also a generator, mostly for internal reasons.
-            func_def.is_generator = func_def.is_coroutine = True
+            func_def.is_coroutine = True
         if func_type is not None:
             func_type.definition = func_def
             func_type.line = n.lineno
@@ -651,8 +659,8 @@ class ASTConverter(ast3.NodeTransformer):
     def visit_ImportFrom(self, n: ast3.ImportFrom) -> ImportBase:
         assert n.level is not None
         if len(n.names) == 1 and n.names[0].name == '*':
-            assert n.module is not None
-            i = ImportAll(n.module, n.level)  # type: ImportBase
+            mod = n.module if n.module is not None else ''
+            i = ImportAll(mod, n.level)  # type: ImportBase
         else:
             i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
                            n.level,
@@ -951,8 +959,12 @@ class ASTConverter(ast3.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     @with_line
-    def visit_List(self, n: ast3.List) -> ListExpr:
-        return ListExpr([self.visit(e) for e in n.elts])
+    def visit_List(self, n: ast3.List) -> Union[ListExpr, TupleExpr]:
+        expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
+        if isinstance(n.ctx, ast3.Store):
+            # [x, y] = z and (x, y) = z means exactly the same thing
+            return TupleExpr(expr_list)
+        return ListExpr(expr_list)
 
     # Tuple(expr* elts, expr_context ctx)
     @with_line
@@ -1013,7 +1025,11 @@ class TypeConverter(ast3.NodeTransformer):
 
     def fail(self, msg: str, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg)
+            self.errors.report(line, column, msg, blocker=True)
+
+    def note(self, msg: str, line: int, column: int) -> None:
+        if self.errors:
+            self.errors.report(line, column, msg, severity='note')
 
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
@@ -1031,12 +1047,19 @@ class TypeConverter(ast3.NodeTransformer):
 
     def visit_Call(self, e: ast3.Call) -> Type:
         # Parse the arg constructor
-        if not isinstance(self.parent(), ast3.List):
-            return self.generic_visit(e)
         f = e.func
         constructor = stringify_name(f)
+
+        if not isinstance(self.parent(), ast3.List):
+            self.fail(TYPE_COMMENT_AST_ERROR, self.line, e.col_offset)
+            if constructor:
+                self.note("Suggestion: use {}[...] instead of {}(...)".format(
+                    constructor, constructor),
+                    self.line, e.col_offset)
+            return AnyType(TypeOfAny.from_error)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
+
         name = None  # type: Optional[str]
         default_type = AnyType(TypeOfAny.special_form)
         typ = default_type  # type: Type
@@ -1135,6 +1158,7 @@ class TypeConverter(ast3.NodeTransformer):
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Type:
+        assert isinstance(n.ctx, ast3.Load)
         return self.translate_argument_list(n.elts)
 
 
