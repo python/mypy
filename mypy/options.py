@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import fnmatch
 import re
 import pprint
 import sys
@@ -221,16 +220,17 @@ class Options:
 
         # Config precedence is as follows:
         #  1. Concrete section names: foo.bar.baz
-        #  2. "Unstructured" glob patterns: foo.*.baz, in the order they appear in the file
+        #  2. "Unstructured" glob patterns: foo.*.baz, in the order they appear in the file (last wins)
         #  3. "Well-structured" wildcard patterns: foo.bar.*, in specificity order.
 
-        # Since structured configs inherit from glob configs above them in the hierarchy,
+        # Since structured configs inherit from structured configs above them in the hierarchy,
         # we need to process per-module configs in a careful order.
         # We have to process foo.* before foo.bar.* before foo.bar,
         # and we need to apply *.bar to foo.bar but not to foo.bar.*.
         # To do this, process all well-structured glob configs before non-glob configs and
         # exploit the fact that foo.* sorts earlier ASCIIbetically (unicodebetically?)
         # than foo.bar.*.
+        # (A section being "processed last" results in its config "winning".)
         # Unstructured glob configs are stored and are all checked for each module.
         unstructured_glob_keys = [k for k in self.per_module_options.keys()
                                   if '*' in k[:-1]]
@@ -240,7 +240,7 @@ class Options:
         concrete = [k for k in structured_keys if not k.endswith('.*')]
 
         for glob in unstructured_glob_keys:
-            self.glob_options.append((glob, re.compile(fnmatch.translate(glob))))
+            self.glob_options.append((glob, self.compile_glob(glob)))
 
         # We (for ease of implementation) treat unstructured glob
         # sections as used if any real modules use them or if any
@@ -253,8 +253,7 @@ class Options:
             # on inheriting from parent configs.
             options = self.clone_for_module(key)
             # And then update it with its per-module options.
-            new_options = options.apply_changes(self.per_module_options[key])
-            self.per_module_cache[key] = new_options
+            self.per_module_cache[key] = options.apply_changes(self.per_module_options[key])
 
         # Add the more structured sections into unused configs, since
         # they only count as used if actually used by a real module.
@@ -289,10 +288,11 @@ class Options:
                 options = self.per_module_cache[key]
                 break
 
-        # OK and *now* we need to look for glob matches
+        # OK and *now* we need to look for unstructured glob matches.
+        # We only do this for concrete modules, not structured wildcards.
         if not module.endswith('.*'):
             for key, pattern in self.glob_options:
-                if self.module_matches_pattern(module, pattern):
+                if pattern.match(module):
                     self.unused_configs.discard(key)
                     options = options.apply_changes(self.per_module_options[key])
 
@@ -302,11 +302,13 @@ class Options:
 
         return options
 
-    def module_matches_pattern(self, module: str, pattern: Pattern[str]) -> bool:
-        # If the pattern is 'mod.*', we want 'mod' to match that too.
-        # (That's so that a pattern specifying a package also matches
-        # that package's __init__.)
-        return pattern.match(module) is not None or pattern.match(module + '.') is not None
+    def compile_glob(self, s: str) -> Pattern[str]:
+        # Compile one of the glob patterns to a regex so that '.*' can
+        # match *zero or more* module sections. This means we compile
+        # '.*' into '(\..*)?'. We also need to escape .s in the glob, so
+        # we hackily rewrite .s to ,s to accomplish this.
+        s = s.replace('.', ',').replace(',*', '(\..*)?').replace(',', '\.')
+        return re.compile(s + '\\Z')
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
         return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}

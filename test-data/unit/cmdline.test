@@ -1192,7 +1192,7 @@ warn_unused_configs = True
 Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
 == Return code: 0
 
-[case testConfigNonsense]
+[case testConfigUnstructuredGlob]
 # cmd: mypy emarg
 [file mypy.ini]
 [[mypy]
@@ -1205,6 +1205,8 @@ ignore_errors = true
 ignore_errors = false
 [file emarg/__init__.py]
 [file emarg/foo.py]
+fail
+[file emarg/villip.py]
 fail
 [file emarg/hatch/__init__.py]
 [file emarg/hatch/villip/__init__.py]

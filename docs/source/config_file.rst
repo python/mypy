@@ -43,8 +43,8 @@ characters.
 
   Patterns may also be "unstructured" wildcards, in which stars may
   appear in the middle of a name (e.g
-  ``site.*.migrations.*``). Internal stars match one or more module
-  components.
+  ``site.*.migrations.*``). Stars match zero or more module
+  components (so ``site.*.migrations.*`` can match ``site.migrations``).
 
   When options conflict, the precedence order for the configuration sections is:
     1. Sections with concrete module names (``foo.bar``)
@@ -55,6 +55,10 @@ characters.
        (``foo.bar.*``), with more specific overriding more general.
     4. Command line options.
     5. Top-level configuration file options.
+
+The difference in precedence order between "structured" patterns (by
+specificity) and "unstructured" patterns (by order in the file) is
+unfortunate, and is subject to change in future versions.
 
 .. note::
 
