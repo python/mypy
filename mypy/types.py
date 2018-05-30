@@ -1,5 +1,6 @@
 """Classes for representing mypy types."""
 
+import sys
 import copy
 from abc import abstractmethod
 from collections import OrderedDict
@@ -750,6 +751,7 @@ class CallableType(FunctionLike):
                       line: int = _dummy,
                       column: int = _dummy,
                       is_ellipsis_args: bool = _dummy,
+                      implicit: bool = _dummy,
                       special_sig: Optional[str] = _dummy,
                       from_type_type: bool = _dummy,
                       bound_args: List[Optional[Type]] = _dummy,
@@ -767,7 +769,7 @@ class CallableType(FunctionLike):
             column=column if column is not _dummy else self.column,
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
-            implicit=self.implicit,
+            implicit=implicit if implicit is not _dummy else self.implicit,
             is_classmethod_class=self.is_classmethod_class,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
@@ -806,6 +808,15 @@ class CallableType(FunctionLike):
         if self.is_var_arg:
             n -= 1
         return n
+
+    def max_possible_positional_args(self) -> int:
+        """Returns maximum number of positional arguments this method could possibly accept.
+
+        This takes into acount *arg and **kwargs but excludes keyword-only args."""
+        if self.is_var_arg or self.is_kw_arg:
+            return sys.maxsize
+        blacklist = (ARG_NAMED, ARG_NAMED_OPT)
+        return len([kind not in blacklist for kind in self.arg_kinds])
 
     def corresponding_argument(self, model: FormalArgument) -> Optional[FormalArgument]:
         """Return the argument in this function that corresponds to `model`"""

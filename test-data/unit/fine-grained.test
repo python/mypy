@@ -2055,6 +2055,7 @@ def g() -> None: pass
 ==
 main:2: error: Cannot find module named 'm'
 main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:7: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 main:9: error: Cannot find module named 'n'
 
 [case testOverloadSpecialCase]
@@ -2083,6 +2084,7 @@ def g() -> None: pass
 ==
 main:2: error: Cannot find module named 'm'
 main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:12: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 main:14: error: Cannot find module named 'n'
 
 [case testRefreshGenericClass]
