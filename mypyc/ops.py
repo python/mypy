@@ -513,7 +513,6 @@ class Return(Op):
 
     def __init__(self, reg: Register, line: int = -1) -> None:
         super().__init__(line)
-        assert isinstance(reg, int), 'Invalid register: %r' % reg
         self.reg = reg
 
     def to_str(self, env: Environment) -> str:
@@ -904,12 +903,12 @@ class GetAttr(StrictRegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Register, obj: Register, attr: str, rtype: RInstance,
+    def __init__(self, dest: Register, obj: Register, attr: str, class_type: RInstance,
                  line: int) -> None:
         super().__init__(dest, line)
         self.obj = obj
         self.attr = attr
-        self.rtype = rtype
+        self.class_rtype = class_type
 
     def sources(self) -> List[Register]:
         return [self.obj]
@@ -971,7 +970,7 @@ class TupleSet(StrictRegisterOp):
     def __init__(self, dest: Register, items: List[Register], typ: RTuple, line: int) -> None:
         super().__init__(dest, line)
         self.items = items
-        self.type = typ
+        self.tuple_type = typ
 
     def sources(self) -> List[Register]:
         return self.items[:]
@@ -1043,13 +1042,13 @@ class Box(StrictRegisterOp):
     def __init__(self, dest: Register, src: Register, typ: RType, line: int = -1) -> None:
         super().__init__(dest, line)
         self.src = src
-        self.type = typ
+        self.src_type = typ
 
     def sources(self) -> List[Register]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = box(%s, %r)', self.dest, self.type, self.src)
+        return env.format('%r = box(%s, %r)', self.dest, self.src_type, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_box(self)

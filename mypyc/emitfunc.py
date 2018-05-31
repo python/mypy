@@ -136,7 +136,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_tuple_set(self, op: TupleSet) -> None:
         dest = self.reg(op.dest)
-        tuple_type = op.type
+        tuple_type = op.tuple_type
         self.emitter.declare_tuple_struct(tuple_type)
         for i, item in enumerate(op.items):
             self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(item)))
@@ -164,7 +164,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op.dest)
         obj = self.reg(op.obj)
-        rtype = op.rtype
+        rtype = op.class_rtype
         self.emit_line('%s = CPY_GET_ATTR(%s, %d, %s, %s);' % (
             dest, obj,
             rtype.getter_index(op.attr),
@@ -243,7 +243,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_dec_ref(dest, op.target_type)
 
     def visit_box(self, op: Box) -> None:
-        self.emitter.emit_box(self.reg(op.src), self.reg(op.dest), op.type)
+        self.emitter.emit_box(self.reg(op.src), self.reg(op.dest), op.src_type)
 
     def visit_cast(self, op: Cast) -> None:
         self.emitter.emit_cast(self.reg(op.src), self.reg(op.dest), op.typ)
