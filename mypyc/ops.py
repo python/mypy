@@ -886,13 +886,13 @@ class LoadErrorValue(StrictRegisterOp):
 
     def __init__(self, dest: Register, rtype: RType, line: int = -1) -> None:
         super().__init__(dest, line)
-        self.rtype = rtype
+        self.type = rtype
 
     def sources(self) -> List[Register]:
         return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = <error> :: %s', self.dest, self.rtype)
+        return env.format('%r = <error> :: %s', self.dest, self.type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_error_value(self)
@@ -903,12 +903,13 @@ class GetAttr(StrictRegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Register, obj: Register, attr: str, class_type: RInstance,
+    def __init__(self, dest: Register, obj: Register, attr: str,
+                 class_type: RInstance,
                  line: int) -> None:
         super().__init__(dest, line)
         self.obj = obj
         self.attr = attr
-        self.class_rtype = class_type
+        self.class_type = class_type
 
     def sources(self) -> List[Register]:
         return [self.obj]
@@ -925,13 +926,14 @@ class SetAttr(StrictRegisterOp):
 
     error_kind = ERR_FALSE
 
-    def __init__(self, dest: Register, obj: Register, attr: str, src: Register, rtype: RInstance,
+    def __init__(self, dest: Register, obj: Register, attr: str, src: Register,
+                 class_type: RInstance,
                  line: int) -> None:
         super().__init__(dest, line)
         self.obj = obj
         self.attr = attr
         self.src = src
-        self.rtype = rtype
+        self.class_type = class_type
 
     def sources(self) -> List[Register]:
         return [self.obj, self.src]

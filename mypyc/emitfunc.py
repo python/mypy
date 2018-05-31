@@ -152,19 +152,19 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_line('%s = %d;' % (dest, op.value * 2))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
-        if isinstance(op.rtype, RTuple):
-            values = [item.c_undefined_value() for item in op.rtype.types]
+        if isinstance(op.type, RTuple):
+            values = [item.c_undefined_value() for item in op.type.types]
             tmp = self.temp_name()
-            self.emit_line('%s %s = { %s };' % (op.rtype.ctype, tmp, ', '.join(values)))
+            self.emit_line('%s %s = { %s };' % (op.type.ctype, tmp, ', '.join(values)))
             self.emit_line('%s = %s;' % (self.reg(op.dest), tmp))
         else:
             self.emit_line('%s = %s;' % (self.reg(op.dest),
-                                         op.rtype.c_error_value()))
+                                         op.type.c_error_value()))
 
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op.dest)
         obj = self.reg(op.obj)
-        rtype = op.class_rtype
+        rtype = op.class_type
         self.emit_line('%s = CPY_GET_ATTR(%s, %d, %s, %s);' % (
             dest, obj,
             rtype.getter_index(op.attr),
@@ -175,7 +175,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op.dest)
         obj = self.reg(op.obj)
         src = self.reg(op.src)
-        rtype = op.rtype
+        rtype = op.class_type
         # TODO: Track errors
         self.emit_line('%s = CPY_SET_ATTR(%s, %d, %s, %s, %s);' % (
             dest,
