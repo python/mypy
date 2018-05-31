@@ -5,10 +5,10 @@ from abc import abstractmethod
 from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional
 
 from mypyc.ops import (
-    BasicBlock, OpVisitor, PrimitiveOp, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto,
+    BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
-    TupleGet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register,
-    PyMethodCall,
+    TupleGet, TupleSet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register,
+    PyMethodCall, PrimitiveOp
 )
 
 
@@ -120,6 +120,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_tuple_get(self, op: TupleGet) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_tuple_set(self, op: TupleSet) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_box(self, op: Box) -> GenAndKill:

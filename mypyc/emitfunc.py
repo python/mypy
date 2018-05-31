@@ -3,9 +3,9 @@
 from mypyc.common import REG_PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
-    FuncIR, OpVisitor, Goto, Branch, Return, PrimitiveOp, Assign, LoadInt, LoadErrorValue, GetAttr,
-    SetAttr, LoadStatic, TupleGet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast, Unbox, Label,
-    Register, RType, OP_BINARY, RTuple, PyMethodCall
+    FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr,
+    SetAttr, LoadStatic, TupleGet, TupleSet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast,
+    Unbox, Label, Register, RType, RTuple, PyMethodCall, PrimitiveOp, EmitterInterface
 )
 
 
@@ -46,7 +46,7 @@ def generate_native_function(fn: FuncIR, emitter: Emitter, source_path: str) -> 
     emitter.emit_from_emitter(body)
 
 
-class FunctionEmitterVisitor(OpVisitor[None]):
+class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def __init__(self,
                  emitter: Emitter,
                  declarations: Emitter,
@@ -123,142 +123,24 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         regstr = self.reg(op.reg)
         self.emit_line('return %s;' % regstr)
 
-    OP_MAP = {
-        PrimitiveOp.INT_ADD: 'CPyTagged_Add',
-        PrimitiveOp.INT_SUB: 'CPyTagged_Subtract',
-        PrimitiveOp.INT_MUL: 'CPyTagged_Multiply',
-        PrimitiveOp.INT_DIV: 'CPyTagged_FloorDivide',
-        PrimitiveOp.INT_MOD: 'CPyTagged_Remainder',
-    }
-
-    UNARY_OP_MAP = {
-        PrimitiveOp.INT_NEG: 'CPy_NegateInt',
-    }
-
     def visit_primitive_op(self, op: PrimitiveOp) -> None:
-        # N.B: PrimitiveOp has support for is_void ops that don't have
-        # destinations, but none currently exist.
-        # So that we can assert that op.desc isn't None, we can handle
-        # is_void ops first.
-        if op.desc.is_void:
-            assert False, "No is_void ops implemented yet"
-
-        assert op.dest is not None
-        dest = self.reg(op.dest)
-
-        if op.desc.kind == OP_BINARY:
-            left = self.reg(op.args[0])
-            right = self.reg(op.args[1])
-            if op.desc in FunctionEmitterVisitor.OP_MAP:
-                fn = FunctionEmitterVisitor.OP_MAP[op.desc]
-                self.emit_line('%s = %s(%s, %s);' % (dest, fn, left, right))
-            elif op.desc is PrimitiveOp.LIST_GET:
-                self.emit_line('%s = CPyList_GetItem(%s, %s);' % (dest, left, right))
-            elif op.desc is PrimitiveOp.DICT_GET:
-                self.emit_lines('%s = PyDict_GetItemWithError(%s, %s);' % (dest, left, right),
-                                'if (!%s)' % dest,
-                                '    PyErr_SetObject(PyExc_KeyError, %s);' % right,
-                                'else',
-                                '    Py_INCREF(%s);' % dest)
-            elif op.desc is PrimitiveOp.LIST_REPEAT:
-                temp = self.temp_name()
-                self.declarations.emit_line('long long %s;' % temp)
-                self.emit_lines(
-                    '%s = CPyTagged_AsLongLong(%s);' % (temp, right),
-                    'if (%s == -1 && PyErr_Occurred())' % temp,
-                    '    CPyError_OutOfMemory();',
-                    '%s = PySequence_Repeat(%s, %s);' % (dest, left, temp))
-            elif op.desc is PrimitiveOp.HOMOGENOUS_TUPLE_GET:
-                self.emit_line('%s = CPySequenceTuple_GetItem(%s, %s);' % (dest, left, right))
-            elif op.desc is PrimitiveOp.DICT_CONTAINS:
-                temp = self.temp_name()
-                self.emit_lines('int %s = PyDict_Contains(%s, %s);' % (temp, right, left),
-                                'if (%s < 0)' % temp,
-                                '    abort();',  # TODO: Error handling
-                                '%s = %s;' % (dest, temp))
-            else:
-                assert False, op.desc
-
-        elif op.desc is PrimitiveOp.LIST_SET:
-            self.emit_line('%s = CPyList_SetItem(%s, %s, %s) != 0;' % (dest,
-                                                                       self.reg(op.args[0]),
-                                                                       self.reg(op.args[1]),
-                                                                       self.reg(op.args[2])))
-
-        elif op.desc is PrimitiveOp.DICT_SET:
-            self.emit_line('%s = PyDict_SetItem(%s, %s, %s) >= 0;' % (dest,
-                                                                      self.reg(op.args[0]),
-                                                                      self.reg(op.args[1]),
-                                                                      self.reg(op.args[2])))
-
-        elif op.desc is PrimitiveOp.NONE:
-            self.emit_lines(
-                '{} = Py_None;'.format(dest),
-                'Py_INCREF({});'.format(dest),
-            )
-
-        elif op.desc is PrimitiveOp.TRUE:
-            self.emit_line('{} = 1;'.format(dest))
-
-        elif op.desc is PrimitiveOp.FALSE:
-            self.emit_line('{} = 0;'.format(dest))
-
-        elif op.desc is PrimitiveOp.NEW_LIST:
-            # TODO: This would be better split into multiple smaller ops.
-            self.emit_line('%s = PyList_New(%d); ' % (dest, len(op.args)))
-            for arg in op.args:
-                self.emit_line('Py_INCREF(%s);' % self.reg(arg))
-            self.emit_line('if (%s != NULL) {' % dest)
-            for i, arg in enumerate(op.args):
-                reg = self.reg(arg)
-                self.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, reg))
-            self.emit_line('}')
-
-        elif op.desc is PrimitiveOp.NEW_TUPLE:
-            tuple_type = self.env.types[op.dest]
-            assert isinstance(tuple_type, RTuple)
-            self.emitter.declare_tuple_struct(tuple_type)
-            for i, arg in enumerate(op.args):
-                self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(arg)))
-            self.emit_inc_ref(dest, tuple_type)
-
-        elif op.desc is PrimitiveOp.NEW_DICT:
-            self.emit_line('%s = PyDict_New();' % dest)
-
-        elif op.desc is PrimitiveOp.LIST_APPEND:
-            self.emit_line(
-                '%s = PyList_Append(%s, %s) != -1;' % (self.reg(op.dest),
-                                                       self.reg(op.args[0]),
-                                                       self.reg(op.args[1])))
-
-        elif op.desc is PrimitiveOp.DICT_UPDATE:
-            # NOTE: PyDict_Update is technically not equivalent to update, but the cases where it
-            # differs (when the second argument has no keys) should never typecheck for us, so the
-            # difference is irrelevant.
-            self.emit_line(
-                '%s = PyDict_Update(%s, %s) != -1;' % (self.reg(op.dest),
-                                                       self.reg(op.args[0]),
-                                                       self.reg(op.args[1])))
-
+        args = [self.reg(arg) for arg in op.args]
+        if op.dest is not None:
+            dest = self.reg(op.dest)
         else:
-            assert len(op.args) == 1
-            src = self.reg(op.args[0])
-            if op.desc is PrimitiveOp.LIST_LEN:
-                temp = self.temp_name()
-                self.declarations.emit_line('long long %s;' % temp)
-                self.emit_line('%s = PyList_GET_SIZE(%s);' % (temp, src))
-                self.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
-            elif op.desc is PrimitiveOp.HOMOGENOUS_TUPLE_LEN:
-                temp = self.temp_name()
-                self.declarations.emit_line('long long %s;' % temp)
-                self.emit_line('%s = PyTuple_GET_SIZE(%s);' % (temp, src))
-                self.emit_line('%s = CPyTagged_ShortFromLongLong(%s);' % (dest, temp))
-            elif op.desc is PrimitiveOp.LIST_TO_HOMOGENOUS_TUPLE:
-                self.emit_line('%s = PyList_AsTuple(%s);' % (dest, src))
-            else:
-                # Simple unary op
-                fn = FunctionEmitterVisitor.UNARY_OP_MAP[op.desc]
-                self.emit_line('%s = %s(%s);' % (dest, fn, src))
+            # This will generate a C compile error if used. The reason for this
+            # is that we don't want to insert "assert dest is not None" checks
+            # everywhere.
+            dest = '<undefined dest>'
+        op.desc.emit(self, args, dest)
+
+    def visit_tuple_set(self, op: TupleSet) -> None:
+        dest = self.reg(op.dest)
+        tuple_type = op.type
+        self.emitter.declare_tuple_struct(tuple_type)
+        for i, item in enumerate(op.items):
+            self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(item)))
+        self.emit_inc_ref(dest, tuple_type)
 
     def visit_assign(self, op: Assign) -> None:
         dest = self.reg(op.dest)
@@ -391,3 +273,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def emit_dec_ref(self, dest: str, rtype: RType) -> None:
         self.emitter.emit_dec_ref(dest, rtype)
+
+    def emit_declaration(self, line: str) -> None:
+        self.declarations.emit_line(line)

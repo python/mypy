@@ -103,10 +103,10 @@ L0:
     r0 = 0
     r1 = 0
     r2 = box(int, r1)
-    x[r0] = r2 :: list; r3 = is_error
+    r3 = x.__setitem__(r0, r2)
     r4 = 1
     r5 = None
-    x[r4] = r5 :: list; r6 = is_error
+    r6 = x.__setitem__(r4, r5)
     r7 = None
     return r7
 

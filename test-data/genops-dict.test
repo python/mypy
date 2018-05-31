@@ -33,7 +33,7 @@ L0:
     r1 = box(int, r0)
     r2 = False
     r3 = box(bool, r2)
-    d[r1] = r3 :: dict; r4 = is_error
+    r4 = d.__setitem__(r1, r3)
     r5 = None
     return r5
 
@@ -116,6 +116,6 @@ def f(a, b):
     r0 :: bool
     r1 :: None
 L0:
-    r0 = a.update b :: dict
+    r0 = a.update(b)
     r1 = None
     return r1

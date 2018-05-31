@@ -67,7 +67,7 @@ L0:
     r0 = 0
     r1 = 1
     r2 = box(int, r1)
-    x[r0] = r2 :: list; r3 = is_error
+    r3 = x.__setitem__(r0, r2)
     r4 = None
     return r4
 
@@ -91,17 +91,15 @@ def f() -> None:
 [out]
 def f():
     x :: list
-    r0 :: int
-    r1 :: object
-    r2 :: int
-    r3 :: object
+    r0, r1 :: int
+    r2, r3 :: object
     r4 :: None
 L0:
     r0 = 1
-    r1 = box(int, r0)
-    r2 = 2
-    r3 = box(int, r2)
-    x = [r1, r3]
+    r1 = 2
+    r2 = box(int, r0)
+    r3 = box(int, r1)
+    x = [r2, r3]
     r4 = None
     return r4
 
@@ -113,19 +111,18 @@ def f(a: List[int]) -> None:
 [out]
 def f(a):
     a, b :: list
-    r0, r1 :: int
-    r2 :: list
-    r3 :: int
+    r0, r1, r2 :: int
+    r3 :: list
     r4 :: object
     r5 :: None
 L0:
     r0 = 2
     b = a * r0 :: list
     r1 = 3
-    r3 = 4
-    r4 = box(int, r3)
-    r2 = [r4]
-    b = r2 * r1 :: list
+    r2 = 4
+    r4 = box(int, r2)
+    r3 = [r4]
+    b = r1 * r3 :: list
     r5 = None
     return r5
 
@@ -149,11 +146,11 @@ def f(a: List[int], x: int) -> None:
 def f(a, x):
     a :: list
     x :: int
-    r0 :: bool
-    r1 :: object
+    r0 :: object
+    r1 :: bool
     r2 :: None
 L0:
-    r1 = box(int, x)
-    r0 = a.append(r1)
+    r0 = box(int, x)
+    r1 = a.append(r0)
     r2 = None
     return r2

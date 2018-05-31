@@ -10,9 +10,11 @@ can hold various things:
 - literals (integer literals, True, False, etc.)
 """
 
-from abc import abstractmethod
+from abc import abstractmethod, abstractproperty
 import re
-from typing import List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, NewType
+from typing import (
+    List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, NewType, Callable
+)
 
 from mypy.nodes import Var
 
@@ -595,6 +597,7 @@ class StrictRegisterOp(RegisterOp):
         assert self._dest is not None
         return self._dest
 
+
 class IncRef(StrictRegisterOp):
     """inc_ref r"""
 
@@ -760,126 +763,71 @@ class PyGetAttr(StrictRegisterOp):
         return visitor.visit_py_get_attr(self)
 
 
-VAR_ARG = -1
+class EmitterInterface:
+    @abstractmethod
+    def reg(self, name: Register) -> str:
+        raise NotImplementedError
 
-# Primitive op inds
-OP_MISC = 0    # No specific kind
-OP_BINARY = 1  # Regular binary operation such as +
-OP_SPECIAL_METHOD_CALL = 2
+    @abstractmethod
+    def temp_name(self) -> str:
+        raise NotImplementedError
 
-OpDesc = NamedTuple('OpDesc', [('name', str),        # Symbolic name of the operation
-                               ('num_args', int),    # Number of args (or VAR_ARG for any number)
-                               ('type', str),        # Type string, used for disambiguation
-                               ('format_str', str),  # Format string for pretty printing
-                               ('is_void', bool),    # Is this a void op (no value produced)?
-                               ('kind', int),
-                               ('error_kind', int)])
+    @abstractmethod
+    def emit_line(self, line: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def emit_lines(self, *line: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def emit_declaration(self, line: str) -> None:
+        raise NotImplementedError
 
 
-def make_op(name: str, num_args: int, typ: str, format_str: Optional[str] = None,
-            is_void: bool = False, kind: int = OP_MISC, error_kind: int = ERR_NEVER) -> OpDesc:
-    if format_str is None:
-        # Default format strings for some common things.
-        if name == '[]':
-            format_str = '{dest} = {args[0]}[{args[1]}] :: %s' % typ
-        elif name == '[]=':
-            if not is_void:
-                assert error_kind == ERR_FALSE
-                format_str = '{args[0]}[{args[1]}] = {args[2]} :: %s; {dest} = is_error' % typ
-            else:
-                format_str = '{args[0]}[{args[1]}] = {args[2]} :: %s' % typ
-        elif kind == OP_BINARY:
-            assert not is_void
-            format_str = '{dest} = {args[0]} %s {args[1]} :: %s' % (name, typ)
-        elif kind == OP_SPECIAL_METHOD_CALL:
-            args_joined = ', '.join(['{args[%d]}' % i for i in range (1, num_args)])
-            if is_void:
-                format_str = ('{args[0]}.%s ' + args_joined + ' :: %s') % (name, typ)
-            else:
-                format_str = ('{dest} = {args[0]}.%s ' + args_joined + ' :: %s') % (name, typ)
-        elif num_args == 1:
-            if name[-1].isalpha():
-                name += ' '
-            format_str = '{dest} = %s{args[0]} :: %s' % (name, typ)
-        else:
-            assert False, 'format_str must be defined; no default format available'
-    return OpDesc(name, num_args, typ, format_str, is_void, kind, error_kind)
+EmitCallback = Callable[[EmitterInterface, List[str], str], None]
+
+OpDescription = NamedTuple(
+    'OpDescription', [('name', str),
+                      ('arg_types', List[RType]),
+                      ('result_type', Optional[RType]),
+                      ('is_var_arg', bool),
+                      ('error_kind', int),
+                      ('format_str', str),
+                      ('emit', EmitCallback)])
 
 
 class PrimitiveOp(RegisterOp):
-    """dest = op(reg, ...)
+    """reg = op(reg, ...)
 
-    These are register-based primitive operations that typically work on
-    specific operand types.
+    These are register-based primitive operations that work on specific
+    operand types.
+
+    The details of the operation are defined by the 'desc'
+    attribute. The mypyc.ops_* modules define the supported
+    operations. mypyc.genops uses the descriptions to look for suitable
+    primitive ops.
     """
 
-    # Binary
-    INT_ADD = make_op('+', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_SUB = make_op('-', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_MUL = make_op('*', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_DIV = make_op('//', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_MOD = make_op('%', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_AND = make_op('&', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_OR =  make_op('|', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_XOR = make_op('^', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_SHL = make_op('<<', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-    INT_SHR = make_op('>>', 2, 'int', kind=OP_BINARY, error_kind=ERR_NEVER)
-
-    # Unary
-    INT_NEG = make_op('-', 1, 'int', error_kind=ERR_NEVER)
-    LIST_LEN = make_op('len', 1, 'list', error_kind=ERR_NEVER)
-    HOMOGENOUS_TUPLE_LEN = make_op('len', 1, 'sequence_tuple', error_kind=ERR_NEVER)
-    LIST_TO_HOMOGENOUS_TUPLE = make_op('tuple', 1, 'list', error_kind=ERR_NEVER)
-
-    # Other
-    NONE = make_op('None', 0, 'None', format_str='{dest} = None', error_kind=ERR_NEVER)
-    TRUE = make_op('True', 0, 'True', format_str='{dest} = True', error_kind=ERR_NEVER)
-    FALSE = make_op('False', 0, 'False', format_str='{dest} = False', error_kind=ERR_NEVER)
-
-    # List
-    LIST_GET = make_op('[]', 2, 'list', kind=OP_BINARY, error_kind=ERR_MAGIC)
-    LIST_REPEAT = make_op('*', 2, 'list', kind=OP_BINARY, error_kind=ERR_MAGIC)
-    LIST_SET = make_op('[]=', 3, 'list', error_kind=ERR_FALSE)
-    NEW_LIST = make_op('new', VAR_ARG, 'list', format_str='{dest} = [{comma_args}]',
-                       error_kind=ERR_MAGIC)
-    LIST_APPEND = make_op('append', 2, 'list', format_str='{dest} = {args[0]}.append({args[1]})',
-                          error_kind=ERR_FALSE)
-
-    # Dict
-    DICT_GET = make_op('[]', 2, 'dict', kind=OP_BINARY, error_kind=ERR_MAGIC)
-    DICT_SET = make_op('[]=', 3, 'dict', error_kind=ERR_FALSE)
-    NEW_DICT = make_op('new', 0, 'dict', format_str='{dest} = {{}}', error_kind=ERR_MAGIC)
-    DICT_CONTAINS = make_op('in', 2, 'dict', kind=OP_BINARY, error_kind=ERR_MAGIC)
-    DICT_UPDATE = make_op('update', 2, 'dict', kind=OP_SPECIAL_METHOD_CALL, error_kind=ERR_FALSE)
-
-    # Sequence Tuple
-    HOMOGENOUS_TUPLE_GET = make_op('[]', 2, 'sequence_tuple', kind=OP_BINARY, error_kind=ERR_MAGIC)
-
-    # Tuple
-    NEW_TUPLE = make_op('new', VAR_ARG, 'tuple', format_str='{dest} = ({comma_args})',
-                        error_kind=ERR_MAGIC)
-
-    def __init__(self, dest: Optional[Register], desc: OpDesc, args: List[Register],
-                 line: int) -> None:
-        """Create a primitive op.
-
-        If desc.is_void is true, dest should be None.
-        """
+    def __init__(self,
+                  dest: Optional[Register],
+                  args: List[Register],
+                  desc: OpDescription,
+                  line: int) -> None:
+        if not desc.is_var_arg:
+            assert len(args) == len(desc.arg_types)
         self.error_kind = desc.error_kind
         super().__init__(dest, line)
-        if desc.num_args != VAR_ARG:
-            assert len(args) == desc.num_args
-        self.desc = desc
         self.args = args
+        self.desc = desc
 
     def sources(self) -> List[Register]:
         return list(self.args)
 
     def __repr__(self) -> str:
-        return '<PrimiveOp name=%r type=%s dest=%s args=%s>' % (self.desc.name,
-                                                                self.desc.type,
-                                                                self.dest,
-                                                                self.args)
+        return '<PrimiveOp2 name=%r dest=%s args=%s>' % (self.desc.name,
+                                                         self.dest,
+                                                         self.args)
 
     def to_str(self, env: Environment) -> str:
         params = {}  # type: Dict[str, Any]
@@ -1013,6 +961,27 @@ class LoadStatic(StrictRegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_static(self)
+
+
+class TupleSet(StrictRegisterOp):
+    """dest = (reg, ...) (for fixed-length tuple)"""
+
+    error_kind = ERR_NEVER
+
+    def __init__(self, dest: Register, items: List[Register], typ: RTuple, line: int) -> None:
+        super().__init__(dest, line)
+        self.items = items
+        self.type = typ
+
+    def sources(self) -> List[Register]:
+        return self.items[:]
+
+    def to_str(self, env: Environment) -> str:
+        item_str = ', '.join(env.format('%r', item) for item in self.items)
+        return env.format('%r = (%s)', self.dest, item_str)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_tuple_set(self)
 
 
 class TupleGet(StrictRegisterOp):
@@ -1251,6 +1220,9 @@ class OpVisitor(Generic[T]):
     def visit_tuple_get(self, op: TupleGet) -> T:
         pass
 
+    def visit_tuple_set(self, op: TupleSet) -> T:
+        pass
+
     def visit_inc_ref(self, op: IncRef) -> T:
         pass
 
@@ -1324,3 +1296,11 @@ class RTypeVisitor(Generic[T]):
     @abstractmethod
     def visit_rtuple(self, typ: RTuple) -> T:
         raise NotImplementedError
+
+
+# Import various modules that set up global state.
+import mypyc.ops_int
+import mypyc.ops_list
+import mypyc.ops_dict
+import mypyc.ops_tuple
+import mypyc.ops_misc

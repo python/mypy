@@ -30,14 +30,14 @@ def f(x: List[int], y: int, z: int) -> None:
 [out]
 L0:
     inc_ref y :: int
-    r1 = box(int, y)
-    r0 = x.append(r1)
-    dec_ref r1
-    if not r0 goto L3 (error at f:3) else goto L1 :: bool
+    r0 = box(int, y)
+    r1 = x.append(r0)
+    dec_ref r0
+    if not r1 goto L3 (error at f:3) else goto L1 :: bool
 L1:
     inc_ref z :: int
     r2 = box(int, z)
-    x[y] = r2 :: list; r3 = is_error
+    r3 = x.__setitem__(y, r2)
     dec_ref r2
     if not r3 goto L3 (error at f:4) else goto L2 :: bool
 L2:

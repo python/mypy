@@ -428,24 +428,12 @@ def f(a: int) -> int:
     return f(a + 1)
 [out]
 L0:
-    r1 = 1
-    r2 = a + r1 :: int
+    r0 = 1
+    r1 = a + r0 :: int
+    dec_ref r0 :: int
+    r2 = f(r1)
     dec_ref r1 :: int
-    r0 = f(r2)
-    dec_ref r2 :: int
-    return r0
-
-[case testCall]
-def f(a: int) -> int:
-    return f(a + 1)
-[out]
-L0:
-    r1 = 1
-    r2 = a + r1 :: int
-    dec_ref r1 :: int
-    r0 = f(r2)
-    dec_ref r2 :: int
-    return r0
+    return r2
 
 [case testError]
 def f(x: List[int]) -> None: pass # E: Name 'List' is not defined
@@ -457,11 +445,11 @@ def f() -> int:
 [out]
 L0:
     r0 = 0
-    r1 = box(int, r0)
-    r2 = 1
-    r3 = box(int, r2)
-    a = [r1, r3]
-    dec_ref r1
+    r1 = 1
+    r2 = box(int, r0)
+    r3 = box(int, r1)
+    a = [r2, r3]
+    dec_ref r2
     dec_ref r3
     dec_ref a
     r4 = 0
@@ -492,7 +480,7 @@ L0:
     r3 = unbox(int, r2)
     dec_ref r2
     r4 = box(int, r3)
-    a[r0] = r4 :: list; r5 = is_error
+    r5 = a.__setitem__(r0, r4)
     dec_ref r0 :: int
     dec_ref r4
     r6 = None
@@ -591,8 +579,8 @@ def f(a: List[int], x: int) -> None:
 [out]
 L0:
     inc_ref x :: int
-    r1 = box(int, x)
-    r0 = a.append(r1)
-    dec_ref r1
+    r0 = box(int, x)
+    r1 = a.append(r0)
+    dec_ref r0
     r2 = None
     return r2
