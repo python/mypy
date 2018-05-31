@@ -686,19 +686,11 @@ class IRBuilder(NodeVisitor[Register]):
         target_type = self.node_type(expr)
         if var_type != target_type:
             # Cast/unbox to the narrower given by the binder.
-            if self.cur_target() < 0:
-                target = self.alloc_temp(target_type)
-            else:
-                target = self.cur_target()
+            target = self.alloc_target(target_type)
             return self.unbox_or_cast(reg, target_type, expr.line, target)
         else:
             # Regular register access -- binder is not active.
-            if self.cur_target() < 0:
-                return reg
-            else:
-                target = self.cur_target()
-                self.add(Assign(target, reg))
-                return target
+            return reg
 
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF

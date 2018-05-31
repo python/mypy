@@ -233,17 +233,10 @@ def f(a: int) -> int:
     x = x
     return x + a
 [out]
--- This is correct but not optimal
 L0:
-    inc_ref a :: int
-    a = a
     x = 1
-    inc_ref x :: int
-    dec_ref x :: int
-    x = x
     r0 = x + a :: int
     dec_ref x :: int
-    dec_ref a :: int
     return r0
 
 [case testIncrement1]
