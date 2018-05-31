@@ -1181,6 +1181,10 @@ class ClassIR:
     def struct_name(self) -> str:
         return '{}Object'.format(self.name)
 
+    def get_method(self, name: str) -> Optional[FuncIR]:
+        matches = [func for func in self.methods if func.name == name]
+        return matches[0] if matches else None
+
     @property
     def type_struct(self) -> str:
         return '{}Type'.format(self.name)

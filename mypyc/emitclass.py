@@ -2,7 +2,9 @@
 
 import textwrap
 
-from mypyc.common import PREFIX, NATIVE_PREFIX
+from typing import Optional
+
+from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import ClassIR, FuncIR, RType, Environment, type_struct_name, object_rprimitive
@@ -15,6 +17,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     """
     name = cl.name
     fullname = '{}.{}'.format(module, name)
+    setup_name = '{}_setup'.format(name)
     new_name = '{}_new'.format(name)
     traverse_name = '{}_traverse'.format(name)
     clear_name = '{}_clear'.format(name)
@@ -26,14 +29,27 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     def emit_line() -> None:
         emitter.emit_line()
 
-    # Use dummy empty __init__ for now.
-    # TODO: Use RInstance
-    init = FuncIR(cl.name, None, [], object_rprimitive, [], Environment())
-    emitter.emit_line(native_function_header(init) + ';')
     emit_line()
     generate_object_struct(cl, emitter)
+
+    # If there is a __init__ method, generate a function for tp_init and
+    # extract the args (which we'll use for the native constructor)
+    init_fn = cl.get_method('__init__')
+    if init_fn:
+        init_name = '{}_init'.format(name)
+        init_args = init_fn.args[1:]
+        generate_init_for_class(cl, init_name, init_fn, emitter)
+    else:
+        init_name = '0'
+        init_args = []
+
+    emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
+    # TODO: Use RInstance
+    ctor = FuncIR(cl.name, None, init_args, object_rprimitive, [], Environment())
+    emitter.emit_line(native_function_header(ctor) + ';')
+
     emit_line()
-    generate_new_for_class(cl, new_name, vtable_name, emitter)
+    generate_new_for_class(cl, new_name, vtable_name, setup_name, emitter)
     emit_line()
     generate_traverse_for_class(cl, traverse_name, emitter)
     emit_line()
@@ -88,7 +104,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             0,                         /* tp_descr_get */
             0,                         /* tp_descr_set */
             0,                         /* tp_dictoffset */
-            0,                         /* tp_init */
+            {init_name},               /* tp_init */
             0,                         /* tp_alloc */
             {new_name},                /* tp_new */
         }};\
@@ -100,9 +116,13 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
                     dealloc_name=dealloc_name,
                     new_name=new_name,
                     methods_name=methods_name,
-                    getseters_name=getseters_name))
+                    getseters_name=getseters_name,
+                    init_name=init_name,
+        ))
     emitter.emit_line()
-    generate_constructor_for_class(cl, new_name, vtable_name, emitter)
+    generate_setup_for_class(cl, setup_name, vtable_name, emitter)
+    emitter.emit_line()
+    generate_constructor_for_class(cl, ctor, init_fn, setup_name, vtable_name, emitter)
     emitter.emit_line()
     generate_getseters(cl, emitter)
 
@@ -178,13 +198,13 @@ def generate_vtable(cl: ClassIR,
     emitter.emit_line('};')
 
 
-def generate_constructor_for_class(cl: ClassIR,
-                                   func_name: str,
-                                   vtable_name: str,
-                                   emitter: Emitter) -> None:
-    """Generate a native function that constructs an instance of a class."""
+def generate_setup_for_class(cl: ClassIR,
+                             func_name: str,
+                             vtable_name: str,
+                             emitter: Emitter) -> None:
+    """Generate a native function that allocates an instance of a class."""
     emitter.emit_line('static PyObject *')
-    emitter.emit_line('{}{}(void)'.format(NATIVE_PREFIX, cl.name))
+    emitter.emit_line('{}(void)'.format(func_name))
     emitter.emit_line('{')
     emitter.emit_line('{} *self;'.format(cl.struct_name()))
     emitter.emit_line('self = ({} *){}.tp_alloc(&{}, 0);'.format(cl.struct_name(),
@@ -199,16 +219,55 @@ def generate_constructor_for_class(cl: ClassIR,
     emitter.emit_line('}')
 
 
+def generate_constructor_for_class(cl: ClassIR,
+                                   fn: FuncIR,
+                                   init_fn: Optional[FuncIR],
+                                   setup_name: str,
+                                   vtable_name: str,
+                                   emitter: Emitter) -> None:
+    """Generate a native function that allocates and initializes an instance of a class."""
+    emitter.emit_line('{}'.format(native_function_header(fn)))
+    emitter.emit_line('{')
+    emitter.emit_line('PyObject *self = {}();'.format(setup_name))
+    emitter.emit_line('if (self == NULL)')
+    emitter.emit_line('    return NULL;')
+    if init_fn is not None:
+        args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.args])
+        emitter.emit_line('{}{}({});'.format(NATIVE_PREFIX, init_fn.cname, args))
+    emitter.emit_line('return self;')
+    emitter.emit_line('}')
+
+
+def generate_init_for_class(cl: ClassIR,
+                            func_name: str,
+                            init_fn: FuncIR,
+                            emitter: Emitter) -> None:
+    """Generate an init function suitable for use as tp_init.
+
+    tp_init needs to be a function that returns an int, and our
+    __init__ methods return a PyObject. Translate NULL to -1,
+    everything else to 0.
+    """
+    emitter.emit_line('static int')
+    emitter.emit_line(
+        '{}(PyObject *self, PyObject *args, PyObject *kwds)'.format(func_name))
+    emitter.emit_line('{')
+    emitter.emit_line('return {}{}(self, args, kwds) != NULL ? 0 : -1;'.format(
+        PREFIX, init_fn.cname))
+    emitter.emit_line('}')
+
+
 def generate_new_for_class(cl: ClassIR,
                            func_name: str,
                            vtable_name: str,
+                           setup_name: str,
                            emitter: Emitter) -> None:
     emitter.emit_line('static PyObject *')
     emitter.emit_line(
         '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
     emitter.emit_line('{')
     # TODO: Check and unbox arguments
-    emitter.emit_line('return {}{}();'.format(NATIVE_PREFIX, cl.name))
+    emitter.emit_line('return {}();'.format(setup_name))
     emitter.emit_line('}')
 
 

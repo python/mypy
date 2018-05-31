@@ -317,23 +317,6 @@ from native import f
 assert f(1) == 2
 assert f(2) == 1
 
-[case testClass1]
-class A:
-    # Hack since __init__ doesn't work yet
-    def init(self, x: int) -> 'A':
-        self.x = x
-        return self
-    def foo(self) -> int:
-        return self.x+1
-def foo() -> int:
-    a = A().init(20)
-    return a.foo()
-[file driver.py]
-from native import A, foo
-a = A().init(10)
-assert a.foo() == 11
-assert foo() == 21
-
 [case testPyMethodCall]
 from typing import List
 def f(x: List[int]) -> int:

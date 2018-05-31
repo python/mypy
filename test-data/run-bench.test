@@ -1,9 +1,8 @@
 [case testTree]
 from typing import Optional
-# This is bullshit
 class Node:
-    def __init__(self) -> None:
-        self.value = 0
+    def __init__(self, value: int) -> None:
+        self.value = value
         self.left = None  # type: Optional[Node]
         self.right = None  # type: Optional[Node]
     def sum(self) -> int:
@@ -14,12 +13,6 @@ class Node:
         if self.right is not None:
             right = self.right.sum()
         return self.value + left + right
-def node(v: int) -> Node:
-    x = Node()
-    x.value = v
-    x.left = None
-    x.right = None
-    return x
 def sum_tree(x: Optional[Node]) -> int:
     if x is None:
         return 0
@@ -27,7 +20,7 @@ def sum_tree(x: Optional[Node]) -> int:
 def lol(n: int) -> Optional[Node]:
     if n == 0:
         return None
-    x = node(n)
+    x = Node(n)
     x.left = lol(n - 1)
     x.right = x.left
     return x

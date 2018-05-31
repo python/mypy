@@ -182,3 +182,18 @@ def f(a: List[C]) -> C:
 from native import f, C
 c = C()
 assert f([c]) is c
+
+[case testClass1]
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+    def foo(self) -> int:
+        return self.x+1
+def foo() -> int:
+    a = A(20)
+    return a.foo()
+[file driver.py]
+from native import A, foo
+a = A(10)
+assert a.foo() == 11
+assert foo() == 21
