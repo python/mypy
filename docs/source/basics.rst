@@ -170,7 +170,8 @@ resources:
 * Read the :ref:`mypy cheatsheet <cheat-sheet-py3>` (also for
   :ref:`Python 2 <cheat-sheet-py2>`).
 
-* Read :ref:`existing-code` if you have existing code without annotations.
+* Read :ref:`existing-code` if you have a significant existing
+  codebase without many type annotations.
 
 * Read the `blog post <http://blog.zulip.org/2016/10/13/static-types-in-python-oh-mypy/>`_
   about the Zulip project's experiences with adopting mypy.
@@ -189,7 +190,8 @@ resources:
 * Look at :ref:`solutions to common issues <common_issues>` with mypy if
   you encounter problems.
 
-* You can ask questions about mypy in mypy issue tracker and
+* You can ask questions about mypy in the
+  `mypy issue tracker <https://github.com/python/mypy/issues>`_ and
   typing `Gitter chat <https://gitter.im/python/typing>`_.
 
 You can also continue reading this document and skip sections that
