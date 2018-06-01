@@ -1,5 +1,5 @@
-Basics
-======
+Getting started
+===============
 
 This chapter introduces some core concepts of mypy, including function
 annotations, the ``typing`` module and library stubs. Read it carefully,
