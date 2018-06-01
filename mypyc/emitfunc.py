@@ -1,12 +1,21 @@
 """Code generation for native function bodies."""
 
+from typing import Optional, List
+
 from mypyc.common import REG_PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr,
     SetAttr, LoadStatic, TupleGet, TupleSet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast,
-    Unbox, Label, Register, RType, RTuple, PyMethodCall, PrimitiveOp, EmitterInterface
+    Unbox, Label, Register, RType, RTuple, MethodCall, PyMethodCall,
+    PrimitiveOp, EmitterInterface,
 )
+
+
+def native_function_type(fn: FuncIR) -> str:
+    args = ', '.join(arg.type.ctype for arg in fn.args)
+    ret = fn.ret_type.ctype
+    return '{} (*)({})'.format(ret, args)
 
 
 def native_function_header(fn: FuncIR) -> str:
@@ -200,20 +209,32 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_line('{} = {}.f{};'.format(dest, src, op.index))
         self.emit_inc_ref(dest, op.target_type)
 
-    def visit_call(self, op: Call) -> None:
-        if op.dest is not None:
-            dest = self.reg(op.dest) + ' = '
+    def get_dest_assign(self, dest: Optional[Register]) -> str:
+        if dest is not None:
+            return self.reg(dest) + ' = '
         else:
-            dest = ''
+            return ''
+
+    def visit_call(self, op: Call) -> None:
+        dest = self.get_dest_assign(op.dest)
         args = ', '.join(self.reg(arg) for arg in op.args)
         self.emit_line('%s%s%s(%s);' % (dest, NATIVE_PREFIX, op.fn, args))
 
-    def visit_py_call(self, op: PyCall) -> None:
-        if op.dest is not None:
-            dest = self.reg(op.dest) + ' = '
-        else:
-            dest = ''
+    def visit_method_call(self, op: MethodCall) -> None:
+        dest = self.get_dest_assign(op.dest)
+        obj = self.reg(op.obj)
 
+        rtype = op.receiver_type
+        method_idx = rtype.method_index(op.method)
+        args = ', '.join([obj] + [self.reg(arg) for arg in op.args])
+        method = rtype.class_ir.get_method(op.method)
+        assert method is not None
+        mtype = native_function_type(method)
+        self.emit_line('{}CPY_GET_METHOD({}, {}, {}, {})({});'.format(
+            dest, obj, method_idx, rtype.struct_name(), mtype, args))
+
+    def visit_py_call(self, op: PyCall) -> None:
+        dest = self.get_dest_assign(op.dest)
         function = self.reg(op.function)
         args = ', '.join(self.reg(arg) for arg in op.args)
         if args:
@@ -221,11 +242,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_line('{}PyObject_CallFunctionObjArgs({}, {}NULL);'.format(dest, function, args))
 
     def visit_py_method_call(self, op: PyMethodCall) -> None:
-        if op.dest is not None:
-            dest = self.reg(op.dest) + ' = '
-        else:
-            dest = ''
-
+        dest = self.get_dest_assign(op.dest)
         obj = self.reg(op.obj)
         method = self.reg(op.method)
         args = ', '.join(self.reg(arg) for arg in op.args)

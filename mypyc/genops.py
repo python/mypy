@@ -31,7 +31,7 @@ from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RType, Register, Label, Return, FuncIR, Assign,
     Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple,
     Unreachable, TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic,
-    PyGetAttr, PyCall, ROptional, c_module_name, PyMethodCall, INVALID_REGISTER,
+    PyGetAttr, PyCall, ROptional, c_module_name, PyMethodCall, MethodCall, INVALID_REGISTER,
     INVALID_LABEL, int_rprimitive, is_int_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
@@ -719,13 +719,13 @@ class IRBuilder(NodeVisitor[Register]):
 
         return target
 
-    def py_call(self, function: Register, args: List[Register], arg_types: List[RType],
+    def py_call(self, function: Register, args: List[Register],
                 target_type: RType, line: int) -> Register:
         target_box = self.alloc_temp(object_rprimitive)
 
         arg_boxes = [] # type: List[Register]
-        for arg_reg, arg_type in zip(args, arg_types):
-            arg_boxes.append(self.box(arg_reg, arg_type))
+        for arg_reg in args:
+            arg_boxes.append(self.box(arg_reg, self.environment.types[arg_reg]))
 
         self.add(PyCall(target_box, function, arg_boxes, line))
         return self.unbox_or_cast(target_box, target_type, line)
@@ -733,48 +733,73 @@ class IRBuilder(NodeVisitor[Register]):
     def py_method_call(self,
                        obj: Register,
                        method: Register,
-                       args: List[Expression],
+                       args: List[Register],
                        target_type: RType,
                        line: int) -> Register:
         target_box = self.alloc_temp(object_rprimitive)
 
         arg_boxes = [] # type: List[Register]
-        for arg_expr in args:
-            arg_reg = self.accept(arg_expr)
-            arg_boxes.append(self.box(arg_reg, self.node_type(arg_expr)))
+        for arg_reg in args:
+            arg_boxes.append(self.box(arg_reg, self.environment.types[arg_reg]))
 
         self.add(PyMethodCall(target_box, obj, method, arg_boxes))
         return self.unbox_or_cast(target_box, target_type, line)
 
+    def coerce_native_call_args(self,
+                                args: List[Register],
+                                callee_type: Type,
+                                line: int) -> List[Register]:
+        assert isinstance(callee_type, CallableType)
+        # TODO: Argument kinds
+        formal_arg_types = [self.type_to_rtype(t) for t in callee_type.arg_types]
+        coerced_arg_regs = []
+        for reg, arg_type in zip(args, formal_arg_types):
+            typ = self.environment.types[reg]
+            reg = self.coerce(reg, typ, arg_type, line)
+            coerced_arg_regs.append(reg)
+        return coerced_arg_regs
+
+
     def visit_call_expr(self, expr: CallExpr) -> Register:
         if isinstance(expr.analyzed, CastExpr):
             return self.translate_cast_expr(expr.analyzed)
-        if isinstance(expr.callee, MemberExpr):
-            is_module_call = self.is_module_member_expr(expr.callee)
-            if expr.callee.expr in self.types and not is_module_call:
-                obj = self.accept(expr.callee.expr)
-                args = [self.accept(arg) for arg in expr.args]
-                target = self.translate_special_method_call(
-                    obj, expr.callee.name, args, self.node_type(expr), expr.line)
-                if target:
-                    return target
 
-            # Either its a module call or translating to a special method call failed, so we have
-            # to fallback to a PyCall
-            if is_module_call:
+        if isinstance(expr.callee, MemberExpr) and self.is_module_member_expr(expr.callee):
+            # Fall back to a PyCall for module calls
                 function = self.accept(expr.callee)
                 args = [self.accept(arg) for arg in expr.args]
-                arg_types = [self.node_type(arg) for arg in expr.args]
-                return self.py_call(function, args, arg_types, self.node_type(expr), expr.line)
+                return self.py_call(function, args, self.node_type(expr), expr.line)
+        elif isinstance(expr.callee, MemberExpr):
+            obj = self.accept(expr.callee.expr)
+            args = [self.accept(arg) for arg in expr.args]
+            assert expr.callee.expr in self.types
+            receiver_rtype = self.node_type(expr.callee.expr)
+
+            # First try to do a special-cased method call
+            target = self.translate_special_method_call(
+                obj, expr.callee.name, args, self.node_type(expr), expr.line)
+            if target:
+                return target
+
+            # If the base type is one of ours, do a MethodCall, otherwise fall back
+            # to a PyMethodCall
+            if isinstance(receiver_rtype, RInstance):
+                target = self.alloc_target(self.node_type(expr))
+                arg_regs = self.coerce_native_call_args(
+                    args, self.types[expr.callee], expr.line)
+                self.add(MethodCall(target, obj, expr.callee.name,
+                                    arg_regs, receiver_rtype, expr.line))
+                return target
             else:
-                assert expr.callee.expr in self.types
-                obj = self.accept(expr.callee.expr)
                 method = self.load_static_unicode(expr.callee.name)
-                return self.py_method_call(obj, method, expr.args, self.node_type(expr), expr.line)
+                return self.py_method_call(
+                    obj, method, args, self.node_type(expr), expr.line)
 
         assert isinstance(expr.callee, NameExpr)  # TODO: Allow arbitrary callees
 
+        # Gen the args
         fullname = expr.callee.fullname
+        args = [self.accept(arg) for arg in expr.args]
         arg_types = [self.node_type(arg) for arg in expr.args]
 
         if fullname == 'builtins.len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
@@ -782,12 +807,10 @@ class IRBuilder(NodeVisitor[Register]):
             if isinstance(expr_rtype, RTuple):
                 # len() of fixed-length tuple can be trivially determined statically.
                 target = self.alloc_target(int_rprimitive)
-                arg = self.accept(expr.args[0])
                 self.add(LoadInt(target, len(expr_rtype.types)))
                 return target
 
         # Handle data-driven special-cased primitive call ops.
-        args = [self.accept(arg) for arg in expr.args]
         if fullname is not None:
             for desc in func_ops.get(fullname, []):
                 if len(args) == len(desc.arg_types) and expr.arg_kinds == [ARG_POS] * len(args):
@@ -805,21 +828,13 @@ class IRBuilder(NodeVisitor[Register]):
         if not self.is_native_name_expr(expr.callee):
             # Python call
             function = self.accept(expr.callee)
-            return self.py_call(function, args, arg_types, target_type, expr.line)
+            return self.py_call(function, args, target_type, expr.line)
         else:
             # Native call
-            callee_type = self.types[expr.callee]
-            assert isinstance(callee_type, CallableType)
-            # TODO: Argument kinds
-            formal_arg_types = [self.type_to_rtype(t) for t in callee_type.arg_types]
-            coerced_args = []
-            for reg, arg_type in zip(args, formal_arg_types):
-                typ = self.environment.types[reg]
-                reg = self.coerce(reg, typ, arg_type, expr.line)
-                coerced_args.append(reg)
             target = self.alloc_target(target_type)
-            self.add(Call(target, fn, coerced_args, expr.line))
-            return target
+            args = self.coerce_native_call_args(args, self.types[expr.callee], expr.line)
+            self.add(Call(target, fn, args, expr.line))
+        return target
 
     def translate_cast_expr(self, expr: CastExpr) -> Register:
         src = self.accept(expr.expr)

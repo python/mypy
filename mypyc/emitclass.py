@@ -195,6 +195,8 @@ def generate_vtable(cl: ClassIR,
     for attr, rtype in cl.attributes:
         emitter.emit_line('(CPyVTableItem){},'.format(native_getter_name(cl.name, attr)))
         emitter.emit_line('(CPyVTableItem){},'.format(native_setter_name(cl.name, attr)))
+    for fn in cl.methods:
+        emitter.emit_line('(CPyVTableItem){}{},'.format(NATIVE_PREFIX, fn.cname))
     emitter.emit_line('};')
 
 

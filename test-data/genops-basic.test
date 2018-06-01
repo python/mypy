@@ -564,8 +564,8 @@ def g(y):
     r11 :: object
 L0:
     r0 = 1
-    r1 = box(int, r0)
-    r2 = g(r1)
+    r2 = box(int, r0)
+    r1 = g(r2)
     a = [y]
     r3 = 0
     r5 = 1

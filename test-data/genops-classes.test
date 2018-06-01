@@ -62,3 +62,33 @@ L0:
     r5 = 1
     r6 = r4 + r5 :: int
     return r6
+
+[case testMethodCall]
+class A:
+    def f(self, x: int, y: str) -> int:
+        return x + 10
+
+def g(a: A) -> None:
+    a.f(1, 'hi')
+[out]
+def f(self, x, y):
+    self :: A
+    x :: int
+    y :: str
+    r0, r1 :: int
+L0:
+    r0 = 10
+    r1 = x + r0 :: int
+    return r1
+def g(a):
+    a :: A
+    r0 :: int
+    r1 :: str
+    r2 :: int
+    r3 :: None
+L0:
+    r0 = 1
+    r1 = __unicode_0 :: static
+    r2 = a.f(r0, r1)
+    r3 = None
+    return r3

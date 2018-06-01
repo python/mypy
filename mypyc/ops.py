@@ -267,6 +267,13 @@ class RInstance(RType):
     def setter_index(self, name: str) -> int:
         return self.getter_index(name) + 1
 
+    def method_index(self, name: str) -> int:
+        base = len(self.class_ir.attributes) * 2
+        for i, fn in enumerate(self.class_ir.methods):
+            if fn.name == name:
+                return base + i
+        assert False, '%r has no attribute %r' % (self.name, name)
+
     def attr_type(self, name: str) -> RType:
         for i, (attr, rtype) in enumerate(self.class_ir.attributes):
             if attr == name:
@@ -671,6 +678,38 @@ class Call(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_call(self)
+
+
+class MethodCall(RegisterOp):
+    """Native method call obj.m(arg, ...) """
+
+    error_kind = ERR_MAGIC
+
+    def __init__(self,
+                 dest: Optional[Register],
+                 obj: Register,
+                 method: str,
+                 args: List[Register],
+                 receiver_type: RInstance,
+                 line: int = -1) -> None:
+        super().__init__(dest, line)
+        self.obj = obj
+        self.method = method
+        self.args = args
+        self.receiver_type = receiver_type
+
+    def to_str(self, env: Environment) -> str:
+        args = ', '.join(env.format('%r', arg) for arg in self.args)
+        s = env.format('%r.%s(%s)', self.obj, self.method, args)
+        if self.dest is not None:
+            s = env.format('%r = ', self.dest) + s
+        return s
+
+    def sources(self) -> List[Register]:
+        return self.args[:] + [self.obj]
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_method_call(self)
 
 
 # Python-interopability operations are prefixed with Py. Typically these act as a replacement
@@ -1234,6 +1273,9 @@ class OpVisitor(Generic[T]):
         pass
 
     def visit_py_call(self, op: PyCall) -> T:
+        pass
+
+    def visit_method_call(self, op: MethodCall) -> T:
         pass
 
     def visit_py_method_call(self, op: PyMethodCall) -> T:
