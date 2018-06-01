@@ -139,7 +139,8 @@ class TypeCheckSuite(DataSuite):
         options.show_traceback = True
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if incremental_step:
+        if incremental_step and options.incremental:
+            # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
         else:
             options.incremental = False
