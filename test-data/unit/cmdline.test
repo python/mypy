@@ -206,8 +206,8 @@ def g(a: int) -> int: return f(a)
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [out]
-mypy.ini: [mypy-*x*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
-mypy.ini: [mypy-*y*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
+mypy.ini: [mypy-*x*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+mypy.ini: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
 == Return code: 0
 
 [case testMultipleGlobConfigSection]
@@ -271,7 +271,6 @@ mypy.ini: [mypy]: ignore_missing_imports: Not a boolean: nah
 python_version = 3.4
 [out]
 mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (python_version)
-mypy.ini: [mypy-*]: Invalid pattern. Patterns must be 'module_name' or 'module_name.*'
 == Return code: 0
 
 [case testConfigMypyPath]
@@ -1181,13 +1180,50 @@ warn_unused_configs = True
 [[mypy-spam.eggs]
 [[mypy-emarg.*]
 [[mypy-emarg.hatch]
+-- Currently we don't treat an unstructured pattern like a.*.b as unused
+-- if it matches another section (like a.x.b). This would be reasonable
+-- to change.
+[[mypy-a.*.b]
+[[mypy-a.*.c]
+[[mypy-a.x.b]
 [file foo.py]
 [file quux.py]
 [file spam/__init__.py]
 [file spam/eggs.py]
 [out]
-Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch]
-== Return code: 0
+Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+
+[case testConfigUnstructuredGlob]
+# cmd: mypy emarg foo
+[file mypy.ini]
+[[mypy]
+ignore_errors = true
+[[mypy-*.lol]
+ignore_errors = false
+[[mypy-emarg.*]
+ignore_errors = false
+[[mypy-emarg.*.villip.*]
+ignore_errors = true
+[[mypy-emarg.hatch.villip.mankangulisk]
+ignore_errors = false
+[file emarg/__init__.py]
+[file emarg/foo.py]
+fail
+[file emarg/villip.py]
+fail
+[file emarg/hatch/__init__.py]
+[file emarg/hatch/villip/__init__.py]
+[file emarg/hatch/villip/nus.py]
+fail
+[file emarg/hatch/villip/mankangulisk.py]
+fail
+[file foo/__init__.py]
+[file foo/lol.py]
+fail
+[out]
+foo/lol.py:1: error: Name 'fail' is not defined
+emarg/foo.py:1: error: Name 'fail' is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
 
 [case testPackageRootEmpty]
 # cmd: mypy --package-root= a/b/c.py main.py
