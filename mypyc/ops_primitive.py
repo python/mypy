@@ -43,11 +43,14 @@ def binary_op(op: str,
               arg_types: List[RType],
               result_type: RType,
               error_kind: int,
-              format_str: str,
-              emit: EmitCallback) -> None:
+              emit: EmitCallback,
+              format_str: Optional[str] = None,
+              priority: int = 0) -> None:
     assert len(arg_types) == 2
     ops = binary_ops.setdefault(op, [])
-    desc = OpDescription(op, arg_types, result_type, False, error_kind, format_str, emit)
+    if format_str is None:
+        format_str = '{dest} = {args[0]} %s {args[1]}' % op
+    desc = OpDescription(op, arg_types, result_type, False, error_kind, format_str, emit, priority)
     ops.append(desc)
 
 
@@ -58,7 +61,7 @@ def unary_op(op: str,
              format_str: str,
              emit: EmitCallback) -> OpDescription:
     ops = unary_ops.setdefault(op, [])
-    desc = OpDescription(op, [arg_type], result_type, False, error_kind, format_str, emit)
+    desc = OpDescription(op, [arg_type], result_type, False, error_kind, format_str, emit, 0)
     ops.append(desc)
     return desc
 
@@ -78,7 +81,7 @@ def func_op(name: str,
                                            ', '.join('{args[%d]}' % i
                                                      for i in range(len(arg_types))),
                                            typename)
-    desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit)
+    desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit, 0)
     ops.append(desc)
     return desc
 
@@ -97,7 +100,8 @@ def method_op(name: str,
         format_str = '{dest} = {args[0]}[{args[1]}] :: %s' % short_name(arg_types[0].name)
     else:
         format_str = '{dest} = {args[0]}.%s(%s)' % (method_name, args)
-    desc = OpDescription(method_name, arg_types, result_type, False, error_kind, format_str, emit)
+    desc = OpDescription(method_name, arg_types, result_type, False, error_kind, format_str, emit,
+                         0)
     ops.append(desc)
     return desc
 
@@ -113,7 +117,7 @@ def name_ref_op(name: str,
     """
     assert name not in name_ref_ops, 'already defined: %s' % name
     format_str = '{dest} = %s' % short_name(name)
-    desc = OpDescription(name, [], result_type, False, error_kind, format_str, emit)
+    desc = OpDescription(name, [], result_type, False, error_kind, format_str, emit, 0)
     name_ref_ops[name] = desc
     return desc
 
@@ -126,4 +130,4 @@ def custom_op(arg_types: List[RType],
               is_var_arg: bool = False) -> OpDescription:
     """Create a one-off op that can't be automatically generated from the AST."""
     return OpDescription('<custom>', arg_types, result_type, is_var_arg, error_kind, format_str,
-                         emit)
+                         emit, 0)

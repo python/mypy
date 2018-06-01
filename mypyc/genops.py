@@ -598,7 +598,8 @@ class IRBuilder(NodeVisitor[Register]):
         rtype = self.node_type(expr.right)
         lreg = self.accept(expr.left)
         rreg = self.accept(expr.right)
-        return self.binary_op(ltype, lreg, rtype, rreg, expr.op, expr.line)
+        target = self.alloc_target(self.node_type(expr))
+        return self.binary_op(ltype, lreg, rtype, rreg, expr.op, expr.line, target=target)
 
     def binary_op(self,
                   ltype: RType,
@@ -608,16 +609,20 @@ class IRBuilder(NodeVisitor[Register]):
                   expr_op: str,
                   line: int,
                   target: Optional[Register] = None) -> Register:
+        # Find the highest-priority primitive op that matches.
+        matching = None  # type: Optional[OpDescription]
         for desc in binary_ops.get(expr_op, []):
             if (is_subtype(ltype, desc.arg_types[0])
                     and is_subtype(rtype, desc.arg_types[1])):
-                lreg = self.coerce(lreg, ltype, desc.arg_types[0], line)
-                rreg = self.coerce(rreg, rtype, desc.arg_types[1], line)
-                if target is None:
-                    assert desc.result_type is not None
-                    target = self.alloc_target(desc.result_type)
-                self.add(PrimitiveOp(target, [lreg, rreg], desc, line))
-                return target
+                if matching:
+                    assert matching.priority != desc.priority, 'Ambiguous: %s, %s'  % (matching,
+                                                                                       desc)
+                    if desc.priority > matching.priority:
+                        matching = desc
+                else:
+                    matching = desc
+        if matching:
+            return self.primitive_op(matching, [lreg, rreg], line, target)
 
         # TODO: Fall back to generic operation
         assert False, 'Unsupported binary operation'
@@ -811,6 +816,7 @@ class IRBuilder(NodeVisitor[Register]):
                 return target
 
         # Handle data-driven special-cased primitive call ops.
+        target_type = self.node_type(expr)
         if fullname is not None:
             for desc in func_ops.get(fullname, []):
                 if len(args) == len(desc.arg_types) and expr.arg_kinds == [ARG_POS] * len(args):
@@ -818,10 +824,10 @@ class IRBuilder(NodeVisitor[Register]):
                         if not is_subtype(actual_arg, formal_arg):
                             break
                     else:
-                        return self.primitive_op(desc, args, expr.line)
+                        target = self.alloc_target(target_type)
+                        return self.primitive_op(desc, args, expr.line, target=target)
 
         fn = expr.callee.name  # TODO: fullname
-        target_type = self.node_type(expr)
         if not self.is_native_name_expr(expr.callee):
             # Python call
             function = self.accept(expr.callee)
@@ -918,7 +924,8 @@ class IRBuilder(NodeVisitor[Register]):
 
     def visit_list_expr(self, expr: ListExpr) -> Register:
         items = [self.accept(item) for item in expr.items]
-        return self.primitive_op(new_list_op, items, expr.line)
+        target = self.alloc_target(list_rprimitive)
+        return self.primitive_op(new_list_op, items, expr.line, target=target)
 
     def visit_tuple_expr(self, expr: TupleExpr) -> Register:
         tuple_type = self.node_type(expr)
@@ -955,37 +962,7 @@ class IRBuilder(NodeVisitor[Register]):
 
     def process_conditional(self, e: Node) -> List[Branch]:
         if isinstance(e, ComparisonExpr):
-            # TODO: Verify operand types.
-            assert len(e.operators) == 1, 'more than 1 operator not supported'
-            op = e.operators[0]
-            if op in ['==', '!=', '<', '<=', '>', '>=']:
-                # TODO: check operand types
-                left = self.accept(e.operands[0])
-                right = self.accept(e.operands[1])
-                opcode = self.int_relative_ops[op]
-                branch = Branch(left, right, INVALID_LABEL, INVALID_LABEL, opcode)
-            elif op in ['is', 'is not']:
-                # TODO: check if right operand is None
-                left = self.accept(e.operands[0])
-                branch = Branch(left, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
-                                Branch.IS_NONE)
-                if op == 'is not':
-                    branch.negated = True
-            elif op in ['in', 'not in']:
-                left = self.accept(e.operands[0])
-                ltype = self.node_type(e.operands[0])
-                right = self.accept(e.operands[1])
-                rtype = self.node_type(e.operands[1])
-                target = self.alloc_temp(self.node_type(e))
-                self.binary_op(ltype, left, rtype, right, 'in', e.line, target=target)
-                branch = Branch(target, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
-                                Branch.BOOL_EXPR)
-                if op == 'not in':
-                    branch.negated = True
-            else:
-                assert False, "unsupported comparison epxression"
-            self.add(branch)
-            return [branch]
+            return self.process_comparison(e)
         elif isinstance(e, OpExpr) and e.op in ['and', 'or']:
             if e.op == 'and':
                 # Short circuit 'and' in a conditional context.
@@ -1012,6 +989,45 @@ class IRBuilder(NodeVisitor[Register]):
             branch = Branch(reg, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
             self.add(branch)
             return [branch]
+
+    def process_comparison(self, e: ComparisonExpr) -> List[Branch]:
+        # TODO: Verify operand types.
+        assert len(e.operators) == 1, 'more than 1 operator not supported'
+        op = e.operators[0]
+        if op in ['is', 'is not']:
+            # Special case 'is' checks.
+            # TODO: check if right operand is None
+            left = self.accept(e.operands[0])
+            branch = Branch(left, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
+                            Branch.IS_NONE)
+            if op == 'is not':
+                branch.negated = True
+        else:
+            # General comparison -- evaluate both operands.
+            left = self.accept(e.operands[0])
+            ltype = self.node_type(e.operands[0])
+            right = self.accept(e.operands[1])
+            rtype = self.node_type(e.operands[1])
+            if (op in ['==', '!=', '<', '<=', '>', '>=']
+                    and is_same_type(ltype, int_rprimitive)
+                    and is_same_type(rtype, int_rprimitive)):
+                # Special op for int comparison.
+                opcode = self.int_relative_ops[op]
+                branch = Branch(left, right, INVALID_LABEL, INVALID_LABEL, opcode)
+            else:
+                # For other comparisons, generate a bool value and branch based on it. We need
+                # this to handle exceptions in the comparison op.
+                target = self.alloc_temp(self.node_type(e))
+                if op in ['in', 'not in']:
+                    self.binary_op(ltype, left, rtype, right, 'in', e.line, target=target)
+                else:
+                    self.binary_op(ltype, left, rtype, right, op, e.line, target=target)
+                branch = Branch(target, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
+                                Branch.BOOL_EXPR)
+                if op == 'not in':
+                    branch.negated = True
+        self.add(branch)
+        return [branch]
 
     def set_branches(self, branches: List[Branch], condition: bool,
                      target: BasicBlock) -> None:
@@ -1056,15 +1072,24 @@ class IRBuilder(NodeVisitor[Register]):
     def add(self, op: Op) -> None:
         self.blocks[-1][-1].ops.append(op)
 
-    def primitive_op(self, desc: OpDescription, args: List[Register], line: int) -> Register:
+    def primitive_op(self, desc: OpDescription, args: List[Register], line: int,
+                     target: Optional[Register] = None) -> Register:
         assert desc.result_type is not None
-        target = self.alloc_target(desc.result_type)
         coerced = []
         for i, arg in enumerate(args):
             formal_type = self.op_arg_type(desc, i)
             arg = self.coerce(arg, self.environment.types[arg], formal_type, line)
             coerced.append(arg)
-        self.add(PrimitiveOp(target, coerced, desc, line))
+        if target is None:
+            target = self.alloc_temp(desc.result_type)
+        target_type = self.reg_type(target)
+        if is_same_type(target_type, desc.result_type):
+            temp_target = target
+        else:
+            temp_target = self.alloc_temp(desc.result_type)
+        self.add(PrimitiveOp(temp_target, coerced, desc, line))
+        if target != temp_target:
+            self.coerce(temp_target, desc.result_type, target_type, line, target=target)
         return target
 
     def op_arg_type(self, desc: OpDescription, n: int) -> RType:
@@ -1107,6 +1132,9 @@ class IRBuilder(NodeVisitor[Register]):
             return int_rprimitive
         mypy_type = self.types[node]
         return self.type_to_rtype(mypy_type)
+
+    def reg_type(self, reg: Register) -> RType:
+        return self.environment.types[reg]
 
     def box(self, src: Register, typ: RType, target: Optional[Register] = None) -> Register:
         if typ.is_unboxed:

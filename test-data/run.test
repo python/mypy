@@ -302,12 +302,22 @@ def tostr(x: int) -> str:
     return str(x)
 def concat(x: str, y: str) -> str:
     return x + y
+def eq(x: str) -> int:
+    if x == 'foo':
+        return 0
+    elif x != 'bar':
+        return 1
+    return 2
+
 [file driver.py]
-from native import f, g, tostr, concat
+from native import f, g, tostr, concat, eq
 assert f() == 'some string'
 assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
 assert tostr(57) == '57'
 assert concat('foo', 'bar') == 'foobar'
+assert eq('foo') == 0
+assert eq('zar') == 1
+assert eq('bar') == 2
 
 [case testDictUpdate]
 from typing import Dict
@@ -364,3 +374,29 @@ Traceback (most recent call last):
   File "tmp/py/native.py", line 6, in g
     x[5] = 2
 IndexError: list assignment index out of range
+
+[case testGenericEquality]
+def eq(a: object, b: object) -> bool:
+    if a == b:
+        return True
+    else:
+        return False
+def ne(a: object, b: object) -> bool:
+    if a != b:
+        return True
+    else:
+        return False
+def f(o: object) -> bool:
+    if [1, 2] == o:
+        return True
+    else:
+        return False
+[file driver.py]
+from native import eq, ne, f
+assert eq('xz', 'x' + 'z')
+assert not eq('x', 'y')
+assert not ne('xz', 'x' + 'z')
+assert ne('x', 'y')
+assert f([1, 2])
+assert not f([2, 2])
+assert not f(1)

@@ -832,7 +832,8 @@ OpDescription = NamedTuple(
                       ('is_var_arg', bool),
                       ('error_kind', int),
                       ('format_str', str),
-                      ('emit', EmitCallback)])
+                      ('emit', EmitCallback),
+                      ('priority', int)])  # To resolve ambiguities, highest priority wins
 
 
 class PrimitiveOp(RegisterOp):

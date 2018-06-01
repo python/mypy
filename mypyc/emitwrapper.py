@@ -2,7 +2,7 @@
 
 from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
-from mypyc.ops import FuncIR, RType
+from mypyc.ops import FuncIR, RType, is_object_rprimitive
 
 
 def wrapper_function_header(fn: FuncIR) -> str:
@@ -67,6 +67,9 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter) -> None:
         # Borrow when unboxing to avoid reference count manipulation.
         emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                            'return NULL;', declare_dest=True, borrow=True)
+    elif is_object_rprimitive(typ):
+        # Trivial, since any object is valid.
+        emitter.emit_line('PyObject *arg_{} = obj_{};'.format(name, name))
     else:
         emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
                           declare_dest=True)
