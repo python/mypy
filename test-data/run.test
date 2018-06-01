@@ -293,15 +293,21 @@ assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
 
-[case testUnicodeLiteral]
+[case testStr]
 def f() -> str:
     return 'some string'
 def g() -> str:
     return 'some\a \v \t \x7f " \n \0string 🐍'
+def tostr(x: int) -> str:
+    return str(x)
+def concat(x: str, y: str) -> str:
+    return x + y
 [file driver.py]
-from native import f, g
+from native import f, g, tostr, concat
 assert f() == 'some string'
 assert g() == 'some\a \v \t \x7f " \n \0string 🐍'
+assert tostr(57) == '57'
+assert concat('foo', 'bar') == 'foobar'
 
 [case testDictUpdate]
 from typing import Dict

@@ -10,7 +10,6 @@ class object:
     def __init__(self) -> None: pass
 
 class type: pass
-class str: pass
 
 # Primitive types are special in generated code.
 
@@ -28,6 +27,10 @@ class int:
     def __gt__(self, n: int) -> bool: pass
     def __le__(self, n: int) -> bool: pass
     def __ge__(self, n: int) -> bool: pass
+
+class str:
+    def __init__(self, x: object) -> None: pass
+    def __add__(self, x: str) -> str: pass
 
 class float: pass
 class bool: pass

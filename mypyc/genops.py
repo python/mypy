@@ -818,10 +818,7 @@ class IRBuilder(NodeVisitor[Register]):
                         if not is_subtype(actual_arg, formal_arg):
                             break
                     else:
-                        assert desc.result_type is not None  # TODO: Support no return value
-                        target = self.alloc_target(desc.result_type)
-                        self.add(PrimitiveOp(target, args, desc, expr.line))
-                        return target
+                        return self.primitive_op(desc, args, expr.line)
 
         fn = expr.callee.name  # TODO: fullname
         target_type = self.node_type(expr)
