@@ -1,5 +1,6 @@
 """Classes for representing mypy types."""
 
+import sys
 import copy
 from abc import abstractmethod
 from collections import OrderedDict
@@ -13,6 +14,7 @@ import mypy.nodes
 from mypy import experiments
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
+    FuncDef
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
@@ -676,6 +678,8 @@ class CallableType(FunctionLike):
                                     # instantiation?
                  'bound_args',  # Bound type args, mostly unused but may be useful for
                                 # tools that consume mypy ASTs
+                 'def_extras',  # Information about original definition we want to serialize.
+                                # This is used for more detailed error messages.
                  )
 
     def __init__(self,
@@ -695,6 +699,7 @@ class CallableType(FunctionLike):
                  special_sig: Optional[str] = None,
                  from_type_type: bool = False,
                  bound_args: Sequence[Optional[Type]] = (),
+                 def_extras: Optional[Dict[str, Any]] = None,
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -721,6 +726,18 @@ class CallableType(FunctionLike):
         if not bound_args:
             bound_args = ()
         self.bound_args = bound_args
+        if def_extras:
+            self.def_extras = def_extras
+        elif isinstance(definition, FuncDef):
+            # This information would be lost if we don't have definition
+            # after serialization, but it is useful in error messages.
+            # TODO: decide how to add more info here (file, line, column)
+            # without changing interface hash.
+            self.def_extras = {'first_arg': definition.arg_names[0]
+                               if definition.arg_names and definition.info and
+                               not definition.is_static else None}
+        else:
+            self.def_extras = {}
 
     def copy_modified(self,
                       arg_types: List[Type] = _dummy,
@@ -734,9 +751,11 @@ class CallableType(FunctionLike):
                       line: int = _dummy,
                       column: int = _dummy,
                       is_ellipsis_args: bool = _dummy,
+                      implicit: bool = _dummy,
                       special_sig: Optional[str] = _dummy,
                       from_type_type: bool = _dummy,
-                      bound_args: List[Optional[Type]] = _dummy) -> 'CallableType':
+                      bound_args: List[Optional[Type]] = _dummy,
+                      def_extras: Dict[str, Any] = _dummy) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -750,11 +769,12 @@ class CallableType(FunctionLike):
             column=column if column is not _dummy else self.column,
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
-            implicit=self.implicit,
+            implicit=implicit if implicit is not _dummy else self.implicit,
             is_classmethod_class=self.is_classmethod_class,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
+            def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
         )
 
     def is_type_obj(self) -> bool:
@@ -788,6 +808,15 @@ class CallableType(FunctionLike):
         if self.is_var_arg:
             n -= 1
         return n
+
+    def max_possible_positional_args(self) -> int:
+        """Returns maximum number of positional arguments this method could possibly accept.
+
+        This takes into acount *arg and **kwargs but excludes keyword-only args."""
+        if self.is_var_arg or self.is_kw_arg:
+            return sys.maxsize
+        blacklist = (ARG_NAMED, ARG_NAMED_OPT)
+        return len([kind not in blacklist for kind in self.arg_kinds])
 
     def corresponding_argument(self, model: FormalArgument) -> Optional[FormalArgument]:
         """Return the argument in this function that corresponds to `model`"""
@@ -907,6 +936,7 @@ class CallableType(FunctionLike):
                 'is_classmethod_class': self.is_classmethod_class,
                 'bound_args': [(None if t is None else t.serialize())
                                for t in self.bound_args],
+                'def_extras': dict(self.def_extras),
                 }
 
     @classmethod
@@ -925,6 +955,7 @@ class CallableType(FunctionLike):
                             is_classmethod_class=data['is_classmethod_class'],
                             bound_args=[(None if t is None else deserialize_type(t))
                                         for t in data['bound_args']],
+                            def_extras=data['def_extras']
                             )
 
 

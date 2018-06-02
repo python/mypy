@@ -10,31 +10,53 @@ Mypy is a static type checker for Python 3 and Python 2.7.
 
 .. toctree::
    :maxdepth: 2
+   :caption: First steps
 
    introduction
    basics
    getting_started
-   builtin_types
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Cheat sheets
+
+   cheat_sheet_py3
+   cheat_sheet
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Type system reference
+
    python2
+   builtin_types
    type_inference_and_annotations
    kinds_of_types
    class_basics
+   protocols
    dynamic_typing
-   function_overloading
    casts
    duck_type_compatibility
-   common_issues
    generics
-   supported_python_features
-   additional_features
+   more_types
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Configuring and running mypy
+
    command_line
    config_file
    mypy_daemon
-   python36
    installed_packages
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Miscellaneous
+
+   common_issues
+   supported_python_features
+   python36
+   additional_features
    faq
-   cheat_sheet
-   cheat_sheet_py3
    revision_history
 
 Indices and tables

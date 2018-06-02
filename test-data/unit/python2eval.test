@@ -313,10 +313,10 @@ f(b'')
 [file m.pyi]
 from typing import overload
 @overload
-def f(x): # type: (unicode) -> int
+def f(x): # type: (bytearray) -> int
   pass
 @overload
-def f(x): # type: (bytearray) -> int
+def f(x): # type: (unicode) -> int
   pass
 [out]
 _program.py:2: error: No overload variant of "f" matches argument type "int"

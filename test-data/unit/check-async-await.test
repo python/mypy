@@ -669,3 +669,33 @@ async def decorated_host_coroutine() -> None:
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
+
+[case testAsyncGenDisallowUntyped]
+# flags: --disallow-untyped-defs
+# These should not crash
+from typing import AsyncGenerator, Any
+
+async def f() -> AsyncGenerator[int, None]:
+    yield 0
+
+async def g() -> AsyncGenerator[Any, None]:
+    yield 0
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+
+[case testAsyncGenDisallowUntypedTriggers]
+# flags: --disallow-untyped-defs
+from typing import AsyncGenerator, Any
+
+async def f() -> AsyncGenerator[Any, Any]:
+    yield None
+
+async def h() -> Any:
+    yield 0
+
+async def g():  # E: Function is missing a type annotation
+    yield 0
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
