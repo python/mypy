@@ -2100,9 +2100,9 @@ class State:
                     manager.options.dump_deps):
                 manager.all_types.update(self.type_map())
 
-            if self.options.incremental:
-                self._patch_indirect_dependencies(self.type_checker().module_refs,
-                                                  self.type_map())
+            # We should always patch indirect dependencies, even in full (non-incremental) builds,
+            # because the cache still may be written, and it must be correct.
+            self._patch_indirect_dependencies(self.type_checker().module_refs, self.type_map())
 
             if self.options.dump_inference_stats:
                 dump_type_stats(self.tree, self.xpath, inferred=True,

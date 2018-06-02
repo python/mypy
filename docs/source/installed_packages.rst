@@ -1,6 +1,6 @@
 .. _installed-packages:
 
-Using Installed Packages
+Using installed packages
 ========================
 
 `PEP 561 <https://www.python.org/dev/peps/pep-0561/>`_ specifies how to mark

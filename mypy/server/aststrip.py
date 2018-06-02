@@ -213,7 +213,8 @@ class NodeStripVisitor(TraverserVisitor):
             for name, as_name in node.ids:
                 imported_name = as_name or name
                 initial = imported_name.split('.')[0]
-                self.names[initial] = SymbolTableNode(UNBOUND_IMPORTED, None)
+                if initial in self.names:
+                    self.names[initial] = SymbolTableNode(UNBOUND_IMPORTED, None)
 
     def visit_import_all(self, node: ImportAll) -> None:
         # Imports can include both overriding symbols and fresh ones,
