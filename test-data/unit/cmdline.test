@@ -1192,6 +1192,7 @@ warn_unused_configs = True
 [file spam/eggs.py]
 [out]
 Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+== Return code: 0
 
 [case testConfigUnstructuredGlob]
 # cmd: mypy emarg foo
