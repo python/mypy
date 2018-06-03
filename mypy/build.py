@@ -697,8 +697,7 @@ class BuildManager:
         if self.options.bazel:
             return 0
         else:
-            st = self.get_stat(path)
-            return int(st.st_mtime)
+            return int(os.path.getmtime(path))
 
     def normpath(self, path: str) -> str:
         """Convert path to absolute; but to relative in bazel mode.
