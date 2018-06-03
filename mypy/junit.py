@@ -4,10 +4,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from xml.dom import minidom  # type: ignore  # not in typshed
-from typing import Any
-from typing import List
-from typing import MutableMapping
-from typing import Optional
+from typing import Any, List, MutableMapping, Optional
 
 from mypy.build import BuildSource
 
