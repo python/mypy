@@ -1,5 +1,6 @@
 import datetime
 import enum
+import os.path
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -164,8 +165,23 @@ def create_document(
     file_paths = sorted(unique_file_paths)
 
     # We don't actually know how much each file contributes to the total time taken to
-    # typecheck everything, so we fake it by splitting up the time taken by each build source.
-    elapsed_time_per_file = elapsed_time / len(file_paths)
+    # typecheck everything, so we approximate it by attributing time proprtionally to
+    # each file based on its size.
+    file_sizes = {}
+    for path in file_paths:
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            size = 0
+
+        file_sizes[path] = size
+
+    total_size_of_all_files = sum(file_sizes.values())
+
+    elapsed_times_per_file = {
+        path: elapsed_time * (file_sizes[path] / total_size_of_all_files)
+        for path in file_paths
+    }
 
     test_cases = []
     for file_path in file_paths:
@@ -180,7 +196,7 @@ def create_document(
         case = TestCase(
             file_path,
             classname=file_path,
-            elapsed_time=elapsed_time_per_file,
+            elapsed_time=elapsed_times_per_file[file_path],
             result_state=result_state,
             message=message,
             output=output,
