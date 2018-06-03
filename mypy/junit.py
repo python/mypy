@@ -29,11 +29,6 @@ def _group_messages_by_file_path(messages: List[str]) -> MutableMapping[str, Lis
     return groups
 
 
-def _format_duration_as_seconds(duration: datetime.timedelta) -> str:
-    # We manually cap the precision of the seconds in our XML output
-    return str(round(duration.total_seconds(), 6))
-
-
 class TestCaseResultState(enum.Enum):
     error = 'error'
     failure = 'failure'
@@ -60,7 +55,7 @@ class TestCase:
         attributes = {
             "name": self.name,
             "classname": self.classname,
-            "time": _format_duration_as_seconds(self.elapsed_time),
+            "time": "%.6f" % self.elapsed_time.total_seconds(),
         }
 
         testcase_element = ET.Element("testcase", attributes)
@@ -115,7 +110,7 @@ class TestSuite:
             "failures": str(num_failures),
             "timestamp": self.timestamp.isoformat(),
             "tests": str(len(self.test_cases)),
-            "time": _format_duration_as_seconds(total_elapsed_time),
+            "time": "%.6f" % total_elapsed_time.total_seconds(),
         }
 
         return testsuite_element
