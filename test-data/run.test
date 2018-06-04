@@ -42,6 +42,30 @@ print(count(5))
 2
 6
 
+[case testFor]
+from typing import List
+def count(n: int) -> None:
+    for i in range(n):
+        print(i)
+def list_iter(l: List[int]) -> None:
+    for i in l:
+        print(i)
+[file driver.py]
+from native import count, list_iter
+count(5)
+list_iter(list(reversed(range(5))))
+[out]
+0
+1
+2
+3
+4
+4
+3
+2
+1
+0
+
 [case testRecursiveFibonacci]
 def fib(n: int) -> int:
     if n <= 1:

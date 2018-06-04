@@ -13,30 +13,21 @@ can hold various things:
 from abc import abstractmethod, abstractproperty
 import re
 from typing import (
-    List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, NewType, Callable
+    List, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, NewType, Callable, Union,
+    Iterable,
 )
+from collections import OrderedDict
 
 from mypy.nodes import Var
 
 
 T = TypeVar('T')
 
-Register = NewType('Register', int)
+# TODO: Use pointers to BasicBlocks instead?
 Label = NewType('Label', int)
 
-
-# Unfortunately we have visitors which are statement-like rather than expression-like.
-# It doesn't make sense to have the visitor return Optional[Register] because every
-# method either always returns no register or returns a register.
-#
-# Eventually we may want to separate expression visitors and statement-like visitors at
-# the type level but until then returning INVALID_REGISTER from a statement-like visitor
-# seems acceptable.
-INVALID_REGISTER = Register(-99999)
-
-
-# Similarly this is used for placeholder labels which aren't assigned yet (but will
-# be eventually. Its kind of a hack.
+# This is used for placeholder labels which aren't assigned yet (but will
+# be eventually. It's kind of a hack.
 INVALID_LABEL = Label(-88888)
 
 
@@ -93,6 +84,22 @@ class RType:
         return hash(self.name)
 
 
+class RVoid(RType):
+    """void"""
+
+    is_unboxed = False
+    name = 'void'
+    ctype = 'void'
+
+    def accept(self, visitor: 'RTypeVisitor[T]') -> T:
+        return visitor.visit_rvoid(self)
+
+    def c_undefined_value(self) -> str:
+        return ''
+
+void_rtype = RVoid()
+
+
 class RPrimitive(RType):
     """Primitive type such as 'object' or 'int'.
 
@@ -125,7 +132,6 @@ class RPrimitive(RType):
 
     def __repr__(self) -> str:
         return '<RPrimitive %s>'% self.name
-
 
 # Used to represent arbitrary objects and dynamically typed values
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False, is_refcounted=True)
@@ -314,37 +320,43 @@ class ROptional(RType):
 
 
 class Environment:
-    """Keep track of names and types of registers."""
+    """Maintain the register symbol table and manage temp generation"""
 
     def __init__(self) -> None:
-        self.names = []  # type: List[str]
-        self.types = []  # type: List[RType]
+        self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = {}  # type: Dict[Var, Register]
         self.temp_index = 0
 
-    def num_regs(self) -> int:
-        return len(self.names)
+    def regs(self) -> Iterable['Value']:
+        return self.indexes.keys()
 
-    def add_local(self, var: Var, typ: RType) -> Register:
+    def add(self, reg: 'Value', name: str) -> None:
+        reg.name = name
+        self.indexes[reg] = len(self.indexes)
+
+    def add_local(self, var: Var, typ: RType) -> 'Register':
         assert isinstance(var, Var)
-        self.names.append(var.name())
-        self.types.append(typ)
+        reg = Register(typ, var.line)
 
-        i = len(self.names) - 1
-
-        reg = Register(i)
         self.symtable[var] = reg
+        self.add(reg, var.name())
         return reg
 
-    def lookup(self, var: Var) -> Register:
+    def lookup(self, var: Var) -> 'Register':
         return self.symtable[var]
 
-    def add_temp(self, typ: RType) -> Register:
+    def add_temp(self, typ: RType) -> 'Register':
         assert isinstance(typ, RType)
-        self.names.append('r%d' % self.temp_index)
+        reg = Register(typ)
+        self.add(reg, 'r%d' % self.temp_index)
         self.temp_index += 1
-        self.types.append(typ)
-        return Register(len(self.names) - 1)
+        return reg
+
+    def add_op(self, reg: 'RegisterOp') -> None:
+        if reg.is_void:
+            return
+        self.add(reg, 'r%d' % self.temp_index)
+        self.temp_index += 1
 
     def format(self, fmt: str, *args: Any) -> str:
         result = []
@@ -359,7 +371,7 @@ class Environment:
                 typespec = fmt[n + 1]
                 arg = arglist.pop(0)
                 if typespec == 'r':
-                    result.append(self.names[arg])
+                    result.append(arg.name)
                 elif typespec == 'd':
                     result.append('%d' % arg)
                 elif typespec == 'l':
@@ -376,13 +388,16 @@ class Environment:
     def to_lines(self) -> List[str]:
         result = []
         i = 0
-        n = len(self.names)
-        while i < n:
+        regs = list(self.regs())
+
+        while i < len(regs):
             i0 = i
-            while i + 1 < n and self.types[i + 1] == self.types[i0]:
+            group = [regs[i0].name]
+            while i + 1 < len(regs) and regs[i + 1].type == regs[i0].type:
                 i += 1
+                group.append(regs[i].name)
             i += 1
-            result.append('%s :: %s' % (', '.join(self.names[i0:i]), self.types[i0]))
+            result.append('%s :: %s' % (', '.join(group), regs[i0].type))
         return result
 
 
@@ -391,21 +406,56 @@ ERR_MAGIC = 1  # Generates magic value (c_error_value) based on target RType on 
 ERR_FALSE = 2  # Generates false (bool) on exception
 
 
-class Op:
+class Value:
     # Source line number
     line = -1
+    name = '?'
+    type = void_rtype  # type: RType
 
     def __init__(self, line: int) -> None:
         self.line = line
+
+    @property
+    def is_void(self) -> bool:
+        return isinstance(self.type, RVoid)
+
+    @abstractmethod
+    def to_str(self, env: Environment) -> str:
+        raise NotImplementedError
+
+
+class Register(Value):
+    def __init__(self, type: RType, line: int = -1, name: str = '') -> None:
+        super().__init__(line)
+        self.name = name
+        self.type = type
+
+    def to_str(self, env: Environment) -> str:
+        return self.name
+
+    @property
+    def is_void(self) -> bool:
+        return False
+
+
+# Unfortunately we have visitors which are statement-like rather than expression-like.
+# It doesn't make sense to have the visitor return Optional[Value] because every
+# method either always returns no value or returns a value.
+#
+# Eventually we may want to separate expression visitors and statement-like visitors at
+# the type level but until then returning INVALID_VALUE from a statement-like visitor
+# seems acceptable.
+INVALID_VALUE = Register(void_rtype, name='<INVALID_VALUE>')
+
+
+class Op(Value):
+    def __init__(self, line: int) -> None:
+        super().__init__(line)
 
     def can_raise(self) -> bool:
         # Override this is if Op may raise an exception. Note that currently the fact that
         # only RegisterOps may raise an exception in hard coded in some places.
         return False
-
-    @abstractmethod
-    def to_str(self, env: Environment) -> str:
-        raise NotImplementedError
 
     @abstractmethod
     def accept(self, visitor: 'OpVisitor[T]') -> T:
@@ -446,7 +496,7 @@ class Branch(Op):
     INT_GE = 15
 
     # Unlike the above, these are unary operations so they only uses the "left" register
-    # ("right" should be INVALID_REGISTER).
+    # ("right" should be INVALID_VALUE).
     BOOL_EXPR = 100
     IS_NONE = 101
     IS_ERROR = 102  # Check for magic c_error_value (works for arbitary types)
@@ -466,7 +516,7 @@ class Branch(Op):
         IS_ERROR: ('is_error(%r)', ''),
     }
 
-    def __init__(self, left: Register, right: Register, true_label: Label,
+    def __init__(self, left: Value, right: Value, true_label: Label,
                  false_label: Label, op: int, line: int = -1) -> None:
         super().__init__(line)
         self.left = left
@@ -478,8 +528,8 @@ class Branch(Op):
         # If not None, the true label should generate a traceback entry (func name, line number)
         self.traceback_entry = None  # type: Optional[Tuple[str, int]]
 
-    def sources(self) -> List[Register]:
-        if self.right != INVALID_REGISTER:
+    def sources(self) -> List[Value]:
+        if self.right != INVALID_VALUE:
             return [self.left, self.right]
         else:
             return [self.left]
@@ -518,7 +568,7 @@ class Branch(Op):
 class Return(Op):
     error_kind = ERR_NEVER
 
-    def __init__(self, reg: Register, line: int = -1) -> None:
+    def __init__(self, reg: Value, line: int = -1) -> None:
         super().__init__(line)
         self.reg = reg
 
@@ -560,94 +610,71 @@ class RegisterOp(Op):
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
 
-    def __init__(self, dest: Optional[Register], line: int) -> None:
-        super().__init__(line)
-        assert dest != INVALID_REGISTER
-        assert self.error_kind != -1, 'error_kind not defined'
-        self._dest = dest
+    _type = None  # type: Optional[RType]
 
-    # This is a read-only property so that subclasses can override it
-    # without the Optional.
-    @property
-    def dest(self) -> Optional[Register]:
-        return self._dest
+    def __init__(self, line: int) -> None:
+        super().__init__(line)
+        assert self.error_kind != -1, 'error_kind not defined'
 
     @abstractmethod
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         pass
 
     def can_raise(self) -> bool:
         return self.error_kind != ERR_NEVER
 
-    def unique_sources(self) -> List[Register]:
-        result = []  # type: List[Register]
+    def unique_sources(self) -> List[Value]:
+        result = []  # type: List[Value]
         for reg in self.sources():
             if reg not in result:
                 result.append(reg)
         return result
 
 
-class StrictRegisterOp(RegisterOp):
-    """An operation that can be written as r1 = f(r2, ..., rn), where r1 must exist.
-
-    Like RegisterOp but without the option of r1 being None.
-    """
-
-    def __init__(self, dest: Register, line: int) -> None:
-        super().__init__(dest, line)
-
-    @property
-    def dest(self) -> Register:
-        # We could do this soundly without any checks by duplicating
-        # the _dest field, but that is kind of silly...
-        assert self._dest is not None
-        return self._dest
-
-
-class IncRef(StrictRegisterOp):
+class IncRef(RegisterOp):
     """inc_ref r"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, typ: RType, line: int = -1) -> None:
-        assert typ.is_refcounted
-        super().__init__(dest, line)
-        self.target_type = typ
+    def __init__(self, src: Value, line: int = -1) -> None:
+        assert src.type.is_refcounted
+        super().__init__(line)
+        self.src = src
 
     def to_str(self, env: Environment) -> str:
-        s = env.format('inc_ref %r', self.dest)
-        if is_bool_rprimitive(self.target_type) or is_int_rprimitive(self.target_type):
-            s += ' :: {}'.format(short_name(self.target_type.name))
+        s = env.format('inc_ref %r', self.src)
+        if is_bool_rprimitive(self.src.type) or is_int_rprimitive(self.src.type):
+            s += ' :: {}'.format(short_name(self.src.type.name))
         return s
 
-    def sources(self) -> List[Register]:
-        return [self.dest]
+    def sources(self) -> List[Value]:
+        return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_inc_ref(self)
 
 
-class DecRef(StrictRegisterOp):
+class DecRef(RegisterOp):
     """dec_ref r"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, typ: RType, line: int = -1) -> None:
-        assert typ.is_refcounted
-        super().__init__(dest, line)
-        self.target_type = typ
+    def __init__(self, src: Value, line: int = -1) -> None:
+        assert src.type.is_refcounted
+        super().__init__(line)
+        self.src = src
 
     def __repr__(self) -> str:
-        return '<DecRef %d>' % self.dest
+        return '<DecRef %r>' % self.src
 
     def to_str(self, env: Environment) -> str:
-        s = env.format('dec_ref %r', self.dest)
-        if is_bool_rprimitive(self.target_type) or is_int_rprimitive(self.target_type):
-            s += ' :: {}'.format(short_name(self.target_type.name))
+        s = env.format('dec_ref %r', self.src)
+        if is_bool_rprimitive(self.src.type) or is_int_rprimitive(self.src.type):
+            s += ' :: {}'.format(short_name(self.src.type.name))
         return s
 
-    def sources(self) -> List[Register]:
-        return [self.dest]
+    def sources(self) -> List[Value]:
+        return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_dec_ref(self)
@@ -661,19 +688,21 @@ class Call(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Optional[Register], fn: str, args: List[Register], line: int) -> None:
-        super().__init__(dest, line)
+    # TODO: take a FuncIR and extract the ret type
+    def __init__(self, ret_type: RType, fn: str, args: List[Value], line: int) -> None:
+        super().__init__(line)
         self.fn = fn
         self.args = args
+        self.type = ret_type
 
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
         s = '%s(%s)' % (self.fn, args)
-        if self.dest is not None:
-            s = env.format('%r = ', self.dest) + s
+        if not self.is_void:
+            s = env.format('%r = ', self) + s
         return s
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return self.args[:]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
@@ -685,27 +714,29 @@ class MethodCall(RegisterOp):
 
     error_kind = ERR_MAGIC
 
+    # TODO: extract the ret type from the receiver
     def __init__(self,
-                 dest: Optional[Register],
-                 obj: Register,
+                 ret_type: RType,
+                 obj: Value,
                  method: str,
-                 args: List[Register],
-                 receiver_type: RInstance,
+                 args: List[Value],
                  line: int = -1) -> None:
-        super().__init__(dest, line)
+        super().__init__(line)
         self.obj = obj
         self.method = method
         self.args = args
-        self.receiver_type = receiver_type
+        assert isinstance(obj.type, RInstance), "Methods can only be called on instances"
+        self.receiver_type = obj.type
+        self.type = ret_type
 
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
         s = env.format('%r.%s(%s)', self.obj, self.method, args)
-        if self.dest is not None:
-            s = env.format('%r = ', self.dest) + s
+        if not self.is_void:
+            s = env.format('%r = ', self) + s
         return s
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return self.args[:] + [self.obj]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
@@ -725,20 +756,21 @@ class PyCall(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Optional[Register], function: Register, args: List[Register],
+    def __init__(self, function: Value, args: List[Value],
                  line: int) -> None:
-        super().__init__(dest, line)
+        super().__init__(line)
         self.function = function
         self.args = args
+        self.type = object_rprimitive
 
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
         s = env.format('%r(%s)', self.function, args)
-        if self.dest is not None:
-            s = env.format('%r = ', self.dest) + s
+        if not self.is_void:
+            s = env.format('%r = ', self) + s
         return s + ' :: py'
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return self.args[:] + [self.function]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
@@ -754,45 +786,46 @@ class PyMethodCall(RegisterOp):
     error_kind = ERR_MAGIC
 
     def __init__(self,
-            dest: Optional[Register],
-            obj: Register,
-            method: Register,
-            args: List[Register],
-            line: int = -1) -> None:
-        super().__init__(dest, line)
+                 obj: Value,
+                 method: Value,
+                 args: List[Value],
+                 line: int = -1) -> None:
+        super().__init__(line)
         self.obj = obj
         self.method = method
         self.args = args
+        self.type = object_rprimitive
 
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
         s = env.format('%r.%r(%s)', self.obj, self.method, args)
-        if self.dest is not None:
-            s = env.format('%r = ', self.dest) + s
+        if not self.is_void:
+            s = env.format('%r = ', self) + s
         return s + ' :: py'
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return self.args[:] + [self.obj, self.method]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_py_method_call(self)
 
 
-class PyGetAttr(StrictRegisterOp):
+class PyGetAttr(RegisterOp):
     """dest = left.right :: py"""
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Register, left: Register, right: str, line: int) -> None:
-        super().__init__(dest, line)
+    def __init__(self, type: RType, left: Value, right: str, line: int) -> None:
+        super().__init__(line)
         self.left = left
         self.right = right
+        self.type = type
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.left]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r.%s', self.dest, self.left, self.right)
+        return env.format('%r = %r.%s', self, self.left, self.right)
 
     def can_raise(self) -> bool:
         return True
@@ -803,7 +836,7 @@ class PyGetAttr(StrictRegisterOp):
 
 class EmitterInterface:
     @abstractmethod
-    def reg(self, name: Register) -> str:
+    def reg(self, name: Value) -> str:
         raise NotImplementedError
 
     @abstractmethod
@@ -849,29 +882,32 @@ class PrimitiveOp(RegisterOp):
     """
 
     def __init__(self,
-                  dest: Optional[Register],
-                  args: List[Register],
-                  desc: OpDescription,
-                  line: int) -> None:
+                 args: List[Value],
+                 desc: OpDescription,
+                 line: int) -> None:
         if not desc.is_var_arg:
             assert len(args) == len(desc.arg_types)
         self.error_kind = desc.error_kind
-        super().__init__(dest, line)
+        super().__init__(line)
         self.args = args
         self.desc = desc
+        if desc.result_type is None:
+            assert desc.error_kind == ERR_FALSE  # TODO: No-value ops not supported yet
+            self.type = bool_rprimitive
+        else:
+            self.type = desc.result_type
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return list(self.args)
 
     def __repr__(self) -> str:
-        return '<PrimiveOp2 name=%r dest=%s args=%s>' % (self.desc.name,
-                                                         self.dest,
-                                                         self.args)
+        return '<PrimitiveOp name=%r args=%s>' % (self.desc.name,
+                                                  self.args)
 
     def to_str(self, env: Environment) -> str:
         params = {}  # type: Dict[str, Any]
-        if self.dest is not None and self.dest != INVALID_REGISTER:
-            params['dest'] = env.format('%r', self.dest)
+        if not self.is_void:
+            params['dest'] = env.format('%r', self)
         args = [env.format('%r', arg) for arg in self.args]
         params['args'] = args
         params['comma_args'] = ', '.join(args)
@@ -881,16 +917,17 @@ class PrimitiveOp(RegisterOp):
         return visitor.visit_primitive_op(self)
 
 
-class Assign(StrictRegisterOp):
+class Assign(Op):
     """dest = int"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, src: Register, line: int = -1) -> None:
-        super().__init__(dest, line)
+    def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
+        super().__init__(line)
         self.src = src
+        self.dest = dest
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
@@ -900,154 +937,157 @@ class Assign(StrictRegisterOp):
         return visitor.visit_assign(self)
 
 
-class LoadInt(StrictRegisterOp):
+class LoadInt(RegisterOp):
     """dest = int"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, value: int, line: int = -1) -> None:
-        super().__init__(dest, line)
+    def __init__(self, value: int, line: int = -1) -> None:
+        super().__init__(line)
         self.value = value
+        self.type = int_rprimitive
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %d', self.dest, self.value)
+        return env.format('%r = %d', self, self.value)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_int(self)
 
 
-class LoadErrorValue(StrictRegisterOp):
+class LoadErrorValue(RegisterOp):
     """dest = <error value for type>"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, rtype: RType, line: int = -1) -> None:
-        super().__init__(dest, line)
+    def __init__(self, rtype: RType, line: int = -1) -> None:
+        super().__init__(line)
         self.type = rtype
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = <error> :: %s', self.dest, self.type)
+        return env.format('%r = <error> :: %s', self, self.type)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_error_value(self)
 
 
-class GetAttr(StrictRegisterOp):
+class GetAttr(RegisterOp):
     """dest = obj.attr (for a native object)"""
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Register, obj: Register, attr: str,
-                 class_type: RInstance,
-                 line: int) -> None:
-        super().__init__(dest, line)
+    def __init__(self, obj: Value, attr: str, line: int) -> None:
+        super().__init__(line)
         self.obj = obj
         self.attr = attr
-        self.class_type = class_type
+        assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
+        self.class_type = obj.type
+        self.type = obj.type.attr_type(attr)
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.obj]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r.%s', self.dest, self.obj, self.attr)
+        return env.format('%r = %r.%s', self, self.obj, self.attr)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_get_attr(self)
 
 
-class SetAttr(StrictRegisterOp):
+class SetAttr(RegisterOp):
     """obj.attr = src (for a native object)"""
 
     error_kind = ERR_FALSE
 
-    def __init__(self, dest: Register, obj: Register, attr: str, src: Register,
-                 class_type: RInstance,
-                 line: int) -> None:
-        super().__init__(dest, line)
+    def __init__(self, obj: Value, attr: str, src: Value, line: int) -> None:
+        super().__init__(line)
         self.obj = obj
         self.attr = attr
         self.src = src
-        self.class_type = class_type
+        assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
+        self.class_type = obj.type
+        self.type = bool_rprimitive
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.obj, self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r.%s = %r; %r = is_error', self.obj, self.attr, self.src, self.dest)
+        return env.format('%r.%s = %r; %r = is_error', self.obj, self.attr, self.src, self)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_set_attr(self)
 
 
-class LoadStatic(StrictRegisterOp):
+class LoadStatic(RegisterOp):
     """dest = name :: static"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, identifier: str, line: int = -1) -> None:
-        super().__init__(dest, line)
+    def __init__(self, type: RType, identifier: str, line: int = -1) -> None:
+        super().__init__(line)
         self.identifier = identifier
+        self.type = type
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %s :: static', self.dest, self.identifier)
+        return env.format('%r = %s :: static', self, self.identifier)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_static(self)
 
 
-class TupleSet(StrictRegisterOp):
+class TupleSet(RegisterOp):
     """dest = (reg, ...) (for fixed-length tuple)"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, items: List[Register], typ: RTuple, line: int) -> None:
-        super().__init__(dest, line)
+    def __init__(self, items: List[Value], line: int) -> None:
+        super().__init__(line)
         self.items = items
-        self.tuple_type = typ
+        self.tuple_type = RTuple([arg.type for arg in items])
+        self.type = self.tuple_type
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return self.items[:]
 
     def to_str(self, env: Environment) -> str:
         item_str = ', '.join(env.format('%r', item) for item in self.items)
-        return env.format('%r = (%s)', self.dest, item_str)
+        return env.format('%r = (%s)', self, item_str)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_tuple_set(self)
 
 
-class TupleGet(StrictRegisterOp):
+class TupleGet(RegisterOp):
     """dest = src[n] (for fixed-length tuple)"""
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, src: Register, index: int, target_type: RType,
-                 line: int) -> None:
-        super().__init__(dest, line)
+    def __init__(self, src: Value, index: int, line: int) -> None:
+        super().__init__(line)
         self.src = src
         self.index = index
-        self.target_type = target_type
+        assert isinstance(src.type, RTuple), "TupleGet only operates on tuples"
+        self.type = src.type.types[index]
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r[%d]', self.dest, self.src, self.index)
+        return env.format('%r = %r[%d]', self, self.src, self.index)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_tuple_get(self)
 
 
-class Cast(StrictRegisterOp):
+class Cast(RegisterOp):
     """dest = cast(type, src)
 
     Perform a runtime type check (no representation or value conversion).
@@ -1057,22 +1097,22 @@ class Cast(StrictRegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Register, src: Register, typ: RType, line: int) -> None:
-        super().__init__(dest, line)
+    def __init__(self, src: Value, typ: RType, line: int) -> None:
+        super().__init__(line)
         self.src = src
-        self.typ = typ
+        self.type = typ
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = cast(%s, %r)', self.dest, self.typ, self.src)
+        return env.format('%r = cast(%s, %r)', self, self.type, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_cast(self)
 
 
-class Box(StrictRegisterOp):
+class Box(RegisterOp):
     """dest = box(type, src)
 
     This converts from a potentially unboxed representation to a straight Python object.
@@ -1081,22 +1121,22 @@ class Box(StrictRegisterOp):
 
     error_kind = ERR_NEVER
 
-    def __init__(self, dest: Register, src: Register, typ: RType, line: int = -1) -> None:
-        super().__init__(dest, line)
+    def __init__(self, src: Value, line: int = -1) -> None:
+        super().__init__(line)
         self.src = src
-        self.src_type = typ
+        self.type = object_rprimitive
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = box(%s, %r)', self.dest, self.src_type, self.src)
+        return env.format('%r = box(%s, %r)', self, self.src.type, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_box(self)
 
 
-class Unbox(StrictRegisterOp):
+class Unbox(RegisterOp):
     """dest = unbox(type, src)
 
     This is similar to a cast, but it also changes to a (potentially) unboxed runtime
@@ -1105,16 +1145,16 @@ class Unbox(StrictRegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, dest: Register, src: Register, typ: RType, line: int) -> None:
-        super().__init__(dest, line)
+    def __init__(self, src: Value, typ: RType, line: int) -> None:
+        super().__init__(line)
         self.src = src
         self.type = typ
 
-    def sources(self) -> List[Register]:
+    def sources(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = unbox(%s, %r)', self.dest, self.type, self.src)
+        return env.format('%r = unbox(%s, %r)', self, self.type, self.src)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_unbox(self)
@@ -1181,11 +1221,9 @@ class ClassIR:
 
     # TODO: Use dictionary for attributes in addition to (or instead of) list.
 
-    def __init__(self,
-                 name: str,
-                 attributes: List[Tuple[str, RType]]) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.attributes = attributes
+        self.attributes = []  # type: List[Tuple[str, RType]]
         self.methods = []  # type: List[FuncIR]
 
     def struct_name(self) -> str:
@@ -1341,6 +1379,9 @@ class RTypeVisitor(Generic[T]):
     def visit_rtuple(self, typ: RTuple) -> T:
         raise NotImplementedError
 
+    @abstractmethod
+    def visit_rvoid(self, typ: RVoid) -> T:
+        raise NotImplementedError
 
 # Import various modules that set up global state.
 import mypyc.ops_int

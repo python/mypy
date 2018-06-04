@@ -2,12 +2,13 @@
 
 from abc import abstractmethod
 
-from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional
+from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional, Iterable
 
 from mypyc.ops import (
+    Value, Register,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
-    TupleGet, TupleSet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label, Register,
+    TupleGet, TupleSet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, Label,
     PyMethodCall, PrimitiveOp, MethodCall,
 )
 
@@ -75,7 +76,7 @@ class AnalysisResult(Generic[T]):
     def __str__(self) -> str:
         return 'before: %s\nafter: %s\n' % (self.before, self.after)
 
-GenAndKill = Tuple[Set[Register], Set[Register]]
+GenAndKill = Tuple[Set[Value], Set[Value]]
 
 
 class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
@@ -84,6 +85,10 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
 
     @abstractmethod
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_assign(self, op: Assign) -> GenAndKill:
         raise NotImplementedError
 
     def visit_call(self, op: Call) -> GenAndKill:
@@ -99,9 +104,6 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_primitive_op(self, op: PrimitiveOp) -> GenAndKill:
-        return self.visit_register_op(op)
-
-    def visit_assign(self, op: Assign) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_load_int(self, op: LoadInt) -> GenAndKill:
@@ -149,15 +151,18 @@ class MaybeDefinedVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
-        if op.dest is not None:
-            return {op.dest}, set()
+        if not op.is_void:
+            return {op}, set()
         else:
             return set(), set()
+
+    def visit_assign(self, op: Assign) -> GenAndKill:
+        return {op.dest}, set()
 
 
 def analyze_maybe_defined_regs(blocks: List[BasicBlock],
                                cfg: CFG,
-                               initial_defined: Set[Register]) -> AnalysisResult[Register]:
+                               initial_defined: Set[Value]) -> AnalysisResult[Value]:
     """Calculate potentially defined registers at each CFG location.
 
     A register is defined if it has a value along some path from the initial location.
@@ -183,17 +188,20 @@ class MustDefinedVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
-        if op.dest is not None:
-            return {op.dest}, set()
+        if not op.is_void:
+            return {op}, set()
         else:
             return set(), set()
+
+    def visit_assign(self, op: Assign) -> GenAndKill:
+        return {op.dest}, set()
 
 
 def analyze_must_defined_regs(
         blocks: List[BasicBlock],
         cfg: CFG,
-        initial_defined: Set[Register],
-        num_regs: int) -> AnalysisResult[Register]:
+        initial_defined: Set[Value],
+        regs: Iterable[Value]) -> AnalysisResult[Value]:
     """Calculate always defined registers at each CFG location.
 
     A register is defined if it has a value along all paths from the initial location.
@@ -204,11 +212,11 @@ def analyze_must_defined_regs(
                         initial=initial_defined,
                         backward=False,
                         kind=MUST_ANALYSIS,
-                        universe=set([Register(r) for r in range(num_regs)]))
+                        universe=set(regs))
 
 
 class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
-    def __init__(self, args: Set[Register]) -> None:
+    def __init__(self, args: Set[Value]) -> None:
         self.args = args
 
     def visit_branch(self, op: Branch) -> GenAndKill:
@@ -221,15 +229,17 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
+        return set(), set()
+
+    def visit_assign(self, op: Assign) -> GenAndKill:
         if op.dest in self.args:
             return set(), {op.dest}
         return set(), set()
 
-
 def analyze_borrowed_arguments(
         blocks: List[BasicBlock],
         cfg: CFG,
-        args: Set[Register]) -> AnalysisResult[Register]:
+        args: Set[Value]) -> AnalysisResult[Value]:
     """Calculate arguments that can use references borrowed from the caller.
 
     When assigning to an argument, it no longer is borrowed.
@@ -254,21 +264,21 @@ class UndefinedVisitor(BaseAnalysisVisitor):
         return set(), set()
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
-        return set(), {op.dest} if op.dest is not None else set()
+        return set(), {op} if not op.is_void else set()
 
+    def visit_assign(self, op: Assign) -> GenAndKill:
+        return set(), {op.dest}
 
 def analyze_undefined_regs(blocks: List[BasicBlock],
                            cfg: CFG,
                            env: Environment,
-                           initial_defined: Set[Register]) -> AnalysisResult[Register]:
+                           initial_defined: Set[Value]) -> AnalysisResult[Value]:
     """Calculate potentially undefined registers at each CFG location.
 
     A register is undefined if there is some path from initial block
     where it has an undefined value.
     """
-    initial_undefined = {Register(reg)
-                         for reg in range(len(env.names))
-                         if Register(reg) not in initial_defined}
+    initial_undefined = set(env.regs()) - initial_defined
     return run_analysis(blocks=blocks,
                         cfg=cfg,
                         gen_and_kill=UndefinedVisitor(),
@@ -289,14 +299,17 @@ class LivenessVisitor(BaseAnalysisVisitor):
 
     def visit_register_op(self, op: RegisterOp) -> GenAndKill:
         gen = set(op.sources())
-        if op.dest is not None:
-            return gen, {op.dest}
+        if not op.is_void:
+            return gen, {op}
         else:
             return gen, set()
 
+    def visit_assign(self, op: Assign) -> GenAndKill:
+        return set(op.sources()), {op.dest}
+
 
 def analyze_live_regs(blocks: List[BasicBlock],
-                      cfg: CFG) -> AnalysisResult[Register]:
+                      cfg: CFG) -> AnalysisResult[Value]:
     """Calculate live registers at each CFG location.
 
     A register is live at a location if it can be read along some CFG path starting

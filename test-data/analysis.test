@@ -9,25 +9,31 @@ def f(a: int) -> None:
         z = 1
 [out]
 L0:
-    x = 1
+    r0 = 1
+    x = r0
     if x == a goto L1 else goto L2 :: int
 L1:
-    y = 1
+    r1 = 1
+    y = r1
     goto L3
 L2:
-    z = 1
+    r2 = 1
+    z = r2
 L3:
-    r0 = None
-    return r0
+    r3 = None
+    return r3
 
-(0, 0)   {a}                     {a, x}
-(0, 1)   {a, x}                  {a, x}
-(1, 0)   {a, x}                  {a, x, y}
-(1, 1)   {a, x, y}               {a, x, y}
-(2, 0)   {a, x}                  {a, x, z}
-(2, 1)   {a, x, z}               {a, x, z}
-(3, 0)   {a, x, y, z}            {a, x, y, z, r0}
-(3, 1)   {a, x, y, z, r0}        {a, x, y, z, r0}
+(0, 0)   {a}                     {a, r0}
+(0, 1)   {a, r0}                 {a, r0, x}
+(0, 2)   {a, r0, x}              {a, r0, x}
+(1, 0)   {a, r0, x}              {a, r0, r1, x}
+(1, 1)   {a, r0, r1, x}          {a, r0, r1, x, y}
+(1, 2)   {a, r0, r1, x, y}       {a, r0, r1, x, y}
+(2, 0)   {a, r0, x}              {a, r0, r2, x}
+(2, 1)   {a, r0, r2, x}          {a, r0, r2, x, z}
+(2, 2)   {a, r0, r2, x, z}       {a, r0, r2, x, z}
+(3, 0)   {a, r0, r1, r2, x, y, z} {a, r0, r1, r2, r3, x, y, z}
+(3, 1)   {a, r0, r1, r2, r3, x, y, z} {a, r0, r1, r2, r3, x, y, z}
 
 [case testSimple_Liveness]
 def f(a: int) -> int:
@@ -38,9 +44,10 @@ def f(a: int) -> int:
         return x
 [out]
 L0:
-    x = 1
     r0 = 1
-    if x == r0 goto L1 else goto L2 :: int
+    x = r0
+    r1 = 1
+    if x == r1 goto L1 else goto L2 :: int
 L1:
     return a
 L2:
@@ -48,9 +55,10 @@ L2:
 L3:
     unreachable
 
-(0, 0)   {a}                     {a, x}
-(0, 1)   {a, x}                  {a, x, r0}
-(0, 2)   {a, x, r0}              {a, x}
+(0, 0)   {a}                     {a, r0}
+(0, 1)   {a, r0}                 {a, x}
+(0, 2)   {a, x}                  {a, r1, x}
+(0, 3)   {a, r1, x}              {a, x}
 (1, 0)   {a}                     {}
 (2, 0)   {x}                     {}
 (3, 0)   {}                      {}
@@ -63,15 +71,21 @@ def f() -> int:
     return x
 [out]
 L0:
-    x = 1
-    y = 1
-    x = 2
+    r0 = 1
+    x = r0
+    r1 = 1
+    y = r1
+    r2 = 2
+    x = r2
     return x
 
-(0, 0)   {}                      {}
-(0, 1)   {}                      {}
-(0, 2)   {}                      {x}
-(0, 3)   {x}                     {}
+(0, 0)   {}                      {r0}
+(0, 1)   {r0}                    {}
+(0, 2)   {}                      {r1}
+(0, 3)   {r1}                    {}
+(0, 4)   {}                      {r2}
+(0, 5)   {r2}                    {x}
+(0, 6)   {x}                     {}
 
 [case testSpecial2_Liveness]
 def f(a: int) -> int:
@@ -81,15 +95,21 @@ def f(a: int) -> int:
     return a
 [out]
 L0:
-    a = 1
-    a = 2
-    a = 3
+    r0 = 1
+    a = r0
+    r1 = 2
+    a = r1
+    r2 = 3
+    a = r2
     return a
 
-(0, 0)   {}                      {}
-(0, 1)   {}                      {}
-(0, 2)   {}                      {a}
-(0, 3)   {a}                     {}
+(0, 0)   {}                      {r0}
+(0, 1)   {r0}                    {}
+(0, 2)   {}                      {r1}
+(0, 3)   {r1}                    {}
+(0, 4)   {}                      {r2}
+(0, 5)   {r2}                    {a}
+(0, 6)   {a}                     {}
 
 [case testSimple_MustDefined]
 def f(a: int) -> None:
@@ -103,24 +123,30 @@ L0:
     r0 = 1
     if a == r0 goto L1 else goto L2 :: int
 L1:
-    y = 1
-    x = 2
+    r1 = 1
+    y = r1
+    r2 = 2
+    x = r2
     goto L3
 L2:
-    x = 2
+    r3 = 2
+    x = r3
 L3:
-    r1 = None
-    return r1
+    r4 = None
+    return r4
 
 (0, 0)   {a}                     {a, r0}
 (0, 1)   {a, r0}                 {a, r0}
-(1, 0)   {a, r0}                 {a, r0, y}
-(1, 1)   {a, r0, y}              {a, r0, y, x}
-(1, 2)   {a, r0, y, x}           {a, r0, y, x}
-(2, 0)   {a, r0}                 {a, r0, x}
-(2, 1)   {a, r0, x}              {a, r0, x}
-(3, 0)   {a, r0, x}              {a, r0, x, r1}
-(3, 1)   {a, r0, x, r1}          {a, r0, x, r1}
+(1, 0)   {a, r0}                 {a, r0, r1}
+(1, 1)   {a, r0, r1}             {a, r0, r1, y}
+(1, 2)   {a, r0, r1, y}          {a, r0, r1, r2, y}
+(1, 3)   {a, r0, r1, r2, y}      {a, r0, r1, r2, x, y}
+(1, 4)   {a, r0, r1, r2, x, y}   {a, r0, r1, r2, x, y}
+(2, 0)   {a, r0}                 {a, r0, r3}
+(2, 1)   {a, r0, r3}             {a, r0, r3, x}
+(2, 2)   {a, r0, r3, x}          {a, r0, r3, x}
+(3, 0)   {a, r0, x}              {a, r0, r4, x}
+(3, 1)   {a, r0, r4, x}          {a, r0, r4, x}
 
 [case testTwoArgs_MustDefined]
 def f(x: int, y: int) -> int:
@@ -143,22 +169,24 @@ L1:
     if n < r0 goto L2 else goto L3 :: int
 L2:
     r1 = 1
-    n = n + r1 :: int
+    r2 = n + r1 :: int
+    n = r2
     m = n
     goto L1
 L3:
-    r2 = None
-    return r2
+    r3 = None
+    return r3
 
 (0, 0)   {n}                     {n}
 (1, 0)   {n}                     {n, r0}
 (1, 1)   {n, r0}                 {n, r0}
 (2, 0)   {n, r0}                 {n, r0, r1}
-(2, 1)   {n, r0, r1}             {n, r0, r1}
-(2, 2)   {n, r0, r1}             {n, r0, r1, m}
-(2, 3)   {n, r0, r1, m}          {n, r0, r1, m}
-(3, 0)   {n, r0}                 {n, r0, r2}
-(3, 1)   {n, r0, r2}             {n, r0, r2}
+(2, 1)   {n, r0, r1}             {n, r0, r1, r2}
+(2, 2)   {n, r0, r1, r2}         {n, r0, r1, r2}
+(2, 3)   {n, r0, r1, r2}         {m, n, r0, r1, r2}
+(2, 4)   {m, n, r0, r1, r2}      {m, n, r0, r1, r2}
+(3, 0)   {n, r0}                 {n, r0, r3}
+(3, 1)   {n, r0, r3}             {n, r0, r3}
 
 [case testMultiPass_Liveness]
 def f(n: int) -> None:
@@ -171,41 +199,47 @@ def f(n: int) -> None:
             n = x
 [out]
 L0:
-    x = 1
-    y = 1
-L1:
     r0 = 1
-    if n < r0 goto L2 else goto L6 :: int
+    x = r0
+    r1 = 1
+    y = r1
+L1:
+    r2 = 1
+    if n < r2 goto L2 else goto L6 :: int
 L2:
     n = y
 L3:
-    r1 = 2
-    if n < r1 goto L4 else goto L5 :: int
+    r3 = 2
+    if n < r3 goto L4 else goto L5 :: int
 L4:
-    n = 1
+    r4 = 1
+    n = r4
     n = x
     goto L3
 L5:
     goto L1
 L6:
-    r2 = None
-    return r2
+    r5 = None
+    return r5
 
-(0, 0)   {n}                     {n, x}
-(0, 1)   {n, x}                  {n, x, y}
-(0, 2)   {n, x, y}               {n, x, y}
-(1, 0)   {n, x, y}               {n, x, y, r0}
-(1, 1)   {n, x, y, r0}           {x, y}
+(0, 0)   {n}                     {n, r0}
+(0, 1)   {n, r0}                 {n, x}
+(0, 2)   {n, x}                  {n, r1, x}
+(0, 3)   {n, r1, x}              {n, x, y}
+(0, 4)   {n, x, y}               {n, x, y}
+(1, 0)   {n, x, y}               {n, r2, x, y}
+(1, 1)   {n, r2, x, y}           {x, y}
 (2, 0)   {x, y}                  {n, x, y}
 (2, 1)   {n, x, y}               {n, x, y}
-(3, 0)   {n, x, y}               {n, x, y, r1}
-(3, 1)   {n, x, y, r1}           {n, x, y}
-(4, 0)   {x, y}                  {x, y}
-(4, 1)   {x, y}                  {n, x, y}
-(4, 2)   {n, x, y}               {n, x, y}
+(3, 0)   {n, x, y}               {n, r3, x, y}
+(3, 1)   {n, r3, x, y}           {n, x, y}
+(4, 0)   {x, y}                  {r4, x, y}
+(4, 1)   {r4, x, y}              {x, y}
+(4, 2)   {x, y}                  {n, x, y}
+(4, 3)   {n, x, y}               {n, x, y}
 (5, 0)   {n, x, y}               {n, x, y}
-(6, 0)   {}                      {r2}
-(6, 1)   {r2}                    {}
+(6, 0)   {}                      {r5}
+(6, 1)   {r5}                    {}
 
 [case testCall_Liveness]
 def f(x: int) -> int:
@@ -214,16 +248,18 @@ def f(x: int) -> int:
 [out]
 L0:
     r0 = 1
-    a = f(r0)
-    r1 = f(a)
-    r2 = r1 + a :: int
-    return r2
+    r1 = f(r0)
+    a = r1
+    r2 = f(a)
+    r3 = r2 + a :: int
+    return r3
 
 (0, 0)   {}                      {r0}
-(0, 1)   {r0}                    {a}
-(0, 2)   {a}                     {a, r1}
-(0, 3)   {a, r1}                 {r2}
-(0, 4)   {r2}                    {}
+(0, 1)   {r0}                    {r1}
+(0, 2)   {r1}                    {a}
+(0, 3)   {a}                     {a, r2}
+(0, 4)   {a, r2}                 {r3}
+(0, 5)   {r3}                    {}
 
 [case testLoop_MaybeDefined]
 def f(a: int) -> None:
@@ -249,15 +285,15 @@ L6:
     return r0
 
 (0, 0)   {a}                     {a}
-(1, 0)   {a, y, x}               {a, y, x}
-(2, 0)   {a, y, x}               {a, y, x}
-(3, 0)   {a, y, x}               {a, y, x}
-(4, 0)   {a, y, x}               {a, y, x}
-(4, 1)   {a, y, x}               {a, y, x}
-(5, 0)   {a, y, x}               {a, y, x}
-(5, 1)   {a, y, x}               {a, y, x}
-(6, 0)   {a, y, x}               {a, y, x, r0}
-(6, 1)   {a, y, x, r0}           {a, y, x, r0}
+(1, 0)   {a, x, y}               {a, x, y}
+(2, 0)   {a, x, y}               {a, x, y}
+(3, 0)   {a, x, y}               {a, x, y}
+(4, 0)   {a, x, y}               {a, x, y}
+(4, 1)   {a, x, y}               {a, x, y}
+(5, 0)   {a, x, y}               {a, x, y}
+(5, 1)   {a, x, y}               {a, x, y}
+(6, 0)   {a, x, y}               {a, r0, x, y}
+(6, 1)   {a, r0, x, y}           {a, r0, x, y}
 
 [case testTrivial_BorrowedArgument]
 def f(a: int, b: int) -> int:
@@ -276,12 +312,14 @@ def f(a: int) -> int:
 [out]
 L0:
     b = a
-    a = 1
+    r0 = 1
+    a = r0
     return a
 
 (0, 0)   {a}                     {a}
-(0, 1)   {a}                     {}
-(0, 2)   {}                      {}
+(0, 1)   {a}                     {a}
+(0, 2)   {a}                     {}
+(0, 3)   {}                      {}
 
 [case testConditional_BorrowedArgument]
 def f(a: int) -> int:
@@ -295,20 +333,26 @@ def f(a: int) -> int:
 L0:
     if a == a goto L1 else goto L2 :: int
 L1:
-    x = 2
-    a = 1
+    r0 = 2
+    x = r0
+    r1 = 1
+    a = r1
     goto L3
 L2:
-    x = 1
+    r2 = 1
+    x = r2
 L3:
     return x
 
 (0, 0)   {a}                     {a}
 (1, 0)   {a}                     {a}
-(1, 1)   {a}                     {}
-(1, 2)   {}                      {}
+(1, 1)   {a}                     {a}
+(1, 2)   {a}                     {a}
+(1, 3)   {a}                     {}
+(1, 4)   {}                      {}
 (2, 0)   {a}                     {a}
 (2, 1)   {a}                     {a}
+(2, 2)   {a}                     {a}
 (3, 0)   {}                      {}
 
 [case testLoop_BorrowedArgument]
@@ -321,14 +365,18 @@ def f(a: int) -> int:
     return sum
 [out]
 L0:
-    sum = 0
-    i = 0
+    r0 = 0
+    sum = r0
+    r1 = 0
+    i = r1
 L1:
     if i <= a goto L2 else goto L3 :: int
 L2:
-    sum = sum + i :: int
-    r0 = 1
-    i = i + r0 :: int
+    r2 = sum + i :: int
+    sum = r2
+    r3 = 1
+    r4 = i + r3 :: int
+    i = r4
     goto L1
 L3:
     return sum
@@ -336,11 +384,15 @@ L3:
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
 (0, 2)   {a}                     {a}
+(0, 3)   {a}                     {a}
+(0, 4)   {a}                     {a}
 (1, 0)   {a}                     {a}
 (2, 0)   {a}                     {a}
 (2, 1)   {a}                     {a}
 (2, 2)   {a}                     {a}
 (2, 3)   {a}                     {a}
+(2, 4)   {a}                     {a}
+(2, 5)   {a}                     {a}
 (3, 0)   {a}                     {a}
 
 [case testError]

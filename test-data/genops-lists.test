@@ -77,12 +77,13 @@ def f() -> None:
     x = []  # type: List[int]
 [out]
 def f():
-    x :: list
-    r0 :: None
+    x, r0 :: list
+    r1 :: None
 L0:
-    x = []
-    r0 = None
-    return r0
+    r0 = []
+    x = r0
+    r1 = None
+    return r1
 
 [case testNewListTwoItems]
 from typing import List
@@ -93,15 +94,17 @@ def f():
     x :: list
     r0, r1 :: int
     r2, r3 :: object
-    r4 :: None
+    r4 :: list
+    r5 :: None
 L0:
     r0 = 1
     r1 = 2
     r2 = box(int, r0)
     r3 = box(int, r1)
-    x = [r2, r3]
-    r4 = None
-    return r4
+    r4 = [r2, r3]
+    x = r4
+    r5 = None
+    return r5
 
 [case testListMultiply]
 from typing import List
@@ -111,20 +114,24 @@ def f(a: List[int]) -> None:
 [out]
 def f(a):
     a, b :: list
-    r0, r1, r2 :: int
-    r3 :: list
+    r0 :: int
+    r1 :: list
+    r2, r3 :: int
     r4 :: object
-    r5 :: None
+    r5, r6 :: list
+    r7 :: None
 L0:
     r0 = 2
-    b = a * r0 :: list
-    r1 = 3
-    r2 = 4
-    r4 = box(int, r2)
-    r3 = [r4]
-    b = r1 * r3 :: list
-    r5 = None
-    return r5
+    r1 = a * r0 :: list
+    b = r1
+    r2 = 3
+    r3 = 4
+    r4 = box(int, r3)
+    r5 = [r4]
+    r6 = r2 * r5 :: list
+    b = r6
+    r7 = None
+    return r7
 
 [case testListLen]
 from typing import List

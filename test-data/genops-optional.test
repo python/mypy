@@ -60,28 +60,35 @@ def f(x: Optional[A], y: Optional[A], z: Optional[int]) -> None:
 def f(x, y, z):
     x, y :: optional[A]
     z :: optional[int]
-    r0 :: int
-    a :: A
-    r1 :: int
-    r2 :: object
-    r3 :: bool
-    r4 :: None
-    r5 :: bool
-    r6 :: None
+    r0 :: None
+    r1 :: A
+    r2 :: int
+    r3 :: object
+    a, r4 :: A
+    r5 :: int
+    r6 :: object
+    r7 :: bool
+    r8 :: None
+    r9 :: bool
+    r10 :: None
 L0:
-    x = None
-    x = A()
+    r0 = None
+    x = r0
+    r1 = A()
+    x = r1
     x = y
-    r0 = 1
-    z = box(int, r0)
-    a = A()
-    r1 = 1
-    r2 = box(int, r1)
-    a.a = r2; r3 = is_error
-    r4 = None
-    a.a = r4; r5 = is_error
-    r6 = None
-    return r6
+    r2 = 1
+    r3 = box(int, r2)
+    z = r3
+    r4 = A()
+    a = r4
+    r5 = 1
+    r6 = box(int, r5)
+    a.a = r6; r7 = is_error
+    r8 = None
+    a.a = r8; r9 = is_error
+    r10 = None
+    return r10
 
 [case testBoxOptionalListItem]
 from typing import List, Optional
@@ -124,13 +131,15 @@ def f(x: Optional[A]) -> A:
 [out]
 def f(x):
     x :: optional[A]
-    y, r0 :: A
+    y, r0, r1, r2 :: A
 L0:
-    y = A()
+    r0 = A()
+    y = r0
     if not x is None goto L1 else goto L2 :: object
 L1:
-    y = cast(A, x)
-    r0 = cast(A, x)
-    return r0
+    r1 = cast(A, x)
+    y = r1
+    r2 = cast(A, x)
+    return r2
 L2:
     return y

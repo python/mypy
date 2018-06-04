@@ -8,6 +8,7 @@ test_capi
 
 /env
 /env-debug
+/env-3.5
 /.mypy_cache
 /.cache
 /.pytest_cache

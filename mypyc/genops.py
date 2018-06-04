@@ -28,14 +28,15 @@ from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 
 from mypyc.ops import (
-    BasicBlock, Environment, Op, LoadInt, RType, Register, Label, Return, FuncIR, Assign,
+    BasicBlock, Environment, Op, LoadInt, RType, Value, Register, Label, Return, FuncIR,
+    Assign,
     Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple,
     Unreachable, TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic,
-    PyGetAttr, PyCall, ROptional, c_module_name, PyMethodCall, MethodCall, INVALID_REGISTER,
+    PyGetAttr, PyCall, ROptional, c_module_name, PyMethodCall, MethodCall, INVALID_VALUE,
     INVALID_LABEL, int_rprimitive, is_int_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
-    ERR_FALSE, OpDescription
+    ERR_FALSE, OpDescription, RegisterOp,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, new_list_op
@@ -95,7 +96,7 @@ class Mapper:
 
 
 class AssignmentTarget(object):
-    pass
+    type = None  # type: RType
 
 
 class AssignmentTargetRegister(AssignmentTarget):
@@ -103,27 +104,32 @@ class AssignmentTargetRegister(AssignmentTarget):
 
     def __init__(self, register: Register) -> None:
         self.register = register
+        self.type = register.type
 
 
 class AssignmentTargetIndex(AssignmentTarget):
     """base[index] as assignment target"""
 
-    def __init__(self, base_reg: Register, index_reg: Register, rtype: RType) -> None:
-        self.base_reg = base_reg
-        self.index_reg = index_reg
-        self.rtype = rtype
+    def __init__(self, base: Value, index: Value) -> None:
+        self.base = base
+        self.index = index
+        # TODO: This won't be right for user-defined classes. Store the
+        #       lvalue type in mypy and remove this special case.
+        self.type = object_rprimitive
 
 
 class AssignmentTargetAttr(AssignmentTarget):
     """obj.attr as assignment target"""
 
-    def __init__(self, obj_reg: Register, attr: str, obj_type: RInstance) -> None:
-        self.obj_reg = obj_reg
+    def __init__(self, obj: Value, attr: str) -> None:
+        self.obj = obj
         self.attr = attr
-        self.obj_type = obj_type
+        assert isinstance(obj.type, RInstance), 'Attribute set only supported for user types'
+        self.obj_type = obj.type
+        self.type = obj.type.attr_type(attr)
 
 
-class IRBuilder(NodeVisitor[Register]):
+class IRBuilder(NodeVisitor[Value]):
     def __init__(self, types: Dict[Expression, Type], mapper: Mapper) -> None:
         self.types = types
         self.environment = Environment()
@@ -131,7 +137,6 @@ class IRBuilder(NodeVisitor[Register]):
         self.blocks = []  # type: List[List[BasicBlock]]
         self.functions = []  # type: List[FuncIR]
         self.classes = []  # type: List[ClassIR]
-        self.targets = []  # type: List[Register]
 
         # These lists operate as stack frames for loops. Each loop adds a new
         # frame (i.e. adds a new empty list [] to the outermost list). Each
@@ -149,11 +154,11 @@ class IRBuilder(NodeVisitor[Register]):
 
         self.current_module_name = None # type: Optional[str]
 
-    def visit_mypy_file(self, mypyfile: MypyFile) -> Register:
+    def visit_mypy_file(self, mypyfile: MypyFile) -> Value:
         if mypyfile.fullname() in ('typing', 'abc'):
             # These module are special; their contents are currently all
             # built-in primitives.
-            return INVALID_REGISTER
+            return INVALID_VALUE
 
         # First pass: Build ClassIRs and TypeInfo-to-ClassIR mapping.
         for node in mypyfile.defs:
@@ -165,30 +170,30 @@ class IRBuilder(NodeVisitor[Register]):
         for node in mypyfile.defs:
             node.accept(self)
 
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
     def prepare_class_def(self, cdef: ClassDef) -> None:
-        ir = ClassIR(cdef.name, [])  # Populate attributes later in visit_class_def
+        # We want to collect the attributes first so they are available
+        # while generating the methods
+        ir = ClassIR(cdef.name)
         self.classes.append(ir)
         self.mapper.type_to_ir[cdef.info] = ir
 
-    def visit_class_def(self, cdef: ClassDef) -> Register:
-        attributes = []
-        methods = []
         for name, node in cdef.info.names.items():
             if isinstance(node.node, Var):
                 assert node.node.type, "Class member missing type"
-                attributes.append((name, self.type_to_rtype(node.node.type)))
-            elif isinstance(node.node, FuncDef):
+                ir.attributes.append((name, self.type_to_rtype(node.node.type)))
+
+    def visit_class_def(self, cdef: ClassDef) -> Value:
+        ir = self.mapper.type_to_ir[cdef.info]
+        for name, node in cdef.info.names.items():
+            if isinstance(node.node, FuncDef):
                 func = self.gen_func_def(node.node, cdef.name)
                 self.functions.append(func)
-                methods.append(func)
-        ir = self.mapper.type_to_ir[cdef.info]
-        ir.attributes = attributes
-        ir.methods = methods
-        return INVALID_REGISTER
+                ir.methods.append(func)
+        return INVALID_VALUE
 
-    def visit_import(self, node: Import) -> Register:
+    def visit_import(self, node: Import) -> Value:
         if node.is_unreachable or node.is_mypy_only:
             pass
         if not node.is_top_level:
@@ -197,9 +202,9 @@ class IRBuilder(NodeVisitor[Register]):
         for node_id, _ in node.ids:
             self.imports.append(node_id)
 
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_import_from(self, node: ImportFrom) -> Register:
+    def visit_import_from(self, node: ImportFrom) -> Value:
         if node.is_unreachable or node.is_mypy_only:
             pass
         if not node.is_top_level:
@@ -207,9 +212,9 @@ class IRBuilder(NodeVisitor[Register]):
 
         self.imports.append(node.id)
 
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_import_all(self, node: ImportAll) -> Register:
+    def visit_import_all(self, node: ImportAll) -> Value:
         if node.is_unreachable or node.is_mypy_only:
             pass
         if not node.is_top_level:
@@ -217,7 +222,7 @@ class IRBuilder(NodeVisitor[Register]):
 
         self.imports.append(node.id)
 
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
     def gen_func_def(self, fdef: FuncDef, class_name: Optional[str] = None) -> FuncIR:
         self.enter()
@@ -237,9 +242,9 @@ class IRBuilder(NodeVisitor[Register]):
         args = self.convert_args(fdef)
         return FuncIR(fdef.name(), class_name, args, self.ret_type, blocks, env)
 
-    def visit_func_def(self, fdef: FuncDef) -> Register:
+    def visit_func_def(self, fdef: FuncDef) -> Value:
         self.functions.append(self.gen_func_def(fdef))
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
     def convert_args(self, fdef: FuncDef) -> List[RuntimeArg]:
         assert isinstance(fdef.type, CallableType)
@@ -254,8 +259,7 @@ class IRBuilder(NodeVisitor[Register]):
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], Return):
-            retval = self.environment.add_temp(none_rprimitive)
-            self.add(PrimitiveOp(retval, [], none_op, line=-1))
+            retval = self.add(PrimitiveOp([], none_op, line=-1))
             self.add(Return(retval))
 
     def add_implicit_unreachable(self) -> None:
@@ -263,145 +267,114 @@ class IRBuilder(NodeVisitor[Register]):
         if not block.ops or not isinstance(block.ops[-1], Return):
             self.add(Unreachable())
 
-    def visit_block(self, block: Block) -> Register:
+    def visit_block(self, block: Block) -> Value:
         for stmt in block.body:
             stmt.accept(self)
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_expression_stmt(self, stmt: ExpressionStmt) -> Register:
+    def visit_expression_stmt(self, stmt: ExpressionStmt) -> Value:
         self.accept(stmt.expr)
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_return_stmt(self, stmt: ReturnStmt) -> Register:
+    def visit_return_stmt(self, stmt: ReturnStmt) -> Value:
         if stmt.expr:
             retval = self.accept(stmt.expr)
-            retval = self.coerce(retval, self.node_type(stmt.expr), self.ret_type, stmt.line)
+            retval = self.coerce(retval, self.ret_type, stmt.line)
         else:
-            retval = self.environment.add_temp(none_rprimitive)
-            self.add(PrimitiveOp(retval, [], none_op, line=-1))
+            retval = self.add(PrimitiveOp([], none_op, line=-1))
         self.add(Return(retval))
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> Register:
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> Value:
         assert len(stmt.lvalues) == 1
         lvalue = stmt.lvalues[0]
-        if stmt.type:
-            lvalue_type = self.type_to_rtype(stmt.type)
-            if isinstance(stmt.rvalue, TempNode):
-                # This is actually a variable annotation without initializer. Don't generate
-                # an assignment but we need to call get_assignment_target since it adds a
-                # name binding as a side effect.
-                self.get_assignment_target(lvalue, declare_new=True)
-                return INVALID_REGISTER
-        else:
-            if isinstance(lvalue, IndexExpr):
-                # TODO: This won't be right for user-defined classes. Store the
-                #     lvalue type in mypy and remove this special case.
-                lvalue_type = object_rprimitive
-            else:
-                lvalue_type = self.node_type(lvalue)
-        rvalue_type = self.node_type(stmt.rvalue)
-        return self.assign(lvalue, stmt.rvalue, rvalue_type, lvalue_type,
-                           declare_new=(stmt.type is not None))
+        if stmt.type and isinstance(stmt.rvalue, TempNode):
+            # This is actually a variable annotation without initializer. Don't generate
+            # an assignment but we need to call get_assignment_target since it adds a
+            # name binding as a side effect.
+            self.get_assignment_target(lvalue)
+            return INVALID_VALUE
+        self.assign(lvalue, stmt.rvalue)
+        return INVALID_VALUE
 
-    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> Register:
-        target = self.get_assignment_target(stmt.lvalue, declare_new=False)
+    def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> Value:
+        target = self.get_assignment_target(stmt.lvalue)
 
         if isinstance(target, AssignmentTargetRegister):
-            ltype = self.environment.types[target.register]
-            rtype = self.node_type(stmt.rvalue)
             rreg = self.accept(stmt.rvalue)
-            return self.binary_op(ltype, target.register, rtype, rreg, stmt.op, stmt.line,
-                                  target=target.register)
+            res = self.binary_op(target.register, rreg, stmt.op, stmt.line)
+            self.add(Assign(target.register, res))
+            return INVALID_VALUE
 
         # NOTE: List index not supported yet for compound assignments.
         assert False, 'Unsupported lvalue: %r'
 
-    def get_assignment_target(self, lvalue: Lvalue, declare_new: bool) -> AssignmentTarget:
+    def get_assignment_target(self, lvalue: Lvalue) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # Assign to local variable.
             assert lvalue.kind == LDEF
-            if lvalue.is_new_def or declare_new:
+            assert isinstance(lvalue.node, Var)  # TODO: Can this fail?
+            if lvalue.node not in self.environment.symtable:
                 # Define a new variable.
-                assert isinstance(lvalue.node, Var)  # TODO: Can this fail?
-                lvalue_num = self.environment.add_local(lvalue.node, self.node_type(lvalue))
+                lvalue_reg = self.environment.add_local(lvalue.node, self.node_type(lvalue))
             else:
                 # Assign to a previously defined variable.
-                assert isinstance(lvalue.node, Var)  # TODO: Can this fail?
-                lvalue_num = self.environment.lookup(lvalue.node)
+                lvalue_reg = self.environment.lookup(lvalue.node)
 
-            return AssignmentTargetRegister(lvalue_num)
+            return AssignmentTargetRegister(lvalue_reg)
         elif isinstance(lvalue, IndexExpr):
             # Indexed assignment x[y] = e
-            base_type = self.node_type(lvalue.base)
-            index_type = self.node_type(lvalue.index)
-            base_reg = self.accept(lvalue.base)
-            index_reg = self.accept(lvalue.index)
-            if is_list_rprimitive(base_type) and is_int_rprimitive(index_type):
+            base = self.accept(lvalue.base)
+            index = self.accept(lvalue.index)
+            if is_list_rprimitive(base.type) and is_int_rprimitive(index.type):
                 # Indexed list set
-                return AssignmentTargetIndex(base_reg, index_reg, base_type)
-            elif is_dict_rprimitive(base_type):
+                return AssignmentTargetIndex(base, index)
+            elif is_dict_rprimitive(base.type):
                 # Indexed dict set
-                boxed_index = self.box(index_reg, index_type)
-                return AssignmentTargetIndex(base_reg, boxed_index, base_type)
+                boxed_index = self.box(index)
+                return AssignmentTargetIndex(base, boxed_index)
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
-            obj_type = self.node_type(lvalue.expr)
-            assert isinstance(obj_type, RInstance), 'Attribute set only supported for user types'
-            obj_reg = self.accept(lvalue.expr)
-            return AssignmentTargetAttr(obj_reg, lvalue.name, obj_type)
+            obj = self.accept(lvalue.expr)
+            return AssignmentTargetAttr(obj, lvalue.name)
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
     def assign_to_target(self,
-            target: AssignmentTarget,
-            rvalue: Expression,
-            rvalue_type: RType,
-            needs_box: bool) -> Register:
-        rvalue_type = rvalue_type or self.node_type(rvalue)
-
+                         target: AssignmentTarget,
+                         rvalue: Expression) -> Value:
+        rvalue_reg = self.accept(rvalue)
+        needs_box = rvalue_reg.type.is_unboxed and not target.type.is_unboxed
         if isinstance(target, AssignmentTargetRegister):
             if needs_box:
-                unboxed = self.accept(rvalue)
-                return self.box(unboxed, rvalue_type, target=target.register)
-            else:
-                return self.accept(rvalue, target=target.register)
+                rvalue_reg = self.box(rvalue_reg)
+            return self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
-            rvalue_reg = self.accept(rvalue)
             if needs_box:
-                rvalue_reg = self.box(rvalue_reg, rvalue_type)
-            target_reg = self.alloc_temp(bool_rprimitive)
-            self.add(SetAttr(target_reg, target.obj_reg, target.attr, rvalue_reg, target.obj_type,
-                             rvalue.line))
-            return target_reg
+                rvalue_reg = self.box(rvalue_reg)
+            return self.add(SetAttr(target.obj, target.attr, rvalue_reg, rvalue.line))
         elif isinstance(target, AssignmentTargetIndex):
-            item_reg = self.accept(rvalue)
-
             target_reg2 = self.translate_special_method_call(
-                target.base_reg,
+                target.base,
                 '__setitem__',
-                [target.index_reg, item_reg],
+                [target.index, rvalue_reg],
                 None,
-                rvalue.line,
-                temp_result=True)
+                rvalue.line)
             if target_reg2 is not None:
                 return target_reg2
 
-            assert False, target.rtype
+            assert False, target.base.type
 
         assert False, 'Unsupported assignment target'
 
     def assign(self,
                lvalue: Lvalue,
-               rvalue: Expression,
-               rvalue_type: RType,
-               lvalue_type: RType,
-               declare_new: bool) -> Register:
-        target = self.get_assignment_target(lvalue, declare_new)
-        needs_box = rvalue_type.is_unboxed and not lvalue_type.is_unboxed
-        return self.assign_to_target(target, rvalue, rvalue_type, needs_box)
+               rvalue: Expression) -> AssignmentTarget:
+        target = self.get_assignment_target(lvalue)
+        self.assign_to_target(target, rvalue)
+        return target
 
-    def visit_if_stmt(self, stmt: IfStmt) -> Register:
+    def visit_if_stmt(self, stmt: IfStmt) -> Value:
         # If statements are normalized
         assert len(stmt.expr) == 1
 
@@ -424,7 +397,7 @@ class IRBuilder(NodeVisitor[Register]):
             self.set_branches(branches, False, next)
         if if_leave:
             if_leave.label = next.label
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
     def add_leave(self) -> Optional[Goto]:
         if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], Return):
@@ -444,7 +417,7 @@ class IRBuilder(NodeVisitor[Register]):
         for break_goto in self.break_gotos.pop():
             break_goto.label = break_block.label
 
-    def visit_while_stmt(self, s: WhileStmt) -> Register:
+    def visit_while_stmt(self, s: WhileStmt) -> Value:
         self.push_loop_stack()
 
         # Split block so that we get a handle to the top of the loop.
@@ -465,9 +438,9 @@ class IRBuilder(NodeVisitor[Register]):
         self.set_branches(branches, False, next)
 
         self.pop_loop_stack(top, next)
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_for_stmt(self, s: ForStmt) -> Register:
+    def visit_for_stmt(self, s: ForStmt) -> Value:
         if (isinstance(s.expr, CallExpr)
                 and isinstance(s.expr.callee, RefExpr)
                 and s.expr.callee.fullname == 'builtins.range'):
@@ -479,8 +452,9 @@ class IRBuilder(NodeVisitor[Register]):
             end_reg = self.accept(end)
 
             # Initialize loop index to 0.
-            index_reg = self.assign(s.index, IntExpr(0), int_rprimitive, int_rprimitive,
-                                    declare_new=True)
+            assign_target = self.assign(s.index, IntExpr(0))
+            assert isinstance(assign_target, AssignmentTargetRegister)
+            index_reg = assign_target.register
             goto = Goto(INVALID_LABEL)
             self.add(goto)
 
@@ -501,10 +475,8 @@ class IRBuilder(NodeVisitor[Register]):
             end_goto.label = end_block.label
 
             # Increment index register.
-            one_reg = self.alloc_temp(int_rprimitive)
-            self.add(LoadInt(one_reg, 1))
-            self.binary_op(int_rprimitive, index_reg, int_rprimitive, one_reg, '+', s.line,
-                           target=index_reg)
+            one_reg = self.add(LoadInt(1))
+            self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', s.line)))
 
             # Go back to loop condition check.
             self.add(Goto(top.label))
@@ -512,7 +484,7 @@ class IRBuilder(NodeVisitor[Register]):
             self.set_branches(branches, False, next)
 
             self.pop_loop_stack(end_block, next)
-            return INVALID_REGISTER
+            return INVALID_VALUE
 
         if is_list_rprimitive(self.node_type(s.expr)):
             self.push_loop_stack()
@@ -520,10 +492,9 @@ class IRBuilder(NodeVisitor[Register]):
             expr_reg = self.accept(s.expr)
 
             index_reg = self.alloc_temp(int_rprimitive)
-            self.add(LoadInt(index_reg, 0))
+            self.add(Assign(index_reg, self.add(LoadInt(0))))
 
-            one_reg = self.alloc_temp(int_rprimitive)
-            self.add(LoadInt(one_reg, 1))
+            one_reg = self.add(LoadInt(1))
 
             assert isinstance(s.index, NameExpr)
             assert isinstance(s.index.node, Var)
@@ -534,8 +505,7 @@ class IRBuilder(NodeVisitor[Register]):
 
             # For compatibility with python semantics we recalculate the length
             # at every iteration.
-            len_reg = self.alloc_temp(int_rprimitive)
-            self.add(PrimitiveOp(len_reg, [expr_reg], list_len_op, s.line))
+            len_reg = self.add(PrimitiveOp([expr_reg], list_len_op, s.line))
 
             branch = Branch(index_reg, len_reg, INVALID_LABEL, INVALID_LABEL, Branch.INT_LT)
             self.add(branch)
@@ -547,16 +517,14 @@ class IRBuilder(NodeVisitor[Register]):
             target_list_type = self.types[s.expr]
             assert isinstance(target_list_type, Instance)
             target_type = self.type_to_rtype(target_list_type.args[0])
-            value_box = self.alloc_temp(object_rprimitive)
-            self.add(PrimitiveOp(value_box, [expr_reg, index_reg], list_get_item_op, s.line))
+            value_box = self.add(PrimitiveOp([expr_reg, index_reg], list_get_item_op, s.line))
 
-            self.unbox_or_cast(value_box, target_type, s.line, target=lvalue_reg)
+            self.add(Assign(lvalue_reg, self.unbox_or_cast(value_box, target_type, s.line)))
 
             s.body.accept(self)
 
             end_block = self.goto_new_block()
-            self.binary_op(int_rprimitive, index_reg, int_rprimitive, one_reg, '+', s.line,
-                           target=index_reg)
+            self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', s.line)))
             self.add(Goto(condition_block.label))
 
             next_block = self.new_block()
@@ -564,28 +532,26 @@ class IRBuilder(NodeVisitor[Register]):
 
             self.pop_loop_stack(end_block, next_block)
 
-            return INVALID_REGISTER
+            return INVALID_VALUE
 
         assert False, 'for not supported'
 
-    def visit_break_stmt(self, node: BreakStmt) -> Register:
+    def visit_break_stmt(self, node: BreakStmt) -> Value:
         self.break_gotos[-1].append(Goto(INVALID_LABEL))
         self.add(self.break_gotos[-1][-1])
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_continue_stmt(self, node: ContinueStmt) -> Register:
+    def visit_continue_stmt(self, node: ContinueStmt) -> Value:
         self.continue_gotos[-1].append(Goto(INVALID_LABEL))
         self.add(self.continue_gotos[-1][-1])
-        return INVALID_REGISTER
+        return INVALID_VALUE
 
-    def visit_unary_expr(self, expr: UnaryExpr) -> Register:
-        etype = self.node_type(expr.expr)
+    def visit_unary_expr(self, expr: UnaryExpr) -> Value:
         ereg = self.accept(expr.expr)
         for desc in unary_ops.get(expr.op, []):
-            if is_subtype(etype, desc.arg_types[0]):
+            if is_subtype(ereg.type, desc.arg_types[0]):
                 assert desc.result_type is not None
-                target = self.alloc_target(desc.result_type)
-                self.add(PrimitiveOp(target, [ereg], desc, expr.line))
+                target = self.add(PrimitiveOp([ereg], desc, expr.line))
                 break
         else:
             # TODO: Fall back to generic C API
@@ -593,27 +559,19 @@ class IRBuilder(NodeVisitor[Register]):
 
         return target
 
-    def visit_op_expr(self, expr: OpExpr) -> Register:
-        ltype = self.node_type(expr.left)
-        rtype = self.node_type(expr.right)
-        lreg = self.accept(expr.left)
-        rreg = self.accept(expr.right)
-        target = self.alloc_target(self.node_type(expr))
-        return self.binary_op(ltype, lreg, rtype, rreg, expr.op, expr.line, target=target)
+    def visit_op_expr(self, expr: OpExpr) -> Value:
+        return self.binary_op(self.accept(expr.left), self.accept(expr.right), expr.op, expr.line)
 
     def binary_op(self,
-                  ltype: RType,
-                  lreg: Register,
-                  rtype: RType,
-                  rreg: Register,
+                  lreg: Value,
+                  rreg: Value,
                   expr_op: str,
-                  line: int,
-                  target: Optional[Register] = None) -> Register:
+                  line: int) -> Value:
         # Find the highest-priority primitive op that matches.
         matching = None  # type: Optional[OpDescription]
         for desc in binary_ops.get(expr_op, []):
-            if (is_subtype(ltype, desc.arg_types[0])
-                    and is_subtype(rtype, desc.arg_types[1])):
+            if (is_subtype(lreg.type, desc.arg_types[0])
+                    and is_subtype(rreg.type, desc.arg_types[1])):
                 if matching:
                     assert matching.priority != desc.priority, 'Ambiguous: %s, %s'  % (matching,
                                                                                        desc)
@@ -622,26 +580,21 @@ class IRBuilder(NodeVisitor[Register]):
                 else:
                     matching = desc
         if matching:
-            return self.primitive_op(matching, [lreg, rreg], line, target)
+            return self.primitive_op(matching, [lreg, rreg], line)
 
         # TODO: Fall back to generic operation
         assert False, 'Unsupported binary operation'
 
-    def visit_index_expr(self, expr: IndexExpr) -> Register:
-        base_rtype = self.node_type(expr.base)
-        base_reg = self.accept(expr.base)
-        target_type = self.node_type(expr)
+    def visit_index_expr(self, expr: IndexExpr) -> Value:
+        base = self.accept(expr.base)
 
-        if isinstance(base_rtype, RTuple):
+        if isinstance(base.type, RTuple):
             assert isinstance(expr.index, IntExpr)  # TODO
-            target = self.alloc_target(target_type)
-            self.add(TupleGet(target, base_reg, expr.index.value,
-                              base_rtype.types[expr.index.value], expr.line))
-            return target
+            return self.add(TupleGet(base, expr.index.value, expr.line))
 
         index_reg = self.accept(expr.index)
         target_reg = self.translate_special_method_call(
-            base_reg,
+            base,
             '__getitem__',
             [index_reg],
             self.node_type(expr),
@@ -651,10 +604,8 @@ class IRBuilder(NodeVisitor[Register]):
 
         assert False, 'Unsupported indexing operation'
 
-    def visit_int_expr(self, expr: IntExpr) -> Register:
-        reg = self.alloc_target(int_rprimitive)
-        self.add(LoadInt(reg, expr.value))
-        return reg
+    def visit_int_expr(self, expr: IntExpr) -> Value:
+        return self.add(LoadInt(expr.value))
 
     def is_native_name_expr(self, expr: NameExpr) -> bool:
         # TODO later we want to support cross-module native calls too
@@ -665,16 +616,14 @@ class IRBuilder(NodeVisitor[Register]):
 
         return True
 
-    def visit_name_expr(self, expr: NameExpr) -> Register:
+    def visit_name_expr(self, expr: NameExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
         fullname = expr.node.fullname()
         if fullname in name_ref_ops:
             # Use special access op for this particular name.
             desc = name_ref_ops[fullname]
             assert desc.result_type is not None
-            target = self.alloc_target(desc.result_type)
-            self.add(PrimitiveOp(target, [], desc, expr.line))
-            return target
+            return self.add(PrimitiveOp([], desc, expr.line))
 
         if not self.is_native_name_expr(expr):
             return self.load_static_module_attr(expr)
@@ -685,14 +634,13 @@ class IRBuilder(NodeVisitor[Register]):
         reg = self.environment.lookup(expr.node)
         return self.get_using_binder(reg, expr.node, expr)
 
-    def get_using_binder(self, reg: Register, var: Var, expr: Expression) -> Register:
+    def get_using_binder(self, reg: Value, var: Var, expr: Expression) -> Value:
         assert var.type, "Variable missing type"
         var_type = self.type_to_rtype(var.type)
         target_type = self.node_type(expr)
         if var_type != target_type:
             # Cast/unbox to the narrower given by the binder.
-            target = self.alloc_target(target_type)
-            return self.unbox_or_cast(reg, target_type, expr.line, target)
+            return self.unbox_or_cast(reg, target_type, expr.line)
         else:
             # Regular register access -- binder is not active.
             return reg
@@ -700,72 +648,51 @@ class IRBuilder(NodeVisitor[Register]):
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
 
-    def visit_member_expr(self, expr: MemberExpr) -> Register:
+    def visit_member_expr(self, expr: MemberExpr) -> Value:
         if self.is_module_member_expr(expr):
             return self.load_static_module_attr(expr)
 
         else:
-            obj_reg = self.accept(expr.expr)
-            attr_type = self.node_type(expr)
-            target = self.alloc_target(attr_type)
-            obj_type = self.node_type(expr.expr)
-            assert isinstance(obj_type, RInstance), 'Attribute access not supported: %s' % obj_type
-            self.add(GetAttr(target, obj_reg, expr.name, obj_type, expr.line))
-            return target
+            obj = self.accept(expr.expr)
+            return self.add(GetAttr(obj, expr.name, expr.line))
 
-    def load_static_module_attr(self, expr: RefExpr) -> Register:
+    def load_static_module_attr(self, expr: RefExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
-        target = self.alloc_target(self.node_type(expr))
         module = '.'.join(expr.node.fullname().split('.')[:-1])
         right = expr.node.fullname().split('.')[-1]
-        left = self.alloc_temp(object_rprimitive)
-        self.add(LoadStatic(left, c_module_name(module)))
-        self.add(PyGetAttr(target, left, right, expr.line))
+        left = self.add(LoadStatic(object_rprimitive, c_module_name(module)))
+        return self.add(PyGetAttr(self.node_type(expr), left, right, expr.line))
 
-        return target
-
-    def py_call(self, function: Register, args: List[Register],
-                target_type: RType, line: int) -> Register:
-        target_box = self.alloc_temp(object_rprimitive)
-
-        arg_boxes = [] # type: List[Register]
-        for arg_reg in args:
-            arg_boxes.append(self.box(arg_reg, self.environment.types[arg_reg]))
-
-        self.add(PyCall(target_box, function, arg_boxes, line))
+    def py_call(self, function: Value, args: List[Value],
+                target_type: RType, line: int) -> Value:
+        arg_boxes = [self.box(arg) for arg in args] # type: List[Value]
+        target_box = self.add(PyCall(function, arg_boxes, line))
         return self.unbox_or_cast(target_box, target_type, line)
 
     def py_method_call(self,
-                       obj: Register,
-                       method: Register,
-                       args: List[Register],
+                       obj: Value,
+                       method: Value,
+                       args: List[Value],
                        target_type: RType,
-                       line: int) -> Register:
-        target_box = self.alloc_temp(object_rprimitive)
-
-        arg_boxes = [] # type: List[Register]
-        for arg_reg in args:
-            arg_boxes.append(self.box(arg_reg, self.environment.types[arg_reg]))
-
-        self.add(PyMethodCall(target_box, obj, method, arg_boxes))
+                       line: int) -> Value:
+        arg_boxes = [self.box(arg) for arg in args] # type: List[Value]
+        target_box = self.add(PyMethodCall(obj, method, arg_boxes))
         return self.unbox_or_cast(target_box, target_type, line)
 
     def coerce_native_call_args(self,
-                                args: List[Register],
+                                args: List[Value],
                                 callee_type: Type,
-                                line: int) -> List[Register]:
+                                line: int) -> List[Value]:
         assert isinstance(callee_type, CallableType)
         # TODO: Argument kinds
         formal_arg_types = [self.type_to_rtype(t) for t in callee_type.arg_types]
         coerced_arg_regs = []
         for reg, arg_type in zip(args, formal_arg_types):
-            typ = self.environment.types[reg]
-            reg = self.coerce(reg, typ, arg_type, line)
-            coerced_arg_regs.append(reg)
+            coerced_arg_regs.append(self.coerce(reg, arg_type, line))
         return coerced_arg_regs
 
 
-    def visit_call_expr(self, expr: CallExpr) -> Register:
+    def visit_call_expr(self, expr: CallExpr) -> Value:
         if isinstance(expr.analyzed, CastExpr):
             return self.translate_cast_expr(expr.analyzed)
 
@@ -789,12 +716,10 @@ class IRBuilder(NodeVisitor[Register]):
             # If the base type is one of ours, do a MethodCall, otherwise fall back
             # to a PyMethodCall
             if isinstance(receiver_rtype, RInstance):
-                target = self.alloc_target(self.node_type(expr))
                 arg_regs = self.coerce_native_call_args(
                     args, self.types[expr.callee], expr.line)
-                self.add(MethodCall(target, obj, expr.callee.name,
-                                    arg_regs, receiver_rtype, expr.line))
-                return target
+                return self.add(MethodCall(self.node_type(expr), obj, expr.callee.name,
+                                           arg_regs, expr.line))
             else:
                 method = self.load_static_unicode(expr.callee.name)
                 return self.py_method_call(
@@ -805,27 +730,24 @@ class IRBuilder(NodeVisitor[Register]):
         # Gen the args
         fullname = expr.callee.fullname
         args = [self.accept(arg) for arg in expr.args]
-        arg_types = [self.node_type(arg) for arg in expr.args]
 
         if fullname == 'builtins.len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
-            expr_rtype = arg_types[0]
+            expr_rtype = args[0].type
             if isinstance(expr_rtype, RTuple):
                 # len() of fixed-length tuple can be trivially determined statically.
-                target = self.alloc_target(int_rprimitive)
-                self.add(LoadInt(target, len(expr_rtype.types)))
-                return target
+                return self.add(LoadInt(len(expr_rtype.types)))
 
         # Handle data-driven special-cased primitive call ops.
         target_type = self.node_type(expr)
         if fullname is not None:
             for desc in func_ops.get(fullname, []):
                 if len(args) == len(desc.arg_types) and expr.arg_kinds == [ARG_POS] * len(args):
-                    for actual_arg, formal_arg in zip(arg_types, desc.arg_types):
-                        if not is_subtype(actual_arg, formal_arg):
+                    for actual_arg, formal_arg_type in zip(args, desc.arg_types):
+                        if not is_subtype(actual_arg.type, formal_arg_type):
                             break
                     else:
-                        target = self.alloc_target(target_type)
-                        return self.primitive_op(desc, args, expr.line, target=target)
+                        assert desc.result_type is not None  # TODO: Support no return value
+                        return self.primitive_op(desc, args, expr.line)
 
         fn = expr.callee.name  # TODO: fullname
         if not self.is_native_name_expr(expr.callee):
@@ -834,31 +756,28 @@ class IRBuilder(NodeVisitor[Register]):
             return self.py_call(function, args, target_type, expr.line)
         else:
             # Native call
-            target = self.alloc_target(target_type)
             args = self.coerce_native_call_args(args, self.types[expr.callee], expr.line)
-            self.add(Call(target, fn, args, expr.line))
-        return target
+            return self.add(Call(target_type, fn, args, expr.line))
 
-    def translate_cast_expr(self, expr: CastExpr) -> Register:
+    def translate_cast_expr(self, expr: CastExpr) -> Value:
         src = self.accept(expr.expr)
         target_type = self.type_to_rtype(expr.type)
-        source_type = self.node_type(expr.expr)
-        target = self.alloc_target(target_type)
-        return self.coerce(src, source_type, target_type, expr.line, target=target)
+        return self.coerce(src, target_type, expr.line)
 
-    def visit_conditional_expr(self, expr: ConditionalExpr) -> Register:
+    def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
         branches = self.process_conditional(expr.cond)
-        target = self.alloc_target(self.node_type(expr))
+        # Having actual Phi nodes would be really nice here!
+        target = self.alloc_temp(self.node_type(expr))
 
         if_body = self.new_block()
         self.set_branches(branches, True, if_body)
-        self.accept(expr.if_expr, target=target)
+        self.add(Assign(target, self.accept(expr.if_expr)))
         if_goto_next = Goto(INVALID_LABEL)
         self.add(if_goto_next)
 
         else_body = self.new_block()
         self.set_branches(branches, False, else_body)
-        self.accept(expr.else_expr, target=target)
+        self.add(Assign(target, self.accept(expr.else_expr)))
         else_goto_next = Goto(INVALID_LABEL)
         self.add(else_goto_next)
 
@@ -869,12 +788,11 @@ class IRBuilder(NodeVisitor[Register]):
         return target
 
     def translate_special_method_call(self,
-                                      base_reg: Register,
+                                      base_reg: Value,
                                       name: str,
-                                      args: List[Register],
+                                      args: List[Value],
                                       result_type: Optional[RType],
-                                      line: int,
-                                      temp_result: bool = False) -> Optional[Register]:
+                                      line: int) -> Optional[Value]:
         """Translate a method call which is handled nongenerically.
 
         These are special in the sense that we have code generated specifically for them.
@@ -883,18 +801,17 @@ class IRBuilder(NodeVisitor[Register]):
 
         Return None if no translation found; otherwise return the target register.
         """
-        base_type = self.environment.types[base_reg]
-        arg_types = [self.environment.types[arg] for arg in args]
+        base_type = base_reg.type
         fullname = '%s.%s' % (base_type.name, name)
         for desc in method_ops.get(fullname, []):
             if (is_subtype(base_type, desc.arg_types[0])
-                    and len(arg_types) == len(desc.arg_types) - 1
-                    and all(is_subtype(actual, formal)
-                            for actual, formal in zip(arg_types, desc.arg_types[1:]))):
+                    and len(args) == len(desc.arg_types) - 1
+                    and all(is_subtype(arg.type, formal)
+                            for arg, formal in zip(args, desc.arg_types[1:]))):
                 # Found primitive call.
                 coerced_args = []
-                for arg, actual, formal in zip(args, arg_types, desc.arg_types[1:]):
-                    reg = self.coerce(arg, actual, formal, line)
+                for arg, formal in zip(args, desc.arg_types[1:]):
+                    reg = self.coerce(arg, formal, line)
                     coerced_args.append(reg)
                 if desc.result_type is None:
                     assert desc.error_kind == ERR_FALSE  # TODO: No-value ops not supported yet
@@ -905,46 +822,32 @@ class IRBuilder(NodeVisitor[Register]):
                     coercion = False
                 else:
                     coercion = not is_same_type(desc.result_type, result_type)
+                op_target = self.add(PrimitiveOp([base_reg] + coerced_args, desc, line))
                 if coercion:
                     assert desc.result_type is not None
-                    op_target = self.alloc_temp(desc.result_type)
-                if temp_result:
-                    target = self.alloc_temp(result_type)
+                    return self.coerce(op_target, result_type, line)
                 else:
-                    target = self.alloc_target(result_type)
-                if not coercion:
-                    op_target = target
-                self.add(PrimitiveOp(op_target, [base_reg] + coerced_args, desc, line))
-                if coercion:
-                    assert desc.result_type is not None
-                    self.coerce(op_target, desc.result_type, result_type, line, target=target)
-                return target
+                    return op_target
 
         return None
 
-    def visit_list_expr(self, expr: ListExpr) -> Register:
+    def visit_list_expr(self, expr: ListExpr) -> Value:
         items = [self.accept(item) for item in expr.items]
-        target = self.alloc_target(list_rprimitive)
-        return self.primitive_op(new_list_op, items, expr.line, target=target)
+        return self.primitive_op(new_list_op, items, expr.line)
 
-    def visit_tuple_expr(self, expr: TupleExpr) -> Register:
+    def visit_tuple_expr(self, expr: TupleExpr) -> Value:
         tuple_type = self.node_type(expr)
         assert isinstance(tuple_type, RTuple)
 
-        target = self.alloc_target(tuple_type)
         items = []
         for item_expr, item_type in zip(expr.items, tuple_type.types):
             reg = self.accept(item_expr)
-            reg = self.coerce(reg, self.environment.types[reg], item_type, item_expr.line)
-            items.append(reg)
-        self.add(TupleSet(target, items, tuple_type, expr.line))
-        return target
+            items.append(self.coerce(reg, item_type, item_expr.line))
+        return self.add(TupleSet(items, expr.line))
 
-    def visit_dict_expr(self, expr: DictExpr) -> Register:
+    def visit_dict_expr(self, expr: DictExpr) -> Value:
         assert not expr.items  # TODO
-        target = self.alloc_target(dict_rprimitive)
-        self.add(PrimitiveOp(target, [], new_dict_op, expr.line))
-        return target
+        return self.add(PrimitiveOp([], new_dict_op, expr.line))
 
     # Conditional expressions
 
@@ -957,8 +860,8 @@ class IRBuilder(NodeVisitor[Register]):
         '>=': Branch.INT_GE,
     }
 
-    def visit_str_expr(self, expr: StrExpr) -> Register:
-        return self.load_static_unicode(expr.value, self.cur_target())
+    def visit_str_expr(self, expr: StrExpr) -> Value:
+        return self.load_static_unicode(expr.value)
 
     def process_conditional(self, e: Node) -> List[Branch]:
         if isinstance(e, ComparisonExpr):
@@ -986,7 +889,7 @@ class IRBuilder(NodeVisitor[Register]):
         # Catch-all for arbitrary expressions.
         else:
             reg = self.accept(e)
-            branch = Branch(reg, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
+            branch = Branch(reg, INVALID_VALUE, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
             self.add(branch)
             return [branch]
 
@@ -998,31 +901,29 @@ class IRBuilder(NodeVisitor[Register]):
             # Special case 'is' checks.
             # TODO: check if right operand is None
             left = self.accept(e.operands[0])
-            branch = Branch(left, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
+            branch = Branch(left, INVALID_VALUE, INVALID_LABEL, INVALID_LABEL,
                             Branch.IS_NONE)
             if op == 'is not':
                 branch.negated = True
         else:
             # General comparison -- evaluate both operands.
             left = self.accept(e.operands[0])
-            ltype = self.node_type(e.operands[0])
             right = self.accept(e.operands[1])
-            rtype = self.node_type(e.operands[1])
             if (op in ['==', '!=', '<', '<=', '>', '>=']
-                    and is_same_type(ltype, int_rprimitive)
-                    and is_same_type(rtype, int_rprimitive)):
+                    and is_same_type(left.type, int_rprimitive)
+                    and is_same_type(right.type, int_rprimitive)):
                 # Special op for int comparison.
                 opcode = self.int_relative_ops[op]
                 branch = Branch(left, right, INVALID_LABEL, INVALID_LABEL, opcode)
             else:
                 # For other comparisons, generate a bool value and branch based on it. We need
                 # this to handle exceptions in the comparison op.
-                target = self.alloc_temp(self.node_type(e))
                 if op in ['in', 'not in']:
-                    self.binary_op(ltype, left, rtype, right, 'in', e.line, target=target)
+                    target = self.binary_op(left, right, 'in', e.line)
                 else:
-                    self.binary_op(ltype, left, rtype, right, op, e.line, target=target)
-                branch = Branch(target, INVALID_REGISTER, INVALID_LABEL, INVALID_LABEL,
+                    target = self.binary_op(left, right, op, e.line)
+                target = self.coerce(target, bool_rprimitive, e.line)
+                branch = Branch(target, INVALID_VALUE, INVALID_LABEL, INVALID_LABEL,
                                 Branch.BOOL_EXPR)
                 if op == 'not in':
                     branch.negated = True
@@ -1069,28 +970,20 @@ class IRBuilder(NodeVisitor[Register]):
         self.environment = self.environments[-1]
         return blocks, env
 
-    def add(self, op: Op) -> None:
+    def add(self, op: Op) -> Value:
         self.blocks[-1][-1].ops.append(op)
+        if isinstance(op, RegisterOp):
+            self.environment.add_op(op)
+        return op
 
-    def primitive_op(self, desc: OpDescription, args: List[Register], line: int,
-                     target: Optional[Register] = None) -> Register:
+    def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
         assert desc.result_type is not None
         coerced = []
         for i, arg in enumerate(args):
             formal_type = self.op_arg_type(desc, i)
-            arg = self.coerce(arg, self.environment.types[arg], formal_type, line)
+            arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
-        if target is None:
-            target = self.alloc_temp(desc.result_type)
-        target_type = self.reg_type(target)
-        if is_same_type(target_type, desc.result_type):
-            temp_target = target
-        else:
-            temp_target = self.alloc_temp(desc.result_type)
-        self.add(PrimitiveOp(temp_target, coerced, desc, line))
-        if target != temp_target:
-            self.coerce(temp_target, desc.result_type, target_type, line, target=target)
-        return target
+        return self.add(PrimitiveOp(coerced, desc, line))
 
     def op_arg_type(self, desc: OpDescription, n: int) -> RType:
         if n >= len(desc.arg_types):
@@ -1098,30 +991,11 @@ class IRBuilder(NodeVisitor[Register]):
             return desc.arg_types[-1]
         return desc.arg_types[n]
 
-    def accept(self, node: Node, target: Register = INVALID_REGISTER) -> Register:
-        self.targets.append(target)
-        actual = node.accept(self)
-        self.targets.pop()
-        if target != INVALID_REGISTER and target != actual:
-            self.add(Assign(target, actual))
+    def accept(self, node: Node) -> Value:
+        return node.accept(self)
 
-        return actual
-
-    def cur_target(self) -> Register:
-        return self.targets[-1]
-
-    def alloc_target(self, type: RType) -> Register:
-        """Get the current target, or if there is not a specified one, a temp"""
-        # XXX: This is a somewhat dangerous method!
-        # Only call it if you definitely own the target!
-        # This means generally *not* in helper methods!
-        return self.alloc_temp(type, self.cur_target())
-
-    def alloc_temp(self, type: RType, target: Register = INVALID_REGISTER) -> Register:
-        if target < 0:
-            return self.environment.add_temp(type)
-        else:
-            return target
+    def alloc_temp(self, type: RType) -> Register:
+        return self.environment.add_temp(type)
 
     def type_to_rtype(self, typ: Type) -> RType:
         return self.mapper.type_to_rtype(typ)
@@ -1133,39 +1007,22 @@ class IRBuilder(NodeVisitor[Register]):
         mypy_type = self.types[node]
         return self.type_to_rtype(mypy_type)
 
-    def reg_type(self, reg: Register) -> RType:
-        return self.environment.types[reg]
-
-    def box(self, src: Register, typ: RType, target: Optional[Register] = None) -> Register:
-        if typ.is_unboxed:
-            if target is None:
-                target = self.alloc_temp(object_rprimitive)
-            self.add(Box(target, src, typ))
-            return target
+    def box(self, src: Value) -> Value:
+        if src.type.is_unboxed:
+            return self.add(Box(src))
         else:
-            # Already boxed
-            if target is not None:
-                self.add(Assign(target, src))
-                return target
-            else:
-                return src
+            return src
 
-    def unbox_or_cast(self, src: Register, target_type: RType, line: int,
-                      target: Optional[Register] = None) -> Register:
-        if target is None:
-            target = self.alloc_temp(target_type)
-
+    def unbox_or_cast(self, src: Value, target_type: RType, line: int) -> Value:
         if target_type.is_unboxed:
-            self.add(Unbox(target, src, target_type, line))
+            return self.add(Unbox(src, target_type, line))
         else:
-            self.add(Cast(target, src, target_type, line))
-        return target
+            return self.add(Cast(src, target_type, line))
 
-    def box_expr(self, expr: Expression) -> Register:
-        typ = self.node_type(expr)
-        return self.box(self.accept(expr), typ)
+    def box_expr(self, expr: Expression) -> Value:
+        return self.box(self.accept(expr))
 
-    def load_static_unicode(self, value: str, target: Register = INVALID_REGISTER) -> Register:
+    def load_static_unicode(self, value: str) -> Value:
         """Loads a static unicode value into a register.
 
         This is useful for more than just unicode literals; for example, method calls
@@ -1174,12 +1031,9 @@ class IRBuilder(NodeVisitor[Register]):
         if value not in self.unicode_literals:
             self.unicode_literals[value] = '__unicode_' + str(len(self.unicode_literals))
         static_symbol = self.unicode_literals[value]
-        target = self.alloc_temp(str_rprimitive, target)
-        self.add(LoadStatic(target, static_symbol))
-        return target
+        return self.add(LoadStatic(str_rprimitive, static_symbol))
 
-    def coerce(self, src: Register, src_type: RType, target_type: RType, line: int,
-               target: Optional[Register] = None) -> Register:
+    def coerce(self, src: Value, target_type: RType, line: int) -> Value:
         """Generate a coercion/cast from one type to other (only if needed).
 
         For example, int -> object boxes the source int; int -> int emits nothing;
@@ -1187,19 +1041,15 @@ class IRBuilder(NodeVisitor[Register]):
 
         Returns the register with the converted value (may be same as src).
         """
-        if src_type.is_unboxed and not target_type.is_unboxed:
-            return self.box(src, src_type, target=target)
-        if ((src_type.is_unboxed and target_type.is_unboxed)
-                and not is_same_type(src_type, target_type)):
+        if src.type.is_unboxed and not target_type.is_unboxed:
+            return self.box(src)
+        if ((src.type.is_unboxed and target_type.is_unboxed)
+                and not is_same_type(src.type, target_type)):
             # To go from one unboxed type to another, we go through a boxed
             # in-between value, for simplicity.
-            tmp = self.box(src, src_type)
-            return self.unbox_or_cast(tmp, target_type, line, target=target)
-        if ((not src_type.is_unboxed and target_type.is_unboxed)
-                or not is_subtype(src_type, target_type)):
-            return self.unbox_or_cast(src, target_type, line, target=target)
-        if target is None:
-            return src
-        else:
-            self.add(Assign(target, src))
-            return target
+            tmp = self.box(src)
+            return self.unbox_or_cast(tmp, target_type, line)
+        if ((not src.type.is_unboxed and target_type.is_unboxed)
+                or not is_subtype(src.type, target_type)):
+            return self.unbox_or_cast(src, target_type, line)
+        return src

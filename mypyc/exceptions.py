@@ -13,7 +13,7 @@ from typing import Optional, List
 
 from mypyc.ops import (
     FuncIR, BasicBlock, Label, LoadErrorValue, Return, Goto, Branch, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, INVALID_REGISTER, RegisterOp
+    ERR_FALSE, INVALID_VALUE, RegisterOp
 )
 
 
@@ -34,10 +34,10 @@ def insert_exception_handling(ir: FuncIR) -> None:
 
 def add_handler_block(ir: FuncIR) -> Label:
     block = BasicBlock(Label(len(ir.blocks)))
-    rtype = ir.ret_type
-    reg = ir.env.add_temp(rtype)
-    block.ops.append(LoadErrorValue(reg, rtype))
-    block.ops.append(Return(reg))
+    op = LoadErrorValue(ir.ret_type)
+    block.ops.append(op)
+    ir.env.add_op(op)
+    block.ops.append(Return(op))
     ir.blocks.append(block)
     return block.label
 
@@ -73,9 +73,9 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
 
                 # Void ops can't generate errors since error is always
                 # indicated by a special value stored in a register.
-                assert op.dest is not None, op
+                assert not op.is_void, "void op generating errors?"
 
-                branch = Branch(op.dest, INVALID_REGISTER,
+                branch = Branch(op, INVALID_VALUE,
                                 true_label=error_label,
                                 false_label=Label(new_block.label + 1),
                                 op=variant,

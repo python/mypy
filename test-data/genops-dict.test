@@ -43,12 +43,13 @@ def f() -> None:
     d = {}  # type: Dict[bool, int]
 [out]
 def f():
-    d :: dict
-    r0 :: None
+    d, r0 :: dict
+    r1 :: None
 L0:
-    d = {}
-    r0 = None
-    return r0
+    r0 = {}
+    d = r0
+    r1 = None
+    return r1
 
 [case testInDict]
 from typing import Dict
@@ -61,14 +62,13 @@ def f(d: Dict[int, int]) -> bool:
 def f(d):
     d :: dict
     r0 :: int
-    r1 :: bool
-    r2 :: object
-    r3, r4 :: bool
+    r1 :: object
+    r2, r3, r4 :: bool
 L0:
     r0 = 4
-    r2 = box(int, r0)
-    r1 = r2 in d :: dict
-    if r1 goto L1 else goto L2 :: bool
+    r1 = box(int, r0)
+    r2 = r1 in d :: dict
+    if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = True
     return r3
@@ -89,14 +89,13 @@ def f(d: Dict[int, int]) -> bool:
 def f(d):
     d :: dict
     r0 :: int
-    r1 :: bool
-    r2 :: object
-    r3, r4 :: bool
+    r1 :: object
+    r2, r3, r4 :: bool
 L0:
     r0 = 4
-    r2 = box(int, r0)
-    r1 = r2 in d :: dict
-    if not r1 goto L1 else goto L2 :: bool
+    r1 = box(int, r0)
+    r2 = r1 in d :: dict
+    if not r2 goto L1 else goto L2 :: bool
 L1:
     r3 = True
     return r3

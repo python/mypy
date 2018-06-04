@@ -3,7 +3,7 @@
 import os.path
 import re
 import shutil
-from typing import List
+from typing import List, Set
 
 from mypy import build
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
@@ -14,7 +14,7 @@ from mypy import experiments
 
 from mypyc import analysis
 from mypyc import genops
-from mypyc.ops import format_func, Register
+from mypyc.ops import format_func, Register, Value
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
 )
@@ -60,7 +60,8 @@ class TestAnalysis(MypycDataSuite):
                     actual = actual[actual.index('L0:'):]
                     cfg = analysis.get_cfg(fn.blocks)
 
-                    args = set([Register(i) for i in range(len(fn.args))])
+                    args = set(reg for reg, i in fn.env.indexes.items() if i < len(fn.args))
+
                     name = testcase.name
                     if name.endswith('_MaybeDefined'):
                         # Forward, maybe
@@ -72,7 +73,7 @@ class TestAnalysis(MypycDataSuite):
                         # Forward, must
                         analysis_result = analysis.analyze_must_defined_regs(
                             fn.blocks, cfg, args,
-                            num_regs=fn.env.num_regs())
+                            regs=fn.env.regs())
                     elif name.endswith('_BorrowedArgument'):
                         # Forward, must
                         analysis_result = analysis.analyze_borrowed_arguments(fn.blocks, cfg, args)
@@ -81,7 +82,9 @@ class TestAnalysis(MypycDataSuite):
 
                     actual.append('')
                     for key in sorted(analysis_result.before.keys()):
-                        pre = ', '.join(fn.env.names[reg] for reg in analysis_result.before[key])
-                        post = ', '.join(fn.env.names[reg] for reg in analysis_result.after[key])
+                        pre = ', '.join(sorted(reg.name
+                                               for reg in analysis_result.before[key]))
+                        post = ', '.join(sorted(reg.name
+                                                for reg in analysis_result.after[key]))
                         actual.append('%-8s %-23s %s' % (key, '{%s}' % pre, '{%s}' % post))
             assert_test_output(testcase, actual, 'Invalid source code output')

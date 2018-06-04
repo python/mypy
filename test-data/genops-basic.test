@@ -44,9 +44,10 @@ def f() -> int:
     return y
 [out]
 def f():
-    x, y :: int
+    x, r0, y :: int
 L0:
-    x = 1
+    r0 = 1
+    x = r0
     y = x
     return y
 
@@ -57,13 +58,14 @@ def f(x: int) -> None:
     return
 [out]
 def f(x):
-    x, y :: int
-    r0 :: None
+    x, y, r0 :: int
+    r1 :: None
 L0:
-    y = 1
+    r0 = 1
+    y = r0
     y = x
-    r0 = None
-    return r0
+    r1 = None
+    return r1
 
 [case testIntArithmetic]
 def f(x: int, y: int) -> int:
@@ -84,11 +86,12 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0 :: int
 L0:
     if x < y goto L1 else goto L2 :: int
 L1:
-    x = 1
+    r0 = 1
+    x = r0
 L2:
     return x
 
@@ -101,14 +104,16 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0, r1 :: int
 L0:
     if x < y goto L1 else goto L2 :: int
 L1:
-    x = 1
+    r0 = 1
+    x = r0
     goto L3
 L2:
-    x = 2
+    r1 = 2
+    x = r1
 L3:
     return x
 
@@ -121,16 +126,18 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0, r1 :: int
 L0:
     if x < y goto L1 else goto L3 :: int
 L1:
     if x > y goto L2 else goto L3 :: int
 L2:
-    x = 1
+    r0 = 1
+    x = r0
     goto L4
 L3:
-    x = 2
+    r1 = 2
+    x = r1
 L4:
     return x
 
@@ -143,16 +150,18 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0, r1 :: int
 L0:
     if x < y goto L2 else goto L1 :: int
 L1:
     if x > y goto L2 else goto L3 :: int
 L2:
-    x = 1
+    r0 = 1
+    x = r0
     goto L4
 L3:
-    x = 2
+    r1 = 2
+    x = r1
 L4:
     return x
 
@@ -163,11 +172,12 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0 :: int
 L0:
     if not x < y goto L1 else goto L2 :: int
 L1:
-    x = 1
+    r0 = 1
+    x = r0
 L2:
     return x
 
@@ -178,13 +188,14 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0 :: int
 L0:
     if not x < y goto L2 else goto L1 :: int
 L1:
     if not x > y goto L2 else goto L3 :: int
 L2:
-    x = 1
+    r0 = 1
+    x = r0
 L3:
     return x
 
@@ -195,12 +206,13 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0 :: int
 L0:
 L1:
     if x > y goto L2 else goto L3 :: int
 L2:
-    x = x - y :: int
+    r0 = x - y :: int
+    x = r0
     goto L1
 L3:
     return x
@@ -213,13 +225,15 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y :: int
+    x, y, r0, r1 :: int
 L0:
-    x = 1
+    r0 = 1
+    x = r0
 L1:
     if x > y goto L2 else goto L3 :: int
 L2:
-    x = x - y :: int
+    r1 = x - y :: int
+    x = r1
     goto L1
 L3:
     return x
@@ -239,12 +253,13 @@ def f() -> None:
     x = 1
 [out]
 def f():
-    x :: int
-    r0 :: None
+    x, r0 :: int
+    r1 :: None
 L0:
-    x = 1
-    r0 = None
-    return r0
+    r0 = 1
+    x = r0
+    r1 = None
+    return r1
 
 [case testImplicitNoneReturnAndIf]
 def f(x: int, y: int) -> None:
@@ -254,18 +269,20 @@ def f(x: int, y: int) -> None:
         y = 2
 [out]
 def f(x, y):
-    x, y :: int
-    r0 :: None
+    x, y, r0, r1 :: int
+    r2 :: None
 L0:
     if x < y goto L1 else goto L2 :: int
 L1:
-    x = 1
+    r0 = 1
+    x = r0
     goto L3
 L2:
-    y = 2
+    r1 = 2
+    y = r1
 L3:
-    r0 = None
-    return r0
+    r2 = None
+    return r2
 
 [case testRecursion]
 def f(n: int) -> int:
@@ -316,21 +333,24 @@ def f(n: int) -> int:
     return x
 [out]
 def f(n):
-    n, r0, x, r1 :: int
+    n, r0, x, r1, r2, r3, r4 :: int
 L0:
     r0 = 0
     if n < r0 goto L1 else goto L2 :: int
 L1:
-    x = 1
+    r1 = 1
+    x = r1
     goto L6
 L2:
-    r1 = 0
-    if n == r1 goto L3 else goto L4 :: int
+    r2 = 0
+    if n == r2 goto L3 else goto L4 :: int
 L3:
-    x = 1
+    r3 = 1
+    x = r3
     goto L5
 L4:
-    x = 2
+    r4 = 2
+    x = r4
 L5:
 L6:
     return x
@@ -351,15 +371,17 @@ def f(n: int) -> int:
     return 0 if n == 0 else 1
 [out]
 def f(n):
-    n, r0, r1 :: int
+    n, r0, r1, r2, r3 :: int
 L0:
     r0 = 0
     if n == r0 goto L1 else goto L2 :: int
 L1:
-    r1 = 0
+    r2 = 0
+    r1 = r2
     goto L3
 L2:
-    r1 = 1
+    r3 = 1
+    r1 = r3
 L3:
     return r1
 
@@ -370,11 +392,13 @@ def f() -> int:
     return x
 [out]
 def f():
-    x, r0 :: int
+    x, r0, r1, r2 :: int
 L0:
-    x = 0
-    r0 = 1
-    x = x + r0 :: int
+    r0 = 0
+    x = r0
+    r1 = 1
+    r2 = x + r1 :: int
+    x = r2
     return x
 
 [case testTrue]
@@ -434,11 +458,11 @@ def f(x):
     r0, r1, r2, r3 :: object
     r4 :: int
 L0:
-    r1 = module_testmodule :: static
-    r0 = r1.factorial
-    r3 = box(int, x)
-    r2 = r0(r3) :: py
-    r4 = unbox(int, r2)
+    r0 = module_testmodule :: static
+    r1 = r0.factorial
+    r2 = box(int, x)
+    r3 = r1(r2) :: py
+    r4 = unbox(int, r3)
     return r4
 
 [case testPrintFullname]
@@ -453,12 +477,12 @@ def f(x):
     r3, r4 :: object
     r5, r6 :: None
 L0:
-    r1 = module_builtins :: static
-    r0 = r1.print
+    r0 = module_builtins :: static
+    r1 = r0.print
     r2 = 5
-    r4 = box(int, r2)
-    r3 = r0(r4) :: py
-    r5 = cast(None, r3)
+    r3 = box(int, r2)
+    r4 = r1(r3) :: py
+    r5 = cast(None, r4)
     r6 = None
     return r6
 
@@ -473,11 +497,11 @@ def f(x):
     r5, r6 :: None
 L0:
     r0 = 5
-    r2 = module_builtins :: static
-    r1 = r2.print
-    r4 = box(int, r0)
-    r3 = r1(r4) :: py
-    r5 = cast(None, r3)
+    r1 = module_builtins :: static
+    r2 = r1.print
+    r3 = box(int, r0)
+    r4 = r2(r3) :: py
+    r5 = cast(None, r4)
     r6 = None
     return r6
 
@@ -487,11 +511,12 @@ def f() -> str:
     return "some other string"
 [out]
 def f():
-    x, r0 :: str
+    x, r0, r1 :: str
 L0:
-    x = __unicode_0 :: static
-    r0 = __unicode_1 :: static
-    return r0
+    r0 = __unicode_0 :: static
+    x = r0
+    r1 = __unicode_1 :: static
+    return r1
 
 [case testPyMethodCall1]
 from typing import List
@@ -528,15 +553,15 @@ def g(y):
     y :: object
     r0 :: None
     r1 :: int
-    r2 :: list
-    r3 :: object
+    r2 :: object
+    r3 :: list
     r4, r5, r6, r7 :: None
 L0:
     r0 = g(y)
     r1 = 1
-    r3 = box(int, r1)
-    r2 = [r3]
-    r4 = g(r2)
+    r2 = box(int, r1)
+    r3 = [r2]
+    r4 = g(r3)
     r5 = None
     r6 = g(r5)
     r7 = None
@@ -554,30 +579,32 @@ def g(y):
     y :: object
     r0 :: int
     r1, r2 :: object
-    a :: list
-    r3 :: int
-    r4 :: tuple[int, int]
-    r5, r6 :: int
-    r7 :: object
-    r8, r9 :: bool
-    r10 :: int
+    a, r3 :: list
+    r4, r5, r6 :: int
+    r7 :: tuple[int, int]
+    r8 :: object
+    r9, r10 :: bool
     r11 :: object
+    r12 :: int
+    r13 :: object
 L0:
     r0 = 1
-    r2 = box(int, r0)
-    r1 = g(r2)
-    a = [y]
-    r3 = 0
+    r1 = box(int, r0)
+    r2 = g(r1)
+    r3 = [y]
+    a = r3
+    r4 = 0
     r5 = 1
     r6 = 2
-    r4 = (r5, r6)
-    r7 = box(tuple[int, int], r4)
-    r8 = a.__setitem__(r3, r7)
-    r9 = True
-    y = box(bool, r9)
-    r10 = 3
-    r11 = box(int, r10)
-    return r11
+    r7 = (r5, r6)
+    r8 = box(tuple[int, int], r7)
+    r9 = a.__setitem__(r4, r8)
+    r10 = True
+    r11 = box(bool, r10)
+    y = r11
+    r12 = 3
+    r13 = box(int, r12)
+    return r13
 
 [case testCoerceToObject2]
 class A:
@@ -594,15 +621,17 @@ def f(a, o):
     r1 :: object
     r2 :: bool
     r3 :: int
-    r4 :: None
+    r4 :: object
+    r5 :: None
 L0:
     r0 = 1
     r1 = box(int, r0)
     a.x = r1; r2 = is_error
     r3 = a.n
-    o = box(int, r3)
-    r4 = None
-    return r4
+    r4 = box(int, r3)
+    o = r4
+    r5 = None
+    return r5
 
 [case testDownCast]
 from typing import cast, List, Tuple
@@ -616,20 +645,25 @@ def f(x: object) -> None:
 [out]
 def f(x):
     x :: object
-    n :: int
-    b :: bool
-    a :: A
-    l :: list
-    t :: tuple[int, A]
-    r0 :: None
+    n, r0 :: int
+    b, r1 :: bool
+    a, r2 :: A
+    l, r3 :: list
+    t, r4 :: tuple[int, A]
+    r5 :: None
 L0:
-    n = unbox(int, x)
-    b = unbox(bool, x)
-    a = cast(A, x)
-    l = cast(list, x)
-    t = unbox(tuple[int, A], x)
-    r0 = None
-    return r0
+    r0 = unbox(int, x)
+    n = r0
+    r1 = unbox(bool, x)
+    b = r1
+    r2 = cast(A, x)
+    a = r2
+    r3 = cast(list, x)
+    l = r3
+    r4 = unbox(tuple[int, A], x)
+    t = r4
+    r5 = None
+    return r5
 
 [case testDownCastSpecialCases]
 from typing import cast, Optional, Tuple
@@ -644,18 +678,23 @@ def f(o, n, t):
     o :: optional[A]
     n :: int
     t :: tuple
-    a :: A
+    a, r0 :: A
     m :: bool
-    r0 :: object
+    r1 :: object
+    r2 :: bool
     tt :: tuple[int, int]
-    r1 :: None
+    r3 :: object
+    r4 :: None
 L0:
-    a = cast(A, o)
-    r0 = box(int, n)
-    m = unbox(bool, r0)
-    t = box(tuple[int, int], tt)
-    r1 = None
-    return r1
+    r0 = cast(A, o)
+    a = r0
+    r1 = box(int, n)
+    r2 = unbox(bool, r1)
+    m = r2
+    r3 = box(tuple[int, int], tt)
+    t = r3
+    r4 = None
+    return r4
 
 [case testSuccessfulCast]
 from typing import cast, Optional, Tuple, List, Dict
@@ -690,9 +729,10 @@ def f(o, p, n, b, t, s, a, l, d):
     a :: A
     l :: list
     d :: dict
+    r0 :: object
     l2 :: list
     d2 :: dict
-    r0 :: None
+    r1 :: None
 L0:
     o = o
     p = p
@@ -700,9 +740,10 @@ L0:
     b = b
     t = t
     s = s
-    o = box(int, n)
+    r0 = box(int, n)
+    o = r0
     a = a
     l2 = l
     d2 = d
-    r0 = None
-    return r0
+    r1 = None
+    return r1

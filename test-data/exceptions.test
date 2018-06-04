@@ -97,33 +97,35 @@ def sum(a: List[int], l: int) -> int:
     return sum
 [out]
 L0:
-    sum = 0
-    i = 0
+    r0 = 0
+    sum = r0
+    r1 = 0
+    i = r1
 L1:
     if i < l goto L2 else goto L7 :: int
 L2:
-    r0 = a[i] :: list
-    if is_error(r0) goto L8 (error at sum:6) else goto L3
+    r2 = a[i] :: list
+    if is_error(r2) goto L8 (error at sum:6) else goto L3
 L3:
-    r1 = unbox(int, r0)
-    dec_ref r0
-    if is_error(r1) goto L9 (error at sum:6) else goto L4
+    r3 = unbox(int, r2)
+    dec_ref r2
+    if is_error(r3) goto L9 (error at sum:6) else goto L4
 L4:
-    r4 = sum
-    sum = sum + r1 :: int
-    dec_ref r1 :: int
-    dec_ref r4 :: int
-    r2 = 1
-    r5 = i
-    i = i + r2 :: int
-    dec_ref r2 :: int
+    r4 = sum + r3 :: int
+    dec_ref sum :: int
+    dec_ref r3 :: int
+    sum = r4
+    r5 = 1
+    r6 = i + r5 :: int
+    dec_ref i :: int
     dec_ref r5 :: int
+    i = r6
     goto L1
 L5:
     return sum
 L6:
-    r3 = <error> :: int
-    return r3
+    r7 = <error> :: int
+    return r7
 L7:
     dec_ref i :: int
     goto L5
