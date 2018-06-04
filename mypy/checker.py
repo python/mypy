@@ -5,7 +5,7 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -30,7 +30,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance, union_items,
+    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery
 )
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
@@ -52,7 +52,7 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
-from mypy.meet import is_overlapping_types, is_partially_overlapping_types
+from mypy.meet import is_overlapping_erased_types, is_partially_overlapping
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
@@ -467,6 +467,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     with experiments.strict_optional_set(True):
                         if is_unsafe_overlapping_overload_signatures(sig1, sig2):
                             self.msg.overloaded_signatures_overlap(
+                                i + 1, i + j + 2, item.func)
+                        elif is_unsafe_partially_overlapping_overload_signatures(sig1, sig2):
+                            self.msg.overloaded_signatures_partial_overlap(
                                 i + 1, i + j + 2, item.func)
 
             if impl_type is not None:
@@ -3063,7 +3066,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         optional_type, comp_type = second_type, first_type
                         optional_expr = node.operands[1]
-                    if is_overlapping_types(optional_type, comp_type):
+                    if is_overlapping_erased_types(optional_type, comp_type):
                         return {optional_expr: remove_optional(optional_type)}, {}
             elif node.operators in [['in'], ['not in']]:
                 expr = node.operands[0]
@@ -3074,7 +3077,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                             right_type.type.fullname() != 'builtins.object'))
                 if (right_type and right_ok and is_optional(left_type) and
                         literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
-                        is_overlapping_types(left_type, right_type)):
+                        is_overlapping_erased_types(left_type, right_type)):
                     if node.operators == ['in']:
                         return {expr: remove_optional(left_type)}, {}
                     if node.operators == ['not in']:
@@ -3414,7 +3417,7 @@ def conditional_type_map(expr: Expression,
                and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
-            elif not is_overlapping_types(current_type, proposed_type):
+            elif not is_overlapping_erased_types(current_type, proposed_type):
                 # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
@@ -3630,7 +3633,35 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 
 def is_unsafe_overlapping_overload_signatures(signature: CallableType,
                                               other: CallableType) -> bool:
-    """Check if two overloaded function signatures may be unsafely overlapping.
+    """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
+
+    We consider two functions 's' and 't' to be unsafely overlapping both if
+    of the following are true:
+
+    1.  s's parameters are all more precise or partially overlapping with t's
+    2.  s's return type is NOT a subtype of t's.
+
+    This function will perform a modified version of the above two checks:
+    we do not check for partial overlaps. This lets us vary our error messages
+    depending on the severity of the overlap.
+
+    See 'is_unsafe_partially_overlapping_overload_signatures' for the full checks.
+
+    Assumes that 'signature' appears earlier in the list of overload
+    alternatives then 'other' and that their argument counts are overlapping.
+    """
+
+    return is_callable_compatible(signature, other,
+                                  is_compat=is_more_precise,
+                                  is_compat_return=lambda l, r: not is_subtype(l, r),
+                                  ignore_return=False,
+                                  check_args_covariantly=True,
+                                  allow_partial_overlap=True)
+
+
+def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
+                                                        other: CallableType) -> bool:
+    """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
 
     We consider two functions 's' and 't' to be unsafely overlapping both if
     of the following are true:
@@ -3641,26 +3672,80 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    # TODO: Handle partially overlapping parameter types
-    #
-    # For example, the signatures "f(x: Union[A, B]) -> int" and "f(x: Union[B, C]) -> str"
-    # is unsafe: the parameter types are partially overlapping.
-    #
-    # To fix this, we need to either modify meet.is_overlapping_types or add a new
-    # function and use "is_more_precise(...) or is_partially_overlapping(...)" for the is_compat
-    # checks.
-    #
-    # (We already have a rudimentary implementation of 'is_partially_overlapping', but it only
-    # attempts to handle the obvious cases -- see its docstring for more info.)
-
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
-        return is_more_precise(t, s) or is_partially_overlapping_types(t, s)
+        return is_more_precise(t, s) or is_partially_overlapping(t, s)
 
-    return is_callable_compatible(signature, other,
+    # Try detaching callables from the containing class so we can try unifying
+    # free type variables against each other.
+    #
+    # This lets us identify cases where the two signatures use completely
+    # incompatible types -- e.g. see the testOverloadingInferUnionReturnWithMixedTypevars
+    # test case.
+    signature = detach_callable(signature)
+    other = detach_callable(other)
+
+    # Note: We repeat this check twice in both directions due to a slight
+    # asymmetry in 'is_callable_compatible'. When checking for partial overlaps,
+    # we attempt to unify 'signature' and 'other' both against each other.
+    #
+    # If 'signature' cannot be unified with 'other', we end early. However,
+    # if 'other' cannot be modified with 'signature', the function continues
+    # using the older version of 'other'.
+    #
+    # This discrepancy is unfortunately difficult to get rid of, so we repeat the
+    # checks twice in both directions for now.
+    return (is_callable_compatible(signature, other,
                                   is_compat=is_more_precise_or_partially_overlapping,
                                   is_compat_return=lambda l, r: not is_subtype(l, r),
+                                  ignore_return=False,
                                   check_args_covariantly=True,
-                                  allow_partial_overlap=True)
+                                  allow_partial_overlap=True) or
+            is_callable_compatible(other, signature,
+                                   is_compat=is_more_precise_or_partially_overlapping,
+                                   is_compat_return=lambda l, r: not is_subtype(r, l),
+                                   ignore_return=False,
+                                   check_args_covariantly=False,
+                                   allow_partial_overlap=True))
+
+
+def detach_callable(typ: CallableType) -> CallableType:
+    """Ensures that the callable's type variables are 'detached' and independent of the context
+
+    A callable normally keeps track of the type variables it uses within its 'variables' field.
+    However, if the callable is from a method and that method is using a class type variable,
+    the callable will not keep track of that type variable since it belongs to the class.
+
+    This function will traverse the callable and find all used type vars and add them to the
+    variables field if it isn't already present.
+
+    The caller can then unify on all type variables whether or not the callable is originally
+    from a class or not."""
+    type_vars = typ.accept(TypeVarExtractor())
+    new_variables = []
+    for var in type_vars:
+        new_variables.append(TypeVarDef(
+            name=var.name,
+            fullname=var.fullname,
+            id=var.id,
+            values=var.values,
+            upper_bound=var.upper_bound,
+            variance=var.variance,
+        ))
+    return typ.copy_modified(variables=new_variables)
+
+
+class TypeVarExtractor(TypeQuery[Set[TypeVarType]]):
+    def __init__(self) -> None:
+        super().__init__(self._merge)
+
+    def _merge(self, iter: Iterable[Set[TypeVarType]]) -> Set[TypeVarType]:
+        out = set()
+        for item in iter:
+            out.update(item)
+        return out
+
+    def visit_type_var(self, t: TypeVarType) -> Set[TypeVarType]:
+        return {t}
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
@@ -3719,7 +3804,7 @@ def is_unsafe_overlapping_operator_signatures(signature: Type, other: Type) -> b
             for i in range(min_args):
                 t1 = signature.arg_types[i]
                 t2 = other.arg_types[i]
-                if not is_overlapping_types(t1, t2):
+                if not is_overlapping_erased_types(t1, t2):
                     return False
             # All arguments types for the smallest common argument count are
             # overlapping => the signature is overlapping. The overlapping is

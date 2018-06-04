@@ -334,8 +334,8 @@ def bar(x: Union[T, C]) -> Union[T, int]:
 
 [builtins fixtures/isinstancelist.pyi]
 
-[case testTypeCheckOverloadImplementationTypeVarDifferingUsage]
-from typing import overload, Union, List, TypeVar
+[case testTypeCheckOverloadImplementationTypeVarDifferingUsage1]
+from typing import overload, Union, List, TypeVar, Generic
 
 T = TypeVar('T')
 
@@ -348,6 +348,50 @@ def foo(t: Union[List[T], T]) -> T:
         return t[0]
     else:
         return t
+
+class Wrapper(Generic[T]):
+    @overload
+    def foo(self, t: List[T]) -> T: ...
+    @overload
+    def foo(self, t: T) -> T: ...
+    def foo(self, t: Union[List[T], T]) -> T:
+        if isinstance(t, list):
+            return t[0]
+        else:
+            return t
+[builtins fixtures/isinstancelist.pyi]
+
+[case testTypeCheckOverloadImplementationTypeVarDifferingUsage2]
+from typing import overload, Union, List, TypeVar, Generic
+
+T = TypeVar('T')
+
+# Note: this is unsafe when T = object
+@overload
+def foo(t: List[T], s: T) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo(t: T, s: T) -> str: ...
+def foo(t, s): pass
+
+# TODO: Why are we getting a different error message here?
+# Shouldn't we be getting the same error message?
+class Wrapper(Generic[T]):
+    @overload
+    def foo(self, t: List[T], s: T) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+    @overload
+    def foo(self, t: T, s: T) -> str: ...
+    def foo(self, t, s): pass
+
+class Dummy(Generic[T]): pass
+
+# Same root issue: why does the additional constraint bound T <: T
+# cause the constraint solver to not infer T = object like it did in the
+# first example?
+@overload
+def bar(d: Dummy[T], t: List[T], s: T) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def bar(d: Dummy[T], t: T, s: T) -> str: ...
+def bar(d: Dummy[T], t, s): pass
 [builtins fixtures/isinstancelist.pyi]
 
 [case testTypeCheckOverloadedFunctionBody]
@@ -1677,7 +1721,7 @@ def r(x: Any) -> Any:...
 @overload
 def g(x: A) -> A: ...
 @overload
-def g(x: Tuple[A1, ...]) -> B: ...  # E: Overloaded function signatures 2 and 3 overlap with incompatible return types
+def g(x: Tuple[A1, ...]) -> B: ...  # E: Overloaded function signatures 2 and 3 are partially overlapping: the two signatures may return incompatible types given certain calls
 @overload
 def g(x: Tuple[A, A]) -> C: ...
 @overload
@@ -1864,7 +1908,7 @@ def foo(x: None, y: None) -> str: ...  # E: Overloaded function signatures 1 and
 def foo(x: T, y: T) -> int: ...
 def foo(x): ...
 
-# TODO: We should allow this; T can't be bound to two distinct types
+# What if 'T' is 'object'?
 @overload
 def bar(x: None, y: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
@@ -1872,17 +1916,17 @@ def bar(x: T, y: T) -> int: ...
 def bar(x, y): ...
 
 class Wrapper(Generic[T]):
-    # TODO: This should be an error
+    # TODO: Why do these have different error messages?
     @overload
-    def foo(self, x: None, y: None) -> str: ...
+    def foo(self, x: None, y: None) -> str: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
     @overload
-    def foo(self, x: T, y: None) -> str: ...
+    def foo(self, x: T, y: None) -> int: ...
     def foo(self, x): ...
 
     @overload
-    def bar(self, x: None, y: int) -> str: ...
+    def bar(self, x: None, y: int) -> str: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
     @overload
-    def bar(self, x: T, y: T) -> str: ...
+    def bar(self, x: T, y: T) -> int: ...
     def bar(self, x, y): ...
 
 [case testOverloadFlagsPossibleMatches]
@@ -2382,7 +2426,7 @@ class C: ...
 class D: ...
 
 @overload
-def f(x: Union[A, B]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: Union[A, B]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
 @overload
 def f(x: Union[B, C]) -> str: ...
 def f(x): ...
@@ -2390,14 +2434,54 @@ def f(x): ...
 @overload
 def g(x: Union[A, B]) -> int: ...
 @overload
-def g(x: Union[C, D]) -> str: ...
+def g(x: Union[B, C]) -> int: ...
 def g(x): ...
 
 @overload
-def h(x: Union[A, B]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def h(x: Union[A, B]) -> int: ...
 @overload
-def h(x: Union[A, B, C]) -> str: ...
+def h(x: Union[C, D]) -> str: ...
 def h(x): ...
+
+@overload
+def i(x: Union[A, B]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def i(x: Union[A, B, C]) -> str: ...
+def i(x): ...
+
+[case testOverloadWithPartiallyOverlappingUnionsNested]
+from typing import overload, Union, List
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+@overload
+def f(x: List[Union[A, B]]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: List[Union[B, C]]) -> str: ...
+def f(x): ...
+
+@overload
+def g(x: List[Union[A, B]]) -> int: ...
+@overload
+def g(x: List[Union[B, C]]) -> int: ...
+def g(x): ...
+
+@overload
+def h(x: List[Union[A, B]]) -> int: ...
+@overload
+def h(x: List[Union[C, D]]) -> str: ...
+def h(x): ...
+
+@overload
+def i(x: List[Union[A, B]]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def i(x: List[Union[A, B, C]]) -> str: ...
+def i(x): ...
+
+[builtins fixtures/list.pyi]
 
 [case testOverloadPartialOverlapWithUnrestrictedTypeVar]
 from typing import TypeVar, overload
@@ -2405,10 +2489,310 @@ from typing import TypeVar, overload
 T = TypeVar('T')
 
 @overload
-def f(x: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: int) -> str: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
 @overload
 def f(x: T) -> T: ...
 def f(x): ...
+
+@overload
+def g(x: int) -> int: ...
+@overload
+def g(x: T) -> T: ...
+def g(x): ...
+
+[case testOverloadPartialOverlapWithUnrestrictedTypeVarNested]
+from typing import TypeVar, overload, List
+
+T = TypeVar('T')
+
+@overload
+def f1(x: List[int]) -> str: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f1(x: List[T]) -> T: ...
+def f1(x): ...
+
+@overload
+def f2(x: List[int]) -> List[str]: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f2(x: List[T]) -> List[T]: ...
+def f2(x): ...
+
+@overload
+def g1(x: List[int]) -> int: ...
+@overload
+def g1(x: List[T]) -> T: ...
+def g1(x): ...
+
+@overload
+def g2(x: List[int]) -> List[int]: ...
+@overload
+def g2(x: List[T]) -> List[T]: ...
+def g2(x): ...
+
+[builtins fixtures/list.pyi]
+
+[case testOverloadPartialOverlapWithUnrestrictedTypeVarInClass]
+from typing import TypeVar, overload, Generic
+
+T = TypeVar('T')
+
+class Wrapper(Generic[T]):
+    @overload
+    def f(self, x: int) -> str: ...   # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+    @overload
+    def f(self, x: T) -> T: ...
+    def f(self, x): ...
+
+    # TODO: This shouldn't trigger an error message.
+    # Related to testTypeCheckOverloadImplementationTypeVarDifferingUsage2?
+    @overload
+    def g(self, x: int) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+    @overload
+    def g(self, x: T) -> T: ...
+    def g(self, x): ...
+
+[case testOverloadPartialOverlapWithUnrestrictedTypeVarInClassNested]
+from typing import TypeVar, overload, Generic, List
+
+T = TypeVar('T')
+
+class Wrapper(Generic[T]):
+    @overload
+    def f1(self, x: List[int]) -> str: ...   # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+    @overload
+    def f1(self, x: List[T]) -> T: ...
+    def f1(self, x): ...
+
+    @overload
+    def f2(self, x: List[int]) -> List[str]: ...   # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+    @overload
+    def f2(self, x: List[T]) -> List[T]: ...
+    def f2(self, x): ...
+
+    # TODO: This shouldn't trigger an error message.
+    # Related to testTypeCheckOverloadImplementationTypeVarDifferingUsage2?
+    @overload
+    def g1(self, x: List[int]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+    @overload
+    def g1(self, x: List[T]) -> T: ...
+    def g1(self, x): ...
+
+    @overload
+    def g2(self, x: List[int]) -> List[int]: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+    @overload
+    def g2(self, x: List[T]) -> List[T]: ...
+    def g2(self, x): ...
+
+[builtins fixtures/list.pyi]
+
+[case testOverloadTypedDictDifferentRequiredKeysMeansDictsAreDisjoint]
+from typing import overload
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': int})
+B = TypedDict('B', {'x': int, 'y': str})
+
+@overload
+def f(x: A) -> int: ...
+@overload
+def f(x: B) -> str: ...
+def f(x): pass
+[builtins fixtures/dict.pyi]
+
+[case testOverloadedTypedDictPartiallyOverlappingRequiredKeys]
+from typing import overload, Union
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': Union[int, str]})
+B = TypedDict('B', {'x': int, 'y': Union[str, float]})
+
+@overload
+def f(x: A) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: B) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: A) -> int: ...
+@overload
+def g(x: B) -> object: ...
+def g(x): pass
+[builtins fixtures/dict.pyi]
+
+[case testOverloadedTypedDictFullyNonTotalDictsAreAlwaysPartiallyOverlapping]
+from typing import overload
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str}, total=False)
+B = TypedDict('B', {'a': bool}, total=False)
+C = TypedDict('C', {'x': str, 'y': int}, total=False)
+
+@overload
+def f(x: A) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: B) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: A) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def g(x: C) -> str: ...
+def g(x): pass
+[builtins fixtures/dict.pyi]
+
+[case testOverloadedTotalAndNonTotalTypedDictsCanPartiallyOverlap]
+from typing import overload, Union
+from mypy_extensions import TypedDict
+
+A = TypedDict('A', {'x': int, 'y': str})
+B = TypedDict('B', {'x': Union[int, str], 'y': str, 'z': int}, total=False)
+
+@overload
+def f1(x: A) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f1(x: B) -> str: ...
+def f1(x): pass
+
+@overload
+def f2(x: B) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f2(x: A) -> str: ...
+def f2(x): pass
+
+[builtins fixtures/dict.pyi]
+
+[case testOverloadedTypedDictsWithSomeOptionalKeysArePartiallyOverlapping]
+from typing import overload, Union
+from mypy_extensions import TypedDict
+
+class A(TypedDict):
+    x: int
+    y: int
+
+class B(TypedDict, total=False):
+    z: str
+
+class C(TypedDict, total=False):
+    z: int
+
+@overload
+def f(x: B) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: C) -> str: ...
+def f(x): pass
+
+[builtins fixtures/dict.pyi]
+
+[case testOverloadedPartiallyOverlappingInheritedTypes1]
+from typing import overload, List, Union, TypeVar, Generic
+
+class A: pass
+class B: pass
+class C: pass
+
+T = TypeVar('T')
+
+class ListSubclass(List[T]): pass
+class Unrelated(Generic[T]): pass
+
+@overload
+def f(x: List[Union[A, B]]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: ListSubclass[Union[B, C]]) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: List[Union[A, B]]) -> int: ...
+@overload
+def g(x: Unrelated[Union[B, C]]) -> str: ...
+def g(x): pass
+
+[builtins fixtures/list.pyi]
+
+[case testOverloadedPartiallyOverlappingInheritedTypes2]
+from typing import overload, List, Union
+
+class A: pass
+class B: pass
+class C: pass
+
+class ListSubclass(List[Union[B, C]]): pass
+
+@overload
+def f(x: List[Union[A, B]]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: ListSubclass) -> str: ...
+def f(x): pass
+
+[builtins fixtures/list.pyi]
+
+[case testOverloadedPartiallyOverlappingInheritedTypes3]
+from typing import overload, Union, Dict, TypeVar
+
+class A: pass
+class B: pass
+class C: pass
+
+S = TypeVar('S')
+
+class DictSubclass(Dict[str, S]): pass
+
+@overload
+def f(x: Dict[str, Union[A, B]]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: DictSubclass[Union[B, C]]) -> str: ...
+def f(x): pass
+
+[builtins fixtures/dict.pyi]
+
+[case testOverloadedPartiallyOverlappingTypeVarsAndUnion]
+from typing import overload, TypeVar, Union
+
+class A: pass
+class B: pass
+class C: pass
+
+S = TypeVar('S', A, B)
+
+@overload
+def f(x: S) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: Union[B, C]) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: Union[B, C]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def g(x: S) -> str: ...
+def g(x): pass
+
+[case testOverloadPartiallyOverlappingTypeVarsIdentical]
+from typing import overload, TypeVar, Union
+
+T = TypeVar('T')
+
+class A: pass
+class B: pass
+class C: pass
+
+@overload
+def f(x: T, y: T, z: Union[A, B]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: T, y: T, z: Union[B, C]) -> str: ...
+def f(x, y, z): pass
+
+[case testOverloadedPartiallyOverlappingCallables]
+from typing import overload, Union, Callable
+
+class A: pass
+class B: pass
+class C: pass
+
+@overload
+def f(x: Callable[[Union[A, B]], int]) -> int: ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
+@overload
+def f(x: Callable[[Union[B, C]], int]) -> str: ...
+def f(x): pass
 
 [case testOverloadNotConfusedForProperty]
 from typing import overload
@@ -3302,7 +3686,7 @@ T = TypeVar('T')
 
 class FakeAttribute(Generic[T]):
     @overload
-    def dummy(self, instance: None, owner: Type[T]) -> 'FakeAttribute[T]': ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    def dummy(self, instance: None, owner: Type[T]) -> 'FakeAttribute[T]': ...  # E: Overloaded function signatures 1 and 2 are partially overlapping: the two signatures may return incompatible types given certain calls
     @overload
     def dummy(self, instance: T, owner: Type[T]) -> int: ...
     def dummy(self, instance: Optional[T], owner: Type[T]) -> Union['FakeAttribute[T]', int]: ...

@@ -958,6 +958,12 @@ class MessageBuilder:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
+    def overloaded_signatures_partial_overlap(self, index1: int, index2: int,
+                                              context: Context) -> None:
+        self.fail('Overloaded function signatures {} and {} '.format(index1, index2)
+                  + 'are partially overlapping: the two signatures may return '
+                  + 'incompatible types given certain calls', context)
+
     def overloaded_signature_will_never_match(self, index1: int, index2: int,
                                               context: Context) -> None:
         self.fail(

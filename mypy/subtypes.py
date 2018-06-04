@@ -920,6 +920,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
         c = mypy.constraints.infer_constraints(
             type.ret_type, target.ret_type, return_constraint_direction)
         constraints.extend(c)
+
     type_var_ids = [tvar.id for tvar in type.variables]
     inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
     if None in inferred_vars:
