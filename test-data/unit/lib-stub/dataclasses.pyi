@@ -1,4 +1,4 @@
-from typing import Any, Callable, Generic, Optional, TypeVar, overload
+from typing import Any, Callable, Generic, Mapping, Optional, TypeVar, overload
 
 _T = TypeVar('_T')
 _C = TypeVar('_C', bound=type)
@@ -29,11 +29,17 @@ def dataclass(_cls: None = ...,
               frozen: bool = ...) -> Callable[[_C], _C]: ...
 
 
+@overload
+def field(*, default: _T,
+    init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,
+    metadata: Optional[Mapping[str, Any]] = ...) -> _T: ...
+
+@overload
+def field(*, default_factory: Callable[[], _T],
+    init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,
+    metadata: Optional[Mapping[str, Any]] = ...) -> _T: ...
+
+@overload
 def field(*,
-          default: Optional[_T] = ...,
-          default_factory: Optional[Callable[..., _T]] = ...,
-          init: bool = ...,
-          repr: bool = ...,
-          hash: Optional[bool] = ...,
-          compare: bool = ...,
-          metadata: Any = ...) -> _T: ...
+    init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,
+    metadata: Optional[Mapping[str, Any]] = ...) -> Any: ...

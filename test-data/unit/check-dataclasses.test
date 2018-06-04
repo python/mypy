@@ -120,7 +120,7 @@ from dataclasses import dataclass, field
 @dataclass
 class Person:
     name: str
-    age: int = field(init=None)  # E: Argument "init" to "field" has incompatible type "None"; expected "bool"
+    age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None"
 
 [builtins fixtures/list.pyi]
 
