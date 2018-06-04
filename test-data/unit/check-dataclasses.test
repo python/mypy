@@ -401,3 +401,32 @@ A(b=B(42))
 A(b=42)  # E: Argument "b" to "A" has incompatible type "int"; expected "B"
 
 [builtins fixtures/list.pyi]
+
+
+[case testDataclassesInitVars]
+from dataclasses import InitVar, dataclass
+
+@dataclass
+class Application:
+  name: str
+  database_name: InitVar[str]
+
+reveal_type(Application)  # E: Revealed type is 'def (name: builtins.str, database_name: builtins.str) -> __main__.Application'
+app = Application("example", 42)  # E: Argument 2 to "Application" has incompatible type "int"; expected "str"
+app = Application("example", "apps")
+app.name
+app.database_name  # E: "Application" has no attribute "database_name"
+
+
+@dataclass
+class SpecializedApplication(Application):
+  rating: int
+
+reveal_type(SpecializedApplication)  # E: Revealed type is 'def (name: builtins.str, database_name: builtins.str, rating: builtins.int) -> __main__.SpecializedApplication'
+app = SpecializedApplication("example", "apps", "five")  # E: Argument 3 to "SpecializedApplication" has incompatible type "str"; expected "int"
+app = SpecializedApplication("example", "apps", 5)
+app.name
+app.rating
+app.database_name  # E: "SpecializedApplication" has no attribute "database_name"
+
+[builtins fixtures/list.pyi]

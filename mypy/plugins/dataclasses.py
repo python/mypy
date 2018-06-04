@@ -2,13 +2,16 @@ from collections import OrderedDict
 from typing import Dict, List, Optional, Set, Tuple, cast
 
 from mypy.nodes import (
-    ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, Block, CallExpr, Context,
-    Decorator, Expression, JsonDict, NameExpr, SymbolTableNode, TempNode,
-    TypeInfo, Var
+    ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, Block, CallExpr,
+    Context, Decorator, Expression, FuncDef, JsonDict, NameExpr,
+    SymbolTableNode, TempNode, TypeInfo, Var,
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import _add_method, _get_decorator_bool_argument
-from mypy.types import CallableType, NoneTyp, Type, TypeVarDef, TypeVarType
+from mypy.types import (
+    CallableType, Instance, NoneTyp, Type, TypeVarDef, TypeVarType,
+    deserialize_type
+)
 from mypy.typevars import fill_typevars
 
 # The set of decorators that generate dataclasses.
@@ -23,11 +26,14 @@ class DataclassAttribute:
             self,
             name: str,
             is_in_init: bool,
+            is_init_var: bool,
             has_default: bool,
-            line: int, column: int,
+            line: int,
+            column: int,
     ) -> None:
         self.name = name
         self.is_in_init = is_in_init
+        self.is_init_var = is_init_var
         self.has_default = has_default
         self.line = line
         self.column = column
@@ -47,13 +53,14 @@ class DataclassAttribute:
         return {
             'name': self.name,
             'is_in_init': self.is_in_init,
+            'is_init_var': self.is_init_var,
             'has_default': self.has_default,
             'line': self.line,
             'column': self.column,
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'DataclassAttribute':
+    def deserialize(cls, info: TypeInfo, data: JsonDict) -> 'DataclassAttribute':
         return cls(**data)
 
 
@@ -147,6 +154,11 @@ class DataclassTransformer:
         if decorator_arguments['frozen']:
             self._freeze(attributes)
 
+        # Remove init-only vars from the class.
+        for attr in attributes:
+            if attr.is_init_var:
+                del info.names[attr.name]
+
         info.metadata['dataclass'] = {
             'attributes': OrderedDict((attr.name, attr.serialize()) for attr in attributes),
             'frozen': decorator_arguments['frozen'],
@@ -186,6 +198,15 @@ class DataclassTransformer:
             if node.is_classvar:
                 continue
 
+            # x: InitVar[int] is turned into x: int and is removed from the class.
+            is_init_var = False
+            if (
+                    isinstance(node.type, Instance) and
+                    node.type.type.fullname() == 'dataclasses.InitVar'
+            ):
+                is_init_var = True
+                node.type = node.type.args[0]
+
             has_field_call, field_args = _collect_field_args(stmt.rvalue)
 
             is_in_init_param = field_args.get('init')
@@ -208,6 +229,7 @@ class DataclassTransformer:
             attrs.append(DataclassAttribute(
                 name=lhs.name,
                 is_in_init=is_in_init,
+                is_init_var=is_init_var,
                 has_default=has_default,
                 line=stmt.line,
                 column=stmt.column,
@@ -217,13 +239,24 @@ class DataclassTransformer:
         # as long as those attributes weren't already collected.  This
         # makes it possible to overwrite attributes in subclasses.
         super_attrs = []
+        init_method = cls.info.get_method('__init__')
         for info in cls.info.mro[1:-1]:
             if 'dataclass' not in info.metadata:
                 continue
 
             for name, data in info.metadata['dataclass']['attributes'].items():
                 if name not in known_attrs:
-                    attr = DataclassAttribute.deserialize(data)
+                    attr = DataclassAttribute.deserialize(info, data)
+                    if attr.is_init_var and isinstance(init_method, FuncDef):
+                        # InitVars are removed from classes so, in order for them to be inherited
+                        # properly, we need to re-inject them into subclasses' sym tables here.
+                        # To do that, we look 'em up from the parents' __init__.  These variables
+                        # are subsequently removed from the sym table at the end of
+                        # DataclassTransformer.transform.
+                        for arg, arg_name in zip(init_method.arguments, init_method.arg_names):
+                            if arg_name == attr.name:
+                                cls.info.names[attr.name] = SymbolTableNode(MDEF, arg.variable)
+
                     known_attrs.add(name)
                     super_attrs.append(attr)
 
