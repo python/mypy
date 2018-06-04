@@ -28,7 +28,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.n = self.env.add_local(Var('n'), int_rprimitive)
         self.m = self.env.add_local(Var('m'), int_rprimitive)
         self.k = self.env.add_local(Var('k'), int_rprimitive)
-        self.l = self.env.add_local(Var('l'), list_rprimitive)
+        self.l = self.env.add_local(Var('l'), list_rprimitive)  # noqa
         self.ll = self.env.add_local(Var('ll'), list_rprimitive)
         self.o = self.env.add_local(Var('o'), object_rprimitive)
         self.o2 = self.env.add_local(Var('o2'), object_rprimitive)
@@ -90,12 +90,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_list_repeat(self) -> None:
         self.assert_emit_binary_op(
             '*', self.ll, self.l, self.n,
-             """long long __tmp1;
-                __tmp1 = CPyTagged_AsLongLong(cpy_r_n);
-                if (__tmp1 == -1 && PyErr_Occurred())
-                    CPyError_OutOfMemory();
-                cpy_r_r0 = PySequence_Repeat(cpy_r_l, __tmp1);
-             """)
+            """long long __tmp1;
+               __tmp1 = CPyTagged_AsLongLong(cpy_r_n);
+               if (__tmp1 == -1 && PyErr_Occurred())
+                   CPyError_OutOfMemory();
+               cpy_r_r0 = PySequence_Repeat(cpy_r_l, __tmp1);
+            """)
 
     def test_int_neg(self) -> None:
         self.assert_emit(PrimitiveOp([self.m], int_neg_op, 55),
@@ -215,12 +215,12 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_dict_contains(self) -> None:
         self.assert_emit_binary_op(
             'in', self.b, self.o, self.d,
-             """int __tmp1 = PyDict_Contains(cpy_r_d, cpy_r_o);
-                if (__tmp1 < 0)
-                    cpy_r_r0 = 2;
-                else
-                    cpy_r_r0 = __tmp1;
-             """)
+            """int __tmp1 = PyDict_Contains(cpy_r_d, cpy_r_o);
+               if (__tmp1 < 0)
+                   cpy_r_r0 = 2;
+               else
+                   cpy_r_r0 = __tmp1;
+            """)
 
     def assert_emit(self, op: Op, expected: str) -> None:
         self.emitter.fragments = []

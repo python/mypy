@@ -97,6 +97,7 @@ class RVoid(RType):
     def c_undefined_value(self) -> str:
         return ''
 
+
 void_rtype = RVoid()
 
 
@@ -131,7 +132,8 @@ class RPrimitive(RType):
         return visitor.visit_rprimitive(self)
 
     def __repr__(self) -> str:
-        return '<RPrimitive %s>'% self.name
+        return '<RPrimitive %s>' % self.name
+
 
 # Used to represent arbitrary objects and dynamically typed values
 object_rprimitive = RPrimitive('builtins.object', is_unboxed=False, is_refcounted=True)
@@ -502,12 +504,12 @@ class Branch(Op):
     IS_ERROR = 102  # Check for magic c_error_value (works for arbitary types)
 
     op_names = {
-        INT_EQ:  ('==', 'int'),
-        INT_NE:  ('!=', 'int'),
-        INT_LT:  ('<', 'int'),
-        INT_LE:  ('<=', 'int'),
-        INT_GT:  ('>', 'int'),
-        INT_GE:  ('>=', 'int'),
+        INT_EQ: ('==', 'int'),
+        INT_NE: ('!=', 'int'),
+        INT_LT: ('<', 'int'),
+        INT_LE: ('<=', 'int'),
+        INT_GT: ('>', 'int'),
+        INT_GE: ('>=', 'int'),
     }
 
     unary_op_names = {
@@ -554,7 +556,7 @@ class Branch(Op):
             tb = ' (error at %s:%d)' % self.traceback_entry
         fmt = 'if {} goto %l{} else goto %l'.format(cond, tb)
         if typ:
-             fmt += ' :: {}'.format(typ)
+            fmt += ' :: {}'.format(typ)
         return env.format(fmt, self.true, self.false)
 
     def invert(self) -> None:
@@ -1333,7 +1335,7 @@ class OpVisitor(Generic[T]):
 def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
     lines = []
     for i, block in enumerate(blocks):
-        last = i == len(blocks) - 1
+        i == len(blocks) - 1
 
         lines.append(env.format('%l:', block.label))
         ops = block.ops
@@ -1382,6 +1384,7 @@ class RTypeVisitor(Generic[T]):
     @abstractmethod
     def visit_rvoid(self, typ: RVoid) -> T:
         raise NotImplementedError
+
 
 # Import various modules that set up global state.
 import mypyc.ops_int

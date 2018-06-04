@@ -118,7 +118,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
                     methods_name=methods_name,
                     getseters_name=getseters_name,
                     init_name=init_name,
-        ))
+                    ))
     emitter.emit_line()
     generate_setup_for_class(cl, setup_name, vtable_name, emitter)
     emitter.emit_line()
@@ -324,6 +324,7 @@ def generate_methods_table(cl: ClassIR,
     emitter.emit_line('{NULL}  /* Sentinel */')
     emitter.emit_line('};')
 
+
 def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
     for attr, rtype in cl.attributes:
         emitter.emit_line('static PyObject *')
@@ -364,12 +365,12 @@ def generate_getter(cl: ClassIR,
                     emitter: Emitter) -> None:
     emitter.emit_line('static PyObject *')
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl.name, attr),
-                                                                        cl.struct_name()))
+                                                           cl.struct_name()))
     emitter.emit_line('{')
     emitter.emit_line('if (self->{} == {}) {{'.format(attr, rtype.c_undefined_value()))
     emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
     emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
-                                                                        repr(cl.name)))
+                                                                    repr(cl.name)))
     emitter.emit_line('return NULL;')
     emitter.emit_line('}')
     emitter.emit_inc_ref('self->{}'.format(attr), rtype)

@@ -49,8 +49,8 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
         label = block.label
         last = block.ops[-1]
         if isinstance(last, Branch):
-            succ = [last.true, last.false]  # TODO: assume 1:1 correspondence between block index
-                                            #       and label
+            # TODO: assume 1:1 correspondence between block index and label
+            succ = [last.true, last.false]
         elif isinstance(last, Goto):
             succ = [last.label]
         else:
@@ -68,6 +68,7 @@ T = TypeVar('T')
 
 AnalysisDict = Dict[Tuple[Label, int], Set[T]]
 
+
 class AnalysisResult(Generic[T]):
     def __init__(self, before: AnalysisDict[T], after: AnalysisDict[T]) -> None:
         self.before = before
@@ -75,6 +76,7 @@ class AnalysisResult(Generic[T]):
 
     def __str__(self) -> str:
         return 'before: %s\nafter: %s\n' % (self.before, self.after)
+
 
 GenAndKill = Tuple[Set[Value], Set[Value]]
 
@@ -236,6 +238,7 @@ class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
             return set(), {op.dest}
         return set(), set()
 
+
 def analyze_borrowed_arguments(
         blocks: List[BasicBlock],
         cfg: CFG,
@@ -268,6 +271,7 @@ class UndefinedVisitor(BaseAnalysisVisitor):
 
     def visit_assign(self, op: Assign) -> GenAndKill:
         return set(), {op.dest}
+
 
 def analyze_undefined_regs(blocks: List[BasicBlock],
                            cfg: CFG,
@@ -369,7 +373,7 @@ def run_analysis(blocks: List[BasicBlock],
             opgen, opkill = op.accept(gen_and_kill)
             gen = ((gen - opkill) | opgen)
             kill = ((kill - opgen) | opkill)
-        block_gen[block.label] =  gen
+        block_gen[block.label] = gen
         block_kill[block.label] = kill
 
     # Set up initial state for worklist algorithm.
@@ -421,8 +425,8 @@ def run_analysis(blocks: List[BasicBlock],
         after[label] = new_after
 
     # Run algorithm for each basic block to generate opcode-level sets.
-    op_before = {} # type: Dict[Tuple[Label, int], Set[T]]
-    op_after = {} # type: Dict[Tuple[Label, int], Set[T]]
+    op_before = {}  # type: Dict[Tuple[Label, int], Set[T]]
+    op_after = {}  # type: Dict[Tuple[Label, int], Set[T]]
     for block in blocks:
         label = block.label
         cur = before[label]

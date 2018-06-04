@@ -22,6 +22,7 @@ import pytest  # type: ignore  # no pytest in typeshed
 files = ['run.test',
          'run-classes.test']
 
+
 class TestRun(MypycDataSuite):
     """Test cases that build a C extension and run code."""
     files = files

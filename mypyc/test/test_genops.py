@@ -40,7 +40,6 @@ class TestGenOps(MypycDataSuite):
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             expected_output = remove_comment_lines(testcase.output)
 
-            func_names = get_func_names(expected_output)  # TODO: Use these to filter things?
             program_text = '\n'.join(testcase.input)
 
             options = Options()
@@ -67,11 +66,11 @@ class TestGenOps(MypycDataSuite):
                     for fn in module.functions:
                         actual.extend(format_func(fn))
 
-
             assert_test_output(testcase, actual, 'Invalid source code output',
                                expected_output)
 
 
+# TODO: Use these to filter things?
 def get_func_names(expected: List[str]) -> List[str]:
     res = []
     for s in expected:

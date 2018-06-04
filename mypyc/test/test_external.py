@@ -44,9 +44,15 @@ class TestExternal(unittest.TestCase):
         env = {'PYTHONPATH': mypy_dir,
                'MYPYPATH': '%s:%s' % (mypy_dir, base_dir)}
         status = subprocess.call(
-                [sys.executable,
-                 '-m', 'mypy',
-                 '--config-file', 'mypy.ini', '-p', 'mypyc'],
-                env=env)
+            [sys.executable,
+             '-m', 'mypy',
+             '--config-file', 'mypy.ini', '-p', 'mypyc'],
+            env=env)
         if status != 0:
             raise AssertionError("Self type check failure")
+
+    def test_flake8(self) -> None:
+        """Use flake8 to lint mypyc."""
+        status = subprocess.call([sys.executable, '-m', 'flake8'])
+        if status != 0:
+            assert False, "Lint failure"

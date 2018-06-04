@@ -1,6 +1,8 @@
 from typing import List
 
-from mypyc.ops import PrimitiveOp, int_rprimitive, RType, EmitterInterface, OpDescription, ERR_NEVER
+from mypyc.ops import (
+    PrimitiveOp, int_rprimitive, RType, EmitterInterface, OpDescription, ERR_NEVER,
+)
 from mypyc.ops_primitive import binary_op, unary_op, simple_emit
 
 

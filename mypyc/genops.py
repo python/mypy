@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple, Optional
 
 from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
-    IfStmt, Node, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
+    IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
     Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode, ARG_POS, MODULE_REF
@@ -147,12 +147,12 @@ class IRBuilder(NodeVisitor[Value]):
         self.continue_gotos = []  # type: List[List[Goto]]
 
         self.mapper = mapper
-        self.imports = [] # type: List[str]
+        self.imports = []  # type: List[str]
 
         # Maps unicode literals to the static c name for that literal
-        self.unicode_literals = {} # type: Dict[str, str]
+        self.unicode_literals = {}  # type: Dict[str, str]
 
-        self.current_module_name = None # type: Optional[str]
+        self.current_module_name = None  # type: Optional[str]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> Value:
         if mypyfile.fullname() in ('typing', 'abc'):
@@ -500,7 +500,6 @@ class IRBuilder(NodeVisitor[Value]):
             assert isinstance(s.index.node, Var)
             lvalue_reg = self.environment.add_local(s.index.node, self.node_type(s.index))
 
-
             condition_block = self.goto_new_block()
 
             # For compatibility with python semantics we recalculate the length
@@ -573,8 +572,8 @@ class IRBuilder(NodeVisitor[Value]):
             if (is_subtype(lreg.type, desc.arg_types[0])
                     and is_subtype(rreg.type, desc.arg_types[1])):
                 if matching:
-                    assert matching.priority != desc.priority, 'Ambiguous: %s, %s'  % (matching,
-                                                                                       desc)
+                    assert matching.priority != desc.priority, 'Ambiguous: %s, %s' % (matching,
+                                                                                      desc)
                     if desc.priority > matching.priority:
                         matching = desc
                 else:
@@ -665,7 +664,7 @@ class IRBuilder(NodeVisitor[Value]):
 
     def py_call(self, function: Value, args: List[Value],
                 target_type: RType, line: int) -> Value:
-        arg_boxes = [self.box(arg) for arg in args] # type: List[Value]
+        arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
         target_box = self.add(PyCall(function, arg_boxes, line))
         return self.unbox_or_cast(target_box, target_type, line)
 
@@ -675,7 +674,7 @@ class IRBuilder(NodeVisitor[Value]):
                        args: List[Value],
                        target_type: RType,
                        line: int) -> Value:
-        arg_boxes = [self.box(arg) for arg in args] # type: List[Value]
+        arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
         target_box = self.add(PyMethodCall(obj, method, arg_boxes))
         return self.unbox_or_cast(target_box, target_type, line)
 
@@ -690,7 +689,6 @@ class IRBuilder(NodeVisitor[Value]):
         for reg, arg_type in zip(args, formal_arg_types):
             coerced_arg_regs.append(self.coerce(reg, arg_type, line))
         return coerced_arg_regs
-
 
     def visit_call_expr(self, expr: CallExpr) -> Value:
         if isinstance(expr.analyzed, CastExpr):

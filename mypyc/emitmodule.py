@@ -86,7 +86,6 @@ class ModuleGenerator:
         for cl in self.module.classes:
             generate_class(cl, self.module_name, emitter)
 
-
         emitter.emit_line()
 
         self.generate_module_def(emitter)
@@ -138,7 +137,7 @@ class ModuleGenerator:
         for cl in self.module.classes:
             type_struct = cl.type_struct
             emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
-                                '    return NULL;')
+                               '    return NULL;')
         emitter.emit_lines('m = PyModule_Create(&module);',
                            'if (m == NULL)',
                            '    return NULL;')
@@ -190,7 +189,7 @@ class ModuleGenerator:
             decl.mark = True
 
         for name, marked_declaration in marked_declarations.items():
-           _toposort_visit(name)
+            _toposort_visit(name)
 
         return result
 

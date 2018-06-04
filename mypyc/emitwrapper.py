@@ -7,8 +7,8 @@ from mypyc.ops import FuncIR, RType, is_object_rprimitive
 
 def wrapper_function_header(fn: FuncIR) -> str:
     return 'static PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
-            prefix=PREFIX,
-            name=fn.cname)
+        prefix=PREFIX,
+        name=fn.cname)
 
 
 def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:

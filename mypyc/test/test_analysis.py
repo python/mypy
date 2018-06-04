@@ -54,7 +54,8 @@ class TestAnalysis(MypycDataSuite):
                     actual = result.errors
                 else:
                     module = genops.build_ir(result.files['__main__'], result.types)
-                    assert len(module.functions) == 1, "Only 1 function definition expected per test case"
+                    assert len(module.functions) == 1, (
+                        "Only 1 function definition expected per test case")
                     fn = module.functions[0]
                     actual = format_func(fn)
                     actual = actual[actual.index('L0:'):]
