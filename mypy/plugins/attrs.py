@@ -240,11 +240,12 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
     # attributes for all classes have been read, because subclasses can override parents.
     last_default = False
     for attribute in attributes:
-        if attribute.init and not attribute.has_default and last_default:
-            ctx.api.fail(
-                "Non-default attributes not allowed after default attributes.",
-                attribute.context)
-        last_default = attribute.has_default
+        if attribute.init:
+            if not attribute.has_default and last_default:
+                ctx.api.fail(
+                    "Non-default attributes not allowed after default attributes.",
+                    attribute.context)
+            last_default |= attribute.has_default
 
     return attributes
 
