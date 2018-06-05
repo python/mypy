@@ -53,6 +53,6 @@ class TestExternal(unittest.TestCase):
 
     def test_flake8(self) -> None:
         """Use flake8 to lint mypyc."""
-        status = subprocess.call([sys.executable, '-m', 'flake8'])
+        status = subprocess.call([sys.executable, '-m', 'flake8', 'mypyc'])
         if status != 0:
             assert False, "Lint failure"
