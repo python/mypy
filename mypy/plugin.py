@@ -311,8 +311,7 @@ class DefaultPlugin(Plugin):
                 attrs.attr_class_maker_callback,
                 auto_attribs_default=True
             )
-        # TODO: Drop the or clause once dataclasses lands in typeshed.
-        elif fullname in dataclasses.dataclass_makers or fullname.endswith('.dataclass'):
+        elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
         return None
 
