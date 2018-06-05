@@ -484,45 +484,26 @@ class Goto(Op):
 
 
 class Branch(Op):
-    """if [not] r1 op r2 goto 1 else goto 2"""
+    """if [not] r1 goto 1 else goto 2"""
 
     # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
     # exception, it needs to split into two opcodes and only the first one may fail.
     error_kind = ERR_NEVER
 
-    INT_EQ = 10
-    INT_NE = 11
-    INT_LT = 12
-    INT_LE = 13
-    INT_GT = 14
-    INT_GE = 15
-
-    # Unlike the above, these are unary operations so they only uses the "left" register
-    # ("right" should be INVALID_VALUE).
     BOOL_EXPR = 100
     IS_NONE = 101
     IS_ERROR = 102  # Check for magic c_error_value (works for arbitary types)
 
     op_names = {
-        INT_EQ: ('==', 'int'),
-        INT_NE: ('!=', 'int'),
-        INT_LT: ('<', 'int'),
-        INT_LE: ('<=', 'int'),
-        INT_GT: ('>', 'int'),
-        INT_GE: ('>=', 'int'),
-    }
-
-    unary_op_names = {
         BOOL_EXPR: ('%r', 'bool'),
         IS_NONE: ('%r is None', 'object'),
         IS_ERROR: ('is_error(%r)', ''),
     }
 
-    def __init__(self, left: Value, right: Value, true_label: Label,
+    def __init__(self, left: Value, true_label: Label,
                  false_label: Label, op: int, line: int = -1) -> None:
         super().__init__(line)
         self.left = left
-        self.right = right
         self.true = true_label
         self.false = false_label
         self.op = op
@@ -531,26 +512,14 @@ class Branch(Op):
         self.traceback_entry = None  # type: Optional[Tuple[str, int]]
 
     def sources(self) -> List[Value]:
-        if self.right != INVALID_VALUE:
-            return [self.left, self.right]
-        else:
-            return [self.left]
+        return [self.left]
 
     def to_str(self, env: Environment) -> str:
-        # Right not used for BOOL_EXPR
-        if self.op in self.op_names:
-            if self.negated:
-                fmt = 'not %r {} %r'
-            else:
-                fmt = '%r {} %r'
-            op, typ = self.op_names[self.op]
-            fmt = fmt.format(op)
-        else:
-            fmt, typ = self.unary_op_names[self.op]
-            if self.negated:
-                fmt = 'not {}'.format(fmt)
+        fmt, typ = self.op_names[self.op]
+        if self.negated:
+            fmt = 'not {}'.format(fmt)
 
-        cond = env.format(fmt, self.left, self.right)
+        cond = env.format(fmt, self.left)
         tb = ''
         if self.traceback_entry:
             tb = ' (error at %s:%d)' % self.traceback_entry

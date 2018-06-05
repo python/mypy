@@ -75,7 +75,7 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                 # indicated by a special value stored in a register.
                 assert not op.is_void, "void op generating errors?"
 
-                branch = Branch(op, INVALID_VALUE,
+                branch = Branch(op,
                                 true_label=error_label,
                                 false_label=Label(new_block.label + 1),
                                 op=variant,

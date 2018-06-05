@@ -86,12 +86,15 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0 :: int
+    x, y :: int
+    r0 :: bool
+    r1 :: int
 L0:
-    if x < y goto L1 else goto L2 :: int
+    r0 = x < y :: int
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    x = r0
+    r1 = 1
+    x = r1
 L2:
     return x
 
@@ -104,16 +107,19 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0, r1 :: int
+    x, y :: int
+    r0 :: bool
+    r1, r2 :: int
 L0:
-    if x < y goto L1 else goto L2 :: int
+    r0 = x < y :: int
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    x = r0
+    r1 = 1
+    x = r1
     goto L3
 L2:
-    r1 = 2
-    x = r1
+    r2 = 2
+    x = r2
 L3:
     return x
 
@@ -126,18 +132,22 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0, r1 :: int
+    x, y :: int
+    r0, r1 :: bool
+    r2, r3 :: int
 L0:
-    if x < y goto L1 else goto L3 :: int
+    r0 = x < y :: int
+    if r0 goto L1 else goto L3 :: bool
 L1:
-    if x > y goto L2 else goto L3 :: int
+    r1 = x > y :: int
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r0 = 1
-    x = r0
+    r2 = 1
+    x = r2
     goto L4
 L3:
-    r1 = 2
-    x = r1
+    r3 = 2
+    x = r3
 L4:
     return x
 
@@ -150,18 +160,22 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0, r1 :: int
+    x, y :: int
+    r0, r1 :: bool
+    r2, r3 :: int
 L0:
-    if x < y goto L2 else goto L1 :: int
+    r0 = x < y :: int
+    if r0 goto L2 else goto L1 :: bool
 L1:
-    if x > y goto L2 else goto L3 :: int
+    r1 = x > y :: int
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r0 = 1
-    x = r0
+    r2 = 1
+    x = r2
     goto L4
 L3:
-    r1 = 2
-    x = r1
+    r3 = 2
+    x = r3
 L4:
     return x
 
@@ -172,12 +186,15 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0 :: int
+    x, y :: int
+    r0 :: bool
+    r1 :: int
 L0:
-    if not x < y goto L1 else goto L2 :: int
+    r0 = x < y :: int
+    if not r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    x = r0
+    r1 = 1
+    x = r1
 L2:
     return x
 
@@ -188,14 +205,18 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0 :: int
+    x, y :: int
+    r0, r1 :: bool
+    r2 :: int
 L0:
-    if not x < y goto L2 else goto L1 :: int
+    r0 = x < y :: int
+    if not r0 goto L2 else goto L1 :: bool
 L1:
-    if not x > y goto L2 else goto L3 :: int
+    r1 = x > y :: int
+    if not r1 goto L2 else goto L3 :: bool
 L2:
-    r0 = 1
-    x = r0
+    r2 = 1
+    x = r2
 L3:
     return x
 
@@ -206,13 +227,16 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0 :: int
+    x, y :: int
+    r0 :: bool
+    r1 :: int
 L0:
 L1:
-    if x > y goto L2 else goto L3 :: int
+    r0 = x > y :: int
+    if r0 goto L2 else goto L3 :: bool
 L2:
-    r0 = x - y :: int
-    x = r0
+    r1 = x - y :: int
+    x = r1
     goto L1
 L3:
     return x
@@ -225,15 +249,18 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0, r1 :: int
+    x, y, r0 :: int
+    r1 :: bool
+    r2 :: int
 L0:
     r0 = 1
     x = r0
 L1:
-    if x > y goto L2 else goto L3 :: int
+    r1 = x > y :: int
+    if r1 goto L2 else goto L3 :: bool
 L2:
-    r1 = x - y :: int
-    x = r1
+    r2 = x - y :: int
+    x = r2
     goto L1
 L3:
     return x
@@ -269,20 +296,23 @@ def f(x: int, y: int) -> None:
         y = 2
 [out]
 def f(x, y):
-    x, y, r0, r1 :: int
-    r2 :: None
+    x, y :: int
+    r0 :: bool
+    r1, r2 :: int
+    r3 :: None
 L0:
-    if x < y goto L1 else goto L2 :: int
+    r0 = x < y :: int
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    x = r0
+    r1 = 1
+    x = r1
     goto L3
 L2:
-    r1 = 2
-    y = r1
+    r2 = 2
+    y = r2
 L3:
-    r2 = None
-    return r2
+    r3 = None
+    return r3
 
 [case testRecursion]
 def f(n: int) -> int:
@@ -292,22 +322,25 @@ def f(n: int) -> int:
         return f(n - 1) + f(n - 2)
 [out]
 def f(n):
-    n, r0, r1, r2, r3, r4, r5, r6, r7, r8 :: int
+    n, r0 :: int
+    r1 :: bool
+    r2, r3, r4, r5, r6, r7, r8, r9 :: int
 L0:
     r0 = 1
-    if n <= r0 goto L1 else goto L2 :: int
+    r1 = n <= r0 :: int
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r1 = 1
-    return r1
-L2:
     r2 = 1
-    r3 = n - r2 :: int
-    r4 = f(r3)
-    r5 = 2
-    r6 = n - r5 :: int
-    r7 = f(r6)
-    r8 = r4 + r7 :: int
-    return r8
+    return r2
+L2:
+    r3 = 1
+    r4 = n - r3 :: int
+    r5 = f(r4)
+    r6 = 2
+    r7 = n - r6 :: int
+    r8 = f(r7)
+    r9 = r5 + r8 :: int
+    return r9
 L3:
     unreachable
 
@@ -333,24 +366,30 @@ def f(n: int) -> int:
     return x
 [out]
 def f(n):
-    n, r0, x, r1, r2, r3, r4 :: int
+    n, r0 :: int
+    r1 :: bool
+    x, r2, r3 :: int
+    r4 :: bool
+    r5, r6 :: int
 L0:
     r0 = 0
-    if n < r0 goto L1 else goto L2 :: int
+    r1 = n < r0 :: int
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r1 = 1
-    x = r1
+    r2 = 1
+    x = r2
     goto L6
 L2:
-    r2 = 0
-    if n == r2 goto L3 else goto L4 :: int
+    r3 = 0
+    r4 = n == r3 :: int
+    if r4 goto L3 else goto L4 :: bool
 L3:
-    r3 = 1
-    x = r3
+    r5 = 1
+    x = r5
     goto L5
 L4:
-    r4 = 2
-    x = r4
+    r6 = 2
+    x = r6
 L5:
 L6:
     return x
@@ -371,19 +410,22 @@ def f(n: int) -> int:
     return 0 if n == 0 else 1
 [out]
 def f(n):
-    n, r0, r1, r2, r3 :: int
+    n, r0 :: int
+    r1 :: bool
+    r2, r3, r4 :: int
 L0:
     r0 = 0
-    if n == r0 goto L1 else goto L2 :: int
+    r1 = n == r0 :: int
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r2 = 0
-    r1 = r2
+    r3 = 0
+    r2 = r3
     goto L3
 L2:
-    r3 = 1
-    r1 = r3
+    r4 = 1
+    r2 = r4
 L3:
-    return r1
+    return r2
 
 [case testOperatorAssignment]
 def f() -> int:

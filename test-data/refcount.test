@@ -64,18 +64,18 @@ L0:
     r1 = 2
     y = r1
     r2 = 1
-    if x == r2 goto L3 else goto L4 :: int
+    r3 = x == r2 :: int
+    dec_ref r2 :: int
+    if r3 goto L3 else goto L4 :: bool
 L1:
     return x
 L2:
     return y
 L3:
     dec_ref y :: int
-    dec_ref r2 :: int
     goto L1
 L4:
     dec_ref x :: int
-    dec_ref r2 :: int
     goto L2
 
 [case testArgumentsInOps]
@@ -178,22 +178,23 @@ def f(a: int) -> int:
     return y
 [out]
 L0:
-    if a == a goto L1 else goto L2 :: int
+    r0 = a == a :: int
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    a = r0
+    r1 = 1
+    a = r1
     goto L3
 L2:
-    r1 = 2
-    x = r1
+    r2 = 2
+    x = r2
     dec_ref x :: int
     goto L4
 L3:
-    r2 = 1
-    r3 = a + r2 :: int
+    r3 = 1
+    r4 = a + r3 :: int
     dec_ref a :: int
-    dec_ref r2 :: int
-    y = r3
+    dec_ref r3 :: int
+    y = r4
     return y
 L4:
     inc_ref a :: int
@@ -209,21 +210,22 @@ def f(a: int) -> int:
     return y
 [out]
 L0:
-    if a == a goto L1 else goto L2 :: int
+    r0 = a == a :: int
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 2
-    x = r0
+    r1 = 2
+    x = r1
     dec_ref x :: int
     goto L4
 L2:
-    r1 = 1
-    a = r1
-L3:
     r2 = 1
-    r3 = a + r2 :: int
+    a = r2
+L3:
+    r3 = 1
+    r4 = a + r3 :: int
     dec_ref a :: int
-    dec_ref r2 :: int
-    y = r3
+    dec_ref r3 :: int
+    y = r4
     return y
 L4:
     inc_ref a :: int
@@ -236,10 +238,11 @@ def f(a: int) -> int:
     return a
 [out]
 L0:
-    if a == a goto L1 else goto L3 :: int
+    r0 = a == a :: int
+    if r0 goto L1 else goto L3 :: bool
 L1:
-    r0 = 1
-    a = r0
+    r1 = 1
+    a = r1
 L2:
     return a
 L3:
@@ -410,19 +413,20 @@ L0:
     y = r1
     r2 = 3
     z = r2
-    if z == z goto L3 else goto L4 :: int
+    r3 = z == z :: int
+    if r3 goto L3 else goto L4 :: bool
 L1:
     return z
 L2:
-    r3 = 1
-    a = r3
-    r4 = x + y :: int
+    r4 = 1
+    a = r4
+    r5 = x + y :: int
     dec_ref x :: int
     dec_ref y :: int
-    r5 = r4 - a :: int
-    dec_ref r4 :: int
+    r6 = r5 - a :: int
+    dec_ref r5 :: int
     dec_ref a :: int
-    return r5
+    return r6
 L3:
     dec_ref x :: int
     dec_ref y :: int
@@ -446,16 +450,17 @@ L0:
     r1 = 0
     i = r1
 L1:
-    if i <= a goto L2 else goto L4 :: int
+    r2 = i <= a :: int
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r2 = sum + i :: int
+    r3 = sum + i :: int
     dec_ref sum :: int
-    sum = r2
-    r3 = 1
-    r4 = i + r3 :: int
+    sum = r3
+    r4 = 1
+    r5 = i + r4 :: int
     dec_ref i :: int
-    dec_ref r3 :: int
-    i = r4
+    dec_ref r4 :: int
+    i = r5
     goto L1
 L3:
     return sum

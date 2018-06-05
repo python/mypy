@@ -464,7 +464,8 @@ class IRBuilder(NodeVisitor[Value]):
             # Add loop condition check.
             top = self.new_block()
             goto.label = top.label
-            branch = Branch(index_reg, end_reg, INVALID_LABEL, INVALID_LABEL, Branch.INT_LT)
+            comparison = self.binary_op(index_reg, end_reg, '<', s.line)
+            branch = Branch(comparison, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
             self.add(branch)
             branches = [branch]
 
@@ -509,7 +510,8 @@ class IRBuilder(NodeVisitor[Value]):
             # at every iteration.
             len_reg = self.add(PrimitiveOp([expr_reg], list_len_op, s.line))
 
-            branch = Branch(index_reg, len_reg, INVALID_LABEL, INVALID_LABEL, Branch.INT_LT)
+            comparison = self.binary_op(index_reg, len_reg, '<', s.line)
+            branch = Branch(comparison, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
             self.add(branch)
             branches = [branch]
 
@@ -821,15 +823,6 @@ class IRBuilder(NodeVisitor[Value]):
 
     # Conditional expressions
 
-    int_relative_ops = {
-        '==': Branch.INT_EQ,
-        '!=': Branch.INT_NE,
-        '<': Branch.INT_LT,
-        '<=': Branch.INT_LE,
-        '>': Branch.INT_GT,
-        '>=': Branch.INT_GE,
-    }
-
     def visit_str_expr(self, expr: StrExpr) -> Value:
         return self.load_static_unicode(expr.value)
 
@@ -859,7 +852,7 @@ class IRBuilder(NodeVisitor[Value]):
         # Catch-all for arbitrary expressions.
         else:
             reg = self.accept(e)
-            branch = Branch(reg, INVALID_VALUE, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
+            branch = Branch(reg, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
             self.add(branch)
             return [branch]
 
@@ -871,7 +864,7 @@ class IRBuilder(NodeVisitor[Value]):
             # Special case 'is' checks.
             # TODO: check if right operand is None
             left = self.accept(e.operands[0])
-            branch = Branch(left, INVALID_VALUE, INVALID_LABEL, INVALID_LABEL,
+            branch = Branch(left, INVALID_LABEL, INVALID_LABEL,
                             Branch.IS_NONE)
             if op == 'is not':
                 branch.negated = True
@@ -879,24 +872,16 @@ class IRBuilder(NodeVisitor[Value]):
             # General comparison -- evaluate both operands.
             left = self.accept(e.operands[0])
             right = self.accept(e.operands[1])
-            if (op in ['==', '!=', '<', '<=', '>', '>=']
-                    and is_same_type(left.type, int_rprimitive)
-                    and is_same_type(right.type, int_rprimitive)):
-                # Special op for int comparison.
-                opcode = self.int_relative_ops[op]
-                branch = Branch(left, right, INVALID_LABEL, INVALID_LABEL, opcode)
+            # Generate a bool value and branch based on it.
+            if op in ['in', 'not in']:
+                target = self.binary_op(left, right, 'in', e.line)
             else:
-                # For other comparisons, generate a bool value and branch based on it. We need
-                # this to handle exceptions in the comparison op.
-                if op in ['in', 'not in']:
-                    target = self.binary_op(left, right, 'in', e.line)
-                else:
-                    target = self.binary_op(left, right, op, e.line)
-                target = self.coerce(target, bool_rprimitive, e.line)
-                branch = Branch(target, INVALID_VALUE, INVALID_LABEL, INVALID_LABEL,
-                                Branch.BOOL_EXPR)
-                if op == 'not in':
-                    branch.negated = True
+                target = self.binary_op(left, right, op, e.line)
+            target = self.coerce(target, bool_rprimitive, e.line)
+            branch = Branch(target, INVALID_LABEL, INVALID_LABEL,
+                            Branch.BOOL_EXPR)
+            if op == 'not in':
+                branch.negated = True
         self.add(branch)
         return [branch]
 

@@ -5,8 +5,10 @@ def f() -> None:
         x = x + i
 [out]
 def f():
-    x, r0, r1, i, r2, r3, r4, r5 :: int
-    r6 :: None
+    x, r0, r1, i, r2 :: int
+    r3 :: bool
+    r4, r5, r6 :: int
+    r7 :: None
 L0:
     r0 = 0
     x = r0
@@ -14,18 +16,19 @@ L0:
     r2 = 0
     i = r2
 L1:
-    if i < r1 goto L2 else goto L4 :: int
+    r3 = i < r1 :: int
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r3 = x + i :: int
-    x = r3
+    r4 = x + i :: int
+    x = r4
 L3:
-    r4 = 1
-    r5 = i + r4 :: int
-    i = r5
+    r5 = 1
+    r6 = i + r5 :: int
+    i = r6
     goto L1
 L4:
-    r6 = None
-    return r6
+    r7 = None
+    return r7
 
 [case testBreak]
 def f() -> None:
@@ -35,19 +38,21 @@ def f() -> None:
 [out]
 def f():
     n, r0, r1 :: int
-    r2 :: None
+    r2 :: bool
+    r3 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 5
-    if n < r1 goto L2 else goto L3 :: int
+    r2 = n < r1 :: int
+    if r2 goto L2 else goto L3 :: bool
 L2:
     goto L3
     goto L1
 L3:
-    r2 = None
-    return r2
+    r3 = None
+    return r3
 
 [case testBreakFor]
 def f() -> None:
@@ -55,24 +60,27 @@ def f() -> None:
         break
 [out]
 def f():
-    r0, n, r1, r2, r3 :: int
-    r4 :: None
+    r0, n, r1 :: int
+    r2 :: bool
+    r3, r4 :: int
+    r5 :: None
 L0:
     r0 = 5
     r1 = 0
     n = r1
 L1:
-    if n < r0 goto L2 else goto L4 :: int
+    r2 = n < r0 :: int
+    if r2 goto L2 else goto L4 :: bool
 L2:
     goto L4
 L3:
-    r2 = 1
-    r3 = n + r2 :: int
-    n = r3
+    r3 = 1
+    r4 = n + r3 :: int
+    n = r4
     goto L1
 L4:
-    r4 = None
-    return r4
+    r5 = None
+    return r5
 
 [case testBreakNested]
 def f() -> None:
@@ -83,18 +91,23 @@ def f() -> None:
         break
 [out]
 def f():
-    n, r0, r1, r2 :: int
-    r3 :: None
+    n, r0, r1 :: int
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+    r5 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 5
-    if n < r1 goto L2 else goto L6 :: int
+    r2 = n < r1 :: int
+    if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r2 = 4
-    if n < r2 goto L4 else goto L5 :: int
+    r3 = 4
+    r4 = n < r3 :: int
+    if r4 goto L4 else goto L5 :: bool
 L4:
     goto L5
     goto L3
@@ -102,8 +115,8 @@ L5:
     goto L6
     goto L1
 L6:
-    r3 = None
-    return r3
+    r5 = None
+    return r5
 
 [case testContinue]
 def f() -> None:
@@ -113,19 +126,21 @@ def f() -> None:
 [out]
 def f():
     n, r0, r1 :: int
-    r2 :: None
+    r2 :: bool
+    r3 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 5
-    if n < r1 goto L2 else goto L3 :: int
+    r2 = n < r1 :: int
+    if r2 goto L2 else goto L3 :: bool
 L2:
     goto L1
     goto L1
 L3:
-    r2 = None
-    return r2
+    r3 = None
+    return r3
 
 [case testContinueFor]
 def f() -> None:
@@ -133,24 +148,27 @@ def f() -> None:
         continue
 [out]
 def f():
-    r0, n, r1, r2, r3 :: int
-    r4 :: None
+    r0, n, r1 :: int
+    r2 :: bool
+    r3, r4 :: int
+    r5 :: None
 L0:
     r0 = 5
     r1 = 0
     n = r1
 L1:
-    if n < r0 goto L2 else goto L4 :: int
+    r2 = n < r0 :: int
+    if r2 goto L2 else goto L4 :: bool
 L2:
     goto L3
 L3:
-    r2 = 1
-    r3 = n + r2 :: int
-    n = r3
+    r3 = 1
+    r4 = n + r3 :: int
+    n = r4
     goto L1
 L4:
-    r4 = None
-    return r4
+    r5 = None
+    return r5
 
 [case testContinueNested]
 def f() -> None:
@@ -161,18 +179,23 @@ def f() -> None:
         continue
 [out]
 def f():
-    n, r0, r1, r2 :: int
-    r3 :: None
+    n, r0, r1 :: int
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+    r5 :: None
 L0:
     r0 = 0
     n = r0
 L1:
     r1 = 5
-    if n < r1 goto L2 else goto L6 :: int
+    r2 = n < r1 :: int
+    if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
-    r2 = 4
-    if n < r2 goto L4 else goto L5 :: int
+    r3 = 4
+    r4 = n < r3 :: int
+    if r4 goto L4 else goto L5 :: bool
 L4:
     goto L3
     goto L3
@@ -180,8 +203,8 @@ L5:
     goto L1
     goto L1
 L6:
-    r3 = None
-    return r3
+    r5 = None
+    return r5
 
 [case testForList]
 from typing import List
@@ -195,8 +218,9 @@ def f(ls: List[int]) -> int:
 def f(ls):
     ls :: list
     y, r0, r1, r2, r3, x, r4 :: int
-    r5 :: object
-    r6, r7, r8 :: int
+    r5 :: bool
+    r6 :: object
+    r7, r8, r9 :: int
 L0:
     r0 = 0
     y = r0
@@ -205,16 +229,17 @@ L0:
     r3 = 1
 L1:
     r4 = len ls :: list
-    if r1 < r4 goto L2 else goto L4 :: int
+    r5 = r1 < r4 :: int
+    if r5 goto L2 else goto L4 :: bool
 L2:
-    r5 = ls[r1] :: list
-    r6 = unbox(int, r5)
-    x = r6
-    r7 = y + x :: int
-    y = r7
+    r6 = ls[r1] :: list
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = y + x :: int
+    y = r8
 L3:
-    r8 = r1 + r3 :: int
-    r1 = r8
+    r9 = r1 + r3 :: int
+    r1 = r9
     goto L1
 L4:
     return y

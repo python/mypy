@@ -75,22 +75,13 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_goto(self, op: Goto) -> None:
         self.emit_line('goto %s;' % self.label(op.label))
 
-    BRANCH_OP_MAP = {
-        Branch.INT_EQ: 'CPyTagged_IsEq',
-        Branch.INT_NE: 'CPyTagged_IsNe',
-        Branch.INT_LT: 'CPyTagged_IsLt',
-        Branch.INT_LE: 'CPyTagged_IsLe',
-        Branch.INT_GT: 'CPyTagged_IsGt',
-        Branch.INT_GE: 'CPyTagged_IsGe',
-    }
-
     def visit_branch(self, op: Branch) -> None:
         neg = '!' if op.negated else ''
 
         cond = ''
         if op.op == Branch.BOOL_EXPR:
             expr_result = self.reg(op.left)  # right isn't used
-            cond = '{}({})'.format(neg, expr_result)
+            cond = '{}{}'.format(neg, expr_result)
         elif op.op == Branch.IS_NONE:
             compare = '!=' if op.negated else '=='
             cond = '{} {} Py_None'.format(self.reg(op.left), compare)
@@ -108,10 +99,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                                          compare,
                                          typ.c_error_value())
         else:
-            left = self.reg(op.left)
-            right = self.reg(op.right)
-            fn = FunctionEmitterVisitor.BRANCH_OP_MAP[op.op]
-            cond = '%s%s(%s, %s)' % (neg, fn, left, right)
+            assert False, "Invalid branch"
 
         # For error checks, tell the compiler the branch is unlikely
         if op.traceback_entry is not None:

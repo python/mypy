@@ -108,17 +108,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                             cpy_r_r0 = CPyTagged_ShortFromLongLong(__tmp1);
                          """)
 
-    def test_branch_eq(self) -> None:
-        self.assert_emit(Branch(self.n, self.m, Label(8), Label(9), Branch.INT_EQ),
-                         """if (CPyTagged_IsEq(cpy_r_n, cpy_r_m)) {
+    def test_branch(self) -> None:
+        self.assert_emit(Branch(self.b, Label(8), Label(9), Branch.BOOL_EXPR),
+                         """if (cpy_r_b) {
                                 goto CPyL8;
                             } else
                                 goto CPyL9;
                          """)
-        b = Branch(self.n, self.m, Label(8), Label(9), Branch.INT_LT)
+        b = Branch(self.b, Label(8), Label(9), Branch.BOOL_EXPR)
         b.negated = True
         self.assert_emit(b,
-                         """if (!CPyTagged_IsLt(cpy_r_n, cpy_r_m)) {
+                         """if (!cpy_r_b) {
                                 goto CPyL8;
                             } else
                                 goto CPyL9;
