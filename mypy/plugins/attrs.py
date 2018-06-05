@@ -11,6 +11,9 @@ from mypy.nodes import (
     is_class_var, TempNode, Decorator, MemberExpr, Expression, FuncDef, Block,
     PassStmt, SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef
 )
+from mypy.plugins.common import (
+    _get_argument, _get_bool_argument, _get_decorator_bool_argument
+)
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, NoneTyp, TypeVarDef, TypeVarType,
     Overloaded, Instance, UnionType, FunctionLike
@@ -466,67 +469,6 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
             func_type = stmt.func.type
             if isinstance(func_type, CallableType):
                 func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
-
-
-def _get_decorator_bool_argument(
-        ctx: 'mypy.plugin.ClassDefContext',
-        name: str,
-        default: bool) -> bool:
-    """Return the bool argument for the decorator.
-
-    This handles both @attr.s(...) and @attr.s
-    """
-    if isinstance(ctx.reason, CallExpr):
-        return _get_bool_argument(ctx, ctx.reason, name, default)
-    else:
-        return default
-
-
-def _get_bool_argument(ctx: 'mypy.plugin.ClassDefContext', expr: CallExpr,
-                       name: str, default: bool) -> bool:
-    """Return the boolean value for an argument to a call or the default if it's not found."""
-    attr_value = _get_argument(expr, name)
-    if attr_value:
-        ret = ctx.api.parse_bool(attr_value)
-        if ret is None:
-            ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
-            return default
-        return ret
-    return default
-
-
-def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
-    """Return the expression for the specific argument."""
-    # To do this we use the CallableType of the callee to find the FormalArgument,
-    # then walk the actual CallExpr looking for the appropriate argument.
-    #
-    # Note: I'm not hard-coding the index so that in the future we can support other
-    # attrib and class makers.
-    callee_type = None
-    if (isinstance(call.callee, RefExpr)
-            and isinstance(call.callee.node, (Var, FuncBase))
-            and call.callee.node.type):
-        callee_node_type = call.callee.node.type
-        if isinstance(callee_node_type, Overloaded):
-            # We take the last overload.
-            callee_type = callee_node_type.items()[-1]
-        elif isinstance(callee_node_type, CallableType):
-            callee_type = callee_node_type
-
-    if not callee_type:
-        return None
-
-    argument = callee_type.argument_by_name(name)
-    if not argument:
-        return None
-    assert argument.name
-
-    for i, (attr_name, attr_value) in enumerate(zip(call.arg_names, call.args)):
-        if argument.pos is not None and not attr_name and i == argument.pos:
-            return attr_value
-        if attr_name == argument.name:
-            return attr_value
-    return None
 
 
 class MethodAdder:

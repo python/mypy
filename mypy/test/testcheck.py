@@ -77,6 +77,7 @@ typecheck_files = [
     'check-custom-plugin.test',
     'check-default-plugin.test',
     'check-attr.test',
+    'check-dataclasses.test',
 ]
 
 
