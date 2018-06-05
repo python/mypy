@@ -21,8 +21,15 @@ from mypy.nodes import (
     IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr, IndexExpr, Block,
     Expression, ListExpr, ExpressionStmt, MemberExpr, ForStmt, RefExpr, Lvalue, BreakStmt,
     ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef, TypeInfo,
-    Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode, ARG_POS, MODULE_REF
+    Import, ImportFrom, ImportAll, DictExpr, StrExpr, CastExpr, TempNode, ARG_POS, MODULE_REF,
+    PassStmt, PromoteExpr, AwaitExpr, BackquoteExpr, AssertStmt, BytesExpr, ComplexExpr,
+    Decorator, DelStmt, DictionaryComprehension, EllipsisExpr, EnumCallExpr, ExecStmt,
+    FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
+    NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
+    RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr,
+    TypeApplication, TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr,
 )
+import mypy.nodes
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
@@ -941,6 +948,138 @@ class IRBuilder(NodeVisitor[Value]):
             else:
                 if b.false < 0:
                     b.false = target.label
+
+    def visit_pass_stmt(self, o: PassStmt) -> Value:
+        return INVALID_VALUE
+
+    def visit_cast_expr(self, o: CastExpr) -> Value:
+        assert False, "CastExpr handled in CallExpr"
+
+    # Unimplemented constructs
+    # TODO: some of these are actually things that should never show up,
+    # so properly sort those out.
+    def visit__promote_expr(self, o: PromoteExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_await_expr(self, o: AwaitExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_assert_stmt(self, o: AssertStmt) -> Value:
+        raise NotImplementedError
+
+    def visit_bytes_expr(self, o: BytesExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_comparison_expr(self, o: ComparisonExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_complex_expr(self, o: ComplexExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_decorator(self, o: Decorator) -> Value:
+        raise NotImplementedError
+
+    def visit_del_stmt(self, o: DelStmt) -> Value:
+        raise NotImplementedError
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> Value:
+        raise NotImplementedError
+
+    def visit_ellipsis(self, o: EllipsisExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_enum_call_expr(self, o: EnumCallExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_exec_stmt(self, o: ExecStmt) -> Value:
+        raise NotImplementedError
+
+    def visit_float_expr(self, o: FloatExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_generator_expr(self, o: GeneratorExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_global_decl(self, o: GlobalDecl) -> Value:
+        raise NotImplementedError
+
+    def visit_lambda_expr(self, o: LambdaExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_list_comprehension(self, o: ListComprehension) -> Value:
+        raise NotImplementedError
+
+    def visit_set_comprehension(self, o: SetComprehension) -> Value:
+        raise NotImplementedError
+
+    def visit_namedtuple_expr(self, o: NamedTupleExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_newtype_expr(self, o: NewTypeExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl) -> Value:
+        raise NotImplementedError
+
+    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> Value:
+        raise NotImplementedError
+
+    def visit_print_stmt(self, o: PrintStmt) -> Value:
+        raise NotImplementedError
+
+    def visit_raise_stmt(self, o: RaiseStmt) -> Value:
+        raise NotImplementedError
+
+    def visit_reveal_expr(self, o: RevealExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_set_expr(self, o: SetExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_slice_expr(self, o: SliceExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_star_expr(self, o: StarExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_super_expr(self, o: SuperExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_temp_node(self, o: TempNode) -> Value:
+        raise NotImplementedError
+
+    def visit_try_stmt(self, o: TryStmt) -> Value:
+        raise NotImplementedError
+
+    def visit_type_alias_expr(self, o: TypeAliasExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_type_application(self, o: TypeApplication) -> Value:
+        raise NotImplementedError
+
+    def visit_type_var_expr(self, o: TypeVarExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_typeddict_expr(self, o: TypedDictExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_unicode_expr(self, o: UnicodeExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_var(self, o: Var) -> Value:
+        raise NotImplementedError
+
+    def visit_with_stmt(self, o: WithStmt) -> Value:
+        raise NotImplementedError
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
+        raise NotImplementedError
+
+    def visit_yield_expr(self, o: YieldExpr) -> Value:
+        raise NotImplementedError
 
     # Helpers
 
