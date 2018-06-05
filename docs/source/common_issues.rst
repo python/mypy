@@ -1,13 +1,13 @@
 .. _common_issues:
 
-Common issues
-=============
+Common issues and solutions
+===========================
 
 This section has examples of cases when you need to update your code
 to use static typing, and ideas for working around issues if mypy
 doesn't work as expected. Statically typed code is often identical to
-normal Python code, but sometimes you need to do things slightly
-differently.
+normal Python code (except for type annotations), but sometimes you need
+to do things slightly differently.
 
 Can't install mypy using pip
 ----------------------------
@@ -131,16 +131,44 @@ The second line is now fine, since the ignore comment causes the name
     if we did have a stub available for ``frobnicate`` then mypy would
     ignore the ``# type: ignore`` comment and typecheck the stub as usual.
 
+Another option is to explicitly annotate values with type ``Any`` --
+mypy will let you perform arbitrary operations on ``Any``
+values. Sometimes there is no more precise type you can use for a
+particular value, especially if you use dynamic Python features
+such as ``__getattr__``:
+
+.. code-block:: python
+
+   class Wrapper:
+       ...
+       def __getattr__(self, a: str) -> Any:
+           return getattr(self._wrapped, a)
+
+Finally, you can create a stub file (``.pyi``) for a file that
+generates spurious errors. Mypy will only look at the stub file
+and ignore the implementation, since stub files take precedence
+over ``.py`` files.
 
 Unexpected errors about 'None' and/or 'Optional' types
 ------------------------------------------------------
 
 Starting from mypy 0.600, mypy uses
 :ref:`strict optional checking <strict_optional>` by default,
-and ``None`` is not compatible with non-optional types.  It's
-easy to switch back to the older behavior where ``None`` was
+and the ``None`` value is not compatible with non-optional types.
+It's easy to switch back to the older behavior where ``None`` was
 compatible with arbitrary types (see :ref:`no_strict_optional`).
+You can also fall back to this behavior if strict optional
+checking would require a large number of ``assert foo is not None``
+checks to be inserted, and you want to minimize the number
+of code changes required to get a clean mypy run.
 
+Mypy runs are slow
+------------------
+
+If your mypy runs feel slow, you should probably use the :ref:`mypy
+daemon <mypy_daemon>`, which can speed up incremental mypy runtimes by
+a factor of 10 or more. :ref:`Remote caching <remote-cache>` can
+make cold mypy runs several times faster.
 
 Types of empty collections
 --------------------------
@@ -150,7 +178,7 @@ dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
-   a = []  # type: List[int]
+   a: List[int] = []
 
 Without the annotation mypy can't always figure out the
 precise type of ``a``.
@@ -248,48 +276,6 @@ Possible strategies in such situations are:
      def f_good(x: Sequence[A]) -> A:
          return x[0]
      f_good(new_lst) # OK
-
-Covariant subtyping of mutable protocol members is rejected
------------------------------------------------------------
-
-Mypy rejects this because this is potentially unsafe.
-Consider this example:
-
-.. code-block:: python
-
-   from typing_extensions import Protocol
-
-   class P(Protocol):
-       x: float
-
-   def fun(arg: P) -> None:
-       arg.x = 3.14
-
-   class C:
-       x = 42
-   c = C()
-   fun(c)  # This is not safe
-   c.x << 5  # Since this will fail!
-
-To work around this problem consider whether "mutating" is actually part
-of a protocol. If not, then one can use a ``@property`` in
-the protocol definition:
-
-.. code-block:: python
-
-   from typing_extensions import Protocol
-
-   class P(Protocol):
-       @property
-       def x(self) -> float:
-          pass
-
-   def fun(arg: P) -> None:
-       ...
-
-   class C:
-       x = 42
-   fun(C())  # OK
 
 Declaring a supertype as variable type
 --------------------------------------
@@ -532,6 +518,48 @@ put the linter comment *after* the type comment:
 .. code-block:: python
 
     a = some_complex_thing()  # type: ignore  # noqa
+
+Covariant subtyping of mutable protocol members is rejected
+-----------------------------------------------------------
+
+Mypy rejects this because this is potentially unsafe.
+Consider this example:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       x: float
+
+   def fun(arg: P) -> None:
+       arg.x = 3.14
+
+   class C:
+       x = 42
+   c = C()
+   fun(c)  # This is not safe
+   c.x << 5  # Since this will fail!
+
+To work around this problem consider whether "mutating" is actually part
+of a protocol. If not, then one can use a ``@property`` in
+the protocol definition:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       @property
+       def x(self) -> float:
+          pass
+
+   def fun(arg: P) -> None:
+       ...
+
+   class C:
+       x = 42
+   fun(C())  # OK
 
 
 Dealing with conflicting names

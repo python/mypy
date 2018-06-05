@@ -4410,3 +4410,21 @@ tmp/b.py:4: note:     Expected:
 tmp/b.py:4: note:         def __iter__(self) -> Iterator[int]
 tmp/b.py:4: note:     Got:
 tmp/b.py:4: note:         def __iter__(self) -> Iterator[str]
+
+[case testIndirectDepsAlwaysPatched-writescache]
+# flags: --no-incremental
+# flags2: --incremental
+from b import C
+def f() -> None:
+    x: int = C().x
+[file b.py]
+from c import C
+[file c.pyi]
+class C:
+    x: int
+[file c.pyi.2]
+class C:
+    x: str
+[out]
+[out2]
+main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")

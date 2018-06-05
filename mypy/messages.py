@@ -148,6 +148,11 @@ class MessageBuilder:
         new.disable_type_names = self.disable_type_names
         return new
 
+    def clean_copy(self) -> 'MessageBuilder':
+        errors = self.errors.copy()
+        errors.error_info_map = OrderedDict()
+        return MessageBuilder(errors, self.modules)
+
     def add_errors(self, messages: 'MessageBuilder') -> None:
         """Add errors in messages to this builder."""
         if self.disable_count <= 0:
@@ -937,10 +942,18 @@ class MessageBuilder:
                                                     self.format(typ)),
                   context)
 
-    def overloaded_signatures_overlap(self, index1: int, index2: int,
-                                      context: Context) -> None:
+    def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
+
+    def overloaded_signature_will_never_match(self, index1: int, index2: int,
+                                              context: Context) -> None:
+        self.fail(
+            'Overloaded function signature {index2} will never be matched: '
+            'signature {index1}\'s parameter type(s) are the same or broader'.format(
+                index1=index1,
+                index2=index2),
+            context)
 
     def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
         self.fail('Overloaded function implementation does not accept all possible arguments '

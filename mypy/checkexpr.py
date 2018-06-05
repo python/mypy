@@ -42,7 +42,7 @@ from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
-from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
+from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
 from mypy.util import split_module_names
 from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
@@ -611,13 +611,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             arg_types = self.infer_arg_types_in_context(None, args)
             self.msg.enable_errors()
 
-            target = self.overload_call_target(arg_types, arg_kinds, arg_names,
-                                               callee, context,
-                                               messages=arg_messages)
-            return self.check_call(target, args, arg_kinds, context, arg_names,
-                                   arg_messages=arg_messages,
-                                   callable_name=callable_name,
-                                   object_type=object_type)
+            return self.check_overload_call(callee=callee,
+                                            args=args,
+                                            arg_types=arg_types,
+                                            arg_kinds=arg_kinds,
+                                            arg_names=arg_names,
+                                            callable_name=callable_name,
+                                            object_type=object_type,
+                                            context=context,
+                                            arg_messages=arg_messages)
         elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
             self.infer_arg_types_in_context(None, args)
             if isinstance(callee, AnyType):
@@ -1104,68 +1106,276 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if call:
                     self.msg.note_call(original_caller_type, call, context)
 
-    def overload_call_target(self, arg_types: List[Type], arg_kinds: List[int],
-                             arg_names: Optional[Sequence[Optional[str]]],
-                             overload: Overloaded, context: Context,
-                             messages: Optional[MessageBuilder] = None) -> Type:
-        """Infer the correct overload item to call with given argument types.
+    def check_overload_call(self,
+                            callee: Overloaded,
+                            args: List[Expression],
+                            arg_types: List[Type],
+                            arg_kinds: List[int],
+                            arg_names: Optional[Sequence[Optional[str]]],
+                            callable_name: Optional[str],
+                            object_type: Optional[Type],
+                            context: Context,
+                            arg_messages: MessageBuilder) -> Tuple[Type, Type]:
+        """Checks a call to an overloaded function."""
+        # Step 1: Filter call targets to remove ones where the argument counts don't match
+        plausible_targets = self.plausible_overload_call_targets(arg_types, arg_kinds,
+                                                                 arg_names, callee)
 
-        The return value may be CallableType or AnyType (if an unique item
-        could not be determined).
-        """
-        messages = messages or self.msg
-        # TODO: For overlapping signatures we should try to get a more precise
-        #       result than 'Any'.
-        match = []  # type: List[CallableType]
-        best_match = 0
-        for typ in overload.items():
-            similarity = self.erased_signature_similarity(arg_types, arg_kinds, arg_names,
-                                                          typ, context=context)
-            if similarity > 0 and similarity >= best_match:
-                if (match and not is_same_type(match[-1].ret_type,
-                                               typ.ret_type) and
-                    (not mypy.checker.is_more_precise_signature(match[-1], typ)
-                     or (any(isinstance(arg, AnyType) for arg in arg_types)
-                         and any_arg_causes_overload_ambiguity(
-                             match + [typ], arg_types, arg_kinds, arg_names)))):
-                    # Ambiguous return type. Either the function overload is
-                    # overlapping (which we don't handle very well here) or the
-                    # caller has provided some Any argument types; in either
-                    # case we'll fall back to Any. It's okay to use Any types
-                    # in calls.
-                    #
-                    # Overlapping overload items are generally fine if the
-                    # overlapping is only possible when there is multiple
-                    # inheritance, as this is rare. See docstring of
-                    # mypy.meet.is_overlapping_types for more about this.
-                    #
-                    # Note that there is no ambiguity if the items are
-                    # covariant in both argument types and return types with
-                    # respect to type precision. We'll pick the best/closest
-                    # match.
-                    #
-                    # TODO: Consider returning a union type instead if the
-                    #       overlapping is NOT due to Any types?
-                    return AnyType(TypeOfAny.special_form)
-                else:
-                    match.append(typ)
-                best_match = max(best_match, similarity)
-        if not match:
-            if not self.chk.should_suppress_optional_error(arg_types):
-                messages.no_variant_matches_arguments(overload, arg_types, context)
-            return AnyType(TypeOfAny.from_error)
+        # Step 2: If the arguments contain a union, we try performing union math first,
+        #         instead of picking the first matching overload.
+        #         This is because picking the first overload often ends up being too greedy:
+        #         for example, when we have a fallback alternative that accepts an unrestricted
+        #         typevar. See https://github.com/python/mypy/issues/4063 for related discussion.
+        erased_targets = None  # type: Optional[List[CallableType]]
+        unioned_result = None  # type: Optional[Tuple[Type, Type]]
+        unioned_errors = None  # type: Optional[MessageBuilder]
+        if any(isinstance(arg, UnionType) for arg in arg_types):
+            erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
+                                                               arg_kinds, arg_names, context)
+            unioned_callable = self.union_overload_matches(erased_targets)
+
+            if unioned_callable is not None:
+                unioned_errors = arg_messages.clean_copy()
+                unioned_result = self.check_call(unioned_callable, args, arg_kinds,
+                                                 context, arg_names,
+                                                 arg_messages=unioned_errors,
+                                                 callable_name=callable_name,
+                                                 object_type=object_type)
+                if not unioned_errors.is_errors():
+                    # Success! Stop early.
+                    return unioned_result
+
+        # Step 3: If the union math fails, or if there was no union in the argument types,
+        #         we fall back to checking each branch one-by-one.
+        inferred_result = self.infer_overload_return_type(plausible_targets, args, arg_types,
+                                                          arg_kinds, arg_names, callable_name,
+                                                          object_type, context, arg_messages)
+        if inferred_result is not None:
+            # Success! Stop early.
+            return inferred_result
+
+        # Step 4: Failure. At this point, we know there is no match. We fall back to trying
+        #         to find a somewhat plausible overload target using the erased types
+        #         so we can produce a nice error message.
+        #
+        #         For example, suppose the user passes a value of type 'List[str]' into an
+        #         overload with signatures f(x: int) -> int and f(x: List[int]) -> List[int].
+        #
+        #         Neither alternative matches, but we can guess the user probably wants the
+        #         second one.
+        if erased_targets is None:
+            erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
+                                                               arg_kinds, arg_names, context)
+
+        # Step 5: We try and infer a second-best alternative if possible. If not, fall back
+        #         to using 'Any'.
+        if unioned_result is not None:
+            # When possible, return the error messages generated from the union-math attempt:
+            # they tend to be a little nicer.
+            assert unioned_errors is not None
+            arg_messages.add_errors(unioned_errors)
+            return unioned_result
+        elif len(erased_targets) > 0:
+            # Pick the first plausible erased target as the fallback
+            # TODO: Adjust the error message here to make it clear there was no match.
+            target = erased_targets[0]  # type: Type
         else:
-            if len(match) == 1:
-                return match[0]
-            else:
-                # More than one signature matches. Pick the first *non-erased*
-                # matching signature, or default to the first one if none
-                # match.
-                for m in match:
-                    if self.match_signature_types(arg_types, arg_kinds, arg_names, m,
-                                                  context=context):
-                        return m
-                return match[0]
+            # There was no plausible match: give up
+            if not self.chk.should_suppress_optional_error(arg_types):
+                arg_messages.no_variant_matches_arguments(callee, arg_types, context)
+            target = AnyType(TypeOfAny.from_error)
+
+        return self.check_call(target, args, arg_kinds, context, arg_names,
+                               arg_messages=arg_messages,
+                               callable_name=callable_name,
+                               object_type=object_type)
+
+    def plausible_overload_call_targets(self,
+                                        arg_types: List[Type],
+                                        arg_kinds: List[int],
+                                        arg_names: Optional[Sequence[Optional[str]]],
+                                        overload: Overloaded) -> List[CallableType]:
+        """Returns all overload call targets that having matching argument counts."""
+        matches = []  # type: List[CallableType]
+        for typ in overload.items():
+            formal_to_actual = map_actuals_to_formals(arg_kinds, arg_names,
+                                                      typ.arg_kinds, typ.arg_names,
+                                                      lambda i: arg_types[i])
+
+            if self.check_argument_count(typ, arg_types, arg_kinds, arg_names,
+                                         formal_to_actual, None, None):
+                matches.append(typ)
+
+        return matches
+
+    def infer_overload_return_type(self,
+                                   plausible_targets: List[CallableType],
+                                   args: List[Expression],
+                                   arg_types: List[Type],
+                                   arg_kinds: List[int],
+                                   arg_names: Optional[Sequence[Optional[str]]],
+                                   callable_name: Optional[str],
+                                   object_type: Optional[Type],
+                                   context: Context,
+                                   arg_messages: Optional[MessageBuilder] = None,
+                                   ) -> Optional[Tuple[Type, Type]]:
+        """Attempts to find the first matching callable from the given list.
+
+        If a match is found, returns a tuple containing the result type and the inferred
+        callee type. (This tuple is meant to be eventually returned by check_call.)
+        If multiple targets match due to ambiguous Any parameters, returns (AnyType, AnyType).
+        If no targets match, returns None.
+
+        Assumes all of the given targets have argument counts compatible with the caller.
+        """
+
+        arg_messages = self.msg if arg_messages is None else arg_messages
+        matches = []         # type: List[CallableType]
+        return_types = []    # type: List[Type]
+        inferred_types = []  # type: List[Type]
+        args_contain_any = any(map(has_any_type, arg_types))
+
+        for typ in plausible_targets:
+            overload_messages = self.msg.clean_copy()
+            prev_messages = self.msg
+            self.msg = overload_messages
+            try:
+                # Passing `overload_messages` as the `arg_messages` parameter doesn't
+                # seem to reliably catch all possible errors.
+                # TODO: Figure out why
+                ret_type, infer_type = self.check_call(
+                    callee=typ,
+                    args=args,
+                    arg_kinds=arg_kinds,
+                    arg_names=arg_names,
+                    context=context,
+                    arg_messages=overload_messages,
+                    callable_name=callable_name,
+                    object_type=object_type)
+            finally:
+                self.msg = prev_messages
+
+            is_match = not overload_messages.is_errors()
+            if is_match:
+                # Return early if possible; otherwise record info so we can
+                # check for ambiguity due to 'Any' below.
+                if not args_contain_any:
+                    return ret_type, infer_type
+                matches.append(typ)
+                return_types.append(ret_type)
+                inferred_types.append(infer_type)
+
+        if len(matches) == 0:
+            # No match was found
+            return None
+        elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
+            # An argument of type or containing the type 'Any' caused ambiguity.
+            # We infer a type of 'Any'
+            return self.check_call(callee=AnyType(TypeOfAny.special_form),
+                                   args=args,
+                                   arg_kinds=arg_kinds,
+                                   arg_names=arg_names,
+                                   context=context,
+                                   arg_messages=arg_messages,
+                                   callable_name=callable_name,
+                                   object_type=object_type)
+        else:
+            # Success! No ambiguity; return the first match.
+            return return_types[0], inferred_types[0]
+
+    def overload_erased_call_targets(self,
+                                     plausible_targets: List[CallableType],
+                                     arg_types: List[Type],
+                                     arg_kinds: List[int],
+                                     arg_names: Optional[Sequence[Optional[str]]],
+                                     context: Context) -> List[CallableType]:
+        """Returns a list of all targets that match the caller after erasing types.
+
+        Assumes all of the given targets have argument counts compatible with the caller.
+        """
+        matches = []  # type: List[CallableType]
+        for typ in plausible_targets:
+            if self.erased_signature_similarity(arg_types, arg_kinds, arg_names, typ, context):
+                matches.append(typ)
+        return matches
+
+    def union_overload_matches(self, callables: List[CallableType]) -> Optional[CallableType]:
+        """Accepts a list of overload signatures and attempts to combine them together into a
+        new CallableType consisting of the union of all of the given arguments and return types.
+
+        Returns None if it is not possible to combine the different callables together in a
+        sound manner.
+
+        Assumes all of the given callables have argument counts compatible with the caller.
+        """
+        if len(callables) == 0:
+            return None
+        elif len(callables) == 1:
+            return callables[0]
+
+        # Note: we are assuming here that if a user uses some TypeVar 'T' in
+        # two different overloads, they meant for that TypeVar to mean the
+        # same thing.
+        #
+        # This function will make sure that all instances of that TypeVar 'T'
+        # refer to the same underlying TypeVarType and TypeVarDef objects to
+        # simplify the union-ing logic below.
+        #
+        # (If the user did *not* mean for 'T' to be consistently bound to the
+        # same type in their overloads, well, their code is probably too
+        # confusing and ought to be re-written anyways.)
+        callables, variables = merge_typevars_in_callables_by_name(callables)
+
+        new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
+        new_returns = []  # type: List[Type]
+
+        expected_names = callables[0].arg_names
+        expected_kinds = callables[0].arg_kinds
+
+        for target in callables:
+            if target.arg_names != expected_names or target.arg_kinds != expected_kinds:
+                # We conservatively end if the overloads do not have the exact same signature.
+                # TODO: Enhance the union overload logic to handle a wider variety of signatures.
+                return None
+
+            for i, arg in enumerate(target.arg_types):
+                new_args[i].append(arg)
+            new_returns.append(target.ret_type)
+
+        union_count = 0
+        final_args = []
+        for args_list in new_args:
+            new_type = UnionType.make_simplified_union(args_list)
+            union_count += 1 if isinstance(new_type, UnionType) else 0
+            final_args.append(new_type)
+
+        # TODO: Modify this check to be less conservative.
+        #
+        # Currently, we permit only one union union in the arguments because if we allow
+        # multiple, we can't always guarantee the synthesized callable will be correct.
+        #
+        # For example, suppose we had the following two overloads:
+        #
+        #     @overload
+        #     def f(x: A, y: B) -> None: ...
+        #     @overload
+        #     def f(x: B, y: A) -> None: ...
+        #
+        # If we continued and synthesize "def f(x: Union[A,B], y: Union[A,B]) -> None: ...",
+        # then we'd incorrectly accept calls like "f(A(), A())" when they really ought to
+        # be rejected.
+        #
+        # However, that means we'll also give up if the original overloads contained
+        # any unions. This is likely unnecessary -- we only really need to give up if
+        # there are more then one *synthesized* union arguments.
+        if union_count >= 2:
+            return None
+
+        return callables[0].copy_modified(
+            arg_types=final_args,
+            ret_type=UnionType.make_simplified_union(new_returns),
+            variables=variables,
+            implicit=True)
 
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
                                     arg_names: Optional[Sequence[Optional[str]]],
@@ -2933,11 +3143,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
     return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
 
 
-def any_arg_causes_overload_ambiguity(items: List[CallableType],
-                                      arg_types: List[Type],
-                                      arg_kinds: List[int],
-                                      arg_names: Optional[Sequence[Optional[str]]]) -> bool:
-    """May an Any actual argument cause ambiguous result type on call to overloaded function?
+def any_causes_overload_ambiguity(items: List[CallableType],
+                                  return_types: List[Type],
+                                  arg_types: List[Type],
+                                  arg_kinds: List[int],
+                                  arg_names: Optional[Sequence[Optional[str]]]) -> bool:
+    """May an argument containing 'Any' cause ambiguous result type on call to overloaded function?
 
     Note that this sometimes returns True even if there is no ambiguity, since a correct
     implementation would be complex (and the call would be imprecisely typed due to Any
@@ -2949,6 +3160,9 @@ def any_arg_causes_overload_ambiguity(items: List[CallableType],
         arg_kinds: Actual argument kinds
         arg_names: Actual argument names
     """
+    if all_same_types(return_types):
+        return False
+
     actual_to_formal = [
         map_formals_to_actuals(
             arg_kinds, arg_names, item.arg_kinds, item.arg_names, lambda i: arg_types[i])
@@ -2956,7 +3170,7 @@ def any_arg_causes_overload_ambiguity(items: List[CallableType],
     ]
 
     for arg_idx, arg_type in enumerate(arg_types):
-        if isinstance(arg_type, AnyType):
+        if has_any_type(arg_type):
             matching_formals_unfiltered = [(item_idx, lookup[arg_idx])
                                            for item_idx, lookup in enumerate(actual_to_formal)
                                            if lookup[arg_idx]]
@@ -3000,3 +3214,44 @@ def map_formals_to_actuals(caller_kinds: List[int],
         for actual in actuals:
             actual_to_formal[actual].append(formal)
     return actual_to_formal
+
+
+def merge_typevars_in_callables_by_name(
+        callables: List[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
+    """Takes all the typevars present in the callables and 'combines' the ones with the same name.
+
+    For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and
+    "f(x: List[Tuple[T, S]]) -> Tuple[T, S]". Both callables use typevars named "T" and
+    "S", but we treat them as distinct, unrelated typevars. (E.g. they could both have
+    distinct ids.)
+
+    If we pass in both callables into this function, it returns a a list containing two
+    new callables that are identical in signature, but use the same underlying TypeVarDef
+    and TypeVarType objects for T and S.
+
+    This is useful if we want to take the output lists and "merge" them into one callable
+    in some way -- for example, when unioning together overloads.
+
+    Returns both the new list of callables and a list of all distinct TypeVarDef objects used.
+    """
+
+    output = []  # type: List[CallableType]
+    unique_typevars = {}  # type: Dict[str, TypeVarType]
+    variables = []  # type: List[TypeVarDef]
+
+    for target in callables:
+        if target.is_generic():
+            target = freshen_function_type_vars(target)
+
+            rename = {}  # Dict[TypeVarId, TypeVar]
+            for tvdef in target.variables:
+                name = tvdef.fullname
+                if name not in unique_typevars:
+                    unique_typevars[name] = TypeVarType(tvdef)
+                    variables.append(tvdef)
+                rename[tvdef.id] = unique_typevars[name]
+
+            target = cast(CallableType, expand_type(target, rename))
+        output.append(target)
+
+    return output, variables

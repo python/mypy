@@ -393,7 +393,7 @@ Here are some more useful flags:
   Otherwise, use ``--python-executable``.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
-  run under the the given operating system. Without this option, mypy will
+  run under the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
 

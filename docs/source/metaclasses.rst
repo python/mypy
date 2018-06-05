@@ -1,9 +1,7 @@
-
-
 .. _metaclasses:
 
 Metaclasses
-***********
+===========
 
 A `metaclass <https://docs.python.org/3/reference/datamodel.html#metaclasses>`_
 is a class that describes the construction and behavior of other classes,
@@ -14,17 +12,20 @@ NamedTuples and singletons.
 
 Mypy has some special understanding of ``ABCMeta`` and ``EnumMeta``.
 
+.. _defining:
+
 Defining a metaclass
 ********************
 
 .. code-block:: python
 
     class M(type):
+        pass
 
     class A(metaclass=M):
         pass
 
-In Python 2, the syntax for defining a metaclass different:
+In Python 2, the syntax for defining a metaclass is different:
 
 .. code-block:: python
 
@@ -44,6 +45,8 @@ library to define metaclass in a portable way:
     @six.add_metaclass(M)
     class C(object):
         pass
+
+.. _examples:
 
 Metaclass usage example
 ***********************
@@ -74,10 +77,12 @@ Mypy supports the lookup of attributes in the metaclass:
     b: B = B.make()  # metaclasses are inherited
     print(B.count + " objects were created")  # Error: Unsupported operand types for + ("int" and "str")
 
+.. _limitations:
+
 Gotchas and limitations of metaclass support
 ********************************************
 
-Note that metaclasses pose some requirement on the inheritance structure,
+Note that metaclasses pose some requirements on the inheritance structure,
 so it's better not to combine metaclasses and class hierarchies:
 
 .. code-block:: python
@@ -98,4 +103,4 @@ so it's better not to combine metaclasses and class hierarchies:
 * Mypy does not understand dynamically-computed metaclasses,
   such as ``class A(metaclass=f()): ...``
 * Mypy does not and cannot understand arbitrary metaclass code.
-* Mypy only recognizes classes are subclasses of `type` as potential metaclasses.
+* Mypy only recognizes subclasses of ``type`` as potential metaclasses.
