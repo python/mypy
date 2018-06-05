@@ -645,19 +645,7 @@ class IRBuilder(NodeVisitor[Value]):
         # TODO: We assume that this is a Var node, which is very limited
         assert isinstance(expr.node, Var)
 
-        reg = self.environment.lookup(expr.node)
-        return self.get_using_binder(reg, expr.node, expr)
-
-    def get_using_binder(self, reg: Value, var: Var, expr: Expression) -> Value:
-        assert var.type, "Variable missing type"
-        var_type = self.type_to_rtype(var.type)
-        target_type = self.node_type(expr)
-        if var_type != target_type:
-            # Cast/unbox to the narrower given by the binder.
-            return self.unbox_or_cast(reg, target_type, expr.line)
-        else:
-            # Regular register access -- binder is not active.
-            return reg
+        return self.environment.lookup(expr.node)
 
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
@@ -1107,7 +1095,11 @@ class IRBuilder(NodeVisitor[Value]):
         return desc.arg_types[n]
 
     def accept(self, node: Node) -> Value:
-        return node.accept(self)
+        res = node.accept(self)
+        if isinstance(node, Expression):
+            assert res != INVALID_VALUE
+            res = self.coerce(res, self.node_type(node), node.line)
+        return res
 
     def alloc_temp(self, type: RType) -> Register:
         return self.environment.add_temp(type)

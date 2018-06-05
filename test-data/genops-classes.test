@@ -111,3 +111,33 @@ def g(a):
 L0:
     r0 = a.n
     return r0
+
+[case testOptionalMember]
+from typing import Optional
+class Node:
+    next: Optional[Node]
+    def length(self) -> int:
+        if self.next is not None:
+            return 1 + self.next.length()
+        return 1
+[out]
+def length(self):
+    self :: Node
+    r0 :: optional[Node]
+    r1 :: int
+    r2 :: optional[Node]
+    r3 :: Node
+    r4, r5, r6 :: int
+L0:
+    r0 = self.next
+    if not r0 is None goto L1 else goto L2 :: object
+L1:
+    r1 = 1
+    r2 = self.next
+    r3 = cast(Node, r2)
+    r4 = r3.length()
+    r5 = r1 + r4 :: int
+    return r5
+L2:
+    r6 = 1
+    return r6
