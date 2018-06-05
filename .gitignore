@@ -14,3 +14,4 @@ test_capi
 /.pytest_cache
 /dmypy.json
 /.dmypy.json
+/.mypyc-flake8-cache.json

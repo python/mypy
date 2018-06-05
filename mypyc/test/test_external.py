@@ -53,6 +53,48 @@ class TestExternal(unittest.TestCase):
 
     def test_flake8(self) -> None:
         """Use flake8 to lint mypyc."""
-        status = subprocess.call([sys.executable, '-m', 'flake8', 'mypyc'])
+        status = cached_flake8('mypyc')
         if status != 0:
             assert False, "Lint failure"
+
+
+CACHE_FILE = '.mypyc-flake8-cache.json'
+
+
+def cached_flake8(dir: str) -> int:
+    """Run flake8 with cached results from the previous clean run.
+
+    Record the hashes of files after a clean run and don't pass the files to
+    flake8 if they have the same hashes, as they are expected to produce a
+    clean output.
+
+    If flake8 settings or version change, the cache file may need to be manually
+    removed.
+    """
+    import hashlib
+    import glob
+    import json
+
+    if os.path.isfile(CACHE_FILE):
+        with open(CACHE_FILE) as f:
+            cache = json.load(f)
+    else:
+        cache = {}
+    files = glob.glob('%s/**/*.py' % dir, recursive=True)
+    hashes = {}
+    for fn in files:
+        with open(fn, 'rb') as fb:
+            data = fb.read()
+        hashes[fn] = hashlib.sha1(data).hexdigest()
+    filtered = [fn for fn in files
+                if hashes[fn] != cache.get(fn)]
+    if not filtered:
+        # Nothing has changed since the previous clean run -- must be clean.
+        return 0
+    status = subprocess.call([sys.executable, '-m', 'flake8'] + filtered)
+    if status == 0:
+        for fn, sha in hashes.items():
+            cache[fn] = sha
+        with open(CACHE_FILE, 'w') as f:
+            json.dump(cache, f, indent=4)
+    return status
