@@ -35,17 +35,19 @@ L0:
     dec_ref r0
     if not r1 goto L3 (error at f:3) else goto L1 :: bool
 L1:
-    inc_ref z :: int
-    r2 = box(int, z)
-    r3 = x.__setitem__(y, r2)
+    r2 = None
     dec_ref r2
-    if not r3 goto L3 (error at f:4) else goto L2 :: bool
+    inc_ref z :: int
+    r3 = box(int, z)
+    r4 = x.__setitem__(y, r3)
+    dec_ref r3
+    if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
-    r4 = None
-    return r4
-L3:
-    r5 = <error> :: None
+    r5 = None
     return r5
+L3:
+    r6 = <error> :: None
+    return r6
 
 [case testOptionalHandling]
 from typing import Optional

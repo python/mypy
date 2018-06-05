@@ -747,3 +747,17 @@ L0:
     d2 = d
     r1 = None
     return r1
+
+[case testGenericSetItem]
+from typing import Any
+def f(x: Any, y: Any, z: Any) -> None:
+    x[y] = z
+[out]
+def f(x, y, z):
+    x, y, z :: object
+    r0 :: bool
+    r1 :: None
+L0:
+    r0 = x.__setitem__(y, z)
+    r1 = None
+    return r1

@@ -627,4 +627,6 @@ L0:
     r1 = a.append(r0)
     dec_ref r0
     r2 = None
-    return r2
+    dec_ref r2
+    r3 = None
+    return r3

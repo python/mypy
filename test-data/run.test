@@ -424,3 +424,109 @@ assert ne('x', 'y')
 assert f([1, 2])
 assert not f([2, 2])
 assert not f(1)
+
+[case testGenericBinaryOps]
+from typing import Any
+def add(x: Any, y: Any) -> Any:
+    return x + y
+def subtract(x: Any, y: Any) -> Any:
+    return x - y
+def multiply(x: Any, y: Any) -> Any:
+    return x * y
+def floor_div(x: Any, y: Any) -> Any:
+    return x // y
+def true_div(x: Any, y: Any) -> Any:
+    return x / y
+def remainder(x: Any, y: Any) -> Any:
+    return x % y
+def power(x: Any, y: Any) -> Any:
+    return x ** y
+def lshift(x: Any, y: Any) -> Any:
+    return x << y
+def rshift(x: Any, y: Any) -> Any:
+    return x >> y
+def num_and(x: Any, y: Any) -> Any:
+    return x & y
+def num_xor(x: Any, y: Any) -> Any:
+    return x ^ y
+def num_or(x: Any, y: Any) -> Any:
+    return x | y
+def lt(x: Any, y: Any) -> Any:
+    if x < y:
+        return True
+    else:
+        return False
+def le(x: Any, y: Any) -> Any:
+    if x <= y:
+        return True
+    else:
+        return False
+def gt(x: Any, y: Any) -> Any:
+    if x > y:
+        return True
+    else:
+        return False
+def ge(x: Any, y: Any) -> Any:
+    if x >= y:
+        return True
+    else:
+        return False
+def contains(x: Any, y: Any) -> Any:
+    if x in y:
+        return True
+    else:
+        return False
+[file driver.py]
+from native import *
+assert add(5, 6) == 11
+assert add('x', 'y') == 'xy'
+assert subtract(8, 3) == 5
+assert multiply(8, 3) == 24
+assert floor_div(8, 3) == 2
+assert true_div(7, 2) == 3.5
+assert remainder(11, 4) == 3
+assert remainder('%.3d', 5) == '005'
+assert remainder('%d-%s', (5, 'xy')) == '5-xy'
+assert power(3, 4) == 81
+assert lshift(5, 3) == 40
+assert rshift(41, 3) == 5
+assert num_and(99, 56) == 32
+assert num_xor(99, 56) == 91
+assert num_or(99, 56) == 123
+assert lt('a', 'b')
+assert not lt('a', 'a')
+assert not lt('b', 'a')
+assert not gt('a', 'b')
+assert not gt('a', 'a')
+assert gt('b', 'a')
+assert le('a', 'b')
+assert le('a', 'a')
+assert not le('b', 'a')
+assert not ge('a', 'b')
+assert ge('a', 'a')
+assert ge('b', 'a')
+assert contains('x', 'axb')
+assert not contains('X', 'axb')
+assert contains('x', {'x', 'y'})
+
+[case testGenericMiscOps]
+from typing import Any
+def neg(x: Any) -> Any:
+    return -x
+def pos(x: Any) -> Any:
+    return +x
+def invert(x: Any) -> Any:
+    return ~x
+def get_item(o: Any, k: Any) -> Any:
+    return o[k]
+def set_item(o: Any, k: Any, v: Any) -> Any:
+    o[k] = v
+[file driver.py]
+from native import *
+assert neg(6) == -6
+assert pos(6) == 6
+assert invert(6) == -7
+d = {'x': 5}
+assert get_item(d, 'x') == 5
+set_item(d, 'y', 6)
+assert d['y'] == 6

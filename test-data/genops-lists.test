@@ -155,9 +155,10 @@ def f(a, x):
     x :: int
     r0 :: object
     r1 :: bool
-    r2 :: None
+    r2, r3 :: None
 L0:
     r0 = box(int, x)
     r1 = a.append(r0)
     r2 = None
-    return r2
+    r3 = None
+    return r3

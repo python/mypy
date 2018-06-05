@@ -29,7 +29,7 @@ new_list_op = custom_op(arg_types=[object_rprimitive],
 
 
 list_get_item_op = method_op(
-    name='builtins.list.__getitem__',
+    name='__getitem__',
     arg_types=[list_rprimitive, int_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
@@ -37,7 +37,7 @@ list_get_item_op = method_op(
 
 
 list_set_item_op = method_op(
-    name='builtins.list.__setitem__',
+    name='__setitem__',
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
@@ -45,9 +45,9 @@ list_set_item_op = method_op(
 
 
 list_append_op = method_op(
-    name='builtins.list.append',
+    name='append',
     arg_types=[list_rprimitive, object_rprimitive],
-    result_type=None,
+    result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
     emit=simple_emit('{dest} = PyList_Append({args[0]}, {args[1]}) != -1;'))
 

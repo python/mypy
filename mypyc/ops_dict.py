@@ -18,7 +18,7 @@ def emit_get_item(emitter: EmitterInterface, args: List[str], dest: str) -> None
 
 
 dict_get_item_op = method_op(
-    name='builtins.dict.__getitem__',
+    name='__getitem__',
     arg_types=[dict_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
@@ -26,7 +26,7 @@ dict_get_item_op = method_op(
 
 
 dict_set_item_op = method_op(
-    name='builtins.dict.__setitem__',
+    name='__setitem__',
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
@@ -54,9 +54,9 @@ binary_op(op='in',
 # differs (when the second argument has no keys) should never typecheck for us, so the
 # difference is irrelevant.
 dict_update_op = method_op(
-    name='builtins.dict.update',
+    name='update',
     arg_types=[dict_rprimitive, object_rprimitive],
-    result_type=None,
+    result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
     emit=simple_emit('{dest} = PyDict_Update({args[0]}, {args[1]}) != -1;'))
 

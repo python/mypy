@@ -45,7 +45,7 @@ def binary_op(op: str,
               error_kind: int,
               emit: EmitCallback,
               format_str: Optional[str] = None,
-              priority: int = 0) -> None:
+              priority: int = 1) -> None:
     assert len(arg_types) == 2
     ops = binary_ops.setdefault(op, [])
     if format_str is None:
@@ -58,10 +58,14 @@ def unary_op(op: str,
              arg_type: RType,
              result_type: RType,
              error_kind: int,
-             format_str: str,
-             emit: EmitCallback) -> OpDescription:
+             emit: EmitCallback,
+             format_str: Optional[str] = None,
+             priority: int = 1) -> OpDescription:
     ops = unary_ops.setdefault(op, [])
-    desc = OpDescription(op, [arg_type], result_type, False, error_kind, format_str, emit, 0)
+    if format_str is None:
+        format_str = '{dest} = %s{args[0]}' % op
+    desc = OpDescription(op, [arg_type], result_type, False, error_kind, format_str, emit,
+                         priority)
     ops.append(desc)
     return desc
 
@@ -90,18 +94,25 @@ def method_op(name: str,
               arg_types: List[RType],
               result_type: Optional[RType],
               error_kind: int,
-              emit: EmitCallback) -> OpDescription:
+              emit: EmitCallback,
+              priority: int = 1) -> OpDescription:
+    """Define a primitive op that replaces a method call.
+
+    Args:
+        name: short name of the method (for example, 'append')
+        arg_types: argument typess; the receiver is always the first argument
+        result_type: type of the result, None if void
+    """
     ops = method_ops.setdefault(name, [])
     assert len(arg_types) > 0
     args = ', '.join('{args[%d]}' % i
                      for i in range(1, len(arg_types)))
-    method_name = name.rpartition('.')[2]
-    if method_name == '__getitem__':
+    if name == '__getitem__':
         format_str = '{dest} = {args[0]}[{args[1]}] :: %s' % short_name(arg_types[0].name)
     else:
-        format_str = '{dest} = {args[0]}.%s(%s)' % (method_name, args)
-    desc = OpDescription(method_name, arg_types, result_type, False, error_kind, format_str, emit,
-                         0)
+        format_str = '{dest} = {args[0]}.%s(%s)' % (name, args)
+    desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit,
+                         priority)
     ops.append(desc)
     return desc
 

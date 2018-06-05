@@ -14,7 +14,7 @@ from mypyc.ops_primitive import method_op, func_op, simple_emit
 
 
 tuple_get_item_op = method_op(
-    name='builtins.tuple.__getitem__',
+    name='__getitem__',
     arg_types=[tuple_rprimitive, int_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,

@@ -30,7 +30,7 @@ from mypy.nodes import (
     TypeApplication, TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr,
 )
 import mypy.nodes
-from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType
+from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 
@@ -43,7 +43,7 @@ from mypyc.ops import (
     INVALID_LABEL, int_rprimitive, is_int_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
-    ERR_FALSE, OpDescription, RegisterOp,
+    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, new_list_op
@@ -99,6 +99,8 @@ class Mapper:
             else:
                 value_type = typ.items[0]
             return ROptional(self.type_to_rtype(value_type))
+        elif isinstance(typ, AnyType):
+            return object_rprimitive
         assert False, '%s unsupported' % type(typ)
 
 
@@ -240,7 +242,7 @@ class IRBuilder(NodeVisitor[Value]):
         self.ret_type = self.convert_return_type(fdef)
         fdef.body.accept(self)
 
-        if is_none_rprimitive(self.ret_type):
+        if is_none_rprimitive(self.ret_type) or is_object_rprimitive(self.ret_type):
             self.add_implicit_return()
         else:
             self.add_implicit_unreachable()
@@ -333,13 +335,7 @@ class IRBuilder(NodeVisitor[Value]):
             # Indexed assignment x[y] = e
             base = self.accept(lvalue.base)
             index = self.accept(lvalue.index)
-            if is_list_rprimitive(base.type) and is_int_rprimitive(index.type):
-                # Indexed list set
-                return AssignmentTargetIndex(base, index)
-            elif is_dict_rprimitive(base.type):
-                # Indexed dict set
-                boxed_index = self.box(index)
-                return AssignmentTargetIndex(base, boxed_index)
+            return AssignmentTargetIndex(base, index)
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
             obj = self.accept(lvalue.expr)
@@ -554,42 +550,54 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_unary_expr(self, expr: UnaryExpr) -> Value:
         ereg = self.accept(expr.expr)
-        for desc in unary_ops.get(expr.op, []):
-            if is_subtype(ereg.type, desc.arg_types[0]):
-                assert desc.result_type is not None
-                target = self.add(PrimitiveOp([ereg], desc, expr.line))
-                break
-        else:
-            # TODO: Fall back to generic C API
-            assert False, 'Unsupported unary operation'
-
+        ops = unary_ops.get(expr.op, [])
+        target = self.matching_primitive_op(ops, [ereg], expr.line)
+        assert target, 'Unsupported unary operation: %s' % expr.op
         return target
 
     def visit_op_expr(self, expr: OpExpr) -> Value:
         return self.binary_op(self.accept(expr.left), self.accept(expr.right), expr.op, expr.line)
+
+    def matching_primitive_op(self,
+                              candidates: List[OpDescription],
+                              args: List[Value],
+                              line: int,
+                              result_type: Optional[RType] = None) -> Optional[Value]:
+        # Find the highest-priority primitive op that matches.
+        matching = None  # type: Optional[OpDescription]
+        for desc in candidates:
+            if len(desc.arg_types) != len(args):
+                continue
+            if all(is_subtype(actual.type, formal)
+                   for actual, formal in zip(args, desc.arg_types)):
+                if matching:
+                    assert matching.priority != desc.priority, 'Ambiguous:\n1) %s\n2) %s' % (
+                        matching, desc)
+                    if desc.priority > matching.priority:
+                        matching = desc
+                else:
+                    matching = desc
+        if matching:
+            target = self.primitive_op(matching, args, line)
+            if result_type and not is_same_type(target.type, result_type):
+                if is_none_rprimitive(result_type):
+                    # Special case None return. The actual result may actually be a bool
+                    # and so we can't just coerce it.
+                    target = self.add(PrimitiveOp([], none_op, line))
+                else:
+                    target = self.coerce(target, result_type, line)
+            return target
+        return None
 
     def binary_op(self,
                   lreg: Value,
                   rreg: Value,
                   expr_op: str,
                   line: int) -> Value:
-        # Find the highest-priority primitive op that matches.
-        matching = None  # type: Optional[OpDescription]
-        for desc in binary_ops.get(expr_op, []):
-            if (is_subtype(lreg.type, desc.arg_types[0])
-                    and is_subtype(rreg.type, desc.arg_types[1])):
-                if matching:
-                    assert matching.priority != desc.priority, 'Ambiguous: %s, %s' % (matching,
-                                                                                      desc)
-                    if desc.priority > matching.priority:
-                        matching = desc
-                else:
-                    matching = desc
-        if matching:
-            return self.primitive_op(matching, [lreg, rreg], line)
-
-        # TODO: Fall back to generic operation
-        assert False, 'Unsupported binary operation'
+        ops = binary_ops.get(expr_op, [])
+        target = self.matching_primitive_op(ops, [lreg, rreg], line)
+        assert target, 'Unsupported binary operation: %s' % expr_op
+        return target
 
     def visit_index_expr(self, expr: IndexExpr) -> Value:
         base = self.accept(expr.base)
@@ -744,15 +752,11 @@ class IRBuilder(NodeVisitor[Value]):
 
         # Handle data-driven special-cased primitive call ops.
         target_type = self.node_type(expr)
-        if fullname is not None:
-            for desc in func_ops.get(fullname, []):
-                if len(args) == len(desc.arg_types) and expr.arg_kinds == [ARG_POS] * len(args):
-                    for actual_arg, formal_arg_type in zip(args, desc.arg_types):
-                        if not is_subtype(actual_arg.type, formal_arg_type):
-                            break
-                    else:
-                        assert desc.result_type is not None  # TODO: Support no return value
-                        return self.primitive_op(desc, args, expr.line)
+        if fullname is not None and expr.arg_kinds == [ARG_POS] * len(args):
+            ops = func_ops.get(fullname, [])
+            target = self.matching_primitive_op(ops, args, expr.line)
+            if target:
+                return target
 
         fn = expr.callee.name  # TODO: fullname
         if not self.is_native_name_expr(expr.callee):
@@ -806,35 +810,8 @@ class IRBuilder(NodeVisitor[Value]):
 
         Return None if no translation found; otherwise return the target register.
         """
-        base_type = base_reg.type
-        fullname = '%s.%s' % (base_type.name, name)
-        for desc in method_ops.get(fullname, []):
-            if (is_subtype(base_type, desc.arg_types[0])
-                    and len(args) == len(desc.arg_types) - 1
-                    and all(is_subtype(arg.type, formal)
-                            for arg, formal in zip(args, desc.arg_types[1:]))):
-                # Found primitive call.
-                coerced_args = []
-                for arg, formal in zip(args, desc.arg_types[1:]):
-                    reg = self.coerce(arg, formal, line)
-                    coerced_args.append(reg)
-                if desc.result_type is None:
-                    assert desc.error_kind == ERR_FALSE  # TODO: No-value ops not supported yet
-                    result_type = bool_rprimitive
-                    coercion = False
-                elif result_type is None:
-                    result_type = desc.result_type
-                    coercion = False
-                else:
-                    coercion = not is_same_type(desc.result_type, result_type)
-                op_target = self.add(PrimitiveOp([base_reg] + coerced_args, desc, line))
-                if coercion:
-                    assert desc.result_type is not None
-                    return self.coerce(op_target, result_type, line)
-                else:
-                    return op_target
-
-        return None
+        ops = method_ops.get(name, [])
+        return self.matching_primitive_op(ops, [base_reg] + args, line, result_type=result_type)
 
     def visit_list_expr(self, expr: ListExpr) -> Value:
         items = [self.accept(item) for item in expr.items]
@@ -1120,7 +1097,8 @@ class IRBuilder(NodeVisitor[Value]):
             formal_type = self.op_arg_type(desc, i)
             arg = self.coerce(arg, formal_type, line)
             coerced.append(arg)
-        return self.add(PrimitiveOp(coerced, desc, line))
+        target = self.add(PrimitiveOp(coerced, desc, line))
+        return target
 
     def op_arg_type(self, desc: OpDescription, n: int) -> RType:
         if n >= len(desc.arg_types):

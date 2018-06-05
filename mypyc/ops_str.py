@@ -37,12 +37,10 @@ binary_op(op='==',
           arg_types=[str_rprimitive, str_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_MAGIC,
-          emit=emit_str_compare('== 0'),
-          priority=1)
+          emit=emit_str_compare('== 0'))
 
 binary_op(op='!=',
           arg_types=[str_rprimitive, str_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_MAGIC,
-          emit=emit_str_compare('!= 0'),
-          priority=1)
+          emit=emit_str_compare('!= 0'))
