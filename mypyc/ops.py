@@ -782,7 +782,7 @@ class PyMethodCall(RegisterOp):
 
 
 class PyGetAttr(RegisterOp):
-    """dest = obj.attr :: object"""
+    """dest = obj.attr :: object (using C API)"""
 
     error_kind = ERR_MAGIC
 
@@ -803,6 +803,32 @@ class PyGetAttr(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_py_get_attr(self)
+
+
+class PySetAttr(RegisterOp):
+    """dest = setattr(obj, 'attr', value) (using C API)"""
+
+    error_kind = ERR_FALSE
+
+    def __init__(self, obj: Value, attr: str, value: Value, line: int) -> None:
+        super().__init__(line)
+        self.obj = obj
+        self.attr = attr
+        self.value = value
+        self.type = bool_rprimitive
+
+    def sources(self) -> List[Value]:
+        return [self.obj, self.value]
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = setattr(%r, %s, %r)',
+                          self, self.obj, repr(self.attr), self.value)
+
+    def can_raise(self) -> bool:
+        return True
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_py_set_attr(self)
 
 
 class EmitterInterface:
@@ -1231,74 +1257,99 @@ def type_struct_name(class_name: str) -> str:
 
 
 class OpVisitor(Generic[T]):
+    @abstractmethod
     def visit_goto(self, op: Goto) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_branch(self, op: Branch) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_return(self, op: Return) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_unreachable(self, op: Unreachable) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_primitive_op(self, op: PrimitiveOp) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_assign(self, op: Assign) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_load_int(self, op: LoadInt) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_load_error_value(self, op: LoadErrorValue) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_get_attr(self, op: GetAttr) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_set_attr(self, op: SetAttr) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_load_static(self, op: LoadStatic) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_py_get_attr(self, op: PyGetAttr) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
+    def visit_py_set_attr(self, op: PySetAttr) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
     def visit_tuple_get(self, op: TupleGet) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_tuple_set(self, op: TupleSet) -> T:
-        pass
+        raise NotImplementedError
 
     def visit_inc_ref(self, op: IncRef) -> T:
-        pass
+        raise NotImplementedError
 
     def visit_dec_ref(self, op: DecRef) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_call(self, op: Call) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_py_call(self, op: PyCall) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_method_call(self, op: MethodCall) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_py_method_call(self, op: PyMethodCall) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_cast(self, op: Cast) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_box(self, op: Box) -> T:
-        pass
+        raise NotImplementedError
 
+    @abstractmethod
     def visit_unbox(self, op: Unbox) -> T:
-        pass
+        raise NotImplementedError
 
 
 def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:

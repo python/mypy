@@ -8,7 +8,7 @@ from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr,
     SetAttr, LoadStatic, TupleGet, TupleSet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast,
     Unbox, Label, Value, Register, RType, RTuple, MethodCall, PyMethodCall,
-    PrimitiveOp, EmitterInterface,
+    PrimitiveOp, EmitterInterface, PySetAttr, Unreachable,
 )
 
 
@@ -192,6 +192,13 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         obj = self.reg(op.obj)
         self.emit_line('{} = PyObject_GetAttrString({}, "{}");'.format(dest, obj, op.attr))
 
+    def visit_py_set_attr(self, op: PySetAttr) -> None:
+        dest = self.reg(op)
+        obj = self.reg(op.obj)
+        value = self.reg(op.value)
+        self.emit_line('{} = PyObject_SetAttrString({}, "{}", {}) >= 0;'.format(
+            dest, obj, op.attr, value))
+
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)
         src = self.reg(op.src)
@@ -256,6 +263,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_unbox(self, op: Unbox) -> None:
         self.emitter.emit_unbox(self.reg(op.src), self.reg(op), op.type)
+
+    def visit_unreachable(self, op: Unreachable) -> None:
+        pass  # Nothing to do
 
     # Helpers
 

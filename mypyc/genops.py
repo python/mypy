@@ -44,7 +44,7 @@ from mypyc.ops import (
     INVALID_LABEL, int_rprimitive, is_int_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
-    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive,
+    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, PySetAttr,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, new_list_op
@@ -134,9 +134,12 @@ class AssignmentTargetAttr(AssignmentTarget):
     def __init__(self, obj: Value, attr: str) -> None:
         self.obj = obj
         self.attr = attr
-        assert isinstance(obj.type, RInstance), 'Attribute set only supported for user types'
-        self.obj_type = obj.type
-        self.type = obj.type.attr_type(attr)
+        if isinstance(obj.type, RInstance):
+            self.obj_type = obj.type  # type: RType
+            self.type = obj.type.attr_type(attr)
+        else:
+            self.obj_type = object_rprimitive
+            self.type = object_rprimitive
 
 
 class IRBuilder(NodeVisitor[Value]):
@@ -353,8 +356,11 @@ class IRBuilder(NodeVisitor[Value]):
             rvalue_reg = self.coerce(rvalue_reg, target.type, rvalue.line)
             return self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
-            rvalue_reg = self.coerce(rvalue_reg, target.type, rvalue.line)
-            return self.add(SetAttr(target.obj, target.attr, rvalue_reg, rvalue.line))
+            if isinstance(target.obj_type, RInstance):
+                rvalue_reg = self.coerce(rvalue_reg, target.type, rvalue.line)
+                return self.add(SetAttr(target.obj, target.attr, rvalue_reg, rvalue.line))
+            else:
+                return self.add(PySetAttr(target.obj, target.attr, rvalue_reg, rvalue.line))
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.translate_special_method_call(
                 target.base,
