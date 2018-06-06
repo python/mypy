@@ -3620,7 +3620,7 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    # TODO: Handle partially overlapping parameter types and argument counts
+    # TODO: Handle partially overlapping parameter types
     #
     # For example, the signatures "f(x: Union[A, B]) -> int" and "f(x: Union[B, C]) -> str"
     # is unsafe: the parameter types are partially overlapping.
@@ -3631,12 +3631,6 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     #
     # (We already have a rudimentary implementation of 'is_partially_overlapping', but it only
     # attempts to handle the obvious cases -- see its docstring for more info.)
-    #
-    # Similarly, the signatures "f(x: A, y: A) -> str" and "f(*x: A) -> int" are also unsafe:
-    # the parameter *counts* or arity are partially overlapping.
-    #
-    # To fix this, we need to modify is_callable_compatible so it can optionally detect
-    # functions that are *potentially* compatible rather then *definitely* compatible.
 
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
         return is_more_precise(t, s) or is_partially_overlapping_types(t, s)
@@ -3648,10 +3642,12 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     return (is_callable_compatible(signature, other,
                                    is_compat=is_more_precise_or_partially_overlapping,
                                    is_compat_return=lambda l, r: not is_subtype(l, r),
-                                   check_args_covariantly=True) or
+                                   check_args_covariantly=True,
+                                   allow_potential_compatibility=True) or
             is_callable_compatible(other, signature,
                                    is_compat=is_more_precise_or_partially_overlapping,
-                                   is_compat_return=lambda l, r: not is_subtype(r, l)))
+                                   is_compat_return=lambda l, r: not is_subtype(r, l),
+                                   allow_potential_compatibility=True))
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:

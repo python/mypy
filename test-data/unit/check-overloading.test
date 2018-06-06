@@ -1628,8 +1628,7 @@ def g(*, p1: X, p2: B) -> X: ...  # E: Overloaded function signatures 1 and 2 ov
 def g(*, p2: A, p1: X) -> Y: ...
 def g(*, p1, p2): ...
 
-[case testOverloadWithVariableArgsAreOverlapping-skip]
-# TODO: Re-enable this after adding support for partially overlapping arg counts
+[case testOverloadWithVariableArgsAreOverlapping]
 from wrapper import *
 [file wrapper.pyi]
 from typing import overload
@@ -1706,8 +1705,7 @@ def foo3(x: str) -> str: ...
 @overload
 def foo3(x: str, y: str) -> int: ...
 
-[case testOverloadPossibleOverlapWithArgsAndKwargs-skip]
-# TODO: Re-enable this after adding support for partially overlapping arg counts
+[case testOverloadPossibleOverlapWithArgsAndKwargs]
 from wrapper import *
 [file wrapper.pyi]
 from typing import overload
@@ -1718,9 +1716,217 @@ def foo1(*args: int) -> int: ...  # E: Overloaded function signatures 1 and 2 ov
 def foo1(**kwargs: int) -> str: ...
 
 @overload
-def foo2(**kwargs: int) -> str: ...
+def foo2(**kwargs: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
-def foo2(*args: int) -> int: ...  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def foo2(*args: int) -> int: ...
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapWithVarargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*args: int) -> int: ...
+@overload
+def foo1(*args2: int) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+@overload
+def foo2(*args: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(*args2: str) -> int: ...
+
+@overload
+def foo3(*args: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo3(*args: str) -> int: ...
+
+[case testOverloadPossibleOverlapWithVarargs2]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*args: str) -> int: ...
+@overload
+def foo1(x: int, *args2: int) -> str: ...
+
+@overload
+def foo2(x: int, *args: int) -> str: ...
+@overload
+def foo2(*args2: str) -> int: ...
+
+@overload
+def foo3(*args: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo3(x: int, *args2: int) -> str: ...
+
+@overload
+def foo4(x: int, *args: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo4(*args2: int) -> int: ...
+
+[case testOverloadPossibleOverlapWithVarargs3]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+class Other: ...
+
+@overload
+def foo1(x: Other, *args: int) -> str: ...
+@overload
+def foo1(*args: str) -> int: ...
+
+@overload
+def foo2(*args: int) -> str: ...
+@overload
+def foo2(x: Other, *args: str) -> int: ...
+
+@overload
+def foo3(x: Other = ..., *args: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo3(*args: str) -> int: ...
+
+@overload
+def foo4(*args: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo4(x: Other = ..., *args: str) -> int: ...
+
+[case testOverloadPossibleOverlapWithKwargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(**kwargs: int) -> int: ...
+@overload
+def foo1(**kwargs2: int) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+@overload
+def foo2(**kwargs: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(**kwargs2: str) -> int: ...
+
+@overload
+def foo(**kwargs: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo(**kwargs: str) -> int: ...
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithVarargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, *, y: str) -> str: ...
+@overload
+def foo1(*x: str) -> int: ...
+
+@overload
+def foo2(*x: str) -> int: ...
+@overload
+def foo2(x: str, *, y: str) -> str: ...
+
+[case testOverloadPossibleOverlapMixingOptionalArgsWithVarargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, y: str = ..., z: str = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(*x: str) -> int: ...
+
+@overload
+def foo2(*x: str) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(x: str, y: str = ..., z: str = ...) -> str: ...
+
+@overload
+def foo3(x: int, y: str = ..., z: str = ...) -> str: ...
+@overload
+def foo3(*x: str) -> int: ...
+
+[case testOverloadPossibleOverlapMixingOptionalArgsWithVarargs2]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, y: str = ..., z: int = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(*x: str) -> int: ...
+
+@overload
+def foo2(x: str, y: str = ..., z: int = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(*x: str) -> int: ...
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithKwargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*, x: str, y: str, z: str) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(**x: str) -> int: ...
+
+@overload
+def foo2(**x: str) -> int: ...
+@overload
+def foo2(*, x: str, y: str, z: str) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+@overload
+def foo3(*, x: int, y: str, z: str) -> str: ...
+@overload
+def foo3(*x: str) -> int: ...
+
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithKwargs2]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*, x: str, y: str, z: int) -> str: ...
+@overload
+def foo1(**x: str) -> int: ...
+
+@overload
+def foo2(**x: str) -> int: ...
+@overload
+def foo2(*, x: str, y: str, z: int) -> str: ...
+
+@overload
+def foo3(*, x: str, y: str, z: int = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo3(**x: str) -> int: ...
+
+@overload
+def foo4(**x: str) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo4(*, x: str, y: str, z: int = ...) -> str: ...
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithKwargs3]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, *, y: str, z: str) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(**x: str) -> int: ...
+
+@overload
+def foo2(**x: str) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(x: str, *, y: str, z: str) -> str: ...
+
 [builtins fixtures/dict.pyi]
 
 [case testOverloadWithPartiallyOverlappingUnions]
