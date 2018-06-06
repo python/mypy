@@ -242,7 +242,8 @@ class IRBuilder(NodeVisitor[Value]):
 
         for arg in fdef.arguments:
             assert arg.variable.type, "Function argument missing type"
-            self.environment.add_local(arg.variable, self.type_to_rtype(arg.variable.type))
+            self.environment.add_local(arg.variable, self.type_to_rtype(arg.variable.type),
+                                       is_arg=True)
         self.ret_type = self.convert_return_type(fdef)
         fdef.body.accept(self)
 

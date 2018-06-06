@@ -613,9 +613,7 @@ def g(x: List[int], y: List[int]) -> None:
 [out]
 L0:
     r0 = __unicode_0 :: static
-    inc_ref r0
     r1 = x.r0(y) :: object
-    dec_ref r0
     r2 = cast(None, r1)
     dec_ref r2
     r3 = None

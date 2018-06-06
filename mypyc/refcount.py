@@ -27,7 +27,7 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Label, Cast, Box, Unbox, LoadStatic, RType,
+    Return, Op, Label, Cast, Box, RType,
     Value, Register,
 )
 
@@ -38,9 +38,9 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     This is the entry point to this module.
     """
     cfg = get_cfg(ir.blocks)
-    args = set(reg for reg, i in ir.env.indexes.items() if i < len(ir.args))
+    borrowed = set(reg for reg in ir.env.regs() if reg.is_borrowed)
     live = analyze_live_regs(ir.blocks, cfg)
-    borrow = analyze_borrowed_arguments(ir.blocks, cfg, args)
+    borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(block,
@@ -100,9 +100,6 @@ def transform_block(block: BasicBlock,
                 if src not in post_live[key] and src not in pre_borrow[key]:
                     if src != op:
                         maybe_append_dec_ref(ops, src)
-            # TODO: Analyze LoadStatics as being borrowed! (#66)
-            if isinstance(op, LoadStatic):
-                maybe_append_inc_ref(ops, op)
             if not op.is_void and op not in post_live[key]:
                 maybe_append_dec_ref(ops, op)
             if tmp_reg is not None:

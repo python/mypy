@@ -336,9 +336,9 @@ class Environment:
         reg.name = name
         self.indexes[reg] = len(self.indexes)
 
-    def add_local(self, var: Var, typ: RType) -> 'Register':
+    def add_local(self, var: Var, typ: RType, is_arg: bool = False) -> 'Register':
         assert isinstance(var, Var)
-        reg = Register(typ, var.line)
+        reg = Register(typ, var.line, is_arg = is_arg)
 
         self.symtable[var] = reg
         self.add(reg, var.name())
@@ -413,6 +413,7 @@ class Value:
     line = -1
     name = '?'
     type = void_rtype  # type: RType
+    is_borrowed = False
 
     def __init__(self, line: int) -> None:
         self.line = line
@@ -427,10 +428,12 @@ class Value:
 
 
 class Register(Value):
-    def __init__(self, type: RType, line: int = -1, name: str = '') -> None:
+    def __init__(self, type: RType, line: int = -1, is_arg: bool = False, name: str = '') -> None:
         super().__init__(line)
         self.name = name
         self.type = type
+        self.is_arg = is_arg
+        self.is_borrowed = is_arg
 
     def to_str(self, env: Environment) -> str:
         return self.name
@@ -1024,6 +1027,7 @@ class LoadStatic(RegisterOp):
     """dest = name :: static"""
 
     error_kind = ERR_NEVER
+    is_borrowed = True
 
     def __init__(self, type: RType, identifier: str, line: int = -1) -> None:
         super().__init__(line)
