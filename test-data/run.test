@@ -530,3 +530,59 @@ d = {'x': 5}
 assert get_item(d, 'x') == 5
 set_item(d, 'y', 6)
 assert d['y'] == 6
+
+[case testAnyAttributeAndMethodAccess]
+from typing import Any, List
+class C:
+    a: int
+    def m(self, x: int, a: List[int]) -> int:
+        return self.a + x + a[0]
+def get_a(x: Any) -> Any:
+    return x.a
+def call_m(x: Any) -> Any:
+    return x.m(1, [3])
+[file driver.py]
+from native import C, get_a, call_m
+class D:
+    def m(self, x, a):
+        return self.a + x + a[0]
+
+c = C()
+c.a = 6
+d = D()
+d.a = 2
+assert get_a(c) == 6
+assert get_a(d) == 2
+assert call_m(c) == 10
+assert call_m(d) == 6
+try:
+    get_a(object())
+except AttributeError:
+    pass
+else:
+    assert False
+try:
+    call_m(object())
+except AttributeError:
+    pass
+else:
+    assert False
+
+[case testAnyCall]
+from typing import Any
+def call(f: Any) -> Any:
+    return f(1, 'x')
+[file driver.py]
+from native import call
+def f(x, y):
+    return (x, y)
+def g(x): pass
+
+assert call(f) == (1, 'x')
+for bad in g, 1:
+    try:
+        call(bad)
+    except TypeError:
+        pass
+    else:
+        assert False, bad

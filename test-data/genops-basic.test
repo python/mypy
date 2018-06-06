@@ -501,9 +501,9 @@ def f(x):
     r4 :: int
 L0:
     r0 = module_testmodule :: static
-    r1 = r0.factorial
+    r1 = r0.factorial :: object
     r2 = box(int, x)
-    r3 = r1(r2) :: py
+    r3 = r1(r2) :: object
     r4 = unbox(int, r3)
     return r4
 
@@ -520,10 +520,10 @@ def f(x):
     r5, r6 :: None
 L0:
     r0 = module_builtins :: static
-    r1 = r0.print
+    r1 = r0.print :: object
     r2 = 5
     r3 = box(int, r2)
-    r4 = r1(r3) :: py
+    r4 = r1(r3) :: object
     r5 = cast(None, r4)
     r6 = None
     return r6
@@ -540,9 +540,9 @@ def f(x):
 L0:
     r0 = 5
     r1 = module_builtins :: static
-    r2 = r1.print
+    r2 = r1.print :: object
     r3 = box(int, r0)
-    r4 = r2(r3) :: py
+    r4 = r2(r3) :: object
     r5 = cast(None, r4)
     r6 = None
     return r6
@@ -577,11 +577,11 @@ def f(x):
     r5 :: int
 L0:
     r0 = __unicode_0 :: static
-    r1 = x.r0() :: py
+    r1 = x.r0() :: object
     r2 = unbox(int, r1)
     y = r2
     r3 = __unicode_0 :: static
-    r4 = x.r3() :: py
+    r4 = x.r3() :: object
     r5 = unbox(int, r4)
     return r5
 

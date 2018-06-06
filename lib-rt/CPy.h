@@ -448,14 +448,6 @@ static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     }
 }
 
-static inline PyObject *CPyObject_GetAttrString(PyObject *obj, const char *attr_name) {
-    PyObject *result = PyObject_GetAttrString(obj, attr_name);
-    if (result == NULL) {
-        abort();
-    }
-    return result;
-}
-
 static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
     PyObject *filename_obj = PyUnicode_FromString(filename);
     PyObject *funcname_obj = PyUnicode_FromString(funcname);

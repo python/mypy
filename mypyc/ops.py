@@ -739,7 +739,7 @@ class PyCall(RegisterOp):
         s = env.format('%r(%s)', self.function, args)
         if not self.is_void:
             s = env.format('%r = ', self) + s
-        return s + ' :: py'
+        return s + ' :: object'
 
     def sources(self) -> List[Value]:
         return self.args[:] + [self.function]
@@ -772,7 +772,7 @@ class PyMethodCall(RegisterOp):
         s = env.format('%r.%r(%s)', self.obj, self.method, args)
         if not self.is_void:
             s = env.format('%r = ', self) + s
-        return s + ' :: py'
+        return s + ' :: object'
 
     def sources(self) -> List[Value]:
         return self.args[:] + [self.obj, self.method]
@@ -782,21 +782,21 @@ class PyMethodCall(RegisterOp):
 
 
 class PyGetAttr(RegisterOp):
-    """dest = left.right :: py"""
+    """dest = obj.attr :: object"""
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, type: RType, left: Value, right: str, line: int) -> None:
+    def __init__(self, obj: Value, attr: str, line: int) -> None:
         super().__init__(line)
-        self.left = left
-        self.right = right
-        self.type = type
+        self.obj = obj
+        self.attr = attr
+        self.type = object_rprimitive
 
     def sources(self) -> List[Value]:
-        return [self.left]
+        return [self.obj]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r.%s', self, self.left, self.right)
+        return env.format('%r = %r.%s :: object', self, self.obj, self.attr)
 
     def can_raise(self) -> bool:
         return True

@@ -189,8 +189,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_py_get_attr(self, op: PyGetAttr) -> None:
         dest = self.reg(op)
-        left = self.reg(op.left)
-        self.emit_line('{} = CPyObject_GetAttrString({}, "{}");'.format(dest, left, op.right))
+        obj = self.reg(op.obj)
+        self.emit_line('{} = PyObject_GetAttrString({}, "{}");'.format(dest, obj, op.attr))
 
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)

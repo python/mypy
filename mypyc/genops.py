@@ -28,6 +28,7 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr,
     TypeApplication, TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr,
+    GDEF
 )
 import mypy.nodes
 from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType
@@ -630,6 +631,9 @@ class IRBuilder(NodeVisitor[Value]):
 
         return True
 
+    def is_native_module_name_expr(self, expr: NameExpr) -> bool:
+        return self.is_native_name_expr(expr) and expr.kind == GDEF
+
     def visit_name_expr(self, expr: NameExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
         fullname = expr.node.fullname()
@@ -653,23 +657,24 @@ class IRBuilder(NodeVisitor[Value]):
     def visit_member_expr(self, expr: MemberExpr) -> Value:
         if self.is_module_member_expr(expr):
             return self.load_static_module_attr(expr)
-
         else:
             obj = self.accept(expr.expr)
-            return self.add(GetAttr(obj, expr.name, expr.line))
+            if isinstance(obj.type, RInstance):
+                return self.add(GetAttr(obj, expr.name, expr.line))
+            else:
+                return self.add(PyGetAttr(obj, expr.name, expr.line))
 
     def load_static_module_attr(self, expr: RefExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
         module = '.'.join(expr.node.fullname().split('.')[:-1])
-        right = expr.node.fullname().split('.')[-1]
+        name = expr.node.fullname().split('.')[-1]
         left = self.add(LoadStatic(object_rprimitive, c_module_name(module)))
-        return self.add(PyGetAttr(self.node_type(expr), left, right, expr.line))
+        return self.add(PyGetAttr(left, name, expr.line))
 
     def py_call(self, function: Value, args: List[Value],
                 target_type: RType, line: int) -> Value:
         arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
-        target_box = self.add(PyCall(function, arg_boxes, line))
-        return self.unbox_or_cast(target_box, target_type, line)
+        return self.add(PyCall(function, arg_boxes, line))
 
     def py_method_call(self,
                        obj: Value,
@@ -678,8 +683,7 @@ class IRBuilder(NodeVisitor[Value]):
                        target_type: RType,
                        line: int) -> Value:
         arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
-        target_box = self.add(PyMethodCall(obj, method, arg_boxes))
-        return self.unbox_or_cast(target_box, target_type, line)
+        return self.add(PyMethodCall(obj, method, arg_boxes))
 
     def coerce_native_call_args(self,
                                 args: List[Value],
@@ -747,7 +751,7 @@ class IRBuilder(NodeVisitor[Value]):
                 return target
 
         fn = expr.callee.name  # TODO: fullname
-        if not self.is_native_name_expr(expr.callee):
+        if not self.is_native_module_name_expr(expr.callee):
             # Python call
             function = self.accept(expr.callee)
             return self.py_call(function, args, target_type, expr.line)
