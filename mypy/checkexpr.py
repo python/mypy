@@ -21,7 +21,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr,
+    BackquoteExpr, EnumCallExpr,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -2059,39 +2059,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                for item in tp.items()])
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
-        return AnyType(TypeOfAny.special_form)
-
-    def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
-        """Get type of a type alias (could be generic) in a runtime expression."""
-        if isinstance(alias.type, Instance) and alias.type.invalid:
-            # An invalid alias, error already has been reported
-            return AnyType(TypeOfAny.from_error)
-        item = alias.type
-        if not alias.in_runtime:
-            # We don't replace TypeVar's with Any for alias used as Alias[T](42).
-            item = set_any_tvars(item, alias.tvars, alias.line, alias.column)
-        if isinstance(item, Instance):
-            # Normally we get a callable type (or overloaded) with .is_type_obj() true
-            # representing the class's constructor
-            tp = type_object_type(item.type, self.named_type)
-        else:
-            # This type is invalid in most runtime contexts
-            # and corresponding an error will be reported.
-            return alias.fallback
-        if isinstance(tp, CallableType):
-            if len(tp.variables) != len(item.args):
-                self.msg.incompatible_type_application(len(tp.variables),
-                                                       len(item.args), item)
-                return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, item.args, item)
-        elif isinstance(tp, Overloaded):
-            for it in tp.items():
-                if len(it.variables) != len(item.args):
-                    self.msg.incompatible_type_application(len(it.variables),
-                                                           len(item.args), item)
-                    return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(it, item.args, item)
-                               for it in tp.items()])
         return AnyType(TypeOfAny.special_form)
 
     def visit_list_expr(self, e: ListExpr) -> Type:

@@ -71,12 +71,11 @@ MODULE_REF = 3  # type: int
 # (2) a generic function that refers to the type variable in its signature.
 TVAR = 4  # type: int
 
-TYPE_ALIAS = 6  # type: int
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 7  # type: int
+UNBOUND_IMPORTED = 5  # type: int
 
 # RevealExpr node kinds
 REVEAL_TYPE = 0  # type: int
@@ -92,7 +91,6 @@ node_kinds = {
     MDEF: 'Mdef',
     MODULE_REF: 'ModuleRef',
     TVAR: 'Tvar',
-    TYPE_ALIAS: 'TypeAlias',
     UNBOUND_IMPORTED: 'UnboundImported',
 }
 inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}
@@ -1419,8 +1417,8 @@ class IndexExpr(Expression):
     # Inferred __getitem__ method type
     method_type = None  # type: mypy.types.Type
     # If not None, this is actually semantically a type application
-    # Class[type, ...] or a type alias initializer.
-    analyzed = None  # type: Union[TypeApplication, TypeAliasExpr, None]
+    # Class[type, ...].
+    analyzed = None  # type: Union[TypeApplication, None]
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -1895,29 +1893,6 @@ class TypeVarExpr(SymbolNode, Expression):
                            [mypy.types.deserialize_type(v) for v in data['values']],
                            mypy.types.deserialize_type(data['upper_bound']),
                            data['variance'])
-
-
-class TypeAliasExpr(Expression):
-    """Type alias expression (rvalue)."""
-
-    type = None  # type: mypy.types.Type
-    # Simple fallback type for aliases that are invalid in runtime expressions
-    # (for example Union, Tuple, Callable).
-    fallback = None  # type: mypy.types.Type
-    # This type alias is subscripted in a runtime expression like Alias[int](42)
-    # (not in a type context like type annotation or base class).
-    in_runtime = False  # type: bool
-
-    def __init__(self, type: 'mypy.types.Type', tvars: List[str],
-                 fallback: 'mypy.types.Type', in_runtime: bool = False) -> None:
-        super().__init__()
-        self.type = type
-        self.fallback = fallback
-        self.in_runtime = in_runtime
-        self.tvars = tvars
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_type_alias_expr(self)
 
 
 class NamedTupleExpr(Expression):
@@ -2423,6 +2398,41 @@ class FakeInfo(TypeInfo):
         raise AssertionError('De-serialization failure: TypeInfo not fixed')
 
 
+class TypeAlias(SymbolNode):
+
+    __slots__ = ('target', '_fullname', 'alias_tvars')
+
+    def __init__(self, target: 'mypy.types.Type', fullname: str,
+                 alias_tvars: Optional[List[str]] = None) -> None:
+        self._fullname = fullname
+        self.target = target
+        if alias_tvars is None:
+            alias_tvars = []
+        self.alias_tvars = alias_tvars
+
+    def name(self) -> str:
+        return self._fullname.split('.')[-1]
+
+    def fullname(self) -> str:
+        return self._fullname
+
+    def serialize(self) -> JsonDict:
+        data = {'.class': 'TypeAlias',
+                'fullname': self._fullname,
+                'target': self.target.serialize(),
+                'alias_tvars': self.alias_tvars,
+                }  # type: JsonDict
+        return data
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeAlias':
+        assert data['.class'] == 'TypeAlias'
+        fullname = data['fullname']
+        alias_tvars = data['alias_tvars']
+        target = mypy.types.deserialize_type(data['target'])
+        return cls(target, fullname, alias_tvars)
+
+
 class SymbolTableNode:
     """Description of a name binding in a symbol table.
 
@@ -2448,11 +2458,7 @@ class SymbolTableNode:
     they should be correct.
 
     A few definitions get special kinds, including type variables (TVAR),
-    imported modules and module aliases (MODULE_REF), and type aliases
-    (TYPE_ALIAS).
-
-    Type aliases are very special and have additional attributes that
-    are only used for them ('type_override', 'alias_tvars' at least).
+    imported modules and module aliases (MODULE_REF)
 
     Attributes:
         kind: Kind of node. Possible values:
@@ -2461,17 +2467,11 @@ class SymbolTableNode:
                - MDEF: class member definition
                - TVAR: TypeVar(...) definition in any scope
                - MODULE_REF: reference to a module
-               - TYPE_ALIAS: type alias
                - UNBOUND_IMPORTED: temporary kind for imported names (we
                  don't know the final kind yet)
         node: AST node of definition (among others, this can be
             FuncDef/Var/TypeInfo/TypeVarExpr/MypyFile, or None for a bound
             type variable or a cross_ref that hasn't been fixed up yet).
-        type_override: If this not None, override the type of the 'node'
-            attribute. This is only used for type aliases.
-        alias_tvars: For generic aliases this stores the (qualified) names
-            of type variables. (For example see
-            testGenericAliasWithTypeVarsFromDifferentModules.)
         module_public: If False, this name won't be imported via
             'from <module> import *'. This has no effect on names within
             classes.
@@ -2479,14 +2479,7 @@ class SymbolTableNode:
             stub files)
         cross_ref: For deserialized MODULE_REF nodes, the referenced module
             name; for other nodes, optionally the name of the referenced object.
-        normalized: Used to distinguish between 'typing.List' and
-            'builtins.list'.  This is True when the former has been normalized
-            to the latter, and it allow us to reject 'list[str]' and similar.
         implicit: Was this defined by assignment to self attribute?
-        is_aliasing: Is this node refers to other node via node aliasing?
-            (This is currently used for simple aliases like `A = int` instead
-            of .type_override)
-        alias_name: TODO
         no_serialize: Do not serialize this node if True. This is used to prevent
             keys in the cache that refer to modules on which this file does not
             depend. Currently this can happen if there is a module not in build
@@ -2503,43 +2496,28 @@ class SymbolTableNode:
 
     __slots__ = ('kind',
                  'node',
-                 'type_override',
-                 'alias_tvars',
                  'module_public',
                  'module_hidden',
                  'cross_ref',
-                 'normalized',
                  'implicit',
-                 'is_aliasing',
-                 'alias_name',
                  'no_serialize',
                  )
-
-    # TODO: This is a mess. Refactor!
-    # TODO: Better describe how type aliases work.
 
     def __init__(self,
                  kind: int,
                  node: Optional[SymbolNode],
-                 typ: 'Optional[mypy.types.Type]' = None,
                  module_public: bool = True,
                  normalized: bool = False,
-                 alias_tvars: Optional[List[str]] = None,
                  implicit: bool = False,
                  module_hidden: bool = False,
                  *,
                  no_serialize: bool = False) -> None:
         self.kind = kind
         self.node = node
-        self.type_override = typ
         self.module_public = module_public
-        self.normalized = normalized
-        self.alias_tvars = alias_tvars
         self.implicit = implicit
         self.module_hidden = module_hidden
         self.cross_ref = None  # type: Optional[str]
-        self.is_aliasing = False
-        self.alias_name = None  # type: Optional[str]
         self.no_serialize = no_serialize
 
     @property
@@ -2551,12 +2529,9 @@ class SymbolTableNode:
 
     @property
     def type(self) -> 'Optional[mypy.types.Type]':
-        # IDEA: Get rid of the Any type.
-        node = self.node  # type: Any
-        if self.type_override is not None:
-            return self.type_override
-        elif ((isinstance(node, Var) or isinstance(node, FuncDef))
-              and node.type is not None):
+        node = self.node
+        if ((isinstance(node, Var) or isinstance(node, FuncDef))
+                and node.type is not None):
             return node.type
         elif isinstance(node, Decorator):
             return node.var.type
@@ -2566,10 +2541,7 @@ class SymbolTableNode:
     def copy(self) -> 'SymbolTableNode':
         new = SymbolTableNode(self.kind,
                               self.node,
-                              self.type_override,
                               self.module_public,
-                              self.normalized,
-                              self.alias_tvars,
                               self.implicit,
                               self.module_hidden)
         new.cross_ref = self.cross_ref
@@ -2598,8 +2570,6 @@ class SymbolTableNode:
             data['module_hidden'] = True
         if not self.module_public:
             data['module_public'] = False
-        if self.normalized:
-            data['normalized'] = True
         if self.implicit:
             data['implicit'] = True
         if self.kind == MODULE_REF:
@@ -2614,9 +2584,6 @@ class SymbolTableNode:
                         data['cross_ref'] = fullname
                         return data
                 data['node'] = self.node.serialize()
-            if self.type_override is not None:
-                data['type_override'] = self.type_override.serialize()
-                data['alias_tvars'] = self.alias_tvars
         return data
 
     @classmethod
@@ -2631,18 +2598,11 @@ class SymbolTableNode:
             node = None
             if 'node' in data:
                 node = SymbolNode.deserialize(data['node'])
-            typ = None
-            if 'type_override' in data:
-                typ = mypy.types.deserialize_type(data['type_override'])
-            stnode = SymbolTableNode(kind, node, typ=typ)
-            if 'alias_tvars' in data:
-                stnode.alias_tvars = data['alias_tvars']
+            stnode = SymbolTableNode(kind, node)
         if 'module_hidden' in data:
             stnode.module_hidden = data['module_hidden']
         if 'module_public' in data:
             stnode.module_public = data['module_public']
-        if 'normalized' in data:
-            stnode.normalized = data['normalized']
         if 'implicit' in data:
             stnode.implicit = data['implicit']
         return stnode

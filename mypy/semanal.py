@@ -52,7 +52,7 @@ from mypy.nodes import (
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
-    SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
+    SetComprehension, DictionaryComprehension,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
@@ -1373,13 +1373,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 module_public = not self.is_stub_file or as_id is not None
                 module_hidden = not module_public and possible_module_id not in self.modules
                 symbol = SymbolTableNode(node.kind, node.node,
-                                         node.type_override,
                                          module_public=module_public,
-                                         normalized=node.normalized,
-                                         alias_tvars=node.alias_tvars,
                                          module_hidden=module_hidden)
-                symbol.is_aliasing = node.is_aliasing
-                symbol.alias_name = node.alias_name
                 self.add_symbol(imported_id, symbol, imp)
             elif module and not missing:
                 # Missing attribute.
@@ -1463,10 +1458,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             normalized = True
         if normalized:
             assert new_node is not None, "Collection node not found"
-            node = SymbolTableNode(new_node.kind, new_node.node, new_node.type_override,
-                                   normalized=True, alias_tvars=new_node.alias_tvars)
-            node.is_aliasing = new_node.is_aliasing
-            node.alias_name = new_node.alias_name
+            node = SymbolTableNode(new_node.kind, new_node.node)
         return node
 
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
@@ -1503,12 +1495,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, new_node, i):
                             continue
-                    symbol = SymbolTableNode(new_node.kind, new_node.node,
-                                             new_node.type_override,
-                                             normalized=new_node.normalized,
-                                             alias_tvars=new_node.alias_tvars)
-                    symbol.is_aliasing = new_node.is_aliasing
-                    symbol.alias_name = new_node.alias_name
+                    symbol = SymbolTableNode(new_node.kind, new_node.node)
                     self.add_symbol(name, symbol, i)
                     i.imported_names.append(name)
         else:
