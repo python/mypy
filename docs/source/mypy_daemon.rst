@@ -70,7 +70,7 @@ Additional features
 
 You have precise control over the lifetime of the daemon process:
 
-* ``dymypy stop`` stops the daemon.
+* ``dmypy stop`` stops the daemon.
 
 * ``dmypy restart -- <flags>`` restarts the daemon. The flags are the same
   as with ``dmypy start``. This is equivalent to a stop command followed
