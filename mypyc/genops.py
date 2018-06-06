@@ -312,6 +312,7 @@ class IRBuilder(NodeVisitor[Value]):
         if isinstance(target, AssignmentTargetRegister):
             rreg = self.accept(stmt.rvalue)
             res = self.binary_op(target.register, rreg, stmt.op, stmt.line)
+            res = self.coerce(res, target.type, stmt.line)
             self.add(Assign(target.register, res))
             return INVALID_VALUE
 
@@ -762,18 +763,23 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
         branches = self.process_conditional(expr.cond)
+        expr_type = self.node_type(expr)
         # Having actual Phi nodes would be really nice here!
-        target = self.alloc_temp(self.node_type(expr))
+        target = self.alloc_temp(expr_type)
 
         if_body = self.new_block()
         self.set_branches(branches, True, if_body)
-        self.add(Assign(target, self.accept(expr.if_expr)))
+        true_value = self.accept(expr.if_expr)
+        true_value = self.coerce(true_value, expr_type, expr.line)
+        self.add(Assign(target, true_value))
         if_goto_next = Goto(INVALID_LABEL)
         self.add(if_goto_next)
 
         else_body = self.new_block()
         self.set_branches(branches, False, else_body)
-        self.add(Assign(target, self.accept(expr.else_expr)))
+        false_value = self.accept(expr.else_expr)
+        false_value = self.coerce(false_value, expr_type, expr.line)
+        self.add(Assign(target, false_value))
         else_goto_next = Goto(INVALID_LABEL)
         self.add(else_goto_next)
 

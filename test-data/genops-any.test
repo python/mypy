@@ -60,3 +60,112 @@ L0:
     n = r5
     r6 = None
     return r6
+
+[case testCoerceAnyInOps]
+from typing import Any, List
+def f1(a: Any, n: int) -> None:
+    a + n
+    n + a
+def f2(a: Any, n: int, l: List[int]) -> None:
+    a[n]
+    l[a]
+    a[n] = n
+    l[a] = n
+    l[n] = a
+    [a, n]
+def f3(a: Any, n: int) -> None:
+    a += n
+    n += a
+[out]
+def f1(a, n):
+    a :: object
+    n :: int
+    r0, r1, r2, r3 :: object
+    r4 :: None
+L0:
+    r0 = box(int, n)
+    r1 = a + r0
+    r2 = box(int, n)
+    r3 = r2 + a
+    r4 = None
+    return r4
+def f2(a, n, l):
+    a :: object
+    n :: int
+    l :: list
+    r0, r1, r2 :: object
+    r3 :: int
+    r4, r5 :: object
+    r6 :: bool
+    r7 :: object
+    r8, r9 :: bool
+    r10 :: object
+    r11 :: list
+    r12 :: None
+L0:
+    r0 = box(int, n)
+    r1 = a[r0] :: object
+    r2 = l[a] :: object
+    r3 = unbox(int, r2)
+    r4 = box(int, n)
+    r5 = box(int, n)
+    r6 = a.__setitem__(r4, r5) :: object
+    r7 = box(int, n)
+    r8 = l.__setitem__(a, r7) :: object
+    r9 = l.__setitem__(n, a) :: list
+    r10 = box(int, n)
+    r11 = [a, r10]
+    r12 = None
+    return r12
+def f3(a, n):
+    a :: object
+    n :: int
+    r0, r1, r2, r3 :: object
+    r4 :: int
+    r5 :: None
+L0:
+    r0 = box(int, n)
+    r1 = a + r0
+    a = r1
+    r2 = box(int, n)
+    r3 = r2 + a
+    r4 = unbox(int, r3)
+    n = r4
+    r5 = None
+    return r5
+
+[case testCoerceAnyInConditionalExpr]
+from typing import Any
+def f4(a: Any, n: int, b: bool) -> None:
+    a = a if b else n
+    n = n if b else a
+[out]
+def f4(a, n, b):
+    a :: object
+    n :: int
+    b :: bool
+    r0, r1, r2, r3 :: object
+    r4 :: int
+    r5 :: None
+L0:
+    if b goto L1 else goto L2 :: bool
+L1:
+    r0 = a
+    goto L3
+L2:
+    r1 = box(int, n)
+    r0 = r1
+L3:
+    a = r0
+    if b goto L4 else goto L5 :: bool
+L4:
+    r3 = box(int, n)
+    r2 = r3
+    goto L6
+L5:
+    r2 = a
+L6:
+    r4 = unbox(int, r2)
+    n = r4
+    r5 = None
+    return r5

@@ -32,7 +32,7 @@ L0:
     r1 = False
     r2 = box(int, r0)
     r3 = box(bool, r1)
-    r4 = d.__setitem__(r2, r3)
+    r4 = d.__setitem__(r2, r3) :: dict
     r5 = None
     return r5
 
@@ -114,7 +114,7 @@ def f(a, b):
     r0 :: bool
     r1, r2 :: None
 L0:
-    r0 = a.update(b)
+    r0 = a.update(b) :: dict
     r1 = None
     r2 = None
     return r2

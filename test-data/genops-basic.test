@@ -640,7 +640,7 @@ L0:
     r6 = 2
     r7 = (r5, r6)
     r8 = box(tuple[int, int], r7)
-    r9 = a.__setitem__(r4, r8)
+    r9 = a.__setitem__(r4, r8) :: list
     r10 = True
     r11 = box(bool, r10)
     y = r11
@@ -800,6 +800,6 @@ def f(x, y, z):
     r0 :: bool
     r1 :: None
 L0:
-    r0 = x.__setitem__(y, z)
+    r0 = x.__setitem__(y, z) :: object
     r1 = None
     return r1

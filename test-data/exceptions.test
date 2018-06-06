@@ -31,7 +31,7 @@ def f(x: List[int], y: int, z: int) -> None:
 L0:
     inc_ref y :: int
     r0 = box(int, y)
-    r1 = x.append(r0)
+    r1 = x.append(r0) :: list
     dec_ref r0
     if not r1 goto L3 (error at f:3) else goto L1 :: bool
 L1:
@@ -39,7 +39,7 @@ L1:
     dec_ref r2
     inc_ref z :: int
     r3 = box(int, z)
-    r4 = x.__setitem__(y, r3)
+    r4 = x.__setitem__(y, r3) :: list
     dec_ref r3
     if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:

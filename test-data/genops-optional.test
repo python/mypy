@@ -110,10 +110,10 @@ L0:
     r0 = 0
     r1 = 0
     r2 = box(int, r1)
-    r3 = x.__setitem__(r0, r2)
+    r3 = x.__setitem__(r0, r2) :: list
     r4 = 1
     r5 = None
-    r6 = x.__setitem__(r4, r5)
+    r6 = x.__setitem__(r4, r5) :: list
     r7 = None
     return r7
 

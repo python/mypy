@@ -526,7 +526,7 @@ L0:
     r3 = unbox(int, r2)
     dec_ref r2
     r4 = box(int, r3)
-    r5 = a.__setitem__(r0, r4)
+    r5 = a.__setitem__(r0, r4) :: list
     dec_ref r0 :: int
     dec_ref r4
     r6 = None
@@ -629,7 +629,7 @@ def f(a: List[int], x: int) -> None:
 L0:
     inc_ref x :: int
     r0 = box(int, x)
-    r1 = a.append(r0)
+    r1 = a.append(r0) :: list
     dec_ref r0
     r2 = None
     dec_ref r2

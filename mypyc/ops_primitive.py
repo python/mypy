@@ -107,10 +107,11 @@ def method_op(name: str,
     assert len(arg_types) > 0
     args = ', '.join('{args[%d]}' % i
                      for i in range(1, len(arg_types)))
+    type_name = short_name(arg_types[0].name)
     if name == '__getitem__':
-        format_str = '{dest} = {args[0]}[{args[1]}] :: %s' % short_name(arg_types[0].name)
+        format_str = '{dest} = {args[0]}[{args[1]}] :: %s' % type_name
     else:
-        format_str = '{dest} = {args[0]}.%s(%s)' % (name, args)
+        format_str = '{dest} = {args[0]}.%s(%s) :: %s' % (name, args, type_name)
     desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit,
                          priority)
     ops.append(desc)

@@ -67,7 +67,7 @@ L0:
     r0 = 0
     r1 = 1
     r2 = box(int, r1)
-    r3 = x.__setitem__(r0, r2)
+    r3 = x.__setitem__(r0, r2) :: list
     r4 = None
     return r4
 
@@ -158,7 +158,7 @@ def f(a, x):
     r2, r3 :: None
 L0:
     r0 = box(int, x)
-    r1 = a.append(r0)
+    r1 = a.append(r0) :: list
     r2 = None
     r3 = None
     return r3
