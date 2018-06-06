@@ -347,14 +347,11 @@ class IRBuilder(NodeVisitor[Value]):
                          target: AssignmentTarget,
                          rvalue: Expression) -> Value:
         rvalue_reg = self.accept(rvalue)
-        needs_box = rvalue_reg.type.is_unboxed and not target.type.is_unboxed
         if isinstance(target, AssignmentTargetRegister):
-            if needs_box:
-                rvalue_reg = self.box(rvalue_reg)
+            rvalue_reg = self.coerce(rvalue_reg, target.type, rvalue.line)
             return self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
-            if needs_box:
-                rvalue_reg = self.box(rvalue_reg)
+            rvalue_reg = self.coerce(rvalue_reg, target.type, rvalue.line)
             return self.add(SetAttr(target.obj, target.attr, rvalue_reg, rvalue.line))
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.translate_special_method_call(
@@ -821,10 +818,10 @@ class IRBuilder(NodeVisitor[Value]):
         assert not expr.items  # TODO
         return self.add(PrimitiveOp([], new_dict_op, expr.line))
 
-    # Conditional expressions
-
     def visit_str_expr(self, expr: StrExpr) -> Value:
         return self.load_static_unicode(expr.value)
+
+    # Conditional expressions
 
     def process_conditional(self, e: Node) -> List[Branch]:
         if isinstance(e, ComparisonExpr):
