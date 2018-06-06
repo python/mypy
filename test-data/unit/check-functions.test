@@ -2073,25 +2073,18 @@ h(7) # E: Cannot call function of unknown type
 
 [case testPositionalOnlyArg]
 def f(__a: int) -> None: pass
+def g(__a__: int) -> None: pass
 
 f(1)
 f(__a=1) # E: Unexpected keyword argument "__a" for "f"
+
+g(1)
+# Argument names that also end with __ are not positional-only.
+g(__a__=1)
 
 [builtins fixtures/bool.pyi]
 [out]
 main:1: note: "f" defined here
-
-[case testPositionalOnlyArgFastparse]
-
-
-def f(__a: int) -> None: pass
-
-f(1)
-f(__a=1) # E: Unexpected keyword argument "__a" for "f"
-
-[builtins fixtures/bool.pyi]
-[out]
-main:3: note: "f" defined here
 
 [case testMagicMethodPositionalOnlyArg]
 class A(object):
