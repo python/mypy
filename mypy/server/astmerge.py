@@ -50,7 +50,7 @@ from typing import Dict, List, cast, TypeVar, Optional
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, CallExpr,
     CastExpr,
     MDEF
 )
@@ -254,11 +254,6 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
 
-    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
-        self.fixup_type(node.type)
-        self.fixup_type(node.fallback)
-        super().visit_type_alias_expr(node)
-
     # Others
 
     def visit_var(self, node: Var) -> None:
@@ -439,9 +434,6 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 # Handle them here just in case these aren't exposed through the AST.
                 # TODO: Is this necessary?
                 fixup_var(node.node, replacements)
-        override = node.type_override
-        if override:
-            override.accept(TypeReplaceVisitor(replacements))
 
 
 def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:

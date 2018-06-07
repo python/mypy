@@ -16,7 +16,7 @@ from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iter
 from mypy import messages, experiments
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
-    Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
+    Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
     TupleExpr, RevealExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
     MDEF,
@@ -69,7 +69,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
-            self.analyze_symbol_table(file_node.names)
             self.scope.leave()
         del self.cur_mod_node
         self.patches = []
@@ -148,7 +147,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
                 self.analyze_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
-        self.analyze_symbol_table(tdef.info.names)
         self.scope.leave()
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -218,8 +216,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         NewType, TypedDict, NamedTuple, and TypeVar.
         """
         self.analyze(s.type, s)
-        if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
-            self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed, warn=True)
         if isinstance(s.rvalue, CallExpr):
             analyzed = s.rvalue.analyzed
             if isinstance(analyzed, NewTypeExpr):
@@ -243,15 +239,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
                 self.analyze_info(analyzed.info)
-        # We need to pay additional attention to assignments that define a type alias.
-        # The resulting type is also stored in the 'type_override' attribute of
-        # the corresponding SymbolTableNode.
-        if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
-            self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
-            if isinstance(s.lvalues[0], NameExpr):
-                node = self.sem.lookup(s.lvalues[0].name, s, suppress_errors=True)
-                if node:
-                    self.analyze(node.type_override, node)
         # Subclass attribute assignments with no type annotation should be
         # assumed to be classvar if overriding a declared classvar from the base
         # class.
@@ -288,8 +275,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
 
     # Helpers
 
-    def perform_transform(self, node: Union[Node, SymbolTableNode],
-                          transform: Callable[[Type], Type]) -> None:
+    def perform_transform(self, node: Node, transform: Callable[[Type], Type]) -> None:
         """Apply transform to all types associated with node."""
         if isinstance(node, ForStmt):
             if node.index_type:
@@ -301,8 +287,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             for n in node.target:
                 if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
                     n.node.type = transform(n.node.type)
-        if isinstance(node, (FuncDef, OverloadedFuncDef, CastExpr, AssignmentStmt,
-                             TypeAliasExpr, Var)):
+        if isinstance(node, (FuncDef, OverloadedFuncDef, CastExpr, AssignmentStmt, Var)):
             assert node.type, "Scheduled patch for non-existent type"
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):
@@ -337,9 +322,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                                         transform(node.info.tuple_type))
         if isinstance(node, TypeApplication):
             node.types = [transform(t) for t in node.types]
-        if isinstance(node, SymbolTableNode):
-            assert node.type_override, "Scheduled patch for non-existent type"
-            node.type_override = transform(node.type_override)
         if isinstance(node, TypeInfo):
             for tvar in node.defn.type_vars:
                 if tvar.upper_bound:
@@ -370,7 +352,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             for item in lvalue.items:
                 self.transform_types_in_lvalue(item, transform)
 
-    def analyze(self, type: Optional[Type], node: Union[Node, SymbolTableNode],
+    def analyze(self, type: Optional[Type], node: Node,
                 warn: bool = False) -> None:
         # Recursive type warnings are only emitted on type definition 'node's, marked by 'warn'
         # Flags appeared during analysis of 'type' are collected in this dict.
@@ -396,12 +378,6 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
         self.generate_type_patches(node, indicator, warn=False)
 
-    def analyze_symbol_table(self, names: SymbolTable) -> None:
-        """Analyze types in symbol table nodes only (shallow)."""
-        for node in names.values():
-            if node.type_override:
-                self.analyze(node.type_override, node)
-
     def make_scoped_patch(self, fn: Callable[[], None]) -> Callable[[], None]:
         saved_scope = self.scope.save()
 
@@ -411,7 +387,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         return patch
 
     def generate_type_patches(self,
-                              node: Union[Node, SymbolTableNode],
+                              node: Node,
                               indicator: Dict[str, bool],
                               warn: bool) -> None:
         if indicator.get('forward') or indicator.get('synthetic'):

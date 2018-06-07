@@ -52,11 +52,11 @@ from mypy.nodes import (
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
-    SetComprehension, DictionaryComprehension,
+    SetComprehension, DictionaryComprehension, TypeAlias,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
-    collections_type_aliases, get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
+    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -290,6 +290,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     assert v.type is not None, "Type of implicit attribute not set"
                     v.type = self.anal_type(v.type)
                     v.is_ready = True
+
+            if self.cur_mod_id == 'typing':
+                for alias, target_name in type_aliases.items():
+                    name = alias.split('.')[-1]
+                    self.cur_mod_node.names[name] = SymbolTableNode(GDEF, TypeAlias(self.builtin_type(target_name), alias))
 
             defs = file_node.defs
             self.scope.enter_file(file_node.fullname())
@@ -589,8 +594,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return
 
         if self.type and not self.is_func_scope():
-            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
-                                                           typ=defn.type)
+            self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             defn.info = self.type
         elif self.is_func_scope():
             self.add_local(defn, defn)
@@ -1356,7 +1360,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.add_symbol(name, symbol, imp)
                     continue
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
-                node = self.normalize_type_alias(node, imp)
                 if not node:
                     # Normalization failed because target is not defined. Avoid duplicate
                     # error messages by marking the imported name as unknown.
@@ -1432,35 +1435,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return True
         return False
 
-    def normalize_type_alias(self, node: SymbolTableNode,
-                             ctx: Context) -> Optional[SymbolTableNode]:
-        """If node refers to a built-in type alias, normalize it.
-
-        An example normalization is 'typing.List' -> '__builtins__.list'.
-
-        By default, if the node doesn't refer to a built-in type alias, return
-        the original node. If normalization fails because the target isn't
-        defined, return None.
-        """
-        normalized = False
-        fullname = node.fullname
-        if fullname in type_aliases:
-            # Node refers to an aliased type such as typing.List; normalize.
-            new_node = self.lookup_qualified(type_aliases[fullname], ctx)
-            if new_node is None:
-                self.add_fixture_note(fullname, ctx)
-                return None
-            normalized = True
-        if fullname in collections_type_aliases:
-            # Similar, but for types from the collections module like typing.DefaultDict
-            self.add_module_symbol('collections', '__mypy_collections__', False, ctx)
-            new_node = self.lookup_qualified(collections_type_aliases[fullname], ctx)
-            normalized = True
-        if normalized:
-            assert new_node is not None, "Collection node not found"
-            node = SymbolTableNode(new_node.kind, new_node.node)
-        return node
-
     def add_fixture_note(self, fullname: str, ctx: Context) -> None:
         self.note('Maybe your test fixture does not define "{}"?'.format(fullname), ctx)
         if fullname in SUGGESTED_TEST_FIXTURES:
@@ -1484,18 +1458,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 node = self.dereference_module_cross_ref(orig_node)
                 if node is None:
                     continue
-                new_node = self.normalize_type_alias(node, i)
                 # if '__all__' exists, all nodes not included have had module_public set to
                 # False, and we can skip checking '_' because it's been explicitly included.
-                if (new_node and new_node.module_public and
-                        (not name.startswith('_') or '__all__' in m.names)):
+                if (node.module_public and (not name.startswith('_') or '__all__' in m.names)):
                     existing_symbol = self.lookup_current_scope(name)
                     if existing_symbol:
                         # Import can redefine a variable. They get special treatment.
                         if self.process_import_over_existing_name(
-                                name, existing_symbol, new_node, i):
+                                name, existing_symbol, node, i):
                             continue
-                    symbol = SymbolTableNode(new_node.kind, new_node.node)
+                    symbol = SymbolTableNode(node.kind, node.node)
                     self.add_symbol(name, symbol, i)
                     i.imported_names.append(name)
         else:
@@ -1641,20 +1613,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return self.named_type_or_none('builtins.unicode')
         return None
 
-    def alias_fallback(self, tp: Type) -> Instance:
-        """Make a dummy Instance with no methods. It is used as a fallback type
-        to detect errors for non-Instance aliases (i.e. Unions, Tuples, Callables).
-        """
-        # TODO: this has None fullname (and also can't be serialized), fix this.
-        kind = (' to Callable' if isinstance(tp, CallableType) else
-                ' to Tuple' if isinstance(tp, TupleType) else
-                ' to Union' if isinstance(tp, UnionType) else '')
-        cdef = ClassDef('Type alias' + kind, Block([]))
-        fb_info = TypeInfo(SymbolTable(), cdef, self.cur_mod_id)
-        fb_info.bases = [self.object_type()]
-        fb_info.mro = [fb_info, self.object_type().type]
-        return Instance(fb_info, [])
-
     def analyze_alias(self, rvalue: Expression,
                       warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str],
                                                               Set[str], List[str]]:
@@ -1727,16 +1685,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         s.is_alias_def = True
         node = self.lookup(lvalue.name, lvalue)
         assert node is not None
-        if lvalue.fullname is not None:
-            node.alias_name = lvalue.fullname
+        assert node.node is not None
         self.add_type_alias_deps(depends_on)
+        depends_on.add(node.node.fullname())
         self.add_type_alias_deps(qualified_tvars)
         # The above are only direct deps on other aliases.
         # For subscripted aliases, type deps from expansion are added in deps.py
         # (because the type is stored)
         if not lvalue.is_inferred_def:
             # Type aliases can't be re-defined.
-            if node and (node.kind == TYPE_ALIAS or isinstance(node.node, TypeInfo)):
+            if isinstance(node.node, (TypeAlias, TypeInfo)):
                 self.fail('Cannot assign multiple types to name "{}"'
                           ' without an explicit "Type[...]" annotation'
                           .format(lvalue.name), lvalue)
@@ -1746,32 +1704,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # when this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
-        if isinstance(res, Instance) and not res.args and isinstance(rvalue, RefExpr):
-            # For simple (on-generic) aliases we use aliasing TypeInfo's
-            # to allow using them in runtime context where it makes sense.
-            node.node = res.type
-            node.is_aliasing = True
-            if isinstance(rvalue, RefExpr):
-                # For non-subscripted aliases we add type deps right here
-                # (because the node is stored, not type)
-                # TODO: currently subscripted and unsubscripted aliases are processed differently
-                # This leads to duplication of most of the logic with small variations.
-                # Fix this.
-                self.add_type_alias_deps({node.node.fullname()})
-                sym = self.lookup_type_node(rvalue)
-                if sym:
-                    node.normalized = sym.normalized
-            return
-        node.kind = TYPE_ALIAS
-        node.type_override = res
-        node.alias_tvars = alias_tvars
-        if isinstance(rvalue, (IndexExpr, CallExpr)):
-            # We only need this for subscripted aliases, since simple aliases
-            # are already processed using aliasing TypeInfo's above.
-            rvalue.analyzed = TypeAliasExpr(res, node.alias_tvars,
-                                            fallback=self.alias_fallback(res))
-            rvalue.analyzed.line = rvalue.line
-            rvalue.analyzed.column = rvalue.column
+        node.node = TypeAlias(res, node.node.fullname(), alias_tvars=qualified_tvars,
+                              depends_on=list(depends_on))
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -2485,9 +2419,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def add_symbol_alias_deps(self, n: Optional[SymbolTableNode]) -> None:
         """Add type alias dependencies for a RefExpr node."""
-        if n and n.is_aliasing:
-            assert n.alias_name is not None
-            self.add_type_alias_deps([n.alias_name])
+        if n and isinstance(n.node, TypeAlias):
+            self.add_type_alias_deps([n.node.fullname()])
 
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
@@ -2708,7 +2641,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.add_symbol_alias_deps(n)
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
-                n = self.normalize_type_alias(n, expr)
                 if not n:
                     return
                 n = self.rebind_symbol_table_node(n)
@@ -2721,7 +2653,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     and '__getattr__' in file.names):
                 # If there is a module-level __getattr__, then any attribute on the module is valid
                 # per PEP 484.
-                getattr_defn = self.normalize_type_alias(file.names['__getattr__'], expr)
+                getattr_defn = file.names['__getattr__']
                 if not getattr_defn:
                     typ = AnyType(TypeOfAny.from_error)  # type: Type
                 elif isinstance(getattr_defn.node, (FuncDef, Var)):
@@ -2770,7 +2702,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 n = type_info.names.get(expr.name)
                 self.add_symbol_alias_deps(n)
                 if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
-                    n = self.normalize_type_alias(n, expr)
                     if not n:
                         return
                     expr.kind = n.kind
@@ -2807,21 +2738,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 and isinstance(expr.base.node, TypeInfo)
                 and not expr.base.node.is_generic()):
             expr.index.accept(self)
-        elif isinstance(expr.base, RefExpr) and expr.base.kind == TYPE_ALIAS:
-            # Special form -- subscripting a generic type alias.
-            # Perform the type substitution and create a new alias.
-            res, alias_tvars, depends_on, _ = self.analyze_alias(expr)
-            assert res is not None, "Failed analyzing already defined alias"
-            expr.analyzed = TypeAliasExpr(res, alias_tvars, fallback=self.alias_fallback(res),
-                                          in_runtime=True)
-            expr.analyzed.line = expr.line
-            expr.analyzed.column = expr.column
-            # We also store fine-grained dependencies to correctly re-process nodes
-            # with situations like `L = LongGeneric; x = L[int]()`.
-            self.add_type_alias_deps(depends_on)
-        elif refers_to_class_or_function(expr.base):
+        elif refers_to_class_or_function(expr.base) or isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
+            if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
+                self.add_type_alias_deps(expr.base.node.depends_on)
             types = []  # type: List[Type]
             if isinstance(expr.index, TupleExpr):
                 items = expr.index.items
@@ -2837,10 +2758,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
-            # list, dict, set are not directly subscriptable
-            n = self.lookup_type_node(expr.base)
-            if n and not n.normalized and n.fullname in nongen_builtins:
-                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
+            # TODOALIAS list[int]
         else:
             expr.index.accept(self)
 
@@ -3076,7 +2994,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             self.name_not_defined(name, ctx)
                         break
                 if n:
-                    n = self.normalize_type_alias(n, ctx)
                     if n and n.module_hidden:
                         self.name_not_defined(name, ctx)
             if n and not n.module_hidden:
@@ -3089,8 +3006,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         If the reference is removed in the new version, return None.
         """
-        # TODO: Handle type aliases, type variables and other sorts of references
-        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var)):
+        # TODO: Handle type variables and other sorts of references
+        if isinstance(n.node, (FuncDef, OverloadedFuncDef, TypeInfo, Var, TypeAlias)):
             # TODO: Why is it possible for fullname() to be None, even though it's not
             #   annotated as Optional[str]?
             # TODO: Do this for all modules in the set of modified files

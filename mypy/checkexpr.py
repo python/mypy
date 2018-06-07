@@ -21,7 +21,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    BackquoteExpr, EnumCallExpr,
+    BackquoteExpr, EnumCallExpr, TypeAlias,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -219,9 +219,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # Undefined names should already be reported in semantic analysis.
                         pass
                 if ((isinstance(typ, IndexExpr)
-                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
-                        # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
-                        or (isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS)):
+                        and isinstance(typ.analyzed, TypeApplication))
+                        or (isinstance(typ, NameExpr) and node and isinstance(node.node, TypeAlias))):
                     self.msg.type_arguments_not_allowed(e)
                 if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
                     if typ.node.typeddict_type:

@@ -54,7 +54,7 @@ from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
     SymbolTable, SymbolTableNode, TypeInfo, Var, MypyFile, SymbolNode, Decorator, TypeVarExpr,
-    OverloadedFuncDef, FuncItem, MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
+    OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR, TypeAlias
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
@@ -146,15 +146,16 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
                             node.variance,
                             [snapshot_type(value) for value in node.values],
                             snapshot_type(node.upper_bound))
-        elif symbol.kind == TYPE_ALIAS:
+        elif isinstance(symbol.node, TypeAlias):
             result[name] = ('TypeAlias',
-                            symbol.alias_tvars,
-                            snapshot_optional_type(symbol.type_override))
+                            symbol.node.alias_tvars,
+                            symbol.node.depends_on,
+                            snapshot_optional_type(symbol.node.target))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname()) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
-                result[name] = ('CrossRef', common, symbol.normalized)
+                result[name] = ('CrossRef', common)
             else:
                 result[name] = snapshot_definition(node, common)
     return result

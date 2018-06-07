@@ -6,7 +6,7 @@ from mypy.nodes import (
     UnicodeExpr, ListExpr, TupleExpr, SetExpr, DictExpr, CallExpr, SliceExpr, CastExpr,
     ConditionalExpr, EllipsisExpr, YieldFromExpr, YieldExpr, RevealExpr, SuperExpr,
     TypeApplication, LambdaExpr, ListComprehension, SetComprehension, DictionaryComprehension,
-    GeneratorExpr, BackquoteExpr, TypeVarExpr, TypeAliasExpr, NamedTupleExpr, EnumCallExpr,
+    GeneratorExpr, BackquoteExpr, TypeVarExpr, NamedTupleExpr, EnumCallExpr,
     TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode,
 )
 from mypy.visitor import ExpressionVisitor
@@ -203,9 +203,6 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> None:
-        return None
-
-    def visit_type_alias_expr(self, e: TypeAliasExpr) -> None:
         return None
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> None:

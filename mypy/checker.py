@@ -2824,7 +2824,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         func_def = FuncDef('__call__', [], Block([]), callable_type)
         func_def._fullname = cdef.fullname + '.__call__'
         func_def.info = info
-        info.names['__call__'] = SymbolTableNode(MDEF, func_def, callable_type)
+        info.names['__call__'] = SymbolTableNode(MDEF, func_def)
 
         cur_module.names[gen_name] = SymbolTableNode(GDEF, info)
 

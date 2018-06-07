@@ -495,7 +495,7 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'from_generic_builtin', 'type_ref')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
@@ -505,8 +505,6 @@ class Instance(Type):
         self.args = args
         self.erased = erased  # True if result of type variable substitution
         self.invalid = False  # True if recovered after incorrect number of type arguments error
-        # True if created from a generic builtin (e.g. list() or set())
-        self.from_generic_builtin = False
         self.type_ref = None  # type: Optional[str]
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:

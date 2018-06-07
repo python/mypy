@@ -107,26 +107,18 @@ type_aliases = {
     'typing.Dict': '__builtins__.dict',
     'typing.Set': '__builtins__.set',
     'typing.FrozenSet': '__builtins__.frozenset',
+    'typing.ChainMap': 'collections.ChainMap',
+    'typing.Counter': 'collections.Counter',
+    'typing.DefaultDict': 'collections.defaultdict',
+    'typing.Deque': 'collections.deque',
 }
 
-reverse_type_aliases = dict((name.replace('__builtins__', 'builtins'), alias)
-                            for alias, name in type_aliases.items())  # type: Dict[str, str]
-
-collections_type_aliases = {
-    'typing.ChainMap': '__mypy_collections__.ChainMap',
-    'typing.Counter': '__mypy_collections__.Counter',
-    'typing.DefaultDict': '__mypy_collections__.defaultdict',
-    'typing.Deque': '__mypy_collections__.deque',
-}
-
-reverse_collection_aliases = dict((name.replace('__mypy_collections__', 'collections'), alias)
-                                  for alias, name in
-                                  collections_type_aliases.items())  # type: Dict[str, str]
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}
-nongen_builtins.update(reverse_type_aliases)
-nongen_builtins.update(reverse_collection_aliases)
+nongen_builtins.update((name.replace('__builtins__', 'builtins'), alias)
+                            for alias, name in type_aliases.items())
+
 
 
 class Node(Context):
@@ -2400,15 +2392,20 @@ class FakeInfo(TypeInfo):
 
 class TypeAlias(SymbolNode):
 
-    __slots__ = ('target', '_fullname', 'alias_tvars')
+    __slots__ = ('target', '_fullname', 'alias_tvars', 'depends_on')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str,
-                 alias_tvars: Optional[List[str]] = None) -> None:
+                 *,
+                 alias_tvars: Optional[List[str]] = None,
+                 depends_on: Optional[List[str]] = None) -> None:
         self._fullname = fullname
         self.target = target
         if alias_tvars is None:
             alias_tvars = []
         self.alias_tvars = alias_tvars
+        if depends_on is None:
+            depends_on = []
+        self.depends_on = depends_on
 
     def name(self) -> str:
         return self._fullname.split('.')[-1]
@@ -2421,6 +2418,7 @@ class TypeAlias(SymbolNode):
                 'fullname': self._fullname,
                 'target': self.target.serialize(),
                 'alias_tvars': self.alias_tvars,
+                'depends_on': self.depends_on
                 }  # type: JsonDict
         return data
 
@@ -2429,8 +2427,9 @@ class TypeAlias(SymbolNode):
         assert data['.class'] == 'TypeAlias'
         fullname = data['fullname']
         alias_tvars = data['alias_tvars']
+        depends_on = data['depends_on']
         target = mypy.types.deserialize_type(data['target'])
-        return cls(target, fullname, alias_tvars)
+        return cls(target, fullname, alias_tvars=alias_tvars, depends_on=depends_on)
 
 
 class SymbolTableNode:

@@ -452,9 +452,6 @@ class StrConv(NodeVisitor[str]):
             a += ['UpperBound({})'.format(o.upper_bound)]
         return self.dump(a, o)
 
-    def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> str:
-        return 'TypeAliasExpr({})'.format(o.type)
-
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> str:
         return 'NamedTupleExpr:{}({}, {})'.format(o.line,
                                                   o.info.name(),

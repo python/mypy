@@ -24,7 +24,7 @@ from mypy.types import (
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
+    TypeInfo, Context, MypyFile, op_methods, FuncDef,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
     CallExpr, Expression
@@ -241,11 +241,6 @@ class MessageBuilder:
             elif itype.type.fullname() == 'builtins.tuple':
                 item_type_str = self.format_bare(itype.args[0])
                 return 'Tuple[{}, ...]'.format(item_type_str)
-            elif itype.type.fullname() in reverse_type_aliases:
-                alias = reverse_type_aliases[itype.type.fullname()]
-                alias = alias.split('.')[-1]
-                items = [self.format_bare(arg) for arg in itype.args]
-                return '{}[{}]'.format(alias, ', '.join(items))
             else:
                 # There are type arguments. Convert the arguments to strings.
                 # If the result is too long, replace arguments with [...].

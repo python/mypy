@@ -24,7 +24,7 @@ from mypy.nodes import (
     TVAR, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, Node, ImportedName, type_aliases
+    Decorator, Node, ImportedName, type_aliases, TypeAlias
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -83,14 +83,14 @@ def analyze_type_alias(node: Expression,
             return None
         if not (isinstance(node.node, TypeInfo) or
                 node.fullname == 'typing.Any' or
-                node.kind == TYPE_ALIAS):
+                isinstance(node.node, TypeAlias)):
             return None
     elif isinstance(node, IndexExpr):
         base = node.base
         if isinstance(base, RefExpr):
             if not (isinstance(base.node, TypeInfo) or
                     base.fullname in type_constructors or
-                    base.kind == TYPE_ALIAS):
+                    isinstance(base.node, TypeAlias)):
                 return None
             # Enums can't be generic, and without this check we may incorrectly interpret indexing
             # an Enum class as creating a type alias.
@@ -197,15 +197,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 #
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
-            if sym.fullname in type_aliases:
-                # Resolve forward reference to type alias like 'typing.List'.
-                # TODO: Unify how type aliases are handled; currently we resolve them in two
-                #     places (the other is in the semantic analyzer pass 2).
-                resolved = type_aliases[sym.fullname]
-                new = self.api.lookup_qualified(resolved, t)
-                if new:
-                    sym = new.copy()
-                    sym.normalized = True
             if sym.node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
@@ -216,7 +207,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins and t.args and
-                    not sym.normalized and not self.allow_unnormalized):
+                     not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
             if self.tvar_scope:
                 tvar_def = self.tvar_scope.get_binding(sym)
@@ -240,9 +231,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # Bare 'Tuple' is same as 'tuple'
                     if self.options.disallow_any_generics and not self.is_typeshed_stub:
                         self.fail(messages.BARE_GENERIC, t)
-                    typ = self.named_type('builtins.tuple', line=t.line, column=t.column)
-                    typ.from_generic_builtin = True
-                    return typ
+                    return self.named_type('builtins.tuple', line=t.line, column=t.column)
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
                     instance = self.named_type('builtins.tuple', [self.anal_type(t.args[0])])
@@ -284,12 +273,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return item
             elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
                 return UninhabitedType(is_noreturn=True)
-            elif sym.kind == TYPE_ALIAS:
-                if sym.alias_name is not None:
-                    self.aliases_used.add(sym.alias_name)
-                override = sym.type_override
-                all_vars = sym.alias_tvars
-                assert override is not None
+            elif isinstance(sym.node, TypeAlias):
+                self.aliases_used.add(sym.node.fullname())
+                all_vars = sym.node.alias_tvars
+                target = sym.node.target
                 an_args = self.anal_array(t.args)
                 if all_vars is not None:
                     exp_len = len(all_vars)
@@ -299,16 +286,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if exp_len > 0 and act_len == 0:
                     # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
                     assert all_vars is not None
-                    return set_any_tvars(override, all_vars, t.line, t.column)
+                    return set_any_tvars(target, all_vars, t.line, t.column)
                 if exp_len == 0 and act_len == 0:
-                    return override
+                    return target
                 if act_len != exp_len:
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)
-                    return set_any_tvars(override, all_vars or [],
+                    return set_any_tvars(target, all_vars or [],
                                          t.line, t.column, implicit=False)
                 assert all_vars is not None
-                return replace_alias_tvars(override, all_vars, an_args, t.line, t.column)
+                return replace_alias_tvars(target, all_vars, an_args, t.line, t.column)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
@@ -336,9 +323,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         self.note_func("Forward references to type variables are prohibited", t)
                 return t
             info = sym.node  # type: TypeInfo
-            if sym.is_aliasing:
-                if sym.alias_name is not None:
-                    self.aliases_used.add(sym.alias_name)
             if len(t.args) > 0 and info.fullname() == 'builtins.tuple':
                 fallback = Instance(info, [AnyType(TypeOfAny.special_form)], t.line)
                 return TupleType(self.anal_array(t.args), fallback, t.line)
@@ -349,7 +333,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
                 instance = Instance(info, self.anal_array(t.args), t.line, t.column)
-                instance.from_generic_builtin = sym.normalized
                 tup = info.tuple_type
                 if tup is not None:
                     # The class has a Tuple[...] base class so it will be
@@ -707,7 +690,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         # Check type argument count.
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
-                from_builtins = t.type.fullname() in nongen_builtins and not t.from_generic_builtin
+                from_builtins = t.type.fullname() in nongen_builtins
                 if (self.options.disallow_any_generics and
                         not self.is_typeshed_stub and
                         from_builtins):
