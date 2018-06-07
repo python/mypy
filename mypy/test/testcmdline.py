@@ -58,6 +58,14 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+
+    is_running_in_py_charm = "PYCHARM_HOSTED" in os.environ
+    if is_running_in_py_charm:
+        pos = next((p for p, i in enumerate(out) if i.startswith('pydev debugger: ')), None)
+        if pos is not None:
+            del out[pos]  # the attaching debugger message itself
+            del out[pos]  # plus the extra new line added
+
     result = process.wait()
     # Remove temp file.
     os.remove(program_path)
