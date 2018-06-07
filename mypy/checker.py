@@ -2017,7 +2017,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             item_type = self.iterable_item_type(cast(Instance, rvalue_type))
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
-                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
+                    items_type = self.named_generic_type('builtins.list', [item_type])
+                    self.check_assignment(lv.expr, self.temp_node(items_type, context),
                                           infer_lvalue_type)
                 else:
                     self.check_assignment(lv, self.temp_node(item_type, context),
