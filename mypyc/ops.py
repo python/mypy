@@ -140,6 +140,8 @@ object_rprimitive = RPrimitive('builtins.object', is_unboxed=False, is_refcounte
 
 int_rprimitive = RPrimitive('builtins.int', is_unboxed=True, is_refcounted=True, ctype='CPyTagged')
 
+float_rprimitive = RPrimitive('builtins.float', is_unboxed=False, is_refcounted=True)
+
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False, ctype='char')
 
 none_rprimitive = RPrimitive('builtins.None', is_unboxed=False, is_refcounted=True)
@@ -157,6 +159,10 @@ tuple_rprimitive = RPrimitive('builtins.tuple', is_unboxed=False, is_refcounted=
 
 def is_int_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.int'
+
+
+def is_float_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.float'
 
 
 def is_bool_rprimitive(rtype: RType) -> bool:
@@ -376,6 +382,8 @@ class Environment:
                     result.append(arg.name)
                 elif typespec == 'd':
                     result.append('%d' % arg)
+                elif typespec == 'f':
+                    result.append('%f' % arg)
                 elif typespec == 'l':
                     result.append('L%d' % arg)
                 elif typespec == 's':
@@ -957,6 +965,26 @@ class LoadInt(RegisterOp):
         return visitor.visit_load_int(self)
 
 
+class LoadFloat(RegisterOp):
+    """dest = float"""
+
+    error_kind = ERR_FALSE
+
+    def __init__(self, value: float, line: int = -1) -> None:
+        super().__init__(line)
+        self.value = value
+        self.type = float_rprimitive
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def to_str(self, env: Environment) -> str:
+        return env.format('%r = %f', self, self.value)
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_load_float(self)
+
+
 class LoadErrorValue(RegisterOp):
     """dest = <error value for type>"""
 
@@ -1287,6 +1315,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_int(self, op: LoadInt) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_load_float(self, op: LoadFloat) -> T:
         raise NotImplementedError
 
     @abstractmethod

@@ -6,7 +6,7 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional,
 
 from mypyc.ops import (
     Value, Register,
-    BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto,
+    BasicBlock, OpVisitor, Assign, LoadInt, LoadFloat, LoadErrorValue, RegisterOp, Goto,
     Branch, Return, Call, Environment, Box, Unbox, Cast, Op, Unreachable,
     TupleGet, TupleSet, GetAttr, SetAttr, PyCall, LoadStatic, PyGetAttr, PySetAttr, Label,
     PyMethodCall, PrimitiveOp, MethodCall,
@@ -109,6 +109,9 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_load_int(self, op: LoadInt) -> GenAndKill:
+        return self.visit_register_op(op)
+
+    def visit_load_float(self, op: LoadFloat) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_load_error_value(self, op: LoadErrorValue) -> GenAndKill:

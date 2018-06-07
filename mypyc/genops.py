@@ -36,15 +36,16 @@ from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 
 from mypyc.ops import (
-    BasicBlock, Environment, Op, LoadInt, RType, Value, Register, Label, Return, FuncIR,
+    BasicBlock, Environment, Op, LoadInt, LoadFloat, RType, Value, Register, Label, Return, FuncIR,
     Assign,
     Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple,
     Unreachable, TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic,
     PyGetAttr, PyCall, ROptional, c_module_name, PyMethodCall, MethodCall, INVALID_VALUE,
-    INVALID_LABEL, int_rprimitive, is_int_rprimitive, bool_rprimitive, list_rprimitive,
-    is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
-    tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
-    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, PySetAttr,
+    INVALID_LABEL, int_rprimitive, is_int_rprimitive, float_rprimitive, is_float_rprimitive,
+    bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, is_dict_rprimitive,
+    str_rprimitive, is_tuple_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive,
+    object_rprimitive, PrimitiveOp, ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive,
+    PySetAttr,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, new_list_op
@@ -73,6 +74,8 @@ class Mapper:
         if isinstance(typ, Instance):
             if typ.type.fullname() == 'builtins.int':
                 return int_rprimitive
+            elif typ.type.fullname() == 'builtins.float':
+                return float_rprimitive
             elif typ.type.fullname() == 'builtins.str':
                 return str_rprimitive
             elif typ.type.fullname() == 'builtins.bool':
@@ -629,6 +632,9 @@ class IRBuilder(NodeVisitor[Value]):
     def visit_int_expr(self, expr: IntExpr) -> Value:
         return self.add(LoadInt(expr.value))
 
+    def visit_float_expr(self, expr: FloatExpr) -> Value:
+        return self.add(LoadFloat(expr.value))
+
     def is_native_name_expr(self, expr: NameExpr) -> bool:
         # TODO later we want to support cross-module native calls too
         assert expr.node, "RefExpr not resolved"
@@ -959,9 +965,6 @@ class IRBuilder(NodeVisitor[Value]):
         raise NotImplementedError
 
     def visit_exec_stmt(self, o: ExecStmt) -> Value:
-        raise NotImplementedError
-
-    def visit_float_expr(self, o: FloatExpr) -> Value:
         raise NotImplementedError
 
     def visit_generator_expr(self, o: GeneratorExpr) -> Value:

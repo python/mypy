@@ -36,7 +36,12 @@ class str:
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
 
-class float: pass
+class float:
+    def __add__(self, n: float) -> float: pass
+    def __sub__(self, n: float) -> float: pass
+    def __mul__(self, n: float) -> float: pass
+    def __div__(self, n: float) -> float: pass
+
 class bool: pass
 
 class tuple(Generic[T], Sized):

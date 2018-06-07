@@ -598,3 +598,16 @@ for bad in g, 1:
         pass
     else:
         assert False, bad
+
+[case testLoadFloatSum]
+def assign_and_return_float_sum() -> float:
+    f1 = 1.0
+    f2 = 2.0
+    f3 = 3.0
+    return f1 * f2 + f3
+[file driver.py]
+from native import assign_and_return_float_sum
+sum = 0.0
+for i in range(10):
+    sum += assign_and_return_float_sum()
+assert sum == 50.0

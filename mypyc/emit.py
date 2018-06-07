@@ -6,8 +6,8 @@ from typing import List, Set, Dict, Optional
 from mypyc.common import REG_PREFIX
 from mypyc.ops import (
     Environment, Label, Value, Register, RType, RTuple, RInstance, ROptional,
-    RPrimitive, type_struct_name, is_int_rprimitive, is_bool_rprimitive, short_name,
-    is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
+    RPrimitive, type_struct_name, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
+    short_name, is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
     object_rprimitive, is_str_rprimitive
 )
 
@@ -152,13 +152,16 @@ class Emitter:
             err = 'PyErr_SetString(PyExc_TypeError, "{} object expected");'.format(
                 self.pretty_name(typ))
         # TODO: Verify refcount handling.
-        if is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_str_rprimitive(typ):
+        if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_float_rprimitive(typ) or
+                is_str_rprimitive(typ)):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             if is_list_rprimitive(typ):
                 prefix = 'PyList'
             elif is_dict_rprimitive(typ):
                 prefix = 'PyDict'
+            elif is_float_rprimitive(typ):
+                prefix = 'PyFloat'
             elif is_str_rprimitive(typ):
                 prefix = 'PyUnicode'
             else:
