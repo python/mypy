@@ -16,7 +16,7 @@ from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iter
 from mypy import messages, experiments
 from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, FuncItem, Decorator, RefExpr, Context, TypeInfo, ClassDef,
-    Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, NameExpr,
+    Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
     TupleExpr, RevealExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
     MDEF,
@@ -216,6 +216,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         NewType, TypedDict, NamedTuple, and TypeVar.
         """
         self.analyze(s.type, s)
+        if isinstance(s.rvalue, IndexExpr) and isinstance(s.rvalue.analyzed, TypeAliasExpr):
+            self.analyze(s.rvalue.analyzed.type, s.rvalue.analyzed, warn=True)
         if isinstance(s.rvalue, CallExpr):
             analyzed = s.rvalue.analyzed
             if isinstance(analyzed, NewTypeExpr):
@@ -287,7 +289,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             for n in node.target:
                 if isinstance(n, NameExpr) and isinstance(n.node, Var) and n.node.type:
                     n.node.type = transform(n.node.type)
-        if isinstance(node, (FuncDef, OverloadedFuncDef, CastExpr, AssignmentStmt, Var)):
+        if isinstance(node, (FuncDef, OverloadedFuncDef, CastExpr, AssignmentStmt,
+                             TypeAliasExpr, Var)):
             assert node.type, "Scheduled patch for non-existent type"
             node.type = transform(node.type)
         if isinstance(node, NewTypeExpr):

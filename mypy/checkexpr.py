@@ -21,7 +21,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    BackquoteExpr, EnumCallExpr, TypeAlias,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -219,7 +219,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         # Undefined names should already be reported in semantic analysis.
                         pass
                 if ((isinstance(typ, IndexExpr)
-                        and isinstance(typ.analyzed, TypeApplication))
+                        and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
                         or (isinstance(typ, NameExpr) and node and isinstance(node.node, TypeAlias))):
                     self.msg.type_arguments_not_allowed(e)
                 if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
@@ -2058,6 +2058,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                for item in tp.items()])
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
+        """Get type of a type alias (could be generic) in a runtime expression."""
         return AnyType(TypeOfAny.special_form)
 
     def visit_list_expr(self, e: ListExpr) -> Type:

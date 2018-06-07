@@ -18,7 +18,7 @@ from mypy.nodes import (
     SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
-    DictionaryComprehension, ComplexExpr, EllipsisExpr,
+    DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr,
     OverloadPart, EnumCallExpr, REVEAL_TYPE
 )
@@ -415,7 +415,10 @@ class TransformVisitor(NodeVisitor[Node]):
         if node.method_type:
             new.method_type = self.type(node.method_type)
         if node.analyzed:
-            new.analyzed = self.visit_type_application(node.analyzed)
+            if isinstance(node.analyzed, TypeApplication):
+                new.analyzed = self.visit_type_application(node.analyzed)
+            else:
+                new.analyzed = self.visit_type_alias_expr(node.analyzed)
             new.analyzed.set_line(node.analyzed.line)
         return new
 
@@ -470,6 +473,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return TypeVarExpr(node.name(), node.fullname(),
                            self.types(node.values),
                            self.type(node.upper_bound), variance=node.variance)
+
+    def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
+        return TypeAliasExpr(node.type, node.tvars)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
         res = NewTypeExpr(node.name, node.old_type, line=node.line)

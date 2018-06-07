@@ -1232,7 +1232,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # it can be checked for compatibility.
             original_type = base_attr.type
             if original_type is None:
-                if isinstance(base_attr.node, FuncDef):
+                if isinstance(base_attr.node, FuncBase):
                     original_type = self.function_type(base_attr.node)
                 elif isinstance(base_attr.node, Decorator):
                     original_type = self.function_type(base_attr.node.func)

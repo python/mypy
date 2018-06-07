@@ -197,6 +197,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 #
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
+            if sym.fullname in type_aliases:
+                # This is necessary if we process some other modules before 'typing'.
+                resolved = type_aliases[sym.fullname]
+                new = self.api.lookup_fully_qualified(resolved)
+                sym = new.copy()
             if sym.node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
@@ -207,7 +212,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins and t.args and
-                     not self.allow_unnormalized):
+                    not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
             if self.tvar_scope:
                 tvar_def = self.tvar_scope.get_binding(sym)
@@ -289,6 +294,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return set_any_tvars(target, all_vars, t.line, t.column)
                 if exp_len == 0 and act_len == 0:
                     return target
+                if exp_len == 0 and act_len > 0 and isinstance(target, Instance):
+                    tp = Instance(target.type, an_args)
+                    tp.line = t.line
+                    return tp
                 if act_len != exp_len:
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
                               % (exp_len, act_len), t)

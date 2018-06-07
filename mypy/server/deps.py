@@ -92,7 +92,7 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -350,7 +350,8 @@ class DependencyVisitor(TraverserVisitor):
                 class_name = typ.type_object().fullname()
                 self.add_dependency(make_trigger(class_name + '.__init__'))
                 self.add_dependency(make_trigger(class_name + '.__new__'))
-            # TODOALIAS deps from subscripted?
+            if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
+                self.add_type_dependencies(rvalue.analyzed.type)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)

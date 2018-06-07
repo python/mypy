@@ -8,7 +8,7 @@ from mypy.nodes import (
     TypeApplication, LambdaExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     GeneratorExpr, BackquoteExpr, TypeVarExpr, NamedTupleExpr, EnumCallExpr,
     TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode,
-)
+    TypeAliasExpr)
 from mypy.visitor import ExpressionVisitor
 
 # [Note Literals and literal_hash]
@@ -203,6 +203,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> None:
+        return None
+
+    def visit_type_alias_expr(self, e: TypeAliasExpr) -> None:
         return None
 
     def visit_namedtuple_expr(self, e: NamedTupleExpr) -> None:

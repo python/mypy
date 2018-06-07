@@ -52,7 +52,7 @@ from mypy.nodes import (
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
-    SetComprehension, DictionaryComprehension, TypeAlias,
+    SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
@@ -294,7 +294,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if self.cur_mod_id == 'typing':
                 for alias, target_name in type_aliases.items():
                     name = alias.split('.')[-1]
-                    self.cur_mod_node.names[name] = SymbolTableNode(GDEF, TypeAlias(self.builtin_type(target_name), alias))
+                    n = self.lookup_fully_qualified_or_none(target_name)
+                    if n:
+                        self.cur_mod_node.names[name] = SymbolTableNode(GDEF, TypeAlias(self.builtin_type(target_name), alias))
 
             defs = file_node.defs
             self.scope.enter_file(file_node.fullname())
@@ -1704,7 +1706,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # when this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
-        node.node = TypeAlias(res, node.node.fullname(), alias_tvars=qualified_tvars,
+        if isinstance(s.rvalue, IndexExpr):
+            s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars)
+        node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
                               depends_on=list(depends_on))
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,

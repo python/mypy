@@ -50,7 +50,7 @@ from typing import Dict, List, cast, TypeVar, Optional
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
-    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, CallExpr,
+    OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
     CastExpr,
     MDEF
 )
@@ -253,6 +253,10 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.info = self.fixup_and_reset_typeinfo(node.info)
         self.process_synthetic_type_info(node.info)
         super().visit_enum_call_expr(node)
+
+    def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
+        self.fixup_type(node.type)
+        super().visit_type_alias_expr(node)
 
     # Others
 

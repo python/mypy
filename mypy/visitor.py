@@ -149,6 +149,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> T:
+        pass
+
+    @abstractmethod
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> T:
         pass
 
@@ -347,6 +351,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_var(self, o: 'mypy.nodes.Var') -> T:
         pass
 
+    def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
+        pass
+
     # Statements
 
     def visit_block(self, o: 'mypy.nodes.Block') -> T:
@@ -506,6 +513,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> T:
+        pass
+
+    def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> T:
         pass
 
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> T:

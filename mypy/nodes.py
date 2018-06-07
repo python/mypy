@@ -103,10 +103,10 @@ implicit_module_attrs = {'__name__': '__builtins__.str',
 
 
 type_aliases = {
-    'typing.List': '__builtins__.list',
-    'typing.Dict': '__builtins__.dict',
-    'typing.Set': '__builtins__.set',
-    'typing.FrozenSet': '__builtins__.frozenset',
+    'typing.List': 'builtins.list',
+    'typing.Dict': 'builtins.dict',
+    'typing.Set': 'builtins.set',
+    'typing.FrozenSet': 'builtins.frozenset',
     'typing.ChainMap': 'collections.ChainMap',
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
@@ -116,8 +116,7 @@ type_aliases = {
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}
-nongen_builtins.update((name.replace('__builtins__', 'builtins'), alias)
-                            for alias, name in type_aliases.items())
+nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
 
 
@@ -1409,8 +1408,8 @@ class IndexExpr(Expression):
     # Inferred __getitem__ method type
     method_type = None  # type: mypy.types.Type
     # If not None, this is actually semantically a type application
-    # Class[type, ...].
-    analyzed = None  # type: Union[TypeApplication, None]
+    # Class[type, ...] or a type alias initializer.
+    analyzed = None  # type: Union[TypeApplication, TypeAliasExpr, None]
 
     def __init__(self, base: Expression, index: Expression) -> None:
         super().__init__()
@@ -1886,6 +1885,20 @@ class TypeVarExpr(SymbolNode, Expression):
                            mypy.types.deserialize_type(data['upper_bound']),
                            data['variance'])
 
+
+class TypeAliasExpr(Expression):
+    """Type alias expression (rvalue)."""
+
+    type = None  # type: mypy.types.Type
+    tvars = None  # type: List[str]
+
+    def __init__(self, type: 'mypy.types.Type', tvars: List[str]) -> None:
+        super().__init__()
+        self.type = type
+        self.tvars = tvars
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_type_alias_expr(self)
 
 class NamedTupleExpr(Expression):
     """Named tuple expression namedtuple(...) or NamedTuple(...)."""
@@ -2421,6 +2434,9 @@ class TypeAlias(SymbolNode):
                 'depends_on': self.depends_on
                 }  # type: JsonDict
         return data
+
+    def accept(self, visitor: NodeVisitor[T]) -> T:
+        return visitor.visit_type_alias(self)
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'TypeAlias':

@@ -2581,6 +2581,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         # typing}.  Of these, builtins must be processed last or else
         # some builtin objects will be incompletely processed.)
         if 'builtins' in ascc:
+            pass
             scc.remove('builtins')
             scc.append('builtins')
         if manager.options.verbosity >= 2:
