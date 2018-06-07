@@ -36,24 +36,23 @@ Basic usage
 ***********
 
 The client utility ``dmypy`` is used to control the mypy daemon.
-Use ``dmypy start -- <flags>`` to start the daemon. You can use almost
-arbitrary mypy flags after ``--``.  The daemon will always run on the
-current host. Example::
+Use ``dmypy run -- <flags> <files>`` to typecheck a set of files
+(or directories). This will launch the daemon if it is not running.
+You can use almost arbitrary mypy flags after ``--``.  The daemon
+will always run on the current host. Example::
 
-    dmypy start -- --follow-imports=skip
+    dmypy run -- --follow-imports=error prog.py pkg1/ pkg2/
 
 .. note::
-   You'll need to use either the ``--follow-imports=skip`` or the
-   ``--follow-imports=error`` option with dmypy because the current
+   You'll need to use either the ``--follow-imports=error`` or the
+   ``--follow-imports=skip`` option with dmypy because the current
    implementation can't follow imports.
    See :ref:`follow-imports` for details on how these work.
    You can also define these using a
    :ref:`configuration file <config-file>`.
 
-The daemon will not type check anything when it's started.
-Use ``dmypy check <files>`` to check some files (or directories)::
-
-    dmypy check prog.py pkg1/ pkg2/
+``dmypy run`` will automatically restart the daemon if the
+configuration or mypy version changes.
 
 You need to provide all files or directories you want to type check
 (other than stubs) as arguments. This is a result of the
@@ -68,18 +67,29 @@ you have a large codebase.
 Additional features
 *******************
 
-You have precise control over the lifetime of the daemon process:
+While ``dmypy run`` is sufficient for most uses, some workflows
+(ones using :ref:`remote caching <remote-cache>`, perhaps),
+require more precise control over the lifetime of the daemon process:
 
 * ``dmypy stop`` stops the daemon.
+
+* ``dmypy start -- <flags>`` starts the daemon but does not check any files.
+  You can use almost arbitrary mypy flags after ``--``.
 
 * ``dmypy restart -- <flags>`` restarts the daemon. The flags are the same
   as with ``dmypy start``. This is equivalent to a stop command followed
   by a start.
 
-* Use ``dmypy start --timeout SECONDS -- <flags>`` (or
-  ``dmypy restart --timeout SECONDS -- <flags>``) to automatically
+* Use ``dmypy run --timeout SECONDS -- <flags>`` (or
+  ``start`` or ``restart``) to automatically
   shut down the daemon after inactivity. By default, the daemon runs
   until it's explicitly stopped.
+
+* ``dmypy check <files>`` checks a set of files using an already
+  running daemon.
+
+* ``dmypy status`` checks whether a daemon is running. It prints a
+  diagnostic and exits with ``0`` if there is a running daemon.
 
 Use ``dmypy --help`` for help on additional commands and command-line
 options not discussed here, and ``dmypy <command> --help`` for help on
@@ -88,8 +98,8 @@ command-specific options.
 Limitations
 ***********
 
-* You have to use either the ``--follow-imports=skip`` or
-  the ``--follow-imports=error`` option because of an implementation
+* You have to use either the ``--follow-imports=error`` or
+  the ``--follow-imports=skip`` option because of an implementation
   limitation. This can be defined
   through the command line or through a
   :ref:`configuration file <config-file>`.
