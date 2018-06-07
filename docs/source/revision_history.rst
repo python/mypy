@@ -268,7 +268,7 @@ detailed release notes):
     * Document Python 2 support.
 
 - Nov 2015
-    Add :ref:`library-stubs`.
+    Add :ref:`stubs-intro`.
 
 - Jun 2015
     Remove ``Undefined`` and ``Dynamic``, as they are not in PEP 484.

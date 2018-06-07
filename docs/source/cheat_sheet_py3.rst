@@ -34,22 +34,19 @@ Built-in types
    x = [1]  # type: List[int]
    x = {6, 7}  # type: Set[int]
 
-   # Empty Tuple types are a bit special
-   x = ()  # type: Tuple[()]
-
    # For mappings, we need the types of both keys and values.
    x = {'field': 2.0}  # type: Dict[str, float]
 
    # For tuples, we specify the types of all the elements.
    x = (3, "yes", 7.5)  # type: Tuple[int, str, float]
+   # Empty Tuple types are a bit special
+   x = ()  # type: Tuple[()]
 
-   # For textual data, use Text.
-   # This is `unicode` in Python 2 and `str` in Python 3.
+   # For textual data, use Text if you care about Python 2 compatibility.
+   # This is "unicode" in Python 2 and "str" in Python 3.
    x = ["string", u"unicode"]  # type: List[Text]
 
-
-
-   # Use Optional for values that could be None.
+   # Use Optional[] for values that could be None.
    input_str = f()  # type: Optional[str]
    if input_str is not None:
       print(input_str)
@@ -58,7 +55,8 @@ Built-in types
 Functions
 *********
 
-Python 3 introduces an annotation syntax for function declarations in `PEP 3107 <https://www.python.org/dev/peps/pep-3107/>`_.
+Python 3 supports an annotation syntax for function declarations, introduced
+in `PEP 3107 <https://www.python.org/dev/peps/pep-3107/>`_.
 
 .. code-block:: python
 
@@ -67,7 +65,7 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
    # This is how you annotate a function definition.
    def stringify(num: int) -> str:
        return str(num)
-       
+
    # And here's how you specify multiple arguments.
    def plus(num1: int, num2: int) -> int:
        return num1 + num2
@@ -102,7 +100,7 @@ Python 3 introduces an annotation syntax for function declarations in `PEP 3107 
                   subject='',
                   body: List[str] = None
                   ) -> bool:
-       
+
        ...
 
 Coroutines and asyncio
@@ -282,13 +280,13 @@ Other stuff
            return sys.stdout
 
    # forward references are useful if you want to reference a class before it is designed
-   
+
    def f(foo: A) -> int:  # this will fail
        ...
-   
+
    class A:
        ...
-       
+
    # however, using the string 'A', it will pass as long as there is a class of that name later on
    def f(foo: 'A') -> int:
        ...
@@ -306,44 +304,44 @@ Mypy brings limited support for PEP 526 annotations.
 
    # annotation is similar to arguments to functions
    name: str = "Eric Idle"
-   
+
    # class instances can be annotated as follows
-   mc : MyClass = MyClass()
-   
+   mc: MyClass = MyClass()
+
    # tuple packing can be done as follows
    tu: Tuple[str, ...] = ('a', 'b', 'c')
-   
+
    # annotations are not checked at runtime
    year: int = '1972'  # error in type checking, but works at runtime
-   
+
    # these are all equivalent
    hour = 24 # type: int
    hour: int; hour = 24
    hour: int = 24
-   
+
    # you do not (!) need to initialize a variable to annotate it
    a: int # ok for type checking and runtime
-   
+
    # which is useful in conditional branches
    child: bool
    if age < 18:
        child = True
    else:
        child = False
-   
+
    # annotations for classes are for instance variables (those created in __init__ or __new__)
    class Battery:
        charge_percent: int = 100  # this is an instance variable with a default value
        capacity: int  # an instance variable without a default
-       
+
    # you can use the ClassVar annotation to make the variable a class variable instead of an instance variable.
    class Car:
        seats: ClassVar[int] = 4
        passengers: ClassVar[List[str]]
-       
+
     # You can also declare the type of an attribute in __init__
     class Box:
         def __init__(self) -> None:
             self.items: List[str] = []
-   
+
 Please see :ref:`python-36` for more on mypy's compatibility with Python 3.6's new features.
