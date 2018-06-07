@@ -16,6 +16,7 @@ class type: pass
 # Primitive types are special in generated code.
 
 class int:
+    def __init__(self, x: object) -> None: pass
     def __add__(self, n: int) -> int: pass
     def __sub__(self, n: int) -> int: pass
     def __mul__(self, n: int) -> int: pass
@@ -37,6 +38,7 @@ class str:
     def __ne__(self, x: object) -> bool: pass
 
 class float:
+    def __init__(self, x: object) -> None: pass
     def __add__(self, n: float) -> float: pass
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
