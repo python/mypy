@@ -1195,8 +1195,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                         arg_kinds: List[int],
                                         arg_names: Optional[Sequence[Optional[str]]],
                                         overload: Overloaded) -> List[CallableType]:
-        """Returns all overload call targets that having matching argument counts."""
+        """Returns all overload call targets that having matching argument counts.
+
+        If the given args contains a star-arg (*arg or **kwarg argument), this method
+        will ensure all star-arg overloads appear at the start of the list, instead
+        of their usual location."""
         matches = []  # type: List[CallableType]
+        star_matches = []  # type: List[CallableType]
+        args_have_star = ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds
         for typ in overload.items():
             formal_to_actual = map_actuals_to_formals(arg_kinds, arg_names,
                                                       typ.arg_kinds, typ.arg_names,
@@ -1204,9 +1210,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if self.check_argument_count(typ, arg_types, arg_kinds, arg_names,
                                          formal_to_actual, None, None):
-                matches.append(typ)
+                if args_have_star and (typ.is_var_arg or typ.is_kw_arg):
+                    star_matches.append(typ)
+                else:
+                    matches.append(typ)
 
-        return matches
+        return star_matches + matches
 
     def infer_overload_return_type(self,
                                    plausible_targets: List[CallableType],
@@ -1270,15 +1279,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
-            # We infer a type of 'Any'
-            return self.check_call(callee=AnyType(TypeOfAny.special_form),
-                                   args=args,
-                                   arg_kinds=arg_kinds,
-                                   arg_names=arg_names,
-                                   context=context,
-                                   arg_messages=arg_messages,
-                                   callable_name=callable_name,
-                                   object_type=object_type)
+            if all(is_subtype(ret_type, return_types[-1]) for ret_type in return_types[:-1]):
+                # The last match is a supertype of all the previous ones, so it's safe
+                # to return that inferred type.
+                return return_types[-1], inferred_types[-1]
+            else:
+                # We give up and return 'Any'.
+                return self.check_call(callee=AnyType(TypeOfAny.special_form),
+                                       args=args,
+                                       arg_kinds=arg_kinds,
+                                       arg_names=arg_names,
+                                       context=context,
+                                       arg_messages=arg_messages,
+                                       callable_name=callable_name,
+                                       object_type=object_type)
         else:
             # Success! No ambiguity; return the first match.
             return return_types[0], inferred_types[0]
