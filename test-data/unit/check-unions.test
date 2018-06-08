@@ -752,7 +752,7 @@ good: Union[List[int], List[str]]
 
 x, *y, z = lst = good
 reveal_type(x) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
-reveal_type(y) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
+reveal_type(y) # E: Revealed type is 'Union[builtins.list[builtins.int*], builtins.list[builtins.str*]]'
 reveal_type(z) # E: Revealed type is 'Union[builtins.int*, builtins.str*]'
 reveal_type(lst) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
 [builtins fixtures/list.pyi]

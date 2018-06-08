@@ -844,3 +844,16 @@ class A:
     x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
     y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/list.pyi]
+
+[case testAttrsDefaultAndInit]
+import attr
+
+@attr.s
+class C:
+   a = attr.ib(init=False, default=42)
+   b = attr.ib()  # Ok because previous attribute is init=False
+   c = attr.ib(default=44)
+   d = attr.ib(init=False)  # Ok because this attribute is init=False
+   e = attr.ib()  # E: Non-default attributes not allowed after default attributes.
+
+[builtins fixtures/bool.pyi]

@@ -5,6 +5,9 @@
 --
 --   # cmd: mypy <options>
 --
+-- Note that # flags: --some-flag IS NOT SUPPORTED.
+-- Use # cmd: mypy --some-flag ...
+--
 -- '== Return code: <value>' is added to the output when the process return code
 -- is "nonobvious" -- that is, when it is something other than 0 if there are no
 -- messages and 1 if there are.
@@ -1166,7 +1169,6 @@ s1.py:2: error: Incompatible return value type (got "int", expected "str")
 
 [case testConfigWarnUnusedSection1]
 # cmd: mypy foo.py quux.py spam/eggs.py
-# flags: --follow-imports=skip
 [file mypy.ini]
 [[mypy]
 warn_unused_configs = True
@@ -1223,3 +1225,38 @@ fail
 foo/lol.py:1: error: Name 'fail' is not defined
 emarg/foo.py:1: error: Name 'fail' is not defined
 emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
+
+[case testPackageRootEmpty]
+# cmd: mypy --package-root= a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import a.b.c
+
+[case testPackageRootNonEmpty]
+# cmd: mypy --package-root=a/ a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import b.c
+
+[case testPackageRootMultiple1]
+# cmd: mypy --package-root=. --package-root=a a/b/c.py d.py main.py
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
+[case testPackageRootMultiple2]
+# cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
+[case testCacheMap]
+-- This just checks that a valid --cache-map triple is accepted.
+-- (Errors are too verbose to check.)
+# cmd: mypy a.py --cache-map a.py a.meta.json a.data.json 
+[file a.py]
+[out]

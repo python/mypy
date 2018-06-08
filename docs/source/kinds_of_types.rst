@@ -346,7 +346,7 @@ This also works for attributes defined within methods:
 
 As a special case, you can use a non-optional type when initializing an
 attribute to ``None`` inside a class body *and* using a type comment,
-since when using a type comment, an initializer is syntacticaly required,
+since when using a type comment, an initializer is syntactically required,
 and ``None`` is used as a dummy, placeholder initializer:
 
 .. code-block:: python

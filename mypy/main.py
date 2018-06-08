@@ -303,7 +303,11 @@ def process_options(args: List[str],
                     server_options: bool = False,
                     fscache: Optional[FileSystemCache] = None,
                     ) -> Tuple[List[BuildSource], Options]:
-    """Parse command line arguments."""
+    """Parse command line arguments.
+
+    If a FileSystemCache is passed in, and package_root options are given,
+    call fscache.set_package_root() to set the cache's package root.
+    """
 
     parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
                                      fromfile_prefix_chars='@',
@@ -480,6 +484,19 @@ def process_options(args: List[str],
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
+    # --bazel changes some behaviors for use with Bazel (https://bazel.build).
+    parser.add_argument('--bazel', action='store_true', help=argparse.SUPPRESS)
+    # --package-root adds a directory below which directories are considered
+    # packages even without __init__.py.  May be repeated.
+    parser.add_argument('--package-root', metavar='ROOT', action='append', default=[],
+                        help=argparse.SUPPRESS)
+    # --cache-map FILE ... gives a mapping from source files to cache files.
+    # Each triple of arguments is a source file, a cache meta file, and a cache data file.
+    # Modules not mentioned in the file will go through cache_dir.
+    # Must be followed by another flag or by '--' (and then only file args may follow).
+    parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
+                        help=argparse.SUPPRESS)
+
     # deprecated options
     parser.add_argument('--disallow-any', dest='special-opts:disallow_any',
                         help=argparse.SUPPRESS)
@@ -633,6 +650,14 @@ def process_options(args: List[str],
             report_dir = val
             options.report_dirs[report_type] = report_dir
 
+    # Process --package-root.
+    if options.package_root:
+        process_package_roots(fscache, parser, options)
+
+    # Process --cache-map.
+    if special_opts.cache_map:
+        process_cache_map(parser, special_opts, options)
+
     # Let quick_and_dirty imply incremental.
     if options.quick_and_dirty:
         options.incremental = True
@@ -666,6 +691,63 @@ def process_options(args: List[str],
         return targets, options
 
 
+def process_package_roots(fscache: Optional[FileSystemCache],
+                          parser: argparse.ArgumentParser,
+                          options: Options) -> None:
+    """Validate and normalize package_root."""
+    if fscache is None:
+        parser.error("--package-root does not work here (no fscache)")
+    assert fscache is not None  # Since mypy doesn't know parser.error() raises.
+    # Do some stuff with drive letters to make Windows happy (esp. tests).
+    current_drive, _ = os.path.splitdrive(os.getcwd())
+    dot = os.curdir
+    dotslash = os.curdir + os.sep
+    dotdotslash = os.pardir + os.sep
+    trivial_paths = {dot, dotslash}
+    package_root = []
+    for root in options.package_root:
+        if os.path.isabs(root):
+            parser.error("Package root cannot be absolute: %r" % root)
+        drive, root = os.path.splitdrive(root)
+        if drive and drive != current_drive:
+            parser.error("Package root must be on current drive: %r" % (drive + root))
+        # Empty package root is always okay.
+        if root:
+            root = os.path.relpath(root)  # Normalize the heck out of it.
+            if root.startswith(dotdotslash):
+                parser.error("Package root cannot be above current directory: %r" % root)
+            if root in trivial_paths:
+                root = ''
+            elif not root.endswith(os.sep):
+                root = root + os.sep
+        package_root.append(root)
+    options.package_root = package_root
+    # Pass the package root on the the filesystem cache.
+    fscache.set_package_root(package_root)
+
+
+def process_cache_map(parser: argparse.ArgumentParser,
+                      special_opts: argparse.Namespace,
+                      options: Options) -> None:
+    """Validate cache_map and copy into options.cache_map."""
+    n = len(special_opts.cache_map)
+    if n % 3 != 0:
+        parser.error("--cache-map requires one or more triples (see source)")
+    for i in range(0, n, 3):
+        source, meta_file, data_file = special_opts.cache_map[i:i + 3]
+        if source in options.cache_map:
+            parser.error("Duplicate --cache-map source %s)" % source)
+        if not source.endswith('.py') and not source.endswith('.pyi'):
+            parser.error("Invalid --cache-map source %s (triple[0] must be *.py[i])" % source)
+        if not meta_file.endswith('.meta.json'):
+            parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
+                         meta_file)
+        if not data_file.endswith('.data.json'):
+            parser.error("Invalid --cache-map data_file %s (triple[2] must be *.data.json)" %
+                         data_file)
+        options.cache_map[source] = (meta_file, data_file)
+
+
 # For most options, the type of the default value set in options.py is
 # sufficient, and we don't have to do anything here.  This table
 # exists to specify types for values initialized to None or container
@@ -683,6 +765,7 @@ config_types = {
     'plugins': lambda s: [p.strip() for p in s.split(',')],
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
+    'package_root': lambda s: [p.strip() for p in s.split(',')],
 }
 
 
