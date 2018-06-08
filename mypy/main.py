@@ -148,8 +148,7 @@ def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
                        fscache=fscache)
 
 
-FOOTER = """environment variables:
-MYPYPATH     additional module search path"""
+FOOTER = "environment variables: Define MYPYPATH for additional module search path entries."
 
 
 class SplitNamespace(argparse.Namespace):
@@ -389,10 +388,10 @@ def process_options(args: List[str],
 
     platform_group = parser.add_argument_group(
         title='platform configuration',
-        description="Typecheck code assuming certain runtime conditions.")
+        description="Type check code assuming certain runtime conditions.")
     platform_group.add_argument(
         '--python-version', type=parse_version, metavar='x.y',
-        help='typecheck code assuming it will be running on Python x.y',
+        help='type check code assuming it will be running on Python x.y',
         dest='special-opts:python_version')
     platform_group.add_argument(
         '-2', '--py2', dest='python_version', action='store_const',
@@ -400,7 +399,7 @@ def process_options(args: List[str],
         help="use Python 2 mode (same as --python-version 2.7)")
     platform_group.add_argument(
         '--platform', action='store', metavar='PLATFORM',
-        help="typecheck special-cased code for the given OS platform "
+        help="type check special-cased code for the given OS platform "
              "(defaults to sys.platform)")
     platform_group.add_argument(
         '--always-true', metavar='NAME', action='append', default=[],
@@ -410,11 +409,14 @@ def process_options(args: List[str],
         help="additional variable to be considered False (may be repeated)")
 
     disallow_any_group = parser.add_argument_group(
-        title='disallow any',
+        title='Any type restrictions',
         description="Disallow the use of the 'Any' type under certain conditions.")
     disallow_any_group.add_argument(
         '--disallow-any-unimported', default=False, action='store_true',
         help="disallow Any types resulting from unfollowed imports")
+    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
+                        help="disallow subclassing values of type 'Any' when defining classes",
+                        group=disallow_any_group)
     disallow_any_group.add_argument(
         '--disallow-any-expr', default=False, action='store_true',
         help='disallow all expressions that have type Any')
@@ -453,7 +455,7 @@ def process_options(args: List[str],
                         group=untyped_group)
 
     none_group = parser.add_argument_group(
-        title='handle None and Optional',
+        title='None and Optional handling',
         description="Adjust how values of type 'None' are handled.")
     add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
                         help="don't assume arguments with default values of None are Optional",
@@ -466,10 +468,9 @@ def process_options(args: List[str],
         help="disable strict Optional checks (inverse: --strict-optional)")
     none_group.add_argument(
         '--strict-optional-whitelist', metavar='GLOB', nargs='*',
-        help="suppress strict Optional errors in all but the provided files "
-             "(experimental -- read documentation before using!).  "
-             "Implies --strict-optional.  Has the undesirable side-effect of "
-             "suppressing other errors in non-whitelisted files.")
+        help="suppress strict Optional errors in all but the provided files; "
+             "implies --strict-optional (may suppress certain other errors "
+             "in non-whitelisted files)")
 
     lint_group = parser.add_argument_group(
         title='warnings',
@@ -491,29 +492,26 @@ def process_options(args: List[str],
     strictness_group = parser.add_argument_group(
         title='other strictness checks',
         description="Other miscellaneous strictness checks.")
-    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
-                        help="disallow subclassing values of type 'Any' when defining classes",
-                        group=strictness_group)
     add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
                         help="disallow decorating typed functions with untyped decorators",
                         group=strictness_group)
 
     incremental_group = parser.add_argument_group(
         title='incremental mode',
-        description="Adjust how mypy incremental typechecks and caches modules.")
+        description="Adjust how mypy incrementally type checks and caches modules.")
     incremental_group.add_argument(
         '-i', '--incremental', action='store_true',
         help=argparse.SUPPRESS)
     incremental_group.add_argument(
         '--no-incremental', action='store_false', dest='incremental',
-        help="disable module cache, (inverse: --incremental)")
+        help="disable module cache (inverse: --incremental)")
     incremental_group.add_argument(
         '--cache-dir', action='store', metavar='DIR',
         help="store module cache info in the given folder in incremental mode "
              "(defaults to '{}')".format(defaults.CACHE_DIR))
     incremental_group.add_argument(
         '--cache-fine-grained', action='store_true',
-        help="include fine-grained dependency information in the cache")
+        help="include fine-grained dependency information in the cache for the mypy daemon")
     incremental_group.add_argument(
         '--quick-and-dirty', action='store_true',
         help="use cache even if dependencies out of date (implies --incremental)")
@@ -538,7 +536,7 @@ def process_options(args: List[str],
     internals_group.add_argument(
         '--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
         dest='shadow_file', action='append',
-        help="when encountering SOURCE_FILE, read and typecheck "
+        help="when encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
 
     error_group = parser.add_argument_group(
@@ -556,10 +554,10 @@ def process_options(args: List[str],
         title='extra analysis',
         description="Extract additional information and analysis.")
     analysis_group.add_argument(
-        '--stats', action='store_true', dest='dump_type_stats', help="dump stats")
+        '--stats', action='store_true', dest='dump_type_stats', help=argparse.SUPPRESS)
     analysis_group.add_argument(
         '--inferstats', action='store_true', dest='dump_inference_stats',
-        help="dump type inference stats")
+        help=argparse.SUPPRESS)
     analysis_group.add_argument(
         '--find-occurrences', metavar='CLASS.MEMBER',
         dest='special-opts:find_occurrences',
@@ -647,7 +645,7 @@ def process_options(args: List[str],
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
 
-    code_group = parser.add_argument_group(title='How to specify the code to type check')
+    code_group = parser.add_argument_group(title='specifying which code to type check')
     code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
                             default=[],
                             dest='special-opts:modules',
