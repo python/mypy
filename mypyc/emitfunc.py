@@ -8,7 +8,7 @@ from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadFloat, LoadErrorValue, GetAttr,
     SetAttr, LoadStatic, TupleGet, TupleSet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast,
     Unbox, Label, Value, Register, RType, RTuple, MethodCall, PyMethodCall,
-    PrimitiveOp, EmitterInterface, PySetAttr, Unreachable,
+    PrimitiveOp, EmitterInterface, PySetAttr, Unreachable, is_int_rprimitive
 )
 
 
@@ -189,7 +189,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
-        self.emit_line('%s = %s;' % (dest, op.identifier))
+        if is_int_rprimitive(op.type):
+            self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, op.identifier))
+        else:
+            self.emit_line('%s = %s;' % (dest, op.identifier))
 
     def visit_py_get_attr(self, op: PyGetAttr) -> None:
         dest = self.reg(op)

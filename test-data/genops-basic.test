@@ -829,3 +829,34 @@ L0:
     r5 = r4 + f3
     r6 = cast(float, r5)
     return r6
+
+[case testBigIntLiteral]
+def big_int() -> None:
+    a_62_bit = 4611686018427387902
+    max_62_bit = 4611686018427387903
+    b_63_bit = 4611686018427387904
+    c_63_bit = 9223372036854775806
+    max_63_bit = 9223372036854775807
+    d_64_bit = 9223372036854775808
+    max_32_bit = 2147483647
+[out]
+def big_int():
+    a_62_bit, r0, max_62_bit, r1, b_63_bit, r2, c_63_bit, r3, max_63_bit, r4, d_64_bit, r5, max_32_bit, r6 :: int
+    r7 :: None
+L0:
+    r0 = 4611686018427387902
+    a_62_bit = r0
+    r1 = 4611686018427387903
+    max_62_bit = r1
+    r2 = __integer_0 :: static
+    b_63_bit = r2
+    r3 = __integer_1 :: static
+    c_63_bit = r3
+    r4 = __integer_2 :: static
+    max_63_bit = r4
+    r5 = __integer_3 :: static
+    d_64_bit = r5
+    r6 = 2147483647
+    max_32_bit = r6
+    r7 = None
+    return r7

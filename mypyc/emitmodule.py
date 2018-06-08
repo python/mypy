@@ -80,6 +80,9 @@ class ModuleGenerator:
         for symbol in self.module.unicode_literals.values():
             self.declare_static_pyobject(symbol)
 
+        for symbol in self.module.integer_literals.values():
+            self.declare_static_pyobject(symbol)
+
         for fn in self.module.functions:
             generate_function_declaration(fn, emitter)
 
@@ -152,6 +155,12 @@ class ModuleGenerator:
                     symbol, *encode_as_c_string(unicode_literal)),
                 'if ({} == NULL)'.format(symbol),
                 '    return NULL;',
+            )
+
+        for integer_literal, symbol in self.module.integer_literals.items():
+            emitter.emit_lines(
+                '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(
+                    symbol, str(integer_literal))
             )
 
         for cl in self.module.classes:
