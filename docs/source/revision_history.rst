@@ -7,6 +7,8 @@ detailed release notes):
 - June 2018
     * Publish ``mypy`` version 0.610 on PyPI.
 
+      * Major overhaul of documentation.
+
       * Add the ``dmypy run`` command to the :ref:`daemon <mypy_daemon>`.
 
       * Partially revert the prior changes to section pattern semantics in
