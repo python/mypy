@@ -62,7 +62,7 @@ Built-in types
    x: List[int] = [1]
    x: Set[int] = {6, 7}
 
-   # Same as bove, but with type comment syntax
+   # Same as above, but with type comment syntax
    x = [1]  # type: List[int]
 
    # For mappings, we need the types of both keys and values
@@ -98,7 +98,7 @@ Python 3 supports an annotation syntax for function declarations.
    def plus(num1: int, num2: int) -> int:
        return num1 + num2
 
-   # Add default value for an arugment after the type annotation
+   # Add default value for an argument after the type annotation
    def f(num1: int, my_float: float = 3.5) -> float:
        return num1 + my_float
 

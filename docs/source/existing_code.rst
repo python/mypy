@@ -58,7 +58,7 @@ doesn't have stubs using ``# type: ignore``:
 
 You can also use a mypy configuration file, which is convenient if
 there are a large number of errors to ignore. For example, to disable
-errors about importing ``frobnicate`` and ``acme`` everwhere in your
+errors about importing ``frobnicate`` and ``acme`` everywhere in your
 codebase, use a config like this:
 
 .. code-block:: text
