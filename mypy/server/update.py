@@ -331,7 +331,7 @@ class FineGrainedBuildManager:
         # its tree loaded so that we can snapshot it for comparison.
         ensure_trees_loaded(manager, graph, [module])
 
-        # Record symbol table snaphot of old version the changed module.
+        # Record symbol table snapshot of old version the changed module.
         old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
@@ -446,7 +446,7 @@ def update_module_isolated(module: str,
                            force_removed: bool) -> UpdateResult:
     """Build a new version of one changed module only.
 
-    Don't propagate changes to elsewhere in the program. Raise CompleError on
+    Don't propagate changes to elsewhere in the program. Raise CompileError on
     encountering a blocking error.
 
     Args:

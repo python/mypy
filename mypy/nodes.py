@@ -2223,7 +2223,7 @@ class TypeInfo(SymbolNode):
         # Protocol members are names of all attributes/methods defined in a protocol
         # and in all its supertypes (except for 'object').
         members = set()  # type: Set[str]
-        assert self.mro, "This property can be only acessed after MRO is (re-)calculated"
+        assert self.mro, "This property can be only accessed after MRO is (re-)calculated"
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name in base.names:
@@ -2390,7 +2390,7 @@ class TypeInfo(SymbolNode):
         # not be loaded until after a class in the mro has changed its
         # bases, which causes the mro to change. If we recomputed our
         # mro, we would compute the *new* mro, which leaves us with no
-        # way to detact that the mro has changed! Thus we need to make
+        # way to detect that the mro has changed! Thus we need to make
         # sure to load the original mro so that once the class is
         # rechecked, it can tell that the mro has changed.
         ti._mro_refs = data['mro']

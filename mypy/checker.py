@@ -2177,12 +2177,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
                                 rvalue: Expression, context: Context) -> Tuple[Type, bool]:
-        """Type member assigment.
+        """Type member assignment.
 
         This defers to check_simple_assignment, unless the member expression
         is a descriptor, in which case this checks descriptor semantics as well.
 
-        Return the inferred rvalue_type and whether to infer anything about the attribute type
+        Return the inferred rvalue_type and whether to infer anything about the attribute type.
         """
         # Descriptors don't participate in class-attribute access
         if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
@@ -3246,7 +3246,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not self.current_node_deferred:
             for var, context in partial_types.items():
                 # If we require local partial types, there are a few exceptions where
-                # we fall back to inferring just "None" as the type from a None initaliazer:
+                # we fall back to inferring just "None" as the type from a None initializer:
                 #
                 # 1. If all happens within a single function this is acceptable, since only
                 #    the topmost function is a separate target in fine-grained incremental mode.

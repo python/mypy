@@ -56,7 +56,7 @@ class Attribute:
         init_type = self.info[self.name].type
 
         if self.converter_name:
-            # When a converter is set the init_type is overriden by the first argument
+            # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
             converter = lookup_qualified_stnode(ctx.api.modules, self.converter_name, True)
             if not converter:

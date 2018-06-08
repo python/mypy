@@ -998,7 +998,7 @@ def usage(exit_nonzero: bool=True) -> None:
                           respect __all__)
           --include-private
                           generate stubs for objects and members considered private
-                          (single leading undescore and no trailing underscores)
+                          (single leading underscore and no trailing underscores)
           --doc-dir PATH  use .rst documentation in PATH (this may result in
                           better stubs in some cases; consider setting this to
                           DIR/Python-X.Y.Z/Doc/library)

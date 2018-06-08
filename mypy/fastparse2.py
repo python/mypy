@@ -11,7 +11,7 @@ This module allows us to skip the conversion step, saving us some time.
 
 The reason why this file is not easily merged with mypy.fastparse despite the large amount
 of redundancy is because the Python 2 AST and the Python 3 AST nodes belong to two completely
-different class heirarchies, which made it difficult to write a shared visitor between the
+different class hierarchies, which made it difficult to write a shared visitor between the
 two in a typesafe way.
 """
 from functools import wraps

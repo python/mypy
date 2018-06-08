@@ -585,7 +585,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         if not defn.items:
             # It was not any kind of overload def after all. We've visited the
-            # redfinitions already.
+            # redefinitions already.
             return
 
         if self.type and not self.is_func_scope():
@@ -862,7 +862,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
                 if isinstance(analyzed, PromoteExpr):
-                    # _promote class decorator (undocumented faeture).
+                    # _promote class decorator (undocumented feature).
                     promote_target = analyzed.type
         if not promote_target:
             promotions = (TYPE_PROMOTIONS_PYTHON3 if self.options.python_version[0] >= 3
