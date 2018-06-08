@@ -852,6 +852,10 @@ def reprocess_nodes(manager: BuildManager,
 
     nodes = sorted(nodeset, key=key)
 
+    options = graph[module_id].options
+    manager.errors.set_file_ignored_lines(
+        file_node.path, file_node.ignored_lines, options.ignore_errors)
+
     targets = set()
     for node in nodes:
         target = target_from_node(module_id, node.node)
@@ -868,7 +872,6 @@ def reprocess_nodes(manager: BuildManager,
 
     # Second pass of semantic analysis. We don't redo the first pass, because it only
     # does local things that won't go stale.
-    options = graph[module_id].options
     for deferred in nodes:
         with semantic_analyzer.file_context(
                 file_node=file_node,
