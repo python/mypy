@@ -4,6 +4,15 @@ Revision history
 List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
 detailed release notes):
 
+- June 2018
+    * Publish ``mypy`` version 0.610 on PyPI.
+
+      * Add the ``dmypy run`` command to the :ref:`daemon <mypy_daemon>`.
+
+      * Partially revert the prior changes to section pattern semantics in
+        configuration files
+        (:ref:`docs <config-file>` and :ref:`more docs <per-module-flags>`).
+
 - May 2018
     * Publish ``mypy`` version 0.600 on PyPI.
 
