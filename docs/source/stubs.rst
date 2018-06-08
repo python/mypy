@@ -15,7 +15,7 @@ Creating a stub
 
 Here is an overview of how to create a stub file:
 
-* Write a stub file for the library (or an arbirary module) and store it as
+* Write a stub file for the library (or an arbitrary module) and store it as
   a ``.pyi`` file in the same directory as the library module.
 * Alternatively, put your stubs (``.pyi`` files) in a directory
   reserved for stubs (e.g., ``myproject/stubs``). In this case you
