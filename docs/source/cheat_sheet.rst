@@ -3,7 +3,8 @@
 Type hints cheat sheet (Python 2)
 =================================
 
-This document is a quick cheat sheet showing how the `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+This document is a quick cheat sheet showing how the
+`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
 language represents various common types in Python 2.
 
 .. note::
@@ -38,17 +39,15 @@ Built-in types
 
    # For tuples, we specify the types of all the elements
    x = (3, "yes", 7.5)  # type: Tuple[int, str, float]
-   # Empty Tuple types are a bit special
-   x = ()  # type: Tuple[()]
 
    # For textual data, use Text
    # ("Text" means  "unicode" in Python 2 and "str" in Python 3)
-   x = ["string", u"unicode"]  # type: List[Text]
+   x = [u"one", u"two"]  # type: List[Text]
 
    # Use Optional[] for values that could be None
-   input_str = f()  # type: Optional[str]
-   if input_str is not None:
-      print input_str
+   x = some_function()  # type: Optional[str]
+   if x is not None:
+      print x
 
 
 Functions
@@ -243,15 +242,6 @@ Miscellaneous
 
    # "typing.Match" describes regex matches from the re module
    x = re.match(r'[0-9]+', "15")  # type: Match[str]
-
-   # You can use "AnyStr" to indicate that any string type will work,
-   # and the return type should match argument types
-   def concat(a, b):
-       # type: (AnyStr, AnyStr) -> AnyStr
-       return a + b
-
-   concat(u"foo", u"bar")  # type: unicode
-   concat("foo", "bar")  # type: str
 
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call (IO[] does not

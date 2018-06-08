@@ -70,17 +70,15 @@ Built-in types
 
    # For tuples, we specify the types of all the elements
    x: Tuple[int, str, float] = (3, "yes", 7.5)
-   # Empty Tuple types are a bit special
-   x: Tuple[()] = ()
 
    # For textual data, use Text if you care about Python 2 compatibility
    # ("Text" means "unicode" in Python 2 and "str" in Python 3)
    x: List[Text] = ["string", u"unicode"]
 
    # Use Optional[] for values that could be None
-   input_str: Optional[str] = f()
-   if input_str is not None:
-       print(input_str)
+   x: Optional[str] = some_function()
+   if x is not None:
+       print(x)
 
 
 Functions
@@ -273,35 +271,13 @@ See :ref:`async-and-await` for the full detail on typing coroutines and asynchro
    import asyncio
    from typing import Generator, Any
 
-   # A Python 3.5+ coroutine is typed like a normal function
+   # A coroutine is typed like a normal function
    async def countdown35(tag: str, count: int) -> str:
        while count > 0:
            print('T-minus {} ({})'.format(count, tag))
            await asyncio.sleep(0.1)
            count -= 1
        return "Blastoff!"
-
-   async def async2(obj: object) -> str:
-       return "placeholder"
-
-   # A generator-based coroutine created with @asyncio.coroutine should have a
-   # return type of Generator[Any, None, T], where T is the type it returns
-   @asyncio.coroutine
-   def countdown34(tag: str, count: int) -> Generator[Any, None, str]:
-       while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
-           yield from asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-   # Mypy currently does not support converting functions into generator-based
-   # coroutines in Python 3.4, so you need to add a 'yield' to make it
-   # typecheck
-   @asyncio.coroutine
-   def async1(obj: object) -> Generator[None, None, str]:
-       if False:
-           yield
-       return "placeholder"
 
 
 Miscellaneous
@@ -315,15 +291,6 @@ Miscellaneous
 
    # "typing.Match" describes regex matches from the re module
    x: Match[str] = re.match(r'[0-9]+', "15")
-
-   # You can use "AnyStr" to indicate that any string type will work
-   # but types should not be mixed
-   def full_name(first: AnyStr, last: AnyStr) -> AnyStr:
-       return first + last
-
-   full_name('Jon','Doe')  # Both str; ok
-   full_name(b'Bill', b'Bit')  # Both bytes; ok
-   full_name(b'Terry', 'Trouble')  # Different str types; error
 
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call (IO[] does not
