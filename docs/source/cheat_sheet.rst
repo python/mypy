@@ -33,20 +33,19 @@ Built-in types
    x = [1] # type: List[int]
    x = set([6, 7]) # type: Set[int]
 
-   # Empty Tuple types are a bit special
-   x = ()  # type: Tuple[()]
-
    # For mappings, we need the types of both keys and values.
    x = dict(field=2.0) # type: Dict[str, float]
 
    # For tuples, we specify the types of all the elements.
    x = (3, "yes", 7.5) # type: Tuple[int, str, float]
+   # Empty Tuple types are a bit special
+   x = ()  # type: Tuple[()]
 
    # For textual data, use Text.
-   # This is `unicode` in Python 2 and `str` in Python 3.
+   # This is "unicode" in Python 2 and "str" in Python 3.
    x = ["string", u"unicode"] # type: List[Text]
 
-   # Use Optional for values that could be None.
+   # Use Optional[] for values that could be None.
    input_str = f() # type: Optional[str]
    if input_str is not None:
       print input_str
@@ -137,7 +136,7 @@ When you're puzzled or when things are complicated
             # type: (*str, **str) -> str
             request = make_request(*args, **kwargs)
             return self.do_api_query(request)
-   
+
    # Use `ignore` to suppress type-checking on a given line, when your
    # code confuses mypy or runs into an outright bug in mypy.
    # Good practice is to comment every `ignore` with a bug link
@@ -254,4 +253,3 @@ Other stuff
            return sys.stdout
 
    # TODO: add TypeVar and a simple generic function
-
