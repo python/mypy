@@ -852,9 +852,6 @@ def reprocess_nodes(manager: BuildManager,
 
     nodes = sorted(nodeset, key=key)
 
-    # TODO: ignore_all argument to set_file_ignored_lines
-    manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
-
     targets = set()
     for node in nodes:
         target = target_from_node(module_id, node.node)
