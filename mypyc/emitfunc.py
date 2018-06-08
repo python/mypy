@@ -5,10 +5,10 @@ from typing import Optional, List
 from mypyc.common import REG_PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
-    FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadFloat, LoadErrorValue, GetAttr,
-    SetAttr, LoadStatic, TupleGet, TupleSet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast,
-    Unbox, Label, Value, Register, RType, RTuple, MethodCall, PyMethodCall,
-    PrimitiveOp, EmitterInterface, PySetAttr, Unreachable, is_int_rprimitive
+    FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
+    LoadStatic, TupleGet, TupleSet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast, Unbox,
+    Label, Value, Register, RType, RTuple, MethodCall, PyMethodCall, PrimitiveOp, EmitterInterface,
+    PySetAttr, Unreachable, is_int_rprimitive
 )
 
 
@@ -148,10 +148,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_load_int(self, op: LoadInt) -> None:
         dest = self.reg(op)
         self.emit_line('%s = %d;' % (dest, op.value * 2))
-
-    def visit_load_float(self, op: LoadFloat) -> None:
-        dest = self.reg(op)
-        self.emit_line('%s = PyFloat_FromDouble(%f);' % (dest, op.value))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         if isinstance(op.type, RTuple):

@@ -14,7 +14,7 @@ It would be translated to something that conceptually looks like this:
    return r3
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 
 from mypy.nodes import (
     Node, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr, IntExpr, NameExpr, LDEF, Var,
@@ -37,16 +37,14 @@ from mypy.subtypes import is_named_instance
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ops import (
-    BasicBlock, Environment, Op, LoadInt, LoadFloat, RType, Value, Register, Label, Return, FuncIR,
-    Assign,
-    Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple,
-    Unreachable, TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic,
-    PyGetAttr, PyCall, ROptional, c_module_name, PyMethodCall, MethodCall, INVALID_VALUE,
-    INVALID_LABEL, int_rprimitive, is_int_rprimitive, float_rprimitive, is_float_rprimitive,
-    bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, is_dict_rprimitive,
-    str_rprimitive, is_tuple_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive,
-    object_rprimitive, PrimitiveOp, ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive,
-    PySetAttr,
+    BasicBlock, Environment, Op, LoadInt, RType, Value, Register, Label, Return, FuncIR, Assign,
+    Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable, TupleGet, TupleSet,
+    ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, PyGetAttr, PyCall, ROptional,
+    c_module_name, PyMethodCall, MethodCall, INVALID_VALUE, INVALID_LABEL, int_rprimitive,
+    is_int_rprimitive, float_rprimitive, is_float_rprimitive, bool_rprimitive, list_rprimitive,
+    is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
+    tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
+    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, PySetAttr,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, new_list_op
@@ -62,8 +60,7 @@ def build_ir(module: MypyFile,
     builder = IRBuilder(types, mapper)
     module.accept(builder)
 
-    return ModuleIR(builder.imports, builder.unicode_literals, builder.integer_literals,
-                    builder.functions, builder.classes)
+    return ModuleIR(builder.imports, builder.literals, builder.functions, builder.classes)
 
 
 class Mapper:
@@ -167,17 +164,8 @@ class IRBuilder(NodeVisitor[Value]):
         self.mapper = mapper
         self.imports = []  # type: List[str]
 
-        # Maps unicode literals to the static c name for that literal
-        self.unicode_literals = {}  # type: Dict[str, str]
-
-        # Maps integer literals to the static c name for that literal
-        self.integer_literals = {}  # type: Dict[int, str]
-
-        # TODO: For now, separate maps for unicode and integer literals is
-        #       okay. But when adding more types of literals, consider
-        #       combining the multiple maps into one. The map would have a
-        #       type something like:
-        #           Dict[Union[int, str, float], str]
+        # Maps integer, float, and unicode literals to the static c name for that literal
+        self.literals = {}  # type: Dict[Union[int, float, str], str]
 
         self.current_module_name = None  # type: Optional[str]
 
@@ -646,7 +634,7 @@ class IRBuilder(NodeVisitor[Value]):
         return self.add(LoadInt(expr.value))
 
     def visit_float_expr(self, expr: FloatExpr) -> Value:
-        return self.add(LoadFloat(expr.value))
+        return self.load_static_float(expr.value)
 
     def is_native_name_expr(self, expr: NameExpr) -> bool:
         # TODO later we want to support cross-module native calls too
@@ -1146,10 +1134,17 @@ class IRBuilder(NodeVisitor[Value]):
 
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer value into a register."""
-        if value not in self.integer_literals:
-            self.integer_literals[value] = '__integer_' + str(len(self.integer_literals))
-        static_symbol = self.integer_literals[value]
+        if value not in self.literals:
+            self.literals[value] = '__integer_' + str(len(self.literals))
+        static_symbol = self.literals[value]
         return self.add(LoadStatic(int_rprimitive, static_symbol))
+
+    def load_static_float(self, value: float) -> Value:
+        """Loads a static float value into a register."""
+        if value not in self.literals:
+            self.literals[value] = '__float_' + str(len(self.literals))
+        static_symbol = self.literals[value]
+        return self.add(LoadStatic(float_rprimitive, static_symbol))
 
     def load_static_unicode(self, value: str) -> Value:
         """Loads a static unicode value into a register.
@@ -1157,9 +1152,9 @@ class IRBuilder(NodeVisitor[Value]):
         This is useful for more than just unicode literals; for example, method calls
         also require a PyObject * form for the name of the method.
         """
-        if value not in self.unicode_literals:
-            self.unicode_literals[value] = '__unicode_' + str(len(self.unicode_literals))
-        static_symbol = self.unicode_literals[value]
+        if value not in self.literals:
+            self.literals[value] = '__unicode_' + str(len(self.literals))
+        static_symbol = self.literals[value]
         return self.add(LoadStatic(str_rprimitive, static_symbol))
 
     def coerce(self, src: Value, target_type: RType, line: int) -> Value:

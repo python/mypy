@@ -77,10 +77,7 @@ class ModuleGenerator:
 
         self.declare_imports(self.module.imports)
 
-        for symbol in self.module.unicode_literals.values():
-            self.declare_static_pyobject(symbol)
-
-        for symbol in self.module.integer_literals.values():
+        for symbol in self.module.literals.values():
             self.declare_static_pyobject(symbol)
 
         for fn in self.module.functions:
@@ -149,19 +146,26 @@ class ModuleGenerator:
                            '    return NULL;')
         self.generate_imports_init_section(self.module.imports, emitter)
 
-        for unicode_literal, symbol in self.module.unicode_literals.items():
-            emitter.emit_lines(
-                '{} = PyUnicode_FromStringAndSize({}, {});'.format(
-                    symbol, *encode_as_c_string(unicode_literal)),
-                'if ({} == NULL)'.format(symbol),
-                '    return NULL;',
-            )
-
-        for integer_literal, symbol in self.module.integer_literals.items():
-            emitter.emit_lines(
-                '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(
-                    symbol, str(integer_literal))
-            )
+        for literal, symbol in self.module.literals.items():
+            if isinstance(literal, int):
+                emitter.emit_lines(
+                    '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(
+                        symbol, str(literal))
+                )
+            elif isinstance(literal, float):
+                emitter.emit_lines(
+                    '{} = PyFloat_FromDouble({});'.format(symbol, str(literal))
+                )
+            elif isinstance(literal, str):
+                emitter.emit_lines(
+                    '{} = PyUnicode_FromStringAndSize({}, {});'.format(
+                        symbol, *encode_as_c_string(literal)),
+                    'if ({} == NULL)'.format(symbol),
+                    '    return NULL;',
+                )
+            else:
+                assert False, ('Literals must be integers, floating point numbers, or strings,',
+                               'but the provided literal is of type {}'.format(type(literal)))
 
         for cl in self.module.classes:
             name = cl.name

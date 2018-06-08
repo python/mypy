@@ -811,24 +811,24 @@ def assign_and_return_float_sum() -> float:
     f3 = 3.0
     return f1 * f2 + f3
 [out]
-def assign_and_return_float_sum():
-    f1, r0, f2, r1, f3, r2 :: float
-    r3 :: object
-    r4 :: float
-    r5 :: object
-    r6 :: float
-L0:
-    r0 = 1.000000
-    f1 = r0
-    r1 = 2.000000
-    f2 = r1
-    r2 = 3.000000
-    f3 = r2
-    r3 = f1 * f2
-    r4 = cast(float, r3)
-    r5 = r4 + f3
-    r6 = cast(float, r5)
-    return r6
+def assign_and_return_float_sum():            
+    f1, r0, f2, r1, f3, r2 :: float           
+    r3 :: object                              
+    r4 :: float                               
+    r5 :: object                              
+    r6 :: float                               
+L0:                                           
+    r0 = __float_0 :: static                  
+    f1 = r0                                   
+    r1 = __float_1 :: static                  
+    f2 = r1                                   
+    r2 = __float_2 :: static                  
+    f3 = r2                                   
+    r3 = f1 * f2                              
+    r4 = cast(float, r3)                      
+    r5 = r4 + f3                              
+    r6 = cast(float, r5)                      
+    return r6                                 
 
 [case testBigIntLiteral]
 def big_int() -> None:

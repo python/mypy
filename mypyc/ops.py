@@ -965,26 +965,6 @@ class LoadInt(RegisterOp):
         return visitor.visit_load_int(self)
 
 
-class LoadFloat(RegisterOp):
-    """dest = float"""
-
-    error_kind = ERR_FALSE
-
-    def __init__(self, value: float, line: int = -1) -> None:
-        super().__init__(line)
-        self.value = value
-        self.type = float_rprimitive
-
-    def sources(self) -> List[Value]:
-        return []
-
-    def to_str(self, env: Environment) -> str:
-        return env.format('%r = %f', self, self.value)
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_load_float(self)
-
-
 class LoadErrorValue(RegisterOp):
     """dest = <error value for type>"""
 
@@ -1272,13 +1252,11 @@ class ModuleIR:
 
     def __init__(self,
             imports: List[str],
-            unicode_literals: Dict[str, str],
-            integer_literals: Dict[int, str],
+            literals: Dict[Union[int, float, str], str],
             functions: List[FuncIR],
             classes: List[ClassIR]) -> None:
         self.imports = imports[:]
-        self.unicode_literals = unicode_literals
-        self.integer_literals = integer_literals
+        self.literals = literals
         self.functions = functions
         self.classes = classes
 
@@ -1317,10 +1295,6 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_int(self, op: LoadInt) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_load_float(self, op: LoadFloat) -> T:
         raise NotImplementedError
 
     @abstractmethod
