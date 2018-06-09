@@ -13,7 +13,7 @@ in later passes. Examples of these include TypeVar and NamedTuple
 definitions, as these look like regular assignments until we are able to
 bind names, which only happens in pass 2.
 
-This pass also infers the reachability of certain if staments, such as
+This pass also infers the reachability of certain if statements, such as
 those with platform checks.
 """
 

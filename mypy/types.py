@@ -269,7 +269,7 @@ class TypeList(Type):
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Sythetic types don't serialize"
+        assert False, "Synthetic types don't serialize"
 
 
 _dummy = object()  # type: Any
@@ -812,7 +812,7 @@ class CallableType(FunctionLike):
     def max_possible_positional_args(self) -> int:
         """Returns maximum number of positional arguments this method could possibly accept.
 
-        This takes into acount *arg and **kwargs but excludes keyword-only args."""
+        This takes into account *arg and **kwargs but excludes keyword-only args."""
         if self.is_var_arg or self.is_kw_arg:
             return sys.maxsize
         blacklist = (ARG_NAMED, ARG_NAMED_OPT)
@@ -1211,7 +1211,7 @@ class StarType(Type):
         return visitor.visit_star_type(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Sythetic types don't serialize"
+        assert False, "Synthetic types don't serialize"
 
 
 class UnionType(Type):
@@ -1666,7 +1666,7 @@ class TypeTranslator(TypeVisitor[Type]):
             if isinstance(new, CallableType):
                 items.append(new)
             else:
-                raise RuntimeError('CallableType expectected, but got {}'.format(type(new)))
+                raise RuntimeError('CallableType expected, but got {}'.format(type(new)))
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
@@ -2050,7 +2050,7 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
 
 
 def get_typ_args(tp: Type) -> List[Type]:
-    """Get all type arguments from a parameterizable Type."""
+    """Get all type arguments from a parametrizable Type."""
     if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
         return []
     typ_args = (tp.args if isinstance(tp, Instance) else
@@ -2060,7 +2060,7 @@ def get_typ_args(tp: Type) -> List[Type]:
 
 
 def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
-    """Return a copy of a parameterizable Type with arguments set to new_args."""
+    """Return a copy of a parametrizable Type with arguments set to new_args."""
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):

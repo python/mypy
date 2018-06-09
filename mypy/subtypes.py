@@ -608,7 +608,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
         The two calls are similar in that they both check the function arguments in
         the same direction: they both run `is_subtype(argument_from_g, argument_from_f)`.
 
-        However, the two calls differ in which direction they check things likee
+        However, the two calls differ in which direction they check things like
         keyword arguments. For example, suppose f and g are defined like so:
 
             def f(x: int, *y: int) -> int: ...

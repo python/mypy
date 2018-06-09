@@ -156,7 +156,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = function_type(node, self.named_type('builtins.function'))
         elif isinstance(node, OverloadedFuncDef) and node.type is not None:
             # node.type is None when there are multiple definitions of a function
-            # and it's decorated by somthing that is not typing.overload
+            # and it's decorated by something that is not typing.overload
             result = node.type
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
@@ -536,7 +536,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if specified
             arg_messages: TODO
             callable_name: Fully-qualified name of the function/method to call,
-                or None if unavaiable (examples: 'builtins.open', 'typing.Mapping.get')
+                or None if unavailable (examples: 'builtins.open', 'typing.Mapping.get')
             object_type: If callable_name refers to a method, the type of the object
                 on which the method is being called
         """
@@ -2831,7 +2831,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if not isinstance(typ, AnyType):
                     var = e.info.names[name].node
                     if isinstance(var, Var):
-                        # Inline TypeCheker.set_inferred_type(),
+                        # Inline TypeChecker.set_inferred_type(),
                         # without the lvalue.  (This doesn't really do
                         # much, since the value attribute is defined
                         # to have type Any in the typeshed stub.)
