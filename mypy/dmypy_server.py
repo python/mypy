@@ -172,14 +172,14 @@ class Server:
                             resp = {'error': "Command is not a string"}
                         else:
                             command = data.pop('command')
-                        try:
-                            resp = self.run_command(command, data)
-                        except Exception:
-                            # If we are crashing, report the crash to the client
-                            tb = traceback.format_exception(*sys.exc_info())  # type: ignore
-                            resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                            conn.sendall(json.dumps(resp).encode('utf8'))
-                            raise
+                            try:
+                                resp = self.run_command(command, data)
+                            except Exception:
+                                # If we are crashing, report the crash to the client
+                                tb = traceback.format_exception(*sys.exc_info())
+                                resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                conn.sendall(json.dumps(resp).encode('utf8'))
+                                raise
                     try:
                         conn.sendall(json.dumps(resp).encode('utf8'))
                     except OSError as err:
@@ -195,7 +195,7 @@ class Server:
             shutil.rmtree(self.sock_directory)
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
-                traceback.print_exception(*exc_info)  # type: ignore
+                traceback.print_exception(*exc_info)
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
