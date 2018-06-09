@@ -7139,3 +7139,55 @@ def f() -> int: return 0
 def f() -> str: return '0'
 [out]
 ==
+
+[case testRefreshIgnoreErrors1]
+[file mypy.ini]
+[[mypy]
+[[mypy-b]
+ignore_errors = True
+[file a.py]
+y = '1'
+[file a.py.2]
+y = 1
+[file b.py]
+from a import y
+def fu() -> None:
+    1+'lurr'
+    y
+[out]
+==
+
+[case testRefreshIgnoreErrors2]
+[file mypy.ini]
+[[mypy]
+[[mypy-b]
+ignore_errors = True
+[file b.py]
+def fu() -> int:
+    1+'lurr'
+    return 1
+[file b.py.2]
+def fu() -> int:
+    1+'lurr'
+    return 2
+[out]
+==
+
+
+[case testRefreshOptions]
+[file mypy.ini]
+[[mypy]
+disallow_any_generics = True
+[[mypy-b]
+disallow_any_generics = False
+[file a.py]
+y = '1'
+[file a.py.2]
+y = 1
+[file b.py]
+from typing import List
+from a import y
+x = []  # type: List
+[builtins fixtures/list.pyi]
+[out]
+==
