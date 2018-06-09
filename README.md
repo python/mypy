@@ -1,3 +1,5 @@
+![mypy logo](https://github.com/python/mypy/blob/master/mypy-logo.png)
+
 Mypy: Optional Static Typing for Python
 =======================================
 
