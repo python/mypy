@@ -1,4 +1,4 @@
-![mypy logo](https://github.com/python/mypy/blob/master/mypy-logo.png)
+<img src="http://mypy-lang.org/static/mypy_light.svg" alt="mypy logo" width="200px"/>
 
 Mypy: Optional Static Typing for Python
 =======================================
