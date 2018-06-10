@@ -3188,14 +3188,20 @@ def any_causes_overload_ambiguity(items: List[CallableType],
             matching_formals_unfiltered = [(item_idx, lookup[arg_idx])
                                            for item_idx, lookup in enumerate(actual_to_formal)
                                            if lookup[arg_idx]]
+
+            matching_returns = []
             matching_formals = []
             for item_idx, formals in matching_formals_unfiltered:
-                # Pair every callable to the matching formal(s)
+                matched_callable = items[item_idx]
+                matching_returns.append(matched_callable.ret_type)
+
+                # Note: if an actual maps to multiple formals of differing types within
+                # a single callable, then we know at least one of those formals must be
+                # a different type then the formal(s) in some other callable.
+                # So it's safe to just append everything to the same list.
                 for formal in formals:
-                    matching_formals.append((item_idx, items[item_idx].arg_types[formal]))
-            if (not all_same_types(t for _, t in matching_formals) and
-                    not all_same_types(items[idx].ret_type
-                                       for idx, _ in matching_formals)):
+                    matching_formals.append(matched_callable.arg_types[formal])
+            if not all_same_types(matching_formals) and not all_same_types(matching_returns):
                 # Any maps to multiple different types, and the return types of these items differ.
                 return True
     return False
