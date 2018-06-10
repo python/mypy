@@ -19,6 +19,7 @@ dmypy.json
 # Packages
 *.egg
 *.egg-info
+*.eggs
 
 # IDEs
 .idea

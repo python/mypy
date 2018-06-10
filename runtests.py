@@ -83,7 +83,7 @@ class Driver:
         if not pytest_files:
             return
         pytest_args = pytest_files + self.arglist + self.pyt_arglist
-        always_append = ['-n', 'auto', '--cov-append', ' --cov-report=']
+        always_append = ['-n', 'auto', '--cov-append', '--cov-report=']
         if coverage and self.coverage:
             args = [sys.executable, '-m', 'pytest', '--cov=mypy'] + always_append + pytest_args
         else:
