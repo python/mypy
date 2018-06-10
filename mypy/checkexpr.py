@@ -3190,11 +3190,9 @@ def any_causes_overload_ambiguity(items: List[CallableType],
                                            if lookup[arg_idx]]
             matching_formals = []
             for item_idx, formals in matching_formals_unfiltered:
-                if len(formals) > 1:
-                    # An actual maps to multiple formals -- give up as too
-                    # complex, just assume it overlaps.
-                    return True
-                matching_formals.append((item_idx, items[item_idx].arg_types[formals[0]]))
+                # Pair every callable to the matching formal(s)
+                for formal in formals:
+                    matching_formals.append((item_idx, items[item_idx].arg_types[formal]))
             if (not all_same_types(t for _, t in matching_formals) and
                     not all_same_types(items[idx].ret_type
                                        for idx, _ in matching_formals)):
