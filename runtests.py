@@ -83,10 +83,11 @@ class Driver:
         if not pytest_files:
             return
         pytest_args = pytest_files + self.arglist + self.pyt_arglist
+        always_append = ['-n', 'auto', '--cov-append', ' --cov-report=']
         if coverage and self.coverage:
-            args = [sys.executable, '-m', 'pytest', '--cov=mypy'] + pytest_args
+            args = [sys.executable, '-m', 'pytest', '--cov=mypy'] + always_append + pytest_args
         else:
-            args = [sys.executable, '-m', 'pytest'] + pytest_args
+            args = [sys.executable, '-m', 'pytest', ] + always_append + pytest_args
 
         self.waiter.add(LazySubprocess('pytest', args, env=self.env,
                                        passthrough=self.verbosity),

@@ -33,3 +33,5 @@ htmlcov
 
 # pytest cache
 .pytest_cache/
+
+.tox
