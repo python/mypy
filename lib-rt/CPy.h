@@ -181,6 +181,21 @@ inline bool CPyTagged_IsAddOverflow(CPyTagged sum, CPyTagged left, CPyTagged rig
     return (long long)(sum ^ left) < 0 && (long long)(sum ^ right) < 0;
 }
 
+static CPyTagged CPyTagged_Negate(CPyTagged num) {
+    if (CPyTagged_CheckShort(num) && num != (CPyTagged) (1LL << 63)) {
+        // The only possibility of an overflow error happening when negating a short is if we
+        // attempt to negate the most negative number.
+        return -num;
+    }
+    PyObject *num_obj = CPyTagged_AsObject(num);
+    PyObject *result = PyNumber_Negative(num_obj);
+    if (result == NULL) {
+        CPyError_OutOfMemory();
+    }
+    Py_DECREF(num_obj);
+    return CPyTagged_StealFromObject(result);
+}
+
 static CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     // TODO: Use clang/gcc extension __builtin_saddll_overflow instead.
     if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)) {
