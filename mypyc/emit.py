@@ -134,7 +134,11 @@ class Emitter:
 
     def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
                   custom_message: Optional[str] = None) -> None:
-        """Emit code for casting a value of given type (works for boxed types only).
+        """Emit code for casting a value of given type.
+
+        Somewhat strangely, this supports unboxed types but only
+        operates on boxed versions.  This is necessary to properly
+        handle types such as Optional[int] in compatability glue.
 
         Assign NULL (error value) to dest if the value has an incompatible type.
 
@@ -145,6 +149,7 @@ class Emitter:
             dest: Name of target C variable
             typ: Type of value
             declare_dest: If True, also declare the variable 'dest'
+
         """
         if custom_message is not None:
             err = custom_message
@@ -153,7 +158,7 @@ class Emitter:
                 self.pretty_name(typ))
         # TODO: Verify refcount handling.
         if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_float_rprimitive(typ) or
-                is_str_rprimitive(typ)):
+                is_str_rprimitive(typ) or is_int_rprimitive(typ) or is_bool_rprimitive(typ)):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             if is_list_rprimitive(typ):
@@ -164,6 +169,10 @@ class Emitter:
                 prefix = 'PyFloat'
             elif is_str_rprimitive(typ):
                 prefix = 'PyUnicode'
+            elif is_int_rprimitive(typ):
+                prefix = 'PyLong'
+            elif is_bool_rprimitive(typ):
+                prefix = 'PyBool'
             else:
                 assert False, prefix
             self.emit_lines(

@@ -310,6 +310,10 @@ def g(x: Optional[A]) -> int:
     if x is not None:
         return 2
     return 3
+
+def h(x: Optional[int], y: Optional[bool]) -> None:
+    pass
+
 [file driver.py]
 from native import f, g, A
 a = A()
