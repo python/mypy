@@ -2,7 +2,7 @@
 
 import re
 
-from typing import Set, List
+from typing import Set
 
 from mypy import build
 from mypy.build import BuildSource

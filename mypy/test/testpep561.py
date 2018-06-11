@@ -6,7 +6,7 @@ from typing import Iterator, List
 from unittest import TestCase, main
 
 import mypy.api
-from mypy.build import FindModuleCache, _get_site_packages_dirs
+from mypy.build import _get_site_packages_dirs
 from mypy.test.config import package_path
 from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
