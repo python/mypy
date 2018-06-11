@@ -28,6 +28,7 @@ files = [
     'genops-optional.test',
     'genops-tuple.test',
     'genops-any.test',
+    'genops-generics.test',
 ]
 
 

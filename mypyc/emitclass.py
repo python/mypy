@@ -8,6 +8,7 @@ from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import ClassIR, FuncIR, RType, Environment, type_struct_name, object_rprimitive
+from mypyc.sametype import is_same_type
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
@@ -395,6 +396,8 @@ def generate_setter(cl: ClassIR,
     emitter.emit_line('if (value != NULL) {')
     if rtype.is_unboxed:
         emitter.emit_unbox('value', 'tmp', rtype, custom_failure='return -1;', declare_dest=True)
+    elif is_same_type(rtype, object_rprimitive):
+        emitter.emit_line('PyObject *tmp = value;')
     else:
         emitter.emit_cast('value', 'tmp', rtype, declare_dest=True)
         emitter.emit_lines('if (!tmp)',

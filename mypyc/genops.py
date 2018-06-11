@@ -31,9 +31,12 @@ from mypy.nodes import (
     GDEF
 )
 import mypy.nodes
-from mypy.types import Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType
+from mypy.types import (
+    Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType,
+)
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
+from mypy.checkmember import bind_self
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ops import (
@@ -104,6 +107,11 @@ class Mapper:
             return ROptional(self.type_to_rtype(value_type))
         elif isinstance(typ, AnyType):
             return object_rprimitive
+        elif isinstance(typ, TypeVarType):
+            # Erase type variable to upper bound.
+            # TODO: Erase to object if object has value restriction -- or union (once supported)?
+            assert not typ.values, 'TypeVar with value restriction not supported'
+            return self.type_to_rtype(typ.upper_bound)
         assert False, '%s unsupported' % type(typ)
 
 
@@ -201,7 +209,7 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_class_def(self, cdef: ClassDef) -> Value:
         ir = self.mapper.type_to_ir[cdef.info]
-        for name, node in cdef.info.names.items():
+        for name, node in sorted(cdef.info.names.items(), key=lambda x: x[0]):
             if isinstance(node.node, FuncDef):
                 func = self.gen_func_def(node.node, cdef.name)
                 self.functions.append(func)
@@ -303,6 +311,11 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> Value:
         assert len(stmt.lvalues) == 1
+        if isinstance(stmt.rvalue, CallExpr) and isinstance(stmt.rvalue.analyzed, TypeVarExpr):
+            # Just ignore type variable declarations -- they are a compile-time only thing.
+            # TODO: It would be nice to actually construct TypeVar objects to match Python
+            #       semantics.
+            return INVALID_VALUE
         lvalue = stmt.lvalues[0]
         if stmt.type and isinstance(stmt.rvalue, TempNode):
             # This is actually a variable annotation without initializer. Don't generate
@@ -324,7 +337,7 @@ class IRBuilder(NodeVisitor[Value]):
             return INVALID_VALUE
 
         # NOTE: List index not supported yet for compound assignments.
-        assert False, 'Unsupported lvalue: %r'
+        assert False, 'Unsupported lvalue: %r' % target
 
     def get_assignment_target(self, lvalue: Lvalue) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
@@ -701,13 +714,10 @@ class IRBuilder(NodeVisitor[Value]):
 
     def coerce_native_call_args(self,
                                 args: List[Value],
-                                callee_type: Type,
+                                arg_types: List[RType],
                                 line: int) -> List[Value]:
-        assert isinstance(callee_type, CallableType)
-        # TODO: Argument kinds
-        formal_arg_types = [self.type_to_rtype(t) for t in callee_type.arg_types]
         coerced_arg_regs = []
-        for reg, arg_type in zip(args, formal_arg_types):
+        for reg, arg_type in zip(args, arg_types):
             coerced_arg_regs.append(self.coerce(reg, arg_type, line))
         return coerced_arg_regs
 
@@ -715,39 +725,22 @@ class IRBuilder(NodeVisitor[Value]):
         if isinstance(expr.analyzed, CastExpr):
             return self.translate_cast_expr(expr.analyzed)
 
-        if isinstance(expr.callee, MemberExpr) and self.is_module_member_expr(expr.callee):
-            # Fall back to a PyCall for module calls
-                function = self.accept(expr.callee)
-                args = [self.accept(arg) for arg in expr.args]
-                return self.py_call(function, args, self.node_type(expr), expr.line)
-        elif isinstance(expr.callee, MemberExpr):
-            obj = self.accept(expr.callee.expr)
-            args = [self.accept(arg) for arg in expr.args]
-            assert expr.callee.expr in self.types
-            receiver_rtype = self.node_type(expr.callee.expr)
+        callee = expr.callee
+        if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
+            callee = callee.analyzed.expr  # Unwrap type application
 
-            # First try to do a special-cased method call
-            target = self.translate_special_method_call(
-                obj, expr.callee.name, args, self.node_type(expr), expr.line)
-            if target:
-                return target
+        if isinstance(callee, MemberExpr):
+            # TODO: Could be call to module-level function
+            return self.translate_method_call(expr, callee)
+        else:
+            return self.translate_call(expr, callee)
 
-            # If the base type is one of ours, do a MethodCall, otherwise fall back
-            # to a PyMethodCall
-            if isinstance(receiver_rtype, RInstance):
-                arg_regs = self.coerce_native_call_args(
-                    args, self.types[expr.callee], expr.line)
-                return self.add(MethodCall(self.node_type(expr), obj, expr.callee.name,
-                                           arg_regs, expr.line))
-            else:
-                method = self.load_static_unicode(expr.callee.name)
-                return self.py_method_call(
-                    obj, method, args, self.node_type(expr), expr.line)
-
-        assert isinstance(expr.callee, NameExpr)  # TODO: Allow arbitrary callees
+    def translate_call(self, expr: CallExpr, callee: Expression) -> Value:
+        """Translate a non-method call."""
+        assert isinstance(callee, NameExpr)  # TODO: Allow arbitrary callees
 
         # Gen the args
-        fullname = expr.callee.fullname
+        fullname = callee.fullname
         args = [self.accept(arg) for arg in expr.args]
 
         if fullname == 'builtins.len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
@@ -764,15 +757,86 @@ class IRBuilder(NodeVisitor[Value]):
             if target:
                 return target
 
-        fn = expr.callee.name  # TODO: fullname
-        if not self.is_native_module_name_expr(expr.callee):
-            # Python call
-            function = self.accept(expr.callee)
-            return self.py_call(function, args, target_type, expr.line)
-        else:
+        fn = callee.name  # TODO: fullname
+        # Try to generate a native call. Don't rely on the inferred callee
+        # type, since it may have type variable substitutions that aren't
+        # valid at runtime (due to type erasure). Instead pick the declared
+        # signature of the native function as the true signature.
+        signature = self.get_native_signature(callee)
+        if signature:
             # Native call
-            args = self.coerce_native_call_args(args, self.types[expr.callee], expr.line)
-            return self.add(Call(target_type, fn, args, expr.line))
+            arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
+            args = self.coerce_native_call_args(args, arg_types, expr.line)
+            ret_type = self.type_to_rtype(signature.ret_type)
+            return self.add(Call(ret_type, fn, args, expr.line))
+        else:
+            # Fall back to a Python call
+            function = self.accept(callee)
+            return self.py_call(function, args, target_type, expr.line)
+
+    def get_native_signature(self, callee: NameExpr) -> Optional[CallableType]:
+        """Get the signature of a native function, or return None if not available.
+
+        This only works for normal functions, not methods.
+        """
+        signature = None
+        if self.is_native_module_name_expr(callee):
+            node = callee.node
+            if isinstance(node, TypeInfo):
+                node = node['__init__'].node
+                if isinstance(node, FuncDef) and isinstance(node.type, CallableType):
+                    signature = bind_self(node.type)
+                    # "__init__" has None return, but the type object returns
+                    # in instance.  Take the instance return type from the
+                    # inferred callee type, which we can trust since it can't
+                    # be erased from a type variable.
+                    inferred_sig = self.types[callee]
+                    assert isinstance(inferred_sig, CallableType)
+                    signature = signature.copy_modified(ret_type=inferred_sig.ret_type)
+            elif isinstance(node, FuncDef) and isinstance(node.type, CallableType):
+                signature = node.type
+        return signature
+
+    def translate_method_call(self, expr: CallExpr, callee: MemberExpr) -> Value:
+        if self.is_module_member_expr(callee):
+            # Fall back to a PyCall for module calls
+            function = self.accept(callee)
+            args = [self.accept(arg) for arg in expr.args]
+            return self.py_call(function, args, self.node_type(expr), expr.line)
+        else:
+            obj = self.accept(callee.expr)
+            args = [self.accept(arg) for arg in expr.args]
+            assert callee.expr in self.types
+            receiver_rtype = self.node_type(callee.expr)
+
+            # First try to do a special-cased method call
+            target = self.translate_special_method_call(
+                obj, callee.name, args, self.node_type(expr), expr.line)
+            if target:
+                return target
+
+            # If the base type is one of ours, do a MethodCall
+            if isinstance(receiver_rtype, RInstance):
+                # Look up the declared signature of the method, since the
+                # inferred signature can have type variable substitutions which
+                # aren't valid at runtime due to type erasure.
+                typ = self.types[callee.expr]
+                assert isinstance(typ, Instance)
+                method = typ.type.get(callee.name)
+                if method and isinstance(method.node, FuncDef) and isinstance(method.node.type,
+                                                                              CallableType):
+                    sig = method.node.type
+                    arg_types = [self.type_to_rtype(arg_type)
+                                 for arg_type in sig.arg_types[1:]]
+                    arg_regs = self.coerce_native_call_args(args, arg_types, expr.line)
+                    target_type = self.type_to_rtype(sig.ret_type)
+                    return self.add(MethodCall(target_type, obj, callee.name,
+                                               arg_regs, expr.line))
+
+            # Fall back to Python method call
+            method_name = self.load_static_unicode(callee.name)
+            return self.py_method_call(
+                obj, method_name, args, self.node_type(expr), expr.line)
 
     def translate_cast_expr(self, expr: CastExpr) -> Value:
         src = self.accept(expr.expr)

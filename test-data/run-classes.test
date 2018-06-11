@@ -197,3 +197,32 @@ from native import A, foo
 a = A(10)
 assert a.foo() == 11
 assert foo() == 21
+
+[case testGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class C(Generic[T]):
+    x: T
+    def __init__(self, x: T) -> None:
+        self.x = x
+    def get(self) -> T:
+        return self.x
+    def set(self, y: T) -> None:
+        self.x = y
+
+def f(c: C[int]) -> int:
+    y = c.get()
+    d = C[int](2)
+    c.set(c.get() + 1 + d.get())
+    c.x = c.x + 2
+    return c.x
+
+[file driver.py]
+from native import C, f
+c = C(6)
+assert f(c) == 11
+c.x = 'x'
+assert c.x == 'x'
+c.set([1])
+assert c.x == [1]
+assert c.get() == [1]
