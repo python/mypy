@@ -113,11 +113,16 @@ type_aliases = {
     'typing.Deque': 'collections.deque',
 }
 
+reverse_builtin_aliases = {
+    'builtins.list': 'typing.List',
+    'builtins.dict': 'typing.Dict',
+    'builtins.set': 'typing.Set',
+    'builtins.frozenset': 'typing.FrozenSet',
+}
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
                    'builtins.enumerate': ''}
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
-
 
 
 class Node(Context):
@@ -1879,6 +1884,7 @@ class TypeAliasExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_type_alias_expr(self)
+
 
 class NamedTupleExpr(Expression):
     """Named tuple expression namedtuple(...) or NamedTuple(...)."""

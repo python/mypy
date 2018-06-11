@@ -980,7 +980,7 @@ target:
     Generic: Var<2>
     T: TypeVarExpr<3>
     TypeVar: Var<4>
-    X: Var<5>(type_override=target.A[builtins.int<6>]<1>)(def () -> target.A[builtins.int*<6>]<1>)
+    X: TypeAlias<5>
 ==>
 __main__:
     target: MypyFile<0>
@@ -989,7 +989,7 @@ target:
     Generic: Var<2>
     T: TypeVarExpr<3>
     TypeVar: Var<4>
-    X: Var<5>(type_override=target.A[builtins.str<7>]<1>)(def () -> target.A[builtins.str*<7>]<1>)
+    X: TypeAlias<5>
 
 [case testGenericFunction_types]
 import target

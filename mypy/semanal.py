@@ -295,7 +295,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     name = alias.split('.')[-1]
                     n = self.lookup_fully_qualified_or_none(target_name)
                     if n:
-                        self.cur_mod_node.names[name] = SymbolTableNode(GDEF, TypeAlias(self.builtin_type(target_name), alias))
+                        alias_node = TypeAlias(self.builtin_type(target_name), alias)
+                        self.cur_mod_node.names[name] = SymbolTableNode(GDEF, alias_node)
 
             defs = file_node.defs
             self.scope.enter_file(file_node.fullname())
@@ -1707,6 +1708,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         res = make_any_non_explicit(res)
         if isinstance(s.rvalue, IndexExpr):
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars)
+            s.rvalue.analyzed.line = s.line
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
                               depends_on=list(depends_on))
 
@@ -2741,7 +2743,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 and isinstance(expr.base.node, TypeInfo)
                 and not expr.base.node.is_generic()):
             expr.index.accept(self)
-        elif refers_to_class_or_function(expr.base) or isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
+        elif (refers_to_class_or_function(expr.base) or
+              isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias)):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
             if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):

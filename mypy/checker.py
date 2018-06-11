@@ -1431,10 +1431,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         first = base1[name]
         second = base2[name]
         first_type = first.type
-        if first_type is None and isinstance(first.node, FuncDef):
+        if first_type is None and isinstance(first.node, FuncBase):
             first_type = self.function_type(first.node)
         second_type = second.type
-        if second_type is None and isinstance(second.node, FuncDef):
+        if second_type is None and isinstance(second.node, FuncBase):
             second_type = self.function_type(second.node)
         # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and

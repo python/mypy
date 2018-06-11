@@ -46,7 +46,7 @@ MypyFile:1(
   ImportFrom:1(typing, [List])
   ExpressionStmt:2(
     TypeApplication:2(
-      NameExpr(List [builtins.list])
+      NameExpr(List [typing.List])
       Types(
         builtins.list[builtins.int]))))
 

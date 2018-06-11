@@ -22,7 +22,7 @@ from mypy.nodes import (
     TVAR, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, ImportedName, type_aliases, TypeAlias
+    Decorator, ImportedName, type_aliases, TypeAlias, MODULE_REF
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -322,7 +322,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     if (not self.third_pass and not self.in_dynamic_func and
                             not (isinstance(sym.node, (FuncDef, Decorator)) or
                                  isinstance(sym.node, Var) and sym.node.is_ready) and
-                            not (sym.kind == TVAR and tvar_def is None)):
+                            not (sym.kind == TVAR and tvar_def is None or sym.kind == MODULE_REF)):
                         if t.args and not self.global_scope:
                             self.fail('Unsupported forward reference to "{}"'.format(t.name), t)
                             return AnyType(TypeOfAny.from_error)
@@ -342,6 +342,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
                 instance = Instance(info, self.anal_array(t.args), t.line, t.column)
+                if not t.args and self.options.disallow_any_generics:
+                    from_builtins = info.fullname() in nongen_builtins
+                    if not normalized:
+                        if not self.is_typeshed_stub and from_builtins:
+                            alternative = nongen_builtins[info.fullname()]
+                            self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                            instance.args = [AnyType(TypeOfAny.from_error, line=t.line)] * len(info.type_vars)
+                    else:
+                        instance.args = [AnyType(TypeOfAny.from_omitted_generics, line=t.line)] * len(info.type_vars)
+
                 tup = info.tuple_type
                 if tup is not None:
                     # The class has a Tuple[...] base class so it will be
@@ -700,11 +710,6 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
                 from_builtins = t.type.fullname() in nongen_builtins
-                if (self.options.disallow_any_generics and
-                        not self.is_typeshed_stub and
-                        from_builtins):
-                    alternative = nongen_builtins[t.type.fullname()]
-                    self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
                 # Insert implicit 'Any' type arguments.
                 if from_builtins:
                     # this 'Any' was already reported elsewhere

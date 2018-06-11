@@ -18,7 +18,7 @@ from mypy.nodes import (
     Block, TypedDictExpr, NamedTupleExpr, AssignmentStmt, IndexExpr, TypeAliasExpr, NameExpr,
     CallExpr, NewTypeExpr, ForStmt, WithStmt, CastExpr, TypeVarExpr, TypeApplication, Lvalue,
     TupleExpr, RevealExpr, SymbolTableNode, SymbolTable, Var, ARG_POS, OverloadedFuncDef,
-    MDEF,
+    MDEF, TypeAlias
 )
 from mypy.types import (
     Type, Instance, AnyType, TypeOfAny, CallableType, TupleType, TypeVarType, TypedDictType,
@@ -68,6 +68,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
             self.accept(file_node)
+            self.analyze_symbol_table(file_node.names)
             self.scope.leave()
         del self.cur_mod_node
         self.patches = []
@@ -147,6 +148,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 self.analyze(tdef.analyzed.info.tuple_type, tdef.analyzed, warn=True)
                 self.analyze_info(tdef.analyzed.info)
         super().visit_class_def(tdef)
+        self.analyze_symbol_table(tdef.info.names)
         self.scope.leave()
 
     def visit_decorator(self, dec: Decorator) -> None:
@@ -241,6 +243,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             if isinstance(analyzed, NamedTupleExpr):
                 self.analyze(analyzed.info.tuple_type, analyzed, warn=True)
                 self.analyze_info(analyzed.info)
+        if isinstance(s.lvalues[0], RefExpr) and isinstance(s.lvalues[0].node, Var):
+            self.analyze(s.lvalues[0].node.type, s.lvalues[0].node)
         # Subclass attribute assignments with no type annotation should be
         # assumed to be classvar if overriding a declared classvar from the base
         # class.
@@ -293,6 +297,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                              TypeAliasExpr, Var)):
             assert node.type, "Scheduled patch for non-existent type"
             node.type = transform(node.type)
+        if isinstance(node, TypeAlias):
+            node.target = transform(node.target)
         if isinstance(node, NewTypeExpr):
             assert node.old_type, "Scheduled patch for non-existent type"
             node.old_type = transform(node.old_type)
@@ -380,6 +386,12 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                 target = self.scope.current_target()
                 self.cur_mod_node.alias_deps[target].update(analyzer.aliases_used)
         self.generate_type_patches(node, indicator, warn=False)
+
+    def analyze_symbol_table(self, names: SymbolTable) -> None:
+        """Analyze types in symbol table nodes only (shallow)."""
+        for node in names.values():
+            if isinstance(node.node, TypeAlias):
+                self.analyze(node.node.target, node.node)
 
     def make_scoped_patch(self, fn: Callable[[], None]) -> Callable[[], None]:
         saved_scope = self.scope.save()
