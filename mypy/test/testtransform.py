@@ -1,7 +1,6 @@
 """Identity AST transform test cases"""
 
 import os.path
-from typing import List
 
 from mypy import build
 from mypy.build import BuildSource

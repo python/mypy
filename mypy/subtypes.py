@@ -1,10 +1,10 @@
-from typing import List, Optional, Dict, Callable, Tuple, Iterator, Set, Union, cast
+from typing import List, Optional, Callable, Tuple, Iterator, Set, Union, cast
 from contextlib import contextmanager
 
 from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneTyp, function_type,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
+    ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny
 )
 import mypy.applytype

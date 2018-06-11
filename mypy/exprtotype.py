@@ -3,7 +3,7 @@
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
-    ARG_POS, ARG_NAMED, get_member_expr_fullname
+    get_member_expr_fullname
 )
 from mypy.fastparse import parse_type_comment
 from mypy.types import (

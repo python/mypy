@@ -17,7 +17,7 @@ two in a typesafe way.
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
 )
@@ -28,7 +28,7 @@ from mypy.nodes import (
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
     WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
-    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
+    DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, LambdaExpr, ComparisonExpr, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
@@ -38,7 +38,6 @@ from mypy.nodes import (
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny
 )
-from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
 from mypy.fastparse import TypeConverter, parse_type_comment

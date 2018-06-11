@@ -28,11 +28,10 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
-import functools
 import hashlib
 import os
 import stat
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set
 
 
 class FileSystemCache:

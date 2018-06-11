@@ -2,7 +2,6 @@
 
 from typing import Iterable, List, Optional, Sequence
 
-from mypy import experiments
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,

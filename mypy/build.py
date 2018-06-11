@@ -26,18 +26,14 @@ import stat
 import subprocess
 import sys
 import time
-from os.path import dirname, basename
+from os.path import dirname
 import errno
 
 from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
-# Can't use TYPE_CHECKING because it's not in the Python 3.5.1 stdlib
-MYPY = False
-if MYPY:
-    from typing import Deque
 
 from mypy import sitepkgs
-from mypy.nodes import (MODULE_REF, MypyFile, Node, ImportBase, Import, ImportFrom, ImportAll)
+from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
 from mypy.semanal_pass3 import SemanticAnalyzerPass3

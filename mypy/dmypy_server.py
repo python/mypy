@@ -6,8 +6,6 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
-import gc
-import io
 import json
 import os
 import shutil
@@ -24,7 +22,6 @@ import mypy.errors
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
-from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options

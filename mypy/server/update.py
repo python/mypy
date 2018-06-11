@@ -112,27 +112,23 @@ This is module is tested using end-to-end fine-grained incremental mode
 test cases (test-data/unit/fine-grained*.test).
 """
 
-import os
 import time
-import os.path
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable,
+    Dict, List, Set, Tuple, Iterable, Union, Optional, NamedTuple, Callable,
     Sequence
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
-    process_fresh_modules,
-    PRI_INDIRECT, DEBUG_FINE_GRAINED,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
+    process_fresh_modules, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
-from mypy.errors import Errors, CompileError
+from mypy.errors import CompileError
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, OverloadedFuncDef, SymbolTable, LambdaExpr
+    MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
+    OverloadedFuncDef, SymbolTable, LambdaExpr
 )
 from mypy.options import Options
-from mypy.types import Type
 from mypy.fscache import FileSystemCache
 from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
