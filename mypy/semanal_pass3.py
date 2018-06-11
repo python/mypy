@@ -10,8 +10,7 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from contextlib import contextmanager
-from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iterator
+from typing import Dict, List, Callable, Optional, Union, cast, Tuple
 
 from mypy import messages, experiments
 from mypy.nodes import (

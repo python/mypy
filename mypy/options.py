@@ -3,7 +3,7 @@ import re
 import pprint
 import sys
 
-from typing import Dict, List, Mapping, MutableMapping, Optional, Pattern, Set, Tuple
+from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
 
 from mypy import defaults
 

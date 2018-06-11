@@ -48,7 +48,7 @@ import traceback
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, Union, cast
+    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, cast
 )
 
 import mypy.build
@@ -63,11 +63,11 @@ from mypy.nodes import (
     IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
-from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
-from mypy.stubutil import is_c_module, write_header
+from mypy.stubgenc import generate_stub_for_c_module
+from mypy.stubutil import is_c_module, write_header, parse_all_signatures, find_unique_signatures
 from mypy.options import Options as MypyOptions
 from mypy.types import (
-    Type, TypeStrVisitor, AnyType, CallableType,
+    Type, TypeStrVisitor, CallableType,
     UnboundType, NoneTyp, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor

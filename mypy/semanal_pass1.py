@@ -32,7 +32,6 @@ from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
-from mypy.util import correct_relative_import
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
