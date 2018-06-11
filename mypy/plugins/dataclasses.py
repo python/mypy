@@ -1,18 +1,16 @@
 from collections import OrderedDict
-from typing import Dict, List, Optional, Set, Tuple, cast
+from typing import Dict, List, Set, Tuple
 
 from mypy.nodes import (
-    ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, Block, CallExpr,
+    ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Decorator, Expression, FuncDef, JsonDict, NameExpr,
     SymbolTableNode, TempNode, TypeInfo, Var,
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import _add_method, _get_decorator_bool_argument
 from mypy.types import (
-    CallableType, Instance, NoneTyp, Type, TypeVarDef, TypeVarType,
-    deserialize_type
+    CallableType, Instance, NoneTyp, TypeVarDef, TypeVarType,
 )
-from mypy.typevars import fill_typevars
 
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
