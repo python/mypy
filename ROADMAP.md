@@ -8,10 +8,6 @@ core team member that nobody else is working on the same thing.
 **Note:** This doesn’t include everything that the core team will work
 on, and everything is subject to change.
 
-- Provide much faster, reliable interactive feedback through
-  fine-grained incremental type checking, built on top of the daemon
-  mode.
-
 - Continue making error messages more useful and informative.
   ([issue](https://github.com/python/mypy/labels/topic-usability))
 
