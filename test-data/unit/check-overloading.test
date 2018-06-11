@@ -1900,8 +1900,116 @@ reveal_type(f(*[]))         # E: Revealed type is 'builtins.tuple[builtins.int]'
 reveal_type(f(*[i]))        # E: Revealed type is 'builtins.tuple[builtins.int]'
 reveal_type(f(*[i, i]))     # E: Revealed type is 'builtins.tuple[builtins.int]'
 reveal_type(f(*[i, i, i]))  # E: Revealed type is 'builtins.tuple[builtins.int]'
-
 [builtins fixtures/list.pyi]
+
+[case testOverloadVarargsSelectionWithTuples]
+from typing import overload, Tuple
+@overload
+def f(x: int) -> Tuple[int]: ...
+@overload
+def f(x: int, y: int) -> Tuple[int, int]: ...
+@overload
+def f(*xs: int) -> Tuple[int, ...]: ...
+def f(*args): pass
+
+i: int
+reveal_type(f(*()))         # E: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(*(i,)))       # E: Revealed type is 'Tuple[builtins.int]'
+reveal_type(f(*(i, i)))     # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(f(*(i, i, i)))  # E: Revealed type is 'builtins.tuple[builtins.int]'
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadVarargsSelectionWithNamedTuples]
+from typing import overload, Tuple, NamedTuple
+@overload
+def f(x: int, y: int) -> Tuple[int, int]: ...
+@overload
+def f(*xs: int) -> Tuple[int, ...]: ...
+def f(*args): pass
+
+A = NamedTuple('A', [('x', int), ('y', int)])
+B = NamedTuple('B', [('a', int), ('b', int)])
+C = NamedTuple('C', [('a', int), ('b', int), ('c', int)])
+
+a: A
+b: B
+c: C
+reveal_type(f(*a))  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(f(*b))  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(f(*c))  # E: Revealed type is 'builtins.tuple[builtins.int]'
+[builtins fixtures/tuple.pyi]
+
+[case testOverloadKwargsSelectionWithDict]
+from typing import overload, Tuple, Dict
+@overload
+def f(*, x: int) -> Tuple[int]: ...
+@overload
+def f(*, x: int, y: int) -> Tuple[int, int]: ...
+@overload
+def f(**xs: int) -> Tuple[int, ...]: ...
+def f(**kwargs): pass
+
+empty: Dict[str, int]
+reveal_type(f(**empty))                      # E: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(**{'x': 4}))                   # E: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(**{'x': 4, 'y': 4}))           # E: Revealed type is 'builtins.tuple[builtins.int]'
+reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # E: Revealed type is 'builtins.tuple[builtins.int]'
+[builtins fixtures/dict.pyi]
+
+[case testOverloadKwargsSelectionWithTypedDict-skip]
+# TODO: Mypy doesn't seem to correctly destructure typed dicts in general.
+#       We should re-enable this once https://github.com/python/mypy/issues/5198 is resolved
+from typing import overload, Tuple
+from mypy_extensions import TypedDict
+@overload
+def f(*, x: int) -> Tuple[int]: ...
+@overload
+def f(*, x: int, y: int) -> Tuple[int, int]: ...
+@overload
+def f(**xs: int) -> Tuple[int, ...]: ...
+def f(**args): pass
+
+A = TypedDict('A', {'x': int})
+B = TypedDict('B', {'x': int, 'y': int})
+C = TypedDict('C', {'x': int, 'y': int, 'z': int})
+
+a: A
+b: B
+c: C
+
+reveal_type(f(**a))  # E: Revealed type is 'Tuple[builtins.int]'
+reveal_type(f(**b))  # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+reveal_type(f(**c))  # E: Revealed type is 'builtins.tuple[builtins.int]'
+[builtins fixtures/dict.pyi]
+
+[case testOverloadVarargsAndKwargsSelection]
+from typing import overload, Any, Tuple, Dict
+
+class A: pass
+class B(A): pass
+
+@overload
+def f(x: int, y: int) -> B: pass
+@overload
+def f(x: int, y: int, **kwargs: int) -> A: pass
+@overload
+def f(*args: int, **kwargs: int) -> Any: pass
+def f(*args, **kwargs): pass
+
+a: Tuple[int, int]
+b: Tuple[int, ...]
+c: Dict[str, int]
+
+reveal_type(f(*a, **c))  # E: Revealed type is '__main__.A'
+reveal_type(f(*b, **c))  # E: Revealed type is '__main__.A'
+reveal_type(f(*a))       # E: Revealed type is '__main__.B'
+reveal_type(f(*b))       # E: Revealed type is 'Any'
+
+# TODO: Should this be 'Any' instead?
+# The first matching overload with a kwarg is f(int, int, **int) -> A,
+# but f(*int, **int) -> Any feels like a better fit.
+reveal_type(f(**c))      # E: Revealed type is '__main__.A'
+[builtins fixtures/args.pyi]
 
 [case testOverloadWithPartiallyOverlappingUnions]
 from typing import overload, Union

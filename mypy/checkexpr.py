@@ -1199,10 +1199,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         If the given args contains a star-arg (*arg or **kwarg argument), this method
         will ensure all star-arg overloads appear at the start of the list, instead
-        of their usual location."""
+        of their usual location.
+
+        The only exception is if the starred argument is something like a Tuple or a
+        NamedTuple, which has a definitive "shape". If so, we don't move the corresponding
+        alternative to the front since we can infer a more precise match using the original
+        order."""
+
+        def has_shape(typ: Type) -> bool:
+            # TODO: Once https://github.com/python/mypy/issues/5198 is fixed,
+            #       add 'isinstance(typ, TypedDictType)' somewhere below.
+            return (isinstance(typ, TupleType)
+                    or (isinstance(typ, Instance) and typ.type.is_named_tuple))
+
         matches = []  # type: List[CallableType]
         star_matches = []  # type: List[CallableType]
-        args_have_star = ARG_STAR in arg_kinds or ARG_STAR2 in arg_kinds
+
+        args_have_var_arg = False
+        args_have_kw_arg = False
+        for kind, typ in zip(arg_kinds, arg_types):
+            if kind == ARG_STAR and not has_shape(typ):
+                args_have_var_arg = True
+            if kind == ARG_STAR2 and not has_shape(typ):
+                args_have_kw_arg = True
+
         for typ in overload.items():
             formal_to_actual = map_actuals_to_formals(arg_kinds, arg_names,
                                                       typ.arg_kinds, typ.arg_names,
@@ -1210,7 +1230,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if self.check_argument_count(typ, arg_types, arg_kinds, arg_names,
                                          formal_to_actual, None, None):
-                if args_have_star and (typ.is_var_arg or typ.is_kw_arg):
+                if args_have_var_arg and typ.is_var_arg:
+                    star_matches.append(typ)
+                elif args_have_kw_arg and typ.is_kw_arg:
                     star_matches.append(typ)
                 else:
                     matches.append(typ)
