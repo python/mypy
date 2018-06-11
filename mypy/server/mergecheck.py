@@ -2,7 +2,7 @@
 
 from typing import Dict, List, Tuple
 
-from mypy.nodes import SymbolNode, Var, Decorator, OverloadedFuncDef, FuncDef
+from mypy.nodes import SymbolNode, Var, Decorator, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
 
 

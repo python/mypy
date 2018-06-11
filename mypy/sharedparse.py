@@ -104,4 +104,4 @@ def special_function_elide_names(name: str) -> bool:
 
 
 def argument_elide_name(name: Optional[str]) -> bool:
-    return name is not None and name.startswith("__")
+    return name is not None and name.startswith("__") and not name.endswith("__")

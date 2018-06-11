@@ -6,8 +6,6 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
-import gc
-import io
 import json
 import os
 import shutil
@@ -24,7 +22,6 @@ import mypy.errors
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
-from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
@@ -172,14 +169,14 @@ class Server:
                             resp = {'error': "Command is not a string"}
                         else:
                             command = data.pop('command')
-                        try:
-                            resp = self.run_command(command, data)
-                        except Exception:
-                            # If we are crashing, report the crash to the client
-                            tb = traceback.format_exception(*sys.exc_info())  # type: ignore
-                            resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                            conn.sendall(json.dumps(resp).encode('utf8'))
-                            raise
+                            try:
+                                resp = self.run_command(command, data)
+                            except Exception:
+                                # If we are crashing, report the crash to the client
+                                tb = traceback.format_exception(*sys.exc_info())
+                                resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                conn.sendall(json.dumps(resp).encode('utf8'))
+                                raise
                     try:
                         conn.sendall(json.dumps(resp).encode('utf8'))
                     except OSError as err:
@@ -195,7 +192,7 @@ class Server:
             shutil.rmtree(self.sock_directory)
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
-                traceback.print_exception(*exc_info)  # type: ignore
+                traceback.print_exception(*exc_info)
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""

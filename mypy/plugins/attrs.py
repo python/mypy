@@ -56,7 +56,7 @@ class Attribute:
         init_type = self.info[self.name].type
 
         if self.converter_name:
-            # When a converter is set the init_type is overriden by the first argument
+            # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
             converter = lookup_qualified_stnode(ctx.api.modules, self.converter_name, True)
             if not converter:
@@ -240,11 +240,12 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext', auto_attribs: bool) -> Li
     # attributes for all classes have been read, because subclasses can override parents.
     last_default = False
     for attribute in attributes:
-        if attribute.init and not attribute.has_default and last_default:
-            ctx.api.fail(
-                "Non-default attributes not allowed after default attributes.",
-                attribute.context)
-        last_default = attribute.has_default
+        if attribute.init:
+            if not attribute.has_default and last_default:
+                ctx.api.fail(
+                    "Non-default attributes not allowed after default attributes.",
+                    attribute.context)
+            last_default |= attribute.has_default
 
     return attributes
 

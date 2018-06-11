@@ -15,13 +15,12 @@ on specified sources.
 import os
 import re
 
-from typing import List, Set, Tuple, Optional, cast
+from typing import List, cast
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource
+from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.server.update import FineGrainedBuildManager
 from mypy.test.config import test_temp_dir
 from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile

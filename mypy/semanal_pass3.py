@@ -10,8 +10,7 @@ belongs to a module involved in an import loop.
 """
 
 from collections import OrderedDict
-from contextlib import contextmanager
-from typing import Dict, List, Callable, Optional, Union, Set, cast, Tuple, Iterator
+from typing import Dict, List, Callable, Optional, Union, cast, Tuple
 
 from mypy import messages, experiments
 from mypy.nodes import (
@@ -76,6 +75,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
+        self.options = self.sem.options
         self.patches = patches
         if isinstance(node, MypyFile):
             self.recurse_into_functions = False
@@ -202,7 +202,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             sig = find_fixed_callable_return(dec.decorators[0])
             if sig:
                 # The outermost decorator always returns the same kind of function,
-                # so we know that this is the type of the decoratored function.
+                # so we know that this is the type of the decorated function.
                 orig_sig = function_type(dec.func, self.builtin_type('function'))
                 sig.name = orig_sig.items()[0].name
                 dec.var.type = sig

@@ -1,7 +1,7 @@
 import re
 import sys
 
-from typing import Any, Optional, Tuple, Sequence, MutableSequence, List, MutableMapping, IO
+from typing import Optional, Tuple, Sequence, MutableSequence, List, MutableMapping, IO
 from types import ModuleType
 
 

@@ -1,0 +1,7 @@
+    try:
+        with open(meta_json, 'r') as f:
+            meta_str = f.read()
+            manager.trace('Meta {} {}'.format(id, meta_str.rstrip()))
+            meta = json.loads(meta_str)  # TODO: Errors
+    except IOError:
+        manager.log('Could not load cache for {}: could not find {}'.format(id, meta_json))

@@ -7,7 +7,7 @@ owned by particular AST nodes, etc.
 from collections import defaultdict
 import gc
 import sys
-from typing import List, Dict, Set, Iterable, Tuple, cast
+from typing import List, Dict, Iterable, Tuple, cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type

@@ -5,22 +5,20 @@ import shutil
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource, BuildResult, State, Graph
+from mypy.build import BuildSource, BuildResult
 from mypy.defaults import PYTHON3_VERSION
-from mypy.errors import Errors, CompileError
+from mypy.errors import CompileError
 from mypy.nodes import (
     Node, MypyFile, SymbolTable, SymbolTableNode, TypeInfo, Expression, Var, TypeVarExpr,
     UNBOUND_IMPORTED
 )
 from mypy.options import Options
-from mypy.server.astmerge import merge_asts
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
-from mypy.strconv import StrConv, indent
+from mypy.strconv import StrConv
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
-from mypy.test.testtypegen import ignore_node
 from mypy.types import TypeStrVisitor, Type
 from mypy.util import short_type, IdMapper
 

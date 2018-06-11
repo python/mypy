@@ -6,10 +6,11 @@ from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
     TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
     TypeVarExpr, ClassDef, Block, TypeAlias,
+
 )
 from mypy.types import (
-    CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
-    TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
+    CallableType, Instance, Overloaded, TupleType, TypedDictType,
+    TypeVarType, UnboundType, UnionType, TypeVisitor,
     TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor

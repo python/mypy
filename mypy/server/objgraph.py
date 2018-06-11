@@ -1,8 +1,7 @@
 """Find all objects reachable from a root object."""
 
-from collections import deque
 from collections.abc import Iterable
-from typing import List, Dict, Iterator, Optional, Tuple, Mapping
+from typing import List, Dict, Iterator, Tuple, Mapping
 import weakref
 import types
 

@@ -3,7 +3,7 @@
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, IndexExpr, TupleExpr,
     ListExpr, StrExpr, BytesExpr, UnicodeExpr, EllipsisExpr, CallExpr,
-    ARG_POS, ARG_NAMED, get_member_expr_fullname
+    get_member_expr_fullname
 )
 from mypy.fastparse import parse_type_comment
 from mypy.types import (
@@ -32,7 +32,7 @@ def expr_to_unanalyzed_type(expr: Expression, _parent: Optional[Expression] = No
     The result is not semantically analyzed. It can be UnboundType or TypeList.
     Raise TypeTranslationError if the expression cannot represent a type.
     """
-    # The `parent` paremeter is used in recursive calls to provide context for
+    # The `parent` parameter is used in recursive calls to provide context for
     # understanding whether an CallableArgument is ok.
     name = None  # type: Optional[str]
     if isinstance(expr, NameExpr):

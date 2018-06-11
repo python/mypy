@@ -50,16 +50,16 @@ Summary of how this works for certain kinds of differences:
   fine-grained dependencies.
 """
 
-from typing import Set, List, TypeVar, Dict, Tuple, Optional, Sequence, Union
+from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
-    SymbolTable, SymbolTableNode, TypeInfo, Var, MypyFile, SymbolNode, Decorator, TypeVarExpr,
-    OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR, TypeAlias
+    SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
+    OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
-    Type, TypeVisitor, UnboundType, TypeList, AnyType, NoneTyp, UninhabitedType,
+    Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
-    UnionType, Overloaded, PartialType, TypeType, function_type
+    UnionType, Overloaded, PartialType, TypeType
 )
 from mypy.util import get_prefix
 

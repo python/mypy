@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from mypy.nodes import (
-    ARG_OPT, ARG_POS, MDEF, Argument, Block, CallExpr, Expression, FuncBase,
+    ARG_POS, MDEF, Argument, Block, CallExpr, Expression, FuncBase,
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var
 )
 from mypy.plugin import ClassDefContext

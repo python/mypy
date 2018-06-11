@@ -4743,3 +4743,14 @@ class C:
 [out]
 [out2]
 main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testBazelFlagIgnoresFileChanges]
+-- Since the initial run wrote a cache file, the second run ignores the source
+# flags: --bazel
+from a import f
+f()
+[file a.py]
+def f(): pass
+[file a.py.2]
+[out]
+[out2]

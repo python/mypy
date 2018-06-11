@@ -307,7 +307,7 @@ build::
 
 This flag adds extra information for the daemon to the cache. In
 order to use this extra information, you will also need to use the
-``--use-fine-grained-cache`` option with ``dymypy start`` or
+``--use-fine-grained-cache`` option with ``dmypy start`` or
 ``dmypy restart``. Example::
 
     $ dmypy start -- --use-fine-grained-cache <options...>

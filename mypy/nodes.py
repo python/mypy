@@ -1287,27 +1287,7 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
-        # TODO: Find out where and why NameExpr is being serialized (if at all).
         assert False, "Serializing NameExpr: %s" % (self,)
-        return {'.class': 'NameExpr',
-                'kind': self.kind,
-                'node': None if self.node is None else self.node.serialize(),
-                'fullname': self.fullname,
-                'is_new_def': self.is_new_def,
-                'is_inferred_def': self.is_inferred_def,
-                'name': self.name,
-                }
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'NameExpr':
-        assert data['.class'] == 'NameExpr'
-        ret = NameExpr(data['name'])
-        ret.kind = data['kind']
-        ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
-        ret.fullname = data['fullname']
-        ret.is_new_def = data['is_new_def']
-        ret.is_inferred_def = data['is_inferred_def']
-        return ret
 
 
 class MemberExpr(RefExpr):
@@ -2203,7 +2183,7 @@ class TypeInfo(SymbolNode):
         # Protocol members are names of all attributes/methods defined in a protocol
         # and in all its supertypes (except for 'object').
         members = set()  # type: Set[str]
-        assert self.mro, "This property can be only acessed after MRO is (re-)calculated"
+        assert self.mro, "This property can be only accessed after MRO is (re-)calculated"
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name in base.names:
@@ -2370,7 +2350,7 @@ class TypeInfo(SymbolNode):
         # not be loaded until after a class in the mro has changed its
         # bases, which causes the mro to change. If we recomputed our
         # mro, we would compute the *new* mro, which leaves us with no
-        # way to detact that the mro has changed! Thus we need to make
+        # way to detect that the mro has changed! Thus we need to make
         # sure to load the original mro so that once the class is
         # rechecked, it can tell that the mro has changed.
         ti._mro_refs = data['mro']

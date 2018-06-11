@@ -1,11 +1,10 @@
 """Utilities for calculating and reporting statistics about types."""
 
-import cgi
 import os.path
 import typing
 
 from collections import Counter
-from typing import Dict, List, cast, Tuple, Optional
+from typing import Dict, List, cast, Optional
 
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import collect_all_inner_types

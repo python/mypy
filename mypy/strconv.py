@@ -3,7 +3,7 @@
 import re
 import os
 
-from typing import Any, List, Tuple, Optional, Union, Sequence, Dict
+from typing import Any, List, Tuple, Optional, Union, Sequence
 
 from mypy.util import short_type, IdMapper
 import mypy.nodes

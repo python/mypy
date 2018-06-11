@@ -1,11 +1,10 @@
 from collections import OrderedDict
-from typing import List, Optional, cast, Tuple
+from typing import List, Optional, Tuple
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
-from mypy.sametypes import is_same_type
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
-    TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType, DeletedType,
+    TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation

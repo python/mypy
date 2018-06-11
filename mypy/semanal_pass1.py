@@ -13,7 +13,7 @@ in later passes. Examples of these include TypeVar and NamedTuple
 definitions, as these look like regular assignments until we are able to
 bind names, which only happens in pass 2.
 
-This pass also infers the reachability of certain if staments, such as
+This pass also infers the reachability of certain if statements, such as
 those with platform checks.
 """
 
@@ -32,7 +32,6 @@ from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
-from mypy.util import correct_relative_import
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):

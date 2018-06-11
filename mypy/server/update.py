@@ -112,27 +112,23 @@ This is module is tested using end-to-end fine-grained incremental mode
 test cases (test-data/unit/fine-grained*.test).
 """
 
-import os
 import time
-import os.path
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable,
+    Dict, List, Set, Tuple, Iterable, Union, Optional, NamedTuple, Callable,
     Sequence
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
-    process_fresh_modules,
-    PRI_INDIRECT, DEBUG_FINE_GRAINED,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
+    process_fresh_modules, DEBUG_FINE_GRAINED,
 )
 from mypy.checker import DeferredNode
-from mypy.errors import Errors, CompileError
+from mypy.errors import CompileError
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, OverloadedFuncDef, SymbolTable, LambdaExpr
+    MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
+    OverloadedFuncDef, SymbolTable, LambdaExpr
 )
 from mypy.options import Options
-from mypy.types import Type
 from mypy.fscache import FileSystemCache
 from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
@@ -331,7 +327,7 @@ class FineGrainedBuildManager:
         # its tree loaded so that we can snapshot it for comparison.
         ensure_trees_loaded(manager, graph, [module])
 
-        # Record symbol table snaphot of old version the changed module.
+        # Record symbol table snapshot of old version the changed module.
         old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
@@ -446,7 +442,7 @@ def update_module_isolated(module: str,
                            force_removed: bool) -> UpdateResult:
     """Build a new version of one changed module only.
 
-    Don't propagate changes to elsewhere in the program. Raise CompleError on
+    Don't propagate changes to elsewhere in the program. Raise CompileError on
     encountering a blocking error.
 
     Args:
@@ -852,8 +848,9 @@ def reprocess_nodes(manager: BuildManager,
 
     nodes = sorted(nodeset, key=key)
 
-    # TODO: ignore_all argument to set_file_ignored_lines
-    manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
+    options = graph[module_id].options
+    manager.errors.set_file_ignored_lines(
+        file_node.path, file_node.ignored_lines, options.ignore_errors)
 
     targets = set()
     for node in nodes:
@@ -871,7 +868,6 @@ def reprocess_nodes(manager: BuildManager,
 
     # Second pass of semantic analysis. We don't redo the first pass, because it only
     # does local things that won't go stale.
-    options = graph[module_id].options
     for deferred in nodes:
         with semantic_analyzer.file_context(
                 file_node=file_node,

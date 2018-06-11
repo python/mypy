@@ -2017,7 +2017,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             item_type = self.iterable_item_type(cast(Instance, rvalue_type))
             for lv in lvalues:
                 if isinstance(lv, StarExpr):
-                    self.check_assignment(lv.expr, self.temp_node(rvalue_type, context),
+                    items_type = self.named_generic_type('builtins.list', [item_type])
+                    self.check_assignment(lv.expr, self.temp_node(items_type, context),
                                           infer_lvalue_type)
                 else:
                     self.check_assignment(lv, self.temp_node(item_type, context),
@@ -2176,12 +2177,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
                                 rvalue: Expression, context: Context) -> Tuple[Type, bool]:
-        """Type member assigment.
+        """Type member assignment.
 
         This defers to check_simple_assignment, unless the member expression
         is a descriptor, in which case this checks descriptor semantics as well.
 
-        Return the inferred rvalue_type and whether to infer anything about the attribute type
+        Return the inferred rvalue_type and whether to infer anything about the attribute type.
         """
         # Descriptors don't participate in class-attribute access
         if ((isinstance(instance_type, FunctionLike) and instance_type.is_type_obj()) or
@@ -3245,7 +3246,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not self.current_node_deferred:
             for var, context in partial_types.items():
                 # If we require local partial types, there are a few exceptions where
-                # we fall back to inferring just "None" as the type from a None initaliazer:
+                # we fall back to inferring just "None" as the type from a None initializer:
                 #
                 # 1. If all happens within a single function this is acceptable, since only
                 #    the topmost function is a separate target in fine-grained incremental mode.
