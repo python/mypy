@@ -59,8 +59,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
 
-    is_running_in_py_charm = "PYCHARM_HOSTED" in os.environ
-    if is_running_in_py_charm:
+    if "PYCHARM_HOSTED" in os.environ:
         pos = next((p for p, i in enumerate(out) if i.startswith('pydev debugger: ')), None)
         if pos is not None:
             del out[pos]  # the attaching debugger message itself
