@@ -1,4 +1,4 @@
-[case testTree]
+[case testBenchmarkTree]
 from typing import Optional
 class Node:
     def __init__(self, value: int) -> None:
@@ -17,11 +17,11 @@ def sum_tree(x: Optional[Node]) -> int:
     if x is None:
         return 0
     return x.value + sum_tree(x.left) + sum_tree(x.right)
-def lol(n: int) -> Optional[Node]:
+def build(n: int) -> Optional[Node]:
     if n == 0:
         return None
     x = Node(n)
-    x.left = lol(n - 1)
+    x.left = build(n - 1)
     x.right = x.left
     return x
 
@@ -37,6 +37,7 @@ import native
 import interpreted
 from timeit import timeit
 from time import time
+import os
 
 def dumb_time(f):
     t0 = time()
@@ -44,24 +45,33 @@ def dumb_time(f):
     t1 = time()
     return t1 - t0
 
-def test(m):
-    tree = m.lol(5)
+def basic_test(m):
+    tree = m.build(5)
     assert(m.sum_tree(tree) == 57)
     assert(tree.sum() == 57)
+    return tree
+
+def test(m):
+    tree = basic_test(m)
 
     g = {**globals(), **locals()}
     sum = timeit('m.sum_tree(tree)', globals=g)
     sum2 = timeit('tree.sum()', globals=g)
     fsum = dumb_time(lambda: m.bench_sum(tree))
     fsum2 = dumb_time(lambda: m.bench_sum_method(tree))
-    build = timeit('m.lol(5)', globals=g)
+    build = timeit('m.build(5)', globals=g)
     return (sum, sum2, fsum, fsum2, build)
 
-nsum, nsum2, nfsum, nfsum2, nbuild = test(native)
-isum, isum2, ifsum, ifsum2, ibuild = test(interpreted)
-print(nsum, nsum2, nfsum, nbuild)
-print("Sum speedup:", isum/nsum)
-print("Sum method speedup:", isum2/nsum2)
-print("Sum (fast) speedup:", ifsum/nfsum)
-print("Sum (fast) method speedup:", ifsum2/nfsum2)
-print("Build speedup:", ibuild/nbuild)
+# Basic functionality test
+basic_test(native)
+
+# Benchmark if we are benchmarking
+if os.environ.get('MYPYC_RUN_BENCH') == '1':
+    nsum, nsum2, nfsum, nfsum2, nbuild = test(native)
+    isum, isum2, ifsum, ifsum2, ibuild = test(interpreted)
+    print(nsum, nsum2, nfsum, nbuild)
+    print("Sum speedup:", isum/nsum)
+    print("Sum method speedup:", isum2/nsum2)
+    print("Sum (fast) speedup:", ifsum/nfsum)
+    print("Sum (fast) method speedup:", ifsum2/nfsum2)
+    print("Build speedup:", ibuild/nbuild)

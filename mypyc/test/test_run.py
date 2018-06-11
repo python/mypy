@@ -19,8 +19,11 @@ from mypyc.test.testutil import (
 
 import pytest  # type: ignore  # no pytest in typeshed
 
-files = ['run.test',
-         'run-classes.test']
+files = [
+    'run.test',
+    'run-classes.test',
+    'run-bench.test',
+]
 
 
 class TestRun(MypycDataSuite):
@@ -28,11 +31,9 @@ class TestRun(MypycDataSuite):
     files = files
     base_path = test_temp_dir
     optional_out = True
-    benchmark = False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if self.benchmark and not testcase.config.getoption('--bench', False):
-            pytest.skip()
+        bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
 
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
             text = '\n'.join(testcase.input)
@@ -82,6 +83,7 @@ class TestRun(MypycDataSuite):
             driver_path = os.path.join(test_temp_dir, 'driver.py')
             env = os.environ.copy()
             env['PYTHONPATH'] = os.path.dirname(native_lib_path)
+            env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
             proc = subprocess.Popen(['python', driver_path], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, env=env)
             output, _ = proc.communicate()
@@ -97,7 +99,7 @@ class TestRun(MypycDataSuite):
                 print('*** Exit status: %d' % proc.returncode)
 
             # Verify output.
-            if self.benchmark:
+            if bench:
                 print('Test output:')
                 print(output)
             else:
