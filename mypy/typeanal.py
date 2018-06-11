@@ -191,6 +191,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             #    type check below.
             sym = self.api.dereference_module_cross_ref(sym)
         if sym is not None:
+            normalized = False
             if isinstance(sym.node, ImportedName):
                 # Forward reference to an imported name that hasn't been processed yet.
                 # To maintain backward compatibility, these get translated to Any.
@@ -201,6 +202,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # This is necessary if we process some other modules before 'typing'.
                 resolved = type_aliases[sym.fullname]
                 new = self.api.lookup_fully_qualified(resolved)
+                normalized = True
                 sym = new.copy()
             if sym.node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
@@ -212,7 +214,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins and t.args and
-                    not self.allow_unnormalized):
+                    not self.allow_unnormalized and not normalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
             if self.tvar_scope:
                 tvar_def = self.tvar_scope.get_binding(sym)
