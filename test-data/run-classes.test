@@ -226,3 +226,36 @@ assert c.x == 'x'
 c.set([1])
 assert c.x == [1]
 assert c.get() == [1]
+
+[case testSubclass]
+from typing import Tuple
+
+class A:
+    def __init__(self) -> None:
+        self.x = 10
+    def hi(self, suffix: str) -> str:
+        return str(self.x) + suffix
+class B(A):
+    def __init__(self) -> None:
+        self.x = 20
+        self.y = 'world'
+    def hi(self, suffix: str) -> str:
+        return 'hello ' + str(self.y) + suffix
+
+def use_a(x: A) -> Tuple[int, str]:
+    return (x.x, x.hi(''))
+def use_b(x: B) -> str:
+    return x.hi('')
+
+[file driver.py]
+from native import A, B, use_a, use_b
+a = A()
+b = B()
+assert use_a(a) == (10, '10')
+assert use_a(b) == (20, 'hello world')
+assert a.x == 10
+assert b.x == 20
+assert b.y == 'world'
+assert a.hi('!') == '10!'
+assert b.hi('!') == 'hello world!'
+assert use_b(b) == 'hello world'

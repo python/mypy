@@ -1,3 +1,4 @@
+-- TODO: build some generic benchmark harness
 [case testBenchmarkTree]
 from typing import Optional
 class Node:
@@ -75,3 +76,78 @@ if os.environ.get('MYPYC_RUN_BENCH') == '1':
     print("Sum (fast) speedup:", ifsum/nfsum)
     print("Sum (fast) method speedup:", ifsum2/nfsum2)
     print("Build speedup:", ibuild/nbuild)
+
+[case testBenchmarkVisitorTree]
+from typing import cast
+class Tree:
+    def accept(self, v: 'TreeVisitor') -> object:
+        pass
+class Leaf(Tree):
+    def accept(self, v: 'TreeVisitor') -> object:
+        return v.visit_leaf(self)
+class Node(Tree):
+    def __init__(self, value: int, left: Tree, right: Tree) -> None:
+        self.value = value
+        self.left = left
+        self.right = right
+    def accept(self, v: 'TreeVisitor') -> object:
+        return v.visit_node(self)
+
+class TreeVisitor:
+    def visit_leaf(self, x: Leaf) -> object: pass
+    def visit_node(self, x: Node) -> object: pass
+
+class SumVisitor(TreeVisitor):
+    def sum(self, x: Tree) -> int:
+        return cast(int, x.accept(self))
+    def visit_leaf(self, x: Leaf) -> object:
+        return 0
+    def visit_node(self, x: Node) -> object:
+        return x.value + self.sum(x.left) + self.sum(x.right)
+
+def sum_tree(x: Tree) -> int:
+    return SumVisitor().sum(x)
+
+def lol(n: int) -> Tree:
+    if n == 0:
+        return Leaf()
+    child = lol(n - 1)
+    return Node(n, child, child)
+
+def bench_sum_tree(x: Tree) -> None:
+    for i in range(100000):
+        sum_tree(x)
+
+[file driver.py]
+from typing import Optional
+import native
+import interpreted
+from timeit import timeit
+from time import time
+import os
+
+def dumb_time(f):
+    t0 = time()
+    f()
+    t1 = time()
+    return t1 - t0
+
+def basic_test(m):
+    tree = m.lol(5)
+    assert(m.sum_tree(tree) == 57)
+    return tree
+
+def test(m):
+    tree = basic_test(m)
+
+    g = {**globals(), **locals()}
+    fsum = dumb_time(lambda: m.bench_sum_tree(tree))
+    return fsum
+
+basic_test(native)
+
+if os.environ.get('MYPYC_RUN_BENCH') == '1':
+    nfsum = test(native)
+    ifsum = test(interpreted)
+    print(nfsum)
+    print("Sum speedup:", ifsum/nfsum)

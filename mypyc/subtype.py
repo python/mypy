@@ -27,8 +27,7 @@ class SubtypeVisitor(RTypeVisitor[bool]):
         self.right = right
 
     def visit_rinstance(self, left: RInstance) -> bool:
-        # TODO: Inheritance
-        return isinstance(self.right, RInstance) and self.right.name == left.name
+        return isinstance(self.right, RInstance) and self.right.class_ir in left.class_ir.mro
 
     def visit_roptional(self, left: ROptional) -> bool:
         return isinstance(self.right, ROptional) and is_subtype(left.value_type,

@@ -273,26 +273,16 @@ class RInstance(RType):
         return self.class_ir.struct_name()
 
     def getter_index(self, name: str) -> int:
-        for i, (attr, _) in enumerate(self.class_ir.attributes):
-            if attr == name:
-                return i * 2
-        assert False, '%r has no attribute %r' % (self.name, name)
+        return self.class_ir.vtable_entry(name)
 
     def setter_index(self, name: str) -> int:
         return self.getter_index(name) + 1
 
     def method_index(self, name: str) -> int:
-        base = len(self.class_ir.attributes) * 2
-        for i, fn in enumerate(self.class_ir.methods):
-            if fn.name == name:
-                return base + i
-        assert False, '%r has no attribute %r' % (self.name, name)
+        return self.class_ir.vtable_entry(name)
 
     def attr_type(self, name: str) -> RType:
-        for i, (attr, rtype) in enumerate(self.class_ir.attributes):
-            if attr == name:
-                return rtype
-        assert False, '%r has no attribute %r' % (self.name, name)
+        return self.class_ir.attr_type(name)
 
     def __repr__(self) -> str:
         return '<RInstance %s>' % self.name
@@ -1232,8 +1222,39 @@ class ClassIR:
 
     def __init__(self, name: str) -> None:
         self.name = name
-        self.attributes = []  # type: List[Tuple[str, RType]]
+        self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
         self.methods = []  # type: List[FuncIR]
+        self.vtable = None  # type: Optional[Dict[str, int]]
+        self.vtable_size = 0
+        self.base = None  # type: Optional[ClassIR]
+        self.mro = []  # type: List[ClassIR]
+
+    def compute_vtable(self) -> None:
+        if self.vtable is not None: return
+        self.vtable = {}
+        base = 0
+        if self.base:
+            self.base.compute_vtable()
+            assert self.base.vtable is not None
+            self.vtable.update(self.base.vtable)
+            base = self.base.vtable_size
+
+        for i, attr in enumerate(self.attributes):
+            self.vtable[attr] = base + i * 2
+        base += len(self.attributes) * 2
+        for i, fn in enumerate(self.methods):
+            self.vtable[fn.name] = base + i
+        self.vtable_size = base + len(self.methods)
+
+    def vtable_entry(self, name: str) -> int:
+        assert self.vtable is not None, "vtable not computed yet"
+        assert name in self.vtable, '%r has no attribute %r' % (self.name, name)
+        return self.vtable[name]
+
+    def attr_type(self, name: str) -> RType:
+        for ir in self.mro:
+            if name in ir.attributes: return ir.attributes[name]
+        assert False, '%r has no attribute %r' % (self.name, name)
 
     def struct_name(self) -> str:
         return '{}Object'.format(self.name)

@@ -141,3 +141,38 @@ L1:
 L2:
     r6 = 1
     return r6
+
+[case testSubclass]
+class A:
+    def __init__(self) -> None:
+        self.x = 10
+class B(A):
+    def __init__(self) -> None:
+        self.x = 20
+        self.y = 30
+[out]
+-- This is totally useless because we don't print any class info!!
+def __init__(self):
+    self :: A
+    r0 :: int
+    r1 :: bool
+    r2 :: None
+L0:
+    r0 = 10
+    self.x = r0; r1 = is_error
+    r2 = None
+    return r2
+def __init__(self):
+    self :: B
+    r0 :: int
+    r1 :: bool
+    r2 :: int
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = 20
+    self.x = r0; r1 = is_error
+    r2 = 30
+    self.y = r2; r3 = is_error
+    r4 = None
+    return r4
