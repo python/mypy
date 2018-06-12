@@ -1706,7 +1706,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # when this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
-        if isinstance(s.rvalue, IndexExpr):
+        if isinstance(s.rvalue, (IndexExpr, CallExpr)):
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars)
             s.rvalue.analyzed.line = s.line
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
@@ -2743,12 +2743,23 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 and isinstance(expr.base.node, TypeInfo)
                 and not expr.base.node.is_generic()):
             expr.index.accept(self)
-        elif (refers_to_class_or_function(expr.base) or
-              isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias)):
+        elif isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
+            # Special form -- subscripting a generic type alias.
+            # Perform the type substitution and create a new alias.
+            res, alias_tvars, depends_on, _ = self.analyze_alias(expr)
+            if res is None:
+                # Bad type alias, nothing to do here.
+                expr.analyzed = TypeAliasExpr(expr.base.node.target, [])
+                return
+            expr.analyzed = TypeAliasExpr(res, alias_tvars)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            # We also store fine-grained dependencies to correctly re-process nodes
+            # with situations like `L = LongGeneric; x = L[int]()`.
+            self.add_type_alias_deps(depends_on)
+        elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
-            if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
-                self.add_type_alias_deps(expr.base.node.depends_on)
             types = []  # type: List[Type]
             if isinstance(expr.index, TupleExpr):
                 items = expr.index.items

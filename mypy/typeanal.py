@@ -342,7 +342,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # valid count at this point. Thus we may construct an
                 # Instance with an invalid number of type arguments.
                 instance = Instance(info, self.anal_array(t.args), t.line, t.column)
-                if not t.args and self.options.disallow_any_generics:
+                if not t.args and self.options.disallow_any_generics and not self.aliasing:
                     from_builtins = info.fullname() in nongen_builtins
                     if not normalized:
                         if not self.is_typeshed_stub and from_builtins:

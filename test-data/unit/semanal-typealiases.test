@@ -45,10 +45,7 @@ List[List[int]]
 MypyFile:1(
   ImportFrom:1(typing, [List])
   ExpressionStmt:2(
-    TypeApplication:2(
-      NameExpr(List [typing.List])
-      Types(
-        builtins.list[builtins.int]))))
+    TypeAliasExpr(builtins.list[builtins.list[builtins.int]])))
 
 [case testTypeApplicationWithQualifiedTypeAlias]
 import typing
@@ -58,12 +55,7 @@ typing.List[typing.List[int]]
 MypyFile:1(
   Import:1(typing)
   ExpressionStmt:2(
-    TypeApplication:2(
-      MemberExpr:2(
-        NameExpr(typing)
-        List [builtins.list])
-      Types(
-        builtins.list[builtins.int]))))
+    TypeAliasExpr(builtins.list[builtins.list[builtins.int]])))
 
 [case testSimpleTypeAlias]
 import typing

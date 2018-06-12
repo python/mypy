@@ -3511,7 +3511,7 @@ from b import B
 B(int())
 [out]
 ==
-c.py:2: error: Argument 1 has incompatible type "int"; expected "str"
+c.py:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
 
 [case testAliasFineInitGenericFunc]
 import c
@@ -3537,7 +3537,7 @@ from b import B
 def f() -> None:
     B(str())
 [out]
-c.py:3: error: Argument 1 has incompatible type "str"; expected "int"
+c.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
 ==
 
 [case testAliasFineInitChainedMod]

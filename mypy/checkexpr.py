@@ -182,8 +182,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
-            if isinstance(node.target, Instance) and not node.target.args:
-                result = type_object_type(node.target.type, self.named_type)
+            tp = set_any_tvars(node.target, node.alias_tvars, e.line, e.column)
+            if isinstance(tp, Instance):
+                result = type_object_type(tp.type, self.named_type)
+                if isinstance(result, CallableType):
+                    result = self.apply_generic_arguments(result, tp.args, e)
+                elif isinstance(result, Overloaded):
+                    result =  Overloaded([self.apply_generic_arguments(it, tp.args, e)
+                                          for it in result.items()])
             else:
                 result = AnyType(TypeOfAny.from_error)
         else:

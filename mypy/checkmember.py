@@ -10,7 +10,7 @@ from mypy.types import (
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
     ARG_POS, ARG_STAR, ARG_STAR2,
-    Decorator, OverloadedFuncDef,
+    Decorator, OverloadedFuncDef, TypeAlias
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -247,6 +247,11 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         # the purposes of type checking.  This enables us to type check things
         # like accessing class attributes on an inner class.
         v = Var(name, type=type_object_type(vv, builtin_type))
+        v.info = info
+
+    if isinstance(vv, TypeAlias) and isinstance(vv.target, Instance):
+        tp = type_object_type(vv.target.type, builtin_type)
+        v = Var(name, type=expand_type_by_instance(tp, vv.target))
         v.info = info
 
     if isinstance(v, Var):

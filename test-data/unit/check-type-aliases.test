@@ -58,8 +58,7 @@ U = Union[int, str]
 
 [case testProhibitReassigningAliases]
 A = float
-A = int  # E: Cannot assign to a type \
-         # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
+A = int  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
 [out]
 
 [case testProhibitReassigningSubscriptedAliases]

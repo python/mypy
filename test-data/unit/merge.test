@@ -1163,7 +1163,7 @@ __main__:
     target: MypyFile<0>
 target:
     Iterator: TypeInfo<1>
-    List: TypeInfo<2>
+    List: TypeAlias<2>
     Tuple: Var<3>
     contextmanager: FuncDef<4>
     f: Decorator<5>
@@ -1172,7 +1172,7 @@ __main__:
     target: MypyFile<0>
 target:
     Iterator: TypeInfo<1>
-    List: TypeInfo<2>
+    List: TypeAlias<2>
     Tuple: Var<3>
     contextmanager: FuncDef<4>
     f: Decorator<5>

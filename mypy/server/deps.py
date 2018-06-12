@@ -352,6 +352,8 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(make_trigger(class_name + '.__new__'))
             if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
                 self.add_type_dependencies(rvalue.analyzed.type)
+            else:
+                self.add_type_dependencies(typ)
         else:
             # Normal assignment
             super().visit_assignment_stmt(o)
