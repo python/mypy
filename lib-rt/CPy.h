@@ -52,28 +52,28 @@ static void CPyError_OutOfMemory(void) {
     abort();
 }
 
-inline int CPyTagged_CheckLong(CPyTagged x) {
+static inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
 }
 
-inline int CPyTagged_CheckShort(CPyTagged x) {
+static inline int CPyTagged_CheckShort(CPyTagged x) {
     return !CPyTagged_CheckLong(x);
 }
 
-inline CPyTagged CPyTagged_ShortFromInt(int x) {
+static inline CPyTagged CPyTagged_ShortFromInt(int x) {
     return x << 1;
 }
 
-inline CPyTagged CPyTagged_ShortFromLongLong(long long x) {
+static inline CPyTagged CPyTagged_ShortFromLongLong(long long x) {
     return x << 1;
 }
 
-inline long long CPyTagged_ShortAsLongLong(CPyTagged x) {
+static inline long long CPyTagged_ShortAsLongLong(CPyTagged x) {
     // NOTE: Assume that we sign extend.
     return (CPySignedInt)x >> 1;
 }
 
-inline PyObject *CPyTagged_LongAsObject(CPyTagged x) {
+static inline PyObject *CPyTagged_LongAsObject(CPyTagged x) {
     // NOTE: Assume target is not a short int.
     return (PyObject *)(x & ~CPY_INT_TAG);
 }
@@ -164,19 +164,19 @@ static long long CPyTagged_AsLongLong(CPyTagged x) {
     }
 }
 
-inline void CPyTagged_IncRef(CPyTagged x) {
+static inline void CPyTagged_IncRef(CPyTagged x) {
     if (CPyTagged_CheckLong(x)) {
         Py_INCREF(CPyTagged_LongAsObject(x));
     }
 }
 
-inline void CPyTagged_DecRef(CPyTagged x) {
+static inline void CPyTagged_DecRef(CPyTagged x) {
     if (CPyTagged_CheckLong(x)) {
         Py_DECREF(CPyTagged_LongAsObject(x));
     }
 }
 
-inline bool CPyTagged_IsAddOverflow(CPyTagged sum, CPyTagged left, CPyTagged right) {
+static inline bool CPyTagged_IsAddOverflow(CPyTagged sum, CPyTagged left, CPyTagged right) {
     // This check was copied from some of my old code I believe that it works :-)
     return (long long)(sum ^ left) < 0 && (long long)(sum ^ right) < 0;
 }
@@ -215,7 +215,7 @@ static CPyTagged CPyTagged_Add(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-inline bool CPyTagged_IsSubtractOverflow(CPyTagged diff, CPyTagged left, CPyTagged right) {
+static inline bool CPyTagged_IsSubtractOverflow(CPyTagged diff, CPyTagged left, CPyTagged right) {
     // This check was copied from some of my old code I believe that it works :-)
     return (long long)(diff ^ left) < 0 && (long long)(diff ^ right) >= 0;
 }
@@ -239,7 +239,7 @@ static CPyTagged CPyTagged_Subtract(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-inline bool CPyTagged_IsMultiplyOverflow(CPyTagged left, CPyTagged right) {
+static inline bool CPyTagged_IsMultiplyOverflow(CPyTagged left, CPyTagged right) {
     // This is conservative -- return false only in a small number of all non-overflow cases
     return left >= (1U << 31) || right >= (1U << 31);
 }
@@ -262,7 +262,7 @@ static CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-inline bool CPyTagged_MaybeFloorDivideOverflow(CPyTagged left, CPyTagged right) {
+static inline bool CPyTagged_MaybeFloorDivideOverflow(CPyTagged left, CPyTagged right) {
     return right == -0x8000000000000000ULL || left == -0x8000000000000000ULL;
 }
 
@@ -291,7 +291,7 @@ static CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
     return CPyTagged_StealFromObject(result);
 }
 
-inline bool CPyTagged_MaybeRemainderOverflow(CPyTagged left, CPyTagged right) {
+static inline bool CPyTagged_MaybeRemainderOverflow(CPyTagged left, CPyTagged right) {
     return right == -0x8000000000000000ULL || left == -0x8000000000000000ULL;
 }
 
