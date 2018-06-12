@@ -1238,7 +1238,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for typ in plausible_targets:
             overload_messages = self.msg.clean_copy()
             prev_messages = self.msg
+            assert self.msg is self.chk.msg
             self.msg = overload_messages
+            self.chk.msg = overload_messages
             try:
                 # Passing `overload_messages` as the `arg_messages` parameter doesn't
                 # seem to reliably catch all possible errors.
@@ -1253,6 +1255,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callable_name=callable_name,
                     object_type=object_type)
             finally:
+                self.chk.msg = prev_messages
                 self.msg = prev_messages
 
             is_match = not overload_messages.is_errors()

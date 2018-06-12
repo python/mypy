@@ -2620,3 +2620,32 @@ class FakeAttribute(Generic[T]):
     @overload
     def dummy(self, instance: T, owner: Type[T]) -> int: ...
     def dummy(self, instance: Optional[T], owner: Type[T]) -> Union['FakeAttribute[T]', int]: ...
+
+[case testOverloadLambdaUnpackingInference]
+# flags: --py2
+from typing import Callable, TypeVar, overload
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+@overload
+def foo(func, item):
+    # type: (Callable[[T], S], T) -> S
+    pass
+
+@overload
+def foo():
+    # type: () -> None
+    pass
+
+def foo(*args):
+    pass
+
+def add_proxy(x, y):
+    # type: (int, str) -> str
+    pass
+
+# The lambda definition is a syntax error in Python 3
+tup = (1, '2')
+reveal_type(foo(lambda (x, y): add_proxy(x, y), tup))  # E: Revealed type is 'builtins.str*'
+[builtins fixtures/primitives.pyi]
