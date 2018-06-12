@@ -963,7 +963,7 @@ y: U
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
 reveal_type(y)  # E: Revealed type is 'builtins.int'
 
-U[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+U[int]  # E: Type application targets a non-generic function or class
 O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 [out]
 
@@ -1075,7 +1075,7 @@ main:13: error: Value of type variable "S" of "A" cannot be "str"
 class A: ...
 Bad = A[int] # type: ignore
 
-reveal_type(Bad) # E: Revealed type is 'Any'
+reveal_type(Bad)  # E: Revealed type is 'def () -> __main__.A'
 [out]
 
 [case testNoSubscriptionOfBuiltinAliases]

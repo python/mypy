@@ -2391,12 +2391,13 @@ class FakeInfo(TypeInfo):
 
 class TypeAlias(SymbolNode):
 
-    __slots__ = ('target', '_fullname', 'alias_tvars', 'depends_on')
+    __slots__ = ('target', '_fullname', 'alias_tvars', 'depends_on', 'no_args')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str,
                  *,
                  alias_tvars: Optional[List[str]] = None,
-                 depends_on: Optional[List[str]] = None) -> None:
+                 depends_on: Optional[List[str]] = None,
+                 no_args: bool = False) -> None:
         self._fullname = fullname
         self.target = target
         if alias_tvars is None:
@@ -2405,6 +2406,7 @@ class TypeAlias(SymbolNode):
         if depends_on is None:
             depends_on = []
         self.depends_on = depends_on
+        self.no_args = no_args
 
     def name(self) -> str:
         return self._fullname.split('.')[-1]
@@ -2417,7 +2419,8 @@ class TypeAlias(SymbolNode):
                 'fullname': self._fullname,
                 'target': self.target.serialize(),
                 'alias_tvars': self.alias_tvars,
-                'depends_on': self.depends_on
+                'depends_on': self.depends_on,
+                'no_args': self.no_args
                 }  # type: JsonDict
         return data
 
@@ -2431,7 +2434,8 @@ class TypeAlias(SymbolNode):
         alias_tvars = data['alias_tvars']
         depends_on = data['depends_on']
         target = mypy.types.deserialize_type(data['target'])
-        return cls(target, fullname, alias_tvars=alias_tvars, depends_on=depends_on)
+        no_args = data['no_args']
+        return cls(target, fullname, alias_tvars=alias_tvars, depends_on=depends_on, no_args=no_args)
 
 
 class SymbolTableNode:

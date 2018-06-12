@@ -199,7 +199,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if sym.fullname in type_aliases:
                 # This is necessary if we process some other modules before 'typing'.
                 resolved = type_aliases[sym.fullname]
-                new = self.api.lookup_fully_qualified(resolved)
+                try:
+                    new = self.api.lookup_fully_qualified(resolved)
+                except KeyError:  # broken test fixture
+                    return AnyType(TypeOfAny.from_error)
                 normalized = True
                 sym = new.copy()
             if sym.node is None:
@@ -294,7 +297,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return set_any_tvars(target, all_vars, t.line, t.column)
                 if exp_len == 0 and act_len == 0:
                     return target
-                if exp_len == 0 and act_len > 0 and isinstance(target, Instance):
+                if exp_len == 0 and act_len > 0 and isinstance(target, Instance) and sym.node.no_args:
                     tp = Instance(target.type, an_args)
                     tp.line = t.line
                     return tp

@@ -21,7 +21,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolTable,
     ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -185,11 +185,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             tp = set_any_tvars(node.target, node.alias_tvars, e.line, e.column)
             if isinstance(tp, Instance):
                 result = type_object_type(tp.type, self.named_type)
-                if isinstance(result, CallableType):
-                    result = self.apply_generic_arguments(result, tp.args, e)
-                elif isinstance(result, Overloaded):
-                    result =  Overloaded([self.apply_generic_arguments(it, tp.args, e)
-                                          for it in result.items()])
+                if not node.no_args:
+                    if isinstance(result, CallableType):
+                        result = self.apply_generic_arguments(result, tp.args, e)
+                    elif isinstance(result, Overloaded):
+                        result =  Overloaded([self.apply_generic_arguments(it, tp.args, e)
+                                              for it in result.items()])
             else:
                 result = AnyType(TypeOfAny.from_error)
         else:
@@ -232,7 +233,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if ((isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
                         or (isinstance(typ, NameExpr) and node and
-                            isinstance(node.node, TypeAlias))):
+                            isinstance(node.node, TypeAlias) and not node.node.no_args)):
                     self.msg.type_arguments_not_allowed(e)
                 if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
                     if typ.node.typeddict_type:
@@ -2085,7 +2086,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # This type is invalid in most runtime contexts
             # and corresponding an error will be reported.
-            return AnyType(TypeOfAny.special_form)
+            kind = (' to Callable' if isinstance(item, CallableType) else
+                    ' to Tuple' if isinstance(item, TupleType) else
+                    ' to Union' if isinstance(item, UnionType) else '')
+            cdef = ClassDef('Type alias' + kind, Block([]))
+            fb_info = TypeInfo(SymbolTable(), cdef, self.chk.tree.fullname())
+            fb_info.bases = [self.object_type()]
+            fb_info.mro = [fb_info, self.object_type().type]
+            return Instance(fb_info, [])
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(item.args):
                 self.msg.incompatible_type_application(len(tp.variables),

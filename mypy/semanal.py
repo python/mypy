@@ -56,7 +56,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
-    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
+    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, nongen_builtins
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -1709,8 +1709,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars)
             s.rvalue.analyzed.line = s.line
+        no_args = isinstance(res, Instance) and not res.args
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
-                              depends_on=list(depends_on))
+                              depends_on=list(depends_on), no_args=no_args)
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -2757,6 +2758,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # We also store fine-grained dependencies to correctly re-process nodes
             # with situations like `L = LongGeneric; x = L[int]()`.
             self.add_type_alias_deps(depends_on)
+            # list, dict, set are not directly subscriptable
+            if isinstance(expr.base.node.target, Instance) and expr.base.node.no_args and expr.base.node.target.type.fullname() in nongen_builtins:
+                self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(), propose_alt=False), expr)
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
@@ -2775,7 +2779,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
-            # TODOALIAS list[int]
+            # list, dict, set are not directly subscriptable
+            n = self.lookup_type_node(expr.base)
+            if n and (not isinstance(expr.base.node, TypeAlias) or expr.base.node.no_args) and n.fullname in nongen_builtins:
+                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
         else:
             expr.index.accept(self)
 
