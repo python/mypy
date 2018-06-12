@@ -249,7 +249,19 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
             pytest.skip()
         suite = self.parent.obj()
         suite.setup()
-        suite.run_case(self)
+        try:
+            suite.run_case(self)
+        except Exception:
+            # As a debugging aid, support copying the contents of the tmp directory somewhere
+            target_dir = self.config.getoption('--save-failures-to', None)  # type: Optional[str]
+            print(target_dir)
+            if target_dir:
+                assert self.tmpdir is not None
+                if not os.path.isabs(target_dir):
+                    target_dir = os.path.join(self.old_cwd, target_dir)
+                shutil.copytree(self.tmpdir.name,
+                                os.path.join(target_dir, os.path.basename(self.tmpdir.name)))
+            raise
 
     def setup(self) -> None:
         self.old_cwd = os.getcwd()
@@ -578,6 +590,8 @@ def pytest_addoption(parser: Any) -> None:
     group.addoption('--update-data', action='store_true', default=False,
                     help='Update test data to reflect actual output'
                          ' (supported only for certain tests)')
+    group.addoption('--save-failures-to', default=None,
+                    help='Copy the temp directories from failing tests to a target directory')
     group.addoption('--mypy-verbose', action='count',
                     help='Set the verbose flag when creating mypy Options')
 
