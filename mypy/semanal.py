@@ -295,7 +295,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     name = alias.split('.')[-1]
                     n = self.lookup_fully_qualified_or_none(target_name)
                     if n:
-                        alias_node = TypeAlias(self.builtin_type(target_name), alias)
+                        any_type = AnyType(TypeOfAny.special_form)
+                        if target_name.split('.')[-1] in ('list', 'set', 'deque', 'frozenset', 'Counter'):
+                            args = [any_type]
+                        else:
+                            args = [any_type, any_type]
+                        alias_node = TypeAlias(self.named_type_or_none(target_name, args), alias)
                         self.cur_mod_node.names[name] = SymbolTableNode(GDEF, alias_node)
 
             defs = file_node.defs
@@ -2781,7 +2786,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             expr.analyzed.line = expr.line
             # list, dict, set are not directly subscriptable
             n = self.lookup_type_node(expr.base)
-            if n and (not isinstance(expr.base.node, TypeAlias) or expr.base.node.no_args) and n.fullname in nongen_builtins:
+            if n and n.fullname in nongen_builtins:
                 self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
         else:
             expr.index.accept(self)
@@ -3061,7 +3066,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             next_sym = n.names[parts[i]]
             assert isinstance(next_sym.node, MypyFile)
             n = next_sym.node
-        return n.names[parts[-1]]
+        try:
+            return n.names[parts[-1]]
+        except KeyError:
+            self.name_not_defined(name, self.cur_mod_node)
+            raise
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.

@@ -712,15 +712,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         # Check type argument count.
         if len(t.args) != len(info.type_vars):
             if len(t.args) == 0:
-                from_builtins = t.type.fullname() in nongen_builtins
-                # Insert implicit 'Any' type arguments.
-                if from_builtins:
-                    # this 'Any' was already reported elsewhere
-                    any_type = AnyType(TypeOfAny.special_form,
-                                       line=t.line, column=t.column)
-                else:
-                    any_type = AnyType(TypeOfAny.from_omitted_generics,
-                                       line=t.line, column=t.column)
+                any_type = AnyType(TypeOfAny.from_omitted_generics,
+                                   line=t.line, column=t.column)
                 t.args = [any_type] * len(info.type_vars)
                 return
             # Invalid number of type parameters.
