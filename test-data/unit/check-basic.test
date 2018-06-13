@@ -232,6 +232,13 @@ a = __file__ # type: A  # E: Incompatible types in assignment (expression has ty
 class A: pass
 [builtins fixtures/primitives.pyi]
 
+[case testModule__path__]
+import typing
+x = __path__ # type: list
+a = __path__ # type: A  # E: Incompatible types in assignment (expression has type "list", variable has type "A")
+class A: pass
+[builtins fixtures/primitives.pyi]
+
 [case test__package__]
 import typing
 x = __package__ # type: str

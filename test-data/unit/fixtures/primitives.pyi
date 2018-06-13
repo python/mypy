@@ -20,4 +20,5 @@ class str:
 class bytes: pass
 class bytearray: pass
 class tuple(Generic[T]): pass
+class list(Generic[T]): pass
 class function: pass
