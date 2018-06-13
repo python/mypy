@@ -2833,6 +2833,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
+    if 'typing' in scc:
+        manager.semantic_analyzer.add_builtin_aliases(graph['typing'].tree)
     for id in fresh:
         graph[id].fix_cross_refs()
     for id in stale:

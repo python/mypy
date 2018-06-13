@@ -369,7 +369,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         if type:
             analyzer = self.make_type_analyzer(indicator)
             type.accept(analyzer)
-            self.check_for_omitted_generics(type)
+            if not (isinstance(node, TypeAlias) and node.no_args):
+                self.check_for_omitted_generics(type)
             self.generate_type_patches(node, indicator, warn)
             if analyzer.aliases_used:
                 target = self.scope.current_target()

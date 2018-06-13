@@ -440,11 +440,16 @@ __main__.S
 [case testDifferentListTypes]
 from typing import List
 A = List
+B = list
+C = List
 [file next.py]
 from typing import List
-A = list
+A = List
+B = list
+C = list
 [builtins fixtures/list.pyi]
 [out]
+__main__.C
 
 [case testDecoratorChangesSignature]
 from contextlib import contextmanager

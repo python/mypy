@@ -189,22 +189,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             #    type check below.
             sym = self.api.dereference_module_cross_ref(sym)
         if sym is not None:
-            normalized = False
             if isinstance(sym.node, ImportedName):
                 # Forward reference to an imported name that hasn't been processed yet.
                 # To maintain backward compatibility, these get translated to Any.
                 #
                 # TODO: Remove this special case.
                 return AnyType(TypeOfAny.implementation_artifact)
-            if sym.fullname in type_aliases:
-                # This is necessary if we process some other modules before 'typing'.
-                resolved = type_aliases[sym.fullname]
-                try:
-                    new = self.api.lookup_fully_qualified(resolved)
-                except KeyError:  # broken test fixture
-                    return AnyType(TypeOfAny.from_error)
-                normalized = True
-                sym = new.copy()
             if sym.node is None:
                 # UNBOUND_IMPORTED can happen if an unknown name was imported.
                 if sym.kind != UNBOUND_IMPORTED:
@@ -215,7 +205,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins and t.args and
-                    not self.allow_unnormalized and not normalized):
+                    not self.allow_unnormalized):
                 self.fail(no_subscript_builtin_alias(fullname), t)
             if self.tvar_scope:
                 tvar_def = self.tvar_scope.get_binding(sym)
@@ -296,10 +286,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     assert all_vars is not None
                     return set_any_tvars(target, all_vars, t.line, t.column)
                 if exp_len == 0 and act_len == 0:
+                    if sym.node.no_args:
+                        return Instance(target.type, [], line=t.line, column=t.column)
                     return target
                 if exp_len == 0 and act_len > 0 and isinstance(target, Instance) and sym.node.no_args:
                     tp = Instance(target.type, an_args)
                     tp.line = t.line
+                    tp.column = t.column
                     return tp
                 if act_len != exp_len:
                     self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
@@ -347,11 +340,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 instance = Instance(info, self.anal_array(t.args), t.line, t.column)
                 if not t.args and self.options.disallow_any_generics and not self.aliasing:
                     from_builtins = info.fullname() in nongen_builtins
-                    if not normalized:
-                        if not self.is_typeshed_stub and from_builtins:
-                            alternative = nongen_builtins[info.fullname()]
-                            self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
-                            instance.args = [AnyType(TypeOfAny.from_error, line=t.line)] * len(info.type_vars)
+                    if not self.is_typeshed_stub and from_builtins:
+                        alternative = nongen_builtins[info.fullname()]
+                        self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
+                        instance.args = [AnyType(TypeOfAny.from_error, line=t.line)] * len(info.type_vars)
                     else:
                         instance.args = [AnyType(TypeOfAny.from_omitted_generics, line=t.line)] * len(info.type_vars)
 

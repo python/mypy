@@ -290,19 +290,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     v.type = self.anal_type(v.type)
                     v.is_ready = True
 
-            if self.cur_mod_id == 'typing':
-                for alias, target_name in type_aliases.items():
-                    name = alias.split('.')[-1]
-                    n = self.lookup_fully_qualified_or_none(target_name)
-                    if n:
-                        any_type = AnyType(TypeOfAny.special_form)
-                        if target_name.split('.')[-1] in ('list', 'set', 'deque', 'frozenset', 'Counter'):
-                            args = [any_type]
-                        else:
-                            args = [any_type, any_type]
-                        alias_node = TypeAlias(self.named_type_or_none(target_name, args), alias)
-                        self.cur_mod_node.names[name] = SymbolTableNode(GDEF, alias_node)
-
             defs = file_node.defs
             self.scope.enter_file(file_node.fullname())
             for d in defs:
@@ -1276,7 +1263,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return None
         node = sym.node
         assert isinstance(node, TypeInfo)
-        if args:
+        if args is not None:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
@@ -1717,6 +1704,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         no_args = isinstance(res, Instance) and not res.args
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
                               depends_on=list(depends_on), no_args=no_args)
+        if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias) and rvalue.node.normalized:
+            node.node.normalized = True
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -1751,7 +1740,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if lval.kind == GDEF:
                     # Since the is_new_def flag is set, this must have been analyzed
                     # already in the first pass and added to the symbol table.
-                    assert lval.node.name() in self.globals
+                    assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
             elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
                   lval.name not in self.global_decls[-1] and
                   lval.name not in self.nonlocal_decls[-1]):
@@ -2764,7 +2753,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # with situations like `L = LongGeneric; x = L[int]()`.
             self.add_type_alias_deps(depends_on)
             # list, dict, set are not directly subscriptable
-            if isinstance(expr.base.node.target, Instance) and expr.base.node.no_args and expr.base.node.target.type.fullname() in nongen_builtins:
+            if (isinstance(expr.base.node.target, Instance) and
+                    expr.base.node.no_args and
+                    expr.base.node.target.type.fullname() in nongen_builtins
+                    and not expr.base.node.normalized):
                 self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(), propose_alt=False), expr)
         elif refers_to_class_or_function(expr.base):
             # Special form -- type application.
@@ -3017,6 +3009,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         if n.node.fullname() == self.cur_mod_id:
                             names = self.globals
                         n = names.get(parts[i], None)
+                        if n and isinstance(n.node, ImportedName):
+                            n = self.dereference_module_cross_ref(n)
                     # TODO: What if node is Var or FuncDef?
                     if not n:
                         if not suppress_errors:
@@ -3053,6 +3047,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         node = sym.node
         assert isinstance(node, TypeInfo)
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
+
+    def add_builtin_aliases(self, tree: MypyFile) -> None:
+        assert tree.fullname() == 'typing'
+        for alias, target_name in type_aliases.items():
+            name = alias.split('.')[-1]
+            n = self.lookup_fully_qualified_or_none(target_name)
+            if n:
+                alias_node = TypeAlias(self.named_type_or_none(target_name, []), alias,
+                                       no_args=True, normalized=True)
+                tree.names[name] = SymbolTableNode(GDEF, alias_node)
+            else:
+                tree.names.pop(name, None)
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:
         """Lookup a fully qualified name.
