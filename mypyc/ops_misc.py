@@ -6,7 +6,7 @@ from mypyc.ops import (
     EmitterInterface, PrimitiveOp, none_rprimitive, bool_rprimitive, object_rprimitive, ERR_NEVER,
     ERR_MAGIC, ERR_FALSE
 )
-from mypyc.ops_primitive import name_ref_op, simple_emit, binary_op, unary_op, method_op
+from mypyc.ops_primitive import name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op
 
 
 def emit_none(emitter: EmitterInterface, args: List[str], dest: str) -> None:
@@ -29,6 +29,25 @@ false_op = name_ref_op('builtins.False',
                        error_kind=ERR_NEVER,
                        emit=simple_emit('{dest} = 0;'))
 
+iter_op = func_op(name='builtins.iter',
+                  arg_types=[object_rprimitive],
+                  result_type=object_rprimitive,
+                  error_kind=ERR_MAGIC,
+                  emit=simple_emit('{dest} = PyObject_GetIter({args[0]});'))
+
+# Although the error_kind is set to be ERR_NEVER, this can actually return NULL, and thus it must
+# be checked using Branch.IS_ERROR.
+next_op = func_op(name='builtins.next',
+                  arg_types=[object_rprimitive],
+                  result_type=object_rprimitive,
+                  error_kind=ERR_NEVER,
+                  emit=simple_emit('{dest} = PyIter_Next({args[0]});'))
+
+no_err_occurred_op = func_op(name='no_err_occurred',
+                             arg_types=[],
+                             result_type=bool_rprimitive,
+                             error_kind=ERR_FALSE,
+                             emit=simple_emit('{dest} = (PyErr_Occurred() == NULL);'))
 
 #
 # Fallback primitive operations that operate on 'object' operands

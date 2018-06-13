@@ -633,3 +633,127 @@ L0:
     dec_ref r2
     r3 = None
     return r3
+
+[case testForDict]
+from typing import Dict
+
+def f(d: Dict[int, int]) -> None:
+    for key in d:
+        d[key]
+[out]
+L0:
+    r0 = iter d :: object
+L1:
+    r1 = next r0 :: object
+    if is_error(r1) goto L4 else goto L2
+L2:
+    key = r1
+    r2 = unbox(int, key)
+    dec_ref key
+    r3 = box(int, r2)
+    r4 = d[r3] :: dict
+    dec_ref r3
+    r5 = unbox(int, r4)
+    dec_ref r4
+    dec_ref r5 :: int
+    goto L1
+L3:
+    r6 = no_err_occurred 
+    r7 = None
+    return r7
+L4:
+    dec_ref r0
+    goto L3
+
+[case testForDictBreak]
+from typing import Dict
+
+def iterate_and_break(d: Dict[int, int]) -> None:
+    for key in d:
+        if d[key] % 2:
+            break
+[out]
+L0:
+    r0 = iter d :: object
+L1:
+    r1 = next r0 :: object
+    if is_error(r1) goto L7 else goto L2
+L2:
+    key = r1
+    r2 = unbox(int, key)
+    dec_ref key
+    r3 = box(int, r2)
+    r4 = d[r3] :: dict
+    dec_ref r3
+    r5 = unbox(int, r4)
+    dec_ref r4
+    r6 = 2
+    r7 = r5 % r6 :: int
+    dec_ref r5 :: int
+    dec_ref r6 :: int
+    if r7 goto L8 else goto L9 :: bool
+L3:
+    goto L6
+L4:
+L5:
+    goto L1
+L6:
+    r8 = no_err_occurred 
+    r9 = None
+    return r9
+L7:
+    dec_ref r0
+    goto L6
+L8:
+    dec_ref r0
+    dec_ref r7 :: int
+    goto L3
+L9:
+    dec_ref r7 :: int
+    goto L5
+
+[case testForDictContinue]
+from typing import Dict
+
+def iterate_and_continue(d: Dict[int, int]) -> None:
+    for key in d:
+        if d[key] % 2:
+            continue
+[out]
+L0:
+    r0 = iter d :: object
+L1:
+    r1 = next r0 :: object
+    if is_error(r1) goto L7 else goto L2
+L2:
+    key = r1
+    r2 = unbox(int, key)
+    dec_ref key
+    r3 = box(int, r2)
+    r4 = d[r3] :: dict
+    dec_ref r3
+    r5 = unbox(int, r4)
+    dec_ref r4
+    r6 = 2
+    r7 = r5 % r6 :: int
+    dec_ref r5 :: int
+    dec_ref r6 :: int
+    if r7 goto L8 else goto L9 :: bool
+L3:
+    goto L1
+L4:
+L5:
+    goto L1
+L6:
+    r8 = no_err_occurred 
+    r9 = None
+    return r9
+L7:
+    dec_ref r0
+    goto L6
+L8:
+    dec_ref r7 :: int
+    goto L3
+L9:
+    dec_ref r7 :: int
+    goto L5
