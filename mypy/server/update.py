@@ -666,7 +666,8 @@ def calculate_active_triggers(manager: BuildManager,
                                                     '__file__',
                                                     '__name__',
                                                     '__package__',
-                                                    '__doc__')):
+                                                    '__doc__',
+                                                    '__path__')):
                 # Activate catch-all wildcard trigger for top-level module changes (used for
                 # "from m import *"). This also gets triggered by changes to module-private
                 # entries, but as these unneeded dependencies only result in extra processing,

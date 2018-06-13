@@ -26,12 +26,13 @@ from mypy.nodes import (
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
     MODULE_REF, implicit_module_attrs
 )
-from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp
+from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, function_type
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
+from mypy.nodes import FuncItem
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
@@ -123,6 +124,11 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     # TODO: Find a permanent solution to this problem.
                     # Maybe add 'bool' to all fixtures?
                     literal_types.append(('True', AnyType(TypeOfAny.special_form)))
+                # TODO: The __path__ implicit module attribute is typed as __builtins__.list
+                # but tests often don't define list.
+                if 'list' not in self.sem.globals:
+                    # literal_types.append(('list', function_type(FuncItem([], ''), None)))
+                    literal_types.append(('list', AnyType(TypeOfAny.special_form)))
 
                 for name, typ in literal_types:
                     v = Var(name, typ)

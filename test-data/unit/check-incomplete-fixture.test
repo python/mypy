@@ -12,7 +12,7 @@ import m
 m.x # E: "object" has no attribute "x"
 [file m.py]
 
-[case testListMissingFromStubs]
+[case testListMissingFromStubs-skip]
 from typing import List
 def f(x: List[int]) -> None: pass
 [out]
