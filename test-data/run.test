@@ -779,3 +779,45 @@ def f() -> None:
 [file driver.py]
 from native import f
 f()
+
+[case testCallableTypes]
+from typing import Callable
+def absolute_value(x: int) -> int:
+    return x if x > 0 else -x
+
+def call_native_function(x: int) -> int:
+    return absolute_value(x)
+
+def call_python_function(x: int) -> int:
+    return int(x)
+
+def return_float() -> float:
+    return 5.0
+
+def return_callable_type() -> Callable[[], float]:
+    return return_float
+
+def call_callable_type() -> float:
+    f = return_callable_type()
+    return f()
+
+def return_passed_in_callable_type(f: Callable[[], float]) -> Callable[[], float]:
+    return f
+
+def call_passed_in_callable_type(f: Callable[[], float]) -> float:
+    return f()
+
+[file driver.py]
+from native import call_native_function, call_python_function, return_float, return_callable_type, call_callable_type, return_passed_in_callable_type, call_passed_in_callable_type
+a = call_native_function(1)
+b = call_python_function(1)
+c = return_callable_type()
+d = call_callable_type()
+e = return_passed_in_callable_type(return_float)
+f = call_passed_in_callable_type(return_float)
+assert a == 1
+assert b == 1
+assert c() == 5.0
+assert d == 5.0
+assert e() == 5.0
+assert f == 5.0

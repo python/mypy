@@ -860,3 +860,80 @@ L0:
     max_32_bit = r6
     r7 = None
     return r7
+
+[case testCallableTypes]
+from typing import Callable
+def absolute_value(x: int) -> int:
+    return x if x > 0 else -x
+
+def call_native_function(x: int) -> int:
+    return absolute_value(x)
+
+def call_python_function(x: int) -> int:
+    return int(x)
+
+def return_float() -> float:
+    return 5.0
+
+def return_callable_type() -> Callable[[], float]:
+    return return_float
+
+def call_callable_type() -> float:
+    f = return_callable_type()
+    return f()
+[out]
+def absolute_value(x):
+    x, r0 :: int
+    r1 :: bool
+    r2, r3 :: int
+L0:
+    r0 = 0
+    r1 = x > r0 :: int
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = x
+    goto L3
+L2:
+    r3 = -x :: int
+    r2 = r3
+L3:
+    return r2
+def call_native_function(x):
+    x, r0 :: int
+L0:
+    r0 = absolute_value(x)
+    return r0
+def call_python_function(x):
+    x :: int
+    r0, r1, r2, r3 :: object
+    r4 :: int
+L0:
+    r0 = module_builtins :: static
+    r1 = r0.int :: object
+    r2 = box(int, x)
+    r3 = r1(r2) :: object
+    r4 = unbox(int, r3)
+    return r4
+def return_float():
+    r0 :: float
+L0:
+    r0 = __float_0 :: static
+    return r0
+def return_callable_type():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+L0:
+    r0 = _globals :: static
+    r1 = __unicode_1 :: static
+    r2 = r0[r1] :: dict
+    return r2
+def call_callable_type():
+    f, r0, r1 :: object
+    r2 :: float
+L0:
+    r0 = return_callable_type()
+    f = r0
+    r1 = f() :: object
+    r2 = cast(float, r1)
+    return r2
