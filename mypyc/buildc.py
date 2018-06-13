@@ -30,8 +30,11 @@ class BuildError(Exception):
         self.output = output
 
 
-def build_c_extension(cpath: str) -> str:
-    tempdir = tempfile.mkdtemp()
+def build_c_extension(cpath: str, preserve_setup: bool = False) -> str:
+    if preserve_setup:
+        tempdir = '.'
+    else:
+        tempdir = tempfile.mkdtemp()
     include_dir = os.path.join(os.path.dirname(__file__), '..', 'lib-rt')
     try:
         setup_path = os.path.join(tempdir, 'setup.py')
@@ -50,4 +53,5 @@ def build_c_extension(cpath: str) -> str:
         assert len(so_path) == 1
         return so_path[0]
     finally:
-        shutil.rmtree(tempdir)
+        if not preserve_setup:
+            shutil.rmtree(tempdir)

@@ -69,7 +69,7 @@ class TestRun(MypycDataSuite):
                 f.write(ctext)
 
             try:
-                native_lib_path = buildc.build_c_extension(cpath)
+                native_lib_path = buildc.build_c_extension(cpath, preserve_setup=True)
             except buildc.BuildError as err:
                 heading('Generated C')
                 with open(cpath) as f:
