@@ -148,7 +148,7 @@ class NamedTupleAnalyzer:
             is_typed = True
         else:
             return None
-        items, types, ok = self.parse_namedtuple_args(call, fullname, is_typed)
+        items, types, num_defaults, ok = self.parse_namedtuple_args(call, fullname, is_typed)
         if not ok:
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [], {})
@@ -156,7 +156,14 @@ class NamedTupleAnalyzer:
         if name != var_name or is_func_scope:
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
-        info = self.build_namedtuple_typeinfo(name, items, types, {})
+        if num_defaults > 0:
+            default_items = {
+                arg_name: EllipsisExpr()
+                for arg_name in items[-num_defaults:]
+            }
+        else:
+            default_items = {}
+        info = self.build_namedtuple_typeinfo(name, items, types, default_items)
         # Store it as a global just in case it would remain anonymous.
         # (Or in the nearest class if there is one.)
         stnode = SymbolTableNode(GDEF, info)
@@ -166,15 +173,39 @@ class NamedTupleAnalyzer:
         return info
 
     def parse_namedtuple_args(self, call: CallExpr, fullname: str,
-                              is_typed: bool) -> Tuple[List[str], List[Type], bool]:
+                              is_typed: bool) -> Tuple[List[str], List[Type], int, bool]:
+        """Parse a namedtuple() call into data needed to construct a type.
+
+        Returns a 4-tuple:
+        - List of argument names
+        - List of argument types
+        - Number of arguments that have a default value
+        - Whether the definition typechecked.
+
+        """
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
+        num_defaults = 0
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if is_typed:
                 return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
+            for i, arg_name in enumerate(call.arg_names[2:], 2):
+                if arg_name == 'defaults':
+                    arg = args[i]
+                    # We don't care what the values are, as long as the argument is an iterable
+                    # and we can count how many defaults there are.
+                    if isinstance(arg, (ListExpr, TupleExpr)):
+                        num_defaults = len(arg.items)
+                    else:
+                        self.fail(
+                            "List or tuple literal expected as the defaults argument to "
+                            "namedtuple()",
+                            arg
+                        )
+                    break
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
             return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
@@ -201,17 +232,27 @@ class NamedTupleAnalyzer:
                 items = [cast(StrExpr, item).value for item in listexpr.items]
             else:
                 # The fields argument contains (name, type) tuples.
-                items, types, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
+                items, types, _, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)
         if not types:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
             self.fail("namedtuple() field names cannot start with an underscore: "
                       + ', '.join(underscore), call)
-        return items, types, ok
+        if num_defaults > len(items):
+            self.fail("Too many defaults given in call to namedtuple()", call)
+            num_defaults = len(items)
+        return items, types, num_defaults, ok
+
+    def extract_defaults_from_arg(self, call: CallExpr, arg: Expression) -> int:
+        if not isinstance(arg, (ListExpr, TupleExpr)):
+            self.fail("List or tuple literal expected as the defaults argument to namedtuple()",
+                      call)
+            return 0
+
 
     def parse_namedtuple_fields_with_types(self, nodes: List[Expression],
-                                           context: Context) -> Tuple[List[str], List[Type], bool]:
+                                           context: Context) -> Tuple[List[str], List[Type], int, bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for item in nodes:
@@ -231,12 +272,12 @@ class NamedTupleAnalyzer:
                 types.append(self.api.anal_type(type))
             else:
                 return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
-        return items, types, True
+        return items, types, 0, True
 
     def fail_namedtuple_arg(self, message: str,
-                            context: Context) -> Tuple[List[str], List[Type], bool]:
+                            context: Context) -> Tuple[List[str], List[Type], int, bool]:
         self.fail(message, context)
-        return [], [], False
+        return [], [], 0, False
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
                                   default_items: Dict[str, Expression]) -> TypeInfo:

@@ -91,7 +91,7 @@ E = namedtuple('E', 'a b', 0)  # E: Too many positional arguments for "namedtupl
 
 [builtins fixtures/bool.pyi]
 
-[case testNamedTupleDefaults-skip]
+[case testNamedTupleDefaults]
 # flags: --python-version 3.7
 from collections import namedtuple
 
@@ -101,6 +101,9 @@ X()  # E: Too few arguments for "X"
 X(0)  # ok
 X(0, 1)  # ok
 X(0, 1, 2)  # E: Too many arguments for "X"
+
+Y = namedtuple('Y', ['x', 'y'], defaults=(1, 2, 3))  # E: Too many defaults given in call to namedtuple()
+Z = namedtuple('Z', ['x', 'y'], defaults='not a tuple')  # E: Argument "defaults" to "namedtuple" has incompatible type "str"; expected "Optional[Iterable[Any]]"  # E: List or tuple literal expected as the defaults argument to namedtuple()
 
 [builtins fixtures/list.pyi]
 
