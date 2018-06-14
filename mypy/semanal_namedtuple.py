@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import Tuple, List, Dict, Optional, cast
+from typing import Tuple, List, Dict, Mapping, Optional, cast
 
 from mypy.types import (
     Type, TupleType, NoneTyp, AnyType, TypeOfAny, TypeVarType, TypeVarDef, CallableType, TypeType
@@ -274,7 +274,7 @@ class NamedTupleAnalyzer:
         return [], [], 0, False
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
-                                  default_items: Dict[str, Expression]) -> TypeInfo:
+                                  default_items: Mapping[str, Expression]) -> TypeInfo:
         strtype = self.api.named_type('__builtins__.str')
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.api.named_type('__builtins__.tuple', [implicit_any])
