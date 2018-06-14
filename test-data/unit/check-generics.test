@@ -1080,7 +1080,7 @@ main:13: error: Value of type variable "S" of "A" cannot be "str"
 class A: ...
 Bad = A[int] # type: ignore
 
-reveal_type(Bad)  # E: Revealed type is 'Any'
+reveal_type(Bad) # E: Revealed type is 'Any'
 [out]
 
 [case testNoSubscriptionOfBuiltinAliases]

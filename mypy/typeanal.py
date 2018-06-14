@@ -19,10 +19,10 @@ from mypy.types import (
 )
 
 from mypy.nodes import (
-    TVAR, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
+    TVAR, MODULE_REF, UNBOUND_IMPORTED, TypeInfo, Context, SymbolTableNode, Var, Expression,
     IndexExpr, RefExpr, nongen_builtins, check_arg_names, check_arg_kinds, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, FuncDef, CallExpr, NameExpr,
-    Decorator, ImportedName, type_aliases, TypeAlias, MODULE_REF
+    Decorator, ImportedName, TypeAlias
 )
 from mypy.tvar_scope import TypeVarScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -58,8 +58,8 @@ def analyze_type_alias(node: Expression,
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
-                       in_dynamic_func: bool = False,
                        allow_unnormalized: bool = False,
+                       in_dynamic_func: bool = False,
                        global_scope: bool = True) -> Optional[Tuple[Type, Set[str]]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
@@ -147,10 +147,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  plugin: Plugin,
                  options: Options,
                  is_typeshed_stub: bool, *,
+                 defining_alias: bool = False,
                  allow_tuple_literal: bool = False,
                  allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
-                 defining_alias: bool = False,
                  third_pass: bool = False) -> None:
         self.api = api
         self.lookup = api.lookup_qualified
@@ -158,12 +158,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.fail_func = api.fail
         self.note_func = api.note
         self.tvar_scope = tvar_scope
+        self.defining_alias = defining_alias
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
         self.allow_unnormalized = allow_unnormalized
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
-        self.defining_alias = defining_alias
         self.plugin = plugin
         self.options = options
         self.is_typeshed_stub = is_typeshed_stub
@@ -229,7 +229,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # Bare 'Tuple' is same as 'tuple'
                     if self.options.disallow_any_generics and not self.is_typeshed_stub:
                         self.fail(messages.BARE_GENERIC, t)
-                    return self.named_type('builtins.tuple', [], line=t.line, column=t.column)
+                    return self.named_type('builtins.tuple', line=t.line, column=t.column)
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
                     instance = self.named_type('builtins.tuple', [self.anal_type(t.args[0])])

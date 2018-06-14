@@ -9,8 +9,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
-    ARG_POS, ARG_STAR, ARG_STAR2,
-    Decorator, OverloadedFuncDef, TypeAlias
+    ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype

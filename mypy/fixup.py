@@ -6,7 +6,6 @@ from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
     TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
     TypeVarExpr, ClassDef, Block, TypeAlias,
-
 )
 from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,

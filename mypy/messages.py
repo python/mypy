@@ -24,10 +24,10 @@ from mypy.types import (
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef,
+    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, reverse_builtin_aliases
+    CallExpr
 )
 
 # Constants that represent simple type checker error message, i.e. messages

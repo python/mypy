@@ -6,9 +6,9 @@ from mypy.nodes import (
     UnicodeExpr, ListExpr, TupleExpr, SetExpr, DictExpr, CallExpr, SliceExpr, CastExpr,
     ConditionalExpr, EllipsisExpr, YieldFromExpr, YieldExpr, RevealExpr, SuperExpr,
     TypeApplication, LambdaExpr, ListComprehension, SetComprehension, DictionaryComprehension,
-    GeneratorExpr, BackquoteExpr, TypeVarExpr, NamedTupleExpr, EnumCallExpr,
+    GeneratorExpr, BackquoteExpr, TypeVarExpr, TypeAliasExpr, NamedTupleExpr, EnumCallExpr,
     TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode,
-    TypeAliasExpr)
+)
 from mypy.visitor import ExpressionVisitor
 
 # [Note Literals and literal_hash]
