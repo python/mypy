@@ -497,15 +497,18 @@ def factorial(x: int) -> int:
 [out]
 def f(x):
     x :: int
-    r0, r1, r2, r3 :: object
-    r4 :: int
+    r0 :: object
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
 L0:
     r0 = module_testmodule :: static
-    r1 = r0.factorial :: object
-    r2 = box(int, x)
-    r3 = r1(r2) :: object
-    r4 = unbox(int, r3)
-    return r4
+    r1 = __unicode_0 :: static
+    r2 = r0.r1 :: object
+    r3 = box(int, x)
+    r4 = r2(r3) :: object
+    r5 = unbox(int, r4)
+    return r5
 
 [case testFromImport]
 from testmodule import g
@@ -538,19 +541,22 @@ def f(x: int) -> None:
 [out]
 def f(x):
     x :: int
-    r0, r1 :: object
-    r2 :: int
-    r3, r4 :: object
-    r5, r6 :: None
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: int
+    r4, r5 :: object
+    r6, r7 :: None
 L0:
     r0 = module_builtins :: static
-    r1 = r0.print :: object
-    r2 = 5
-    r3 = box(int, r2)
-    r4 = r1(r3) :: object
-    r5 = cast(None, r4)
-    r6 = None
-    return r6
+    r1 = __unicode_0 :: static
+    r2 = r0.r1 :: object
+    r3 = 5
+    r4 = box(int, r3)
+    r5 = r2(r4) :: object
+    r6 = cast(None, r5)
+    r7 = None
+    return r7
 
 [case testPrint]
 import builtins
@@ -559,17 +565,20 @@ def f(x: int) -> None:
 [out]
 def f(x):
     x, r0 :: int
-    r1, r2, r3, r4 :: object
-    r5, r6 :: None
+    r1 :: object
+    r2 :: str
+    r3, r4, r5 :: object
+    r6, r7 :: None
 L0:
     r0 = 5
     r1 = module_builtins :: static
-    r2 = r1.print :: object
-    r3 = box(int, r0)
-    r4 = r2(r3) :: object
-    r5 = cast(None, r4)
-    r6 = None
-    return r6
+    r2 = __unicode_0 :: static
+    r3 = r1.r2 :: object
+    r4 = box(int, r0)
+    r5 = r3(r4) :: object
+    r6 = cast(None, r5)
+    r7 = None
+    return r7
 
 [case testUnicodeLiteral]
 def f() -> str:
@@ -929,19 +938,22 @@ L0:
     return r0
 def call_python_function(x):
     x :: int
-    r0, r1, r2, r3 :: object
-    r4 :: int
+    r0 :: object
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
 L0:
     r0 = module_builtins :: static
-    r1 = r0.int :: object
-    r2 = box(int, x)
-    r3 = r1(r2) :: object
-    r4 = unbox(int, r3)
-    return r4
+    r1 = __unicode_0 :: static
+    r2 = r0.r1 :: object
+    r3 = box(int, x)
+    r4 = r2(r3) :: object
+    r5 = unbox(int, r4)
+    return r5
 def return_float():
     r0 :: float
 L0:
-    r0 = __float_0 :: static
+    r0 = __float_1 :: static
     return r0
 def return_callable_type():
     r0 :: object
@@ -949,7 +961,7 @@ def return_callable_type():
     r2 :: object
 L0:
     r0 = _globals :: static
-    r1 = __unicode_1 :: static
+    r1 = __unicode_2 :: static
     r2 = r0[r1] :: dict
     return r2
 def call_callable_type():

@@ -193,7 +193,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_py_get_attr(self, op: PyGetAttr) -> None:
         dest = self.reg(op)
         obj = self.reg(op.obj)
-        self.emit_line('{} = PyObject_GetAttrString({}, "{}");'.format(dest, obj, op.attr))
+        attr = self.reg(op.attr)
+        self.emit_line('{} = PyObject_GetAttr({}, {});'.format(dest, obj, attr))
 
     def visit_py_set_attr(self, op: PySetAttr) -> None:
         dest = self.reg(op)

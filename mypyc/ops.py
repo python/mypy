@@ -787,17 +787,17 @@ class PyGetAttr(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, obj: Value, attr: str, line: int) -> None:
+    def __init__(self, obj: Value, attr: Value, line: int) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
         self.type = object_rprimitive
 
     def sources(self) -> List[Value]:
-        return [self.obj]
+        return [self.obj, self.attr]
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r.%s :: object', self, self.obj, self.attr)
+        return env.format('%r = %r.%r :: object', self, self.obj, self.attr)
 
     def can_raise(self) -> bool:
         return True

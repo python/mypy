@@ -785,7 +785,11 @@ class IRBuilder(NodeVisitor[Value]):
             if isinstance(obj.type, RInstance):
                 return self.add(GetAttr(obj, expr.name, expr.line))
             else:
-                return self.add(PyGetAttr(obj, expr.name, expr.line))
+                return self.py_get_attr(obj, expr.name, expr.line)
+
+    def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
+        key = self.load_static_unicode(attr)
+        return self.add(PyGetAttr(obj, key, line))
 
     def py_call(self, function: Value, args: List[Value],
                 target_type: RType, line: int) -> Value:
@@ -1325,7 +1329,7 @@ class IRBuilder(NodeVisitor[Value]):
         module = '.'.join(expr.node.fullname().split('.')[:-1])
         name = expr.node.fullname().split('.')[-1]
         left = self.add(LoadStatic(object_rprimitive, c_module_name(module)))
-        return self.add(PyGetAttr(left, name, expr.line))
+        return self.py_get_attr(left, name, expr.line)
 
     def coerce(self, src: Value, target_type: RType, line: int) -> Value:
         """Generate a coercion/cast from one type to other (only if needed).
