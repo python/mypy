@@ -435,7 +435,7 @@ def analyze_class_attribute_access(itype: Instance,
         return None
 
     is_decorated = isinstance(node.node, Decorator)
-    is_method = is_decorated or isinstance(node.node, FuncDef)
+    is_method = is_decorated or isinstance(node.node, FuncBase)
     if is_lvalue:
         if is_method:
             msg.cant_assign_to_method(context)

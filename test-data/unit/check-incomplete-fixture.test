@@ -16,24 +16,24 @@ m.x # E: "object" has no attribute "x"
 from typing import List
 def f(x: List[int]) -> None: pass
 [out]
-main:1: error: Name '__builtins__.list' is not defined
-main:1: note: Maybe your test fixture does not define "typing.List"?
+main:1: error: Module 'typing' has no attribute 'List'
+main:1: note: Maybe your test fixture does not define "builtins.list"?
 main:1: note: Consider adding [builtins fixtures/list.pyi] to your test description
 
 [case testDictMissingFromStubs]
 from typing import Dict
 def f(x: Dict[int]) -> None: pass
 [out]
-main:1: error: Name '__builtins__.dict' is not defined
-main:1: note: Maybe your test fixture does not define "typing.Dict"?
+main:1: error: Module 'typing' has no attribute 'Dict'
+main:1: note: Maybe your test fixture does not define "builtins.dict"?
 main:1: note: Consider adding [builtins fixtures/dict.pyi] to your test description
 
 [case testSetMissingFromStubs]
 from typing import Set
 def f(x: Set[int]) -> None: pass
 [out]
-main:1: error: Name '__builtins__.set' is not defined
-main:1: note: Maybe your test fixture does not define "typing.Set"?
+main:1: error: Module 'typing' has no attribute 'Set'
+main:1: note: Maybe your test fixture does not define "builtins.set"?
 main:1: note: Consider adding [builtins fixtures/set.pyi] to your test description
 
 [case testBoolMissingFromStubs]

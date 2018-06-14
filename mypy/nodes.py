@@ -2518,7 +2518,6 @@ class SymbolTableNode:
                  kind: int,
                  node: Optional[SymbolNode],
                  module_public: bool = True,
-                 normalized: bool = False,
                  implicit: bool = False,
                  module_hidden: bool = False,
                  *,
@@ -2541,7 +2540,7 @@ class SymbolTableNode:
     @property
     def type(self) -> 'Optional[mypy.types.Type]':
         node = self.node
-        if ((isinstance(node, Var) or isinstance(node, FuncDef))
+        if ((isinstance(node, Var) or isinstance(node, FuncBase))
                 and node.type is not None):
             return node.type
         elif isinstance(node, Decorator):

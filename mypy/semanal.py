@@ -158,9 +158,9 @@ FUNCTION_SECOND_PHASE = 2  # Only analyze body
 # test-data/unit/fixtures/) that provides the definition. This is used for
 # generating better error messages when running mypy tests only.
 SUGGESTED_TEST_FIXTURES = {
-    'typing.List': 'list.pyi',
-    'typing.Dict': 'dict.pyi',
-    'typing.Set': 'set.pyi',
+    'builtins.list': 'list.pyi',
+    'builtins.dict': 'dict.pyi',
+    'builtins.set': 'set.pyi',
     'builtins.bool': 'bool.pyi',
     'builtins.Exception': 'exception.pyi',
     'builtins.BaseException': 'exception.pyi',
@@ -1381,6 +1381,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     message += " {}".format(extra)
                 self.fail(message, imp)
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
+
+                if import_id == 'typing':
+                    # The user probably has a missing definition in a test fixture. Let's verify.
+                    fullname = 'builtins.{}'.format(id.lower())
+                    if (self.lookup_fully_qualified_or_none(fullname) is None and
+                            fullname in SUGGESTED_TEST_FIXTURES):
+                        # Yes. Generate a helpful note.
+                        self.add_fixture_note(fullname, imp)
             else:
                 # Missing module.
                 self.add_unknown_symbol(as_id or id, imp, is_import=True)
@@ -1702,6 +1710,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
+            s.rvalue.analyzed.column = res.column
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
                               depends_on=list(depends_on), no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias) and rvalue.node.normalized:
@@ -3046,7 +3055,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             name = alias.split('.')[-1]
             n = self.lookup_fully_qualified_or_none(target_name)
             if n:
-                alias_node = TypeAlias(self.named_type_or_none(target_name, []), alias,
+                target = self.named_type_or_none(target_name, [])
+                assert target is not None
+                alias_node = TypeAlias(target, alias,
                                        no_args=True, normalized=True)
                 tree.names[name] = SymbolTableNode(GDEF, alias_node)
             else:
@@ -3064,11 +3075,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             next_sym = n.names[parts[i]]
             assert isinstance(next_sym.node, MypyFile)
             n = next_sym.node
-        try:
-            return n.names[parts[-1]]
-        except KeyError:
-            self.name_not_defined(name, self.cur_mod_node)
-            raise
+        return n.names[parts[-1]]
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
         """Lookup a fully qualified name that refers to a module-level definition.

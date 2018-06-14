@@ -2834,7 +2834,9 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
     if 'typing' in scc:
-        manager.semantic_analyzer.add_builtin_aliases(graph['typing'].tree)
+        typing_mod = graph['typing'].tree
+        assert typing_mod, "The typing module was not parsed"
+        manager.semantic_analyzer.add_builtin_aliases(typing_mod)
     for id in fresh:
         graph[id].fix_cross_refs()
     for id in stale:
