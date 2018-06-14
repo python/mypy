@@ -61,8 +61,6 @@ x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Too few arguments for "X"
 x = X(1, 2, 3)  # E: Too many arguments for "X"
 
-[builtins fixtures/list.pyi]
-
 [case testCreateNamedTupleWithKeywordArguments]
 from collections import namedtuple
 
@@ -88,7 +86,7 @@ B = namedtuple('B', 'a b', rename=1)
 C = namedtuple('C', 'a b', rename='not a bool')  # E: Argument "rename" to "namedtuple" has incompatible type "str"; expected "int"
 # This works correctly but also produces "mypy/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here"
 # Don't know how to express that in a test.
-# D = namedtuple('D', 'a b', unrecognized_arg=False)  # E: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
+# D = namedtuple('D', 'a b', unrecognized_arg=False)  E: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
 E = namedtuple('E', 'a b', 0)  # E: Too many positional arguments for "namedtuple"
 
 [builtins fixtures/bool.pyi]
