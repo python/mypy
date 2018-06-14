@@ -244,8 +244,9 @@ class NamedTupleAnalyzer:
             num_defaults = len(items)
         return items, types, num_defaults, ok
 
-    def parse_namedtuple_fields_with_types(self, nodes: List[Expression],
-                                           context: Context) -> Tuple[List[str], List[Type], int, bool]:
+    def parse_namedtuple_fields_with_types(
+        self, nodes: List[Expression], context: Context
+    ) -> Tuple[List[str], List[Type], int, bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for item in nodes:
