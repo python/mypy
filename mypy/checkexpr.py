@@ -4,7 +4,9 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable, Sequence, Any
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, set_any_tvars
+from mypy.typeanal import (
+    has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias
+)
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -182,17 +184,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
-            tp = set_any_tvars(node.target, node.alias_tvars, e.line, e.column)
-            if isinstance(tp, Instance):
-                result = type_object_type(tp.type, self.named_type)
-                if not node.no_args:
-                    if isinstance(result, CallableType):
-                        result = self.apply_generic_arguments(result, tp.args, e)
-                    elif isinstance(result, Overloaded):
-                        result =  Overloaded([self.apply_generic_arguments(it, tp.args, e)
-                                              for it in result.items()])
-            else:
-                result = AnyType(TypeOfAny.from_error)
+            result = self.alias_type_in_runtime(node.target, node.alias_tvars, node.no_args, e)
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
@@ -2050,39 +2042,43 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
         """Type check a type application (expr[type, ...])."""
-        tp = self.accept(tapp.expr)
-        if isinstance(tp, CallableType):
-            if not tp.is_type_obj():
+        if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
+            target = tapp.expr.node.target
+            all_vars = tapp.expr.node.alias_tvars
+            item = expand_type_alias(target, all_vars, tapp.types, self.chk.fail, tapp.expr.node.no_args, tapp)
+            if isinstance(item, Instance):
+                tp = type_object_type(item.type, self.named_type)
+                return self.safe_apply(tp, item.args, tapp)
+            else:
                 self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
-            if len(tp.variables) != len(tapp.types):
-                self.msg.incompatible_type_application(len(tp.variables),
-                                                       len(tapp.types), tapp)
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, tapp.types, tapp)
-        elif isinstance(tp, Overloaded):
+
+        tp = self.accept(tapp.expr)
+        if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
                 self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
-            for item in tp.items():
-                if len(item.variables) != len(tapp.types):
-                    self.msg.incompatible_type_application(len(item.variables),
-                                                           len(tapp.types), tapp)
-                    return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(item, tapp.types, tapp)
-                               for item in tp.items()])
+            return self.safe_apply(tp, tapp.types, tapp)
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
         return AnyType(TypeOfAny.special_form)
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         """Get type of a type alias (could be generic) in a runtime expression."""
-        if isinstance(alias.type, Instance) and alias.type.invalid:
+        return self.alias_type_in_runtime(alias.type, alias.tvars, alias.no_args, alias)
+
+    def alias_type_in_runtime(self, target: Type, alias_tvars: List[str],
+                              no_args: bool, ctx: Context) -> Type:
+        if isinstance(target, Instance) and target.invalid:
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
-        item = alias.type
+        item = set_any_tvars(target, alias_tvars, ctx.line, ctx.column)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
             tp = type_object_type(item.type, self.named_type)
+            if no_args:
+                return tp
+            return self.safe_apply(tp, item.args, ctx)
         else:
             # This type is invalid in most runtime contexts
             # and corresponding an error will be reported.
@@ -2094,22 +2090,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             fb_info.bases = [self.object_type()]
             fb_info.mro = [fb_info, self.object_type().type]
             return Instance(fb_info, [])
+
+    def safe_apply(self, tp: Type, args: List[Type], ctx: Context) -> Type:
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(item.args):
+            if len(tp.variables) != len(args):
                 self.msg.incompatible_type_application(len(tp.variables),
-                                                       len(item.args), item)
+                                                       len(args), ctx)
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, item.args, item)
-        elif isinstance(tp, Overloaded):
+            return self.apply_generic_arguments(tp, args, ctx)
+        if isinstance(tp, Overloaded):
             for it in tp.items():
-                if len(it.variables) != len(item.args):
+                if len(it.variables) != len(args):
                     self.msg.incompatible_type_application(len(it.variables),
-                                                           len(item.args), item)
+                                                           len(args), ctx)
                     return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(it, item.args, item)
+            return Overloaded([self.apply_generic_arguments(it, args, ctx)
                                for it in tp.items()])
         return AnyType(TypeOfAny.special_form)
-
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""

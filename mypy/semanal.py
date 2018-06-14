@@ -1698,10 +1698,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # when this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
-        if isinstance(s.rvalue, (IndexExpr, CallExpr)):
-            s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars)
-            s.rvalue.analyzed.line = s.line
         no_args = isinstance(res, Instance) and not res.args
+        if isinstance(s.rvalue, (IndexExpr, CallExpr)):
+            s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
+            s.rvalue.analyzed.line = s.line
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
                               depends_on=list(depends_on), no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias) and rvalue.node.normalized:
@@ -2738,27 +2738,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 and isinstance(expr.base.node, TypeInfo)
                 and not expr.base.node.is_generic()):
             expr.index.accept(self)
-        elif isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
-            # Special form -- subscripting a generic type alias.
-            # Perform the type substitution and create a new alias.
-            res, alias_tvars, depends_on, _ = self.analyze_alias(expr)
-            if res is None:
-                # Bad type alias, nothing to do here.
-                expr.analyzed = TypeAliasExpr(expr.base.node.target, [])
-                return
-            expr.analyzed = TypeAliasExpr(res, alias_tvars)
-            expr.analyzed.line = expr.line
-            expr.analyzed.column = expr.column
-            # We also store fine-grained dependencies to correctly re-process nodes
-            # with situations like `L = LongGeneric; x = L[int]()`.
-            self.add_type_alias_deps(depends_on)
-            # list, dict, set are not directly subscriptable
-            if (isinstance(expr.base.node.target, Instance) and
-                    expr.base.node.no_args and
-                    expr.base.node.target.type.fullname() in nongen_builtins
-                    and not expr.base.node.normalized):
-                self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(), propose_alt=False), expr)
-        elif refers_to_class_or_function(expr.base):
+        elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias)) or refers_to_class_or_function(expr.base):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
@@ -2776,10 +2756,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
-            # list, dict, set are not directly subscriptable
-            n = self.lookup_type_node(expr.base)
-            if n and n.fullname in nongen_builtins:
-                self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
+            if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
+                # list, dict, set are not directly subscriptable
+                if (isinstance(expr.base.node.target, Instance) and
+                        expr.base.node.no_args and
+                        expr.base.node.target.type.fullname() in nongen_builtins
+                        and not expr.base.node.normalized):
+                    self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(), propose_alt=False),
+                              expr)
+                    # We also store fine-grained dependencies to correctly re-process nodes
+                    # with situations like `L = LongGeneric; x = L[int]()`.
+                    self.add_type_alias_deps(expr.base.node.depends_on)
+            else:
+                # list, dict, set are not directly subscriptable
+                n = self.lookup_type_node(expr.base)
+                if n and n.fullname in nongen_builtins:
+                    self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
         else:
             expr.index.accept(self)
 

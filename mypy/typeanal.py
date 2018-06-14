@@ -276,31 +276,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 all_vars = sym.node.alias_tvars
                 target = sym.node.target
                 an_args = self.anal_array(t.args)
-                if all_vars is not None:
-                    exp_len = len(all_vars)
-                else:
-                    exp_len = 0
-                act_len = len(an_args)
-                if exp_len > 0 and act_len == 0:
-                    # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
-                    assert all_vars is not None
-                    return set_any_tvars(target, all_vars, t.line, t.column)
-                if exp_len == 0 and act_len == 0:
-                    if sym.node.no_args:
-                        return Instance(target.type, [], line=t.line, column=t.column)
-                    return target
-                if exp_len == 0 and act_len > 0 and isinstance(target, Instance) and sym.node.no_args:
-                    tp = Instance(target.type, an_args)
-                    tp.line = t.line
-                    tp.column = t.column
-                    return tp
-                if act_len != exp_len:
-                    self.fail('Bad number of arguments for type alias, expected: %s, given: %s'
-                              % (exp_len, act_len), t)
-                    return set_any_tvars(target, all_vars or [],
-                                         t.line, t.column, implicit=False)
-                assert all_vars is not None
-                return replace_alias_tvars(target, all_vars, an_args, t.line, t.column)
+                return expand_type_alias(target, all_vars, an_args, self.fail, sym.node.no_args, t)
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
@@ -817,6 +793,32 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]
+
+
+def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
+                      fail: Callable[[str, Context], None], no_args: bool, ctx: Context) -> Type:
+    exp_len = len(alias_tvars)
+    act_len = len(args)
+    if exp_len > 0 and act_len == 0:
+        # Interpret bare Alias same as normal generic, i.e., Alias[Any, Any, ...]
+        assert alias_tvars is not None
+        return set_any_tvars(target, alias_tvars, ctx.line, ctx.column)
+    if exp_len == 0 and act_len == 0:
+        if no_args:
+            assert isinstance(target, Instance)
+            return Instance(target.type, [], line=ctx.line, column=ctx.column)
+        return target
+    if exp_len == 0 and act_len > 0 and isinstance(target, Instance) and no_args:
+        tp = Instance(target.type, args)
+        tp.line = ctx.line
+        tp.column = ctx.column
+        return tp
+    if act_len != exp_len:
+        fail('Bad number of arguments for type alias, expected: %s, given: %s'
+             % (exp_len, act_len), ctx)
+        return set_any_tvars(target, alias_tvars or [],
+                             ctx.line, ctx.column, implicit=False)
+    return replace_alias_tvars(target, alias_tvars, args, ctx.line, ctx.column)
 
 
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
