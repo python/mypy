@@ -1510,7 +1510,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def type_analyzer(self, *,
                       tvar_scope: Optional[TypeVarScope] = None,
                       allow_tuple_literal: bool = False,
-                      aliasing: bool = False,
+                      allow_unbound_tvars: bool = False,
                       third_pass: bool = False) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -1518,10 +1518,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             tvar_scope,
                             self.plugin,
                             self.options,
-                            self.is_typeshed_stub_file,
-                            aliasing=aliasing,
+                            self.is_stub_file,
                             allow_tuple_literal=allow_tuple_literal,
-                            allow_unnormalized=self.is_stub_file,
+                            allow_unbound_tvars=allow_unbound_tvars,
                             third_pass=third_pass)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -1530,11 +1529,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
-                  aliasing: bool = False,
+                  allow_unbound_tvars: bool = False,
                   third_pass: bool = False) -> Type:
         a = self.type_analyzer(tvar_scope=tvar_scope,
-                               aliasing=aliasing,
                                allow_tuple_literal=allow_tuple_literal,
+                               allow_unbound_tvars=allow_unbound_tvars,
                                third_pass=third_pass)
         typ = t.accept(a)
         self.add_type_alias_deps(a.aliases_used)
@@ -1615,8 +1614,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return self.named_type_or_none('builtins.unicode')
         return None
 
-    def analyze_alias(self, rvalue: Expression,
-                      warn_bound_tvar: bool = False) -> Tuple[Optional[Type], List[str],
+    def analyze_alias(self, rvalue: Expression) -> Tuple[Optional[Type], List[str],
                                                               Set[str], List[str]]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
@@ -1635,11 +1633,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                  self.tvar_scope,
                                  self.plugin,
                                  self.options,
-                                 self.is_typeshed_stub_file,
-                                 allow_unnormalized=True,
+                                 self.is_stub_file,
                                  in_dynamic_func=dynamic,
-                                 global_scope=global_scope,
-                                 warn_bound_tvar=warn_bound_tvar)
+                                 global_scope=global_scope)
         typ = None  # type: Optional[Type]
         if res:
             typ, depends_on = res
@@ -1680,8 +1676,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # annotations (see the second rule).
             return
         rvalue = s.rvalue
-        res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue,
-                                                                           warn_bound_tvar=True)
+        res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue)
         if not res:
             return
         s.is_alias_def = True
@@ -2761,7 +2756,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 except TypeTranslationError:
                     self.fail('Type expected within [...]', expr)
                     return
-                typearg = self.anal_type(typearg, aliasing=True)
+                typearg = self.anal_type(typearg, allow_unbound_tvars=True)
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
