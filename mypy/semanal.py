@@ -1518,8 +1518,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             tvar_scope,
                             self.plugin,
                             self.options,
-                            self.is_stub_file,
+                            self.is_typeshed_stub_file,
                             allow_tuple_literal=allow_tuple_literal,
+                            allow_unnormalized=self.is_stub_file,
                             allow_unbound_tvars=allow_unbound_tvars,
                             third_pass=third_pass)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
@@ -1615,7 +1616,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def analyze_alias(self, rvalue: Expression) -> Tuple[Optional[Type], List[str],
-                                                              Set[str], List[str]]:
+                                                         Set[str], List[str]]:
         """Check if 'rvalue' is a valid type allowed for aliasing (e.g. not a type variable).
 
         If yes, return the corresponding type, a list of
@@ -1633,8 +1634,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                  self.tvar_scope,
                                  self.plugin,
                                  self.options,
-                                 self.is_stub_file,
+                                 self.is_typeshed_stub_file,
                                  in_dynamic_func=dynamic,
+                                 allow_unnormalized=self.is_stub_file,
                                  global_scope=global_scope)
         typ = None  # type: Optional[Type]
         if res:
@@ -1708,8 +1710,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             s.rvalue.analyzed.column = res.column
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
                               depends_on=list(depends_on), no_args=no_args)
-        if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias) and rvalue.node.normalized:
-            node.node.normalized = True
+        if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
+            node.node.normalized = rvalue.node.normalized
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
@@ -2742,7 +2744,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 and isinstance(expr.base.node, TypeInfo)
                 and not expr.base.node.is_generic()):
             expr.index.accept(self)
-        elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias)) or refers_to_class_or_function(expr.base):
+        elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias) or
+                refers_to_class_or_function(expr.base)):
             # Special form -- type application.
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
@@ -2766,7 +2769,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         expr.base.node.no_args and
                         expr.base.node.target.type.fullname() in nongen_builtins
                         and not expr.base.node.normalized):
-                    self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(), propose_alt=False),
+                    self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(),
+                                                         propose_alt=False),
                               expr)
                     # We also store fine-grained dependencies to correctly re-process nodes
                     # with situations like `L = LongGeneric; x = L[int]()`.

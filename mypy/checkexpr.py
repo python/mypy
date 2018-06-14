@@ -2084,7 +2084,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
             target = tapp.expr.node.target
             all_vars = tapp.expr.node.alias_tvars
-            item = expand_type_alias(target, all_vars, tapp.types, self.chk.fail, tapp.expr.node.no_args, tapp)
+            item = expand_type_alias(target, all_vars, tapp.types, self.chk.fail,
+                                     tapp.expr.node.no_args, tapp)
             if isinstance(item, Instance):
                 tp = type_object_type(item.type, self.named_type)
                 return self.safe_apply(tp, item.args, tapp)

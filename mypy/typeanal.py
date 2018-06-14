@@ -57,8 +57,9 @@ def analyze_type_alias(node: Expression,
                        tvar_scope: TypeVarScope,
                        plugin: Plugin,
                        options: Options,
-                       is_stub: bool,
+                       is_typeshed_stub: bool,
                        in_dynamic_func: bool = False,
+                       allow_unnormalized: bool = False,
                        global_scope: bool = True) -> Optional[Tuple[Type, Set[str]]]:
     """Analyze r.h.s. of a (potential) type alias definition.
 
@@ -113,8 +114,8 @@ def analyze_type_alias(node: Expression,
     except TypeTranslationError:
         api.fail('Invalid type alias', node)
         return None
-    analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_stub,
-                            defining_alias=True)
+    analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
+                            allow_unnormalized=allow_unnormalized, defining_alias=True)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
     res = type.accept(analyzer)
@@ -145,8 +146,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  tvar_scope: Optional[TypeVarScope],
                  plugin: Plugin,
                  options: Options,
-                 is_stub: bool, *,
+                 is_typeshed_stub: bool, *,
                  allow_tuple_literal: bool = False,
+                 allow_unnormalized: bool = False,
                  allow_unbound_tvars: bool = False,
                  defining_alias: bool = False,
                  third_pass: bool = False) -> None:
@@ -159,11 +161,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
+        self.allow_unnormalized = allow_unnormalized
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
         self.defining_alias = defining_alias
         self.plugin = plugin
         self.options = options
-        self.is_stub = is_stub
+        self.is_typeshed_stub = is_typeshed_stub
         self.third_pass = third_pass
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used = set()  # type: Set[str]
@@ -201,8 +204,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in nongen_builtins and t.args and
-                    not self.is_stub):
-                self.fail(no_subscript_builtin_alias(fullname, propose_alt=not self.defining_alias), t)
+                    not self.allow_unnormalized):
+                self.fail(no_subscript_builtin_alias(fullname,
+                                                     propose_alt=not self.defining_alias), t)
             if self.tvar_scope:
                 tvar_def = self.tvar_scope.get_binding(sym)
             else:
@@ -223,14 +227,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
-                    if self.options.disallow_any_generics and not self.is_stub:
+                    if self.options.disallow_any_generics and not self.is_typeshed_stub:
                         self.fail(messages.BARE_GENERIC, t)
-                    return self.named_type('builtins.tuple', line=t.line, column=t.column)
+                    return self.named_type('builtins.tuple', [], line=t.line, column=t.column)
                 if len(t.args) == 2 and isinstance(t.args[1], EllipsisType):
                     # Tuple[T, ...] (uniform, variable-length tuple)
                     instance = self.named_type('builtins.tuple', [self.anal_type(t.args[0])])
                     instance.line = t.line
-                    instance.column = t.column
                     return instance
                 return self.tuple_type(self.anal_array(t.args))
             elif fullname == 'typing.Union':
@@ -299,10 +302,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # type variable, or module), and it is still not too late, we try deferring
                 # this type using a forward reference wrapper. It will be revisited in
                 # the third pass.
-                allow_forward_ref = (not self.third_pass and
-                                     not isinstance(sym.node, (FuncDef, Decorator)) and
-                                     not (isinstance(sym.node, Var) and sym.node.is_ready) and
-                                     not sym.kind in (MODULE_REF, TVAR))
+                allow_forward_ref = not (self.third_pass or
+                                         isinstance(sym.node, (FuncDef, Decorator)) or
+                                         isinstance(sym.node, Var) and sym.node.is_ready or
+                                         sym.kind in (MODULE_REF, TVAR))
                 if allow_forward_ref:
                     # We currently can't support subscripted forward refs in functions
                     # see ... for discussion.
@@ -333,12 +336,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 instance = Instance(info, self.anal_array(t.args), t.line, t.column)
                 if not t.args and self.options.disallow_any_generics and not self.defining_alias:
                     from_builtins = info.fullname() in nongen_builtins
-                    if not self.is_stub and from_builtins:
+                    if not self.is_typeshed_stub and from_builtins:
                         alternative = nongen_builtins[info.fullname()]
                         self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
-                        instance.args = [AnyType(TypeOfAny.from_error, line=t.line)] * len(info.type_vars)
+                        any_type = AnyType(TypeOfAny.from_error, line=t.line)
                     else:
-                        instance.args = [AnyType(TypeOfAny.from_omitted_generics, line=t.line)] * len(info.type_vars)
+                        any_type = AnyType(TypeOfAny.from_omitted_generics, line=t.line)
+                    instance.args = [any_type] * len(info.type_vars)
 
                 tup = info.tuple_type
                 if tup is not None:
@@ -675,7 +679,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                  api: SemanticAnalyzerCoreInterface,
                  plugin: Plugin,
                  options: Options,
-                 is_stub: bool,
+                 is_typeshed_stub: bool,
                  indicator: Dict[str, bool],
                  patches: List[Tuple[int, Callable[[], None]]]) -> None:
         self.api = api
@@ -685,7 +689,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         self.note_func = api.note
         self.options = options
         self.plugin = plugin
-        self.is_stub = is_stub
+        self.is_typeshed_stub = is_typeshed_stub
         self.indicator = indicator
         self.patches = patches
         self.aliases_used = set()  # type: Set[str]
@@ -802,7 +806,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
                             None,
                             self.plugin,
                             self.options,
-                            self.is_stub,
+                            self.is_typeshed_stub,
                             third_pass=True)
         res = tp.accept(tpan)
         self.aliases_used = tpan.aliases_used
