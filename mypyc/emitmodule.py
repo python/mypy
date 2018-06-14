@@ -145,6 +145,11 @@ class ModuleGenerator:
                            'if (_globals == NULL)',
                            '    return NULL;')
         self.generate_imports_init_section(self.module.imports, emitter)
+        self.generate_from_imports_init_section(
+            self.module.imports,
+            self.module.from_imports,
+            emitter,
+        )
 
         for literal, symbol in self.module.literals.items():
             if isinstance(literal, int):
@@ -229,6 +234,44 @@ class ModuleGenerator:
 
     def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
         for imp in imps:
-            emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_module_name(imp), imp))
-            emitter.emit_line('if ({} == NULL)'.format(c_module_name(imp)))
-            emitter.emit_line('    return NULL;')
+            self.generate_import(imp, emitter)
+
+    def generate_import(self, imp: str, emitter: Emitter) -> None:
+        emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_module_name(imp), imp))
+        emitter.emit_line('if ({} == NULL)'.format(c_module_name(imp)))
+        emitter.emit_line('    return NULL;')
+
+    def generate_from_imports_init_section(self,
+            imps: List[str],
+            from_imps: Dict[str, List[Tuple[str, str]]],
+            emitter: Emitter) -> None:
+        for imp, import_names in from_imps.items():
+            # Only import it again if we haven't imported it from the main
+            # imports section
+            if imp not in imps:
+                emitter.emit_line('CPyModule *{};'.format(c_module_name(imp)))
+                self.generate_import(imp, emitter)
+
+            for original_name, as_name in import_names:
+                # Obtain a reference to the original object
+                object_temp_name = emitter.temp_name()
+                emitter.emit_line('PyObject *{} = PyObject_GetAttrString({}, "{}");'.format(
+                    object_temp_name,
+                    c_module_name(imp),
+                    original_name,
+                ))
+                emitter.emit_lines(
+                    'if ({} == NULL)'.format(object_temp_name),
+                    '    return NULL;',
+                )
+                # and add it to the namespace of the current module, which eats the ref
+                emitter.emit_line('if (PyModule_AddObject(m, "{}", {}) < 0)'.format(
+                    as_name,
+                    object_temp_name,
+                ))
+                emitter.emit_line('   return NULL;')
+
+            # This particular import isn't saved as a global so we should decref it
+            # and not keep it around
+            if imp not in imps:
+                emitter.emit_line('Py_DECREF({});'.format(c_module_name(imp)))

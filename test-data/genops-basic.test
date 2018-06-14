@@ -507,6 +507,30 @@ L0:
     r4 = unbox(int, r3)
     return r4
 
+[case testFromImport]
+from testmodule import g
+
+def f(x: int) -> int:
+    return g(x)
+[file testmodule.py]
+def g(x: int) -> int:
+    return x + 1
+[out]
+def f(x):
+    x :: int
+    r0 :: object
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: int
+L0:
+    r0 = _globals :: static
+    r1 = __unicode_0 :: static
+    r2 = r0[r1] :: dict
+    r3 = box(int, x)
+    r4 = r2(r3) :: object
+    r5 = unbox(int, r4)
+    return r5
+
 [case testPrintFullname]
 import builtins
 def f(x: int) -> None:

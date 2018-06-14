@@ -322,6 +322,18 @@ assert f(a) is a
 assert g(None) == 1
 assert g(a) == 2
 
+[case testFromImport]
+from testmodule import g
+
+def f(x: int) -> int:
+    return g(x)
+[file testmodule.py]
+def g(x: int) -> int:
+    return x + 1
+[file driver.py]
+from native import f
+assert f(1) == 2
+
 [case testStr]
 def f() -> str:
     return 'some string'

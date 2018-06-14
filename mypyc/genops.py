@@ -63,7 +63,13 @@ def build_ir(module: MypyFile,
     builder = IRBuilder(types, mapper)
     module.accept(builder)
 
-    return ModuleIR(builder.imports, builder.literals, builder.functions, builder.classes)
+    return ModuleIR(
+        builder.imports,
+        builder.from_imports,
+        builder.literals,
+        builder.functions,
+        builder.classes
+    )
 
 
 class Mapper:
@@ -171,6 +177,8 @@ class IRBuilder(NodeVisitor[Value]):
 
         self.mapper = mapper
         self.imports = []  # type: List[str]
+        self.from_imports = {}  # type: Dict[str, List[Tuple[str, str]]]
+        self.imports = []  # type: List[str]
 
         # Maps integer, float, and unicode literals to the static c name for that literal
         self.literals = {}  # type: Dict[Union[int, float, str], str]
@@ -253,10 +261,16 @@ class IRBuilder(NodeVisitor[Value]):
     def visit_import_from(self, node: ImportFrom) -> Value:
         if node.is_unreachable or node.is_mypy_only:
             pass
-        if not node.is_top_level:
-            assert False, "non-toplevel imports not supported"
 
-        self.imports.append(node.id)
+        # TODO support these?
+        assert not node.relative
+
+        if node.id not in self.from_imports:
+            self.from_imports[node.id] = []
+
+        for name, maybe_as_name in node.names:
+            as_name = maybe_as_name or name
+            self.from_imports[node.id].append((name, as_name))
 
         return INVALID_VALUE
 
@@ -737,6 +751,9 @@ class IRBuilder(NodeVisitor[Value]):
             assert desc.result_type is not None
             return self.add(PrimitiveOp([], desc, expr.line))
 
+        if self.is_global_name(expr.name):
+            return self.load_global(expr)
+
         if not self.is_native_name_expr(expr):
             return self.load_static_module_attr(expr)
 
@@ -745,9 +762,17 @@ class IRBuilder(NodeVisitor[Value]):
             return self.environment.lookup(expr.node)
         if isinstance(expr.node, FuncDef):
             # If we have a function, then we can look it up in the global variables dictionary.
-            return self.load_global_func(expr)
+            return self.load_global(expr)
 
         assert False, 'node must be of either Var or FuncDef type'
+
+    def is_global_name(self, name: str) -> bool:
+        # TODO: this is pretty hokey
+        for _, names in self.from_imports.items():
+            for _, as_name in names:
+                if name == as_name:
+                    return True
+        return False
 
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
@@ -1260,15 +1285,14 @@ class IRBuilder(NodeVisitor[Value]):
     def box_expr(self, expr: Expression) -> Value:
         return self.box(self.accept(expr))
 
-    def load_global_func(self, expr: NameExpr) -> Value:
-        """Loads a Python-level global function into a register.
+    def load_global(self, expr: NameExpr) -> Value:
+        """Loads a Python-level global.
 
         This takes a NameExpr and uses its name as a key to retrieve the corresponding PyObject *
         from the _globals dictionary in the C-generated code.
         """
-        assert isinstance(expr.node, FuncDef)
         _globals = self.add(LoadStatic(object_rprimitive, '_globals'))
-        reg = self.load_static_unicode(expr.node.name())
+        reg = self.load_static_unicode(expr.name)
         return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
 
     def load_static_int(self, value: int) -> Value:
