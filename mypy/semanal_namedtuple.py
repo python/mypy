@@ -14,7 +14,7 @@ from mypy.nodes import (
     AssignmentStmt, PassStmt, Decorator, FuncBase, ClassDef, Expression, RefExpr, TypeInfo,
     NamedTupleExpr, CallExpr, Context, TupleExpr, ListExpr, SymbolTableNode, FuncDef, Block,
     TempNode,
-    ARG_POS, ARG_NAMED_OPT, ARG_OPT, MDEF, GDEF
+    ARG_POS, ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, MDEF, GDEF
 )
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
@@ -48,7 +48,7 @@ class NamedTupleAnalyzer:
                         node.node = info
                         defn.info.replaced = info
                         defn.info = info
-                        defn.analyzed = NamedTupleExpr(info)
+                        defn.analyzed = NamedTupleExpr(info, is_typed=True)
                         defn.analyzed.line = defn.line
                         defn.analyzed.column = defn.column
                         return info
@@ -142,9 +142,13 @@ class NamedTupleAnalyzer:
         if not isinstance(callee, RefExpr):
             return None
         fullname = callee.fullname
-        if fullname not in ('collections.namedtuple', 'typing.NamedTuple'):
+        if fullname == 'collections.namedtuple':
+            is_typed = False
+        elif fullname == 'typing.NamedTuple':
+            is_typed = True
+        else:
             return None
-        items, types, ok = self.parse_namedtuple_args(call, fullname)
+        items, types, ok = self.parse_namedtuple_args(call, fullname, is_typed)
         if not ok:
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [], {})
@@ -157,20 +161,21 @@ class NamedTupleAnalyzer:
         # (Or in the nearest class if there is one.)
         stnode = SymbolTableNode(GDEF, info)
         self.api.add_symbol_table_node(name, stnode)
-        call.analyzed = NamedTupleExpr(info)
+        call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
         call.analyzed.set_line(call.line, call.column)
         return info
 
-    def parse_namedtuple_args(self, call: CallExpr,
-                              fullname: str) -> Tuple[List[str], List[Type], bool]:
+    def parse_namedtuple_args(self, call: CallExpr, fullname: str,
+                              is_typed: bool) -> Tuple[List[str], List[Type], bool]:
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
             return self.fail_namedtuple_arg("Too few arguments for namedtuple()", call)
         if len(args) > 2:
-            # FIX incorrect. There are two additional parameters
-            return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
-        if call.arg_kinds != [ARG_POS, ARG_POS]:
+            # Typed namedtuple doesn't support additional arguments.
+            if is_typed:
+                return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
+        if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
             return self.fail_namedtuple_arg("Unexpected arguments to namedtuple()", call)
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             return self.fail_namedtuple_arg(

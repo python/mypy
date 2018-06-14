@@ -123,6 +123,9 @@ Point3 = NewType('Point3', Vector3)
 p3 = Point3(Vector3(1, 3))
 reveal_type(p3.x)  # E: Revealed type is 'builtins.int'
 reveal_type(p3.y)  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/list.pyi]
+
 [out]
 
 [case testNewTypeWithCasts]

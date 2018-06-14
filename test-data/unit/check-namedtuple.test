@@ -1,7 +1,7 @@
 [case testNamedTupleUsedAsTuple]
 from collections import namedtuple
 
-X = namedtuple('X', ['x', 'y'])
+X = namedtuple('X', 'x y')
 x = None  # type: X
 a, b = x
 b = x[0]
@@ -28,7 +28,7 @@ X = namedtuple('X', 'x, _y, _z')  # E: namedtuple() field names cannot start wit
 [case testNamedTupleAccessingAttributes]
 from collections import namedtuple
 
-X = namedtuple('X', ['x', 'y'])
+X = namedtuple('X', 'x y')
 x = None  # type: X
 x.x
 x.y
@@ -38,7 +38,7 @@ x.z # E: "X" has no attribute "z"
 [case testNamedTupleAttributesAreReadOnly]
 from collections import namedtuple
 
-X = namedtuple('X', ['x', 'y'])
+X = namedtuple('X', 'x y')
 x = None  # type: X
 x.x = 5 # E: Property "x" defined in "X" is read-only
 x.y = 5 # E: Property "y" defined in "X" is read-only
@@ -54,32 +54,46 @@ a.y = 5 # E: Property "y" defined in "X" is read-only
 [case testNamedTupleCreateWithPositionalArguments]
 from collections import namedtuple
 
-X = namedtuple('X', ['x', 'y'])
+X = namedtuple('X', 'x y')
 x = X(1, 'x')
 x.x
 x.z      # E: "X" has no attribute "z"
 x = X(1) # E: Too few arguments for "X"
 x = X(1, 2, 3)  # E: Too many arguments for "X"
 
+[builtins fixtures/list.pyi]
+
 [case testCreateNamedTupleWithKeywordArguments]
 from collections import namedtuple
 
-X = namedtuple('X', ['x', 'y'])
+X = namedtuple('X', 'x y')
 x = X(x=1, y='x')
 x = X(1, y='x')
 x = X(x=1, z=1) # E: Unexpected keyword argument "z" for "X"
 x = X(y=1) # E: Missing positional argument "x" in call to "X"
 
-
 [case testNamedTupleCreateAndUseAsTuple]
 from collections import namedtuple
 
-X = namedtuple('X', ['x', 'y'])
+X = namedtuple('X', 'x y')
 x = X(1, 'x')
 a, b = x
 a, b, c = x  # E: Need more than 2 values to unpack (3 expected)
 
-[case testNamedTupleDefaults]
+[case testNamedTupleAdditionalArgs]
+from collections import namedtuple
+
+A = namedtuple('A', 'a b')
+B = namedtuple('B', 'a b', rename=1)
+C = namedtuple('C', 'a b', rename='not a bool')  # E: Argument "rename" to "namedtuple" has incompatible type "str"; expected "int"
+# This works correctly but also produces "mypy/test-data/unit/lib-stub/collections.pyi:3: note: "namedtuple" defined here"
+# Don't know how to express that in a test.
+# D = namedtuple('D', 'a b', unrecognized_arg=False)  # E: Unexpected keyword argument "unrecognized_arg" for "namedtuple"
+E = namedtuple('E', 'a b', 0)  # E: Too many positional arguments for "namedtuple"
+
+[builtins fixtures/bool.pyi]
+
+[case testNamedTupleDefaults-skip]
 # flags: --python-version 3.7
 from collections import namedtuple
 
@@ -235,6 +249,7 @@ import collections
 MyNamedTuple = collections.namedtuple('MyNamedTuple', ['spam', 'eggs'])
 MyNamedTuple.x # E: "Type[MyNamedTuple]" has no attribute "x"
 
+[builtins fixtures/list.pyi]
 
 [case testNamedTupleEmptyItems]
 from typing import NamedTuple
@@ -275,6 +290,8 @@ x._replace(x=3, y=5)
 x._replace(z=5)  # E: Unexpected keyword argument "z" for "_replace" of "X"
 x._replace(5)  # E: Too many positional arguments for "_replace" of "X"
 
+[builtins fixtures/list.pyi]
+
 [case testNamedTupleReplaceAsClass]
 from collections import namedtuple
 
@@ -283,6 +300,7 @@ x = None  # type: X
 X._replace(x, x=1, y=2)
 X._replace(x=1, y=2)  # E: Missing positional argument "self" in call to "_replace" of "X"
 
+[builtins fixtures/list.pyi]
 
 [case testNamedTupleReplaceTyped]
 from typing import NamedTuple

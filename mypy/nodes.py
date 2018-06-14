@@ -1906,10 +1906,12 @@ class NamedTupleExpr(Expression):
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
     info = None  # type: TypeInfo
+    is_typed = False  # whether this class was created with typing.NamedTuple
 
-    def __init__(self, info: 'TypeInfo') -> None:
+    def __init__(self, info: 'TypeInfo', is_typed: bool = False) -> None:
         super().__init__()
         self.info = info
+        self.is_typed = is_typed
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_namedtuple_expr(self)

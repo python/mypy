@@ -262,13 +262,17 @@ s = ''.join([u''])  # Error
 _program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 _program.py:6: error: Incompatible types in assignment (expression has type "unicode", variable has type "str")
 
-[case testNamedTupleError_python2]
-import typing
+[case testNamedTuple_python2]
+from typing import NamedTuple
 from collections import namedtuple
 X = namedtuple('X', ['a', 'b'])
 x = X(a=1, b='s')
 x.c
 x.a
+
+N = NamedTuple(u'N', [(u'x', int)])
+n = namedtuple(u'n', u'x y')
+
 [out]
 _program.py:5: error: "X" has no attribute "c"
 
