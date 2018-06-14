@@ -2392,12 +2392,11 @@ class FakeInfo(TypeInfo):
 
 class TypeAlias(SymbolNode):
 
-    __slots__ = ('target', '_fullname', 'alias_tvars', 'depends_on', 'no_args', 'normalized')
+    __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str,
                  *,
                  alias_tvars: Optional[List[str]] = None,
-                 depends_on: Optional[List[str]] = None,
                  no_args: bool = False,
                  normalized: bool = False) -> None:
         self._fullname = fullname
@@ -2405,9 +2404,6 @@ class TypeAlias(SymbolNode):
         if alias_tvars is None:
             alias_tvars = []
         self.alias_tvars = alias_tvars
-        if depends_on is None:
-            depends_on = []
-        self.depends_on = depends_on
         self.no_args = no_args
         self.normalized = normalized
 
@@ -2422,7 +2418,6 @@ class TypeAlias(SymbolNode):
                 'fullname': self._fullname,
                 'target': self.target.serialize(),
                 'alias_tvars': self.alias_tvars,
-                'depends_on': self.depends_on,
                 'no_args': self.no_args,
                 'normalized': self.normalized
                 }  # type: JsonDict
@@ -2436,11 +2431,10 @@ class TypeAlias(SymbolNode):
         assert data['.class'] == 'TypeAlias'
         fullname = data['fullname']
         alias_tvars = data['alias_tvars']
-        depends_on = data['depends_on']
         target = mypy.types.deserialize_type(data['target'])
         no_args = data['no_args']
         normalized = data['normalized']
-        return cls(target, fullname, alias_tvars=alias_tvars, depends_on=depends_on,
+        return cls(target, fullname, alias_tvars=alias_tvars,
                    no_args=no_args, normalized=normalized)
 
 

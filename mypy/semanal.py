@@ -55,8 +55,8 @@ from mypy.nodes import (
     SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES,
-    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, nongen_builtins
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
+    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -1686,7 +1686,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         assert node is not None
         assert node.node is not None
         self.add_type_alias_deps(depends_on)
-        depends_on.add(node.node.fullname())
         self.add_type_alias_deps(qualified_tvars)
         # The above are only direct deps on other aliases.
         # For subscripted aliases, type deps from expansion are added in deps.py
@@ -1708,8 +1707,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
             s.rvalue.analyzed.column = res.column
-        node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars,
-                              depends_on=list(depends_on), no_args=no_args)
+        node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             node.node.normalized = rvalue.node.normalized
 
@@ -2423,11 +2421,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     # Expressions
     #
 
-    def add_symbol_alias_deps(self, n: Optional[SymbolTableNode]) -> None:
-        """Add type alias dependencies for a RefExpr node."""
-        if n and isinstance(n.node, TypeAlias):
-            self.add_type_alias_deps([n.node.fullname()])
-
     def visit_name_expr(self, expr: NameExpr) -> None:
         n = self.lookup(expr.name, expr)
         if n:
@@ -2435,7 +2428,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.fail("'{}' is a type variable and only valid in type "
                           "context".format(expr.name), expr)
             else:
-                self.add_symbol_alias_deps(n)
                 expr.kind = n.kind
                 expr.node = n.node
                 expr.fullname = n.fullname
@@ -2644,7 +2636,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # else:
             #     names = file.names
             n = file.names.get(expr.name, None) if file is not None else None
-            self.add_symbol_alias_deps(n)
             n = self.dereference_module_cross_ref(n)
             if n and not n.module_hidden:
                 if not n:
@@ -2706,7 +2697,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         type_info = self.type
             if type_info:
                 n = type_info.names.get(expr.name)
-                self.add_symbol_alias_deps(n)
                 if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
                     if not n:
                         return
@@ -2772,9 +2762,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(),
                                                          propose_alt=False),
                               expr)
-                    # We also store fine-grained dependencies to correctly re-process nodes
-                    # with situations like `L = LongGeneric; x = L[int]()`.
-                    self.add_type_alias_deps(expr.base.node.depends_on)
             else:
                 # list, dict, set are not directly subscriptable
                 n = self.lookup_type_node(expr.base)

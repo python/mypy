@@ -149,7 +149,8 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
         elif isinstance(symbol.node, TypeAlias):
             result[name] = ('TypeAlias',
                             symbol.node.alias_tvars,
-                            symbol.node.depends_on,
+                            symbol.node.normalized,
+                            symbol.node.no_args,
                             snapshot_optional_type(symbol.node.target))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
