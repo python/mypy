@@ -148,7 +148,7 @@ class NamedTupleAnalyzer:
             is_typed = True
         else:
             return None
-        items, types, num_defaults, ok = self.parse_namedtuple_args(call, fullname, is_typed)
+        items, types, num_defaults, ok = self.parse_namedtuple_args(call, fullname)
         if not ok:
             # Error. Construct dummy return value.
             return self.build_namedtuple_typeinfo('namedtuple', [], [], {})
@@ -172,8 +172,8 @@ class NamedTupleAnalyzer:
         call.analyzed.set_line(call.line, call.column)
         return info
 
-    def parse_namedtuple_args(self, call: CallExpr, fullname: str,
-                              is_typed: bool) -> Tuple[List[str], List[Type], int, bool]:
+    def parse_namedtuple_args(self, call: CallExpr,
+                              fullname: str) -> Tuple[List[str], List[Type], int, bool]:
         """Parse a namedtuple() call into data needed to construct a type.
 
         Returns a 4-tuple:
@@ -190,7 +190,7 @@ class NamedTupleAnalyzer:
         num_defaults = 0
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
-            if is_typed:
+            if fullname == 'typing.NamedTuple':
                 return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
             for i, arg_name in enumerate(call.arg_names[2:], 2):
                 if arg_name == 'defaults':
