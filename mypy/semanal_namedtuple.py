@@ -244,13 +244,6 @@ class NamedTupleAnalyzer:
             num_defaults = len(items)
         return items, types, num_defaults, ok
 
-    def extract_defaults_from_arg(self, call: CallExpr, arg: Expression) -> int:
-        if not isinstance(arg, (ListExpr, TupleExpr)):
-            self.fail("List or tuple literal expected as the defaults argument to namedtuple()",
-                      call)
-            return 0
-
-
     def parse_namedtuple_fields_with_types(self, nodes: List[Expression],
                                            context: Context) -> Tuple[List[str], List[Type], int, bool]:
         items = []  # type: List[str]
