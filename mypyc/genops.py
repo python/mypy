@@ -50,7 +50,7 @@ from mypyc.ops import (
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, PySetAttr,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
-from mypyc.ops_list import list_len_op, list_get_item_op, new_list_op
+from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
 from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import none_op, iter_op, next_op, no_err_occurred_op
 from mypyc.subtype import is_subtype
@@ -365,16 +365,11 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> Value:
         target = self.get_assignment_target(stmt.lvalue)
-
-        if isinstance(target, AssignmentTargetRegister):
-            rreg = self.accept(stmt.rvalue)
-            res = self.binary_op(target.register, rreg, stmt.op, stmt.line)
-            res = self.coerce(res, target.type, stmt.line)
-            self.add(Assign(target.register, res))
-            return INVALID_VALUE
-
-        # NOTE: List index not supported yet for compound assignments.
-        assert False, 'Unsupported lvalue: %r' % target
+        rreg = self.accept(stmt.rvalue)
+        res = self.read_from_target(target, stmt.line)
+        res = self.binary_op(res, rreg, stmt.op, stmt.line)
+        self.assign_to_target(target, res, res.line)
+        return INVALID_VALUE
 
     def get_assignment_target(self, lvalue: Lvalue) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
@@ -401,26 +396,46 @@ class IRBuilder(NodeVisitor[Value]):
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
+    def read_from_target(self, target: AssignmentTarget, line: int) -> Value:
+        if isinstance(target, AssignmentTargetRegister):
+            return target.register
+        if isinstance(target, AssignmentTargetIndex):
+            reg = self.translate_special_method_call(target.base,
+                                                     '__getitem__',
+                                                     [target.index],
+                                                     None,
+                                                     line)
+            if reg is not None:
+                return reg
+            assert False, target.base.type
+        if isinstance(target, AssignmentTargetAttr):
+            if isinstance(target.obj.type, RInstance):
+                return self.add(GetAttr(target.obj, target.attr, line))
+            else:
+                return self.py_get_attr(target.obj, target.attr, line)
+
+        assert False, 'Unsupported lvalue: %r' % target
+
     def assign_to_target(self,
                          target: AssignmentTarget,
-                         rvalue: Expression) -> Value:
-        rvalue_reg = self.accept(rvalue)
+                         rvalue_reg: Value,
+                         line: int) -> Value:
         if isinstance(target, AssignmentTargetRegister):
-            rvalue_reg = self.coerce(rvalue_reg, target.type, rvalue.line)
+            rvalue_reg = self.coerce(rvalue_reg, target.type, line)
             return self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj_type, RInstance):
-                rvalue_reg = self.coerce(rvalue_reg, target.type, rvalue.line)
-                return self.add(SetAttr(target.obj, target.attr, rvalue_reg, rvalue.line))
+                rvalue_reg = self.coerce(rvalue_reg, target.type, line)
+                return self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
-                return self.add(PySetAttr(target.obj, target.attr, rvalue_reg, rvalue.line))
+                return self.add(PySetAttr(target.obj, target.attr, rvalue_reg, line))
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.translate_special_method_call(
                 target.base,
                 '__setitem__',
                 [target.index, rvalue_reg],
                 None,
-                rvalue.line)
+                line)
             if target_reg2 is not None:
                 return target_reg2
 
@@ -432,7 +447,8 @@ class IRBuilder(NodeVisitor[Value]):
                lvalue: Lvalue,
                rvalue: Expression) -> AssignmentTarget:
         target = self.get_assignment_target(lvalue)
-        self.assign_to_target(target, rvalue)
+        rvalue_reg = self.accept(rvalue)
+        self.assign_to_target(target, rvalue_reg, rvalue.line)
         return target
 
     def visit_if_stmt(self, stmt: IfStmt) -> Value:

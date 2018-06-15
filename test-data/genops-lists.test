@@ -162,3 +162,39 @@ L0:
     r2 = None
     r3 = None
     return r3
+
+[case testIndexLvalue]
+from typing import List
+def increment(l: List[int]) -> List[int]:
+    for i in range(len(l)):
+        l[i] += 1
+    return l
+[out]
+def increment(l):
+    l :: list
+    r0, i, r1 :: int
+    r2 :: bool
+    r3 :: int
+    r4, r5, r6 :: object
+    r7 :: bool
+    r8, r9 :: int
+L0:
+    r0 = len l :: list
+    r1 = 0
+    i = r1
+L1:
+    r2 = i < r0 :: int
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = 1
+    r4 = l[i] :: list
+    r5 = box(int, r3)
+    r6 = r4 + r5
+    r7 = l.__setitem__(i, r6) :: list
+L3:
+    r8 = 1
+    r9 = i + r8 :: int
+    i = r9
+    goto L1
+L4:
+    return l

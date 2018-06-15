@@ -176,3 +176,33 @@ L0:
     self.y = r2; r3 = is_error
     r4 = None
     return r4
+
+[case testAttrLvalue]
+class O(object):
+    def __init__(self) -> None:
+        self.x = 1
+
+def increment(o: O) -> O:
+    o.x += 1
+    return o
+[out]
+def __init__(self):
+    self :: O
+    r0 :: int
+    r1 :: bool
+    r2 :: None
+L0:
+    r0 = 1
+    self.x = r0; r1 = is_error
+    r2 = None
+    return r2
+def increment(o):
+    o :: O
+    r0, r1, r2 :: int
+    r3 :: bool
+L0:
+    r0 = 1
+    r1 = o.x
+    r2 = r1 + r0 :: int
+    o.x = r2; r3 = is_error
+    return o
