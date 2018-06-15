@@ -2122,7 +2122,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             A = reveal_type(List[T])
             reveal_type(A)
 
-        will reveal the same type `builtins.list[Any]`.
+        will reveal the same type `def (...) -> builtins.list[Any]`.
         """
         return self.alias_type_in_runtime(alias.type, alias.tvars, alias.no_args, alias)
 
