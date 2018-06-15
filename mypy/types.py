@@ -850,7 +850,7 @@ class CallableType(FunctionLike):
         if they are not None.
 
         If you really want to include star args in the yielded output, set the
-        'include_star_args' field to 'True'."""
+        'include_star_args' parameter to 'True'."""
         done_with_positional = False
         for i in range(len(self.arg_types)):
             kind = self.arg_kinds[i]

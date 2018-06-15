@@ -741,7 +741,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
 
     # Phase 1: Confirm every argument in R has a corresponding argument in L.
 
-    # Phase 1a: If right and right can both accept an infinite number of args,
+    # Phase 1a: If left and right can both accept an infinite number of args,
     #           their types must be compatible.
     #
     #           Furthermore, if we're checking for compatibility in all cases,
