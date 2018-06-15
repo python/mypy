@@ -50,16 +50,14 @@ class TestPEP561(TestCase):
             else:
                 yield os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
 
-    @contextmanager
     def install_package(self, pkg: str,
-                        python_executable: str = sys.executable) -> Iterator[None]:
+                        python_executable: str = sys.executable) -> None:
         """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
         install_cmd = [python_executable, '-m', 'pip', 'install', '.']
         returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
             self.fail('\n'.join(lines))
-        yield
 
     def setUp(self) -> None:
         self.temp_file_dir = tempfile.TemporaryDirectory()
@@ -81,53 +79,53 @@ class TestPEP561(TestCase):
 
     def test_typedpkg_stub_package(self) -> None:
         with self.virtualenv() as python_executable:
-            with self.install_package('typedpkg-stubs', python_executable):
-                check_mypy_run(
-                    [self.tempfile],
-                    python_executable,
-                    self.msg_list,
-                )
+            self.install_package('typedpkg-stubs', python_executable)
+            check_mypy_run(
+                [self.tempfile],
+                python_executable,
+                self.msg_list,
+            )
 
     def test_typedpkg(self) -> None:
         with self.virtualenv() as python_executable:
-            with self.install_package('typedpkg', python_executable):
-                check_mypy_run(
-                    [self.tempfile],
-                    python_executable,
-                    self.msg_tuple,
-                )
+            self.install_package('typedpkg', python_executable)
+            check_mypy_run(
+                [self.tempfile],
+                python_executable,
+                self.msg_tuple,
+            )
 
     def test_stub_and_typed_pkg(self) -> None:
         with self.virtualenv() as python_executable:
-            with self.install_package('typedpkg', python_executable):
-                with self.install_package('typedpkg-stubs', python_executable):
-                    check_mypy_run(
-                        [self.tempfile],
-                        python_executable,
-                        self.msg_list,
-                    )
+            self.install_package('typedpkg', python_executable)
+            self.install_package('typedpkg-stubs', python_executable)
+            check_mypy_run(
+                [self.tempfile],
+                python_executable,
+                self.msg_list,
+            )
 
     def test_typedpkg_stubs_python2(self) -> None:
         python2 = try_find_python2_interpreter()
         if python2:
             with self.virtualenv(python2) as py2:
-                with self.install_package('typedpkg-stubs', py2):
-                    check_mypy_run(
-                        [self.tempfile],
-                        py2,
-                        self.msg_list,
-                    )
+                self.install_package('typedpkg-stubs', py2)
+                check_mypy_run(
+                    [self.tempfile],
+                    py2,
+                    self.msg_list,
+                )
 
     def test_typedpkg_python2(self) -> None:
         python2 = try_find_python2_interpreter()
         if python2:
             with self.virtualenv(python2) as py2:
-                with self.install_package('typedpkg', py2):
-                    check_mypy_run(
-                        [self.tempfile],
-                        py2,
-                        self.msg_tuple,
-                    )
+                self.install_package('typedpkg', py2)
+                check_mypy_run(
+                    [self.tempfile],
+                    py2,
+                    self.msg_tuple,
+                )
 
 
 if __name__ == '__main__':
