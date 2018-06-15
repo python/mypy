@@ -2,24 +2,21 @@
 
 import os
 import re
-import shutil
 import sys
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
-from mypy import build, defaults
+from mypy import build
 from mypy.build import BuildSource, Graph
 from mypy.test.config import test_temp_dir
-from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, DeleteFile
+from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
     copy_and_fudge_mtime
 )
 from mypy.errors import CompileError
-from mypy.options import Options
 
-from mypy import experiments
 
 # List of files that contain test case descriptions.
 typecheck_files = [
@@ -77,6 +74,7 @@ typecheck_files = [
     'check-custom-plugin.test',
     'check-default-plugin.test',
     'check-attr.test',
+    'check-dataclasses.test',
 ]
 
 

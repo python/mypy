@@ -14,7 +14,7 @@ import socket
 import sys
 import time
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.util import write_junit_xml

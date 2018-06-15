@@ -17,7 +17,7 @@ from mypy.nodes import (
 class TraverserVisitor(NodeVisitor[None]):
     """A parse tree visitor that traverses the parse tree during visiting.
 
-    It does not peform any actions outside the traversal. Subclasses
+    It does not perform any actions outside the traversal. Subclasses
     should override visit methods to perform actions during
     traversal. Calling the superclass method allows reusing the
     traversal implementation.

@@ -4362,6 +4362,321 @@ import b
 [stale]
 [rechecked b]
 
+[case testIncrementalDataclassesSubclassingCached]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    e: str = 'e'
+
+a = B(5, [5], 'foo')
+a.a = 6
+a._b = [2]
+a.c = 'yo'
+a._d = 22
+a.e = 'hi'
+
+[file a.py]
+from dataclasses import dataclass, field
+from typing import ClassVar, List
+
+@dataclass
+class A:
+    a: int
+    _b: List[int]
+    c: str = '18'
+    _d: int = field(default=False)
+    E = 7
+    F: ClassVar[int] = 22
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+
+[case testIncrementalDataclassesSubclassingCachedType]
+import b
+
+[file b.py]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    pass
+
+[file b.py.2]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    pass
+
+reveal_type(B)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+tmp/b.py:8: error: Revealed type is 'def (x: builtins.int) -> b.B'
+
+[case testIncrementalDataclassesArguments]
+import b
+
+[file b.py]
+from a import Frozen, NoInit, NoCmp
+
+[file b.py.2]
+from a import Frozen, NoInit, NoCmp
+
+f = Frozen(5)
+f.x = 6
+
+g = NoInit()
+
+Frozen(1) < Frozen(2)
+Frozen(1) <= Frozen(2)
+Frozen(1) > Frozen(2)
+Frozen(1) >= Frozen(2)
+
+NoCmp(1) < NoCmp(2)
+NoCmp(1) <= NoCmp(2)
+NoCmp(1) > NoCmp(2)
+NoCmp(1) >= NoCmp(2)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass(frozen=True, order=True)
+class Frozen:
+    x: int
+
+@dataclass(init=False)
+class NoInit:
+    x: int
+
+@dataclass(order=False)
+class NoCmp:
+    x: int
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+tmp/b.py:4: error: Property "x" defined in "Frozen" is read-only
+tmp/b.py:13: error: Unsupported left operand type for < ("NoCmp")
+tmp/b.py:14: error: Unsupported left operand type for <= ("NoCmp")
+tmp/b.py:15: error: Unsupported left operand type for > ("NoCmp")
+tmp/b.py:16: error: Unsupported left operand type for >= ("NoCmp")
+
+[case testIncrementalDataclassesDunder]
+import b
+
+[file b.py]
+from a import A
+
+[file b.py.2]
+from a import A
+
+reveal_type(A)
+reveal_type(A.__eq__)
+reveal_type(A.__ne__)
+reveal_type(A.__lt__)
+reveal_type(A.__le__)
+reveal_type(A.__gt__)
+reveal_type(A.__ge__)
+
+A(1) < A(2)
+A(1) <= A(2)
+A(1) > A(2)
+A(1) >= A(2)
+A(1) == A(2)
+A(1) != A(2)
+
+A(1) < 1
+A(1) <= 1
+A(1) > 1
+A(1) >= 1
+A(1) == 1
+A(1) != 1
+
+1 < A(1)
+1 <= A(1)
+1 > A(1)
+1 >= A(1)
+1 == A(1)
+1 != A(1)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass(order=True)
+class A:
+    a: int
+
+[builtins fixtures/attr.pyi]
+[out1]
+[out2]
+tmp/b.py:3: error: Revealed type is 'def (a: builtins.int) -> a.A'
+tmp/b.py:4: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
+tmp/b.py:5: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
+tmp/b.py:6: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+tmp/b.py:7: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+tmp/b.py:8: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+tmp/b.py:9: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
+tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
+tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")
+tmp/b.py:21: error: Unsupported operand types for >= ("A" and "int")
+tmp/b.py:25: error: Unsupported operand types for > ("A" and "int")
+tmp/b.py:26: error: Unsupported operand types for >= ("A" and "int")
+tmp/b.py:27: error: Unsupported operand types for < ("A" and "int")
+tmp/b.py:28: error: Unsupported operand types for <= ("A" and "int")
+
+[case testIncrementalDataclassesSubclassModified]
+from b import B
+B(5, 'foo')
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[file b.py]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: str
+
+[file b.py.2]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: int
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+[rechecked b]
+
+[case testIncrementalDataclassesSubclassModifiedErrorFirst]
+from b import B
+B(5, 'foo')
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    x: int
+
+[file b.py]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: int
+
+[file b.py.2]
+from a import A
+from dataclasses import dataclass
+
+@dataclass
+class B(A):
+    y: str
+
+[builtins fixtures/list.pyi]
+[out1]
+main:2: error: Argument 2 to "B" has incompatible type "str"; expected "int"
+
+[out2]
+[rechecked b]
+
+[case testIncrementalDataclassesThreeFiles]
+from c import C
+C(5, 'foo', True)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+[file b.py]
+from dataclasses import dataclass
+
+@dataclass
+class B:
+    b: str
+
+[file b.py.2]
+from dataclasses import dataclass
+
+@dataclass
+class B:
+    b: str
+    c: str
+
+[file c.py]
+from a import A
+from b import B
+from dataclasses import dataclass
+
+@dataclass
+class C(A, B):
+    c: bool
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+tmp/c.py:7: error: Incompatible types in assignment (expression has type "bool", base class "B" defined the type as "str")
+
+[case testIncrementalDataclassesThreeRuns]
+from a import A
+A(5)
+
+[file a.py]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int
+
+[file a.py.2]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: str
+
+[file a.py.3]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int = 6
+
+[builtins fixtures/list.pyi]
+[out1]
+[out2]
+main:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
+[out3]
+
 [case testParentPatchingMess]
 # flags: --ignore-missing-imports --follow-imports=skip
 # cmd: mypy -m d d.k d.k.a d.k.v t
@@ -4428,3 +4743,14 @@ class C:
 [out]
 [out2]
 main:5: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testBazelFlagIgnoresFileChanges]
+-- Since the initial run wrote a cache file, the second run ignores the source
+# flags: --bazel
+from a import f
+f()
+[file a.py]
+def f(): pass
+[file a.py.2]
+[out]
+[out2]

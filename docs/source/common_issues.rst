@@ -417,7 +417,7 @@ understand how mypy handles a particular piece of code. Example:
    reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
 
 You can also use ``reveal_locals()`` at any line in a file
-to see the types of all local varaibles at once. Example:
+to see the types of all local variables at once. Example:
 
 .. code-block:: python
 
@@ -561,7 +561,6 @@ the protocol definition:
        x = 42
    fun(C())  # OK
 
-
 Dealing with conflicting names
 ------------------------------
 
@@ -589,3 +588,16 @@ renaming the method, a work-around is to use an alias:
            ...
        def register(self, path: bytes_):
            ...
+
+I need a mypy bug fix that hasn't been released yet
+---------------------------------------------------
+
+You can install the latest development version of mypy from source. Clone the
+`mypy repository on GitHub <https://github.com/python/mypy>`_, and then run
+``pip install`` locally:
+
+.. code-block:: text
+
+    git clone --recurse-submodules https://github.com/python/mypy.git
+    cd mypy
+    sudo python3 -m pip install --upgrade .

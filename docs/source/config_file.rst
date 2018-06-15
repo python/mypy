@@ -183,7 +183,7 @@ overridden by the pattern sections matching the module name.
   Used in conjunction with ``follow_imports=skip``, this can be used
   to suppress the import of a module from ``typeshed``, replacing it
   with `Any`.
-  Used in conjuncation with ``follow_imports=error``, this can be used
+  Used in conjunction with ``follow_imports=error``, this can be used
   to make any use of a particular ``typeshed`` module an error.
 
 - ``ignore_missing_imports`` (Boolean, default False) suppress error

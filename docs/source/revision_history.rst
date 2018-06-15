@@ -4,6 +4,17 @@ Revision history
 List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
 detailed release notes):
 
+- June 2018
+    * Publish ``mypy`` version 0.610 on PyPI.
+
+      * Major overhaul of documentation.
+
+      * Add the ``dmypy run`` command to the :ref:`daemon <mypy_daemon>`.
+
+      * Partially revert the prior changes to section pattern semantics in
+        configuration files
+        (:ref:`docs <config-file>` and :ref:`more docs <per-module-flags>`).
+
 - May 2018
     * Publish ``mypy`` version 0.600 on PyPI.
 
@@ -180,7 +191,7 @@ detailed release notes):
 - November 2016
     * Publish ``mypy-lang`` version 0.4.6 on PyPI.
 
-    * Add :ref:`getting-started`.
+    * Add Getting started.
 
     * Add :ref:`generic-methods-and-generic-self` (experimental).
 
@@ -268,7 +279,7 @@ detailed release notes):
     * Document Python 2 support.
 
 - Nov 2015
-    Add :ref:`library-stubs`.
+    Add :ref:`stubs-intro`.
 
 - Jun 2015
     Remove ``Undefined`` and ``Dynamic``, as they are not in PEP 484.

@@ -44,18 +44,18 @@ from mypy.nodes import (
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
+    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
-    LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
+    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
-    YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, type_aliases,
+    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
+    YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
@@ -66,9 +66,9 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type,
-    TypedDictType, NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    TypeTranslator, TypeOfAny, TypeVisitor, UninhabitedType, ErasedType, DeletedType
+    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    CallableType, Overloaded, Instance, Type, AnyType,
+    TypeTranslator, TypeOfAny
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -81,9 +81,8 @@ from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy import join
 from mypy.util import get_prefix, correct_relative_import
-from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
 from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
 from mypy.semanal_typeddict import TypedDictAnalyzer
@@ -585,7 +584,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         if not defn.items:
             # It was not any kind of overload def after all. We've visited the
-            # redfinitions already.
+            # redefinitions already.
             return
 
         if self.type and not self.is_func_scope():
@@ -862,7 +861,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
                 if isinstance(analyzed, PromoteExpr):
-                    # _promote class decorator (undocumented faeture).
+                    # _promote class decorator (undocumented feature).
                     promote_target = analyzed.type
         if not promote_target:
             promotions = (TYPE_PROMOTIONS_PYTHON3 if self.options.python_version[0] >= 3

@@ -3,8 +3,9 @@
 Type hints cheat sheet (Python 3)
 =================================
 
-This document is a quick cheat sheet showing how the `PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
-language represents various common types in Python 3. Unless otherwise noted, the syntax is valid on all versions of Python 3.
+This document is a quick cheat sheet showing how the
+`PEP 484 <https://www.python.org/dev/peps/pep-0484/>`_ type
+annotation notation represents various common types in Python 3.
 
 .. note::
 
@@ -14,6 +15,33 @@ language represents various common types in Python 3. Unless otherwise noted, th
    annotation, and show the inferred types.
 
 
+Variables
+*********
+
+Python 3.6 introduced a syntax for annotating variables in
+`PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_ and
+we use it in most examples.
+
+.. code-block:: python
+
+   # This is how you declare the type of a variable type in Python 3.6
+   x: int = 1
+
+   # In Python 3.5 and earlier you can use a type comment instead
+   # (equivalent to the previous definition)
+   x = 1  # type: int
+
+   # You don't need to initialize a variable to annotate it
+   a: int  # Ok (no value at runtime until assigned)
+
+   # The latter is useful in conditional branches
+   child: bool
+   if age < 18:
+       child = True
+   else:
+       child = False
+
+
 Built-in types
 **************
 
@@ -21,188 +49,151 @@ Built-in types
 
    from typing import List, Set, Dict, Tuple, Text, Optional, AnyStr
 
-   # For simple built-in types, just use the name of the type.
-   x = 1  # type: int
-   x = 1.0  # type: float
-   x = True  # type: bool
-   x = "test"  # type: str
-   x = u"test"  # type: str
-   x = b"test"  # type: bytes
+   # For simple built-in types, just use the name of the type
+   x: int = 1
+   x: float = 1.0
+   x: bool = True
+   x: str = "test"
+   x: str = u"test"
+   x: bytes = b"test"
 
    # For collections, the name of the type is capitalized, and the
-   # name of the type inside the collection is in brackets.
+   # name of the type inside the collection is in brackets
+   x: List[int] = [1]
+   x: Set[int] = {6, 7}
+
+   # Same as above, but with type comment syntax
    x = [1]  # type: List[int]
-   x = {6, 7}  # type: Set[int]
 
-   # Empty Tuple types are a bit special
-   x = ()  # type: Tuple[()]
+   # For mappings, we need the types of both keys and values
+   x: Dict[str, float] = {'field': 2.0}
 
-   # For mappings, we need the types of both keys and values.
-   x = {'field': 2.0}  # type: Dict[str, float]
+   # For tuples, we specify the types of all the elements
+   x: Tuple[int, str, float] = (3, "yes", 7.5)
 
-   # For tuples, we specify the types of all the elements.
-   x = (3, "yes", 7.5)  # type: Tuple[int, str, float]
+   # For textual data, use Text if you care about Python 2 compatibility
+   # ("Text" means "unicode" in Python 2 and "str" in Python 3)
+   x: List[Text] = ["string", u"unicode"]
 
-   # For textual data, use Text.
-   # This is `unicode` in Python 2 and `str` in Python 3.
-   x = ["string", u"unicode"]  # type: List[Text]
-
-
-
-   # Use Optional for values that could be None.
-   input_str = f()  # type: Optional[str]
-   if input_str is not None:
-      print(input_str)
+   # Use Optional[] for values that could be None
+   x: Optional[str] = some_function()
+   if x is not None:
+       print(x)
 
 
 Functions
 *********
 
-Python 3 introduces an annotation syntax for function declarations in `PEP 3107 <https://www.python.org/dev/peps/pep-3107/>`_.
+Python 3 supports an annotation syntax for function declarations.
 
 .. code-block:: python
 
    from typing import Callable, Iterable, Union, Optional, List
 
-   # This is how you annotate a function definition.
+   # This is how you annotate a function definition
    def stringify(num: int) -> str:
        return str(num)
-       
-   # And here's how you specify multiple arguments.
+
+   # And here's how you specify multiple arguments
    def plus(num1: int, num2: int) -> int:
        return num1 + num2
 
-   # Add type annotations for kwargs as though they were positional args.
+   # Add default value for an argument after the type annotation
    def f(num1: int, my_float: float = 3.5) -> float:
        return num1 + my_float
 
-   # An argument can be declared positional-only by giving it a name
-   # starting with two underscores:
-   def quux(__x: int) -> None:
-       pass
-   quux(3)  # Fine
-   quux(__x=3)  # Error
-
-   # This is how you annotate a function value.
-   x = f # type: Callable[[int, float], float]
+   # This is how you annotate a callable (function) value
+   x: Callable[[int, float], float] = f
 
    # A generator function that yields ints is secretly just a function that
-   # returns an iterable (see below) of ints, so that's how we annotate it.
+   # returns an iterable (see below) of ints, so that's how we annotate it
    def f(n: int) -> Iterable[int]:
        i = 0
        while i < n:
            yield i
            i += 1
 
-   # For a function with many arguments, you can of course split it over multiple lines
+   # You can of course split a function annotation over multiple lines
    def send_email(address: Union[str, List[str]],
                   sender: str,
                   cc: Optional[List[str]],
                   bcc: Optional[List[str]],
                   subject='',
-                  body: List[str] = None
+                  body: Optional[List[str]] = None
                   ) -> bool:
-       
        ...
 
-Coroutines and asyncio
-**********************
+   # An argument can be declared positional-only by giving it a name
+   # starting with two underscores:
+   def quux(__x: int) -> None:
+       pass
 
-See :ref:`async-and-await` for the full detail on typing coroutines and asynchronous code.
+   quux(3)  # Fine
+   quux(__x=3)  # Error
 
-.. code-block:: python
-
-   import asyncio
-   from typing import Generator, Any
-
-   # A generator-based coroutine created with @asyncio.coroutine should have a
-   # return type of Generator[Any, None, T], where T is the type it returns.
-   @asyncio.coroutine
-   def countdown34(tag: str, count: int) -> Generator[Any, None, str]:
-       while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
-           yield from asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-   # mypy currently does not support converting functions into generator-based
-   # coroutines in Python 3.4, so you need to add a 'yield' to make it
-   # typecheck.
-   @asyncio.coroutine
-   def async1(obj: object) -> Generator[None, None, str]:
-       if False:
-           yield
-       return "placeholder"
-
-   # A Python 3.5+ coroutine is typed like a normal function.
-   async def countdown35(tag: str, count: int) -> str:
-       while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
-           await asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-   async def async2(obj: object) -> str:
-       return "placeholder"
 
 When you're puzzled or when things are complicated
 **************************************************
 
 .. code-block:: python
 
-   from typing import Union, Any, List, cast
+   from typing import Union, Any, List, Optional, cast
 
    # To find out what type mypy infers for an expression anywhere in
-   # your program, wrap it in reveal_type.  Mypy will print an error
+   # your program, wrap it in reveal_type().  Mypy will print an error
    # message with the type; remove it again before running the code.
-   reveal_type(1)  # -> error: Revealed type is 'builtins.int'
+   reveal_type(1)  # -> Revealed type is 'builtins.int'
 
-   # Use Union when something could be one of a few types.
-   x = [3, 5, "test", "fun"]  # type: List[Union[int, str]]
+   # Use Union when something could be one of a few types
+   x: List[Union[int, str]] = [3, 5, "test", "fun"]
 
    # Use Any if you don't know the type of something or it's too
-   # dynamic to write a type for.
-   x = mystery_function()  # type: Any
+   # dynamic to write a type for
+   x: Any = mystery_function()
 
-   # This is how to deal with varargs.
-   # This makes each positional arg and each keyword arg a 'str'.
+   # If you initialize a variable with an empty container or "None"
+   # you may have to help mypy a bit by providing a type annotation
+   x: List[str] = []
+   x: Optional[str] = None
+
+   # This makes each positional arg and each keyword arg a "str"
    def call(self, *args: str, **kwargs: str) -> str:
-            request = make_request(*args, **kwargs)
-            return self.do_api_query(request)
+       request = make_request(*args, **kwargs)
+       return self.do_api_query(request)
 
-   # Use `ignore` to suppress type-checking on a given line, when your
-   # code confuses mypy or runs into an outright bug in mypy.
-   # Good practice is to comment every `ignore` with a bug link
+   # Use a "type: ignore" comment to suppress errors on a given line,
+   # when your code confuses mypy or runs into an outright bug in mypy.
+   # Good practice is to comment every "ignore" with a bug link
    # (in mypy, typeshed, or your own code) or an explanation of the issue.
-   x = confusing_function()  # type: ignore # https://github.com/python/mypy/issues/1167
+   x = confusing_function()  # type: ignore  # https://github.com/python/mypy/issues/1167
 
-   # cast is a helper function for mypy that allows for guidance of how to convert types.
-   # it does not cast at runtime
+   # "cast" is a helper function that lets you override the inferred
+   # type of an expression. It's only for mypy -- there's no runtime check.
    a = [4]
-   b = cast(List[int], a)  # passes fine
-   c = cast(List[str], a)  # passes fine (no runtime check)
-   reveal_type(c)  # -> error: Revealed type is 'builtins.list[builtins.str]'
-   print(c)  # -> [4] the object is not cast
+   b = cast(List[int], a)  # Passes fine
+   c = cast(List[str], a)  # Passes fine (no runtime check)
+   reveal_type(c)  # -> Revealed type is 'builtins.list[builtins.str]'
+   print(c)  # -> [4]; the object is not cast
 
-   # if you want dynamic attributes on your class, have it override __setattr__ or __getattr__
-   # in a stub or in your source code.
-   # __setattr__ allows for dynamic assignment to names
-   # __getattr__ allows for dynamic access to names
+   # If you want dynamic attributes on your class, have it override "__setattr__"
+   # or "__getattr__" in a stub or in your source code.
+   #
+   # "__setattr__" allows for dynamic assignment to names
+   # "__getattr__" allows for dynamic access to names
    class A:
-       # this will allow assignment to any A.x, if x is the same type as `value`
+       # This will allow assignment to any A.x, if x is the same type as "value"
+       # (use "value: Any" to allow arbitrary types)
        def __setattr__(self, name: str, value: int) -> None: ...
-       # this will allow access to any A.x, if x is compatible with the return type
+
+       # This will allow access to any A.x, if x is compatible with the return type
        def __getattr__(self, name: str) -> int: ...
-   a.foo = 42  # works
-   a.bar = 'Ex-parrot'  # fails type checking
+
+   a.foo = 42  # Works
+   a.bar = 'Ex-parrot'  # Fails type checking
 
 
-   # TODO: explain "Need type annotation for variable" when
-   # initializing with None or an empty container
-
-
-Standard duck types
-*******************
+Standard "duck types"
+*********************
 
 In typical Python code, many functions that can take a list or a dict
 as an argument only need their argument to be somehow "list-like" or
@@ -214,20 +205,25 @@ that are common in idiomatic Python are standardized.
 
    from typing import Mapping, MutableMapping, Sequence, Iterable, List, Set
 
-   # Use Iterable for generic iterables (anything usable in `for`),
-   # and Sequence where a sequence (supporting `len` and `__getitem__`) is required.
-   def f(iterable_of_ints: Iterable[int]) -> List[str]:
-       return [str(x) for x in iterable_of_ints]
+   # Use Iterable for generic iterables (anything usable in "for"),
+   # and Sequence where a sequence (supporting "len" and "__getitem__") is
+   # required
+   def f(ints: Iterable[int]) -> List[str]:
+       return [str(x) for x in ints]
+
    f(range(1, 3))
 
-   # Mapping describes a dict-like object (with `__getitem__`) that we won't mutate,
-   # and MutableMapping one (with `__setitem__`) that we might.
-   def f(my_dict: Mapping[int, str])-> List[int]:
+   # Mapping describes a dict-like object (with "__getitem__") that we won't
+   # mutate, and MutableMapping one (with "__setitem__") that we might
+   def f(my_dict: Mapping[int, str]) -> List[int]:
        return list(my_dict.keys())
+
    f({3: 'yes', 4: 'no'})
+
    def f(my_mapping: MutableMapping[int, str]) -> Set[str]:
        my_mapping[5] = 'maybe'
        return set(my_mapping.values())
+
    f({3: 'yes', 4: 'no'})
 
 
@@ -237,43 +233,69 @@ Classes
 .. code-block:: python
 
    class MyClass:
-       # The __init__ method doesn't return anything, so it gets return
-       # type None just like any other method that doesn't return anything.
+       # You can optionally declare instance variables in the class body
+       attr: int
+       # This is an instance variable with a default value
+       charge_percent: int = 100
+
+       # The "__init__" method doesn't return anything, so it gets return
+       # type "None" just like any other method that doesn't return anything
        def __init__(self) -> None:
            ...
-       # For instance methods, omit `self`.
+
+       # For instance methods, omit type for "self"
        def my_method(self, num: int, str1: str) -> str:
            return num * str1
 
+   # User-defined classes are valid as types in annotations
+   x: MyClass = MyClass()
+
+   # You can use the ClassVar annotation to declare a class variable
+   class Car:
+       seats: ClassVar[int] = 4
+       passengers: ClassVar[List[str]]
+
+   # You can also declare the type of an attribute in "__init__"
+   class Box:
+       def __init__(self) -> None:
+           self.items: List[str] = []
 
 
-   # User-defined classes are written with just their own names.
-   x = MyClass() # type: MyClass
+Coroutines and asyncio
+**********************
+
+See :ref:`async-and-await` for the full detail on typing coroutines and asynchronous code.
+
+.. code-block:: python
+
+   import asyncio
+   from typing import Generator, Any
+
+   # A coroutine is typed like a normal function
+   async def countdown35(tag: str, count: int) -> str:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           await asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
 
 
-Other stuff
-***********
+Miscellaneous
+*************
 
 .. code-block:: python
 
    import sys
    import re
-   # typing.Match describes regex matches from the re module.
    from typing import Match, AnyStr, IO
-   x = re.match(r'[0-9]+', "15")  # type: Match[str]
 
-   # You can use AnyStr to indicate that any string type will work
-   # but not to mix types
-   def full_name(first: AnyStr, last: AnyStr) -> AnyStr:
-       return first+last
-   full_name('Jon','Doe')  # same str ok
-   full_name(b'Bill', b'Bit')  # same binary ok
-   full_name(b'Terry', 'Trouble')  # different str types, fails
+   # "typing.Match" describes regex matches from the re module
+   x: Match[str] = re.match(r'[0-9]+', "15")
 
    # Use IO[] for functions that should accept or return any
-   # object that comes from an open() call. The IO[] does not
-   # distinguish between reading, writing or other modes.
-   def get_sys_IO(mode='w') -> IO[str]:
+   # object that comes from an open() call (IO[] does not
+   # distinguish between reading, writing or other modes)
+   def get_sys_IO(mode: str = 'w') -> IO[str]:
        if mode == 'w':
            return sys.stdout
        elif mode == 'r':
@@ -281,69 +303,15 @@ Other stuff
        else:
            return sys.stdout
 
-   # forward references are useful if you want to reference a class before it is designed
-   
-   def f(foo: A) -> int:  # this will fail
+   # Forward references are useful if you want to reference a class before
+   # it is defined
+   def f(foo: A) -> int:  # This will fail
        ...
-   
+
    class A:
        ...
-       
-   # however, using the string 'A', it will pass as long as there is a class of that name later on
-   def f(foo: 'A') -> int:
+
+   # If you use the string literal 'A', it will pass as long as there is a
+   # class of that name later on in the file
+   def f(foo: 'A') -> int:  # Ok
        ...
-
-   # TODO: add TypeVar and a simple generic function
-
-Variable Annotation in Python 3.6 with PEP 526
-**********************************************
-
-Python 3.6 brings new syntax for annotating variables with `PEP 526 <https://www.python.org/dev/peps/pep-0526/>`_.
-Mypy brings limited support for PEP 526 annotations.
-
-
-.. code-block:: python
-
-   # annotation is similar to arguments to functions
-   name: str = "Eric Idle"
-   
-   # class instances can be annotated as follows
-   mc : MyClass = MyClass()
-   
-   # tuple packing can be done as follows
-   tu: Tuple[str, ...] = ('a', 'b', 'c')
-   
-   # annotations are not checked at runtime
-   year: int = '1972'  # error in type checking, but works at runtime
-   
-   # these are all equivalent
-   hour = 24 # type: int
-   hour: int; hour = 24
-   hour: int = 24
-   
-   # you do not (!) need to initialize a variable to annotate it
-   a: int # ok for type checking and runtime
-   
-   # which is useful in conditional branches
-   child: bool
-   if age < 18:
-       child = True
-   else:
-       child = False
-   
-   # annotations for classes are for instance variables (those created in __init__ or __new__)
-   class Battery:
-       charge_percent: int = 100  # this is an instance variable with a default value
-       capacity: int  # an instance variable without a default
-       
-   # you can use the ClassVar annotation to make the variable a class variable instead of an instance variable.
-   class Car:
-       seats: ClassVar[int] = 4
-       passengers: ClassVar[List[str]]
-       
-    # You can also declare the type of an attribute in __init__
-    class Box:
-        def __init__(self) -> None:
-            self.items: List[str] = []
-   
-Please see :ref:`python-36` for more on mypy's compatibility with Python 3.6's new features.

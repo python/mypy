@@ -11,7 +11,7 @@ An affected location is a string than can refer to a *target* (a non-nested
 function or method, or a module top level), a class, or a trigger (for
 recursively triggering other triggers).
 
-Here's an example represention of a simple dependency map (in format
+Here's an example representation of a simple dependency map (in format
 "<trigger> -> locations"):
 
   <m.A.g> -> m.f
@@ -90,9 +90,9 @@ from mypy.nodes import (
     Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TupleExpr, ListExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
+    TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, FuncItem, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
 )
 from mypy.traverser import TraverserVisitor
@@ -499,7 +499,7 @@ class DependencyVisitor(TraverserVisitor):
 
         # If this is a reference to a type, generate a dependency to its
         # constructor.
-        # TODO: avoid generating spurious dependencies for isinstancce checks,
+        # TODO: avoid generating spurious dependencies for isinstance checks,
         # except statements, class attribute reference, etc, if perf problem.
         typ = self.type_map.get(o)
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
@@ -509,7 +509,7 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.kind == LDEF:
-            # We don't track depdendencies to local variables, since they
+            # We don't track dependencies to local variables, since they
             # aren't externally visible.
             return
         if o.kind == MDEF:

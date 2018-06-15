@@ -563,6 +563,29 @@ class A: pass
 [builtins fixtures/list.pyi]
 [out]
 
+[case testAssignmentToStarFromIterable]
+from typing import List, Tuple, Iterable
+
+class CustomIterable(Iterable[int]): pass
+
+a: List[int]
+b: Tuple[int, ...]
+c: Tuple[int, int, int]
+d: Iterable[int]
+e: CustomIterable
+
+a1, *a2 = a
+b1, *b2 = b
+c1, *c2 = c
+d1, *d2 = d
+e1, *e2 = e
+
+reveal_type(a2)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(b2)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(c2)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(d2)  # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(e2)  # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/tuple.pyi]
 
 -- Nested tuple assignment
 -- ----------------------------

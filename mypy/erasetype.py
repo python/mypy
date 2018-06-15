@@ -3,9 +3,8 @@ from typing import Optional, Container, Callable
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType, TypeOfAny
+    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny
 )
-from mypy import experiments
 
 
 def erase_type(typ: Type) -> Type:

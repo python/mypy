@@ -9,10 +9,7 @@ import re
 from typing import List, Dict, Tuple, Optional
 from types import ModuleType
 
-from mypy.stubutil import (
-    parse_all_signatures, find_unique_signatures, is_c_module, write_header,
-    infer_sig_from_docstring
-)
+from mypy.stubutil import is_c_module, write_header, infer_sig_from_docstring
 
 
 def generate_stub_for_c_module(module_name: str,

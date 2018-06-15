@@ -3,7 +3,7 @@ import re
 import pprint
 import sys
 
-from typing import Dict, List, Mapping, MutableMapping, Optional, Pattern, Set, Tuple
+from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
 
 from mypy import defaults
 
@@ -47,7 +47,7 @@ class Options:
     }
 
     OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                                {"quick_and_dirty", "platform"})
+                                {"quick_and_dirty", "platform", "bazel"})
                                - {"debug_cache"})
 
     def __init__(self) -> None:
@@ -193,6 +193,12 @@ class Options:
         self.dump_deps = False
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
+        # Some behaviors are changed when using Bazel (https://bazel.build).
+        self.bazel = False
+        # List of package roots -- directories under these are packages even
+        # if they don't have __init__.py.
+        self.package_root = []  # type: List[str]
+        self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
 
     def snapshot(self) -> object:
         """Produce a comparable snapshot of this Option"""

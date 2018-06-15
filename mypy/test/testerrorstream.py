@@ -1,16 +1,12 @@
 """Tests for mypy incremental error output."""
-from typing import List, Callable, Optional
+from typing import List
 
-import os
-
-from mypy import defaults, build
+from mypy import build
 from mypy.test.helpers import assert_string_arrays_equal
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.nodes import CallExpr, StrExpr
-from mypy.types import Type
 
 
 class ErrorStreamSuite(DataSuite):
