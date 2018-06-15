@@ -428,6 +428,38 @@ a = A.new()
 reveal_type(a.foo) # E: Revealed type is 'def () -> builtins.int'
 [builtins fixtures/classmethod.pyi]
 
+[case testAttrsOtherOverloads]
+import attr
+from typing import overload, Union
+
+@attr.s
+class A:
+    a: int
+    b: str
+
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x: Union[int, str]) -> Union[int, str]:
+        reveal_type(cls)            # E: Revealed type is 'def () -> __main__.A'
+        reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
+        return x
+
+reveal_type(A.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(A.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/classmethod.pyi]
+
 [case testAttrsDefaultDecorator]
 import attr
 @attr.s
