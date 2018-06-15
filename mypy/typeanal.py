@@ -158,11 +158,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.fail_func = api.fail
         self.note_func = api.note
         self.tvar_scope = tvar_scope
+        # Are we analysing a type alias definition rvalue?
         self.defining_alias = defining_alias
         self.allow_tuple_literal = allow_tuple_literal
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
+        # Should we allow unnormalized types like `list[int]`
+        # (currently allowed in stubs)?
         self.allow_unnormalized = allow_unnormalized
+        # Should we accept unbount type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
         self.plugin = plugin
         self.options = options
@@ -335,8 +339,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # Instance with an invalid number of type arguments.
                 instance = Instance(info, self.anal_array(t.args), t.line, t.column)
                 if not t.args and self.options.disallow_any_generics and not self.defining_alias:
-                    from_builtins = info.fullname() in nongen_builtins
-                    if not self.is_typeshed_stub and from_builtins:
+                    # We report/patch invalid built-in instances already during second pass.
+                    # This is done to avoid storing additional state on instances.
+                    # All other (including user defined) generics will be patched/reported
+                    # in the third pass.
+                    if not self.is_typeshed_stub and info.fullname() in nongen_builtins:
                         alternative = nongen_builtins[info.fullname()]
                         self.fail(messages.IMPLICIT_GENERIC_ANY_BUILTIN.format(alternative), t)
                         any_type = AnyType(TypeOfAny.from_error, line=t.line)
@@ -818,6 +825,16 @@ TypeVarList = List[Tuple[str, TypeVarExpr]]
 
 def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
                       fail: Callable[[str, Context], None], no_args: bool, ctx: Context) -> Type:
+    """Expand a (generic) type alias target following the rules outlined in TypeAlias docstring.
+
+    Here:
+        target: original target type (contains unbound type variables)
+        alias_tvars: type variable names
+        args: types to be substituted in place of type variables
+        fail: error reporter callback
+        no_args: whether original definition used a bare generic `A = List`
+        ctx: context where expansion happens
+    """
     exp_len = len(alias_tvars)
     act_len = len(args)
     if exp_len > 0 and act_len == 0:

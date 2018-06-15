@@ -102,6 +102,8 @@ implicit_module_attrs = {'__name__': '__builtins__.str',
                          '__package__': '__builtins__.str'}
 
 
+# These aliases exist because built-in class objects are not subscriptable.
+# For example `list[int]` fail at runtime, insteas List[int] should be used.
 type_aliases = {
     'typing.List': 'builtins.list',
     'typing.Dict': 'builtins.dict',
@@ -1874,8 +1876,16 @@ class TypeVarExpr(SymbolNode, Expression):
 class TypeAliasExpr(Expression):
     """Type alias expression (rvalue)."""
 
+    # The target type.
     type = None  # type: mypy.types.Type
+    # Names of unbound type variables used to define the alias
     tvars = None  # type: List[str]
+    # Whether this alias was defined in bare form. Used to distinguish
+    # between
+    #     A = List
+    # and
+    #     A = List[Any]
+    no_args = False  # type: bool
 
     def __init__(self, type: 'mypy.types.Type', tvars: List[str], no_args: bool) -> None:
         super().__init__()
@@ -2391,7 +2401,87 @@ class FakeInfo(TypeInfo):
 
 
 class TypeAlias(SymbolNode):
+    """
+    A sybmol node representing type alias.
 
+    Type alias is a static concept, in contrast to variables with variables
+    with types like Type[...]. Namely:
+        * type aliases
+            - can be used in type context (annotations)
+            - cannot be re-assigned
+        * variables with type Type[...]
+            - cannot be used in type context
+            - but can be re-assigned
+
+    An alias can be defined only by an assignment to a name (not any other lvalues).
+
+    Such assignment defines an alias by default. To define a variable,
+    an explicit Type[...] annotation is required. As an exception,
+    at non-global scope non-subscripted rvalue creates a variable even without
+    an annotation. This exception exists to accommodate the common use case of
+    class-valued attributes, see SemanticAnalyzer.check_and_set_up_type_alias
+    for details.
+
+    Aliases can be generic. Currently, mypy uses unbound type variables for
+    generic aliases and identifies them by name. Essentially, type aliases
+    work as macros that expand textually. The definition and expansion rules are
+    following:
+
+        1. An alias targeting a generic class without explicit variables act as
+        the given class:
+
+            A = List
+            AA = List[Any]
+
+            x: A  # same as List[Any]
+            x: A[int]  # same as List[int]
+
+            x: AA  # same as List[Any]
+            x: AA[int]  # Error!
+
+        2. An alias using explicit type variables in its rvalue expects
+        replacements (type arguments) for these variables. If missing, they
+        are treated as Any, like for other generics:
+
+            B = List[Tuple[T, T]]
+
+            x: B  # same as List[Tuple[Any, Any]]
+            x: B[int]  # same as List[Tuple[int, int]]
+
+            def f(x: B[T]) -> T: ...  # without T, Any would be used here
+
+        3. An alias can be defined using another aliases. In the definition
+        rvalue the Any substitution doesn't happen for top level unsubscripted
+        generics:
+
+            A = List
+            B = A  # here A is expanded to List, _not_ List[Any],
+                   # to match the Python runtime behaviour.
+            x: B[int]  # same as List[int]
+            C = List[A]  # this expands to List[List[Any]]
+
+            AA = List[T]
+            D = AA  # here AA expands to List[Any]
+            x: D[int]  # Error!
+
+    Note: the fact that we support aliases like `A = List` means that the target
+    type will be initially an instance type wrong number of type arguments.
+    Such instances are all fixed in the third pass of semantic analyzis.
+    We therefore store the difference between `List` and `List[Any]` rvalues (targets)
+    using the `no_args` flag, see also TypeAliasExpr.no_args.
+
+    Meaning of other fields:
+
+    target: The target type. For generic aliases contains unbound type variables
+        as nested types.
+    _fullname: Qualified name of this type alias. This is used in particular
+        to track fine grained dependencies from aliases.
+    alias_tvars: Names of unbound type variables used to define this alias
+    normalized: Used to distinguish between `A = List`, and `A = list`. Both
+        are internally stored using `builtins.list` (because `typing.List` is
+        itself an alias), while the second cannot be subscripted because of
+        Python runtime limitation.
+    """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str,
@@ -2497,6 +2587,9 @@ class SymbolTableNode:
             phase.
             TODO: Refactor build.py to make dependency tracking more transparent
             and/or refactor look-up functions to not require parent patching.
+
+    NOTE: No other attributes should be added to this class unless they
+    are shared by all .node kinds.
     """
 
     __slots__ = ('kind',

@@ -1686,6 +1686,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         assert node is not None
         assert node.node is not None
         self.add_type_alias_deps(depends_on)
+        # In addition to the aliases used, we add deps on unbound
+        # type variables, since they are erased from target type.
         self.add_type_alias_deps(qualified_tvars)
         # The above are only direct deps on other aliases.
         # For subscripted aliases, type deps from expansion are added in deps.py
@@ -1706,6 +1708,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
+            # we use the column from resulting target, to get better location for errors
             s.rvalue.analyzed.column = res.column
         node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -1744,6 +1747,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if lval.kind == GDEF:
                     # Since the is_new_def flag is set, this must have been analyzed
                     # already in the first pass and added to the symbol table.
+                    # An exception is typing module with incomplete test fixtures.
                     assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
             elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
                   lval.name not in self.global_decls[-1] and
@@ -2749,11 +2753,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 except TypeTranslationError:
                     self.fail('Type expected within [...]', expr)
                     return
+                # We always allow unbound type variables in InderxExpr, since we
+                # may be analysing a type alias definition rvalue. The error will be
+                # reported elsewhere if it is not the case.
                 typearg = self.anal_type(typearg, allow_unbound_tvars=True)
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
-            # Types list, dict, set are not directly subscriptable, prohibit this.
+            # Types list, dict, set are not subscriptable, prohibit this if
+            # subscripted either via type alias...
             if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
                 alias = expr.base.node
                 if isinstance(alias.target, Instance):
@@ -2761,6 +2769,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if (alias.no_args and  # this avoids bogus errors for already reported aliases
                             name in nongen_builtins and not alias.normalized):
                         self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
+            # ...or directly.
             else:
                 n = self.lookup_type_node(expr.base)
                 if n and n.fullname in nongen_builtins:
@@ -3034,6 +3043,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def add_builtin_aliases(self, tree: MypyFile) -> None:
+        # For historical reasons, the aliases like `List = list` are not defined
+        # in typeshed. Instead we need to manually add the corresponding nodes
+        # on the fly. We explicitly mark these aliases as normalized.
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
             name = alias.split('.')[-1]
@@ -3045,6 +3057,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                        no_args=True, normalized=True)
                 tree.names[name] = SymbolTableNode(GDEF, alias_node)
             else:
+                # Built-in target not defined, remove the original fake
+                # definition to trigger a better error message.
                 tree.names.pop(name, None)
 
     def lookup_fully_qualified(self, name: str) -> SymbolTableNode:

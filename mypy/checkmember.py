@@ -17,6 +17,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type, freshen_functi
 from mypy.infer import infer_type_arguments
 from mypy.typevars import fill_typevars
 from mypy.plugin import AttributeContext
+from mypy.typeanal import set_any_tvars
 from mypy import messages
 from mypy import subtypes
 from mypy import meet
@@ -249,7 +250,16 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         v.info = info
 
     if isinstance(vv, TypeAlias) and isinstance(vv.target, Instance):
-        tp = type_object_type(vv.target.type, builtin_type)
+        # Similar to the above TypeInfo case, we allow using
+        # qualified type aliases in runtime context if it refers to an
+        # instance type. For example:
+        #     class C:
+        #         A = List[int]
+        #     x = C.A() <- this is OK
+        # As usual, we first erase any unbound type variables to Any.
+        target = set_any_tvars(vv.target, vv.alias_tvars, node.line, node.column)
+        assert isinstance(target, Instance)
+        tp = type_object_type(target.type, builtin_type)
         v = Var(name, type=expand_type_by_instance(tp, vv.target))
         v.info = info
 

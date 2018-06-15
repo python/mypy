@@ -184,6 +184,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
+            # Something that refers to a type alias appears in runtime context.
             result = self.alias_type_in_runtime(node.target, node.alias_tvars, node.no_args, e)
         else:
             # Unknown reference; use any type implicitly to avoid
@@ -2080,8 +2081,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return NoneTyp()
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
-        """Type check a type application (expr[type, ...])."""
+        """Type check a type application (expr[type, ...]).
+
+        There are two different options here, depending on whether expr refers
+        to a type alias or directly to a generic class. In first case we need
+        to use a dedicated function typeanal.expand_type_aliases. This
+        is due to the fact that currently type aliases machinery uses
+        unbound type variables, while normal generics use bound ones,
+        see TypeAlias docstring for more details.
+        """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
+            # Subscription of a (generic) alias in runtime context, expand the alias.
             target = tapp.expr.node.target
             all_vars = tapp.expr.node.alias_tvars
             item = expand_type_alias(target, all_vars, tapp.types, self.chk.fail,
@@ -2092,7 +2102,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
                 return AnyType(TypeOfAny.from_error)
-
+        # Type application of a normal generic class in runtime context.
+        # This is typically used as `x = G[int]()`.
         tp = self.accept(tapp.expr)
         if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
@@ -2103,14 +2114,33 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return AnyType(TypeOfAny.special_form)
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
-        """Get type of a type alias (could be generic) in a runtime expression."""
+        """Right hand side of a type alias definition.
+
+        It has the same type as if the alias itself was used in a runtime context.
+        For example:
+
+            A = reveal_type(List[T])
+            reveal_type(A)
+
+        will reveal the same type `builtins.list[Any]`.
+        """
         return self.alias_type_in_runtime(alias.type, alias.tvars, alias.no_args, alias)
 
     def alias_type_in_runtime(self, target: Type, alias_tvars: List[str],
                               no_args: bool, ctx: Context) -> Type:
+        """Get type of a type alias (could be generic) in a runtime expression.
+
+        Note that this function can be called only if the alias appears _not_
+        as a target of type application, which is treated separately in the
+        visit_type_application method.
+        """
         if isinstance(target, Instance) and target.invalid:
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
+        # If this is a generic alias, we set all variables to `Any`.
+        # For example:
+        #     A = List[Tuple[T, T]]
+        #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
         item = set_any_tvars(target, alias_tvars, ctx.line, ctx.column)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
@@ -2132,6 +2162,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return Instance(fb_info, [])
 
     def safe_apply(self, tp: Type, args: List[Type], ctx: Context) -> Type:
+        """Safely apply type arguments to a generic callable type.
+
+        This will first perform type arguments count checks, report the
+        error as needed, and return the correct kind of Any. As a special
+        case this returns Any for non-callable types.
+        """
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(args):
                 self.msg.incompatible_type_application(len(tp.variables),
