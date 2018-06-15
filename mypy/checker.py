@@ -1290,8 +1290,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             fail = True
 
         if isinstance(original, CallableType) and isinstance(override, CallableType):
-            if (isinstance(original.definition, FuncItem) and
-                    isinstance(override.definition, FuncItem)):
+            if (isinstance(original.definition, FuncBase) and
+                    isinstance(override.definition, FuncBase)):
                 if ((original.definition.is_static or original.definition.is_class) and
                         not (override.definition.is_static or override.definition.is_class)):
                     fail = True
@@ -3923,8 +3923,6 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
 def is_static(func: Union[FuncBase, Decorator]) -> bool:
     if isinstance(func, Decorator):
         return is_static(func.func)
-    elif isinstance(func, OverloadedFuncDef):
-        return any(is_static(item) for item in func.items)
-    elif isinstance(func, FuncItem):
+    elif isinstance(func, FuncBase):
         return func.is_static
-    return False
+    raise AssertionError("Unexpected func type: {}".format(type(func)))
