@@ -2736,7 +2736,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             expr.index.accept(self)
         elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias) or
                 refers_to_class_or_function(expr.base)):
-            # Special form -- type application.
+            # Special form -- type application (either direct or via type aliasing).
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
             if isinstance(expr.index, TupleExpr):
@@ -2753,17 +2753,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 types.append(typearg)
             expr.analyzed = TypeApplication(expr.base, types)
             expr.analyzed.line = expr.line
+            # Types list, dict, set are not directly subscriptable, prohibit this.
             if isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias):
-                # list, dict, set are not directly subscriptable
-                if (isinstance(expr.base.node.target, Instance) and
-                        expr.base.node.no_args and
-                        expr.base.node.target.type.fullname() in nongen_builtins
-                        and not expr.base.node.normalized):
-                    self.fail(no_subscript_builtin_alias(expr.base.node.target.type.fullname(),
-                                                         propose_alt=False),
-                              expr)
+                alias = expr.base.node
+                if isinstance(alias.target, Instance):
+                    name = alias.target.type.fullname()
+                    if (alias.no_args and  # this avoids bogus errors for already reported aliases
+                            name in nongen_builtins and not alias.normalized):
+                        self.fail(no_subscript_builtin_alias(name, propose_alt=False), expr)
             else:
-                # list, dict, set are not directly subscriptable
                 n = self.lookup_type_node(expr.base)
                 if n and n.fullname in nongen_builtins:
                     self.fail(no_subscript_builtin_alias(n.fullname, propose_alt=False), expr)
