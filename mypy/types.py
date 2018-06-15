@@ -660,8 +660,6 @@ class CallableType(FunctionLike):
                  'arg_kinds',  # ARG_ constants
                  'arg_names',  # Argument names; None if not a keyword argument
                  'min_args',  # Minimum number of arguments; derived from arg_kinds
-                 'is_var_arg',  # Is it a varargs function?  Derived from arg_kinds
-                 'is_kw_arg',  # Is it a **kwargs function?  Derived from arg_kinds
                  'var_arg',  # The formal argument for *args. Derived from arg kinds and types
                  'kw_arg',  # The formal argument for **kwargs. Derived from arg kinds and types
                  'ret_type',  # Return value type
@@ -713,8 +711,6 @@ class CallableType(FunctionLike):
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
         self.var_arg, self.kw_arg = self._lookup_star_args(self.arg_types, self.arg_kinds)
-        self.is_var_arg = ARG_STAR in arg_kinds
-        self.is_kw_arg = ARG_STAR2 in arg_kinds
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
@@ -795,6 +791,16 @@ class CallableType(FunctionLike):
             elif kind == ARG_STAR2:
                 kwarg_arg = FormalArgument(None, position, type, False)
         return star_arg, kwarg_arg
+
+    @property
+    def is_var_arg(self) -> bool:
+        """Does this callable have a *args argument?"""
+        return self.var_arg is not None
+
+    @property
+    def is_kw_arg(self) -> bool:
+        """Does this callable have a **kwargs argument?"""
+        return self.kw_arg is not None
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass()

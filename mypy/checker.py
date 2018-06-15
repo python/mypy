@@ -3635,19 +3635,11 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
         return is_more_precise(t, s) or is_partially_overlapping_types(t, s)
 
-    # The reason we repeat this check twice is so we can do a slightly better job of
-    # checking for potentially overlapping param counts. Both calls will actually check
-    # the param and return types in the same "direction" -- the only thing that differs
-    # is how is_callable_compatible checks non-positional arguments.
-    return (is_callable_compatible(signature, other,
-                                   is_compat=is_more_precise_or_partially_overlapping,
-                                   is_compat_return=lambda l, r: not is_subtype(l, r),
-                                   check_args_covariantly=True,
-                                   allow_potential_compatibility=True) or
-            is_callable_compatible(other, signature,
-                                   is_compat=is_more_precise_or_partially_overlapping,
-                                   is_compat_return=lambda l, r: not is_subtype(r, l),
-                                   allow_potential_compatibility=True))
+    return is_callable_compatible(signature, other,
+                                  is_compat=is_more_precise_or_partially_overlapping,
+                                  is_compat_return=lambda l, r: not is_subtype(l, r),
+                                  check_args_covariantly=True,
+                                  allow_partial_overlap=True)
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
