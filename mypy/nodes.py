@@ -2481,10 +2481,11 @@ class TypeAlias(SymbolNode):
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
         Python runtime limitation.
+    line and column: Line an column on the original alias definition.
     """
-    __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized')
+    __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized', 'line', 'column')
 
-    def __init__(self, target: 'mypy.types.Type', fullname: str,
+    def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
                  alias_tvars: Optional[List[str]] = None,
                  no_args: bool = False,
@@ -2496,6 +2497,7 @@ class TypeAlias(SymbolNode):
         self.alias_tvars = alias_tvars
         self.no_args = no_args
         self.normalized = normalized
+        super().__init__(line, column)
 
     def name(self) -> str:
         return self._fullname.split('.')[-1]
@@ -2509,7 +2511,9 @@ class TypeAlias(SymbolNode):
                 'target': self.target.serialize(),
                 'alias_tvars': self.alias_tvars,
                 'no_args': self.no_args,
-                'normalized': self.normalized
+                'normalized': self.normalized,
+                'line': self.line,
+                'column': self.column
                 }  # type: JsonDict
         return data
 
@@ -2524,7 +2528,9 @@ class TypeAlias(SymbolNode):
         target = mypy.types.deserialize_type(data['target'])
         no_args = data['no_args']
         normalized = data['normalized']
-        return cls(target, fullname, alias_tvars=alias_tvars,
+        line = data['line']
+        column = data['column']
+        return cls(target, fullname, line, column, alias_tvars=alias_tvars,
                    no_args=no_args, normalized=normalized)
 
 

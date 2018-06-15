@@ -1710,7 +1710,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             s.rvalue.analyzed.line = s.line
             # we use the column from resulting target, to get better location for errors
             s.rvalue.analyzed.column = res.column
-        node.node = TypeAlias(res, node.node.fullname(), alias_tvars=alias_tvars, no_args=no_args)
+        node.node = TypeAlias(res, node.node.fullname(), s.line, s.column,
+                              alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             node.node.normalized = rvalue.node.normalized
 
@@ -3053,7 +3054,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if n:
                 target = self.named_type_or_none(target_name, [])
                 assert target is not None
-                alias_node = TypeAlias(target, alias,
+                alias_node = TypeAlias(target, alias, line=-1, column=-1,  # there is no context
                                        no_args=True, normalized=True)
                 tree.names[name] = SymbolTableNode(GDEF, alias_node)
             else:

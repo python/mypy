@@ -7174,7 +7174,6 @@ def fu() -> int:
 [out]
 ==
 
-
 [case testRefreshOptions]
 [file mypy.ini]
 [[mypy]
@@ -7192,3 +7191,44 @@ x = []  # type: List
 [builtins fixtures/list.pyi]
 [out]
 ==
+
+[case testImportOnTopOfAlias1]
+from a import A
+x: A
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+[file a.py.2]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+from b import A
+[file b.py]
+# empty
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:4: error: Module 'b' has no attribute 'A'
+a.py:4: error: Name 'A' already defined on line 3
+
+-- the order of errors is different with cache
+[case testImportOnTopOfAlias2-skip-cache]
+from a import A
+x: A
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+[file a.py.2]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+from b import A as A
+[file b.py]
+def A(x: str) -> str: pass
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:4: error: Name 'A' already defined on line 3
+main:2: error: Invalid type "b.A"
