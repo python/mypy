@@ -27,7 +27,7 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, Expression
+    CallExpr, Expression, OverloadedFuncDef,
 )
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -941,6 +941,12 @@ class MessageBuilder:
                                                     callable_name(callee) or 'function',
                                                     self.format(typ)),
                   context)
+
+    def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
+        self.fail(
+            'Overload does not consistently use the "@{}" '.format(decorator)
+            + 'decorator on all function signatures.',
+            context)
 
     def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
