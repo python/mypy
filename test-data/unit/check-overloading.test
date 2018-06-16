@@ -3198,3 +3198,475 @@ def add_proxy(x, y):
 tup = (1, '2')
 reveal_type(foo(lambda (x, y): add_proxy(x, y), tup))  # E: Revealed type is 'builtins.str*'
 [builtins fixtures/primitives.pyi]
+
+[case testOverloadWithClassMethods]
+from typing import overload
+
+class Wrapper:
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+    @classmethod
+    def foo(cls, x): pass
+
+reveal_type(Wrapper.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadWithInconsistentClassMethods]
+from typing import overload
+
+class Wrapper1:
+    @overload   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+    def foo(cls, x): pass
+
+class Wrapper2:
+    @overload   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+    @overload
+    def foo(cls, x: str) -> str: ...
+    @classmethod
+    def foo(cls, x): pass
+
+class Wrapper3:
+    @overload   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    def foo(cls, x: int) -> int: ...
+    @overload
+    def foo(cls, x: str) -> str: ...
+    @classmethod
+    def foo(cls, x): pass
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadWithSwappedDecorators]
+from typing import overload
+
+class Wrapper1:
+    @classmethod
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @classmethod
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class Wrapper2:
+    @classmethod
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class Wrapper3:
+    @classmethod   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+reveal_type(Wrapper1.foo(3))  # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper2.foo(3))  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadFaultyClassMethodInheritance]
+from typing import overload
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+class Parent:
+    @overload
+    @classmethod
+    def foo(cls, x: B) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class BadChild(Parent):
+    @overload  # E: Signature of "foo" incompatible with supertype "Parent"
+    @classmethod
+    def foo(cls, x: C) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class GoodChild(Parent):
+    @overload
+    @classmethod
+    def foo(cls, x: A) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadClassMethodMixingInheritance]
+from typing import overload
+
+class BadParent:
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class BadChild(BadParent):
+    @overload                           # E: Signature of "foo" incompatible with supertype "BadParent"
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+class GoodParent:
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+class GoodChild(GoodParent):
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadClassMethodImplementation]
+from typing import overload, Union
+
+class Wrapper:
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod    # E: Overloaded function implementation cannot produce return type of signature 1
+    def foo(cls, x: Union[int, str]) -> str:
+        reveal_type(cls)          # E: Revealed type is 'def () -> __main__.Wrapper'
+        reveal_type(cls.other())  # E: Revealed type is 'builtins.str'
+        return "..."
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadWithStaticMethods]
+from typing import overload
+
+class Wrapper:
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+    @staticmethod
+    def foo(x): pass
+
+reveal_type(Wrapper.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadWithInconsistentStaticMethods]
+from typing import overload, Union
+
+class Wrapper1:
+    @overload   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+    def foo(x): pass
+
+class Wrapper2:
+    @overload   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    @staticmethod
+    def foo(x): pass
+
+class Wrapper3:
+    @overload   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+    def foo(x: Union[int, str]): pass  # E: Self argument missing for a non-static method (or an invalid type for self)
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadWithSwappedDecorators]
+from typing import overload
+
+class Wrapper1:
+    @staticmethod
+    @overload
+    def foo(x: int) -> int: ...
+
+    @staticmethod
+    @overload
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class Wrapper2:
+    @staticmethod
+    @overload
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class Wrapper3:
+    @staticmethod   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @overload
+    def foo(x: int) -> int: ...
+
+    @overload
+    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    @staticmethod
+    def foo(x): pass
+
+reveal_type(Wrapper1.foo(3))  # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper2.foo(3))  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadFaultyStaticMethodInheritance]
+from typing import overload
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+class Parent:
+    @overload
+    @staticmethod
+    def foo(x: B) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class BadChild(Parent):
+    @overload  # E: Signature of "foo" incompatible with supertype "Parent"
+    @staticmethod
+    def foo(x: C) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class GoodChild(Parent):
+    @overload
+    @staticmethod
+    def foo(x: A) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadStaticMethodMixingInheritance]
+from typing import overload
+
+class BadParent:
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class BadChild(BadParent):
+    @overload                            # E: Signature of "foo" incompatible with supertype "BadParent"
+    def foo(self, x: int) -> int: ...
+
+    @overload
+    def foo(self, x: str) -> str: ...
+
+    def foo(self, x): pass
+
+class GoodParent:
+    @overload
+    def foo(self, x: int) -> int: ...
+
+    @overload
+    def foo(self, x: str) -> str: ...
+
+    def foo(self, x): pass
+
+class GoodChild(GoodParent):
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadStaticMethodImplementation]
+from typing import overload, Union
+
+class Wrapper:
+    @staticmethod
+    def other() -> str:
+        return "..."
+
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod    # E: Overloaded function implementation cannot produce return type of signature 1
+    def foo(x: Union[int, str]) -> str:
+        return 3  # E: Incompatible return value type (got "int", expected "str")
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadAndSelfTypes]
+from typing import overload, Union, TypeVar, Type
+
+T = TypeVar('T', bound='Parent')
+class Parent:
+    @overload
+    def foo(self: T, x: int) -> T: pass
+
+    @overload
+    def foo(self, x: str) -> str: pass
+
+    def foo(self: T, x: Union[int, str]) -> Union[T, str]:
+        reveal_type(self.bar())    # E: Revealed type is 'builtins.str'
+        return self
+
+    def bar(self) -> str: pass
+
+class Child(Parent):
+    def child_only(self) -> int: pass
+
+x: Union[int, str]
+reveal_type(Parent().foo(3))                  # E: Revealed type is '__main__.Parent*'
+reveal_type(Child().foo(3))                   # E: Revealed type is '__main__.Child*'
+reveal_type(Child().foo("..."))               # E: Revealed type is 'builtins.str'
+reveal_type(Child().foo(x))                   # E: Revealed type is 'Union[__main__.Child*, builtins.str]'
+reveal_type(Child().foo(3).child_only())      # E: Revealed type is 'builtins.int'
+
+[case testOverloadAndClassTypes]
+from typing import overload, Union, TypeVar, Type
+
+T = TypeVar('T', bound='Parent')
+class Parent:
+    @overload
+    @classmethod
+    def foo(cls: Type[T], x: int) -> Type[T]: pass
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: pass
+
+    @classmethod
+    def foo(cls: Type[T], x: Union[int, str]) -> Union[Type[T], str]:
+        reveal_type(cls.bar())    # E: Revealed type is 'builtins.str'
+        return cls
+
+    @classmethod
+    def bar(cls) -> str: pass
+
+class Child(Parent):
+    def child_only(self) -> int: pass
+
+x: Union[int, str]
+reveal_type(Parent.foo(3))                  # E: Revealed type is 'Type[__main__.Parent*]'
+reveal_type(Child.foo(3))                   # E: Revealed type is 'Type[__main__.Child*]'
+reveal_type(Child.foo("..."))               # E: Revealed type is 'builtins.str'
+reveal_type(Child.foo(x))                   # E: Revealed type is 'Union[Type[__main__.Child*], builtins.str]'
+reveal_type(Child.foo(3)().child_only())    # E: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.pyi]

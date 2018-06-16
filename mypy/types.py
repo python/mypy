@@ -14,7 +14,7 @@ import mypy.nodes
 from mypy import experiments
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
-    FuncDef
+    FuncBase, FuncDef,
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
@@ -645,6 +645,12 @@ class FunctionLike(Type):
     @abstractmethod
     def get_name(self) -> Optional[str]: pass
 
+    @abstractmethod
+    def is_classmethod(self) -> bool: pass
+
+    @abstractmethod
+    def is_staticmethod(self) -> bool: pass
+
 
 FormalArgument = NamedTuple('FormalArgument', [
     ('name', Optional[str]),
@@ -827,6 +833,12 @@ class CallableType(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self.name
+
+    def is_classmethod(self) -> bool:
+        return isinstance(self.definition, FuncBase) and self.definition.is_class
+
+    def is_staticmethod(self) -> bool:
+        return isinstance(self.definition, FuncBase) and self.definition.is_static
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -1045,6 +1057,12 @@ class Overloaded(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self._items[0].name
+
+    def is_classmethod(self) -> bool:
+        return self._items[0].is_classmethod()
+
+    def is_staticmethod(self) -> bool:
+        return self._items[0].is_staticmethod()
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)

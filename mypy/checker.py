@@ -1289,12 +1289,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # this could be unsafe with reverse operator methods.
             fail = True
 
-        if isinstance(original, CallableType) and isinstance(override, CallableType):
-            if (isinstance(original.definition, FuncItem) and
-                    isinstance(override.definition, FuncItem)):
-                if ((original.definition.is_static or original.definition.is_class) and
-                        not (override.definition.is_static or override.definition.is_class)):
-                    fail = True
+        if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
+            if ((original.is_classmethod() or original.is_staticmethod()) and
+                    not (override.is_classmethod() or override.is_staticmethod())):
+                fail = True
 
         if fail:
             emitted_msg = False
@@ -3911,8 +3909,6 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
 def is_static(func: Union[FuncBase, Decorator]) -> bool:
     if isinstance(func, Decorator):
         return is_static(func.func)
-    elif isinstance(func, OverloadedFuncDef):
-        return any(is_static(item) for item in func.items)
-    elif isinstance(func, FuncItem):
+    elif isinstance(func, FuncBase):
         return func.is_static
-    return False
+    assert False, "Unexpected func type: {}".format(type(func))

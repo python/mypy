@@ -587,6 +587,37 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # redefinitions already.
             return
 
+        # We know this is an overload def -- let's handle classmethod and staticmethod
+        class_status = []
+        static_status = []
+        for item in defn.items:
+            if isinstance(item, Decorator):
+                inner = item.func
+            elif isinstance(item, FuncDef):
+                inner = item
+            else:
+                assert False, "The 'item' variable is an unexpected type: {}".format(type(item))
+            class_status.append(inner.is_class)
+            static_status.append(inner.is_static)
+
+        if defn.impl is not None:
+            if isinstance(defn.impl, Decorator):
+                inner = defn.impl.func
+            elif isinstance(defn.impl, FuncDef):
+                inner = defn.impl
+            else:
+                assert False, "Unexpected impl type: {}".format(type(defn.impl))
+            class_status.append(inner.is_class)
+            static_status.append(inner.is_static)
+
+        if len(set(class_status)) != 1:
+            self.msg.overload_inconsistently_applies_decorator('classmethod', defn)
+        elif len(set(static_status)) != 1:
+            self.msg.overload_inconsistently_applies_decorator('staticmethod', defn)
+        else:
+            defn.is_class = class_status[0]
+            defn.is_static = static_status[0]
+
         if self.type and not self.is_func_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
                                                            typ=defn.type)
