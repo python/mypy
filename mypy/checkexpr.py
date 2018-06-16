@@ -22,7 +22,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr,
-    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
 from mypy import nodes
@@ -1366,16 +1366,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callables, variables = merge_typevars_in_callables_by_name(callables)
 
         new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
+        new_kinds = list(callables[0].arg_kinds)
         new_returns = []  # type: List[Type]
 
-        expected_names = callables[0].arg_names
-        expected_kinds = callables[0].arg_kinds
-
         for target in callables:
-            if target.arg_names != expected_names or target.arg_kinds != expected_kinds:
-                # We conservatively end if the overloads do not have the exact same signature.
-                # TODO: Enhance the union overload logic to handle a wider variety of signatures.
+            # We conservatively end if the overloads do not have the exact same signature.
+            # The only exception is if one arg is optional and the other is positional: in that
+            # case, we continue unioning (and expect a positional arg).
+            # TODO: Enhance the union overload logic to handle a wider variety of signatures.
+            if len(new_kinds) != len(target.arg_kinds):
                 return None
+            for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+                if new_kind == target_kind:
+                    continue
+                elif new_kind in (ARG_POS, ARG_OPT) and target_kind in (ARG_POS, ARG_OPT):
+                    new_kinds[i] = ARG_POS
+                else:
+                    return None
 
             for i, arg in enumerate(target.arg_types):
                 new_args[i].append(arg)
@@ -1390,7 +1397,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # TODO: Modify this check to be less conservative.
         #
-        # Currently, we permit only one union union in the arguments because if we allow
+        # Currently, we permit only one union in the arguments because if we allow
         # multiple, we can't always guarantee the synthesized callable will be correct.
         #
         # For example, suppose we had the following two overloads:
@@ -1412,6 +1419,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return callables[0].copy_modified(
             arg_types=final_args,
+            arg_kinds=new_kinds,
             ret_type=UnionType.make_simplified_union(new_returns),
             variables=variables,
             implicit=True)
