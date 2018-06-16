@@ -577,7 +577,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
                            is_compat_return: Optional[Callable[[Type, Type], bool]] = None,
                            ignore_return: bool = False,
                            ignore_pos_arg_names: bool = False,
-                           check_args_covariantly: bool = False) -> bool:
+                           check_args_covariantly: bool = False,
+                           allow_partial_overlap: bool = False) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
     is_compat:
@@ -616,6 +617,55 @@ def is_callable_compatible(left: CallableType, right: CallableType,
 
         In this case, the first call will succeed and the second will fail: f is a
         valid stand-in for g but not vice-versa.
+
+    allow_partial_overlap:
+        By default this function returns True if and only if *all* calls to left are
+        also calls to right (with respect to the provided 'is_compat' function).
+
+        If this parameter is set to 'True', we return True if *there exists at least one*
+        call to left that's also a call to right.
+
+        In other words, we perform an existential check instead of a universal one;
+        we require left to only overlap with right instead of being a subset.
+
+        For example, suppose we set 'is_compat' to some subtype check and compare following:
+
+            f(x: float, y: str = "...", *args: bool) -> str
+            g(*args: int) -> str
+
+        This function would normally return 'False': f is not a subtype of g.
+        However, we would return True if this parameter is set to 'True': the two
+        calls are compatible if the user runs "f_or_g(3)". In the context of that
+        specific call, the two functions effectively have signatures of:
+
+            f2(float) -> str
+            g2(int) -> str
+
+        Here, f2 is a valid subtype of g2 so we return True.
+
+        Specifically, if this parameter is set this function will:
+
+        -   Ignore optional arguments on either the left or right that have no
+            corresponding match.
+        -   No longer mandate optional arguments on either side are also optional
+            on the other.
+        -   No longer mandate that if right has a *arg or **kwarg that left must also
+            have the same.
+
+        Note: when this argument is set to True, this function becomes "symmetric" --
+        the following calls are equivalent:
+
+            is_callable_compatible(f, g,
+                                   is_compat=some_check,
+                                   check_args_covariantly=False,
+                                   allow_partial_overlap=True)
+            is_callable_compatible(g, f,
+                                   is_compat=some_check,
+                                   check_args_covariantly=True,
+                                   allow_partial_overlap=True)
+
+        If the 'some_check' function is also symmetric, the two calls would be equivalent
+        whether or not we check the args covariantly.
     """
     if is_compat_return is None:
         is_compat_return = is_compat
@@ -638,7 +688,6 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     # type variables of L, because generating and solving
     # constraints for the variables of L to make L a subtype of R
     # (below) treats type variables on the two sides as independent.
-
     if left.variables:
         # Apply generic type variables away in left via type inference.
         unified = unify_generic_callable(left, right, ignore_return=ignore_return)
@@ -646,6 +695,17 @@ def is_callable_compatible(left: CallableType, right: CallableType,
             return False
         else:
             left = unified
+
+    # If we allow partial overlaps, we don't need to leave R generic:
+    # if we can find even just a single typevar assignment which
+    # would make these callables compatible, we should return True.
+
+    # So, we repeat the above checks in the opposite direction. This also
+    # lets us preserve the 'symmetry' property of allow_partial_overlap.
+    if allow_partial_overlap and right.variables:
+        unified = unify_generic_callable(right, left, ignore_return=ignore_return)
+        if unified is not None:
+            right = unified
 
     # Check return types.
     if not ignore_return and not is_compat_return(left.ret_type, right.ret_type):
@@ -657,16 +717,17 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if right.is_ellipsis_args:
         return True
 
-    right_star_type = None   # type: Optional[Type]
-    right_star2_type = None  # type: Optional[Type]
+    left_star = left.var_arg
+    left_star2 = left.kw_arg
+    right_star = right.var_arg
+    right_star2 = right.kw_arg
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
     # be "more general" than argR if L is to be a subtype of R.
 
     # Arguments are corresponding if they either share a name, share a position,
-    # or both. If L's corresponding argument is ambiguous, L is not a subtype of
-    # R.
+    # or both. If L's corresponding argument is ambiguous, L is not a subtype of R.
 
     # If left has one corresponding argument by name and another by position,
     # consider them to be one "merged" argument (and not ambiguous) if they're
@@ -677,94 +738,92 @@ def is_callable_compatible(left: CallableType, right: CallableType,
 
     # Every argument in R must have a corresponding argument in L, and every
     # required argument in L must have a corresponding argument in R.
-    done_with_positional = False
-    for i in range(len(right.arg_types)):
-        right_kind = right.arg_kinds[i]
-        if right_kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
-            done_with_positional = True
-        right_required = right_kind in (ARG_POS, ARG_NAMED)
-        right_pos = None if done_with_positional else i
 
-        right_arg = FormalArgument(
-            right.arg_names[i],
-            right_pos,
-            right.arg_types[i],
-            right_required)
+    # Phase 1: Confirm every argument in R has a corresponding argument in L.
 
-        if right_kind == ARG_STAR:
-            right_star_type = right_arg.typ
-            # Right has an infinite series of optional positional arguments
-            # here.  Get all further positional arguments of left, and make sure
-            # they're more general than their corresponding member in this
-            # series.  Also make sure left has its own infinite series of
-            # optional positional arguments.
-            if not left.is_var_arg:
-                return False
-            j = i
-            while j < len(left.arg_kinds) and left.arg_kinds[j] in (ARG_POS, ARG_OPT):
-                left_by_position = left.argument_by_position(j)
-                assert left_by_position is not None
-                # This fetches the synthetic argument that's from the *args
-                right_by_position = right.argument_by_position(j)
-                assert right_by_position is not None
-                if not are_args_compatible(left_by_position, right_by_position,
-                                           ignore_pos_arg_names, is_compat):
-                    return False
-                j += 1
-            continue
+    # Phase 1a: If left and right can both accept an infinite number of args,
+    #           their types must be compatible.
+    #
+    #           Furthermore, if we're checking for compatibility in all cases,
+    #           we confirm that if R accepts an infinite number of arguments,
+    #           L must accept the same.
+    def _incompatible(left_arg: Optional[FormalArgument],
+                      right_arg: Optional[FormalArgument]) -> bool:
+        if right_arg is None:
+            return False
+        if left_arg is None:
+            return not allow_partial_overlap
+        return not is_compat(right_arg.typ, left_arg.typ)
 
-        if right_kind == ARG_STAR2:
-            right_star2_type = right_arg.typ
-            # Right has an infinite set of optional named arguments here.  Get
-            # all further named arguments of left and make sure they're more
-            # general than their corresponding member in this set.  Also make
-            # sure left has its own infinite set of optional named arguments.
-            if not left.is_kw_arg:
-                return False
-            left_names = {name for name in left.arg_names if name is not None}
-            right_names = {name for name in right.arg_names if name is not None}
-            left_only_names = left_names - right_names
-            for name in left_only_names:
-                left_by_name = left.argument_by_name(name)
-                assert left_by_name is not None
-                # This fetches the synthetic argument that's from the **kwargs
-                right_by_name = right.argument_by_name(name)
-                assert right_by_name is not None
-                if not are_args_compatible(left_by_name, right_by_name,
-                                           ignore_pos_arg_names, is_compat):
-                    return False
-            continue
+    if _incompatible(left_star, right_star) or _incompatible(left_star2, right_star2):
+        return False
 
-        # Left must have some kind of corresponding argument.
+    # Phase 1b: Check non-star args: for every arg right can accept, left must
+    #           also accept. The only exception is if we are allowing partial
+    #           partial overlaps: in that case, we ignore optional args on the right.
+    for right_arg in right.formal_arguments():
         left_arg = left.corresponding_argument(right_arg)
         if left_arg is None:
+            if allow_partial_overlap and not right_arg.required:
+                continue
+            return False
+        if not are_args_compatible(left_arg, right_arg, ignore_pos_arg_names,
+                                   allow_partial_overlap, is_compat):
             return False
 
-        if not are_args_compatible(left_arg, right_arg,
-                                   ignore_pos_arg_names, is_compat):
-            return False
+    # Phase 1c: Check var args. Right has an infinite series of optional positional
+    #           arguments. Get all further positional args of left, and make sure
+    #           they're more general then the corresponding member in right.
+    if right_star is not None:
+        # Synthesize an anonymous formal argument for the right
+        right_by_position = right.try_synthesizing_arg_from_vararg(None)
+        assert right_by_position is not None
 
-    done_with_positional = False
-    for i in range(len(left.arg_types)):
-        left_kind = left.arg_kinds[i]
-        if left_kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
-            done_with_positional = True
-        left_arg = FormalArgument(
-            left.arg_names[i],
-            None if done_with_positional else i,
-            left.arg_types[i],
-            left_kind in (ARG_POS, ARG_NAMED))
+        i = right_star.pos
+        assert i is not None
+        while i < len(left.arg_kinds) and left.arg_kinds[i] in (ARG_POS, ARG_OPT):
+            if allow_partial_overlap and left.arg_kinds[i] == ARG_OPT:
+                break
 
-        # Check that *args and **kwargs types match in this loop
-        if left_kind == ARG_STAR:
-            if right_star_type is not None and not is_compat(right_star_type, left_arg.typ):
+            left_by_position = left.argument_by_position(i)
+            assert left_by_position is not None
+
+            if not are_args_compatible(left_by_position, right_by_position,
+                                       ignore_pos_arg_names, allow_partial_overlap,
+                                       is_compat):
                 return False
-            continue
-        elif left_kind == ARG_STAR2:
-            if right_star2_type is not None and not is_compat(right_star2_type, left_arg.typ):
-                return False
-            continue
+            i += 1
 
+    # Phase 1d: Check kw args. Right has an infinite series of optional named
+    #           arguments. Get all further named args of left, and make sure
+    #           they're more general then the corresponding member in right.
+    if right_star2 is not None:
+        right_names = {name for name in right.arg_names if name is not None}
+        left_only_names = set()
+        for name, kind in zip(left.arg_names, left.arg_kinds):
+            if name is None or kind in (ARG_STAR, ARG_STAR2) or name in right_names:
+                continue
+            left_only_names.add(name)
+
+        # Synthesize an anonymous formal argument for the right
+        right_by_name = right.try_synthesizing_arg_from_kwarg(None)
+        assert right_by_name is not None
+
+        for name in left_only_names:
+            left_by_name = left.argument_by_name(name)
+            assert left_by_name is not None
+
+            if allow_partial_overlap and not left_by_name.required:
+                continue
+
+            if not are_args_compatible(left_by_name, right_by_name, ignore_pos_arg_names,
+                                       allow_partial_overlap, is_compat):
+                return False
+
+    # Phase 2: Left must not impose additional restrictions.
+    #          (Every required argument in L must have a corresponding argument in R)
+    #          Note: we already checked the *arg and **kwarg arguments in phase 1a.
+    for left_arg in left.formal_arguments():
         right_by_name = (right.argument_by_name(left_arg.name)
                          if left_arg.name is not None
                          else None)
@@ -782,7 +841,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
             return False
 
         # All *required* left-hand arguments must have a corresponding
-        # right-hand argument.  Optional args it does not matter.
+        # right-hand argument.  Optional args do not matter.
         if left_arg.required and right_by_pos is None and right_by_name is None:
             return False
 
@@ -793,23 +852,46 @@ def are_args_compatible(
         left: FormalArgument,
         right: FormalArgument,
         ignore_pos_arg_names: bool,
+        allow_partial_overlap: bool,
         is_compat: Callable[[Type, Type], bool]) -> bool:
+    def is_different(left_item: Optional[object], right_item: Optional[object]) -> bool:
+        """Checks if the left and right items are different.
+
+        If the right item is unspecified (e.g. if the right callable doesn't care
+        about what name or position its arg has), we default to returning False.
+
+        If we're allowing partial overlap, we also default to returning False
+        if the left callable also doesn't care."""
+        if right_item is None:
+            return False
+        if allow_partial_overlap and left_item is None:
+            return False
+        return left_item != right_item
+
     # If right has a specific name it wants this argument to be, left must
     # have the same.
-    if right.name is not None and left.name != right.name:
+    if is_different(left.name, right.name):
         # But pay attention to whether we're ignoring positional arg names
         if not ignore_pos_arg_names or right.pos is None:
             return False
+
     # If right is at a specific position, left must have the same:
-    if right.pos is not None and left.pos != right.pos:
+    if is_different(left.pos, right.pos):
         return False
+
+    # If right's argument is optional, left's must also be
+    # (unless we're relaxing the checks to allow potential
+    # rather then definite compatibility).
+    if not allow_partial_overlap and not right.required and left.required:
+        return False
+
+    # If we're allowing partial overlaps and neither arg is required,
+    # the types don't actually need to be the same
+    if allow_partial_overlap and not left.required and not right.required:
+        return True
+
     # Left must have a more general type
-    if not is_compat(right.typ, left.typ):
-        return False
-    # If right's argument is optional, left's must also be.
-    if not right.required and left.required:
-        return False
-    return True
+    return is_compat(right.typ, left.typ)
 
 
 def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type, Type], bool]:
