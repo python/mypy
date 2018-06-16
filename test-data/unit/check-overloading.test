@@ -2157,7 +2157,7 @@ reveal_type(foo(compat))  # E: Revealed type is 'Union[builtins.int, builtins.st
 not_compat: Union[WrapperCo[A], WrapperContra[C]]
 foo(not_compat)  # E: Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "Union[WrapperCo[B], WrapperContra[B]]"
 
-[case testOverloadInferUnionSkipIfParameterNamesAreDifferent]
+[case testOverloadInferUnionIfParameterNamesAreDifferent]
 from typing import overload, Union
 
 class A: ...
@@ -2215,6 +2215,8 @@ def f(x: A) -> Child: ...
 def f(x: B, y: B = B()) -> Parent: ...
 def f(*args): ...
 
+# TODO: It would be nice if we could successfully do union math
+# in this case. See comments in checkexpr.union_overload_matches.
 x: Union[A, B]
 f(x)       # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "A"
 f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "B"
