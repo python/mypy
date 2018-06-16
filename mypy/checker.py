@@ -3923,4 +3923,4 @@ def is_static(func: Union[FuncBase, Decorator]) -> bool:
         return is_static(func.func)
     elif isinstance(func, FuncBase):
         return func.is_static
-    raise AssertionError("Unexpected func type: {}".format(type(func)))
+    assert False, "Unexpected func type: {}".format(type(func))

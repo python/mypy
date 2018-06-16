@@ -606,7 +606,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(defn.impl, FuncDef):
                 inner = defn.impl
             else:
-                raise AssertionError()
+                assert False, "Unexpected impl type: {}".format(type(defn.impl))
             class_status.append(inner.is_class)
             static_status.append(inner.is_static)
 

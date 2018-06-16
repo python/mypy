@@ -3350,3 +3350,62 @@ class Wrapper:
         return 3  # E: Incompatible return value type (got "int", expected "str")
 
 [builtins fixtures/staticmethod.pyi]
+
+[case testOverloadAndSelfTypes]
+from typing import overload, Union, TypeVar, Type
+
+T = TypeVar('T', bound='Parent')
+class Parent:
+    @overload
+    def foo(self: T, x: int) -> T: pass
+
+    @overload
+    def foo(self, x: str) -> str: pass
+
+    def foo(self: T, x: Union[int, str]) -> Union[T, str]:
+        reveal_type(self.bar())    # E: Revealed type is 'builtins.str'
+        return self
+
+    def bar(self) -> str: pass
+
+class Child(Parent):
+    def child_only(self) -> int: pass
+
+x: Union[int, str]
+reveal_type(Parent().foo(3))                  # E: Revealed type is '__main__.Parent*'
+reveal_type(Child().foo(3))                   # E: Revealed type is '__main__.Child*'
+reveal_type(Child().foo("..."))               # E: Revealed type is 'builtins.str'
+reveal_type(Child().foo(x))                   # E: Revealed type is 'Union[__main__.Child*, builtins.str]'
+reveal_type(Child().foo(3).child_only())      # E: Revealed type is 'builtins.int'
+
+[case testOverloadAndClassTypes]
+from typing import overload, Union, TypeVar, Type
+
+T = TypeVar('T', bound='Parent')
+class Parent:
+    @overload
+    @classmethod
+    def foo(cls: Type[T], x: int) -> Type[T]: pass
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: pass
+
+    @classmethod
+    def foo(cls: Type[T], x: Union[int, str]) -> Union[Type[T], str]:
+        reveal_type(cls.bar())    # E: Revealed type is 'builtins.str'
+        return cls
+
+    @classmethod
+    def bar(cls) -> str: pass
+
+class Child(Parent):
+    def child_only(self) -> int: pass
+
+x: Union[int, str]
+reveal_type(Parent.foo(3))                  # E: Revealed type is 'Type[__main__.Parent*]'
+reveal_type(Child.foo(3))                   # E: Revealed type is 'Type[__main__.Child*]'
+reveal_type(Child.foo("..."))               # E: Revealed type is 'builtins.str'
+reveal_type(Child.foo(x))                   # E: Revealed type is 'Union[Type[__main__.Child*], builtins.str]'
+reveal_type(Child.foo(3)().child_only())    # E: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.pyi]
