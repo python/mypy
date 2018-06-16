@@ -596,7 +596,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(item, FuncDef):
                 inner = item
             else:
-                raise AssertionError()
+                assert False, "The 'item' variable is an unexpected type: {}".format(type(item))
             class_status.append(inner.is_class)
             static_status.append(inner.is_static)
 

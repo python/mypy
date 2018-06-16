@@ -1289,12 +1289,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # this could be unsafe with reverse operator methods.
             fail = True
 
-        if isinstance(original, CallableType) and isinstance(override, CallableType):
-            if (isinstance(original.definition, FuncBase) and
-                    isinstance(override.definition, FuncBase)):
-                if ((original.definition.is_static or original.definition.is_class) and
-                        not (override.definition.is_static or override.definition.is_class)):
-                    fail = True
+        if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
+            if ((original.is_classmethod() or original.is_staticmethod()) and
+                    not (override.is_classmethod() or override.is_staticmethod())):
+                fail = True
 
         if fail:
             emitted_msg = False

@@ -434,8 +434,8 @@ from typing import overload, Union
 
 @attr.s
 class A:
-    a: int
-    b: str
+    a = attr.ib()
+    b = attr.ib(default=3)
 
     @classmethod
     def other(cls) -> str:
@@ -451,7 +451,7 @@ class A:
 
     @classmethod
     def foo(cls, x: Union[int, str]) -> Union[int, str]:
-        reveal_type(cls)            # E: Revealed type is 'def () -> __main__.A'
+        reveal_type(cls)            # E: Revealed type is 'def (a: Any, b: Any =) -> __main__.A'
         reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
         return x
 

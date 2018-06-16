@@ -2087,6 +2087,33 @@ main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 main:12: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 main:14: error: Cannot find module named 'n'
 
+[case testOverloadClassmethodDisappears]
+from typing import overload
+from m import Wrapper
+reveal_type(Wrapper.foo(3))
+[file m.pyi]
+from typing import overload
+class Wrapper:
+    @overload
+    @classmethod
+    def foo(self, x: int) -> int: ...
+    @overload
+    @classmethod
+    def foo(self, x: str) -> str: ...
+[file m.pyi.2]
+from typing import overload
+class Wrapper:
+    @overload
+    def foo(cls, x: int) -> int: ...
+    @overload
+    def foo(cls, x: str) -> str: ...
+[builtins fixtures/classmethod.pyi]
+[out]
+main:3: error: Revealed type is 'builtins.int'
+==
+main:3: error: Revealed type is 'Any'
+main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
+
 [case testRefreshGenericClass]
 from typing import TypeVar, Generic
 from a import A

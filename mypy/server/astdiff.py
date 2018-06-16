@@ -173,7 +173,7 @@ def snapshot_definition(node: Optional[SymbolNode],
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
-        return ('Func', common, node.is_property, signature)
+        return ('Func', common, node.is_property, node.is_class, node.is_property, signature)
     elif isinstance(node, Var):
         return ('Var', common, snapshot_optional_type(node.type))
     elif isinstance(node, Decorator):

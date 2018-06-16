@@ -3074,6 +3074,53 @@ class GoodChild(Parent):
 
 [builtins fixtures/classmethod.pyi]
 
+[case testOverloadClassMethodMixingInheritance]
+from typing import overload
+
+class BadParent:
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class BadChild(BadParent):
+    @overload                           # E: Signature of "foo" incompatible with supertype "BadParent"
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+class GoodParent:
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+class GoodChild(GoodParent):
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+[builtins fixtures/classmethod.pyi]
+
 [case testOverloadClassMethodImplementation]
 from typing import overload, Union
 
@@ -3225,6 +3272,53 @@ class GoodChild(Parent):
     @overload
     @staticmethod
     def foo(x: A) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadStaticMethodMixingInheritance]
+from typing import overload
+
+class BadParent:
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class BadChild(BadParent):
+    @overload                            # E: Signature of "foo" incompatible with supertype "BadParent"
+    def foo(self, x: int) -> int: ...
+
+    @overload
+    def foo(self, x: str) -> str: ...
+
+    def foo(self, x): pass
+
+class GoodParent:
+    @overload
+    def foo(self, x: int) -> int: ...
+
+    @overload
+    def foo(self, x: str) -> str: ...
+
+    def foo(self, x): pass
+
+class GoodChild(GoodParent):
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
 
     @overload
     @staticmethod
