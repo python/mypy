@@ -854,10 +854,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         if base is typ:
                             abstract_in_this_class.append(name)
                 concrete.add(name)
+        # In stubs, abstract classes need to be explicitly marked because it is too
+        # easy to accidentally leave a concrete class abstract by forgetting to
+        # implement some methods.
         typ.abstract_attributes = sorted(abstract)
         if not self.is_stub_file:
             return
         if (typ.declared_metaclass and typ.declared_metaclass.type.fullname() == 'abc.ABCMeta'):
+            return
+        if typ.is_protocol:
             return
         if abstract and not abstract_in_this_class:
             attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))

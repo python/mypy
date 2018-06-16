@@ -4383,6 +4383,7 @@ import b
 
 [file a.pyi]
 from abc import ABCMeta, abstractmethod
+from typing import Protocol
 
 class A:  # OK, has @abstractmethod
     @abstractmethod
@@ -4399,9 +4400,18 @@ class D(A):  # OK, implements the abstract method
     def f(self) -> None:
         pass
 
+class E(Protocol):  # OK, is a protocol
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class F(E, Protocol):  # OK, is a protocol
+    pass
+
 [file b.py]
 # All of these are OK because this is not a stub file.
 from abc import ABCMeta, abstractmethod
+from typing import Protocol
 
 class A:
     @abstractmethod
@@ -4417,3 +4427,11 @@ class C(A, metaclass=ABCMeta):
 class D(A):
     def f(self) -> None:
         pass
+
+class E(Protocol):
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class F(E, Protocol):
+    pass
