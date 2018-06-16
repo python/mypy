@@ -28,14 +28,16 @@ def check_mypy_run(cmd_line: List[str],
     if venv_dir is not None:
         old_dir = os.getcwd()
         os.chdir(venv_dir)
-    if python_executable != sys.executable:
-        cmd_line.append('--python-executable={}'.format(python_executable))
-    out, err, returncode = mypy.api.run(cmd_line)
-    assert out == expected_out, err
-    assert err == expected_err, out
-    assert returncode == expected_returncode, returncode
-    if venv_dir is not None:
-        os.chdir(old_dir)
+    try:
+        if python_executable != sys.executable:
+            cmd_line.append('--python-executable={}'.format(python_executable))
+        out, err, returncode = mypy.api.run(cmd_line)
+        assert out == expected_out, err
+        assert err == expected_err, out
+        assert returncode == expected_returncode, returncode
+    finally:
+        if venv_dir is not None:
+            os.chdir(old_dir)
 
 
 class TestPEP561(TestCase):
