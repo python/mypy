@@ -13,6 +13,7 @@ from mypy.util import try_find_python2_interpreter
 
 SIMPLE_PROGRAM = """
 from typedpkg.sample import ex
+from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 """
@@ -71,10 +72,12 @@ class TestPEP561(TestCase):
         self.tempfile = os.path.join(self.temp_file_dir.name, 'simple.py')
         with open(self.tempfile, 'w+') as file:
             file.write(SIMPLE_PROGRAM)
+        self.msg_dne = \
+            "{}:3: error: Module 'typedpkg' has no attribute 'dne'\n".format(self.tempfile)
         self.msg_list = \
-            "{}:4: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile)
+            "{}:5: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile)
         self.msg_tuple = \
-            "{}:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile)
+            "{}:5: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile)
 
     def tearDown(self) -> None:
         self.temp_file_dir.cleanup()
@@ -91,7 +94,7 @@ class TestPEP561(TestCase):
             check_mypy_run(
                 [self.tempfile],
                 python_executable,
-                expected_out=self.msg_list,
+                expected_out=self.msg_dne + self.msg_list,
                 venv_dir=venv_dir,
             )
 
@@ -127,7 +130,7 @@ class TestPEP561(TestCase):
                 check_mypy_run(
                     [self.tempfile],
                     py2,
-                    expected_out=self.msg_list,
+                    expected_out=self.msg_dne + self.msg_list,
                     venv_dir=venv_dir,
                 )
 
