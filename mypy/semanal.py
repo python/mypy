@@ -1329,7 +1329,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         while '.' in id:
             parent, child = id.rsplit('.', 1)
             parent_mod = self.modules.get(parent)
-            if parent_mod and child not in parent_mod.names:
+            if parent_mod and self.allow_patching(parent_mod, child):
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod,
@@ -1348,6 +1348,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                           no_serialize=True)
                 parent_mod.names[child] = sym
             id = parent
+
+    def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
+        if child not in parent_mod.names:
+            return True
+        node = parent_mod.names[child].node
+        if isinstance(node, Var) and node.is_suppressed_import:
+            return True
+        return False
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:
