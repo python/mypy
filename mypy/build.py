@@ -946,9 +946,7 @@ class FindModuleCache:
                         # 'partial\n' to make the package partial
                         # Partial here means that mypy should look at the runtime
                         # package if installed.
-                        with open(stub_typed_file) as f:
-                            src = f.read()
-                        if src == 'partial\n':
+                        if fscache.read(stub_typed_file).decode().strip() == 'partial':
                             runtime_path = os.path.join(pkg_dir, dir_chain)
                         third_party_inline_dirs.append((runtime_path, True))
                         # if the package is partial, we don't verify the module, as
