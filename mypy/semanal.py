@@ -1335,7 +1335,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     sym = SymbolTableNode(MODULE_REF, child_mod,
                                           module_public=module_public,
                                           no_serialize=True)
-                    parent_mod.names[child] = sym
+                else:
+                    # Construct a dummy Var with Any type.
+                    any_type = AnyType(TypeOfAny.from_unimported_type,
+                                       missing_import_name=id)
+                    var = Var(child, any_type)
+                    var._fullname = child
+                    var.is_ready = True
+                    var.is_suppressed_import = True
+                    sym = SymbolTableNode(GDEF, var,
+                                          module_public=module_public,
+                                          no_serialize=True)
+                parent_mod.names[child] = sym
             id = parent
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
