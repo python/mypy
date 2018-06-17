@@ -1,11 +1,8 @@
 from contextlib import contextmanager
 import os
-import random
-import shutil
-import string
 import sys
 import tempfile
-from typing import Iterator, List, Generator
+from typing import Tuple, List, Generator, Optional
 from unittest import TestCase, main
 
 import mypy.api
@@ -25,20 +22,30 @@ def check_mypy_run(cmd_line: List[str],
                    python_executable: str = sys.executable,
                    expected_out: str = '',
                    expected_err: str = '',
-                   expected_returncode: int = 1) -> None:
+                   expected_returncode: int = 1,
+                   venv_dir: Optional[str] = None) -> None:
     """Helper to run mypy and check the output."""
-    if python_executable != sys.executable:
-        cmd_line.append('--python-executable={}'.format(python_executable))
-    out, err, returncode = mypy.api.run(cmd_line)
-    assert out == expected_out, err
-    assert err == expected_err, out
-    assert returncode == expected_returncode, returncode
+    if venv_dir is not None:
+        old_dir = os.getcwd()
+        os.chdir(venv_dir)
+    try:
+        if python_executable != sys.executable:
+            cmd_line.append('--python-executable={}'.format(python_executable))
+        out, err, returncode = mypy.api.run(cmd_line)
+        assert out == expected_out, err
+        assert err == expected_err, out
+        assert returncode == expected_returncode, returncode
+    finally:
+        if venv_dir is not None:
+            os.chdir(old_dir)
 
 
 class TestPEP561(TestCase):
 
     @contextmanager
-    def virtualenv(self, python_executable: str = sys.executable) -> Generator[str, None, None]:
+    def virtualenv(self,
+                   python_executable: str = sys.executable
+                   ) -> Generator[Tuple[str, str], None, None]:
         """Context manager that creates a virtualenv in a temporary directory
 
         returns the path to the created Python executable"""
@@ -46,9 +53,9 @@ class TestPEP561(TestCase):
             run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable),
                         venv_dir], cwd=os.getcwd())
             if sys.platform == 'win32':
-                yield os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
+                yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
             else:
-                yield os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
+                yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
 
     def install_package(self, pkg: str,
                         python_executable: str = sys.executable) -> None:
@@ -78,53 +85,63 @@ class TestPEP561(TestCase):
         assert dirs
 
     def test_typedpkg_stub_package(self) -> None:
-        with self.virtualenv() as python_executable:
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
             self.install_package('typedpkg-stubs', python_executable)
             check_mypy_run(
                 [self.tempfile],
                 python_executable,
-                self.msg_list,
+                expected_out=self.msg_list,
+                venv_dir=venv_dir,
             )
 
     def test_typedpkg(self) -> None:
-        with self.virtualenv() as python_executable:
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
             check_mypy_run(
                 [self.tempfile],
                 python_executable,
-                self.msg_tuple,
+                expected_out=self.msg_tuple,
+                venv_dir=venv_dir,
             )
 
     def test_stub_and_typed_pkg(self) -> None:
-        with self.virtualenv() as python_executable:
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
             self.install_package('typedpkg-stubs', python_executable)
             check_mypy_run(
                 [self.tempfile],
                 python_executable,
-                self.msg_list,
+                expected_out=self.msg_list,
+                venv_dir=venv_dir,
             )
 
     def test_typedpkg_stubs_python2(self) -> None:
         python2 = try_find_python2_interpreter()
         if python2:
-            with self.virtualenv(python2) as py2:
+            with self.virtualenv(python2) as venv:
+                venv_dir, py2 = venv
                 self.install_package('typedpkg-stubs', py2)
                 check_mypy_run(
                     [self.tempfile],
                     py2,
-                    self.msg_list,
+                    expected_out=self.msg_list,
+                    venv_dir=venv_dir,
                 )
 
     def test_typedpkg_python2(self) -> None:
         python2 = try_find_python2_interpreter()
         if python2:
-            with self.virtualenv(python2) as py2:
+            with self.virtualenv(python2) as venv:
+                venv_dir, py2 = venv
                 self.install_package('typedpkg', py2)
                 check_mypy_run(
                     [self.tempfile],
                     py2,
-                    self.msg_tuple,
+                    expected_out=self.msg_tuple,
+                    venv_dir=venv_dir,
                 )
 
 
