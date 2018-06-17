@@ -867,7 +867,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if abstract and not abstract_in_this_class:
             attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
             self.fail("Class {} has abstract attributes {}".format(typ.fullname(), attrs), typ)
-            self.note("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass", typ)
+            self.note("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
+                      typ)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
