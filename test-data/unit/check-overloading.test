@@ -1276,7 +1276,7 @@ def f(x: object) -> object: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # E: Revealed type is 'builtins.object'
+reveal_type(f(a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument2]
 from typing import overload, Any
@@ -1288,7 +1288,7 @@ def f(x: float) -> float: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # E: Revealed type is 'builtins.float'
+reveal_type(f(a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument3]
 from typing import overload, Any
@@ -1312,17 +1312,16 @@ def f(x: object, y: int, z: str) -> object: ...
 def f(x): pass
 
 a: Any
-# Any causes ambiguity; we fall back to returning object since it's a
-# supertype of int
-reveal_type(f(a, 1, ''))  # E: Revealed type is 'builtins.object'
+# Any causes ambiguity
+reveal_type(f(a, 1, ''))  # E: Revealed type is 'Any'
 # Any causes no ambiguity
 reveal_type(f(1, a, a))  # E: Revealed type is 'builtins.int'
 reveal_type(f('', a, a))  # E: Revealed type is 'builtins.object'
 # Like above, but use keyword arguments.
-reveal_type(f(y=1, z='', x=a))  # E: Revealed type is 'builtins.object'
+reveal_type(f(y=1, z='', x=a))  # E: Revealed type is 'Any'
 reveal_type(f(y=a, z='', x=1))  # E: Revealed type is 'builtins.int'
 reveal_type(f(z='', x=1, y=a))  # E: Revealed type is 'builtins.int'
-reveal_type(f(z='', x=a, y=1))  # E: Revealed type is 'builtins.object'
+reveal_type(f(z='', x=a, y=1))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument5]
 from typing import overload, Any, Union
@@ -1334,7 +1333,7 @@ def f(x: Union[int, float]) -> float: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # E: Revealed type is 'builtins.float'
+reveal_type(f(a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument6]
 from typing import overload, Any
@@ -1372,7 +1371,7 @@ def g(x): pass
 
 a: Any
 reveal_type(f(1, *a))  # E: Revealed type is 'builtins.int'
-reveal_type(g(1, *a))  # E: Revealed type is 'builtins.object'
+reveal_type(g(1, *a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument8]
 from typing import overload, Any

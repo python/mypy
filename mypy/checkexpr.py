@@ -1133,7 +1133,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
                                                                arg_kinds, arg_names, context)
             unioned_callable = self.union_overload_matches(erased_targets)
-
             if unioned_callable is not None:
                 unioned_errors = arg_messages.clean_copy()
                 unioned_result = self.check_call(unioned_callable, args, arg_kinds,
@@ -1304,7 +1303,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
-            if all(is_subtype(ret_type, return_types[-1]) for ret_type in return_types[:-1]):
+            if all(is_subtype(ret_type, return_types[-1]) and is_subtype(return_types[-1], ret_type)
+                   for ret_type in return_types[:-1]):
                 # The last match is a supertype of all the previous ones, so it's safe
                 # to return that inferred type.
                 return return_types[-1], inferred_types[-1]
