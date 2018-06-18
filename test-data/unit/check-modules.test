@@ -2221,6 +2221,26 @@ from typing import Any
 def __getattr__(attr: str) -> Any: pass
 [out]
 
+[case testModuleGetattrInit5a]
+from a.b import f
+
+x = f()
+[file a/__init__.pyi]
+from types import ModuleType
+def __getattr__(attr: str) -> ModuleType: pass
+[out]
+
+
+[case testModuleGetattrInit5b]
+from a.b import f
+
+x = f()
+[file a/__init__.pyi]
+def __getattr__(attr: str) -> int: pass
+[out]
+main:1: error: Cannot find module named 'a.b'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
 [case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
 -- TODO: Fails because of missing ImportedName handling in mypy.typeanal
 import a
