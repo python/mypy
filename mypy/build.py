@@ -1738,6 +1738,10 @@ class State:
                  caller_line: int = 0,
                  ancestor_for: 'Optional[State]' = None,
                  root_source: bool = False,
+                 # If `temporary` is True, this State is beeing created to just
+                 # quickly parse/load the tree, without an intention to further
+                 # process it. With this flag, any changes to external state as well
+                 # as error reprting should be avoided.
                  temporary: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
@@ -2255,6 +2259,7 @@ def find_module_and_diagnose(manager: BuildManager,
       caller_line: the line number of the import
       ancestor_for: the child module this is an ancestor of, if applicable
       root_source: whether this source was specified on the command line
+      quick: skip any error diagnosis and reporting
 
     The specified value of follow_imports for a module can be overridden
     if the module is specified on the command line or if it is a stub,
@@ -2322,12 +2327,18 @@ def find_module_and_diagnose(manager: BuildManager,
 
 
 def in_partial_package(id: str, manager: BuildManager) -> bool:
+    """Check if a missing module can potentially be a part of a package.
+
+    This checks if there is any existing parent __init__.pyi stub that
+    defines a module-level __getattr__ (a.k.a. partial stub package).
+    """
     while '.' in id:
         parent, _ = id.rsplit('.', 1)
         parent_mod = None
         if parent in manager.modules:
             parent_mod = manager.modules[parent]
         else:
+            # Parent is not in build, try quickly if we can find it.
             try:
                 parent_st = State(id=parent, path=None, source=None, manager=manager,
                                   temporary=True)
@@ -2339,6 +2350,7 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
             if parent_mod.is_partial_stub_package:
                 return True
             if not parent_mod.is_stub:
+                # Bail out soon, only stub package can be partial, not runtime one.
                 return False
         id = parent
     return False
