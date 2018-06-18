@@ -1307,7 +1307,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if all(is_subtype(ret_type, return_types[-1]) and
                    is_subtype(return_types[-1], ret_type)
                    for ret_type in return_types[:-1]):
-                # The last match is a supertype of all the previous ones, so it's safe
+                # The last match is mutually compatible with all previous ones, so it's safe
                 # to return that inferred type.
                 return return_types[-1], inferred_types[-1]
             else:
