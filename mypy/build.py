@@ -2349,8 +2349,8 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
         if parent_mod:
             if parent_mod.is_partial_stub_package:
                 return True
-            if not parent_mod.is_stub:
-                # Bail out soon, only stub package can be partial, not runtime one.
+            else:
+                # Bail out soon, complete subpackage found
                 return False
         id = parent
     return False
