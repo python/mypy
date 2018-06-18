@@ -6,10 +6,11 @@ from typing import List, Set, Dict, Optional
 from mypyc.common import REG_PREFIX
 from mypyc.ops import (
     Environment, Label, Value, Register, RType, RTuple, RInstance, ROptional,
-    RPrimitive, type_struct_name, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
+    RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
     object_rprimitive, is_str_rprimitive
 )
+from mypyc.namegen import NameGenerator
 
 
 class HeaderDeclaration:
@@ -19,10 +20,11 @@ class HeaderDeclaration:
 
 
 class EmitterContext:
-    """Shared emitter state for an entire module."""
+    """Shared emitter state for an entire compilation unit."""
 
-    def __init__(self) -> None:
+    def __init__(self, module_names: List[str]) -> None:
         self.temp_counter = 0
+        self.names = NameGenerator(module_names)
 
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
@@ -35,6 +37,7 @@ class Emitter:
 
     def __init__(self, context: EmitterContext, env: Optional[Environment] = None) -> None:
         self.context = context
+        self.names = context.names
         self.env = env or Environment()
         self.fragments = []  # type: List[str]
         self._indent = 0
@@ -196,7 +199,9 @@ class Emitter:
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
             self.emit_lines(
-                'if (PyObject_TypeCheck({}, &{}))'.format(src, type_struct_name(typ.name)),
+                'if (PyObject_TypeCheck({}, &{}))'.format(
+                    src,
+                    typ.class_ir.type_struct_name(self.names)),
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,

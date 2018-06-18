@@ -20,6 +20,8 @@ from collections import OrderedDict
 
 from mypy.nodes import Var
 
+from mypyc.namegen import NameGenerator
+
 
 T = TypeVar('T')
 
@@ -269,8 +271,8 @@ class RInstance(RType):
     def c_undefined_value(self) -> str:
         return 'NULL'
 
-    def struct_name(self) -> str:
-        return self.class_ir.struct_name()
+    def struct_name(self, names: NameGenerator) -> str:
+        return self.class_ir.struct_name(names)
 
     def getter_index(self, name: str) -> int:
         return self.class_ir.vtable_entry(name)
@@ -669,7 +671,9 @@ class Call(RegisterOp):
 
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
-        s = '%s(%s)' % (self.fn, args)
+        # TODO: Display long name?
+        short_name = self.fn.rpartition('.')[2]
+        s = '%s(%s)' % (short_name, args)
         if not self.is_void:
             s = env.format('%r = ', self) + s
         return s
@@ -1195,18 +1199,24 @@ class FuncIR:
     def __init__(self,
                  name: str,
                  class_name: Optional[str],
+                 module_name: str,
                  args: List[RuntimeArg],
                  ret_type: RType,
                  blocks: List[BasicBlock],
                  env: Environment) -> None:
         self.name = name
         self.class_name = class_name
-        # TODO: escape ___ in names
-        self.cname = name if not class_name else class_name + '___' + name
+        self.module_name = module_name
         self.args = args
         self.ret_type = ret_type
         self.blocks = blocks
         self.env = env
+
+    def cname(self, names: NameGenerator) -> str:
+        name = self.name
+        if self.class_name:
+            name += '_' + self.class_name
+        return names.private_name(self.module_name, name)
 
     def __str__(self) -> str:
         return '\n'.join(format_func(self))
@@ -1220,8 +1230,9 @@ class ClassIR:
 
     # TODO: Use dictionary for attributes in addition to (or instead of) list.
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, module_name: str) -> None:
         self.name = name
+        self.module_name = module_name
         self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
         self.methods = []  # type: List[FuncIR]
         self.vtable = None  # type: Optional[Dict[str, int]]
@@ -1256,16 +1267,20 @@ class ClassIR:
             if name in ir.attributes: return ir.attributes[name]
         assert False, '%r has no attribute %r' % (self.name, name)
 
-    def struct_name(self) -> str:
-        return '{}Object'.format(self.name)
+    def name_prefix(self, names: NameGenerator) -> str:
+        return names.private_name(self.module_name, self.name)
+
+    def struct_name(self, names: NameGenerator) -> str:
+        return '{}Object'.format(self.name_prefix(names))
 
     def get_method(self, name: str) -> Optional[FuncIR]:
         matches = [func for func in self.methods if func.name == name]
+        if not matches and self.base:
+            return self.base.get_method(name)
         return matches[0] if matches else None
 
-    @property
-    def type_struct(self) -> str:
-        return '{}Type'.format(self.name)
+    def type_struct_name(self, names: NameGenerator) -> str:
+        return '{}Type'.format(self.name_prefix(names))
 
 
 class ModuleIR:
@@ -1285,10 +1300,6 @@ class ModuleIR:
 
         if 'builtins' not in self.imports:
             self.imports.insert(0, 'builtins')
-
-
-def type_struct_name(class_name: str) -> str:
-    return '{}Type'.format(class_name)
 
 
 class OpVisitor(Generic[T]):

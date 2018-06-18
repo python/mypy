@@ -63,7 +63,8 @@ class TestGenOps(MypycDataSuite):
                 if result.errors:
                     actual = result.errors
                 else:
-                    module = genops.build_ir(result.files['__main__'], result.types)
+                    modules = genops.build_ir([result.files['__main__']], result.types)
+                    module = modules[0][1]
                     actual = []
                     for fn in module.functions:
                         actual.extend(format_func(fn))

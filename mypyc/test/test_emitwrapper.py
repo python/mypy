@@ -10,7 +10,7 @@ from mypyc.ops import list_rprimitive, int_rprimitive
 
 class TestArgCheck(unittest.TestCase):
     def setUp(self) -> None:
-        self.context = EmitterContext()
+        self.context = EmitterContext(['mod'])
 
     def test_check_list(self) -> None:
         emitter = Emitter(self.context)

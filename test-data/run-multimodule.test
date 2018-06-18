@@ -1,0 +1,119 @@
+-- These test cases compile two modules at a time (native and other.py)
+
+[case testMultiModuleBasic]
+from other import g
+def f(x: int) -> int:
+    return g(x + 1)
+[file other.py]
+def g(x: int) -> int:
+    return x + 2
+[file driver.py]
+from native import f
+from other import g
+assert f(3) == 6
+assert g(2) == 4
+try:
+    f(1.1)
+except TypeError:
+    pass
+else:
+    assert False
+try:
+    g(1.1)
+except TypeError:
+    pass
+else:
+    assert False
+
+[case testMultiModuleSameNames]
+# Use same names in both modules
+def f() -> int:
+    return 0
+class C:
+    x: int
+    def __init__(self) -> None:
+        self.x = 1
+    def f(self, x: int) -> int:
+        return self.x + x
+class D(C): pass
+[file other.py]
+def f(x: int) -> int:
+    return x + 1
+class C:
+    x: int
+    def __init__(self) -> None:
+        self.x = 2
+    def f(self, x: int) -> int:
+        return self.x + x + 1
+class D(C): pass
+[file driver.py]
+import native, other
+assert native.f() == 0
+assert other.f(3) == 4
+c1 = native.C()
+c1.x += 3
+c2 = other.C()
+c2.x += 6
+assert c1.f(9) == 1 + 3 + 9
+assert c2.f(7) == 2 + 6 + 7 + 1
+assert isinstance(native.D(), native.C)
+assert isinstance(other.D(), other.C)
+assert not isinstance(native.D(), other.C)
+assert not isinstance(other.D(), native.C)
+
+[case testMultiModuleInitializeImportedModules]
+from other import f
+
+def g() -> int:
+    return f(1)
+[file other.py]
+def f(x: int) -> int:
+    return x + 4
+[file driver.py]
+import sys
+assert 'other' not in sys.modules
+from native import g
+assert 'other' in sys.modules
+assert g() == 5
+f = sys.modules['other'].f
+assert f(1) == 5
+try:
+    f(1.1)
+except TypeError:
+    pass
+else:
+    assert False
+
+[case testMultiModuleImportClass]
+from typing import cast
+from other import C
+
+class D(C):
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def f(c: C) -> int:
+    d = D(3)
+    o: object = c
+    c = cast(C, o)
+    return c.x + c.f() + d.x + d.f() + 1
+[file other.py]
+class C:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def f(self) -> int:
+        return 2
+[file driver.py]
+from native import f
+from other import C
+c = C(4)
+assert f(c) == 4 + 2 + 3 + 2 + 1
+try:
+    f(1)
+except TypeError:
+    pass
+else:
+    assert False

@@ -57,19 +57,46 @@ from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
 
 
-def build_ir(module: MypyFile,
-             types: Dict[Expression, Type]) -> ModuleIR:
+def build_ir(modules: List[MypyFile],
+             types: Dict[Expression, Type]) -> List[Tuple[str, ModuleIR]]:
+    result = []
     mapper = Mapper()
-    builder = IRBuilder(types, mapper)
-    module.accept(builder)
 
-    return ModuleIR(
-        builder.imports,
-        builder.from_imports,
-        builder.literals,
-        builder.functions,
-        builder.classes
-    )
+    # Collect all classes defined in the compilation unit.
+    classes = []
+    for module in modules:
+        module_classes = [node for node in module.defs if isinstance(node, ClassDef)]
+        classes.extend([(module.fullname(), cdef) for cdef in module_classes])
+
+    # Collect all class mappings so that we can bind arbitrary class name
+    # references even if there are import cycles.
+    for module_name, cdef in classes:
+        class_ir = ClassIR(cdef.name, module_name)
+        mapper.type_to_ir[cdef.info] = class_ir
+
+    # Populate structural information in class IR.
+    for _, cdef in classes:
+        prepare_class_def(cdef, mapper)
+
+    # Generate IR for all modules.
+    for module in modules:
+        module_names = [mod.fullname() for mod in modules]
+        builder = IRBuilder(types, mapper, module_names)
+        module.accept(builder)
+        ir = ModuleIR(
+            builder.imports,
+            builder.from_imports,
+            builder.literals,
+            builder.functions,
+            builder.classes
+        )
+        result.append((module.fullname(), ir))
+
+    # Compute vtables.
+    for _, cdef in classes:
+        mapper.type_to_ir[cdef.info].compute_vtable()
+
+    return result
 
 
 class Mapper:
@@ -121,6 +148,26 @@ class Mapper:
         assert False, '%s unsupported' % type(typ)
 
 
+def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
+    ir = mapper.type_to_ir[cdef.info]
+    info = cdef.info
+    for name, node in info.names.items():
+        if isinstance(node.node, Var):
+            assert node.node.type, "Class member missing type"
+            ir.attributes[name] = mapper.type_to_rtype(node.node.type)
+
+    # Set up the parent class
+    assert len(info.bases) == 1, "Only single inheritance is supported"
+    mro = []
+    for cls in info.mro:
+        if cls.fullname() == 'builtins.object': continue
+        assert cls in mapper.type_to_ir, "Can't subclass cpython types yet"
+        mro.append(mapper.type_to_ir[cls])
+    if len(mro) > 1:
+        ir.base = mro[1]
+    ir.mro = mro
+
+
 class AssignmentTarget(object):
     type = None  # type: RType
 
@@ -159,13 +206,17 @@ class AssignmentTargetAttr(AssignmentTarget):
 
 
 class IRBuilder(NodeVisitor[Value]):
-    def __init__(self, types: Dict[Expression, Type], mapper: Mapper) -> None:
+    def __init__(self,
+                 types: Dict[Expression, Type],
+                 mapper: Mapper,
+                 modules: List[str]) -> None:
         self.types = types
         self.environment = Environment()
         self.environments = [self.environment]
         self.blocks = []  # type: List[List[BasicBlock]]
         self.functions = []  # type: List[FuncIR]
         self.classes = []  # type: List[ClassIR]
+        self.modules = set(modules)
 
         # These lists operate as stack frames for loops. Each loop adds a new
         # frame (i.e. adds a new empty list [] to the outermost list). Each
@@ -191,52 +242,21 @@ class IRBuilder(NodeVisitor[Value]):
             # built-in primitives.
             return INVALID_VALUE
 
+        self.module_name = mypyfile.fullname()
+
         classes = [node for node in mypyfile.defs if isinstance(node, ClassDef)]
 
-        # Build ClassIRs and TypeInfo-to-ClassIR mapping.
+        # Collect all classes.
         for cls in classes:
-            self.create_class_def(cls)
-
-        # Do class def setup
-        for cls in classes:
-            self.prepare_class_def(cls)
+            ir = self.mapper.type_to_ir[cls.info]
+            self.classes.append(ir)
 
         # Generate ops.
         self.current_module_name = mypyfile.fullname()
         for node in mypyfile.defs:
             node.accept(self)
 
-        # Compute vtables.
-        for cls in classes:
-            self.mapper.type_to_ir[cls.info].compute_vtable()
-
         return INVALID_VALUE
-
-    def create_class_def(self, cdef: ClassDef) -> None:
-        # We want to collect the attributes first so they are available
-        # while generating the methods
-        ir = ClassIR(cdef.name)
-        self.classes.append(ir)
-        self.mapper.type_to_ir[cdef.info] = ir
-
-    def prepare_class_def(self, cdef: ClassDef) -> None:
-        ir = self.mapper.type_to_ir[cdef.info]
-        info = cdef.info
-        for name, node in info.names.items():
-            if isinstance(node.node, Var):
-                assert node.node.type, "Class member missing type"
-                ir.attributes[name] = self.type_to_rtype(node.node.type)
-
-        # Set up the parent class
-        assert len(info.bases) == 1, "Only single inheritance is supported"
-        mro = []
-        for cls in info.mro:
-            if cls.fullname() == 'builtins.object': continue
-            assert cls in self.mapper.type_to_ir, "Can't subclass cpython types yet"
-            mro.append(self.mapper.type_to_ir[cls])
-        if len(mro) > 1:
-            ir.base = mro[1]
-        ir.mro = mro
 
     def visit_class_def(self, cdef: ClassDef) -> Value:
         ir = self.mapper.type_to_ir[cdef.info]
@@ -301,7 +321,7 @@ class IRBuilder(NodeVisitor[Value]):
 
         blocks, env = self.leave()
         args = self.convert_args(fdef)
-        return FuncIR(fdef.name(), class_name, args, self.ret_type, blocks, env)
+        return FuncIR(fdef.name(), class_name, self.module_name, args, self.ret_type, blocks, env)
 
     def visit_func_def(self, fdef: FuncDef) -> Value:
         self.functions.append(self.gen_func_def(fdef))
@@ -751,7 +771,7 @@ class IRBuilder(NodeVisitor[Value]):
         assert expr.node, "RefExpr not resolved"
         if '.' in expr.node.fullname():
             module_name = '.'.join(expr.node.fullname().split('.')[:-1])
-            return module_name == self.current_module_name
+            return module_name in self.modules
 
         return True
 
@@ -866,13 +886,13 @@ class IRBuilder(NodeVisitor[Value]):
             if target:
                 return target
 
-        fn = callee.name  # TODO: fullname
+        fn = callee.fullname
         # Try to generate a native call. Don't rely on the inferred callee
         # type, since it may have type variable substitutions that aren't
         # valid at runtime (due to type erasure). Instead pick the declared
         # signature of the native function as the true signature.
         signature = self.get_native_signature(callee)
-        if signature:
+        if signature and fn:
             # Native call
             arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
             args = self.coerce_native_call_args(args, arg_types, expr.line)

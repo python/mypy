@@ -3,12 +3,13 @@
 from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import FuncIR, RType, is_object_rprimitive
+from mypyc.namegen import NameGenerator
 
 
-def wrapper_function_header(fn: FuncIR) -> str:
+def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
     return 'static PyObject *{prefix}{name}(PyObject *self, PyObject *args, PyObject *kw)'.format(
         prefix=PREFIX,
-        name=fn.cname)
+        name=fn.cname(names))
 
 
 def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
@@ -17,7 +18,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     In particular, this handles unboxing the arguments, calling the native function, and
     then boxing the return value.
     """
-    emitter.emit_line('{} {{'.format(wrapper_function_header(fn)))
+    emitter.emit_line('{} {{'.format(wrapper_function_header(fn, emitter.names)))
 
     # If fn is a method, then the first argument is a self param
     real_args = fn.args[:]
@@ -45,13 +46,15 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         #       Are they relevant?
         ret_type = fn.ret_type
         emitter.emit_line('{}retval = {}{}({});'.format(ret_type.ctype_spaced(),
-                                                        NATIVE_PREFIX, fn.cname,
+                                                        NATIVE_PREFIX, fn.cname(emitter.names),
                                                         native_args))
         emitter.emit_error_check('retval', ret_type, 'return NULL;')
         emitter.emit_box('retval', 'retbox', ret_type, declare_dest=True)
         emitter.emit_lines('return retbox;')
     else:
-        emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX, fn.cname, native_args))
+        emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
+                                                    fn.cname(emitter.names),
+                                                    native_args))
         # TODO: Tracebacks?
     emitter.emit_line('}')
 

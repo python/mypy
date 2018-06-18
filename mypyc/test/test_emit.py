@@ -10,7 +10,7 @@ class TestEmitter(unittest.TestCase):
     def setUp(self) -> None:
         self.env = Environment()
         self.n = self.env.add_local(Var('n'), int_rprimitive)
-        self.context = EmitterContext()
+        self.context = EmitterContext(['mod'])
         self.emitter = Emitter(self.context, self.env)
 
     def test_label(self) -> None:
