@@ -2173,6 +2173,54 @@ from c import x
 x = str()
 y = int()
 
+[case testModuleGetattrInit1]
+from a import b
+
+x = b.f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: pass
+[out]
+
+[case testModuleGetattrInit2]
+import a.b
+
+x = a.b.f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: pass
+[out]
+
+[case testModuleGetattrInit3]
+import a.b
+
+x = a.b.f()
+[file a/__init__.py]
+from typing import Any
+def __getattr__(attr: str) -> Any: pass
+[out]
+main:1: error: Cannot find module named 'a.b'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:3: error: "object" has no attribute "b"
+
+[case testModuleGetattrInit4]
+import a.b.c
+
+x = a.b.c.f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: pass
+[out]
+
+[case testModuleGetattrInit5]
+from a.b import f
+
+x = f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: pass
+[out]
+
 [case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
 -- TODO: Fails because of missing ImportedName handling in mypy.typeanal
 import a

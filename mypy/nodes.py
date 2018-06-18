@@ -219,6 +219,7 @@ class MypyFile(SymbolNode):
     is_stub = False
     # Is this loaded from the cache and thus missing the actual body of the file?
     is_cache_skeleton = False
+    is_partial_stub_package = False
 
     def __init__(self,
                  defs: List[Statement],

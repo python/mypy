@@ -2305,7 +2305,7 @@ def find_module_and_diagnose(manager: BuildManager,
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
         if caller_state:
-            if not options.ignore_missing_imports:
+            if not (options.ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id)
             raise ModuleNotFound
         else:
@@ -2313,6 +2313,15 @@ def find_module_and_diagnose(manager: BuildManager,
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
             raise CompileError(["mypy: can't find module '%s'" % id])
+
+
+def in_partial_package(id: str, manager: BuildManager) -> bool:
+    while '.' in id:
+        parent, _ = id.rsplit('.', 1)
+        if parent in manager.modules and manager.modules[parent].is_partial_stub_package:
+            return True
+        id = parent
+    return False
 
 
 def module_not_found(manager: BuildManager, line: int, caller_state: State,

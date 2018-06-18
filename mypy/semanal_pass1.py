@@ -154,6 +154,9 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
         at_module = sem.is_module_scope()
+        if (at_module and func.name() == '__getattr__' and
+                '__init__.pyi' in self.sem.cur_mod_node.path):
+            self.sem.cur_mod_node.is_partial_stub_package = True
         if at_module and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]
