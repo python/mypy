@@ -1738,6 +1738,7 @@ class State:
                  caller_line: int = 0,
                  ancestor_for: 'Optional[State]' = None,
                  root_source: bool = False,
+                 temporary: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
@@ -1759,9 +1760,10 @@ class State:
             try:
                 path, follow_imports = find_module_and_diagnose(
                     manager, id, self.options, caller_state, caller_line,
-                    ancestor_for, root_source)
+                    ancestor_for, root_source, temporary)
             except ModuleNotFound:
-                manager.missing_modules.add(id)
+                if not temporary:
+                    manager.missing_modules.add(id)
                 raise
             if follow_imports == 'silent':
                 self.ignore_all = True
@@ -2242,7 +2244,8 @@ def find_module_and_diagnose(manager: BuildManager,
                              caller_state: 'Optional[State]' = None,
                              caller_line: int = 0,
                              ancestor_for: 'Optional[State]' = None,
-                             root_source: bool = False) -> Tuple[str, str]:
+                             root_source: bool = False,
+                             quick: bool = False) -> Tuple[str, str]:
     """Find a module by name, respecting follow_imports and producing diagnostics.
 
     Args:
@@ -2283,7 +2286,8 @@ def find_module_and_diagnose(manager: BuildManager,
                     and not options.follow_imports_for_stubs)  # except when they aren't
                 or id == 'builtins'):  # Builtins is always normal
             follow_imports = 'normal'
-
+        if quick:
+            return (path, follow_imports)
         if follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
             manager.log("Silencing %s (%s)" % (path, id))
@@ -2304,6 +2308,8 @@ def find_module_and_diagnose(manager: BuildManager,
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
+        if quick:
+            raise ModuleNotFound
         if caller_state:
             if not (options.ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id)
@@ -2318,8 +2324,22 @@ def find_module_and_diagnose(manager: BuildManager,
 def in_partial_package(id: str, manager: BuildManager) -> bool:
     while '.' in id:
         parent, _ = id.rsplit('.', 1)
-        if parent in manager.modules and manager.modules[parent].is_partial_stub_package:
-            return True
+        parent_mod = None
+        if parent in manager.modules:
+            parent_mod = manager.modules[parent]
+        else:
+            try:
+                parent_st = State(id=parent, path=None, source=None, manager=manager,
+                                  temporary=True)
+            except (ModuleNotFound, CompileError):
+                pass
+            else:
+                parent_mod = parent_st.tree
+        if parent_mod:
+            if parent_mod.is_partial_stub_package:
+                return True
+            if not parent_mod.is_stub:
+                return False
         id = parent
     return False
 

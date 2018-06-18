@@ -257,6 +257,7 @@ class MypyFile(SymbolNode):
                 'names': self.names.serialize(self._fullname),
                 'is_stub': self.is_stub,
                 'path': self.path,
+                'is_partial_stub_package': self.is_partial_stub_package
                 }
 
     @classmethod
@@ -268,6 +269,7 @@ class MypyFile(SymbolNode):
         tree.names = SymbolTable.deserialize(data['names'])
         tree.is_stub = data['is_stub']
         tree.path = data['path']
+        tree.is_partial_stub_package = data['is_partial_stub_package']
         tree.is_cache_skeleton = True
         return tree
 
