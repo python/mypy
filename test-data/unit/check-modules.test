@@ -2257,6 +2257,19 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 main:1: error: Cannot find module named 'a.b.c.d'
 main:3: error: Module has no attribute "c"
 
+[case testModuleGetattrInit8a]
+import a.b.c  # Error
+import a.d  # OK
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: pass
+[file a/b/__init__.pyi]
+# empty (i.e. complete subpackage)
+[builtins fixtures/module.pyi]
+[out]
+main:1: error: Cannot find module named 'a.b.c'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
 [case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
 -- TODO: Fails because of missing ImportedName handling in mypy.typeanal
 import a
