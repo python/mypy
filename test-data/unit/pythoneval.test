@@ -1109,9 +1109,11 @@ async def main() -> None:
     ((a_x, a_y),) = await asyncio.gather(get_location('start'))
     reveal_type(a_x)
     reveal_type(a_y)
+reveal_type(asyncio.gather(*[asyncio.sleep(1), asyncio.sleep(1)]))
 [out]
 _testAsyncioGatherPreciseType.py:9: error: Revealed type is 'builtins.str'
 _testAsyncioGatherPreciseType.py:10: error: Revealed type is 'builtins.str'
+_testAsyncioGatherPreciseType.py:11: error: Revealed type is 'asyncio.futures.Future[builtins.tuple[Any]]'
 
 [case testMultipleInheritanceWorksWithTupleTypeGeneric]
 from typing import SupportsAbs, NamedTuple

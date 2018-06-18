@@ -1304,8 +1304,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
-            if all(is_subtype(ret_type, return_types[-1]) for ret_type in return_types[:-1]):
-                # The last match is a supertype of all the previous ones, so it's safe
+            if all(is_subtype(ret_type, return_types[-1]) and
+                   is_subtype(return_types[-1], ret_type)
+                   for ret_type in return_types[:-1]):
+                # The last match is mutually compatible with all previous ones, so it's safe
                 # to return that inferred type.
                 return return_types[-1], inferred_types[-1]
             else:
