@@ -162,7 +162,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     sym = self.sem.lookup_qualified(ret.name, func, suppress_errors=True)
                     # We only interpred package as partial if __getattr__ return type
                     # is either types.ModuleType of Any.
-                    if sym and sym.node and sym.node.fullname() in ('types.ModuleType', 'typing.Any'):
+                    if sym and sym.node and sym.node.fullname() in ('types.ModuleType',
+                                                                    'typing.Any'):
                         self.sem.cur_mod_node.is_partial_stub_package = True
         if at_module and func.name() in sem.globals:
             # Already defined in this module.
