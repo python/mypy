@@ -1741,7 +1741,7 @@ class State:
                  # If `temporary` is True, this State is beeing created to just
                  # quickly parse/load the tree, without an intention to further
                  # process it. With this flag, any changes to external state as well
-                 # as error reprting should be avoided.
+                 # as error reporting should be avoided.
                  temporary: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"

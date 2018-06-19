@@ -2179,7 +2179,8 @@ from a import b
 x = b.f()
 [file a/__init__.pyi]
 from typing import Any
-def __getattr__(attr: str) -> Any: pass
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
 [out]
 
 [case testModuleGetattrInit2]
@@ -2188,7 +2189,8 @@ import a.b
 x = a.b.f()
 [file a/__init__.pyi]
 from typing import Any
-def __getattr__(attr: str) -> Any: pass
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
 [out]
 
 [case testModuleGetattrInit3]
@@ -2197,11 +2199,12 @@ import a.b
 x = a.b.f()
 [file a/__init__.py]
 from typing import Any
-def __getattr__(attr: str) -> Any: pass
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
 [out]
 main:1: error: Cannot find module named 'a.b'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:3: error: "object" has no attribute "b"
+main:3: error: Module has no attribute "b"
 
 [case testModuleGetattrInit4]
 import a.b.c
@@ -2209,7 +2212,8 @@ import a.b.c
 x = a.b.c.f()
 [file a/__init__.pyi]
 from typing import Any
-def __getattr__(attr: str) -> Any: pass
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
 [out]
 
 [case testModuleGetattrInit5]
@@ -2218,7 +2222,8 @@ from a.b import f
 x = f()
 [file a/__init__.pyi]
 from typing import Any
-def __getattr__(attr: str) -> Any: pass
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
 [out]
 
 [case testModuleGetattrInit5a]
@@ -2227,7 +2232,8 @@ from a.b import f
 x = f()
 [file a/__init__.pyi]
 from types import ModuleType
-def __getattr__(attr: str) -> ModuleType: pass
+def __getattr__(attr: str) -> ModuleType: ...
+[builtins fixtures/module.pyi]
 [out]
 
 
@@ -2236,7 +2242,8 @@ from a.b import f
 
 x = f()
 [file a/__init__.pyi]
-def __getattr__(attr: str) -> int: pass
+def __getattr__(attr: str) -> int: ...
+[builtins fixtures/module.pyi]
 [out]
 main:1: error: Cannot find module named 'a.b'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
@@ -2247,7 +2254,7 @@ import a.b.c.d
 x = a.b.c.d.f()
 [file a/__init__.pyi]
 from typing import Any
-def __getattr__(attr: str) -> Any: pass
+def __getattr__(attr: str) -> Any: ...
 [file a/b/__init__.pyi]
 # empty (i.e. complete subpackage)
 [builtins fixtures/module.pyi]
@@ -2262,7 +2269,7 @@ import a.b.c  # Error
 import a.d  # OK
 [file a/__init__.pyi]
 from typing import Any
-def __getattr__(attr: str) -> Any: pass
+def __getattr__(attr: str) -> Any: ...
 [file a/b/__init__.pyi]
 # empty (i.e. complete subpackage)
 [builtins fixtures/module.pyi]

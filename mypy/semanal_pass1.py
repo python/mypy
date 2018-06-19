@@ -160,7 +160,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 ret = func.type.ret_type
                 if isinstance(ret, UnboundType) and not ret.args:
                     sym = self.sem.lookup_qualified(ret.name, func, suppress_errors=True)
-                    # We only interpred package as partial if __getattr__ return type
+                    # We only interpret a package as partial if the __getattr__ return type
                     # is either types.ModuleType of Any.
                     if sym and sym.node and sym.node.fullname() in ('types.ModuleType',
                                                                     'typing.Any'):
