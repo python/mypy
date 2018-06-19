@@ -198,6 +198,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
             return True
+        if left.values and is_subtype(UnionType.make_simplified_union(left.values), right):
+            return True
         return is_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
@@ -578,7 +580,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
                            ignore_return: bool = False,
                            ignore_pos_arg_names: bool = False,
                            check_args_covariantly: bool = False,
-                           allow_partial_overlap: bool = False) -> bool:
+                           allow_partial_overlap: bool = False,
+                           unify_generics: bool = True) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
     is_compat:
@@ -666,6 +669,11 @@ def is_callable_compatible(left: CallableType, right: CallableType,
 
         If the 'some_check' function is also symmetric, the two calls would be equivalent
         whether or not we check the args covariantly.
+
+    unify_generics:
+        If this parameter is set to False, we do not attempt to unify away TypeVars before
+        checking the callable. This option should be set to False only if you want to externally
+        handle generics in some custom way.
     """
     if is_compat_return is None:
         is_compat_return = is_compat
@@ -678,34 +686,35 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if right.is_type_obj() and not left.is_type_obj():
         return False
 
-    # A callable L is a subtype of a generic callable R if L is a
-    # subtype of every type obtained from R by substituting types for
-    # the variables of R. We can check this by simply leaving the
-    # generic variables of R as type variables, effectively varying
-    # over all possible values.
+    if unify_generics:
+        # A callable L is a subtype of a generic callable R if L is a
+        # subtype of every type obtained from R by substituting types for
+        # the variables of R. We can check this by simply leaving the
+        # generic variables of R as type variables, effectively varying
+        # over all possible values.
 
-    # It's okay even if these variables share ids with generic
-    # type variables of L, because generating and solving
-    # constraints for the variables of L to make L a subtype of R
-    # (below) treats type variables on the two sides as independent.
-    if left.variables:
-        # Apply generic type variables away in left via type inference.
-        unified = unify_generic_callable(left, right, ignore_return=ignore_return)
-        if unified is None:
-            return False
-        else:
-            left = unified
+        # It's okay even if these variables share ids with generic
+        # type variables of L, because generating and solving
+        # constraints for the variables of L to make L a subtype of R
+        # (below) treats type variables on the two sides as independent.
+        if left.variables:
+            # Apply generic type variables away in left via type inference.
+            unified = unify_generic_callable(left, right, ignore_return=ignore_return)
+            if unified is None:
+                return False
+            else:
+                left = unified
 
-    # If we allow partial overlaps, we don't need to leave R generic:
-    # if we can find even just a single typevar assignment which
-    # would make these callables compatible, we should return True.
+        # If we allow partial overlaps, we don't need to leave R generic:
+        # if we can find even just a single typevar assignment which
+        # would make these callables compatible, we should return True.
 
-    # So, we repeat the above checks in the opposite direction. This also
-    # lets us preserve the 'symmetry' property of allow_partial_overlap.
-    if allow_partial_overlap and right.variables:
-        unified = unify_generic_callable(right, left, ignore_return=ignore_return)
-        if unified is not None:
-            right = unified
+        # So, we repeat the above checks in the opposite direction. This also
+        # lets us preserve the 'symmetry' property of allow_partial_overlap.
+        if allow_partial_overlap and right.variables:
+            unified = unify_generic_callable(right, left, ignore_return=ignore_return)
+            if unified is not None:
+                right = unified
 
     # Check return types.
     if not ignore_return and not is_compat_return(left.ret_type, right.ret_type):
@@ -901,7 +910,9 @@ def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type
 
 
 def unify_generic_callable(type: CallableType, target: CallableType,
-                           ignore_return: bool) -> Optional[CallableType]:
+                           ignore_return: bool,
+                           return_constraint_direction: int = mypy.constraints.SUBTYPE_OF,
+                           ) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
@@ -914,7 +925,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
         constraints.extend(c)
     if not ignore_return:
         c = mypy.constraints.infer_constraints(
-            type.ret_type, target.ret_type, mypy.constraints.SUBTYPE_OF)
+            type.ret_type, target.ret_type, return_constraint_direction)
         constraints.extend(c)
     type_var_ids = [tvar.id for tvar in type.variables]
     inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
@@ -1036,7 +1047,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         if isinstance(self.right, TypeVarType) and left.id == self.right.id:
             return True
-        # TODO: Value restrictions
+        if left.values and is_subtype(UnionType.make_simplified_union(left.values), self.right):
+            return True
         return is_proper_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:

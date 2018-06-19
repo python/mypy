@@ -42,6 +42,7 @@ from mypy.subtypes import (
     restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_compatible,
     unify_generic_callable, find_member
 )
+from mypy.constraints import SUPERTYPE_OF
 from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars
 from mypy.semanal import set_callable_name, refers_to_fullname, calculate_mro
@@ -414,6 +415,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         # At this point we should have set the impl already, and all remaining
         # items are decorators
+
+        # Compute some info about the implementation (if it exists) for use below
+        impl_type = None  # type: Optional[CallableType]
+        if defn.impl:
+            if isinstance(defn.impl, FuncDef):
+                inner_type = defn.impl.type
+            elif isinstance(defn.impl, Decorator):
+                inner_type = defn.impl.var.type
+            else:
+                assert False, "Impl isn't the right type"
+
+            # This can happen if we've got an overload with a different
+            # decorator or if the implementation is untyped -- we gave up on the types.
+            if inner_type is not None and not isinstance(inner_type, AnyType):
+                assert isinstance(inner_type, CallableType)
+                impl_type = inner_type
+
         is_descriptor_get = defn.info is not None and defn.name() == "__get__"
         for i, item in enumerate(defn.items):
             # TODO overloads involving decorators
@@ -451,43 +469,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.msg.overloaded_signatures_overlap(
                                 i + 1, i + j + 2, item.func)
 
-            if defn.impl:
-                if isinstance(defn.impl, FuncDef):
-                    impl_type = defn.impl.type
-                elif isinstance(defn.impl, Decorator):
-                    impl_type = defn.impl.var.type
-                else:
-                    assert False, "Impl isn't the right type"
+            if impl_type is not None:
+                assert defn.impl is not None
 
-                # This can happen if we've got an overload with a different
-                # decorator too -- we gave up on the types.
-                if impl_type is None or isinstance(impl_type, AnyType):
-                    return
-                assert isinstance(impl_type, CallableType)
+                # We perform a unification step that's very similar to what
+                # 'is_callable_compatible' would have done if we had set
+                # 'unify_generics' to True -- the only difference is that
+                # we check and see if the impl_type's return value is a
+                # *supertype* of the overload alternative, not a *subtype*.
+                #
+                # This is to match the direction the implementation's return
+                # needs to be compatible in.
+                if impl_type.variables:
+                    impl = unify_generic_callable(impl_type, sig1,
+                                                  ignore_return=False,
+                                                  return_constraint_direction=SUPERTYPE_OF)
+                    if impl is None:
+                        self.msg.overloaded_signatures_typevar_specific(i + 1, defn.impl)
+                        continue
+                else:
+                    impl = impl_type
 
                 # Is the overload alternative's arguments subtypes of the implementation's?
-                if not is_callable_compatible(impl_type, sig1,
+                if not is_callable_compatible(impl, sig1,
                                               is_compat=is_subtype,
-                                              ignore_return=True):
+                                              ignore_return=True,
+                                              unify_generics=False):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
-                #  Repeat the same unification process 'is_callable_compatible'
-                #  internally performs so we can examine the return type separately.
-                if impl_type.variables:
-                    # Note: we set 'ignore_return=True' because 'unify_generic_callable'
-                    # normally checks the arguments and return types with differing variance.
-                    #
-                    # This is normally what we want, but for checking the validity of overload
-                    # implementations, we actually want to use the same variance for both.
-                    #
-                    # TODO: Patch 'is_callable_compatible' and  'unify_generic_callable'?
-                    #       somehow so we can customize the variance in all different sorts
-                    #       of ways? This would let us infer more constraints, letting us
-                    #       infer more precise types.
-                    impl_type = unify_generic_callable(impl_type, sig1, ignore_return=True)
-
                 # Is the overload alternative's return type a subtype of the implementation's?
-                if impl_type is not None and not is_subtype(sig1.ret_type, impl_type.ret_type):
+                if not is_subtype(sig1.ret_type, impl.ret_type):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
