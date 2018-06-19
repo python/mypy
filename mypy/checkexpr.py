@@ -1130,7 +1130,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         unioned_result = None  # type: Optional[Tuple[Type, Type]]
         unioned_errors = None  # type: Optional[MessageBuilder]
         union_success = False
-        if any(isinstance(arg, UnionType) for arg in arg_types):
+        if any(isinstance(arg, UnionType) and len(arg.relevant_items()) > 1  # "real" union
+               for arg in arg_types):
             erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
                                                                arg_kinds, arg_names, context)
             unioned_callable = self.union_overload_matches(erased_targets)
