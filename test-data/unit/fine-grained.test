@@ -7218,3 +7218,20 @@ x = []  # type: List
 [builtins fixtures/list.pyi]
 [out]
 ==
+
+[case testRefreshForWithTypeComment]
+[file a.py]
+from typing import List
+import b
+def foo(l: List[int]) -> None:
+    for x in l:  # type: object
+        pass
+    x = object()
+    b.x
+[file b.py]
+x = 1
+[file b.py.2]
+x = '1'
+[builtins fixtures/list.pyi]
+[out]
+==
