@@ -1738,7 +1738,7 @@ class State:
                  caller_line: int = 0,
                  ancestor_for: 'Optional[State]' = None,
                  root_source: bool = False,
-                 # If `temporary` is True, this State is beeing created to just
+                 # If `temporary` is True, this State is being created to just
                  # quickly parse/load the tree, without an intention to further
                  # process it. With this flag, any changes to external state as well
                  # as error reporting should be avoided.
@@ -1764,7 +1764,7 @@ class State:
             try:
                 path, follow_imports = find_module_and_diagnose(
                     manager, id, self.options, caller_state, caller_line,
-                    ancestor_for, root_source, temporary)
+                    ancestor_for, root_source, skip_diagnose=temporary)
             except ModuleNotFound:
                 if not temporary:
                     manager.missing_modules.add(id)
@@ -2249,9 +2249,10 @@ def find_module_and_diagnose(manager: BuildManager,
                              caller_line: int = 0,
                              ancestor_for: 'Optional[State]' = None,
                              root_source: bool = False,
-                             quick: bool = False) -> Tuple[str, str]:
+                             skip_diagnose: bool = False) -> Tuple[str, str]:
     """Find a module by name, respecting follow_imports and producing diagnostics.
 
+    If the module is not found, then the ModuleNotFound exception is raised.
     Args:
       id: module to find
       options: the options for the module being loaded
@@ -2259,7 +2260,8 @@ def find_module_and_diagnose(manager: BuildManager,
       caller_line: the line number of the import
       ancestor_for: the child module this is an ancestor of, if applicable
       root_source: whether this source was specified on the command line
-      quick: skip any error diagnosis and reporting
+      skip_diagnose: skip any error diagnosis and reporting (but ModuleNotFound is
+          still raised if the module is missing)
 
     The specified value of follow_imports for a module can be overridden
     if the module is specified on the command line or if it is a stub,
@@ -2291,9 +2293,9 @@ def find_module_and_diagnose(manager: BuildManager,
                     and not options.follow_imports_for_stubs)  # except when they aren't
                 or id == 'builtins'):  # Builtins is always normal
             follow_imports = 'normal'
-        if quick:
-            return (path, follow_imports)
-        if follow_imports == 'silent':
+        if skip_diagnose:
+            pass
+        elif follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
             manager.log("Silencing %s (%s)" % (path, id))
         elif follow_imports == 'skip' or follow_imports == 'error':
@@ -2313,7 +2315,7 @@ def find_module_and_diagnose(manager: BuildManager,
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
-        if quick:
+        if skip_diagnose:
             raise ModuleNotFound
         if caller_state:
             if not (options.ignore_missing_imports or in_partial_package(id, manager)):
@@ -2334,7 +2336,6 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
     """
     while '.' in id:
         parent, _ = id.rsplit('.', 1)
-        parent_mod = None
         if parent in manager.modules:
             parent_mod = manager.modules[parent]
         else:
@@ -2343,10 +2344,10 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
                 parent_st = State(id=parent, path=None, source=None, manager=manager,
                                   temporary=True)
             except (ModuleNotFound, CompileError):
-                pass
+                parent_mod = None
             else:
                 parent_mod = parent_st.tree
-        if parent_mod:
+        if parent_mod is not None:
             if parent_mod.is_partial_stub_package:
                 return True
             else:

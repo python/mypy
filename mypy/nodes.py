@@ -260,7 +260,7 @@ class MypyFile(SymbolNode):
                 'names': self.names.serialize(self._fullname),
                 'is_stub': self.is_stub,
                 'path': self.path,
-                'is_partial_stub_package': self.is_partial_stub_package
+                'is_partial_stub_package': self.is_partial_stub_package,
                 }
 
     @classmethod
