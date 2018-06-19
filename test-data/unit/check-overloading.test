@@ -3669,3 +3669,37 @@ reveal_type(Child.foo("..."))               # E: Revealed type is 'builtins.str'
 reveal_type(Child.foo(x))                   # E: Revealed type is 'Union[Type[__main__.Child*], builtins.str]'
 reveal_type(Child.foo(3)().child_only())    # E: Revealed type is 'builtins.int'
 [builtins fixtures/classmethod.pyi]
+
+[case testOptionalIsNotAUnionIfNoStrictOverload]
+# flags: --no-strict-optional
+from typing import Optional, overload
+
+class B: pass
+class C(B): pass
+
+@overload
+def rp(x: C) -> C: ...
+@overload
+def rp(x: B) -> B: ...
+def rp(x):
+    pass
+
+x: Optional[C]
+reveal_type(rp(x))  # E: Revealed type is '__main__.C'
+[out]
+
+[case testOptionalIsNotAUnionIfNoStrictOverloadStr]
+# flags: -2 --no-strict-optional
+
+from typing import Optional
+from m import relpath
+a = '' # type: Optional[str]
+reveal_type(relpath(a))  # E: Revealed type is 'builtins.str'
+
+[file m.pyi]
+from typing import overload
+@overload
+def relpath(path: str) -> str: ...
+@overload
+def relpath(path: unicode) -> unicode: ...
+[out]
