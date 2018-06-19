@@ -69,6 +69,7 @@ def include_dir() -> str:
 # TODO: Make compiler arguments platform-specific.
 setup_format = """\
 from distutils.core import setup, Extension
+import sys
 
 module = Extension('{package_name}',
                    sources=['{cpath}'],
@@ -76,6 +77,14 @@ module = Extension('{package_name}',
                                        '-Wno-unreachable-code'],
                    libraries=[{libraries}],
                    library_dirs=[{library_dirs}])
+
+# Force the creation of dynamic libraries instead of bundles so that
+# we can link against multi-module shared libraries.
+# From https://stackoverflow.com/a/32765319
+if sys.platform == 'darwin':
+    from distutils import sysconfig
+    vars = sysconfig.get_config_vars()
+    vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
 
 setup(name='{package_name}',
       version='1.0',
