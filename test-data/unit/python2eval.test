@@ -401,3 +401,13 @@ def f():  # no annotation
 path = 'test'
 path = os.path.join(f(), 'test.py')
 [out]
+
+[case testOverloadRelpathRegression]
+# flags: --no-strict-optional
+
+from typing import Optional
+from os.path import relpath
+a = '' # type: Optional[str]
+reveal_type(relpath(a))
+[out]
+_testOverloadRelpathRegression.py:6: error: Revealed type is 'builtins.str'
