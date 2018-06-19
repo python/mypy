@@ -1129,6 +1129,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         erased_targets = None  # type: Optional[List[CallableType]]
         unioned_result = None  # type: Optional[Tuple[Type, Type]]
         unioned_errors = None  # type: Optional[MessageBuilder]
+        union_success = False
         if any(isinstance(arg, UnionType) for arg in arg_types):
             erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
                                                                arg_kinds, arg_names, context)
@@ -1142,8 +1143,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                  callable_name=callable_name,
                                                  object_type=object_type)
                 if not unioned_errors.is_errors():
-                    # Success! Stop early.
-                    return unioned_result
+                    # Success! But we need to see maybe normal procedure gives a narrower type.
+                    union_success = True
 
         # Step 3: If the union math fails, or if there was no union in the argument types,
         #         we fall back to checking each branch one-by-one.
@@ -1151,8 +1152,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                           arg_kinds, arg_names, callable_name,
                                                           object_type, context, arg_messages)
         if inferred_result is not None:
-            # Success! Stop early.
-            return inferred_result
+            # Success! Stop early by returning the best among normal and unioned.
+            if not union_success:
+                return inferred_result
+            else:
+                assert unioned_result is not None
+                if is_subtype(inferred_result[0], unioned_result[0]):
+                    return inferred_result
+                return unioned_result
 
         # Step 4: Failure. At this point, we know there is no match. We fall back to trying
         #         to find a somewhat plausible overload target using the erased types
