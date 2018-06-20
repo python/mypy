@@ -602,7 +602,7 @@ def f() -> str:
     return "some string"
 [out]
 L0:
-    r0 = __unicode_0 :: static
+    r0 = __unicode_0 :: static  ('some string')
     inc_ref r0
     return r0
 
@@ -612,7 +612,7 @@ def g(x: List[int], y: List[int]) -> None:
     x.extend(y)
 [out]
 L0:
-    r0 = __unicode_0 :: static
+    r0 = __unicode_0 :: static  ('extend')
     r1 = x.r0(y) :: object
     r2 = cast(None, r1)
     dec_ref r2

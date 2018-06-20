@@ -981,16 +981,18 @@ class LoadStatic(RegisterOp):
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, identifier: str, line: int = -1) -> None:
+    def __init__(self, type: RType, identifier: str, line: int = -1, ann: object = None) -> None:
         super().__init__(line)
         self.identifier = identifier
         self.type = type
+        self.ann = ann  # An object to pretty print with the load
 
     def sources(self) -> List[Value]:
         return []
 
     def to_str(self, env: Environment) -> str:
-        return env.format('%r = %s :: static', self, self.identifier)
+        ann = '  ({})'.format(repr(self.ann)) if self.ann else ''
+        return env.format('%r = %s :: static%s', self, self.identifier, ann)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_static(self)

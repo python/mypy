@@ -503,7 +503,7 @@ def f(x):
     r5 :: int
 L0:
     r0 = module_testmodule :: static
-    r1 = __unicode_0 :: static
+    r1 = __unicode_0 :: static  ('factorial')
     r2 = getattr r0, r1
     r3 = box(int, x)
     r4 = r2(r3) :: object
@@ -527,7 +527,7 @@ def f(x):
     r5 :: int
 L0:
     r0 = _globals :: static
-    r1 = __unicode_0 :: static
+    r1 = __unicode_0 :: static  ('g')
     r2 = r0[r1] :: dict
     r3 = box(int, x)
     r4 = r2(r3) :: object
@@ -549,7 +549,7 @@ def f(x):
     r6, r7 :: None
 L0:
     r0 = module_builtins :: static
-    r1 = __unicode_0 :: static
+    r1 = __unicode_0 :: static  ('print')
     r2 = getattr r0, r1
     r3 = 5
     r4 = box(int, r3)
@@ -572,7 +572,7 @@ def f(x):
 L0:
     r0 = 5
     r1 = module_builtins :: static
-    r2 = __unicode_0 :: static
+    r2 = __unicode_0 :: static  ('print')
     r3 = getattr r1, r2
     r4 = box(int, r0)
     r5 = r3(r4) :: object
@@ -588,9 +588,9 @@ def f() -> str:
 def f():
     x, r0, r1 :: str
 L0:
-    r0 = __unicode_0 :: static
+    r0 = __unicode_0 :: static  ('some string')
     x = r0
-    r1 = __unicode_1 :: static
+    r1 = __unicode_1 :: static  ('some other string')
     return r1
 
 [case testPyMethodCall1]
@@ -609,11 +609,11 @@ def f(x):
     r4 :: object
     r5 :: int
 L0:
-    r0 = __unicode_0 :: static
+    r0 = __unicode_0 :: static  ('pop')
     r1 = x.r0() :: object
     r2 = unbox(int, r1)
     y = r2
-    r3 = __unicode_0 :: static
+    r3 = __unicode_0 :: static  ('pop')
     r4 = x.r3() :: object
     r5 = unbox(int, r4)
     return r5
@@ -851,11 +851,11 @@ def assign_and_return_float_sum():
     r5 :: object
     r6 :: float
 L0:
-    r0 = __float_0 :: static
+    r0 = __float_0 :: static  (1.0)
     f1 = r0
-    r1 = __float_1 :: static
+    r1 = __float_1 :: static  (2.0)
     f2 = r1
-    r2 = __float_2 :: static
+    r2 = __float_2 :: static  (3.0)
     f3 = r2
     r3 = f1 * f2
     r4 = cast(float, r3)
@@ -881,13 +881,13 @@ L0:
     a_62_bit = r0
     r1 = 4611686018427387903
     max_62_bit = r1
-    r2 = __integer_0 :: static
+    r2 = __integer_0 :: static  (4611686018427387904)
     b_63_bit = r2
-    r3 = __integer_1 :: static
+    r3 = __integer_1 :: static  (9223372036854775806)
     c_63_bit = r3
-    r4 = __integer_2 :: static
+    r4 = __integer_2 :: static  (9223372036854775807)
     max_63_bit = r4
-    r5 = __integer_3 :: static
+    r5 = __integer_3 :: static  (9223372036854775808)
     d_64_bit = r5
     r6 = 2147483647
     max_32_bit = r6
@@ -944,7 +944,7 @@ def call_python_function(x):
     r5 :: int
 L0:
     r0 = module_builtins :: static
-    r1 = __unicode_0 :: static
+    r1 = __unicode_0 :: static  ('int')
     r2 = getattr r0, r1
     r3 = box(int, x)
     r4 = r2(r3) :: object
@@ -953,7 +953,7 @@ L0:
 def return_float():
     r0 :: float
 L0:
-    r0 = __float_1 :: static
+    r0 = __float_1 :: static  (5.0)
     return r0
 def return_callable_type():
     r0 :: object
@@ -961,7 +961,7 @@ def return_callable_type():
     r2 :: object
 L0:
     r0 = _globals :: static
-    r1 = __unicode_2 :: static
+    r1 = __unicode_2 :: static  ('return_float')
     r2 = r0[r1] :: dict
     return r2
 def call_callable_type():

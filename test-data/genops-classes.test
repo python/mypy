@@ -92,7 +92,7 @@ def g(a):
     r3 :: None
 L0:
     r0 = 1
-    r1 = __unicode_0 :: static
+    r1 = __unicode_0 :: static  ('hi')
     r2 = a.f(r0, r1)
     r3 = None
     return r3

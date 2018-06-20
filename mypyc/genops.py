@@ -1343,14 +1343,14 @@ class IRBuilder(NodeVisitor[Value]):
         if value not in self.literals:
             self.literals[value] = '__integer_' + str(len(self.literals))
         static_symbol = self.literals[value]
-        return self.add(LoadStatic(int_rprimitive, static_symbol))
+        return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
         if value not in self.literals:
             self.literals[value] = '__float_' + str(len(self.literals))
         static_symbol = self.literals[value]
-        return self.add(LoadStatic(float_rprimitive, static_symbol))
+        return self.add(LoadStatic(float_rprimitive, static_symbol, ann=value))
 
     def load_static_unicode(self, value: str) -> Value:
         """Loads a static unicode value into a register.
@@ -1361,7 +1361,7 @@ class IRBuilder(NodeVisitor[Value]):
         if value not in self.literals:
             self.literals[value] = '__unicode_' + str(len(self.literals))
         static_symbol = self.literals[value]
-        return self.add(LoadStatic(str_rprimitive, static_symbol))
+        return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
 
     def load_static_module_attr(self, expr: RefExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
