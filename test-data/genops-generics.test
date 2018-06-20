@@ -88,7 +88,7 @@ def f(x: C[int]) -> None:
     x.set(y + 1)
     x = C(2)
 [out]
-def __init__(self, x):
+def C.__init__(self, x):
     self :: C
     x :: object
     r0 :: bool
@@ -97,13 +97,13 @@ L0:
     self.x = x; r0 = is_error
     r1 = None
     return r1
-def get(self):
+def C.get(self):
     self :: C
     r0 :: object
 L0:
     r0 = self.x
     return r0
-def set(self, y):
+def C.set(self, y):
     self :: C
     y :: object
     r0 :: bool

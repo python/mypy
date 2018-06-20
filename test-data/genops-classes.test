@@ -75,7 +75,7 @@ class A:
 def g(a: A) -> None:
     a.f(1, 'hi')
 [out]
-def f(self, x, y):
+def A.f(self, x, y):
     self :: A
     x :: int
     y :: str
@@ -121,7 +121,7 @@ class Node:
             return 1 + self.next.length()
         return 1
 [out]
-def length(self):
+def Node.length(self):
     self :: Node
     r0 :: optional[Node]
     r1 :: int
@@ -151,8 +151,7 @@ class B(A):
         self.x = 20
         self.y = 30
 [out]
--- This is totally useless because we don't print any class info!!
-def __init__(self):
+def A.__init__(self):
     self :: A
     r0 :: int
     r1 :: bool
@@ -162,7 +161,7 @@ L0:
     self.x = r0; r1 = is_error
     r2 = None
     return r2
-def __init__(self):
+def B.__init__(self):
     self :: B
     r0 :: int
     r1 :: bool
@@ -186,7 +185,7 @@ def increment(o: O) -> O:
     o.x += 1
     return o
 [out]
-def __init__(self):
+def O.__init__(self):
     self :: O
     r0 :: int
     r1 :: bool

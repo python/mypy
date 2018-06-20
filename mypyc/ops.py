@@ -1363,8 +1363,9 @@ def format_blocks(blocks: List[BasicBlock], env: Environment) -> List[str]:
 
 def format_func(fn: FuncIR) -> List[str]:
     lines = []
-    lines.append('def {}({}):'.format(fn.name, ', '.join(arg.name
-                                                         for arg in fn.args)))
+    cls_prefix = fn.class_name + '.' if fn.class_name else ''
+    lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
+                                        ', '.join(arg.name for arg in fn.args)))
     for line in fn.env.to_lines():
         lines.append('    ' + line)
     code = format_blocks(fn.blocks, fn.env)
