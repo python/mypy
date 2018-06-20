@@ -118,6 +118,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg = msg
         self.plugin = plugin
         self.type_context = [None]
+        self.type_overrides = {}  # type: Dict[Expression, Type]
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
     def visit_name_expr(self, e: NameExpr) -> Type:
@@ -519,7 +520,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                    callable_node: Optional[Expression] = None,
                    arg_messages: Optional[MessageBuilder] = None,
                    callable_name: Optional[str] = None,
-                   object_type: Optional[Type] = None) -> Tuple[Type, Type]:
+                   object_type: Optional[Type] = None,
+                   *,
+                   arg_types_override: Optional[List[Type]] = None) -> Tuple[Type, Type]:
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
@@ -575,9 +578,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee, context)
                 callee = self.infer_function_type_arguments(
                     callee, args, arg_kinds, formal_to_actual, context)
-
-            arg_types = self.infer_arg_types_in_context2(
-                callee, args, arg_kinds, formal_to_actual)
+            if arg_types_override is not None:
+                arg_types = arg_types_override.copy()
+            else:
+                arg_types = self.infer_arg_types_in_context2(
+                    callee, args, arg_kinds, formal_to_actual)
 
             self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context, self.msg)
@@ -1130,22 +1135,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         unioned_result = None  # type: Optional[Tuple[Type, Type]]
         unioned_errors = None  # type: Optional[MessageBuilder]
         union_success = False
-        if any(isinstance(arg, UnionType) and len(arg.relevant_items()) > 1  # "real" union
-               for arg in arg_types):
-            erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
-                                                               arg_kinds, arg_names, context)
-            unioned_callable = self.union_overload_matches(erased_targets)
-
-            if unioned_callable is not None:
-                unioned_errors = arg_messages.clean_copy()
-                unioned_result = self.check_call(unioned_callable, args, arg_kinds,
-                                                 context, arg_names,
-                                                 arg_messages=unioned_errors,
-                                                 callable_name=callable_name,
-                                                 object_type=object_type)
-                # Record if we succeeded. Next we need to see if maybe normal procedure
-                # gives a narrower type.
-                union_success = unioned_result is not None and not unioned_errors.is_errors()
+        if any(self.real_union(arg) for arg in arg_types):
+            unioned_errors = arg_messages.clean_copy()
+            unioned_result = self.union_overload_result(plausible_targets, args, arg_types,
+                                                        arg_kinds, arg_names,
+                                                        callable_name, object_type,
+                                                        context, arg_messages=unioned_errors)
+            # Record if we succeeded. Next we need to see if maybe normal procedure
+            # gives a narrower type.
+            union_success = unioned_result is not None and not unioned_errors.is_errors()
 
         # Step 3: We try checking each branch one-by-one.
         inferred_result = self.infer_overload_return_type(plausible_targets, args, arg_types,
@@ -1173,9 +1171,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #
         #         Neither alternative matches, but we can guess the user probably wants the
         #         second one.
-        if erased_targets is None:
-            erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
-                                                               arg_kinds, arg_names, context)
+        erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
+                                                           arg_kinds, arg_names, context)
 
         # Step 5: We try and infer a second-best alternative if possible. If not, fall back
         #         to using 'Any'.
@@ -1350,91 +1347,56 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 matches.append(typ)
         return matches
 
-    def union_overload_matches(self, callables: List[CallableType]) -> Optional[CallableType]:
-        """Accepts a list of overload signatures and attempts to combine them together into a
-        new CallableType consisting of the union of all of the given arguments and return types.
-
-        Returns None if it is not possible to combine the different callables together in a
-        sound manner.
-
-        Assumes all of the given callables have argument counts compatible with the caller.
+    def union_overload_result(self,
+                              plausible_targets: List[CallableType],
+                              args: List[Expression],
+                              arg_types: List[Type],
+                              arg_kinds: List[int],
+                              arg_names: Optional[Sequence[Optional[str]]],
+                              callable_name: Optional[str],
+                              object_type: Optional[Type],
+                              context: Context,
+                              arg_messages: Optional[MessageBuilder] = None,
+                              ) -> Optional[Tuple[Type, Type]]:
+        """Accepts a list of overload signatures and attempts to match calls by destructuring
+        the first union. Returns None if there is no match.
         """
-        if len(callables) == 0:
-            return None
-        elif len(callables) == 1:
-            return callables[0]
-
-        # Note: we are assuming here that if a user uses some TypeVar 'T' in
-        # two different overloads, they meant for that TypeVar to mean the
-        # same thing.
-        #
-        # This function will make sure that all instances of that TypeVar 'T'
-        # refer to the same underlying TypeVarType and TypeVarDef objects to
-        # simplify the union-ing logic below.
-        #
-        # (If the user did *not* mean for 'T' to be consistently bound to the
-        # same type in their overloads, well, their code is probably too
-        # confusing and ought to be re-written anyways.)
-        callables, variables = merge_typevars_in_callables_by_name(callables)
-
-        new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
-        new_kinds = list(callables[0].arg_kinds)
-        new_returns = []  # type: List[Type]
-
-        for target in callables:
-            # We conservatively end if the overloads do not have the exact same signature.
-            # The only exception is if one arg is optional and the other is positional: in that
-            # case, we continue unioning (and expect a positional arg).
-            # TODO: Enhance the union overload logic to handle a wider variety of signatures.
-            if len(new_kinds) != len(target.arg_kinds):
+        if not any(self.real_union(typ) for typ in arg_types):
+            # No unions in args, just fall back to normal inference
+            for arg, typ in zip(args, arg_types):
+                self.type_overrides[arg] = typ
+            res = self.infer_overload_return_type(plausible_targets, args, arg_types,
+                                                  arg_kinds, arg_names, callable_name,
+                                                  object_type, context, arg_messages)
+            for arg, typ in zip(args, arg_types):
+                del self.type_overrides[arg]
+            return res
+        first_union = next(typ for typ in arg_types if self.real_union(typ))
+        idx = arg_types.index(first_union)
+        assert isinstance(first_union, UnionType)
+        returns = []
+        inferred_types = []
+        for item in first_union.relevant_items():
+            new_arg_types = arg_types.copy()
+            new_arg_types[idx] = item
+            sub_result = self.union_overload_result(plausible_targets, args, new_arg_types,
+                                                    arg_kinds, arg_names, callable_name,
+                                                    object_type, context, arg_messages)
+            if sub_result is not None:
+                ret, inferred = sub_result
+                returns.append(ret)
+                inferred_types.append(inferred)
+            else:
                 return None
-            for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
-                if new_kind == target_kind:
-                    continue
-                elif new_kind in (ARG_POS, ARG_OPT) and target_kind in (ARG_POS, ARG_OPT):
-                    new_kinds[i] = ARG_POS
-                else:
-                    return None
 
-            for i, arg in enumerate(target.arg_types):
-                new_args[i].append(arg)
-            new_returns.append(target.ret_type)
+        if returns:
+            print('un', returns, UnionType.make_simplified_union(returns, context.line, context.column))
+            return (UnionType.make_simplified_union(returns, context.line, context.column),
+                    UnionType.make_simplified_union(inferred_types, context.line, context.column))
+        return None
 
-        union_count = 0
-        final_args = []
-        for args_list in new_args:
-            new_type = UnionType.make_simplified_union(args_list)
-            union_count += 1 if isinstance(new_type, UnionType) else 0
-            final_args.append(new_type)
-
-        # TODO: Modify this check to be less conservative.
-        #
-        # Currently, we permit only one union in the arguments because if we allow
-        # multiple, we can't always guarantee the synthesized callable will be correct.
-        #
-        # For example, suppose we had the following two overloads:
-        #
-        #     @overload
-        #     def f(x: A, y: B) -> None: ...
-        #     @overload
-        #     def f(x: B, y: A) -> None: ...
-        #
-        # If we continued and synthesize "def f(x: Union[A,B], y: Union[A,B]) -> None: ...",
-        # then we'd incorrectly accept calls like "f(A(), A())" when they really ought to
-        # be rejected.
-        #
-        # However, that means we'll also give up if the original overloads contained
-        # any unions. This is likely unnecessary -- we only really need to give up if
-        # there are more then one *synthesized* union arguments.
-        if union_count >= 2:
-            return None
-
-        return callables[0].copy_modified(
-            arg_types=final_args,
-            arg_kinds=new_kinds,
-            ret_type=UnionType.make_simplified_union(new_returns),
-            variables=variables,
-            implicit=True)
+    def real_union(self, typ: Type) -> bool:
+        return isinstance(typ, UnionType) and len(typ.relevant_items()) > 1
 
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
                                     arg_names: Optional[Sequence[Optional[str]]],
@@ -2666,6 +2628,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         is True and this expression is a call, allow it to return None.  This
         applies only to this expression and not any subexpressions.
         """
+        if node in self.type_overrides:
+            return self.type_overrides[node]
         self.type_context.append(type_context)
         try:
             if allow_none_return and isinstance(node, CallExpr):
