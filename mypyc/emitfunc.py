@@ -42,10 +42,10 @@ def generate_native_function(fn: FuncIR, emitter: Emitter, source_path: str) -> 
     for r, i in fn.env.indexes.items():
         if i < len(fn.args):
             continue  # skip the arguments
-        ctype = r.type.ctype
-        declarations.emit_line('{ctype} {prefix}{name};'.format(ctype=ctype,
-                                                                prefix=REG_PREFIX,
-                                                                name=r.name))
+        ctype = r.type.ctype_spaced()
+        declarations.emit_line('{ctype}{prefix}{name};'.format(ctype=ctype,
+                                                               prefix=REG_PREFIX,
+                                                               name=r.name))
 
     for block in fn.blocks:
         body.emit_label(block.label)
