@@ -1145,7 +1145,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                  object_type=object_type)
                 # Record if we succeeded. Next we need to see if maybe normal procedure
                 # gives a narrower type.
-                union_success = not unioned_errors.is_errors()
+                union_success = unioned_result is not None and not unioned_errors.is_errors()
 
         # Step 3: We try checking each branch one-by-one.
         inferred_result = self.infer_overload_return_type(plausible_targets, args, arg_types,
