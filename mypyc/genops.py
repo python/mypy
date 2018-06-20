@@ -42,17 +42,19 @@ from mypyc.common import MAX_SHORT_INT
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RType, Value, Register, Label, Return, FuncIR, Assign,
     Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable, TupleGet, TupleSet,
-    ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, PyGetAttr, PyCall, ROptional,
+    ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, PyCall, ROptional,
     c_module_name, PyMethodCall, MethodCall, INVALID_VALUE, INVALID_LABEL, int_rprimitive,
     is_int_rprimitive, float_rprimitive, is_float_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
-    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, PySetAttr,
+    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
 from mypyc.ops_dict import new_dict_op, dict_get_item_op
-from mypyc.ops_misc import none_op, iter_op, next_op, no_err_occurred_op
+from mypyc.ops_misc import (
+    none_op, iter_op, next_op, no_err_occurred_op, py_getattr_op, py_setattr_op,
+)
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
 
@@ -448,7 +450,8 @@ class IRBuilder(NodeVisitor[Value]):
                 rvalue_reg = self.coerce(rvalue_reg, target.type, line)
                 return self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
-                return self.add(PySetAttr(target.obj, target.attr, rvalue_reg, line))
+                key = self.load_static_unicode(target.attr)
+                return self.add(PrimitiveOp([target.obj, key, rvalue_reg], py_setattr_op, line))
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.translate_special_method_call(
                 target.base,
@@ -825,7 +828,7 @@ class IRBuilder(NodeVisitor[Value]):
 
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         key = self.load_static_unicode(attr)
-        return self.add(PyGetAttr(obj, key, line))
+        return self.add(PrimitiveOp([obj, key], py_getattr_op, line))
 
     def py_call(self, function: Value, args: List[Value],
                 target_type: RType, line: int) -> Value:

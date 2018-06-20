@@ -786,56 +786,6 @@ class PyMethodCall(RegisterOp):
         return visitor.visit_py_method_call(self)
 
 
-class PyGetAttr(RegisterOp):
-    """dest = obj.attr :: object (using C API)"""
-
-    error_kind = ERR_MAGIC
-
-    def __init__(self, obj: Value, attr: Value, line: int) -> None:
-        super().__init__(line)
-        self.obj = obj
-        self.attr = attr
-        self.type = object_rprimitive
-
-    def sources(self) -> List[Value]:
-        return [self.obj, self.attr]
-
-    def to_str(self, env: Environment) -> str:
-        return env.format('%r = %r.%r :: object', self, self.obj, self.attr)
-
-    def can_raise(self) -> bool:
-        return True
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_py_get_attr(self)
-
-
-class PySetAttr(RegisterOp):
-    """dest = setattr(obj, 'attr', value) (using C API)"""
-
-    error_kind = ERR_FALSE
-
-    def __init__(self, obj: Value, attr: str, value: Value, line: int) -> None:
-        super().__init__(line)
-        self.obj = obj
-        self.attr = attr
-        self.value = value
-        self.type = bool_rprimitive
-
-    def sources(self) -> List[Value]:
-        return [self.obj, self.value]
-
-    def to_str(self, env: Environment) -> str:
-        return env.format('%r = setattr(%r, %s, %r)',
-                          self, self.obj, repr(self.attr), self.value)
-
-    def can_raise(self) -> bool:
-        return True
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_py_set_attr(self)
-
-
 class EmitterInterface:
     @abstractmethod
     def reg(self, name: Value) -> str:
@@ -1345,14 +1295,6 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_load_static(self, op: LoadStatic) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_py_get_attr(self, op: PyGetAttr) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_py_set_attr(self, op: PySetAttr) -> T:
         raise NotImplementedError
 
     @abstractmethod

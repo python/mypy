@@ -8,7 +8,7 @@ from mypyc.ops import (
     Value, Register,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr, PyCall,
-    LoadStatic, PyGetAttr, PySetAttr, Label, PyMethodCall, PrimitiveOp, MethodCall,
+    LoadStatic, Label, PyMethodCall, PrimitiveOp, MethodCall,
 )
 
 
@@ -124,12 +124,6 @@ class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
         return self.visit_register_op(op)
 
     def visit_load_static(self, op: LoadStatic) -> GenAndKill:
-        return self.visit_register_op(op)
-
-    def visit_py_get_attr(self, op: PyGetAttr) -> GenAndKill:
-        return self.visit_register_op(op)
-
-    def visit_py_set_attr(self, op: PySetAttr) -> GenAndKill:
         return self.visit_register_op(op)
 
     def visit_tuple_get(self, op: TupleGet) -> GenAndKill:

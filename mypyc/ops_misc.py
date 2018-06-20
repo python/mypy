@@ -132,3 +132,19 @@ method_op('__setitem__',
           error_kind=ERR_FALSE,
           emit=simple_emit('{dest} = PyObject_SetItem({args[0]}, {args[1]}, {args[2]}) >= 0;'),
           priority=0)
+
+py_getattr_op = func_op(
+    name='builtins.getattr',
+    arg_types=[object_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = PyObject_GetAttr({args[0]}, {args[1]});')
+)
+
+py_setattr_op = func_op(
+    name='builtins.setattr',
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    emit=simple_emit('{dest} = PyObject_SetAttr({args[0]}, {args[1]}, {args[2]}) >= 0;')
+)

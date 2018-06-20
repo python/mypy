@@ -6,9 +6,9 @@ from mypyc.common import REG_PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
-    LoadStatic, TupleGet, TupleSet, Call, PyCall, PyGetAttr, IncRef, DecRef, Box, Cast, Unbox,
+    LoadStatic, TupleGet, TupleSet, Call, PyCall, IncRef, DecRef, Box, Cast, Unbox,
     Label, Value, Register, RType, RTuple, MethodCall, PyMethodCall, PrimitiveOp, EmitterInterface,
-    PySetAttr, Unreachable, is_int_rprimitive
+    Unreachable, is_int_rprimitive
 )
 from mypyc.namegen import NameGenerator
 
@@ -191,19 +191,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, op.identifier))
         else:
             self.emit_line('%s = %s;' % (dest, op.identifier))
-
-    def visit_py_get_attr(self, op: PyGetAttr) -> None:
-        dest = self.reg(op)
-        obj = self.reg(op.obj)
-        attr = self.reg(op.attr)
-        self.emit_line('{} = PyObject_GetAttr({}, {});'.format(dest, obj, attr))
-
-    def visit_py_set_attr(self, op: PySetAttr) -> None:
-        dest = self.reg(op)
-        obj = self.reg(op.obj)
-        value = self.reg(op.value)
-        self.emit_line('{} = PyObject_SetAttrString({}, "{}", {}) >= 0;'.format(
-            dest, obj, op.attr, value))
 
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)
