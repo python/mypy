@@ -288,6 +288,8 @@ The following options are available:
   module (such as ``List[int]`` and ``Dict[str, str]``).
 
 
+.. _additional-command-line-flags:
+
 Additional command line flags
 *****************************
 
