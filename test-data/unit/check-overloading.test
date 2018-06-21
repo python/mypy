@@ -1443,6 +1443,86 @@ reveal_type(f(**a))       # E: Revealed type is 'Any'
 
 [builtins fixtures/dict.pyi]
 
+[case testOverloadWithOverlappingItemsAndAnyArgument12]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> Any: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument13]
+from typing import Any, overload, TypeVar, Generic
+
+class slice: pass
+
+T = TypeVar('T')
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> T: ...
+    @overload
+    def f(self, x: slice) -> A[T]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument14]
+from typing import Any, overload, TypeVar, Generic
+
+T = TypeVar('T')
+
+class Wrapper(Generic[T]): pass
+class slice: pass
+
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> Wrapper[T]: ...
+    @overload
+    def f(self, x: slice) -> Wrapper[A[T]]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is '__main__.Wrapper[Any]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument15]
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: int) -> Union[str, int]: ...
+@overload
+def g(x: str) -> Union[int, str]: ...
+def g(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'builtins.str'
+reveal_type(g(a))  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument16]
+from typing import overload, Any, Union, Callable
+
+@overload
+def f(x: int) -> Callable[[int, int], int]: ...
+@overload
+def f(x: str) -> Callable[[str], str]: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))     # E: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(f(a)(a))  # E: Revealed type is 'Any'
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt
