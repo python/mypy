@@ -3751,3 +3751,26 @@ y: Union[D, Any]
 # TODO: update after we decide on https://github.com/python/mypy/pull/5254
 reveal_type(x.f(y))  # E: Revealed type is 'Any'
 [out]
+
+[case testManyUnionsInOverload-skip]
+from typing import overload, TypeVar, Union
+
+T = TypeVar('T')
+
+@overload
+def f(x: int, y: object, z: object, t: object, u: object, w: object, v: object, s: object) -> int: ...
+@overload
+def f(x: str, y: object, z: object, t: object, u: object, w: object, v: object, s: object) -> str: ...
+@overload
+def f(x: T, y: object, z: object, t: object, u: object, w: object, v: object, s: object) -> T: ...
+def f(*args, **kwargs):
+    pass
+
+class A: pass
+class B: pass
+x: Union[int, str, A, B]
+y = f(x, x, x, x, x, x, x, x) # 8 args
+
+reveal_type(y)
+[builtins fixtures/dict.pyi]
+[out]

@@ -1371,6 +1371,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for arg, typ in zip(args, arg_types):
                 del self.type_overrides[arg]
             return res
+        # Try direct match before splitting
+        direct = self.infer_overload_return_type(plausible_targets, args, arg_types,
+                                                 arg_kinds, arg_names, callable_name,
+                                                 object_type, context, arg_messages)
+        if direct is not None and not isinstance(direct[0], UnionType):
+            # We only return non-unions soon, to avoid gredy match.
+            return direct
         first_union = next(typ for typ in arg_types if self.real_union(typ))
         idx = arg_types.index(first_union)
         assert isinstance(first_union, UnionType)
@@ -1390,7 +1397,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return None
 
         if returns:
-            print('un', returns, UnionType.make_simplified_union(returns, context.line, context.column))
             return (UnionType.make_simplified_union(returns, context.line, context.column),
                     UnionType.make_simplified_union(inferred_types, context.line, context.column))
         return None
