@@ -49,9 +49,17 @@ class TestPEP561(TestCase):
         """Context manager that creates a virtualenv in a temporary directory
 
         returns the path to the created Python executable"""
+        # Sadly, we need virtualenv, as the Python 3 venv module does not support creating a venv
+        # for Python 2, and Python 2 does not have its own venv.
         with tempfile.TemporaryDirectory() as venv_dir:
-            run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable),
-                        venv_dir], cwd=os.getcwd())
+            returncode, lines = run_command([sys.executable,
+                                             '-m',
+                                             'virtualenv',
+                                             '-p{}'.format(python_executable),
+                                            venv_dir], cwd=os.getcwd())
+            if returncode != 0:
+                err = '\n'.join(lines)
+                self.fail("Failed to create venv. Do you have virtualenv installed?\n" + err)
             if sys.platform == 'win32':
                 yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
             else:
