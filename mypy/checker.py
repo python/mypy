@@ -1246,7 +1246,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 fdef = original_node.func
                 original_class_or_static = fdef.is_class or fdef.is_static
             else:
-                assert False, str(base_attr.node)
+                original_class_or_static = False  # a variable can't be class or static
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
