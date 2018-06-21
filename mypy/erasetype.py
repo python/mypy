@@ -27,7 +27,8 @@ def erase_type(typ: Type) -> Type:
 class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        assert False, 'Not supported'
+        # TODO: replace with an assert after UnboundType can't leak from semantic analysis.
+        return AnyType(TypeOfAny.from_error)
 
     def visit_any(self, t: AnyType) -> Type:
         return t
