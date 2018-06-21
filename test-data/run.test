@@ -870,3 +870,57 @@ assert increment_attr(P()).x == 1
 assert increment_attr_o(O()).x == 2
 assert increment_all_indices([1, 2, 3]) == [2, 3, 4]
 assert increment_all_keys({'a':1, 'b':2, 'c':3}) == {'a':2, 'b':3, 'c':4}
+
+[case testNestedFunctions]
+from typing import Callable
+
+def outer() -> Callable[[], object]:
+    def inner() -> object:
+        return None
+    return inner
+
+def first() -> Callable[[], Callable[[], str]]:
+    def second() -> Callable[[], str]:
+        def third() -> str:
+            return 'third: nested function'
+        return third
+    return second
+
+def uno(num: float) -> Callable[[str], str]:
+    def dos(s: str) -> str:
+        return s + '!'
+    return dos
+
+def eins(num: float) -> str:
+    def zwei(s: str) -> str:
+        return s + '?'
+    a = zwei('eins')
+    b = zwei('zwei')
+    return a
+
+def inner() -> str:
+    return 'inner: normal function'
+
+def second() -> str:
+    return 'second: normal function'
+
+def third() -> str:
+    return 'third: normal function'
+
+[file driver.py]
+from native import outer, inner, first, uno, eins, second, third
+print(outer()())
+print(inner())
+print(first()()())
+print(uno(5.0)('uno'))
+print(eins(4.0))
+print(second())
+print(third())
+[out]
+None
+inner: normal function
+third: nested function
+uno!
+eins?
+second: normal function
+third: normal function

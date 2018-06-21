@@ -973,3 +973,131 @@ L0:
     r1 = f() :: object
     r2 = cast(float, r1)
     return r2
+
+[case testNestedFunctions]
+from typing import Callable
+
+def outer() -> Callable[[], str]:
+    def inner() -> str:
+        return 'inner: nested function'
+    return inner
+
+def first() -> Callable[[], Callable[[], str]]:
+    def second() -> Callable[[], str]:
+        def third() -> str:
+            return 'third: nested function'
+        return third
+    return second
+
+def uno(num: float) -> Callable[[str], str]:
+    def dos(s: str) -> str:
+        return s + '!'
+    return dos
+
+def eins(num: float) -> str:
+    def zwei(s: str) -> str:
+        return s + '?'
+    a = zwei('eins')
+    b = zwei('zwei')
+    return a
+
+def inner() -> str:
+    return 'inner: normal function'
+
+def second() -> str:
+    return 'second: normal function'
+
+def third() -> str:
+    return 'third: normal function'
+[out]
+def inner_outer_obj.__call__(self):
+    self :: object
+    r0 :: str
+L0:
+    r0 = __unicode_0 :: static  ('inner: nested function')
+    return r0
+def outer():
+    r0 :: str
+    inner :: object
+L0:
+    r0 = inner_outer_obj()
+    inner = r0
+    return inner
+def third_first_second_obj.__call__(self):
+    self :: object
+    r0 :: str
+L0:
+    r0 = __unicode_1 :: static  ('third: nested function')
+    return r0
+def second_first_obj.__call__(self):
+    self :: object
+    r0 :: str
+    third :: object
+L0:
+    r0 = third_first_second_obj()
+    third = r0
+    return third
+def first():
+    r0, second :: object
+L0:
+    r0 = second_first_obj()
+    second = r0
+    return second
+def dos_uno_obj.__call__(self, s):
+    self :: object
+    s, r0, r1 :: str
+L0:
+    r0 = __unicode_2 :: static  ('!')
+    r1 = s + r0
+    return r1
+def uno(num):
+    num :: float
+    r0 :: str
+    dos :: object
+L0:
+    r0 = dos_uno_obj()
+    dos = r0
+    return dos
+def zwei_eins_obj.__call__(self, s):
+    self :: object
+    s, r0, r1 :: str
+L0:
+    r0 = __unicode_3 :: static  ('?')
+    r1 = s + r0
+    return r1
+def eins(num):
+    num :: float
+    r0 :: str
+    zwei :: object
+    a, r1 :: str
+    r2 :: object
+    r3, b, r4 :: str
+    r5 :: object
+    r6 :: str
+L0:
+    r0 = zwei_eins_obj()
+    zwei = r0
+    r1 = __unicode_4 :: static  ('eins')
+    r2 = zwei(r1) :: object
+    r3 = cast(str, r2)
+    a = r3
+    r4 = __unicode_5 :: static  ('zwei')
+    r5 = zwei(r4) :: object
+    r6 = cast(str, r5)
+    b = r6
+    return a
+def inner():
+    r0 :: str
+L0:
+    r0 = __unicode_6 :: static  ('inner: normal function')
+    return r0
+def second():
+    r0 :: str
+L0:
+    r0 = __unicode_7 :: static  ('second: normal function')
+    return r0
+def third():
+    r0 :: str
+L0:
+    r0 = __unicode_8 :: static  ('third: normal function')
+    return r0
