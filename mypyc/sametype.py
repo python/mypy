@@ -2,11 +2,26 @@
 
 from mypyc.ops import (
     RType, RTypeVisitor, RInstance, ROptional, RPrimitive, RTuple, RVoid,
+    FuncSignature,
 )
 
 
 def is_same_type(a: RType, b: RType) -> bool:
     return a.accept(SameTypeVisitor(b))
+
+
+def is_same_signature(a: FuncSignature, b: FuncSignature) -> bool:
+    return (len(a.args) == len(b.args)
+            and is_same_type(a.ret_type, b.ret_type)
+            and all(is_same_type(t1.type, t2.type) and t1.name == t2.name
+                    for t1, t2 in zip(a.args, b.args)))
+
+
+def is_same_method_signature(a: FuncSignature, b: FuncSignature) -> bool:
+    return (len(a.args) == len(b.args)
+            and is_same_type(a.ret_type, b.ret_type)
+            and all(is_same_type(t1.type, t2.type) and t1.name == t2.name
+                    for t1, t2 in zip(a.args[1:], b.args[1:])))
 
 
 class SameTypeVisitor(RTypeVisitor[bool]):

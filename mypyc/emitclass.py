@@ -7,7 +7,10 @@ from typing import Optional
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
-from mypyc.ops import ClassIR, FuncIR, RType, Environment, object_rprimitive
+from mypyc.ops import (
+    ClassIR, FuncIR, RType, Environment, object_rprimitive, FuncSignature,
+    VTableMethod, VTableAttr,
+)
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
 
@@ -53,7 +56,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
     # TODO: Use RInstance
-    ctor = FuncIR(cl.name, None, module, init_args, object_rprimitive, [], Environment())
+    ctor = FuncIR(cl.name, None, module, FuncSignature(init_args, object_rprimitive),
+                  [], Environment())
     emitter.emit_line(native_function_header(ctor, emitter.names) + ';')
 
     emit_line()
@@ -204,22 +208,14 @@ def generate_vtable(base: ClassIR,
                     vtable_name: str,
                     emitter: Emitter) -> None:
     emitter.emit_line('static CPyVTableItem {}[] = {{'.format(vtable_name))
-    for cl in reversed(base.mro):
-        for attr in cl.attributes:
-            emitter.emit_line(
-                '(CPyVTableItem){},'.format(native_getter_name(cl, attr, emitter.names)))
-            emitter.emit_line(
-                '(CPyVTableItem){},'.format(native_setter_name(cl, attr, emitter.names)))
-        for fn in cl.methods:
-            # TODO: This is gross, and inefficient, and wrong if the type changes.
-            # This logic should all live on the genops side, I think
-            search = base.mro if fn.name != '__init__' else [cl]
-            for cl2 in search:
-                m = cl2.get_method(fn.name)
-                if m:
-                    emitter.emit_line('(CPyVTableItem){}{},'.format(NATIVE_PREFIX,
-                                                                    m.cname(emitter.names)))
-                    break
+    for entry in base.vtable_entries:
+        if isinstance(entry, VTableMethod):
+            emitter.emit_line('(CPyVTableItem){}{},'.format(NATIVE_PREFIX,
+                                                            entry.method.cname(emitter.names)))
+        else:
+            cl, attr, is_getter = entry
+            namer = native_getter_name if is_getter else native_setter_name
+            emitter.emit_line('(CPyVTableItem){},'.format(namer(cl, attr, emitter.names)))
     emitter.emit_line('};')
 
 
@@ -340,7 +336,7 @@ def generate_methods_table(cl: ClassIR,
                            name: str,
                            emitter: Emitter) -> None:
     emitter.emit_line('static PyMethodDef {}[] = {{'.format(name))
-    for fn in cl.methods:
+    for fn in cl.methods.values():
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
         emitter.emit_line(' METH_VARARGS | METH_KEYWORDS, NULL},')

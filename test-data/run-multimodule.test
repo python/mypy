@@ -118,6 +118,39 @@ except TypeError:
 else:
     assert False
 
+[case testMultiModuleSpecialize]
+from other import A
+
+class B(A):
+    def foo(self, x: object) -> int:
+        print(2)
+        return id(x)
+[file other.py]
+class A:
+    def foo(self, x: int) -> object:
+        print(1)
+        return str(x)
+
+def use_a(x: A, y: int) -> object:
+    return x.foo(y)
+
+[file driver.py]
+from native import B
+from other import A, use_a
+a = A()
+b = B()
+o = object()
+i = 10
+assert a.foo(10) == '10'
+assert b.foo(o) == id(o)
+assert use_a(a, 10) == '10'
+assert use_a(b, i) == id(i)
+[out]
+1
+2
+1
+2
+
 [case testMultiModuleLiterals]
 from other import gs, gi, gf
 

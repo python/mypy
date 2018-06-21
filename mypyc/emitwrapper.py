@@ -21,7 +21,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     emitter.emit_line('{} {{'.format(wrapper_function_header(fn, emitter.names)))
 
     # If fn is a method, then the first argument is a self param
-    real_args = fn.args[:]
+    real_args = list(fn.args)
     if fn.class_name:
         arg = real_args.pop(0)
         emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))

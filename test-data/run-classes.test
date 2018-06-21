@@ -227,7 +227,7 @@ c.set([1])
 assert c.x == [1]
 assert c.get() == [1]
 
-[case testSubclass]
+[case testSubclass1]
 from typing import Tuple
 
 class A:
@@ -259,3 +259,94 @@ assert b.y == 'world'
 assert a.hi('!') == '10!'
 assert b.hi('!') == 'hello world!'
 assert use_b(b) == 'hello world'
+
+[case testSubclassSpecialize1]
+class A:
+    def foo(self, x: int) -> object:
+        print('A')
+        return str(x)
+    def bar(self, x: int) -> None:
+        print(x + 1)
+class B(A):
+    def foo(self, x: object) -> int:
+        print('B')
+        return id(x)
+    def bar(self, x: object) -> None:
+        print(x)
+
+def use_a(x: A, y: int) -> object:
+    x.bar(10)
+    return x.foo(y)
+
+def use_b(x: B, y: object) -> int:
+    return x.foo(y)
+
+[file driver.py]
+from native import A, B, use_a, use_b
+a = A()
+b = B()
+o = object()
+i = 10
+assert a.foo(10) == '10'
+assert b.foo(o) == id(o)
+assert use_a(a, 10) == '10'
+assert use_b(b, o) == id(o)
+assert use_a(b, i) == id(i)
+[out]
+A
+B
+11
+A
+B
+10
+B
+
+[case testSubclassSpecialize2]
+class A:
+    def foo(self, x: int) -> object:
+        print('A')
+        return str(x)
+class B(A):
+    def foo(self, x: object) -> object:
+        print('B')
+        return x
+class C(B):
+    def foo(self, x: object) -> int:
+        print('C')
+        return id(x)
+
+def use_a(x: A, y: int) -> object:
+    return x.foo(y)
+
+def use_b(x: B, y: object) -> object:
+    return x.foo(y)
+
+def use_c(x: C, y: object) -> int:
+    return x.foo(y)
+
+[file driver.py]
+from native import A, B, C, use_a, use_b, use_c
+a = A()
+b = B()
+c = C()
+o = object()
+i = 10
+assert a.foo(10) == '10'
+assert b.foo(o) == o
+assert c.foo(o) == id(o)
+assert use_a(a, 10) == '10'
+assert use_a(b, i) is i
+assert use_a(c, i) == id(i)
+assert use_b(b, o) == o
+assert use_b(c, o) == id(o)
+assert use_c(c, o) == id(o)
+[out]
+A
+B
+C
+A
+B
+C
+B
+C
+C

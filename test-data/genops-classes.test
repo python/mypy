@@ -205,3 +205,99 @@ L0:
     r2 = r1 + r0 :: int
     o.x = r2; r3 = is_error
     return o
+
+[case testSubclassSpecialize2]
+class A:
+    def foo(self, x: int) -> object:
+        return str(x)
+class B(A):
+    def foo(self, x: object) -> object:
+        return x
+class C(B):
+    def foo(self, x: object) -> int:
+        return id(x)
+
+def use_a(x: A, y: int) -> object:
+    return x.foo(y)
+
+def use_b(x: B, y: object) -> object:
+    return x.foo(y)
+
+def use_c(x: C, y: object) -> int:
+    return x.foo(y)
+[out]
+def A.foo(self, x):
+    self :: A
+    x :: int
+    r0 :: object
+    r1 :: str
+L0:
+    r0 = box(int, x)
+    r1 = str r0 :: object
+    return r1
+def B.foo(self, x):
+    self :: B
+    x :: object
+L0:
+    return x
+def B.foo__A_glue(self, x):
+    self :: B
+    x :: int
+    r0, r1 :: object
+L0:
+    r0 = box(int, x)
+    r1 = self.foo(r0)
+    return r1
+def C.foo(self, x):
+    self :: C
+    x, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: int
+L0:
+    r0 = module_builtins :: static
+    r1 = __unicode_0 :: static  ('id')
+    r2 = getattr r0, r1
+    r3 = r2(x) :: object
+    r4 = unbox(int, r3)
+    return r4
+def C.foo__B_glue(self, x):
+    self :: C
+    x :: object
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self.foo(x)
+    r1 = box(int, r0)
+    return r1
+def C.foo__A_glue(self, x):
+    self :: C
+    x :: int
+    r0 :: object
+    r1 :: int
+    r2 :: object
+L0:
+    r0 = box(int, x)
+    r1 = self.foo(r0)
+    r2 = box(int, r1)
+    return r2
+def use_a(x, y):
+    x :: A
+    y :: int
+    r0 :: object
+L0:
+    r0 = x.foo(y)
+    return r0
+def use_b(x, y):
+    x :: B
+    y, r0 :: object
+L0:
+    r0 = x.foo(y)
+    return r0
+def use_c(x, y):
+    x :: C
+    y :: object
+    r0 :: int
+L0:
+    r0 = x.foo(y)
+    return r0
