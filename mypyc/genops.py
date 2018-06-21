@@ -904,7 +904,6 @@ class IRBuilder(NodeVisitor[Value]):
         return self.load_static_float(expr.value)
 
     def is_native_name_expr(self, expr: NameExpr) -> bool:
-        # TODO later we want to support cross-module native calls too
         assert expr.node, "RefExpr not resolved"
         if '.' in expr.node.fullname():
             module_name = '.'.join(expr.node.fullname().split('.')[:-1])
@@ -924,12 +923,6 @@ class IRBuilder(NodeVisitor[Value]):
             assert desc.result_type is not None
             return self.add(PrimitiveOp([], desc, expr.line))
 
-        if self.is_global_name(expr.name):
-            return self.load_global(expr)
-
-        if not self.is_native_name_expr(expr):
-            return self.load_static_module_attr(expr)
-
         # TODO: Behavior currently only defined for Var and FuncDef node types.
         if expr.kind == LDEF:
             try:
@@ -938,14 +931,6 @@ class IRBuilder(NodeVisitor[Value]):
                 assert False, 'expression %s not defined in current scope'.format(expr.name)
         else:
             return self.load_global(expr)
-
-    def is_global_name(self, name: str) -> bool:
-        # TODO: this is pretty hokey
-        for _, names in self.from_imports.items():
-            for _, as_name in names:
-                if name == as_name:
-                    return True
-        return False
 
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
         return isinstance(expr.expr, RefExpr) and expr.expr.kind == MODULE_REF
@@ -1500,12 +1485,19 @@ class IRBuilder(NodeVisitor[Value]):
         func_reg = self.environment.add_local(fdef, object_rprimitive)
         return self.add(Assign(func_reg, temp_reg))
 
+    def is_builtin_name_expr(self, expr: NameExpr) -> bool:
+        assert expr.node, "RefExpr not resolved"
+        return '.' in expr.node.fullname() and expr.node.fullname().split('.')[0] == 'builtins'
+
     def load_global(self, expr: NameExpr) -> Value:
         """Loads a Python-level global.
 
         This takes a NameExpr and uses its name as a key to retrieve the corresponding PyObject *
         from the _globals dictionary in the C-generated code.
         """
+        # If the global is from 'builtins', turn it into a module attr load instead
+        if self.is_builtin_name_expr(expr):
+            return self.load_static_module_attr(expr)
         _globals = self.add(LoadStatic(object_rprimitive, '_globals'))
         reg = self.load_static_unicode(expr.name)
         return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
