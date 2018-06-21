@@ -645,12 +645,6 @@ class FunctionLike(Type):
     @abstractmethod
     def get_name(self) -> Optional[str]: pass
 
-    @abstractmethod
-    def is_classmethod(self) -> bool: pass
-
-    @abstractmethod
-    def is_staticmethod(self) -> bool: pass
-
 
 FormalArgument = NamedTuple('FormalArgument', [
     ('name', Optional[str]),
@@ -833,12 +827,6 @@ class CallableType(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self.name
-
-    def is_classmethod(self) -> bool:
-        return isinstance(self.definition, FuncBase) and self.definition.is_class
-
-    def is_staticmethod(self) -> bool:
-        return isinstance(self.definition, FuncBase) and self.definition.is_static
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -1057,12 +1045,6 @@ class Overloaded(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self._items[0].name
-
-    def is_classmethod(self) -> bool:
-        return self._items[0].is_classmethod()
-
-    def is_staticmethod(self) -> bool:
-        return self._items[0].is_staticmethod()
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)

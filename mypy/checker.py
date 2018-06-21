@@ -1221,22 +1221,32 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):
                 typ = self.function_type(defn)  # type: Type
+                override_class_or_static = defn.is_class or defn.is_static
             else:
                 assert defn.var.is_ready
                 assert defn.var.type is not None
                 typ = defn.var.type
+                override_class_or_static = defn.func.is_class or defn.func.is_static
             if isinstance(typ, FunctionLike) and not is_static(context):
                 typ = bind_self(typ, self.scope.active_self_type())
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
+            original_node = base_attr.node
             if original_type is None:
-                if isinstance(base_attr.node, FuncDef):
-                    original_type = self.function_type(base_attr.node)
-                elif isinstance(base_attr.node, Decorator):
-                    original_type = self.function_type(base_attr.node.func)
+                if isinstance(original_node, FuncBase):
+                    original_type = self.function_type(original_node)
+                elif isinstance(original_node, Decorator):
+                    original_type = self.function_type(original_node.func)
                 else:
                     assert False, str(base_attr.node)
+            if isinstance(original_node, FuncBase):
+                original_class_or_static = original_node.is_class or original_node.is_static
+            elif isinstance(original_node, Decorator):
+                fdef = original_node.func
+                original_class_or_static = fdef.is_class or fdef.is_static
+            else:
+                assert False, str(base_attr.node)
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
@@ -1253,6 +1263,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     defn.name(),
                                     name,
                                     base.name(),
+                                    original_class_or_static,
+                                    override_class_or_static,
                                     context)
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
@@ -1267,6 +1279,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_override(self, override: FunctionLike, original: FunctionLike,
                        name: str, name_in_super: str, supertype: str,
+                       original_class_or_static: bool,
+                       override_class_or_static: bool,
                        node: Context) -> None:
         """Check a method override with given signatures.
 
@@ -1289,8 +1303,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             fail = True
 
         if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
-            if ((original.is_classmethod() or original.is_staticmethod()) and
-                    not (override.is_classmethod() or override.is_staticmethod())):
+            if original_class_or_static and not override_class_or_static:
                 fail = True
 
         if fail:

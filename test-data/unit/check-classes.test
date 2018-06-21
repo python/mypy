@@ -4376,3 +4376,19 @@ class C1(object):
 main:4: error: Revealed local types are:
 main:4: error: t: builtins.str
 main:4: error: y: builtins.float
+
+[case testClassMethodOverride]
+from typing import Callable, Any
+
+def deco(f: Callable[..., Any]) -> Callable[..., Any]: ...
+
+class B:
+    @classmethod
+    def meth(cls, x: int) -> int: ...
+
+class C(B):
+    @classmethod
+    @deco
+    def meth(cls, x: int) -> int: ...
+[builtins fixtures/classmethod.pyi]
+[out]
