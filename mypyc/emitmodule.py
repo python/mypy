@@ -182,7 +182,7 @@ class ModuleGenerator:
             emitter,
         )
 
-        for literal, symbol in module.literals.items():
+        for (_, literal), symbol in module.literals.items():
             if isinstance(literal, int):
                 emitter.emit_lines(
                     '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(

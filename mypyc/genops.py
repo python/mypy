@@ -47,7 +47,7 @@ from mypyc.ops import (
     is_int_rprimitive, float_rprimitive, is_float_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
-    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive,
+    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
@@ -88,7 +88,7 @@ def build_ir(modules: List[MypyFile],
         ir = ModuleIR(
             builder.imports,
             builder.from_imports,
-            builder.literals,
+            mapper.literals,
             builder.functions,
             builder.classes
         )
@@ -102,10 +102,16 @@ def build_ir(modules: List[MypyFile],
 
 
 class Mapper:
-    """Keep track of mappings from mypy AST to the IR."""
+    """Keep track of mappings from mypy concepts to IR concepts.
+
+    This state is shared across all modules in a compilation unit.
+    """
 
     def __init__(self) -> None:
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
+        # Maps integer, float, and unicode literals to the static c name for that literal
+        # TODO: Maybe C names should generated only when emitting C?
+        self.literals = {}  # type: LiteralsMap
 
     def type_to_rtype(self, typ: Type) -> RType:
         if isinstance(typ, Instance):
@@ -148,6 +154,20 @@ class Mapper:
             assert not typ.values, 'TypeVar with value restriction not supported'
             return self.type_to_rtype(typ.upper_bound)
         assert False, '%s unsupported' % type(typ)
+
+    def c_name_for_literal(self, value: Union[int, float, str]) -> str:
+        # Include type to distinguish between 1 and 1.0, and so on.
+        key = (type(value), value)
+        if key not in self.literals:
+            if isinstance(value, str):
+                prefix = '__unicode_'
+            elif isinstance(value, float):
+                prefix = '__float_'
+            else:
+                assert isinstance(value, int)
+                prefix = '__int_'
+            self.literals[key] = prefix + str(len(self.literals))
+        return self.literals[key]
 
 
 def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
@@ -232,9 +252,6 @@ class IRBuilder(NodeVisitor[Value]):
         self.imports = []  # type: List[str]
         self.from_imports = {}  # type: Dict[str, List[Tuple[str, str]]]
         self.imports = []  # type: List[str]
-
-        # Maps integer, float, and unicode literals to the static c name for that literal
-        self.literals = {}  # type: Dict[Union[int, float, str], str]
 
         self.current_module_name = None  # type: Optional[str]
 
@@ -1339,17 +1356,13 @@ class IRBuilder(NodeVisitor[Value]):
         return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
 
     def load_static_int(self, value: int) -> Value:
-        """Loads a static integer value into a register."""
-        if value not in self.literals:
-            self.literals[value] = '__integer_' + str(len(self.literals))
-        static_symbol = self.literals[value]
+        """Loads a static integer Python 'int' object into a register."""
+        static_symbol = self.mapper.c_name_for_literal(value)
         return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
-        if value not in self.literals:
-            self.literals[value] = '__float_' + str(len(self.literals))
-        static_symbol = self.literals[value]
+        static_symbol = self.mapper.c_name_for_literal(value)
         return self.add(LoadStatic(float_rprimitive, static_symbol, ann=value))
 
     def load_static_unicode(self, value: str) -> Value:
@@ -1358,9 +1371,7 @@ class IRBuilder(NodeVisitor[Value]):
         This is useful for more than just unicode literals; for example, method calls
         also require a PyObject * form for the name of the method.
         """
-        if value not in self.literals:
-            self.literals[value] = '__unicode_' + str(len(self.literals))
-        static_symbol = self.literals[value]
+        static_symbol = self.mapper.c_name_for_literal(value)
         return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
 
     def load_static_module_attr(self, expr: RefExpr) -> Value:

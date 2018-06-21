@@ -117,3 +117,25 @@ except TypeError:
     pass
 else:
     assert False
+
+[case testMultiModuleLiterals]
+from other import gs, gi, gf
+
+def fs() -> str:
+    return 'f' + gs()
+def fi() -> int:
+    return 10001000100010001000 + gi()
+def ff() -> float:
+    return 2.0 + gf()
+[file other.py]
+def gi() -> int:
+    return 20001000100010001000
+def gs() -> str:
+    return 'g'
+def gf() -> float:
+    return 3.0
+[file driver.py]
+from native import fs, fi, ff
+assert fs() == 'fg'
+assert fi() == 30002000200020002000
+assert ff() == 5.0
