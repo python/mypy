@@ -2312,3 +2312,33 @@ def run() -> None:
 [out]
 tmp/p/b.py:4: error: Revealed type is 'builtins.int'
 tmp/p/__init__.py:3: error: Revealed type is 'builtins.int'
+
+[case testMissingSubmoduleImportedWithIgnoreMissingImports]
+# flags: --ignore-missing-imports
+import whatever.works
+import a.b
+x = whatever.works.f()
+y = a.b.f()
+[file a/__init__.py]
+# empty
+[out]
+
+[case testMissingSubmoduleImportedWithIgnoreMissingImportsStub]
+# flags: --ignore-missing-imports --follow-imports=skip
+import whatever.works
+import a.b
+x = whatever.works.f()
+y = a.b.f()
+[file a/__init__.pyi]
+# empty
+[out]
+
+[case testMissingSubmoduleImportedWithIgnoreMissingImportsNested]
+# flags: --ignore-missing-imports
+import a.b.c.d
+y = a.b.c.d.f()
+[file a/__init__.py]
+# empty
+[file a/b/__init__.py]
+# empty
+[out]
