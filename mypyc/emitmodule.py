@@ -265,12 +265,18 @@ class ModuleGenerator:
 
     def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
         for imp in imps:
-            self.generate_import(imp, emitter)
+            # Check for NULL to avoid importing twice (to keep ref counts in sync).
+            self.generate_import(imp, emitter, check_for_null=True)
 
-    def generate_import(self, imp: str, emitter: Emitter) -> None:
-        emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_module_name(imp), imp))
-        emitter.emit_line('if ({} == NULL)'.format(c_module_name(imp)))
+    def generate_import(self, imp: str, emitter: Emitter, check_for_null: bool) -> None:
+        c_name = c_module_name(imp)
+        if check_for_null:
+            emitter.emit_line('if ({} == NULL) {{'.format(c_name))
+        emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_name, imp))
+        emitter.emit_line('if ({} == NULL)'.format(c_name))
         emitter.emit_line('    return NULL;')
+        if check_for_null:
+            emitter.emit_line('}')
 
     def generate_from_imports_init_section(self,
             imps: List[str],
@@ -281,7 +287,7 @@ class ModuleGenerator:
             # imports section
             if imp not in imps:
                 emitter.emit_line('CPyModule *{};'.format(c_module_name(imp)))
-                self.generate_import(imp, emitter)
+                self.generate_import(imp, emitter, check_for_null=False)
 
             for original_name, as_name in import_names:
                 # Obtain a reference to the original object

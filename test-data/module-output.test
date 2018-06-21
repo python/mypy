@@ -36,9 +36,11 @@ PyMODINIT_FUNC PyInit_prog(void)
     _globals = PyModule_GetDict(m);
     if (_globals == NULL)
         return NULL;
-    module_builtins = PyImport_ImportModule("builtins");
-    if (module_builtins == NULL)
-        return NULL;
+    if (module_builtins == NULL) {
+        module_builtins = PyImport_ImportModule("builtins");
+        if (module_builtins == NULL)
+            return NULL;
+    }
     return m;
 }
 
