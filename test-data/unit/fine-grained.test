@@ -7219,7 +7219,7 @@ x = []  # type: List
 [out]
 ==
 
-[case testRefreshForWithTypeComment]
+[case testRefreshForWithTypeComment1]
 [file a.py]
 from typing import List
 import b
@@ -7235,3 +7235,17 @@ x = '1'
 [builtins fixtures/list.pyi]
 [out]
 ==
+
+[case testRefreshForWithTypeComment2]
+from typing import List, Any
+import m
+def f(x: List[Any]) -> None:
+    for a in x:  # type: m.A
+        pass
+[file m.py]
+class A: pass
+[file m.py.2]
+[builtins fixtures/list.pyi]
+[out]
+==
+main:4: error: Name 'm.A' is not defined
