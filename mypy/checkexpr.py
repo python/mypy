@@ -29,7 +29,7 @@ from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.erasetype import replace_meta_vars
+from mypy.erasetype import replace_meta_vars, erase_type
 from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
@@ -1314,11 +1314,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
+            # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
-                # The return types are all the same, so it's safe to return that instead of 'Any'
                 return return_types[0], inferred_types[0]
+            elif all_same_types(erase_type(typ) for typ in return_types):
+                return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
-                # We give up and return 'Any'.
                 return self.check_call(callee=AnyType(TypeOfAny.special_form),
                                        args=args,
                                        arg_kinds=arg_kinds,
