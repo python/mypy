@@ -3797,3 +3797,49 @@ def relpath(path: str) -> str: ...
 @overload
 def relpath(path: unicode) -> unicode: ...
 [out]
+
+[case testOverloadsWithNoneComingSecondAreAlwaysFlaggedInNoStrictOptional]
+# flags: --no-strict-optional
+from typing import overload
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: int) -> int:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def none_second(x: int) -> int:
+    return x
+
+[case testOverloadsWithNoneComingSecondIsOkInStrictOptional]
+# flags: --strict-optional
+from typing import overload, Optional
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...
+def none_second(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_loose_impl(x: None) -> None: ...
+@overload
+def none_loose_impl(x: int) -> int: ...
+def none_loose_impl(x: int) -> int:
+    return x
+[out]
+main:22: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:22: error: Overloaded function implementation cannot produce return type of signature 1
