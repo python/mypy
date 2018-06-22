@@ -942,6 +942,12 @@ class MessageBuilder:
                                                     self.format(typ)),
                   context)
 
+    def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
+        self.fail(
+            'Overload does not consistently use the "@{}" '.format(decorator)
+            + 'decorator on all function signatures.',
+            context)
+
     def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)

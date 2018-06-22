@@ -587,6 +587,37 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # redefinitions already.
             return
 
+        # We know this is an overload def -- let's handle classmethod and staticmethod
+        class_status = []
+        static_status = []
+        for item in defn.items:
+            if isinstance(item, Decorator):
+                inner = item.func
+            elif isinstance(item, FuncDef):
+                inner = item
+            else:
+                assert False, "The 'item' variable is an unexpected type: {}".format(type(item))
+            class_status.append(inner.is_class)
+            static_status.append(inner.is_static)
+
+        if defn.impl is not None:
+            if isinstance(defn.impl, Decorator):
+                inner = defn.impl.func
+            elif isinstance(defn.impl, FuncDef):
+                inner = defn.impl
+            else:
+                assert False, "Unexpected impl type: {}".format(type(defn.impl))
+            class_status.append(inner.is_class)
+            static_status.append(inner.is_static)
+
+        if len(set(class_status)) != 1:
+            self.msg.overload_inconsistently_applies_decorator('classmethod', defn)
+        elif len(set(static_status)) != 1:
+            self.msg.overload_inconsistently_applies_decorator('staticmethod', defn)
+        else:
+            defn.is_class = class_status[0]
+            defn.is_static = static_status[0]
+
         if self.type and not self.is_func_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
             defn.info = self.type
@@ -1297,14 +1328,33 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         while '.' in id:
             parent, child = id.rsplit('.', 1)
             parent_mod = self.modules.get(parent)
-            if parent_mod and child not in parent_mod.names:
+            if parent_mod and self.allow_patching(parent_mod, child):
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod,
                                           module_public=module_public,
                                           no_serialize=True)
-                    parent_mod.names[child] = sym
+                else:
+                    # Construct a dummy Var with Any type.
+                    any_type = AnyType(TypeOfAny.from_unimported_type,
+                                       missing_import_name=id)
+                    var = Var(child, any_type)
+                    var._fullname = child
+                    var.is_ready = True
+                    var.is_suppressed_import = True
+                    sym = SymbolTableNode(GDEF, var,
+                                          module_public=module_public,
+                                          no_serialize=True)
+                parent_mod.names[child] = sym
             id = parent
+
+    def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
+        if child not in parent_mod.names:
+            return True
+        node = parent_mod.names[child].node
+        if isinstance(node, Var) and node.is_suppressed_import:
+            return True
+        return False
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:

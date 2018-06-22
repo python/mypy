@@ -414,82 +414,81 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_overlapping_overloads(self, defn: OverloadedFuncDef) -> None:
         # At this point we should have set the impl already, and all remaining
         # items are decorators
-        #
-        # Note: we force mypy to check overload signatures in strict-optional mode
-        # so we don't incorrectly report errors when a user tries typing an overload
-        # that happens to have a 'if the argument is None' fallback.
-        #
-        # For example, the following is fine in strict-optional mode but would throw
-        # the unsafe overlap error when strict-optional is disabled:
-        #
-        #     @overload
-        #     def foo(x: None) -> int: ...
-        #     @overload
-        #     def foo(x: str) -> str: ...
-        #
-        # See Python 2's map function for a concrete example of this kind of overload.
-        with experiments.strict_optional_set(True):
-            is_descriptor_get = defn.info is not None and defn.name() == "__get__"
-            for i, item in enumerate(defn.items):
-                # TODO overloads involving decorators
-                assert isinstance(item, Decorator)
-                sig1 = self.function_type(item.func)
-                assert isinstance(sig1, CallableType)
+        is_descriptor_get = defn.info is not None and defn.name() == "__get__"
+        for i, item in enumerate(defn.items):
+            # TODO overloads involving decorators
+            assert isinstance(item, Decorator)
+            sig1 = self.function_type(item.func)
+            assert isinstance(sig1, CallableType)
 
-                for j, item2 in enumerate(defn.items[i + 1:]):
-                    assert isinstance(item2, Decorator)
-                    sig2 = self.function_type(item2.func)
-                    assert isinstance(sig2, CallableType)
+            for j, item2 in enumerate(defn.items[i + 1:]):
+                assert isinstance(item2, Decorator)
+                sig2 = self.function_type(item2.func)
+                assert isinstance(sig2, CallableType)
 
-                    if not are_argument_counts_overlapping(sig1, sig2):
-                        continue
+                if not are_argument_counts_overlapping(sig1, sig2):
+                    continue
 
-                    if overload_can_never_match(sig1, sig2):
-                        self.msg.overloaded_signature_will_never_match(
-                            i + 1, i + j + 2, item2.func)
-                    elif (not is_descriptor_get
-                          and is_unsafe_overlapping_overload_signatures(sig1, sig2)):
-                        self.msg.overloaded_signatures_overlap(
-                            i + 1, i + j + 2, item.func)
+                if overload_can_never_match(sig1, sig2):
+                    self.msg.overloaded_signature_will_never_match(
+                        i + 1, i + j + 2, item2.func)
+                elif not is_descriptor_get:
+                    # Note: we force mypy to check overload signatures in strict-optional mode
+                    # so we don't incorrectly report errors when a user tries typing an overload
+                    # that happens to have a 'if the argument is None' fallback.
+                    #
+                    # For example, the following is fine in strict-optional mode but would throw
+                    # the unsafe overlap error when strict-optional is disabled:
+                    #
+                    #     @overload
+                    #     def foo(x: None) -> int: ...
+                    #     @overload
+                    #     def foo(x: str) -> str: ...
+                    #
+                    # See Python 2's map function for a concrete example of this kind of overload.
+                    with experiments.strict_optional_set(True):
+                        if is_unsafe_overlapping_overload_signatures(sig1, sig2):
+                            self.msg.overloaded_signatures_overlap(
+                                i + 1, i + j + 2, item.func)
 
-                if defn.impl:
-                    if isinstance(defn.impl, FuncDef):
-                        impl_type = defn.impl.type
-                    elif isinstance(defn.impl, Decorator):
-                        impl_type = defn.impl.var.type
-                    else:
-                        assert False, "Impl isn't the right type"
+            if defn.impl:
+                if isinstance(defn.impl, FuncDef):
+                    impl_type = defn.impl.type
+                elif isinstance(defn.impl, Decorator):
+                    impl_type = defn.impl.var.type
+                else:
+                    assert False, "Impl isn't the right type"
 
-                    # This can happen if we've got an overload with a different
-                    # decorator too -- we gave up on the types.
-                    if impl_type is None or isinstance(impl_type, AnyType):
-                        return
-                    assert isinstance(impl_type, CallableType)
+                # This can happen if we've got an overload with a different
+                # decorator too -- we gave up on the types.
+                if impl_type is None or isinstance(impl_type, AnyType):
+                    return
+                assert isinstance(impl_type, CallableType)
 
-                    # Is the overload alternative's arguments subtypes of the implementation's?
-                    if not is_callable_compatible(impl_type, sig1,
-                                                  is_compat=is_subtype,
-                                                  ignore_return=True):
-                        self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
+                # Is the overload alternative's arguments subtypes of the implementation's?
+                if not is_callable_compatible(impl_type, sig1,
+                                              is_compat=is_subtype,
+                                              ignore_return=True):
+                    self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
-                    #  Repeat the same unification process 'is_callable_compatible'
-                    #  internally performs so we can examine the return type separately.
-                    if impl_type.variables:
-                        # Note: we set 'ignore_return=True' because 'unify_generic_callable'
-                        # normally checks the arguments and return types with differing variance.
-                        #
-                        # This is normally what we want, but for checking the validity of overload
-                        # implementations, we actually want to use the same variance for both.
-                        #
-                        # TODO: Patch 'is_callable_compatible' and  'unify_generic_callable'?
-                        #       somehow so we can customize the variance in all different sorts
-                        #       of ways? This would let us infer more constraints, letting us
-                        #       infer more precise types.
-                        impl_type = unify_generic_callable(impl_type, sig1, ignore_return=True)
+                #  Repeat the same unification process 'is_callable_compatible'
+                #  internally performs so we can examine the return type separately.
+                if impl_type.variables:
+                    # Note: we set 'ignore_return=True' because 'unify_generic_callable'
+                    # normally checks the arguments and return types with differing variance.
+                    #
+                    # This is normally what we want, but for checking the validity of overload
+                    # implementations, we actually want to use the same variance for both.
+                    #
+                    # TODO: Patch 'is_callable_compatible' and  'unify_generic_callable'?
+                    #       somehow so we can customize the variance in all different sorts
+                    #       of ways? This would let us infer more constraints, letting us
+                    #       infer more precise types.
+                    impl_type = unify_generic_callable(impl_type, sig1, ignore_return=True)
 
-                    # Is the overload alternative's return type a subtype of the implementation's?
-                    if impl_type is not None and not is_subtype(sig1.ret_type, impl_type.ret_type):
-                        self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
+                # Is the overload alternative's return type a subtype of the implementation's?
+                if impl_type is not None and not is_subtype(sig1.ret_type, impl_type.ret_type):
+                    self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
     #
@@ -1222,22 +1221,32 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):
                 typ = self.function_type(defn)  # type: Type
+                override_class_or_static = defn.is_class or defn.is_static
             else:
                 assert defn.var.is_ready
                 assert defn.var.type is not None
                 typ = defn.var.type
+                override_class_or_static = defn.func.is_class or defn.func.is_static
             if isinstance(typ, FunctionLike) and not is_static(context):
                 typ = bind_self(typ, self.scope.active_self_type())
             # Map the overridden method type to subtype context so that
             # it can be checked for compatibility.
             original_type = base_attr.type
+            original_node = base_attr.node
             if original_type is None:
-                if isinstance(base_attr.node, FuncBase):
-                    original_type = self.function_type(base_attr.node)
-                elif isinstance(base_attr.node, Decorator):
-                    original_type = self.function_type(base_attr.node.func)
+                if isinstance(original_node, FuncBase):
+                    original_type = self.function_type(original_node)
+                elif isinstance(original_node, Decorator):
+                    original_type = self.function_type(original_node.func)
                 else:
                     assert False, str(base_attr.node)
+            if isinstance(original_node, FuncBase):
+                original_class_or_static = original_node.is_class or original_node.is_static
+            elif isinstance(original_node, Decorator):
+                fdef = original_node.func
+                original_class_or_static = fdef.is_class or fdef.is_static
+            else:
+                original_class_or_static = False  # a variable can't be class or static
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
@@ -1254,6 +1263,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                     defn.name(),
                                     name,
                                     base.name(),
+                                    original_class_or_static,
+                                    override_class_or_static,
                                     context)
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
@@ -1268,6 +1279,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_override(self, override: FunctionLike, original: FunctionLike,
                        name: str, name_in_super: str, supertype: str,
+                       original_class_or_static: bool,
+                       override_class_or_static: bool,
                        node: Context) -> None:
         """Check a method override with given signatures.
 
@@ -1289,12 +1302,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # this could be unsafe with reverse operator methods.
             fail = True
 
-        if isinstance(original, CallableType) and isinstance(override, CallableType):
-            if (isinstance(original.definition, FuncItem) and
-                    isinstance(override.definition, FuncItem)):
-                if ((original.definition.is_static or original.definition.is_class) and
-                        not (override.definition.is_static or override.definition.is_class)):
-                    fail = True
+        if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
+            if original_class_or_static and not override_class_or_static:
+                fail = True
 
         if fail:
             emitted_msg = False
@@ -3621,7 +3631,7 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    # TODO: Handle partially overlapping parameter types and argument counts
+    # TODO: Handle partially overlapping parameter types
     #
     # For example, the signatures "f(x: Union[A, B]) -> int" and "f(x: Union[B, C]) -> str"
     # is unsafe: the parameter types are partially overlapping.
@@ -3632,27 +3642,15 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     #
     # (We already have a rudimentary implementation of 'is_partially_overlapping', but it only
     # attempts to handle the obvious cases -- see its docstring for more info.)
-    #
-    # Similarly, the signatures "f(x: A, y: A) -> str" and "f(*x: A) -> int" are also unsafe:
-    # the parameter *counts* or arity are partially overlapping.
-    #
-    # To fix this, we need to modify is_callable_compatible so it can optionally detect
-    # functions that are *potentially* compatible rather then *definitely* compatible.
 
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
         return is_more_precise(t, s) or is_partially_overlapping_types(t, s)
 
-    # The reason we repeat this check twice is so we can do a slightly better job of
-    # checking for potentially overlapping param counts. Both calls will actually check
-    # the param and return types in the same "direction" -- the only thing that differs
-    # is how is_callable_compatible checks non-positional arguments.
-    return (is_callable_compatible(signature, other,
-                                   is_compat=is_more_precise_or_partially_overlapping,
-                                   is_compat_return=lambda l, r: not is_subtype(l, r),
-                                   check_args_covariantly=True) or
-            is_callable_compatible(other, signature,
-                                   is_compat=is_more_precise_or_partially_overlapping,
-                                   is_compat_return=lambda l, r: not is_subtype(r, l)))
+    return is_callable_compatible(signature, other,
+                                  is_compat=is_more_precise_or_partially_overlapping,
+                                  is_compat_return=lambda l, r: not is_subtype(l, r),
+                                  check_args_covariantly=True,
+                                  allow_partial_overlap=True)
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
@@ -3923,8 +3921,6 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
 def is_static(func: Union[FuncBase, Decorator]) -> bool:
     if isinstance(func, Decorator):
         return is_static(func.func)
-    elif isinstance(func, OverloadedFuncDef):
-        return any(is_static(item) for item in func.items)
-    elif isinstance(func, FuncItem):
+    elif isinstance(func, FuncBase):
         return func.is_static
-    return False
+    assert False, "Unexpected func type: {}".format(type(func))

@@ -222,6 +222,39 @@ app = Application.parse('')
 [builtins fixtures/list.pyi]
 [builtins fixtures/classmethod.pyi]
 
+[case testDataclassesOverloadsAndClassmethods]
+# flags: --python-version 3.6
+from dataclasses import dataclass
+from typing import overload, Union
+
+@dataclass
+class A:
+    a: int
+    b: str
+
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x: Union[int, str]) -> Union[int, str]:
+        reveal_type(cls)            # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
+        reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
+        return x
+
+reveal_type(A.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(A.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/classmethod.pyi]
+
 [case testDataclassesClassVars]
 # flags: --python-version 3.6
 from dataclasses import dataclass

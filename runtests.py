@@ -12,14 +12,15 @@ from waiter import Waiter, LazySubprocess
 
 
 def get_versions() -> List[str]:
+    # generates list of python versions to use.
+    # For Python2, this is only [2.7].
+    # Otherwise, it is [3.x, ..., 3.1, 3.0], where x is the version
+    # of the running interpreter.
     major = sys.version_info[0]
     minor = sys.version_info[1]
     if major == 2:
         return ['2.7']
     else:
-        # generates list of python versions to use.
-        # For Python2, this is only [2.7].
-        # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
         return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
 
 
@@ -175,7 +176,7 @@ def add_stubs(driver: Driver) -> None:
 
     modules = {'typing'}
     # TODO: This should also test Python 2, and pass pyversion accordingly.
-    for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
+    for version in ["2and3", "3", "3.5"]:
         for stub_type in ['builtins', 'stdlib', 'third_party']:
             stubdir = join('typeshed', stub_type, version)
             for f in find_files(stubdir, suffix='.pyi'):

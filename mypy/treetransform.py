@@ -154,6 +154,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new._fullname = node._fullname
         new.type = self.optional_type(node.type)
         new.info = node.info
+        new.is_static = node.is_static
+        new.is_class = node.is_class
+        new.is_property = node.is_property
         if node.impl:
             new.impl = cast(OverloadPart, node.impl.accept(self))
         return new

@@ -24,14 +24,14 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolTable,
-    ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
 from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.erasetype import replace_meta_vars
+from mypy.erasetype import replace_meta_vars, erase_type
 from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
@@ -1135,7 +1135,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         erased_targets = None  # type: Optional[List[CallableType]]
         unioned_result = None  # type: Optional[Tuple[Type, Type]]
         unioned_errors = None  # type: Optional[MessageBuilder]
-        if any(isinstance(arg, UnionType) for arg in arg_types):
+        union_success = False
+        if any(isinstance(arg, UnionType) and len(arg.relevant_items()) > 1  # "real" union
+               for arg in arg_types):
             erased_targets = self.overload_erased_call_targets(plausible_targets, arg_types,
                                                                arg_kinds, arg_names, context)
             unioned_callable = self.union_overload_matches(erased_targets)
@@ -1147,18 +1149,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                  arg_messages=unioned_errors,
                                                  callable_name=callable_name,
                                                  object_type=object_type)
-                if not unioned_errors.is_errors():
-                    # Success! Stop early.
-                    return unioned_result
+                # Record if we succeeded. Next we need to see if maybe normal procedure
+                # gives a narrower type.
+                union_success = unioned_result is not None and not unioned_errors.is_errors()
 
-        # Step 3: If the union math fails, or if there was no union in the argument types,
-        #         we fall back to checking each branch one-by-one.
+        # Step 3: We try checking each branch one-by-one.
         inferred_result = self.infer_overload_return_type(plausible_targets, args, arg_types,
                                                           arg_kinds, arg_names, callable_name,
                                                           object_type, context, arg_messages)
         if inferred_result is not None:
-            # Success! Stop early.
-            return inferred_result
+            # Success! Stop early by returning the best among normal and unioned.
+            if not union_success:
+                return inferred_result
+            else:
+                assert unioned_result is not None
+                if is_subtype(inferred_result[0], unioned_result[0]):
+                    return inferred_result
+                return unioned_result
+        elif union_success:
+            assert unioned_result is not None
+            return unioned_result
 
         # Step 4: Failure. At this point, we know there is no match. We fall back to trying
         #         to find a somewhat plausible overload target using the erased types
@@ -1310,12 +1320,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
-            if all(is_subtype(ret_type, return_types[-1]) for ret_type in return_types[:-1]):
-                # The last match is a supertype of all the previous ones, so it's safe
-                # to return that inferred type.
-                return return_types[-1], inferred_types[-1]
+            # We try returning a precise type if we can. If not, we give up and just return 'Any'.
+            if all_same_types(return_types):
+                return return_types[0], inferred_types[0]
+            elif all_same_types(erase_type(typ) for typ in return_types):
+                return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
-                # We give up and return 'Any'.
                 return self.check_call(callee=AnyType(TypeOfAny.special_form),
                                        args=args,
                                        arg_kinds=arg_kinds,
@@ -1372,16 +1382,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         callables, variables = merge_typevars_in_callables_by_name(callables)
 
         new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
+        new_kinds = list(callables[0].arg_kinds)
         new_returns = []  # type: List[Type]
 
-        expected_names = callables[0].arg_names
-        expected_kinds = callables[0].arg_kinds
-
         for target in callables:
-            if target.arg_names != expected_names or target.arg_kinds != expected_kinds:
-                # We conservatively end if the overloads do not have the exact same signature.
-                # TODO: Enhance the union overload logic to handle a wider variety of signatures.
+            # We conservatively end if the overloads do not have the exact same signature.
+            # The only exception is if one arg is optional and the other is positional: in that
+            # case, we continue unioning (and expect a positional arg).
+            # TODO: Enhance the union overload logic to handle a wider variety of signatures.
+            if len(new_kinds) != len(target.arg_kinds):
                 return None
+            for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+                if new_kind == target_kind:
+                    continue
+                elif new_kind in (ARG_POS, ARG_OPT) and target_kind in (ARG_POS, ARG_OPT):
+                    new_kinds[i] = ARG_POS
+                else:
+                    return None
 
             for i, arg in enumerate(target.arg_types):
                 new_args[i].append(arg)
@@ -1396,7 +1413,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # TODO: Modify this check to be less conservative.
         #
-        # Currently, we permit only one union union in the arguments because if we allow
+        # Currently, we permit only one union in the arguments because if we allow
         # multiple, we can't always guarantee the synthesized callable will be correct.
         #
         # For example, suppose we had the following two overloads:
@@ -1418,6 +1435,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         return callables[0].copy_modified(
             arg_types=final_args,
+            arg_kinds=new_kinds,
             ret_type=UnionType.make_simplified_union(new_returns),
             variables=variables,
             implicit=True)

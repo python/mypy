@@ -366,6 +366,11 @@ class ImportedName(SymbolNode):
         return 'ImportedName(%s)' % self.target_fullname
 
 
+FUNCBASE_FLAGS = [
+    'is_property', 'is_class', 'is_static',
+]
+
+
 class FuncBase(Node):
     """Abstract base class for function-like nodes"""
 
@@ -373,6 +378,8 @@ class FuncBase(Node):
                  'unanalyzed_type',
                  'info',
                  'is_property',
+                 'is_class',        # Uses "@classmethod"
+                 'is_static',       # USes "@staticmethod"
                  '_fullname',
                  )
 
@@ -387,6 +394,8 @@ class FuncBase(Node):
         # TODO: Type should be Optional[TypeInfo]
         self.info = cast(TypeInfo, None)
         self.is_property = False
+        self.is_class = False
+        self.is_static = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(str, None)
@@ -432,8 +441,8 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
                 'items': [i.serialize() for i in self.items],
                 'type': None if self.type is None else self.type.serialize(),
                 'fullname': self._fullname,
-                'is_property': self.is_property,
-                'impl': None if self.impl is None else self.impl.serialize()
+                'impl': None if self.impl is None else self.impl.serialize(),
+                'flags': get_flags(self, FUNCBASE_FLAGS),
                 }
 
     @classmethod
@@ -447,7 +456,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         if data.get('type') is not None:
             res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
-        res.is_property = data['is_property']
+        set_flags(res, data['flags'])
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -477,9 +486,9 @@ class Argument(Node):
         self.variable.set_line(self.line, self.column)
 
 
-FUNCITEM_FLAGS = [
+FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
     'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
-    'is_awaitable_coroutine', 'is_static', 'is_class',
+    'is_awaitable_coroutine',
 ]
 
 
@@ -499,8 +508,6 @@ class FuncItem(FuncBase):
                  'is_coroutine',  # Defined using 'async def' syntax?
                  'is_async_generator',  # Is an async def generator?
                  'is_awaitable_coroutine',  # Decorated with '@{typing,asyncio}.coroutine'?
-                 'is_static',  # Uses @staticmethod?
-                 'is_class',  # Uses @classmethod?
                  'expanded',  # Variants of function with type variables with values expanded
                  )
 
@@ -521,8 +528,6 @@ class FuncItem(FuncBase):
         self.is_coroutine = False
         self.is_async_generator = False
         self.is_awaitable_coroutine = False
-        self.is_static = False
-        self.is_class = False
         self.expanded = []  # type: List[FuncItem]
 
         self.min_args = 0
@@ -543,7 +548,7 @@ class FuncItem(FuncBase):
 
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
-    'is_decorated', 'is_conditional', 'is_abstract', 'is_property',
+    'is_decorated', 'is_conditional', 'is_abstract',
 ]
 
 
@@ -557,7 +562,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  'is_decorated',
                  'is_conditional',
                  'is_abstract',
-                 'is_property',
                  'original_def',
                  )
 
@@ -571,7 +575,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.is_abstract = False
-        self.is_property = False
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
@@ -949,6 +952,8 @@ class ForStmt(Statement):
     index = None  # type: Lvalue
     # Type given by type comments for index, can be None
     index_type = None  # type: Optional[mypy.types.Type]
+    # Original, not semantically analyzed type in annotation (used for reprocessing)
+    unanalyzed_index_type = None  # type: Optional[mypy.types.Type]
     # Inferred iterable item type
     inferred_item_type = None  # type: Optional[mypy.types.Type]
     # Inferred iterator type
@@ -968,6 +973,7 @@ class ForStmt(Statement):
         super().__init__()
         self.index = index
         self.index_type = index_type
+        self.unanalyzed_index_type = index_type
         self.expr = expr
         self.body = body
         self.else_body = else_body

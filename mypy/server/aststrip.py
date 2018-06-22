@@ -233,8 +233,9 @@ class NodeStripVisitor(TraverserVisitor):
         node.imported_names = []
 
     def visit_for_stmt(self, node: ForStmt) -> None:
-        node.index_type = None
+        node.index_type = node.unanalyzed_index_type
         node.inferred_item_type = None
+        node.inferred_iterator_type = None
         super().visit_for_stmt(node)
 
     def visit_name_expr(self, node: NameExpr) -> None:
