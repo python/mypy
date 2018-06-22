@@ -301,3 +301,28 @@ def use_c(x, y):
 L0:
     r0 = x.foo(y)
     return r0
+
+[case testIsInstance]
+class A: pass
+class B(A): pass
+
+def f(x: A) -> B:
+    if isinstance(x, B):
+        return x
+    return B()
+[out]
+def f(x):
+    x :: A
+    r0 :: object
+    r1 :: bool
+    r2, r3 :: B
+L0:
+    r0 = __main__.B :: type
+    r1 = isinstance x, r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = cast(B, x)
+    return r2
+L2:
+    r3 = B()
+    return r3

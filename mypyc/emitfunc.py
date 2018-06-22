@@ -2,13 +2,13 @@
 
 from typing import Optional, List
 
-from mypyc.common import REG_PREFIX, NATIVE_PREFIX
+from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, TupleGet, TupleSet, Call, PyCall, IncRef, DecRef, Box, Cast, Unbox,
     Label, Value, Register, RType, RTuple, MethodCall, PyMethodCall, PrimitiveOp, EmitterInterface,
-    Unreachable, is_int_rprimitive
+    Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
 )
 from mypyc.namegen import NameGenerator
 
@@ -192,9 +192,17 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             rtype.struct_name(self.names),
             rtype.attr_type(op.attr).ctype))
 
+    PREFIX_MAP = {
+        NAMESPACE_STATIC: STATIC_PREFIX,
+        NAMESPACE_TYPE: TYPE_PREFIX,
+    }
+
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
-        name = self.emitter.static_name(op.identifier, op.module_name)
+        prefix = self.PREFIX_MAP[op.namespace]
+        name = self.emitter.static_name(op.identifier, op.module_name, prefix)
+        if op.namespace == NAMESPACE_TYPE:
+            name = '(PyObject *)&%s' % name
         if is_int_rprimitive(op.type):
             self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, name))
         else:

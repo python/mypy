@@ -3,12 +3,12 @@
 from collections import OrderedDict
 from typing import List, Set, Dict, Optional
 
-from mypyc.common import REG_PREFIX
+from mypyc.common import REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX
 from mypyc.ops import (
     Environment, Label, Value, Register, RType, RTuple, RInstance, ROptional,
     RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
-    object_rprimitive, is_str_rprimitive
+    object_rprimitive, is_str_rprimitive, ClassIR
 )
 from mypyc.namegen import NameGenerator
 
@@ -25,7 +25,6 @@ class EmitterContext:
     def __init__(self, module_names: List[str]) -> None:
         self.temp_counter = 0
         self.names = NameGenerator(module_names)
-        self.static_names = NameGenerator(module_names)
 
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
@@ -39,7 +38,6 @@ class Emitter:
     def __init__(self, context: EmitterContext, env: Optional[Environment] = None) -> None:
         self.context = context
         self.names = context.names
-        self.static_names = context.static_names
         self.env = env or Environment()
         self.fragments = []  # type: List[str]
         self._indent = 0
@@ -86,7 +84,7 @@ class Emitter:
         self.context.temp_counter += 1
         return '__tmp%d' % self.context.temp_counter
 
-    def static_name(self, id: str, module: Optional[str]) -> str:
+    def static_name(self, id: str, module: Optional[str], prefix: str = STATIC_PREFIX) -> str:
         """Create name of a C static variable.
 
         These are used for literals and imported modules, among other
@@ -96,8 +94,11 @@ class Emitter:
         overlap with other calls to this method within a compilation
         unit.
         """
-        suffix = self.static_names.private_name(module or '', id)
-        return 'CPyStatic_{}'.format(suffix)
+        suffix = self.names.private_name(module or '', id)
+        return '{}{}'.format(prefix, suffix)
+
+    def type_struct_name(self, cl: ClassIR) -> str:
+        return self.static_name(cl.name, cl.module_name, prefix=TYPE_PREFIX)
 
     # Higher-level operations
 
@@ -216,7 +217,7 @@ class Emitter:
             self.emit_lines(
                 'if (PyObject_TypeCheck({}, &{}))'.format(
                     src,
-                    typ.class_ir.type_struct_name(self.names)),
+                    self.type_struct_name(typ.class_ir)),
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,

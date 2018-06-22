@@ -972,14 +972,21 @@ class SetAttr(RegisterOp):
         return visitor.visit_set_attr(self)
 
 
+# Default name space for statics, variables
+NAMESPACE_STATIC = 'static'
+# Static namespace for pointers to native type objects
+NAMESPACE_TYPE = 'type'
+
+
 class LoadStatic(RegisterOp):
     """dest = name :: static
 
-    Load a C static variable. The namespace for statics is shared for the
-    entire compilation unit. You can optionally provide a module name for
-    additional namespacing. The static namespace does not overlap with
-    other C names, since the final C name will get a prefix, so conflicts
-    only must be avoided with other statics.
+    Load a C static variable/pointer. The namespace for statics is shared
+    for the entire compilation unit. You can optionally provide a module
+    name and a sub-namespace identifier for additional namespacing to avoid
+    name conflicts. The static namespace does not overlap with other C names,
+    since the final C name will get a prefix, so conflicts only must be
+    avoided with other statics.
     """
 
     error_kind = ERR_NEVER
@@ -989,11 +996,13 @@ class LoadStatic(RegisterOp):
                  type: RType,
                  identifier: str,
                  module_name: Optional[str] = None,
+                 namespace: str = NAMESPACE_STATIC,
                  line: int = -1,
                  ann: object = None) -> None:
         super().__init__(line)
         self.identifier = identifier
         self.module_name = module_name
+        self.namespace = namespace
         self.type = type
         self.ann = ann  # An object to pretty print with the load
 
@@ -1005,7 +1014,7 @@ class LoadStatic(RegisterOp):
         name = self.identifier
         if self.module_name is not None:
             name = '{}.{}'.format(self.module_name, name)
-        return env.format('%r = %s :: static%s', self, name, ann)
+        return env.format('%r = %s :: %s%s', self, name, self.namespace, ann)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_static(self)
@@ -1268,9 +1277,6 @@ class ClassIR:
         if not match and self.base:
             match = self.base.get_method(name)
         return match
-
-    def type_struct_name(self, names: NameGenerator) -> str:
-        return '{}Type'.format(self.name_prefix(names))
 
 
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str]], str]

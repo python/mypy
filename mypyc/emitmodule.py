@@ -165,7 +165,7 @@ class ModuleGenerator:
                            '{',
                            'PyObject *m;')
         for cl in module.classes:
-            type_struct = cl.type_struct_name(emitter.names)
+            type_struct = emitter.type_struct_name(cl)
             emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
                                '    return NULL;')
         emitter.emit_lines('m = PyModule_Create(&{}module);'.format(module_prefix),
@@ -206,7 +206,7 @@ class ModuleGenerator:
 
         for cl in module.classes:
             name = cl.name
-            type_struct = cl.type_struct_name(emitter.names)
+            type_struct = emitter.type_struct_name(cl)
             emitter.emit_lines(
                 'Py_INCREF(&{});'.format(type_struct),
                 'PyModule_AddObject(m, "{}", (PyObject *)&{});'.format(name, type_struct))

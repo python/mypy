@@ -48,7 +48,7 @@ from mypyc.ops import (
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
-    VTableAttr, VTableMethod,
+    VTableAttr, VTableMethod, NAMESPACE_TYPE,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
@@ -1497,6 +1497,9 @@ class IRBuilder(NodeVisitor[Value]):
         # If the global is from 'builtins', turn it into a module attr load instead
         if self.is_builtin_name_expr(expr):
             return self.load_static_module_attr(expr)
+        if self.is_native_module_name_expr(expr) and isinstance(expr.node, TypeInfo):
+            assert expr.fullname is not None
+            return self.load_native_type_object(expr.fullname)
         _globals = self.add(LoadStatic(object_rprimitive, 'globals', self.module_name))
         reg = self.load_static_unicode(expr.name)
         return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
@@ -1526,6 +1529,10 @@ class IRBuilder(NodeVisitor[Value]):
         name = expr.node.fullname().split('.')[-1]
         left = self.add(LoadStatic(object_rprimitive, 'module', module))
         return self.py_get_attr(left, name, expr.line)
+
+    def load_native_type_object(self, fullname: str) -> Value:
+        module, name = fullname.rsplit('.', 1)
+        return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
     def coerce(self, src: Value, target_type: RType, line: int) -> Value:
         """Generate a coercion/cast from one type to other (only if needed).

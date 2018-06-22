@@ -350,3 +350,33 @@ C
 B
 C
 C
+
+[case testIsInstance]
+class X: pass
+class A(X): pass
+class B(A): pass
+
+def isa(x: object) -> bool:
+    return isinstance(x, A)
+def isint(x: object) -> bool:
+    return isinstance(x, int)
+def isstr(x: object) -> bool:
+    return isinstance(x, str)
+def islist(x: object) -> bool:
+    return isinstance(x, list)
+[file driver.py]
+from native import X, A, B, isa, isint, isstr, islist
+assert isa(1) == False
+assert isa(A()) == True
+assert isa(B()) == True
+assert isa(X()) == False
+
+assert isint(1) == True
+assert isint('') == False
+assert isint(A()) == False
+
+assert isstr(1) == False
+assert isstr('') == True
+
+assert islist(1) == False
+assert islist([]) == True
