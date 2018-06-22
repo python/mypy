@@ -105,18 +105,38 @@ class SumVisitor(TreeVisitor):
     def visit_node(self, x: Node) -> object:
         return x.value + self.sum(x.left) + self.sum(x.right)
 
+def equal(x: Tree, y: Tree) -> bool:
+    return EqualVisitor(x).equal(y)
+
+class EqualVisitor(TreeVisitor):
+    def __init__(self, left: Tree) -> None:
+        self.left = left
+    def equal(self, right: Tree) -> bool:
+        return cast(bool, right.accept(self))
+    def visit_leaf(self, right: Leaf) -> object:
+        return isinstance(self.left, Leaf)
+    def visit_node(self, right: Node) -> object:
+        if isinstance(self.left, Node):
+            # our boolean stuff is crap
+            if self.left.value == right.value:
+                if equal(self.left.left, right.left):
+                    return equal(self.left.right, right.right)
+        return False
+
 def sum_tree(x: Tree) -> int:
     return SumVisitor().sum(x)
 
-def lol(n: int) -> Tree:
+def build(n: int) -> Tree:
     if n == 0:
         return Leaf()
-    child = lol(n - 1)
-    return Node(n, child, child)
+    return Node(n, build(n - 1), build(n - 1))
 
 def bench_sum_tree(x: Tree) -> None:
     for i in range(100000):
         sum_tree(x)
+def bench_equal_tree(x: Tree, y: Tree) -> None:
+    for i in range(100000):
+        equal(x, y)
 
 [file driver.py]
 from typing import Optional
@@ -133,8 +153,12 @@ def dumb_time(f):
     return t1 - t0
 
 def basic_test(m):
-    tree = m.lol(5)
-    assert(m.sum_tree(tree) == 57)
+    tree = m.build(5)
+    tree2 = m.build(5)
+    tree2.right.right.right.value = 10
+    assert m.sum_tree(tree) == 57
+    assert m.equal(tree, tree)
+    assert not m.equal(tree, tree2)
     return tree
 
 def test(m):
@@ -142,12 +166,14 @@ def test(m):
 
     g = {**globals(), **locals()}
     fsum = dumb_time(lambda: m.bench_sum_tree(tree))
-    return fsum
+    feq = dumb_time(lambda: m.bench_equal_tree(tree, tree))
+    return fsum, feq
 
 basic_test(native)
 
 if os.environ.get('MYPYC_RUN_BENCH') == '1':
-    nfsum = test(native)
-    ifsum = test(interpreted)
+    nfsum, nfeq = test(native)
+    ifsum, ifeq = test(interpreted)
     print(nfsum)
     print("Sum speedup:", ifsum/nfsum)
+    print("Equal speedup:", ifeq/nfeq)
