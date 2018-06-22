@@ -371,7 +371,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             type.accept(analyzer)
             if not (isinstance(node, TypeAlias) and node.no_args):
                 # We skip bare type aliases like `A = List`, these
-                # are still valid, in contrast, use/expansion points
+                # are still valid. In contrast, use/expansion points
                 # like `x: A` will be flagged.
                 self.check_for_omitted_generics(type)
             self.generate_type_patches(node, indicator, warn)

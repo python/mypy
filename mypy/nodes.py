@@ -103,7 +103,7 @@ implicit_module_attrs = {'__name__': '__builtins__.str',
 
 
 # These aliases exist because built-in class objects are not subscriptable.
-# For example `list[int]` fail at runtime, insteas List[int] should be used.
+# For example `list[int]` fails at runtime. Instead List[int] should be used.
 type_aliases = {
     'typing.List': 'builtins.list',
     'typing.Dict': 'builtins.dict',
@@ -2402,10 +2402,10 @@ class FakeInfo(TypeInfo):
 
 class TypeAlias(SymbolNode):
     """
-    A sybmol node representing type alias.
+    A symbol node representing a type alias.
 
-    Type alias is a static concept, in contrast to variables with variables
-    with types like Type[...]. Namely:
+    Type alias is a static concept, in contrast to variables with types
+    like Type[...]. Namely:
         * type aliases
             - can be used in type context (annotations)
             - cannot be re-assigned
@@ -2419,7 +2419,7 @@ class TypeAlias(SymbolNode):
     an explicit Type[...] annotation is required. As an exception,
     at non-global scope non-subscripted rvalue creates a variable even without
     an annotation. This exception exists to accommodate the common use case of
-    class-valued attributes, see SemanticAnalyzer.check_and_set_up_type_alias
+    class-valued attributes. See SemanticAnalyzerPass2.check_and_set_up_type_alias
     for details.
 
     Aliases can be generic. Currently, mypy uses unbound type variables for
@@ -2428,7 +2428,8 @@ class TypeAlias(SymbolNode):
     following:
 
         1. An alias targeting a generic class without explicit variables act as
-        the given class:
+        the given class (this doesn't apply to Tuple and Callable, which are not proper
+        classes but special type constructors):
 
             A = List
             AA = List[Any]
@@ -2438,6 +2439,8 @@ class TypeAlias(SymbolNode):
 
             x: AA  # same as List[Any]
             x: AA[int]  # Error!
+
+            C = Callable  # Same as Callable[..., Any]
 
         2. An alias using explicit type variables in its rvalue expects
         replacements (type arguments) for these variables. If missing, they
@@ -2452,11 +2455,11 @@ class TypeAlias(SymbolNode):
 
         3. An alias can be defined using another aliases. In the definition
         rvalue the Any substitution doesn't happen for top level unsubscripted
-        generics:
+        generic classes:
 
             A = List
             B = A  # here A is expanded to List, _not_ List[Any],
-                   # to match the Python runtime behaviour.
+                   # to match the Python runtime behaviour
             x: B[int]  # same as List[int]
             C = List[A]  # this expands to List[List[Any]]
 
@@ -2465,10 +2468,10 @@ class TypeAlias(SymbolNode):
             x: D[int]  # Error!
 
     Note: the fact that we support aliases like `A = List` means that the target
-    type will be initially an instance type wrong number of type arguments.
+    type will be initially an instance type with wrong number of type arguments.
     Such instances are all fixed in the third pass of semantic analyzis.
     We therefore store the difference between `List` and `List[Any]` rvalues (targets)
-    using the `no_args` flag, see also TypeAliasExpr.no_args.
+    using the `no_args` flag. See also TypeAliasExpr.no_args.
 
     Meaning of other fields:
 
@@ -2476,7 +2479,7 @@ class TypeAlias(SymbolNode):
         as nested types.
     _fullname: Qualified name of this type alias. This is used in particular
         to track fine grained dependencies from aliases.
-    alias_tvars: Names of unbound type variables used to define this alias
+    alias_tvars: Names of unbound type variables used to define this alias.
     normalized: Used to distinguish between `A = List`, and `A = list`. Both
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
@@ -2595,7 +2598,7 @@ class SymbolTableNode:
             and/or refactor look-up functions to not require parent patching.
 
     NOTE: No other attributes should be added to this class unless they
-    are shared by all .node kinds.
+    are shared by all node kinds.
     """
 
     __slots__ = ('kind',

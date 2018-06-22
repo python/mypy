@@ -185,7 +185,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
             # Something that refers to a type alias appears in runtime context.
-            result = self.alias_type_in_runtime(node.target, node.alias_tvars, node.no_args, e)
+            result = self.alias_type_in_runtime_context(node.target, node.alias_tvars,
+                                                        node.no_args, e)
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
@@ -2084,10 +2085,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a type application (expr[type, ...]).
 
         There are two different options here, depending on whether expr refers
-        to a type alias or directly to a generic class. In first case we need
+        to a type alias or directly to a generic class. In the first case we need
         to use a dedicated function typeanal.expand_type_aliases. This
         is due to the fact that currently type aliases machinery uses
-        unbound type variables, while normal generics use bound ones,
+        unbound type variables, while normal generics use bound ones;
         see TypeAlias docstring for more details.
         """
         if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
@@ -2098,7 +2099,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                      tapp.expr.node.no_args, tapp)
             if isinstance(item, Instance):
                 tp = type_object_type(item.type, self.named_type)
-                return self.safe_apply(tp, item.args, tapp)
+                return self.apply_type_arguments_to_callable(tp, item.args, tapp)
             else:
                 self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
                 return AnyType(TypeOfAny.from_error)
@@ -2108,7 +2109,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
                 self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
-            return self.safe_apply(tp, tapp.types, tapp)
+            return self.apply_type_arguments_to_callable(tp, tapp.types, tapp)
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
         return AnyType(TypeOfAny.special_form)
@@ -2117,22 +2118,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Right hand side of a type alias definition.
 
         It has the same type as if the alias itself was used in a runtime context.
-        For example:
+        For example, here:
 
             A = reveal_type(List[T])
             reveal_type(A)
 
-        will reveal the same type `def (...) -> builtins.list[Any]`.
+        both `reveal_type` instances will reveal the same type `def (...) -> builtins.list[Any]`.
+        Note that type variables are implicitly substituted with `Any`.
         """
-        return self.alias_type_in_runtime(alias.type, alias.tvars, alias.no_args, alias)
+        return self.alias_type_in_runtime_context(alias.type, alias.tvars, alias.no_args, alias)
 
-    def alias_type_in_runtime(self, target: Type, alias_tvars: List[str],
+    def alias_type_in_runtime_context(self, target: Type, alias_tvars: List[str],
                               no_args: bool, ctx: Context) -> Type:
         """Get type of a type alias (could be generic) in a runtime expression.
 
         Note that this function can be called only if the alias appears _not_
         as a target of type application, which is treated separately in the
-        visit_type_application method.
+        visit_type_application method. Some examples where this method is called are
+        casts and instantiation:
+
+            class LongName(Generic[T]): ...
+            A = LongName[int]
+
+            x = A()
+            y = cast(A, ...)
         """
         if isinstance(target, Instance) and target.invalid:
             # An invalid alias, error already has been reported
@@ -2148,7 +2157,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             tp = type_object_type(item.type, self.named_type)
             if no_args:
                 return tp
-            return self.safe_apply(tp, item.args, ctx)
+            return self.apply_type_arguments_to_callable(tp, item.args, ctx)
         else:
             # This type is invalid in most runtime contexts
             # and corresponding an error will be reported.
@@ -2161,7 +2170,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             fb_info.mro = [fb_info, self.object_type().type]
             return Instance(fb_info, [])
 
-    def safe_apply(self, tp: Type, args: List[Type], ctx: Context) -> Type:
+    def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
         """Safely apply type arguments to a generic callable type.
 
         This will first perform type arguments count checks, report the

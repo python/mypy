@@ -2835,7 +2835,8 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         graph[id].fix_suppressed_dependencies(graph)
     if 'typing' in scc:
         # For historical reasons we need to manually add typing aliases
-        # for built-in generic collections, see docstring for details.
+        # for built-in generic collections, see docstring of
+        # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
         manager.semantic_analyzer.add_builtin_aliases(typing_mod)

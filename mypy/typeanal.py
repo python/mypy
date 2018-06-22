@@ -166,7 +166,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Should we allow unnormalized types like `list[int]`
         # (currently allowed in stubs)?
         self.allow_unnormalized = allow_unnormalized
-        # Should we accept unbount type variables (always OK in aliases)?
+        # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
         self.plugin = plugin
         self.options = options
@@ -311,8 +311,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                          isinstance(sym.node, Var) and sym.node.is_ready or
                                          sym.kind in (MODULE_REF, TVAR))
                 if allow_forward_ref:
-                    # We currently can't support subscripted forward refs in functions
-                    # see ... for discussion.
+                    # We currently can't support subscripted forward refs in functions;
+                    # see https://github.com/python/mypy/pull/3952#discussion_r139950690
+                    # for discussion.
                     if t.args and not self.global_scope:
                         if not self.in_dynamic_func:
                             self.fail('Unsupported forward reference to "{}"'.format(t.name), t)

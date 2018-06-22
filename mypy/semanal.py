@@ -1705,7 +1705,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # so we need to replace it with non-explicit Anys
         res = make_any_non_explicit(res)
         no_args = isinstance(res, Instance) and not res.args
-        if isinstance(s.rvalue, (IndexExpr, CallExpr)):
+        if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(res, alias_tvars, no_args)
             s.rvalue.analyzed.line = s.line
             # we use the column from resulting target, to get better location for errors
@@ -2754,7 +2754,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 except TypeTranslationError:
                     self.fail('Type expected within [...]', expr)
                     return
-                # We always allow unbound type variables in InderxExpr, since we
+                # We always allow unbound type variables in IndexExpr, since we
                 # may be analysing a type alias definition rvalue. The error will be
                 # reported elsewhere if it is not the case.
                 typearg = self.anal_type(typearg, allow_unbound_tvars=True)
@@ -3044,9 +3044,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return Instance(node, [AnyType(TypeOfAny.special_form)] * len(node.defn.type_vars))
 
     def add_builtin_aliases(self, tree: MypyFile) -> None:
-        # For historical reasons, the aliases like `List = list` are not defined
-        # in typeshed. Instead we need to manually add the corresponding nodes
-        # on the fly. We explicitly mark these aliases as normalized.
+        """Add builtin type aliases to typing module.
+
+        For historical reasons, the aliases like `List = list` are not defined
+        in typeshed stubs for typing module. Instead we need to manually add the
+        corresponding nodes on the fly. We explicitly mark these aliases as normalized,
+        so that a user can write `typing.List[int]`.
+        """
         assert tree.fullname() == 'typing'
         for alias, target_name in type_aliases.items():
             name = alias.split('.')[-1]
