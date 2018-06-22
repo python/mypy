@@ -264,7 +264,7 @@ def compute_search_paths(sources: List[BuildSource],
         if dir not in lib_path:
             python_path.insert(0, dir)
 
-    # Start with a MYPYPATH environment variable to front of library path, if defined.
+    # Start with a MYPYPATH environment variable at the front of the mypy_path, if defined.
     mypypath = mypy_path()
 
     # Add a config-defined mypy path.
@@ -899,7 +899,7 @@ class FindModuleCache:
 
     def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
         self.fscache = fscache or FileSystemCache()
-        # Cache find_lib_path_dirs: (dir_chain, search_paths)  -> list of (package_dirs, should_verify)
+        # Cache find_lib_path_dirs: (dir_chain, search_paths) -> list(package_dirs, should_verify)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], PackageDirs]
         # Cache find_module: (id, search_paths, python_version) -> result.
         self.results = {}  # type: Dict[Tuple[str, SearchPaths, Optional[str]], Optional[str]]
