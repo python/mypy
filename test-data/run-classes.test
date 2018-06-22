@@ -364,8 +364,10 @@ def isstr(x: object) -> bool:
     return isinstance(x, str)
 def islist(x: object) -> bool:
     return isinstance(x, list)
+def ist(x: object, t: object) -> bool:  # TODO: Second argument should be 'type'
+    return isinstance(x, t)
 [file driver.py]
-from native import X, A, B, isa, isint, isstr, islist
+from native import X, A, B, isa, isint, isstr, islist, ist
 assert isa(1) == False
 assert isa(A()) == True
 assert isa(B()) == True
@@ -380,3 +382,12 @@ assert isstr('') == True
 
 assert islist(1) == False
 assert islist([]) == True
+
+assert ist(1, int) == True
+assert ist(1, str) == False
+try:
+    ist(1, 2)
+except TypeError:
+    pass
+else:
+    assert False

@@ -75,7 +75,8 @@ def func_op(name: str,
             result_type: RType,
             error_kind: int,
             emit: EmitCallback,
-            format_str: Optional[str] = None) -> OpDescription:
+            format_str: Optional[str] = None,
+            priority: int = 1) -> OpDescription:
     ops = func_ops.setdefault(name, [])
     typename = ''
     if len(arg_types) == 1:
@@ -85,7 +86,8 @@ def func_op(name: str,
                                            ', '.join('{args[%d]}' % i
                                                      for i in range(len(arg_types))),
                                            typename)
-    desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit, 0)
+    desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit,
+                         priority)
     ops.append(desc)
     return desc
 

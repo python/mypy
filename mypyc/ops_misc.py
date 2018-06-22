@@ -164,3 +164,14 @@ func_op('builtins.isinstance',
         result_type=bool_rprimitive,
         error_kind=ERR_MAGIC,
         emit=emit_isinstance)
+
+
+# Faster isinstance() that only works with native classes and doesn't perform type checking
+# of the type argument.
+fast_isinstance_op = func_op(
+    'builtins.isinstance',
+    arg_types=[object_rprimitive, object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+    emit=simple_emit('{dest} = PyObject_TypeCheck({args[0]}, (PyTypeObject *){args[1]});'),
+    priority=0)

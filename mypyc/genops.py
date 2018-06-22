@@ -55,6 +55,7 @@ from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_
 from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
     none_op, iter_op, next_op, no_err_occurred_op, py_getattr_op, py_setattr_op,
+    fast_isinstance_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -998,6 +999,14 @@ class IRBuilder(NodeVisitor[Value]):
             if isinstance(expr_rtype, RTuple):
                 # len() of fixed-length tuple can be trivially determined statically.
                 return self.add(LoadInt(len(expr_rtype.types)))
+        if (fullname == 'builtins.isinstance'
+                and len(expr.args) == 2
+                and expr.arg_kinds == [ARG_POS, ARG_POS]
+                and isinstance(expr.args[1], NameExpr)
+                and isinstance(expr.args[1].node, TypeInfo)
+                and self.is_native_module_name_expr(expr.args[1])):
+            # Special case native isinstance() checks as this makes them much faster.
+            return self.primitive_op(fast_isinstance_op, args, expr.line)
 
         # Handle data-driven special-cased primitive call ops.
         target_type = self.node_type(expr)
