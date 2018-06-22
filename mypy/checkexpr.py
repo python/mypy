@@ -2183,6 +2183,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if no_args:
                 return tp
             return self.apply_type_arguments_to_callable(tp, item.args, ctx)
+        elif (isinstance(item, TupleType) and
+              # Tuple[str, int]() fails at runtime, only named tuples and subclasses work.
+              item.fallback.type.fullname() != 'builtins.tuple'):
+            return type_object_type(item.fallback.type, self.named_type)
+        elif isinstance(item, AnyType):
+            return AnyType(TypeOfAny.from_another_any, source_any=item)
         else:
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)

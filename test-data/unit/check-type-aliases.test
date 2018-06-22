@@ -319,3 +319,56 @@ n: Type[N]
 w = n.B()
 reveal_type(w)  # E: Revealed type is '__main__.C[builtins.int]'
 [out]
+
+[case testTypeAliasesToNamedTuple]
+from nt import C, D, E
+
+A1 = C
+A2 = D
+A3 = E
+
+class Cls:
+    A1 = C
+    A2 = D
+    A3 = E
+
+A1('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+a1 = A1(1)
+reveal_type(a1)  # E: Revealed type is 'Tuple[builtins.int, fallback=nt.C]'
+
+A2(0)  # E: Argument 1 to "D" has incompatible type "int"; expected "str"
+a2 = A2('yes')
+reveal_type(a2)  # E: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
+
+a3 = A3()
+reveal_type(a3)  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=nt.E]'
+
+Cls.A1('no')  # E: Argument 1 has incompatible type "str"; expected "int"
+ca1 = Cls.A1(1)
+reveal_type(ca1)  # E: Revealed type is 'Tuple[builtins.int, fallback=nt.C]'
+
+Cls.A2(0)  # E: Argument 1 has incompatible type "int"; expected "str"
+ca2 = Cls.A2('yes')
+reveal_type(ca2)  # E: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
+
+ca3 = Cls.A3()
+reveal_type(ca3)  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=nt.E]'
+[file nt.pyi]
+from typing import NamedTuple, Tuple
+
+class C(NamedTuple):
+    x: int
+
+D = NamedTuple('D', [('y', str)])
+
+class E(Tuple[int, str]):
+    pass
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testTypeAliasesToAny]
+from typing import Any
+
+A = Any
+A # this should not fail
+[out]

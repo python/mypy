@@ -256,11 +256,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         #     class C:
         #         A = List[int]
         #     x = C.A() <- this is OK
-        # As usual, we first erase any unbound type variables to Any.
-        target = set_any_tvars(vv.target, vv.alias_tvars, node.line, node.column)
-        assert isinstance(target, Instance)
-        tp = type_object_type(target.type, builtin_type)
-        v = Var(name, type=expand_type_by_instance(tp, target))
+        typ = instance_alias_type(vv, builtin_type)
+        v = Var(name, type=typ)
         v.info = info
 
     if isinstance(v, Var):
@@ -303,6 +300,19 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         if chk and chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
         return msg.has_no_attr(original_type, itype, name, node)
+
+
+def instance_alias_type(alias: TypeAlias,
+                        builtin_type: Callable[[str], Instance]) -> Type:
+    """Type of a type alias node targeting an instance, when appears in runtime context.
+
+    As usual, we first erase any unbound type variables to Any.
+    """
+    assert isinstance(alias.target, Instance), "Must be called only with aliases to classes"
+    target = set_any_tvars(alias.target, alias.alias_tvars, alias.line, alias.column)
+    assert isinstance(target, Instance)
+    tp = type_object_type(target.type, builtin_type)
+    return expand_type_by_instance(tp, target)
 
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
@@ -482,11 +492,7 @@ def analyze_class_attribute_access(itype: Instance,
         return builtin_type('types.ModuleType')
 
     if isinstance(node.node, TypeAlias) and isinstance(node.node.target, Instance):
-        alias = node.node
-        target = set_any_tvars(alias.target, alias.alias_tvars, alias.line, alias.column)
-        assert isinstance(target, Instance)
-        tp = type_object_type(target.type, builtin_type)
-        return expand_type_by_instance(tp, target)
+        return instance_alias_type(node.node, builtin_type)
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
