@@ -7240,7 +7240,7 @@ a.py:4: error: Module 'b' has no attribute 'A'
 a.py:4: error: Name 'A' already defined on line 3
 
 -- the order of errors is different with cache
-[case testImportOnTopOfAlias2-skip-cache]
+[case testImportOnTopOfAlias2]
 from a import A
 x: A
 [file a.py]
@@ -7257,8 +7257,7 @@ def A(x: str) -> str: pass
 [builtins fixtures/list.pyi]
 [out]
 ==
-a.py:4: error: Name 'A' already defined on line 3
-main:2: error: Invalid type "b.A"
+a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "Type[List[Any]]")
 
 [case testRefreshForWithTypeComment1]
 [file a.py]
