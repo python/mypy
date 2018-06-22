@@ -354,7 +354,7 @@ class ConditionalTypeBinder:
         continue_frame and 'continue' statements.
 
         If try_frame is true, then execution is allowed to jump at any
-        point within the newly created frame (or its descendents) to
+        point within the newly created frame (or its descendants) to
         its parent (i.e., to the frame that was on top before this
         call to frame_context).
 

@@ -2,7 +2,7 @@ from functools import wraps
 import sys
 
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, overload
 )
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -29,7 +29,6 @@ from mypy.types import (
     TypeOfAny
 )
 from mypy import defaults
-from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
 from mypy.options import Options

@@ -13,7 +13,7 @@ class SamplesSuite(Suite):
         seen = set()  # type: Set[str]
         modules = []
         # TODO: This should also test Python 2, and pass pyversion accordingly.
-        for version in ["2and3", "3", "3.3", "3.4", "3.5"]:
+        for version in ["2and3", "3", "3.5"]:
             # FIX: remove 'builtins', this directory does not exist
             for stub_type in ['builtins', 'stdlib', 'third_party']:
                 stubdir = os.path.join('typeshed', stub_type, version)

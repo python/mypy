@@ -8,17 +8,6 @@ core team member that nobody else is working on the same thing.
 **Note:** This doesn’t include everything that the core team will work
 on, and everything is subject to change.
 
-- Make it possible to run mypy as a daemon to avoid reprocessing the
-  entire program on each run. This will improve performance
-  significantly. Even when using the incremental mode, processing a
-  large number of files is not cheap.
-
-- Provide much faster, reliable interactive feedback through
-  fine-grained incremental type checking, built on top of the daemon
-  mode.
-
-- Turn on `--strict-optional` by default.
-
 - Continue making error messages more useful and informative.
   ([issue](https://github.com/python/mypy/labels/topic-usability))
 

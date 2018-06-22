@@ -2,9 +2,8 @@
 
 import re
 import subprocess
-import hashlib
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Sequence, Dict
+from typing import TypeVar, List, Tuple, Optional, Dict
 
 
 T = TypeVar('T')

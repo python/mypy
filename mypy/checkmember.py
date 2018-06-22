@@ -17,7 +17,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type, freshen_function_type_vars
 from mypy.infer import infer_type_arguments
 from mypy.typevars import fill_typevars
-from mypy.plugin import Plugin, AttributeContext
+from mypy.plugin import AttributeContext
 from mypy import messages
 from mypy import subtypes
 from mypy import meet
@@ -299,7 +299,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
 
     This is conceptually part of analyze_member_access and the arguments are similar.
 
-    itype is the class object in which var is dedined
+    itype is the class object in which var is defined
     original_type is the type of E in the expression E.var
     """
     # Found a member variable.
@@ -448,7 +448,8 @@ def analyze_class_attribute_access(itype: Instance,
             return handle_partial_attribute_type(t, is_lvalue, msg, symnode)
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
             msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
-        is_classmethod = is_decorated and cast(Decorator, node.node).func.is_class
+        is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
+                          or (isinstance(node.node, FuncBase) and node.node.is_class))
         return add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)

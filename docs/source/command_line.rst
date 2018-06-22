@@ -297,6 +297,21 @@ Here are some more useful flags:
 
 - ``--ignore-missing-imports`` suppresses error messages about imports
   that cannot be resolved (see :ref:`follow-imports` for some examples).
+  This doesn't suppress errors about missing names in successfully resolved
+  modules. For example, if one has the following files::
+
+    package/__init__.py
+    package/mod.py
+
+  Then mypy will generate the following errors with ``--ignore-missing-imports``:
+
+  .. code-block:: python
+
+     import package.unknown  # No error, ignored
+     x = package.unknown.func()  # OK
+
+     from package import unknown  # No error, ignored
+     from package.mod import NonExisting  # Error: Module has no attribute 'NonExisting'
 
 - ``--no-strict-optional`` disables strict checking of ``Optional[...]``
   types and ``None`` values. With this option, mypy doesn't
@@ -393,7 +408,7 @@ Here are some more useful flags:
   Otherwise, use ``--python-executable``.
 
 - ``--platform PLATFORM`` will make mypy typecheck your code as if it were
-  run under the the given operating system. Without this option, mypy will
+  run under the given operating system. Without this option, mypy will
   default to using whatever operating system you are currently using. See
   :ref:`version_and_platform_checks` for more about this feature.
 

@@ -3,7 +3,7 @@
 import re
 import os
 
-from typing import Any, List, Tuple, Optional, Union, Sequence, Dict
+from typing import Any, List, Tuple, Optional, Union, Sequence
 
 from mypy.util import short_type, IdMapper
 import mypy.nodes
@@ -146,6 +146,10 @@ class StrConv(NodeVisitor[str]):
             a.insert(0, o.type)
         if o.impl:
             a.insert(0, o.impl)
+        if o.is_static:
+            a.insert(-1, 'Static')
+        if o.is_class:
+            a.insert(-1, 'Class')
         return self.dump(a, o)
 
     def visit_class_def(self, o: 'mypy.nodes.ClassDef') -> str:

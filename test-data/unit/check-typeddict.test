@@ -1261,15 +1261,15 @@ A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'y': str})
 
 @overload
-def f(x: A) -> int: ... # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: A) -> int: ...
 @overload
 def f(x: B) -> str: ...
 def f(x): pass
 
 a: A
 b: B
-reveal_type(f(a)) # E: Revealed type is 'Any'
-reveal_type(f(b)) # E: Revealed type is 'Any'
+reveal_type(f(a)) # E: Revealed type is 'builtins.int'
+reveal_type(f(b)) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 

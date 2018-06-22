@@ -1,10 +1,10 @@
 from collections import OrderedDict
-from typing import List, Optional, cast, Tuple
+from typing import List, Optional, Tuple
 
 from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
-    TupleType, TypedDictType, ErasedType, TypeList, UnionType, PartialType, DeletedType,
+    TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation
@@ -47,6 +47,40 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
     return narrowed
+
+
+def is_partially_overlapping_types(t: Type, s: Type) -> bool:
+    """Returns 'true' if the two types are partially, but not completely, overlapping.
+
+    NOTE: This function is only a partial implementation.
+
+    It exists mostly so that overloads correctly handle partial
+    overlaps for the more obvious cases.
+    """
+    # Are unions partially overlapping?
+    if isinstance(t, UnionType) and isinstance(s, UnionType):
+        t_set = set(t.items)
+        s_set = set(s.items)
+        num_same = len(t_set.intersection(s_set))
+        num_diff = len(t_set.symmetric_difference(s_set))
+        return num_same > 0 and num_diff > 0
+
+    # Are tuples partially overlapping?
+    tup_overlap = is_overlapping_tuples(t, s, use_promotions=True)
+    if tup_overlap is not None and tup_overlap:
+        return tup_overlap
+
+    def is_object(t: Type) -> bool:
+        return isinstance(t, Instance) and t.type.fullname() == 'builtins.object'
+
+    # Is either 't' or 's' an unrestricted TypeVar?
+    if isinstance(t, TypeVarType) and is_object(t.upper_bound) and len(t.values) == 0:
+        return True
+
+    if isinstance(s, TypeVarType) and is_object(s.upper_bound) and len(s.values) == 0:
+        return True
+
+    return False
 
 
 def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool:

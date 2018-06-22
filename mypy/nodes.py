@@ -370,6 +370,11 @@ class ImportedName(SymbolNode):
         return 'ImportedName(%s)' % self.target_fullname
 
 
+FUNCBASE_FLAGS = [
+    'is_property', 'is_class', 'is_static',
+]
+
+
 class FuncBase(Node):
     """Abstract base class for function-like nodes"""
 
@@ -377,6 +382,8 @@ class FuncBase(Node):
                  'unanalyzed_type',
                  'info',
                  'is_property',
+                 'is_class',        # Uses "@classmethod"
+                 'is_static',       # USes "@staticmethod"
                  '_fullname',
                  )
 
@@ -391,6 +398,8 @@ class FuncBase(Node):
         # TODO: Type should be Optional[TypeInfo]
         self.info = cast(TypeInfo, None)
         self.is_property = False
+        self.is_class = False
+        self.is_static = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(str, None)
@@ -436,8 +445,8 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
                 'items': [i.serialize() for i in self.items],
                 'type': None if self.type is None else self.type.serialize(),
                 'fullname': self._fullname,
-                'is_property': self.is_property,
-                'impl': None if self.impl is None else self.impl.serialize()
+                'impl': None if self.impl is None else self.impl.serialize(),
+                'flags': get_flags(self, FUNCBASE_FLAGS),
                 }
 
     @classmethod
@@ -451,7 +460,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         if data.get('type') is not None:
             res.type = mypy.types.deserialize_type(data['type'])
         res._fullname = data['fullname']
-        res.is_property = data['is_property']
+        set_flags(res, data['flags'])
         # NOTE: res.info will be set in the fixup phase.
         return res
 
@@ -481,9 +490,9 @@ class Argument(Node):
         self.variable.set_line(self.line, self.column)
 
 
-FUNCITEM_FLAGS = [
+FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
     'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
-    'is_awaitable_coroutine', 'is_static', 'is_class',
+    'is_awaitable_coroutine',
 ]
 
 
@@ -503,8 +512,6 @@ class FuncItem(FuncBase):
                  'is_coroutine',  # Defined using 'async def' syntax?
                  'is_async_generator',  # Is an async def generator?
                  'is_awaitable_coroutine',  # Decorated with '@{typing,asyncio}.coroutine'?
-                 'is_static',  # Uses @staticmethod?
-                 'is_class',  # Uses @classmethod?
                  'expanded',  # Variants of function with type variables with values expanded
                  )
 
@@ -525,8 +532,6 @@ class FuncItem(FuncBase):
         self.is_coroutine = False
         self.is_async_generator = False
         self.is_awaitable_coroutine = False
-        self.is_static = False
-        self.is_class = False
         self.expanded = []  # type: List[FuncItem]
 
         self.min_args = 0
@@ -547,7 +552,7 @@ class FuncItem(FuncBase):
 
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
-    'is_decorated', 'is_conditional', 'is_abstract', 'is_property',
+    'is_decorated', 'is_conditional', 'is_abstract',
 ]
 
 
@@ -561,7 +566,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  'is_decorated',
                  'is_conditional',
                  'is_abstract',
-                 'is_property',
                  'original_def',
                  )
 
@@ -575,7 +579,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.is_abstract = False
-        self.is_property = False
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
@@ -1298,27 +1301,7 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
-        # TODO: Find out where and why NameExpr is being serialized (if at all).
         assert False, "Serializing NameExpr: %s" % (self,)
-        return {'.class': 'NameExpr',
-                'kind': self.kind,
-                'node': None if self.node is None else self.node.serialize(),
-                'fullname': self.fullname,
-                'is_new_def': self.is_new_def,
-                'is_inferred_def': self.is_inferred_def,
-                'name': self.name,
-                }
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'NameExpr':
-        assert data['.class'] == 'NameExpr'
-        ret = NameExpr(data['name'])
-        ret.kind = data['kind']
-        ret.node = None if data['node'] is None else SymbolNode.deserialize(data['node'])
-        ret.fullname = data['fullname']
-        ret.is_new_def = data['is_new_def']
-        ret.is_inferred_def = data['is_inferred_def']
-        return ret
 
 
 class MemberExpr(RefExpr):
@@ -2223,7 +2206,7 @@ class TypeInfo(SymbolNode):
         # Protocol members are names of all attributes/methods defined in a protocol
         # and in all its supertypes (except for 'object').
         members = set()  # type: Set[str]
-        assert self.mro, "This property can be only acessed after MRO is (re-)calculated"
+        assert self.mro, "This property can be only accessed after MRO is (re-)calculated"
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name in base.names:
@@ -2390,7 +2373,7 @@ class TypeInfo(SymbolNode):
         # not be loaded until after a class in the mro has changed its
         # bases, which causes the mro to change. If we recomputed our
         # mro, we would compute the *new* mro, which leaves us with no
-        # way to detact that the mro has changed! Thus we need to make
+        # way to detect that the mro has changed! Thus we need to make
         # sure to load the original mro so that once the class is
         # rechecked, it can tell that the mro has changed.
         ti._mro_refs = data['mro']

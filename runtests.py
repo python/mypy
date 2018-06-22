@@ -13,14 +13,15 @@ from mypy.test.testsamples import find_files, file_to_module
 
 
 def get_versions() -> List[str]:
+    # generates list of python versions to use.
+    # For Python2, this is only [2.7].
+    # Otherwise, it is [3.x, ..., 3.1, 3.0], where x is the version
+    # of the running interpreter.
     major = sys.version_info[0]
     minor = sys.version_info[1]
     if major == 2:
         return ['2.7']
     else:
-        # generates list of python versions to use.
-        # For Python2, this is only [2.7].
-        # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
         return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
 
 

@@ -19,10 +19,12 @@ dmypy.json
 # Packages
 *.egg
 *.egg-info
+*.eggs
 
 # IDEs
 .idea
 *.swp
+.vscode
 
 # Operating Systems
 .DS_Store
@@ -33,3 +35,5 @@ htmlcov
 
 # pytest cache
 .pytest_cache/
+
+.tox

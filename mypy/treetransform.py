@@ -94,7 +94,7 @@ class TransformVisitor(NodeVisitor[Node]):
 
         # These contortions are needed to handle the case of recursive
         # references inside the function being transformed.
-        # Set up placholder nodes for references within this function
+        # Set up placeholder nodes for references within this function
         # to other functions defined inside it.
         # Don't create an entry for this function itself though,
         # since we want self-references to point to the original
@@ -154,6 +154,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new._fullname = node._fullname
         new.type = self.optional_type(node.type)
         new.info = node.info
+        new.is_static = node.is_static
+        new.is_class = node.is_class
+        new.is_property = node.is_property
         if node.impl:
             new.impl = cast(OverloadPart, node.impl.accept(self))
         return new
@@ -584,7 +587,7 @@ class TransformVisitor(NodeVisitor[Node]):
 class FuncMapInitializer(TraverserVisitor):
     """This traverser creates mappings from nested FuncDefs to placeholder FuncDefs.
 
-    The placholders will later be replaced with transformed nodes.
+    The placeholders will later be replaced with transformed nodes.
     """
 
     def __init__(self, transformer: TransformVisitor) -> None:

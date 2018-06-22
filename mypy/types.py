@@ -1,19 +1,20 @@
 """Classes for representing mypy types."""
 
+import sys
 import copy
 from abc import abstractmethod
 from collections import OrderedDict
 from enum import Enum
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence
+    Callable, Sequence, Iterator
 )
 
 import mypy.nodes
 from mypy import experiments
 from mypy.nodes import (
     INVARIANT, SymbolNode, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
-    FuncDef
+    FuncBase, FuncDef,
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
@@ -268,7 +269,7 @@ class TypeList(Type):
         return visitor.visit_type_list(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Sythetic types don't serialize"
+        assert False, "Synthetic types don't serialize"
 
 
 _dummy = object()  # type: Any
@@ -659,8 +660,8 @@ class CallableType(FunctionLike):
                  'arg_kinds',  # ARG_ constants
                  'arg_names',  # Argument names; None if not a keyword argument
                  'min_args',  # Minimum number of arguments; derived from arg_kinds
-                 'is_var_arg',  # Is it a varargs function?  Derived from arg_kinds
-                 'is_kw_arg',  # Is it a **kwargs function?  Derived from arg_kinds
+                 'var_arg',  # The formal argument for *args. Derived from arg kinds and types
+                 'kw_arg',  # The formal argument for **kwargs. Derived from arg kinds and types
                  'ret_type',  # Return value type
                  'name',  # Name (may be None; for error messages and plugins)
                  'definition',  # For error messages.  May be None.
@@ -709,8 +710,7 @@ class CallableType(FunctionLike):
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
-        self.is_var_arg = ARG_STAR in arg_kinds
-        self.is_kw_arg = ARG_STAR2 in arg_kinds
+        self.var_arg, self.kw_arg = self._lookup_star_args(self.arg_types, self.arg_kinds)
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
@@ -750,6 +750,7 @@ class CallableType(FunctionLike):
                       line: int = _dummy,
                       column: int = _dummy,
                       is_ellipsis_args: bool = _dummy,
+                      implicit: bool = _dummy,
                       special_sig: Optional[str] = _dummy,
                       from_type_type: bool = _dummy,
                       bound_args: List[Optional[Type]] = _dummy,
@@ -767,13 +768,39 @@ class CallableType(FunctionLike):
             column=column if column is not _dummy else self.column,
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
-            implicit=self.implicit,
+            implicit=implicit if implicit is not _dummy else self.implicit,
             is_classmethod_class=self.is_classmethod_class,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
         )
+
+    def _lookup_star_args(self,
+                          arg_types: List[Type],
+                          arg_kinds: List[int],
+                          ) -> Tuple[Optional[FormalArgument], Optional[FormalArgument]]:
+        """Returns the formal arguments for *args and **kwargs, if they exist.
+
+        This helper method is used only in the constructor."""
+        star_arg = None
+        kwarg_arg = None
+        for position, (type, kind) in enumerate(zip(arg_types, arg_kinds)):
+            if kind == ARG_STAR:
+                star_arg = FormalArgument(None, position, type, False)
+            elif kind == ARG_STAR2:
+                kwarg_arg = FormalArgument(None, position, type, False)
+        return star_arg, kwarg_arg
+
+    @property
+    def is_var_arg(self) -> bool:
+        """Does this callable have a *args argument?"""
+        return self.var_arg is not None
+
+    @property
+    def is_kw_arg(self) -> bool:
+        """Does this callable have a **kwargs argument?"""
+        return self.kw_arg is not None
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass()
@@ -807,6 +834,39 @@ class CallableType(FunctionLike):
             n -= 1
         return n
 
+    def max_possible_positional_args(self) -> int:
+        """Returns maximum number of positional arguments this method could possibly accept.
+
+        This takes into account *arg and **kwargs but excludes keyword-only args."""
+        if self.is_var_arg or self.is_kw_arg:
+            return sys.maxsize
+        blacklist = (ARG_NAMED, ARG_NAMED_OPT)
+        return len([kind not in blacklist for kind in self.arg_kinds])
+
+    def formal_arguments(self, include_star_args: bool = False) -> Iterator[FormalArgument]:
+        """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
+
+        To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
+        if they are not None.
+
+        If you really want to include star args in the yielded output, set the
+        'include_star_args' parameter to 'True'."""
+        done_with_positional = False
+        for i in range(len(self.arg_types)):
+            kind = self.arg_kinds[i]
+            if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
+                done_with_positional = True
+            if not include_star_args and kind in (ARG_STAR, ARG_STAR2):
+                continue
+
+            required = kind in (ARG_POS, ARG_NAMED)
+            pos = None if done_with_positional else i
+            yield FormalArgument(
+                self.arg_names[i],
+                pos,
+                self.arg_types[i],
+                required)
+
     def corresponding_argument(self, model: FormalArgument) -> Optional[FormalArgument]:
         """Return the argument in this function that corresponds to `model`"""
 
@@ -835,37 +895,23 @@ class CallableType(FunctionLike):
         if name is None:
             return None
         seen_star = False
-        star2_type = None  # type: Optional[Type]
         for i, (arg_name, kind, typ) in enumerate(
                 zip(self.arg_names, self.arg_kinds, self.arg_types)):
             # No more positional arguments after these.
             if kind in (ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT):
                 seen_star = True
-            if kind == ARG_STAR:
-                continue
-            if kind == ARG_STAR2:
-                star2_type = typ
+            if kind == ARG_STAR or kind == ARG_STAR2:
                 continue
             if arg_name == name:
                 position = None if seen_star else i
                 return FormalArgument(name, position, typ, kind in (ARG_POS, ARG_NAMED))
-        if star2_type is not None:
-            return FormalArgument(name, None, star2_type, False)
-        return None
+        return self.try_synthesizing_arg_from_kwarg(name)
 
     def argument_by_position(self, position: Optional[int]) -> Optional[FormalArgument]:
         if position is None:
             return None
-        if self.is_var_arg:
-            for kind, typ in zip(self.arg_kinds, self.arg_types):
-                if kind == ARG_STAR:
-                    star_type = typ
-                    break
         if position >= len(self.arg_names):
-            if self.is_var_arg:
-                return FormalArgument(None, position, star_type, False)
-            else:
-                return None
+            return self.try_synthesizing_arg_from_vararg(position)
         name, kind, typ = (
             self.arg_names[position],
             self.arg_kinds[position],
@@ -874,10 +920,21 @@ class CallableType(FunctionLike):
         if kind in (ARG_POS, ARG_OPT):
             return FormalArgument(name, position, typ, kind == ARG_POS)
         else:
-            if self.is_var_arg:
-                return FormalArgument(None, position, star_type, False)
-            else:
-                return None
+            return self.try_synthesizing_arg_from_vararg(position)
+
+    def try_synthesizing_arg_from_kwarg(self,
+                                        name: Optional[str]) -> Optional[FormalArgument]:
+        if self.kw_arg is not None:
+            return FormalArgument(name, None, self.kw_arg.typ, False)
+        else:
+            return None
+
+    def try_synthesizing_arg_from_vararg(self,
+                                         position: Optional[int]) -> Optional[FormalArgument]:
+        if self.var_arg is not None:
+            return FormalArgument(None, position, self.var_arg.typ, False)
+        else:
+            return None
 
     def items(self) -> List['CallableType']:
         return [self]
@@ -1200,7 +1257,7 @@ class StarType(Type):
         return visitor.visit_star_type(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Sythetic types don't serialize"
+        assert False, "Synthetic types don't serialize"
 
 
 class UnionType(Type):
@@ -1655,7 +1712,7 @@ class TypeTranslator(TypeVisitor[Type]):
             if isinstance(new, CallableType):
                 items.append(new)
             else:
-                raise RuntimeError('CallableType expectected, but got {}'.format(type(new)))
+                raise RuntimeError('CallableType expected, but got {}'.format(type(new)))
         return Overloaded(items=items)
 
     def visit_type_type(self, t: TypeType) -> Type:
@@ -2039,7 +2096,7 @@ def callable_type(fdef: mypy.nodes.FuncItem, fallback: Instance,
 
 
 def get_typ_args(tp: Type) -> List[Type]:
-    """Get all type arguments from a parameterizable Type."""
+    """Get all type arguments from a parametrizable Type."""
     if not isinstance(tp, (Instance, UnionType, TupleType, CallableType)):
         return []
     typ_args = (tp.args if isinstance(tp, Instance) else
@@ -2049,7 +2106,7 @@ def get_typ_args(tp: Type) -> List[Type]:
 
 
 def set_typ_args(tp: Type, new_args: List[Type], line: int = -1, column: int = -1) -> Type:
-    """Return a copy of a parameterizable Type with arguments set to new_args."""
+    """Return a copy of a parametrizable Type with arguments set to new_args."""
     if isinstance(tp, Instance):
         return Instance(tp.type, new_args, line, column)
     if isinstance(tp, TupleType):

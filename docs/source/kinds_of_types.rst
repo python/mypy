@@ -1,17 +1,23 @@
 Kinds of types
 ==============
 
-User-defined types
-******************
+We've mostly restricted ourselves to built-in types until now. This
+section introduces several additional kinds of types. You are likely
+to need at least some of them to type check any non-trivial programs.
 
-Each class is also a type. Any instance of a subclass is also
-compatible with all superclasses. All values are compatible with the
-``object`` type (and also the ``Any`` type).
+Class types
+***********
+
+Every class is also a valid type. Any instance of a subclass is also
+compatible with all superclasses -- it follows that every value is compatible
+with the ``object`` type (and incidentally also the ``Any`` type, discussed
+below). Mypy analyzes the bodies of classes to determine which methods and
+attributes are available in instances. This example uses subclassing:
 
 .. code-block:: python
 
    class A:
-       def f(self) -> int:        # Type of self inferred (A)
+       def f(self) -> int:  # Type of self inferred (A)
            return 2
 
    class B(A):
@@ -20,34 +26,37 @@ compatible with all superclasses. All values are compatible with the
        def g(self) -> int:
            return 4
 
-   a = B() # type: A  # OK (explicit type for a; override type inference)
-   print(a.f())       # 3
-   a.g()              # Type check error: A has no method g
+   def foo(a: A) -> None:
+       print(a.f())  # 3
+       a.g()         # Error: "A" has no attribute "g"
+
+   foo(B())  # OK (B is a subclass of A)
 
 The Any type
 ************
 
 A value with the ``Any`` type is dynamically typed. Mypy doesn't know
 anything about the possible runtime types of such value. Any
-operations are permitted on the value, and the operations are checked
-at runtime, similar to normal Python code without type annotations.
+operations are permitted on the value, and the operations are only checked
+at runtime. You can use ``Any`` as an "escape hatch" when you can't use
+a more precise type for some reason.
 
-``Any`` is compatible with every other type, and vice versa. No
-implicit type check is inserted when assigning a value of type ``Any``
-to a variable with a more precise type:
+``Any`` is compatible with every other type, and vice versa. You can freely
+assign a value of type ``Any`` to a variable with a more precise type:
 
 .. code-block:: python
 
-   a = None  # type: Any
-   s = ''    # type: str
-   a = 2     # OK
-   s = a     # OK
+   a: Any = None
+   s: str = ''
+   a = 2     # OK (assign "int" to "Any")
+   s = a     # OK (assign "Any" to "str")
 
-Declared (and inferred) types are *erased* at runtime. They are
+Declared (and inferred) types are ignored (or *erased*) at runtime. They are
 basically treated as comments, and thus the above code does not
 generate a runtime error, even though ``s`` gets an ``int`` value when
-the program is run. Note that the declared type of ``s`` is actually
-``str``!
+the program is run, while the declared type of ``s`` is actually
+``str``! You need to be careful with ``Any`` types, since they let you
+lie to mypy, and this could easily hide bugs.
 
 If you do not define a function return value or argument types, these
 default to ``Any``:
@@ -130,9 +139,9 @@ purpose. Example:
 
 .. note::
 
-   ``Tuple[...]`` is not valid as a base class outside stub files. This is a
-   limitation of the ``typing`` module. One way to work around
-   this is to use a named tuple as a base class (see section :ref:`named-tuples`).
+   ``Tuple[...]`` is valid as a base class in Python 3.6 and later, and
+   always in stub files. In earlier Python versions you can sometimes work around this
+   limitation by using a named tuple as a base class (see section :ref:`named-tuples`).
 
 .. _callable-types:
 
@@ -188,145 +197,21 @@ using bidirectional type inference:
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.
 
-.. _extended_callable:
-
-Extended Callable types
-***********************
-
-As an experimental mypy extension, you can specify ``Callable`` types
-that support keyword arguments, optional arguments, and more.  Where
-you specify the arguments of a Callable, you can choose to supply just
-the type of a nameless positional argument, or an "argument specifier"
-representing a more complicated form of argument.  This allows one to
-more closely emulate the full range of possibilities given by the
-``def`` statement in Python.
-
-As an example, here's a complicated function definition and the
-corresponding ``Callable``:
-
-.. code-block:: python
-
-   from typing import Callable
-   from mypy_extensions import (Arg, DefaultArg, NamedArg,
-                                DefaultNamedArg, VarArg, KwArg)
-
-   def func(__a: int,  # This convention is for nameless arguments
-            b: int,
-            c: int = 0,
-            *args: int,
-            d: int,
-            e: int = 0,
-            **kwargs: int) -> int:
-       ...
-
-   F = Callable[[int,  # Or Arg(int)
-                 Arg(int, 'b'),
-                 DefaultArg(int, 'c'),
-                 VarArg(int),
-                 NamedArg(int, 'd'),
-                 DefaultNamedArg(int, 'e'),
-                 KwArg(int)],
-                int]
-
-   f: F = func
-
-Argument specifiers are special function calls that can specify the
-following aspects of an argument:
-
-- its type (the only thing that the basic format supports)
-
-- its name (if it has one)
-
-- whether it may be omitted
-
-- whether it may or must be passed using a keyword
-
-- whether it is a ``*args`` argument (representing the remaining
-  positional arguments)
-
-- whether it is a ``**kwargs`` argument (representing the remaining
-  keyword arguments)
-
-The following functions are available in ``mypy_extensions`` for this
-purpose:
-
-.. code-block:: python
-
-   def Arg(type=Any, name=None):
-       # A normal, mandatory, positional argument.
-       # If the name is specified it may be passed as a keyword.
-
-   def DefaultArg(type=Any, name=None):
-       # An optional positional argument (i.e. with a default value).
-       # If the name is specified it may be passed as a keyword.
-
-   def NamedArg(type=Any, name=None):
-       # A mandatory keyword-only argument.
-
-   def DefaultNamedArg(type=Any, name=None):
-       # An optional keyword-only argument (i.e. with a default value).
-
-   def VarArg(type=Any):
-       # A *args-style variadic positional argument.
-       # A single VarArg() specifier represents all remaining
-       # positional arguments.
-
-   def KwArg(type=Any):
-       # A **kwargs-style variadic keyword argument.
-       # A single KwArg() specifier represents all remaining
-       # keyword arguments.
-
-In all cases, the ``type`` argument defaults to ``Any``, and if the
-``name`` argument is omitted the argument has no name (the name is
-required for ``NamedArg`` and ``DefaultNamedArg``).  A basic
-``Callable`` such as
-
-.. code-block:: python
-
-   MyFunc = Callable[[int, str, int], float]
-
-is equivalent to the following:
-
-.. code-block:: python
-
-   MyFunc = Callable[[Arg(int), Arg(str), Arg(int)], float]
-
-A ``Callable`` with unspecified argument types, such as
-
-.. code-block:: python
-
-   MyOtherFunc = Callable[..., int]
-
-is (roughly) equivalent to
-
-.. code-block:: python
-
-   MyOtherFunc = Callable[[VarArg(), KwArg()], int]
-
-.. note::
-
-   This feature is experimental.  Details of the implementation may
-   change and there may be unknown limitations. **IMPORTANT:**
-   Each of the functions above currently just returns its ``type``
-   argument, so the information contained in the argument specifiers
-   is not available at runtime.  This limitation is necessary for
-   backwards compatibility with the existing ``typing.py`` module as
-   present in the Python 3.5+ standard library and distributed via
-   PyPI.
-
 .. _union-types:
 
 Union types
 ***********
 
 Python functions often accept values of two or more different
-types. You can use overloading to model this in statically typed code,
-but union types can make code like this easier to write.
+types. You can use :ref:`overloading <function-overloading>` to
+represent this, but union types are often more convenient.
 
 Use the ``Union[T1, ..., Tn]`` type constructor to construct a union
-type. For example, the type ``Union[int, str]`` is compatible with
-both integers and strings. You can use an ``isinstance()`` check to
-narrow down the type to a specific type:
+type. For example, if an argument has type ``Union[int, str]``, both
+integers and strings are valid argument values.
+
+You can use an ``isinstance()`` check to narrow down a union type to a
+more specific type:
 
 .. code-block:: python
 
@@ -344,6 +229,15 @@ narrow down the type to a specific type:
    f(1)    # OK
    f('x')  # OK
    f(1.1)  # Error
+
+.. note::
+
+    Operations are valid for union types only if they are valid for *every*
+    union item. This is why it's often necessary to use an ``isinstance()``
+    check to first narrow down a union type to a non-union type. This also
+    means that it's recommended to avoid union types as function return types,
+    since the caller may have to use ``isinstance()`` before doing anything
+    interesting with the value.
 
 .. _strict_optional:
 
@@ -452,7 +346,7 @@ This also works for attributes defined within methods:
 
 As a special case, you can use a non-optional type when initializing an
 attribute to ``None`` inside a class body *and* using a type comment,
-since when using a type comment, an initializer is syntacticaly required,
+since when using a type comment, an initializer is syntactically required,
 and ``None`` is used as a dummy, placeholder initializer:
 
 .. code-block:: python
@@ -579,48 +473,6 @@ valid for any type, but it's much more
 useful for a programmer who is reading the code. This also makes
 it easier to migrate to strict ``None`` checking in the future.
 
-.. _noreturn:
-
-The NoReturn type
-*****************
-
-Mypy provides support for functions that never return. For
-example, a function that unconditionally raises an exception:
-
-.. code-block:: python
-
-   from mypy_extensions import NoReturn
-
-   def stop() -> NoReturn:
-       raise Exception('no way')
-
-Mypy will ensure that functions annotated as returning ``NoReturn``
-truly never return, either implicitly or explicitly. Mypy will also
-recognize that the code after calls to such functions is unreachable
-and will behave accordingly:
-
-.. code-block:: python
-
-   def f(x: int) -> int:
-       if x == 0:
-           return x
-       stop()
-       return 'whatever works'  # No error in an unreachable block
-
-Install ``mypy_extensions`` using pip to use ``NoReturn`` in your code.
-Python 3 command line:
-
-.. code-block:: text
-
-    python3 -m pip install --upgrade mypy-extensions
-
-This works for Python 2:
-
-.. code-block:: text
-
-    pip install --upgrade mypy-extensions
-
-
 Class name forward references
 *****************************
 
@@ -691,187 +543,10 @@ assigning the type to a variable:
    def f() -> AliasType:
        ...
 
-Type aliases can be generic, in this case they could be used in two variants:
-Subscripted aliases are equivalent to original types with substituted type variables,
-number of type arguments must match the number of free type variables
-in generic type alias. Unsubscripted aliases are treated as original types with free
-variables replaced with ``Any``. Examples (following `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#type-aliases>`_):
-
-.. code-block:: python
-
-    from typing import TypeVar, Iterable, Tuple, Union, Callable
-    S = TypeVar('S')
-    TInt = Tuple[int, S]
-    UInt = Union[S, int]
-    CBack = Callable[..., S]
-
-    def response(query: str) -> UInt[str]:  # Same as Union[str, int]
-        ...
-    def activate(cb: CBack[S]) -> S:        # Same as Callable[..., S]
-        ...
-    table_entry: TInt  # Same as Tuple[int, Any]
-
-    T = TypeVar('T', int, float, complex)
-    Vec = Iterable[Tuple[T, T]]
-
-    def inproduct(v: Vec[T]) -> T:
-        return sum(x*y for x, y in v)
-
-    def dilate(v: Vec[T], scale: T) -> Vec[T]:
-        return ((x * scale, y * scale) for x, y in v)
-
-    v1: Vec[int] = []      # Same as Iterable[Tuple[int, int]]
-    v2: Vec = []           # Same as Iterable[Tuple[Any, Any]]
-    v3: Vec[int, int] = [] # Error: Invalid alias, too many type arguments!
-
-Type aliases can be imported from modules like any names. Aliases can target another
-aliases (although building complex chains of aliases is not recommended, this
-impedes code readability, thus defeating the purpose of using aliases).
-Following previous examples:
-
-.. code-block:: python
-
-    from typing import TypeVar, Generic, Optional
-    from first_example import AliasType
-    from second_example import Vec
-
-    def fun() -> AliasType:
-        ...
-
-    T = TypeVar('T')
-    class NewVec(Generic[T], Vec[T]):
-        ...
-    for i, j in NewVec[int]():
-        ...
-
-    OIntVec = Optional[Vec[int]]
-
 .. note::
 
     A type alias does not create a new type. It's just a shorthand notation for
-    another type -- it's equivalent to the target type. For generic type aliases
-    this means that variance of type variables used for alias definition does not
-    apply to aliases. A parameterized generic alias is treated simply as an original
-    type with the corresponding type variables substituted.
-
-.. _newtypes:
-
-NewTypes
-********
-
-(Freely after `PEP 484
-<https://www.python.org/dev/peps/pep-0484/#newtype-helper-function>`_.)
-
-There are also situations where a programmer might want to avoid logical errors by
-creating simple classes. For example:
-
-.. code-block:: python
-
-    class UserId(int):
-        pass
-
-    get_by_user_id(user_id: UserId):
-        ...
-
-However, this approach introduces some runtime overhead. To avoid this, the typing
-module provides a helper function ``NewType`` that creates simple unique types with
-almost zero runtime overhead. Mypy will treat the statement
-``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
-definition:
-
-.. code-block:: python
-
-    class Derived(Base):
-        def __init__(self, _x: Base) -> None:
-            ...
-
-However, at runtime, ``NewType('Derived', Base)`` will return a dummy function that
-simply returns its argument:
-
-.. code-block:: python
-
-    def Derived(_x):
-        return _x
-
-Mypy will require explicit casts from ``int`` where ``UserId`` is expected, while
-implicitly casting from ``UserId`` where ``int`` is expected. Examples:
-
-.. code-block:: python
-
-    from typing import NewType
-
-    UserId = NewType('UserId', int)
-
-    def name_by_id(user_id: UserId) -> str:
-        ...
-
-    UserId('user')          # Fails type check
-
-    name_by_id(42)          # Fails type check
-    name_by_id(UserId(42))  # OK
-
-    num = UserId(5) + 1     # type: int
-
-``NewType`` accepts exactly two arguments. The first argument must be a string literal
-containing the name of the new type and must equal the name of the variable to which the new
-type is assigned. The second argument must be a properly subclassable class, i.e.,
-not a type construct like ``Union``, etc.
-
-The function returned by ``NewType`` accepts only one argument; this is equivalent to
-supporting only one constructor accepting an instance of the base class (see above).
-Example:
-
-.. code-block:: python
-
-    from typing import NewType
-
-    class PacketId:
-        def __init__(self, major: int, minor: int) -> None:
-            self._major = major
-            self._minor = minor
-
-    TcpPacketId = NewType('TcpPacketId', PacketId)
-
-    packet = PacketId(100, 100)
-    tcp_packet = TcpPacketId(packet)  # OK
-
-    tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
-
-Both ``isinstance`` and ``issubclass``, as well as subclassing will fail for
-``NewType('Derived', Base)`` since function objects don't support these operations.
-
-.. note::
-
-    Note that unlike type aliases, ``NewType`` will create an entirely new and
-    unique type when used. The intended purpose of ``NewType`` is to help you
-    detect cases where you accidentally mixed together the old base type and the
-    new derived type.
-
-    For example, the following will successfully typecheck when using type
-    aliases:
-
-    .. code-block:: python
-
-        UserId = int
-
-        def name_by_id(user_id: UserId) -> str:
-            ...
-
-        name_by_id(3)  # ints and UserId are synonymous
-
-    But a similar example using ``NewType`` will not typecheck:
-
-    .. code-block:: python
-
-        from typing import NewType
-
-        UserId = NewType('UserId', int)
-
-        def name_by_id(user_id: UserId) -> str:
-            ...
-
-        name_by_id(3)  # int is not the same as UserId
+    another type -- it's equivalent to the target type.
 
 .. _named-tuples:
 
@@ -901,8 +576,7 @@ item types:
                                  ('y', int)])
     p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
 
-Python 3.6 will have an alternative, class-based syntax for named tuples with types.
-Mypy supports it already:
+Python 3.6 introduced an alternative, class-based syntax for named tuples with types:
 
 .. code-block:: python
 
@@ -1088,376 +762,3 @@ This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
 since generators have ``close()``, ``send()``, and ``throw()`` methods that
 generic iterables don't. If you will call these methods on the returned
 generator, use the ``Generator`` type instead of ``Iterable`` or ``Iterator``.
-
-.. _async-and-await:
-
-Typing async/await
-******************
-
-Mypy supports the ability to type coroutines that use the ``async/await``
-syntax introduced in Python 3.5. For more information regarding coroutines and
-this new syntax, see `PEP 492 <https://www.python.org/dev/peps/pep-0492/>`_.
-
-Functions defined using ``async def`` are typed just like normal functions.
-The return type annotation should be the same as the type of the value you
-expect to get back when ``await``-ing the coroutine.
-
-.. code-block:: python
-
-   import asyncio
-
-   async def format_string(tag: str, count: int) -> str:
-       return 'T-minus {} ({})'.format(count, tag)
-
-   async def countdown_1(tag: str, count: int) -> str:
-       while count > 0:
-           my_str = await format_string(tag, count)  # has type 'str'
-           print(my_str)
-           await asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_1("Millennium Falcon", 5))
-   loop.close()
-
-The result of calling an ``async def`` function *without awaiting* will be a
-value of type ``Awaitable[T]``:
-
-.. code-block:: python
-
-   my_coroutine = countdown_1("Millennium Falcon", 5)
-   reveal_type(my_coroutine)  # has type 'Awaitable[str]'
-
-.. note::
-
-    :ref:`reveal_type() <reveal-type>` displays the inferred static type of
-    an expression.
-
-If you want to use coroutines in older versions of Python that do not support
-the ``async def`` syntax, you can instead use the ``@asyncio.coroutine``
-decorator to convert a generator into a coroutine.
-
-Note that we set the ``YieldType`` of the generator to be ``Any`` in the
-following example. This is because the exact yield type is an implementation
-detail of the coroutine runner (e.g. the ``asyncio`` event loop) and your
-coroutine shouldn't have to know or care about what precisely that type is.
-
-.. code-block:: python
-
-   from typing import Any, Generator
-   import asyncio
-
-   @asyncio.coroutine
-   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
-       while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
-           yield from asyncio.sleep(0.1)
-           count -= 1
-      return "Blastoff!"
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_2("USS Enterprise", 5))
-   loop.close()
-
-As before, the result of calling a generator decorated with ``@asyncio.coroutine``
-will be a value of type ``Awaitable[T]``.
-
-.. note::
-
-   At runtime, you are allowed to add the ``@asyncio.coroutine`` decorator to
-   both functions and generators. This is useful when you want to mark a
-   work-in-progress function as a coroutine, but have not yet added ``yield`` or
-   ``yield from`` statements:
-
-   .. code-block:: python
-
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> str:
-          # todo: add yield/yield from to turn this into a generator
-          return "placeholder"
-
-   However, mypy currently does not support converting functions into
-   coroutines. Support for this feature will be added in a future version, but
-   for now, you can manually force the function to be a generator by doing
-   something like this:
-
-   .. code-block:: python
-
-      from typing import Generator
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> Generator[None, None, str]:
-          # todo: add yield/yield from to turn this into a generator
-          if False:
-              yield
-          return "placeholder"
-
-You may also choose to create a subclass of ``Awaitable`` instead:
-
-.. code-block:: python
-
-   from typing import Any, Awaitable, Generator
-   import asyncio
-
-   class MyAwaitable(Awaitable[str]):
-       def __init__(self, tag: str, count: int) -> None:
-           self.tag = tag
-           self.count = count
-
-       def __await__(self) -> Generator[Any, None, str]:
-           for i in range(n, 0, -1):
-               print('T-minus {} ({})'.format(i, tag))
-               yield from asyncio.sleep(0.1)
-           return "Blastoff!"
-
-   def countdown_3(tag: str, count: int) -> Awaitable[str]:
-       return MyAwaitable(tag, count)
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_3("Heart of Gold", 5))
-   loop.close()
-
-To create an iterable coroutine, subclass ``AsyncIterator``:
-
-.. code-block:: python
-
-   from typing import Optional, AsyncIterator
-   import asyncio
-
-   class arange(AsyncIterator[int]):
-       def __init__(self, start: int, stop: int, step: int) -> None:
-           self.start = start
-           self.stop = stop
-           self.step = step
-           self.count = start - step
-
-       def __aiter__(self) -> AsyncIterator[int]:
-           return self
-
-       async def __anext__(self) -> int:
-           self.count += self.step
-           if self.count == self.stop:
-               raise StopAsyncIteration
-           else:
-               return self.count
-
-   async def countdown_4(tag: str, n: int) -> str:
-       async for i in arange(n, 0, -1):
-           print('T-minus {} ({})'.format(i, tag))
-           await asyncio.sleep(0.1)
-       return "Blastoff!"
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_4("Serenity", 5))
-   loop.close()
-
-For a more concrete example, the mypy repo has a toy webcrawler that
-demonstrates how to work with coroutines. One version
-`uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
-and one
-`uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
-
-.. _typeddict:
-
-TypedDict
-*********
-
-.. note::
-
-   TypedDict is an officially supported feature, but it is still experimental.
-
-
-Python programs often use dictionaries with string keys to represent objects.
-Here is a typical example:
-
-.. code-block:: python
-
-   movie = {'name': 'Blade Runner', 'year': 1982}
-
-Only a fixed set of string keys is expected (``'name'`` and
-``'year'`` above), and each key has an independent value type (``str``
-for ``'name'`` and ``int`` for ``'year'`` above). We've previously
-seen the ``Dict[K, V]`` type, which lets you declare uniform
-dictionary types, where every value has the same type, and arbitrary keys
-are supported. This is clearly not a good fit for
-``movie`` above. Instead, you can use a ``TypedDict`` to give a precise
-type for objects like ``movie``, where the type of each
-dictionary value depends on the key:
-
-.. code-block:: python
-
-   from mypy_extensions import TypedDict
-
-   Movie = TypedDict('Movie', {'name': str, 'year': int})
-
-   movie = {'name': 'Blade Runner', 'year': 1982}  # type: Movie
-
-``Movie`` is a TypedDict type with two items: ``'name'`` (with type ``str``)
-and ``'year'`` (with type ``int``). Note that we used an explicit type
-annotation for the ``movie`` variable. This type annotation is
-important -- without it, mypy will try to infer a regular, uniform
-``Dict`` type for ``movie``, which is not what we want here.
-
-.. note::
-
-   If you pass a TypedDict object as an argument to a function, no
-   type annotation is usually necessary since mypy can infer the
-   desired type based on the declared argument type. Also, if an
-   assignment target has been previously defined, and it has a
-   TypedDict type, mypy will treat the assigned value as a TypedDict,
-   not ``Dict``.
-
-Now mypy will recognize these as valid:
-
-.. code-block:: python
-
-   name = movie['name']  # Okay; type of name is str
-   year = movie['year']  # Okay; type of year is int
-
-Mypy will detect an invalid key as an error:
-
-.. code-block:: python
-
-   director = movie['director']  # Error: 'director' is not a valid key
-
-Mypy will also reject a runtime-computed expression as a key, as
-it can't verify that it's a valid key. You can only use string
-literals as TypedDict keys.
-
-The ``TypedDict`` type object can also act as a constructor. It
-returns a normal ``dict`` object at runtime -- a ``TypedDict`` does
-not define a new runtime type:
-
-.. code-block:: python
-
-   toy_story = Movie(name='Toy Story', year=1995)
-
-This is equivalent to just constructing a dictionary directly using
-``{ ... }`` or ``dict(key=value, ...)``. The constructor form is
-sometimes convenient, since it can be used without a type annotation,
-and it also makes the type of the object explicit.
-
-Like all types, TypedDicts can be used as components to build
-arbitrarily complex types. For example, you can define nested
-TypedDicts and containers with TypedDict items.
-Unlike most other types, mypy uses structural compatibility checking
-(or structural subtyping) with TypedDicts. A TypedDict object with
-extra items is compatible with a narrower TypedDict, assuming item
-types are compatible (*totality* also affects
-subtyping, as discussed below).
-
-.. note::
-
-   You need to install ``mypy_extensions`` using pip to use ``TypedDict``:
-
-   .. code-block:: text
-
-       python3 -m pip install --upgrade mypy-extensions
-
-   Or, if you are using Python 2:
-
-   .. code-block:: text
-
-       pip install --upgrade mypy-extensions
-
-Totality
---------
-
-By default mypy ensures that a TypedDict object has all the specified
-keys. This will be flagged as an error:
-
-.. code-block:: python
-
-   # Error: 'year' missing
-   toy_story = {'name': 'Toy Story'}  # type: Movie
-
-Sometimes you want to allow keys to be left out when creating a
-TypedDict object. You can provide the ``total=False`` argument to
-``TypedDict(...)`` to achieve this:
-
-.. code-block:: python
-
-   GuiOptions = TypedDict(
-       'GuiOptions', {'language': str, 'color': str}, total=False)
-   options = {}  # type: GuiOptions  # Okay
-   options['language'] = 'en'
-
-You may need to use ``get()`` to access items of a partial (non-total)
-TypedDict, since indexing using ``[]`` could fail at runtime.
-However, mypy still lets use ``[]`` with a partial TypedDict -- you
-just need to be careful with it, as it could result in a ``KeyError``.
-Requiring ``get()`` everywhere would be too cumbersome. (Note that you
-are free to use ``get()`` with total TypedDicts as well.)
-
-Keys that aren't required are shown with a ``?`` in error messages:
-
-.. code-block:: python
-
-   # Revealed type is 'TypedDict('GuiOptions', {'language'?: builtins.str,
-   #                                            'color'?: builtins.str})'
-   reveal_type(options)
-
-Totality also affects structural compatibility. You can't use a partial
-TypedDict when a total one is expected. Also, a total typed dict is not
-valid when a partial one is expected.
-
-Class-based syntax
-------------------
-
-Python 3.6 supports an alternative, class-based syntax to define a
-TypedDict. This means that your code must be checked as if it were
-Python 3.6 (using the ``--python-version`` flag on the command line,
-for example). Simply running mypy on Python 3.6 is insufficient.
-
-.. code-block:: python
-
-   from mypy_extensions import TypedDict
-
-   class Movie(TypedDict):
-       name: str
-       year: int
-
-The above definition is equivalent to the original ``Movie``
-definition. It doesn't actually define a real class. This syntax also
-supports a form of inheritance -- subclasses can define additional
-items. However, this is primarily a notational shortcut. Since mypy
-uses structural compatibility with TypedDicts, inheritance is not
-required for compatibility. Here is an example of inheritance:
-
-.. code-block:: python
-
-   class Movie(TypedDict):
-       name: str
-       year: int
-
-   class BookBasedMovie(Movie):
-       based_on: str
-
-Now ``BookBasedMovie`` has keys ``name``, ``year`` and ``based_on``.
-
-Mixing required and non-required items
---------------------------------------
-
-In addition to allowing reuse across TypedDict types, inheritance also allows
-you to mix required and non-required (using ``total=False``) items
-in a single TypedDict. Example:
-
-.. code-block:: python
-
-   class MovieBase(TypedDict):
-       name: str
-       year: int
-
-   class Movie(MovieBase, total=False):
-       based_on: str
-
-Now ``Movie`` has required keys ``name`` and ``year``, while ``based_on``
-can be left out when constructing an object. A TypedDict with a mix of required
-and non-required keys, such as ``Movie`` above, will only be compatible with
-another TypedDict if all required keys in the other TypedDict are required keys in the
-first TypedDict, and all non-required keys of the other TypedDict are also non-required keys
-in the first TypedDict.

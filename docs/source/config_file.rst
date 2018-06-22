@@ -31,14 +31,34 @@ characters.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
   present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
-  patterns of the form ``dotted_module_name`` or ``dotted_module_name.*``.
+  patterns of fully-qualified module names, with some components optionally
+  replaced by `*`s (e.g. ``foo.bar``, ``foo.bar.*``, ``foo.*.baz``).
   These sections specify additional flags that only apply to *modules*
   whose name matches at least one of the patterns.
 
-  A pattern of the form ``dotted_module_name`` matches only the named module,
-  while ``dotted_module_name.*`` matches ``dotted_module_name`` and any
+  A pattern of the form ``qualified_module_name`` matches only the named module,
+  while ``qualified_module_name.*`` matches ``dotted_module_name`` and any
   submodules (so ``foo.bar.*`` would match all of ``foo.bar``,
   ``foo.bar.baz``, and ``foo.bar.baz.quux``).
+
+  Patterns may also be "unstructured" wildcards, in which stars may
+  appear in the middle of a name (e.g
+  ``site.*.migrations.*``). Stars match zero or more module
+  components (so ``site.*.migrations.*`` can match ``site.migrations``).
+
+  When options conflict, the precedence order for the configuration sections is:
+    1. Sections with concrete module names (``foo.bar``)
+    2. Sections with "unstructured" wildcard patterns (``foo.*.baz``),
+       with sections later in the configuration file overriding
+       sections earlier.
+    3. Sections with "well-structured" wildcard patterns
+       (``foo.bar.*``), with more specific overriding more general.
+    4. Command line options.
+    5. Top-level configuration file options.
+
+The difference in precedence order between "structured" patterns (by
+specificity) and "unstructured" patterns (by order in the file) is
+unfortunate, and is subject to change in future versions.
 
 .. note::
 
@@ -163,7 +183,7 @@ overridden by the pattern sections matching the module name.
   Used in conjunction with ``follow_imports=skip``, this can be used
   to suppress the import of a module from ``typeshed``, replacing it
   with `Any`.
-  Used in conjuncation with ``follow_imports=error``, this can be used
+  Used in conjunction with ``follow_imports=error``, this can be used
   to make any use of a particular ``typeshed`` module an error.
 
 - ``ignore_missing_imports`` (Boolean, default False) suppress error
@@ -181,7 +201,7 @@ overridden by the pattern sections matching the module name.
   strict Optional checks. If False, mypy treats ``None`` as
   compatible with every type.
 
-  **Note::** This was False by default
+  **Note:** This was False by default
   in mypy versions earlier than 0.600.
 
 - ``disallow_any_unimported`` (Boolean, default false) disallows usage of types that come

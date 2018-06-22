@@ -216,27 +216,3 @@ to be annotated with a starred type:
     p, q, *rs = 1, 2  # type: int, int, *List[int]
 
 Here, the type of ``rs`` is set to ``List[int]``.
-
-Types in stub files
-*******************
-
-:ref:`Stub files <library-stubs>` are written in normal Python 3
-syntax, but generally leaving out runtime logic like variable
-initializers, function bodies, and default arguments, or replacing them
-with ellipses.
-
-In this example, each ellipsis ``...`` is literally written in the
-stub file as three dots:
-
-.. code-block:: python
-
-    x: int
-
-    def afunc(code: str) -> int: ...
-    def afunc(a: int, b: int = ...) -> int: ...
-
-.. note::
-
-    The ellipsis ``...`` is also used with a different meaning in
-    :ref:`callable types <callable-types>` and :ref:`tuple types
-    <tuple-types>`.

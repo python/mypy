@@ -44,18 +44,18 @@ from mypy.nodes import (
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
     RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt, PassStmt,
+    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
     SymbolTableNode, TVAR, ListComprehension, GeneratorExpr,
-    LambdaExpr, MDEF, FuncBase, Decorator, SetExpr, TypeVarExpr, NewTypeExpr,
+    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
     StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, ARG_NAMED_OPT, type_aliases,
-    YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SymbolNode,
+    ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, type_aliases,
+    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, Argument, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, EllipsisExpr, TempNode, EnumCallExpr, ImportedName,
-    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, ARG_OPT, nongen_builtins,
+    YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
+    IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
+    COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
     collections_type_aliases, get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
 )
 from mypy.literals import literal
@@ -66,9 +66,9 @@ from mypy.traverser import TraverserVisitor
 from mypy.errors import Errors, report_internal_error
 from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarDef, TypeType, TupleType, UnionType, StarType, function_type,
-    TypedDictType, NoneTyp, CallableType, Overloaded, Instance, Type, TypeVarType, AnyType,
-    TypeTranslator, TypeOfAny, TypeVisitor, UninhabitedType, ErasedType, DeletedType
+    FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
+    CallableType, Overloaded, Instance, Type, AnyType,
+    TypeTranslator, TypeOfAny
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -81,9 +81,8 @@ from mypy.sametypes import is_same_type
 from mypy.options import Options
 from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy import join
 from mypy.util import get_prefix, correct_relative_import
-from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name, PRIORITY_FALLBACKS
+from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
 from mypy.scope import Scope
 from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
 from mypy.semanal_typeddict import TypedDictAnalyzer
@@ -585,8 +584,39 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         if not defn.items:
             # It was not any kind of overload def after all. We've visited the
-            # redfinitions already.
+            # redefinitions already.
             return
+
+        # We know this is an overload def -- let's handle classmethod and staticmethod
+        class_status = []
+        static_status = []
+        for item in defn.items:
+            if isinstance(item, Decorator):
+                inner = item.func
+            elif isinstance(item, FuncDef):
+                inner = item
+            else:
+                assert False, "The 'item' variable is an unexpected type: {}".format(type(item))
+            class_status.append(inner.is_class)
+            static_status.append(inner.is_static)
+
+        if defn.impl is not None:
+            if isinstance(defn.impl, Decorator):
+                inner = defn.impl.func
+            elif isinstance(defn.impl, FuncDef):
+                inner = defn.impl
+            else:
+                assert False, "Unexpected impl type: {}".format(type(defn.impl))
+            class_status.append(inner.is_class)
+            static_status.append(inner.is_static)
+
+        if len(set(class_status)) != 1:
+            self.msg.overload_inconsistently_applies_decorator('classmethod', defn)
+        elif len(set(static_status)) != 1:
+            self.msg.overload_inconsistently_applies_decorator('staticmethod', defn)
+        else:
+            defn.is_class = class_status[0]
+            defn.is_static = static_status[0]
 
         if self.type and not self.is_func_scope():
             self.type.names[defn.name()] = SymbolTableNode(MDEF, defn,
@@ -862,7 +892,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if isinstance(decorator, CallExpr):
                 analyzed = decorator.analyzed
                 if isinstance(analyzed, PromoteExpr):
-                    # _promote class decorator (undocumented faeture).
+                    # _promote class decorator (undocumented feature).
                     promote_target = analyzed.type
         if not promote_target:
             promotions = (TYPE_PROMOTIONS_PYTHON3 if self.options.python_version[0] >= 3
@@ -1299,14 +1329,33 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         while '.' in id:
             parent, child = id.rsplit('.', 1)
             parent_mod = self.modules.get(parent)
-            if parent_mod and child not in parent_mod.names:
+            if parent_mod and self.allow_patching(parent_mod, child):
                 child_mod = self.modules.get(id)
                 if child_mod:
                     sym = SymbolTableNode(MODULE_REF, child_mod,
                                           module_public=module_public,
                                           no_serialize=True)
-                    parent_mod.names[child] = sym
+                else:
+                    # Construct a dummy Var with Any type.
+                    any_type = AnyType(TypeOfAny.from_unimported_type,
+                                       missing_import_name=id)
+                    var = Var(child, any_type)
+                    var._fullname = child
+                    var.is_ready = True
+                    var.is_suppressed_import = True
+                    sym = SymbolTableNode(GDEF, var,
+                                          module_public=module_public,
+                                          no_serialize=True)
+                parent_mod.names[child] = sym
             id = parent
+
+    def allow_patching(self, parent_mod: MypyFile, child: str) -> bool:
+        if child not in parent_mod.names:
+            return True
+        node = parent_mod.names[child].node
+        if isinstance(node, Var) and node.is_suppressed_import:
+            return True
+        return False
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:
