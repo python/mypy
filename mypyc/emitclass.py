@@ -234,8 +234,9 @@ def generate_setup_for_class(cl: ClassIR,
     emitter.emit_line('if (self == NULL)')
     emitter.emit_line('    return NULL;')
     emitter.emit_line('self->vtable = {};'.format(vtable_name))
-    for attr, rtype in cl.attributes.items():
-        emitter.emit_line('self->{} = {};'.format(attr, rtype.c_undefined_value()))
+    for base in reversed(cl.mro):
+        for attr, rtype in base.attributes.items():
+            emitter.emit_line('self->{} = {};'.format(attr, rtype.c_undefined_value()))
     emitter.emit_line('return (PyObject *)self;')
     emitter.emit_line('}')
 
@@ -301,8 +302,9 @@ def generate_traverse_for_class(cl: ClassIR,
         func_name,
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
-    for attr, rtype in cl.attributes.items():
-        emitter.emit_gc_visit('self->{}'.format(attr), rtype)
+    for base in reversed(cl.mro):
+        for attr, rtype in base.attributes.items():
+            emitter.emit_gc_visit('self->{}'.format(attr), rtype)
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
@@ -313,8 +315,9 @@ def generate_clear_for_class(cl: ClassIR,
     emitter.emit_line('static int')
     emitter.emit_line('{}({} *self)'.format(func_name, cl.struct_name(emitter.names)))
     emitter.emit_line('{')
-    for attr, rtype in cl.attributes.items():
-        emitter.emit_gc_clear('self->{}'.format(attr), rtype)
+    for base in reversed(cl.mro):
+        for attr, rtype in base.attributes.items():
+            emitter.emit_gc_clear('self->{}'.format(attr), rtype)
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 

@@ -391,3 +391,21 @@ except TypeError:
     pass
 else:
     assert False
+
+[case testSubclassUninitAttr]
+class X:
+    x: int
+class A(X):
+    pass
+[file driver.py]
+import traceback
+from native import A
+try:
+    A().x
+except AttributeError:
+    traceback.print_exc()
+[out]
+Traceback (most recent call last):
+  File "tmp/driver.py", line 4, in <module>
+    A().x
+AttributeError: attribute 'x' of 'X' undefined
