@@ -1443,6 +1443,86 @@ reveal_type(f(**a))       # E: Revealed type is 'Any'
 
 [builtins fixtures/dict.pyi]
 
+[case testOverloadWithOverlappingItemsAndAnyArgument12]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> Any: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument13]
+from typing import Any, overload, TypeVar, Generic
+
+class slice: pass
+
+T = TypeVar('T')
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> T: ...
+    @overload
+    def f(self, x: slice) -> A[T]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument14]
+from typing import Any, overload, TypeVar, Generic
+
+T = TypeVar('T')
+
+class Wrapper(Generic[T]): pass
+class slice: pass
+
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> Wrapper[T]: ...
+    @overload
+    def f(self, x: slice) -> Wrapper[A[T]]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is '__main__.Wrapper[Any]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument15]
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: int) -> Union[str, int]: ...
+@overload
+def g(x: str) -> Union[int, str]: ...
+def g(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'builtins.str'
+reveal_type(g(a))  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument16]
+from typing import overload, Any, Union, Callable
+
+@overload
+def f(x: int) -> Callable[[int, int], int]: ...
+@overload
+def f(x: str) -> Callable[[str], str]: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))     # E: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(f(a)(a))  # E: Revealed type is 'Any'
+
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
 from mod import MyInt
@@ -3717,3 +3797,49 @@ def relpath(path: str) -> str: ...
 @overload
 def relpath(path: unicode) -> unicode: ...
 [out]
+
+[case testOverloadsWithNoneComingSecondAreAlwaysFlaggedInNoStrictOptional]
+# flags: --no-strict-optional
+from typing import overload
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: int) -> int:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def none_second(x: int) -> int:
+    return x
+
+[case testOverloadsWithNoneComingSecondIsOkInStrictOptional]
+# flags: --strict-optional
+from typing import overload, Optional
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...
+def none_second(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_loose_impl(x: None) -> None: ...
+@overload
+def none_loose_impl(x: int) -> int: ...
+def none_loose_impl(x: int) -> int:
+    return x
+[out]
+main:22: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:22: error: Overloaded function implementation cannot produce return type of signature 1
