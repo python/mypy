@@ -1715,7 +1715,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
             return
         non_global_scope = self.type or self.is_func_scope()
-        if isinstance(s.rvalue, NameExpr) and non_global_scope and lvalue.is_inferred_def:
+        if isinstance(s.rvalue, RefExpr) and non_global_scope and lvalue.is_inferred_def:
             # Third rule: Non-subscripted right hand side creates a variable
             # at class and function scopes. For example:
             #
@@ -2752,9 +2752,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     formal_arg = func_def.type.argument_by_name(base.node.name())
                     if formal_arg and formal_arg.pos == 0:
                         type_info = self.type
+            elif isinstance(base.node, TypeAlias) and base.node.no_args:
+                if isinstance(base.node.target, Instance):
+                    type_info = base.node.target.type
+
             if type_info:
                 n = type_info.names.get(expr.name)
-                if n is not None and (n.kind == MODULE_REF or isinstance(n.node, TypeInfo)):
+                if n is not None and (n.kind == MODULE_REF or isinstance(n.node, (TypeInfo,
+                                                                                  TypeAlias))):
                     if not n:
                         return
                     expr.kind = n.kind

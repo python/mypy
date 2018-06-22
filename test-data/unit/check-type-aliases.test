@@ -290,3 +290,32 @@ bad: C[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 also_bad: T[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 [builtins fixtures/tuple.pyi]
 [out]
+
+[case testAliasRefOnClass]
+from typing import Generic, TypeVar, Type
+
+T = TypeVar('T')
+class C(Generic[T]):
+    pass
+
+class N:
+    A = C[T]
+    B = C[int]
+
+x: N.A[C]
+reveal_type(x)  # E: Revealed type is '__main__.C[__main__.C[Any]]'
+
+xx = N.A[C]()
+reveal_type(xx)  # E: Revealed type is '__main__.C[__main__.C*[Any]]'
+
+y = N.A()
+reveal_type(y)  # E: Revealed type is '__main__.C[Any]'
+
+M = N
+b = M.A[int]()
+reveal_type(b)  # E: Revealed type is '__main__.C[builtins.int*]'
+
+n: Type[N]
+w = n.B()
+reveal_type(w)  # E: Revealed type is '__main__.C[builtins.int]'
+[out]

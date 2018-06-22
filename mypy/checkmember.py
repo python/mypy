@@ -260,7 +260,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         target = set_any_tvars(vv.target, vv.alias_tvars, node.line, node.column)
         assert isinstance(target, Instance)
         tp = type_object_type(target.type, builtin_type)
-        v = Var(name, type=expand_type_by_instance(tp, vv.target))
+        v = Var(name, type=expand_type_by_instance(tp, target))
         v.info = info
 
     if isinstance(v, Var):
@@ -480,6 +480,13 @@ def analyze_class_attribute_access(itype: Instance,
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
         return builtin_type('types.ModuleType')
+
+    if isinstance(node.node, TypeAlias) and isinstance(node.node.target, Instance):
+        alias = node.node
+        target = set_any_tvars(alias.target, alias.alias_tvars, alias.line, alias.column)
+        assert isinstance(target, Instance)
+        tp = type_object_type(target.type, builtin_type)
+        return expand_type_by_instance(tp, target)
 
     if is_decorated:
         assert isinstance(node.node, Decorator)
