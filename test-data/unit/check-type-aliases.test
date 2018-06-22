@@ -372,3 +372,25 @@ from typing import Any
 A = Any
 A # this should not fail
 [out]
+
+[case testDoubleImportsOfAnAlias]
+from b import *
+from c import *
+[file b.py]
+from a import A
+[file c.py]
+from a import A
+[file a.py]
+A = int
+[out]
+
+[case testDoubleImportsOfAnAlias2]
+from b import A
+from c import A
+[file b.py]
+from a import A
+[file c.py]
+from a import A
+[file a.py]
+A = int
+[out]
