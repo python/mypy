@@ -172,3 +172,43 @@ from native import fs, fi, ff
 assert fs() == 'fg'
 assert fi() == 30002000200020002000
 assert ff() == 5.0
+
+[case testMultiModuleTraceback]
+from other import fail2
+
+def fail() -> None:
+    fail2()
+[file other.py]
+def fail2() -> None:
+    x = [1]
+    x[2] = 2
+[file driver.py]
+import traceback
+import sys
+import native
+import other
+try:
+    other.fail2()
+except IndexError:
+    tb = sys.exc_info()[2]
+    assert tb.tb_next.tb_frame.f_globals is other.__dict__
+    traceback.print_exc()
+try:
+    native.fail()
+except IndexError:
+    tb = sys.exc_info()[2]
+    assert tb.tb_next.tb_frame.f_globals is native.__dict__
+    traceback.print_exc()
+[out]
+Traceback (most recent call last):
+  File "tmp/driver.py", line 6, in <module>
+    other.fail2()
+  File "tmp/other.py", line 3, in fail2
+IndexError: list assignment index out of range
+Traceback (most recent call last):
+  File "tmp/driver.py", line 12, in <module>
+    native.fail()
+  File "tmp/py/native.py", line 4, in fail
+    fail2()
+  File "tmp/other.py", line 3, in fail2
+IndexError: list assignment index out of range

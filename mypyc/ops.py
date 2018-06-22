@@ -33,10 +33,6 @@ Label = NewType('Label', int)
 INVALID_LABEL = Label(-88888)
 
 
-def c_module_name(module_name: str) -> str:
-    return 'module_{}'.format(module_name.replace('.', '__dot__'))
-
-
 def short_name(name: str) -> str:
     if name.startswith('builtins.'):
         return name[9:]
@@ -977,14 +973,27 @@ class SetAttr(RegisterOp):
 
 
 class LoadStatic(RegisterOp):
-    """dest = name :: static"""
+    """dest = name :: static
+
+    Load a C static variable. The namespace for statics is shared for the
+    entire compilation unit. You can optionally provide a module name for
+    additional namespacing. The static namespace does not overlap with
+    other C names, since the final C name will get a prefix, so conflicts
+    only must be avoided with other statics.
+    """
 
     error_kind = ERR_NEVER
     is_borrowed = True
 
-    def __init__(self, type: RType, identifier: str, line: int = -1, ann: object = None) -> None:
+    def __init__(self,
+                 type: RType,
+                 identifier: str,
+                 module_name: Optional[str] = None,
+                 line: int = -1,
+                 ann: object = None) -> None:
         super().__init__(line)
         self.identifier = identifier
+        self.module_name = module_name
         self.type = type
         self.ann = ann  # An object to pretty print with the load
 
@@ -993,7 +1002,10 @@ class LoadStatic(RegisterOp):
 
     def to_str(self, env: Environment) -> str:
         ann = '  ({})'.format(repr(self.ann)) if self.ann else ''
-        return env.format('%r = %s :: static%s', self, self.identifier, ann)
+        name = self.identifier
+        if self.module_name is not None:
+            name = '{}.{}'.format(self.module_name, name)
+        return env.format('%r = %s :: static%s', self, name, ann)
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_load_static(self)

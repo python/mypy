@@ -31,10 +31,13 @@ def native_function_header(fn: FuncIR, names: NameGenerator) -> str:
         args=', '.join(args) or 'void')
 
 
-def generate_native_function(fn: FuncIR, emitter: Emitter, source_path: str) -> None:
+def generate_native_function(fn: FuncIR,
+                             emitter: Emitter,
+                             source_path: str,
+                             module_name: str) -> None:
     declarations = Emitter(emitter.context, fn.env)
     body = Emitter(emitter.context, fn.env)
-    visitor = FunctionEmitterVisitor(body, declarations, fn.name, source_path)
+    visitor = FunctionEmitterVisitor(body, declarations, fn.name, source_path, module_name)
 
     declarations.emit_line('{} {{'.format(native_function_header(fn, emitter.names)))
     body.indent()
@@ -63,13 +66,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                  emitter: Emitter,
                  declarations: Emitter,
                  func_name: str,
-                 source_path: str) -> None:
+                 source_path: str,
+                 module_name: str) -> None:
         self.emitter = emitter
         self.names = emitter.names
         self.declarations = declarations
         self.env = self.emitter.env
         self.func_name = func_name
         self.source_path = source_path
+        self.module_name = module_name
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -110,9 +115,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_line('if ({}) {{'.format(cond))
 
         if op.traceback_entry is not None:
-            self.emit_line('CPy_AddTraceback("%s", "%s", %d, _globals);' % (self.source_path,
-                                                                            self.func_name,
-                                                                            op.line))
+            globals_static = self.emitter.static_name('globals', self.module_name)
+            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (self.source_path,
+                                                                      self.func_name,
+                                                                      op.line,
+                                                                      globals_static))
         self.emit_lines(
             'goto %s;' % self.label(op.true),
             '} else',
@@ -187,10 +194,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
+        name = self.emitter.static_name(op.identifier, op.module_name)
         if is_int_rprimitive(op.type):
-            self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, op.identifier))
+            self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, name))
         else:
-            self.emit_line('%s = %s;' % (dest, op.identifier))
+            self.emit_line('%s = %s;' % (dest, name))
 
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)

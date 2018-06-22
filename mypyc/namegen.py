@@ -38,8 +38,15 @@ class NameGenerator:
     though not very usable.
     """
 
-    def __init__(self, module_names: List[str]) -> None:
-        """Initialize with names of all modules in the compilation unit."""
+    def __init__(self, module_names: Optional[List[str]] = None) -> None:
+        """Initialize with names of all modules in the compilation unit.
+
+        The names of modules are used to shorten names referring to
+        modules in the compilation unit, for convenience. Arbitary module
+        names are supported for generated names, but modules not in the
+        compilation unit will use long names.
+        """
+        module_names = module_names or []
         self.module_map = make_module_translation_map(module_names)
         self.translations = {}  # type: Dict[Tuple[str, str], str]
         self.used_names = set()  # type: Set[str]
@@ -50,15 +57,25 @@ class NameGenerator:
         Return a distinct result for each (module, partial_name) pair.
 
         The caller should add a suitable prefix to the name to avoid
-        conflicts. Only ensure that the results of this function are
-        unique, not that they aren't overlapping with arbitrary names.
+        conflicts with other C names. Only ensure that the results of
+        this function are unique, not that they aren't overlapping with
+        arbitrary names.
+
+        If a name is not specific to any module, the module argument can
+        be an empty string.
         """
         # TODO: Support unicode
         if partial_name is None:
             return self.module_map[module].rstrip('_')
         if (module, partial_name) in self.translations:
             return self.translations[module, partial_name]
-        candidate = '{}{}'.format(self.module_map[module], partial_name.replace('.', '_'))
+        if module in self.module_map:
+            module_prefix = self.module_map[module]
+        elif module:
+            module_prefix = module.replace('.', '_') + '_'
+        else:
+            module_prefix = ''
+        candidate = '{}{}'.format(module_prefix, partial_name.replace('.', '_'))
         actual = self.make_unique(candidate)
         self.translations[module, partial_name] = actual
         self.used_names.add(actual)

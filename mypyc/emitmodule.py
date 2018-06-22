@@ -13,7 +13,7 @@ from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class
 from mypyc.emitwrapper import generate_wrapper_function, wrapper_function_header
-from mypyc.ops import c_module_name, FuncIR, ClassIR, ModuleIR
+from mypyc.ops import FuncIR, ClassIR, ModuleIR
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
 
@@ -79,16 +79,15 @@ class ModuleGenerator:
     def generate_c_for_modules(self) -> str:
         emitter = Emitter(self.context)
 
-        self.declare_internal_globals()
-
         module_irs = [module_ir for _, module_ir in self.modules]
 
-        for module in module_irs:
-            self.declare_imports(module.imports)
+        for module_name, module in self.modules:
+            self.declare_internal_globals(module_name, emitter)
+            self.declare_imports(module.imports, emitter)
 
         for module in module_irs:
-            for symbol in module.literals.values():
-                self.declare_static_pyobject(symbol)
+            for identifier in module.literals.values():
+                self.declare_static_pyobject(identifier, emitter)
 
         for module in module_irs:
             for fn in module.functions:
@@ -111,7 +110,7 @@ class ModuleGenerator:
         for module_name, module in self.modules:
             for fn in module.functions:
                 emitter.emit_line()
-                generate_native_function(fn, emitter, self.source_paths[module_name])
+                generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
                 emitter.emit_line()
                 generate_wrapper_function(fn, emitter)
 
@@ -172,8 +171,9 @@ class ModuleGenerator:
         emitter.emit_lines('m = PyModule_Create(&{}module);'.format(module_prefix),
                            'if (m == NULL)',
                            '    return NULL;')
-        emitter.emit_lines('_globals = PyModule_GetDict(m);',
-                           'if (_globals == NULL)',
+        module_globals = emitter.static_name('globals', module_name)
+        emitter.emit_lines('{} = PyModule_GetDict(m);'.format(module_globals),
+                           'if ({} == NULL)'.format(module_globals),
                            '    return NULL;')
         self.generate_imports_init_section(module.imports, emitter)
         self.generate_from_imports_init_section(
@@ -182,7 +182,8 @@ class ModuleGenerator:
             emitter,
         )
 
-        for (_, literal), symbol in module.literals.items():
+        for (_, literal), identifier in module.literals.items():
+            symbol = emitter.static_name(identifier, None)
             if isinstance(literal, int):
                 emitter.emit_lines(
                     '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(
@@ -250,17 +251,20 @@ class ModuleGenerator:
                 ['{}{}{};'.format(static_str, type_spaced, name)],
             )
 
-    def declare_internal_globals(self) -> None:
-        self.declare_global('PyObject *', '_globals')
+    def declare_internal_globals(self, module_name: str, emitter: Emitter) -> None:
+        static_name = emitter.static_name('globals', module_name)
+        self.declare_global('PyObject *', static_name)
 
-    def declare_import(self, imp: str) -> None:
-        self.declare_global('CPyModule *', c_module_name(imp))
+    def declare_import(self, imp: str, emitter: Emitter) -> None:
+        static_name = emitter.static_name('module', imp)
+        self.declare_global('CPyModule *', static_name)
 
-    def declare_imports(self, imps: Iterable[str]) -> None:
+    def declare_imports(self, imps: Iterable[str], emitter: Emitter) -> None:
         for imp in imps:
-            self.declare_import(imp)
+            self.declare_import(imp, emitter)
 
-    def declare_static_pyobject(self, symbol: str) -> None:
+    def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
+        symbol = emitter.static_name(identifier, None)
         self.declare_global('PyObject *', symbol)
 
     def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
@@ -269,7 +273,7 @@ class ModuleGenerator:
             self.generate_import(imp, emitter, check_for_null=True)
 
     def generate_import(self, imp: str, emitter: Emitter, check_for_null: bool) -> None:
-        c_name = c_module_name(imp)
+        c_name = emitter.static_name('module', imp)
         if check_for_null:
             emitter.emit_line('if ({} == NULL) {{'.format(c_name))
         emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_name, imp))
@@ -286,15 +290,17 @@ class ModuleGenerator:
             # Only import it again if we haven't imported it from the main
             # imports section
             if imp not in imps:
-                emitter.emit_line('CPyModule *{};'.format(c_module_name(imp)))
+                c_name = emitter.static_name('module', imp)
+                emitter.emit_line('CPyModule *{};'.format(c_name))
                 self.generate_import(imp, emitter, check_for_null=False)
 
             for original_name, as_name in import_names:
                 # Obtain a reference to the original object
                 object_temp_name = emitter.temp_name()
+                c_name = emitter.static_name('module', imp)
                 emitter.emit_line('PyObject *{} = PyObject_GetAttrString({}, "{}");'.format(
                     object_temp_name,
-                    c_module_name(imp),
+                    c_name,
                     original_name,
                 ))
                 emitter.emit_lines(
@@ -311,7 +317,8 @@ class ModuleGenerator:
             # This particular import isn't saved as a global so we should decref it
             # and not keep it around
             if imp not in imps:
-                emitter.emit_line('Py_DECREF({});'.format(c_module_name(imp)))
+                c_name = emitter.static_name('module', imp)
+                emitter.emit_line('Py_DECREF({});'.format(c_name))
 
 
 def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]]:

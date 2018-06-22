@@ -8,8 +8,8 @@ def f(x: int) -> int:
 #include <Python.h>
 #include <CPy.h>
 
-static PyObject *_globals;
-static CPyModule *module_builtins;
+static PyObject *CPyStatic_globals;
+static CPyModule *CPyStatic_builtins_module;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
 
@@ -33,12 +33,12 @@ PyMODINIT_FUNC PyInit_prog(void)
     m = PyModule_Create(&module);
     if (m == NULL)
         return NULL;
-    _globals = PyModule_GetDict(m);
-    if (_globals == NULL)
+    CPyStatic_globals = PyModule_GetDict(m);
+    if (CPyStatic_globals == NULL)
         return NULL;
-    if (module_builtins == NULL) {
-        module_builtins = PyImport_ImportModule("builtins");
-        if (module_builtins == NULL)
+    if (CPyStatic_builtins_module == NULL) {
+        CPyStatic_builtins_module = PyImport_ImportModule("builtins");
+        if (CPyStatic_builtins_module == NULL)
             return NULL;
     }
     return m;

@@ -25,6 +25,7 @@ class EmitterContext:
     def __init__(self, module_names: List[str]) -> None:
         self.temp_counter = 0
         self.names = NameGenerator(module_names)
+        self.static_names = NameGenerator(module_names)
 
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
@@ -38,6 +39,7 @@ class Emitter:
     def __init__(self, context: EmitterContext, env: Optional[Environment] = None) -> None:
         self.context = context
         self.names = context.names
+        self.static_names = context.static_names
         self.env = env or Environment()
         self.fragments = []  # type: List[str]
         self._indent = 0
@@ -83,6 +85,19 @@ class Emitter:
     def temp_name(self) -> str:
         self.context.temp_counter += 1
         return '__tmp%d' % self.context.temp_counter
+
+    def static_name(self, id: str, module: Optional[str]) -> str:
+        """Create name of a C static variable.
+
+        These are used for literals and imported modules, among other
+        things.
+
+        The caller should ensure that the (id, module) pair cannot
+        overlap with other calls to this method within a compilation
+        unit.
+        """
+        suffix = self.static_names.private_name(module or '', id)
+        return 'CPyStatic_{}'.format(suffix)
 
     # Higher-level operations
 

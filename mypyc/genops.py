@@ -43,7 +43,7 @@ from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RType, Value, Register, Label, Return, FuncIR, Assign,
     Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable, TupleGet, TupleSet,
     ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, PyCall, ROptional,
-    c_module_name, PyMethodCall, MethodCall, INVALID_VALUE, INVALID_LABEL, int_rprimitive,
+    PyMethodCall, MethodCall, INVALID_VALUE, INVALID_LABEL, int_rprimitive,
     is_int_rprimitive, float_rprimitive, is_float_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
@@ -143,8 +143,7 @@ class Mapper:
 
     def __init__(self) -> None:
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
-        # Maps integer, float, and unicode literals to the static c name for that literal
-        # TODO: Maybe C names should generated only when emitting C?
+        # Maps integer, float, and unicode literals to a static name
         self.literals = {}  # type: LiteralsMap
 
     def type_to_rtype(self, typ: Type) -> RType:
@@ -196,17 +195,17 @@ class Mapper:
         ret = self.type_to_rtype(fdef.type.ret_type)
         return FuncSignature(args, ret)
 
-    def c_name_for_literal(self, value: Union[int, float, str]) -> str:
+    def literal_static_name(self, value: Union[int, float, str]) -> str:
         # Include type to distinguish between 1 and 1.0, and so on.
         key = (type(value), value)
         if key not in self.literals:
             if isinstance(value, str):
-                prefix = '__unicode_'
+                prefix = 'unicode_'
             elif isinstance(value, float):
-                prefix = '__float_'
+                prefix = 'float_'
             else:
                 assert isinstance(value, int)
-                prefix = '__int_'
+                prefix = 'int_'
             self.literals[key] = prefix + str(len(self.literals))
         return self.literals[key]
 
@@ -1498,18 +1497,18 @@ class IRBuilder(NodeVisitor[Value]):
         # If the global is from 'builtins', turn it into a module attr load instead
         if self.is_builtin_name_expr(expr):
             return self.load_static_module_attr(expr)
-        _globals = self.add(LoadStatic(object_rprimitive, '_globals'))
+        _globals = self.add(LoadStatic(object_rprimitive, 'globals', self.module_name))
         reg = self.load_static_unicode(expr.name)
         return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
 
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""
-        static_symbol = self.mapper.c_name_for_literal(value)
+        static_symbol = self.mapper.literal_static_name(value)
         return self.add(LoadStatic(int_rprimitive, static_symbol, ann=value))
 
     def load_static_float(self, value: float) -> Value:
         """Loads a static float value into a register."""
-        static_symbol = self.mapper.c_name_for_literal(value)
+        static_symbol = self.mapper.literal_static_name(value)
         return self.add(LoadStatic(float_rprimitive, static_symbol, ann=value))
 
     def load_static_unicode(self, value: str) -> Value:
@@ -1518,14 +1517,14 @@ class IRBuilder(NodeVisitor[Value]):
         This is useful for more than just unicode literals; for example, method calls
         also require a PyObject * form for the name of the method.
         """
-        static_symbol = self.mapper.c_name_for_literal(value)
+        static_symbol = self.mapper.literal_static_name(value)
         return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
 
     def load_static_module_attr(self, expr: RefExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
         module = '.'.join(expr.node.fullname().split('.')[:-1])
         name = expr.node.fullname().split('.')[-1]
-        left = self.add(LoadStatic(object_rprimitive, c_module_name(module)))
+        left = self.add(LoadStatic(object_rprimitive, 'module', module))
         return self.py_get_attr(left, name, expr.line)
 
     def coerce(self, src: Value, target_type: RType, line: int) -> Value:
