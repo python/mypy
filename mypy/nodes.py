@@ -956,6 +956,8 @@ class ForStmt(Statement):
     index = None  # type: Lvalue
     # Type given by type comments for index, can be None
     index_type = None  # type: Optional[mypy.types.Type]
+    # Original, not semantically analyzed type in annotation (used for reprocessing)
+    unanalyzed_index_type = None  # type: Optional[mypy.types.Type]
     # Inferred iterable item type
     inferred_item_type = None  # type: Optional[mypy.types.Type]
     # Inferred iterator type
@@ -975,6 +977,7 @@ class ForStmt(Statement):
         super().__init__()
         self.index = index
         self.index_type = index_type
+        self.unanalyzed_index_type = index_type
         self.expr = expr
         self.body = body
         self.else_body = else_body
