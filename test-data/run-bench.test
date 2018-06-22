@@ -78,44 +78,46 @@ if os.environ.get('MYPYC_RUN_BENCH') == '1':
     print("Build speedup:", ibuild/nbuild)
 
 [case testBenchmarkVisitorTree]
-from typing import cast
+from typing import cast, Generic, TypeVar
+
+T = TypeVar('T')
 class Tree:
-    def accept(self, v: 'TreeVisitor') -> object:
+    def accept(self, v: 'TreeVisitor[T]') -> T:
         pass
 class Leaf(Tree):
-    def accept(self, v: 'TreeVisitor') -> object:
+    def accept(self, v: 'TreeVisitor[T]') -> T:
         return v.visit_leaf(self)
 class Node(Tree):
     def __init__(self, value: int, left: Tree, right: Tree) -> None:
         self.value = value
         self.left = left
         self.right = right
-    def accept(self, v: 'TreeVisitor') -> object:
+    def accept(self, v: 'TreeVisitor[T]') -> T:
         return v.visit_node(self)
 
-class TreeVisitor:
-    def visit_leaf(self, x: Leaf) -> object: pass
-    def visit_node(self, x: Node) -> object: pass
+class TreeVisitor(Generic[T]):
+    def visit_leaf(self, x: Leaf) -> T: return cast(T, None)
+    def visit_node(self, x: Node) -> T: return cast(T, None)
 
-class SumVisitor(TreeVisitor):
+class SumVisitor(TreeVisitor[int]):
     def sum(self, x: Tree) -> int:
-        return cast(int, x.accept(self))
-    def visit_leaf(self, x: Leaf) -> object:
+        return x.accept(self)
+    def visit_leaf(self, x: Leaf) -> int:
         return 0
-    def visit_node(self, x: Node) -> object:
+    def visit_node(self, x: Node) -> int:
         return x.value + self.sum(x.left) + self.sum(x.right)
 
 def equal(x: Tree, y: Tree) -> bool:
     return EqualVisitor(x).equal(y)
 
-class EqualVisitor(TreeVisitor):
+class EqualVisitor(TreeVisitor[bool]):
     def __init__(self, left: Tree) -> None:
         self.left = left
     def equal(self, right: Tree) -> bool:
-        return cast(bool, right.accept(self))
-    def visit_leaf(self, right: Leaf) -> object:
+        return right.accept(self)
+    def visit_leaf(self, right: Leaf) -> bool:
         return isinstance(self.left, Leaf)
-    def visit_node(self, right: Node) -> object:
+    def visit_node(self, right: Node) -> bool:
         if isinstance(self.left, Node):
             # our boolean stuff is crap
             if self.left.value == right.value:
