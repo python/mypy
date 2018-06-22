@@ -79,7 +79,7 @@ def analyze_type_alias(node: Expression,
                 node.fullname), node)
             return None
         if not (isinstance(node.node, TypeInfo) or
-                node.fullname == 'typing.Any' or
+                node.fullname in ('typing.Any', 'typing.Tuple', 'typing.Callable') or
                 isinstance(node.node, TypeAlias)):
             return None
     elif isinstance(node, IndexExpr):

@@ -1265,7 +1265,7 @@ class StarExpr(Expression):
 class RefExpr(Expression):
     """Abstract base class for name-like constructs"""
 
-    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def')
+    __slots__ = ('kind', 'node', 'fullname', 'is_new_def', 'is_inferred_def', 'is_alias_rvalue')
 
     def __init__(self) -> None:
         super().__init__()
@@ -1282,6 +1282,8 @@ class RefExpr(Expression):
         # For members, after semantic analysis, this does not take base
         # classes into consideration at all; the type checker deals with these.
         self.is_inferred_def = False
+        # Is this expression appears as an rvalue of a valid type alias definition?
+        self.is_alias_rvalue = False
 
 
 class NameExpr(RefExpr):
@@ -2447,6 +2449,7 @@ class TypeAlias(SymbolNode):
             x: AA[int]  # Error!
 
             C = Callable  # Same as Callable[..., Any]
+            T = Tuple  # Same as Tuple[Any, ...]
 
         2. An alias using explicit type variables in its rvalue expects
         replacements (type arguments) for these variables. If missing, they

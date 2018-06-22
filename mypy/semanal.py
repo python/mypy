@@ -1760,6 +1760,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             s.rvalue.analyzed.line = s.line
             # we use the column from resulting target, to get better location for errors
             s.rvalue.analyzed.column = res.column
+        elif isinstance(s.rvalue, RefExpr):
+            s.rvalue.is_alias_rvalue = True
         node.node = TypeAlias(res, node.node.fullname(), s.line, s.column,
                               alias_tvars=alias_tvars, no_args=no_args)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):

@@ -185,8 +185,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.analyze_var_ref(node.var, e)
         elif isinstance(node, TypeAlias):
             # Something that refers to a type alias appears in runtime context.
+            # Note that we suppress bogus errors for alias redefinitions,
+            # they are already reported in semanal.py.
             result = self.alias_type_in_runtime_context(node.target, node.alias_tvars,
-                                                        node.no_args, e)
+                                                        node.no_args, e,
+                                                        alias_definition=e.is_alias_rvalue
+                                                        or lvalue)
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
@@ -2144,10 +2148,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         both `reveal_type` instances will reveal the same type `def (...) -> builtins.list[Any]`.
         Note that type variables are implicitly substituted with `Any`.
         """
-        return self.alias_type_in_runtime_context(alias.type, alias.tvars, alias.no_args, alias)
+        return self.alias_type_in_runtime_context(alias.type, alias.tvars, alias.no_args,
+                                                  alias, alias_definition=True)
 
     def alias_type_in_runtime_context(self, target: Type, alias_tvars: List[str],
-                              no_args: bool, ctx: Context) -> Type:
+                                      no_args: bool, ctx: Context,
+                                      *,
+                                      alias_definition: bool = False) -> Type:
         """Get type of a type alias (could be generic) in a runtime expression.
 
         Note that this function can be called only if the alias appears _not_
@@ -2177,23 +2184,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return tp
             return self.apply_type_arguments_to_callable(tp, item.args, ctx)
         else:
-            # This type is invalid in most runtime contexts
-            # and corresponding an error will be reported.
+            if alias_definition:
+                return AnyType(TypeOfAny.special_form)
+            # This type is invalid in most runtime contexts.
             kind = (' to Callable' if isinstance(item, CallableType) else
                     ' to Tuple' if isinstance(item, TupleType) else
                     ' to Union' if isinstance(item, UnionType) else '')
-            cdef = ClassDef('Type alias' + kind, Block([]))
-            fb_info = TypeInfo(SymbolTable(), cdef, self.chk.tree.fullname())
-            fb_info.bases = [self.object_type()]
-            fb_info.mro = [fb_info, self.object_type().type]
-            return Instance(fb_info, [])
+            self.chk.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
+            return AnyType(TypeOfAny.from_error)
 
     def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
-        """Safely apply type arguments to a generic callable type.
+        """Apply type arguments to a generic callable type coming from a type object.
 
         This will first perform type arguments count checks, report the
         error as needed, and return the correct kind of Any. As a special
-        case this returns Any for non-callable types.
+        case this returns Any for non-callable types, because if type object type
+        is not callable, then an error should be already reported.
         """
         if isinstance(tp, CallableType):
             if len(tp.variables) != len(args):

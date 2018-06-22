@@ -54,7 +54,7 @@ from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
     SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
-    FuncBase, OverloadedFuncDef, FuncItem, MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
+    FuncBase, OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
