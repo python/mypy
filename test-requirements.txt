@@ -10,3 +10,4 @@ typed-ast>=1.1.0,<1.2.0
 typing>=3.5.2; python_version < '3.5'
 py>=1.5.2
 virtualenv
+setuptools

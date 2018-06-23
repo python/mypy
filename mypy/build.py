@@ -199,26 +199,44 @@ SearchPaths = NamedTuple('SearchPaths',
 
 
 @functools.lru_cache(maxsize=None)
-def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
+def _get_site_packages_dirs(python_executable: Optional[str],
+                            fscache: FileSystemCache) -> List[str]:
     """Find package directories for given python.
 
     This runs a subprocess call, which generates a list of the site package directories.
     To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
+    def make_abspath(path: str, root: str) -> str:
+        """Take a path and make it absolute relative to root if not already absolute."""
+        path = os.path.normpath(path)
+        if os.path.abspath(path) == path:
+            return path
+        else:
+            return os.path.join(root, path)
+
     if python_executable is None:
         return []
     if python_executable == sys.executable:
         # Use running Python's package dirs
-        return sitepkgs.getsitepackages()
+        site_packages = sitepkgs.getsitepackages()
     else:
         # Use subprocess to get the package directory of given Python
         # executable
-        return ast.literal_eval(subprocess.check_output([python_executable, sitepkgs.__file__],
-                                stderr=subprocess.PIPE).decode())
+        site_packages = ast.literal_eval(
+            subprocess.check_output([python_executable, sitepkgs.__file__],
+            stderr=subprocess.PIPE).decode())
+    egg_dirs = []
+    for dir in site_packages:
+        pth = os.path.join(dir, 'easy-install.pth')
+        if fscache.isfile(pth):
+            with open(pth) as f:
+                egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
+    return egg_dirs + site_packages
 
 
 def compute_search_paths(sources: List[BuildSource],
                      options: Options,
                      data_dir: str,
+                     fscache: FileSystemCache,
                      alt_lib_path: Optional[str] = None) -> SearchPaths:
     """Compute the search paths as specified in PEP 561.
 
@@ -277,7 +295,7 @@ def compute_search_paths(sources: List[BuildSource],
 
     return SearchPaths(tuple(reversed(python_path)),
                        tuple(mypypath),
-                       tuple(_get_site_packages_dirs(options.python_executable)),
+                       tuple(_get_site_packages_dirs(options.python_executable, fscache)),
                        tuple(lib_path))
 
 
@@ -294,7 +312,7 @@ def _build(sources: List[BuildSource],
     data_dir = default_data_dir(bin_dir)
     fscache = fscache or FileSystemCache()
 
-    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
+    search_paths = compute_search_paths(sources, options, data_dir, fscache, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)

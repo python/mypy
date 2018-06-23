@@ -327,7 +327,7 @@ class Server:
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
         manager.search_paths = mypy.build.compute_search_paths(
-            sources, manager.options, manager.data_dir)
+            sources, manager.options, manager.data_dir, mypy.build.FileSystemCache())
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
