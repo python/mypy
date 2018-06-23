@@ -394,3 +394,15 @@ from a import A
 [file a.py]
 A = int
 [out]
+
+[case testDoubleImportsOfAnAlias3]
+from b import *
+from c import *
+[file b.py]
+from a import A
+[file c.py]
+from a import A
+[file a.py]
+from typing import Union
+A = Union[None]
+[out]

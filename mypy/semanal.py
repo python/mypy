@@ -1480,6 +1480,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             rvalue = NameExpr(imported_id)
             rvalue.kind = module_symbol.kind
             rvalue.node = module_symbol.node
+            if isinstance(rvalue.node, TypeAlias):
+                # Suppress bogus errors from the dummy assignment if rvalue is an alias.
+                # Otherwise mypy may complain that alias is invalid in runtime context.
+                rvalue.is_alias_rvalue = True
             assignment = AssignmentStmt([lvalue], rvalue)
             for node in assignment, lvalue, rvalue:
                 node.set_line(import_node)
