@@ -2,7 +2,7 @@
 
 import re
 
-from typing import cast, List, Tuple, Dict, Callable, Union, Optional
+from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny
@@ -19,6 +19,20 @@ from mypy.messages import MessageBuilder
 
 FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
 Checkers = Tuple[Callable[[Expression], None], Callable[[Type], None]]
+
+
+def compile_format_re() -> Pattern[str]:
+    key_re = r'(\(([^()]*)\))?'  # (optional) parenthesised sequence of characters.
+    flags_re = r'([#0\-+ ]*)'  # (optional) sequence of flags.
+    width_re = r'(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers).
+    precision_re = r'(?:\.(\*|[0-9]+)?)?'  # (optional) . followed by * of numbers.
+    length_mod_re = r'[hlL]?'  # (optional) length modifier (unused).
+    type_re = r'(.)?'  # conversion type.
+    format_re = '%' + key_re + flags_re + width_re + precision_re + length_mod_re + type_re
+    return re.compile(format_re)
+
+
+FORMAT_RE = compile_format_re()
 
 
 class ConversionSpecifier:
@@ -90,16 +104,8 @@ class StringFormatterChecker:
             assert False
 
     def parse_conversion_specifiers(self, format: str) -> List[ConversionSpecifier]:
-        key_regex = r'(\(([^()]*)\))?'  # (optional) parenthesised sequence of characters
-        flags_regex = r'([#0\-+ ]*)'  # (optional) sequence of flags
-        width_regex = r'(\*|[1-9][0-9]*)?'  # (optional) minimum field width (* or numbers)
-        precision_regex = r'(?:\.(\*|[0-9]+)?)?'  # (optional) . followed by * of numbers
-        length_mod_regex = r'[hlL]?'  # (optional) length modifier (unused)
-        type_regex = r'(.)?'  # conversion type
-        regex = ('%' + key_regex + flags_regex + width_regex +
-                 precision_regex + length_mod_regex + type_regex)
         specifiers = []  # type: List[ConversionSpecifier]
-        for parens_key, key, flags, width, precision, type in re.findall(regex, format):
+        for parens_key, key, flags, width, precision, type in FORMAT_RE.findall(format):
             if parens_key == '':
                 key = None
             specifiers.append(ConversionSpecifier(key, flags, width, precision, type))
