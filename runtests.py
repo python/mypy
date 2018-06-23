@@ -9,6 +9,7 @@ from os.path import join, isdir
 import sys
 
 from waiter import Waiter, LazySubprocess
+from mypy.test.testsamples import find_files, file_to_module
 
 
 def get_versions() -> List[str]:
@@ -106,20 +107,6 @@ class Driver:
             print('{id}:{task}'.format(id=id, task=task.name))
 
 
-def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
-    return [join(root, f)
-            for root, dirs, files in os.walk(base)
-            for f in files
-            if f.startswith(prefix) and f.endswith(suffix)]
-
-
-def file_to_module(file: str) -> str:
-    rv = os.path.splitext(file)[0].replace(os.sep, '.')
-    if rv.endswith('.__init__'):
-        rv = rv[:-len('.__init__')]
-    return rv
-
-
 def test_path(*names: str) -> List[str]:
     return [os.path.join('mypy', 'test', '{}.py'.format(name))
             for name in names]
@@ -155,6 +142,7 @@ SLOW_FILES = test_path(
     'testpythoneval',
     'testcmdline',
     'teststubgen',
+    'testsamples',
 )
 
 SELFCHECK_FILES = test_path(
@@ -170,23 +158,6 @@ def add_pytest(driver: Driver) -> None:
                       [('self-check', name) for name in SELFCHECK_FILES])
 
 
-def add_stubs(driver: Driver) -> None:
-    # We only test each module in the one version mypy prefers to find.
-    # TODO: test stubs for other versions, especially Python 2 stubs.
-
-    modules = {'typing'}
-    # TODO: This should also test Python 2, and pass pyversion accordingly.
-    for version in ["2and3", "3", "3.5"]:
-        for stub_type in ['builtins', 'stdlib', 'third_party']:
-            stubdir = join('typeshed', stub_type, version)
-            for f in find_files(stubdir, suffix='.pyi'):
-                module = file_to_module(f[len(stubdir) + 1:])
-                modules.add(module)
-
-    # these require at least 3.5 otherwise it will fail trying to import zipapp
-    driver.add_mypy_modules('stubs', sorted(modules), extra_args=['--python-version=3.5'])
-
-
 def add_stdlibsamples(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', '3.2', 'test')
@@ -200,15 +171,6 @@ def add_stdlibsamples(driver: Driver) -> None:
         # TODO: Remove need for --no-strict-optional
         driver.add_mypy_modules('stdlibsamples (3.2)', modules,
                                 cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
-
-
-def add_samples(driver: Driver) -> None:
-    for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        mypy_args = ['--no-strict-optional']
-        if f == os.path.join('test-data', 'samples', 'crawl2.py'):
-            # This test requires 3.5 for async functions
-            mypy_args.append('--python-version=3.5')
-        driver.add_mypy_cmd('file {}'.format(f), mypy_args + [f])
 
 
 def usage(status: int) -> None:
@@ -348,9 +310,7 @@ def main() -> None:
 
     driver.add_flake8()
     add_pytest(driver)
-    add_stubs(driver)
     add_stdlibsamples(driver)
-    add_samples(driver)
 
     if list_only:
         driver.list_tasks()
