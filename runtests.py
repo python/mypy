@@ -94,14 +94,6 @@ class Driver:
                                        passthrough=self.verbosity),
                         sequential=True)
 
-    def add_flake8(self, cwd: Optional[str] = None) -> None:
-        name = 'lint'
-        if not self.allow(name):
-            return
-        largs = ['flake8', '-j0']
-        env = self.env
-        self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
-
     def list_tasks(self) -> None:
         for id, task in enumerate(self.waiter.queue):
             print('{id}:{task}'.format(id=id, task=task.name))
@@ -308,7 +300,6 @@ def main() -> None:
     driver.prepend_path('MYPYPATH', [driver.cwd])
     driver.prepend_path('PYTHONPATH', [driver.cwd])
 
-    driver.add_flake8()
     add_pytest(driver)
     add_stdlibsamples(driver)
 
