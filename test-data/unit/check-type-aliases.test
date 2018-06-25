@@ -406,3 +406,23 @@ from a import A
 from typing import Union
 A = Union[None]
 [out]
+
+[case testAliasToClassMethod]
+from typing import TypeVar, Generic, Union, Type
+
+T = TypeVar('T', bound=C)
+
+MYPY = False
+if MYPY:
+    test = classmethod
+
+class C:
+    @test
+    def meth(cls: Type[T], arg: int) -> Union[T, int]: ...
+
+class D(C): ...
+
+reveal_type(D.meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int]'
+reveal_type(D().meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int]'
+[builtins fixtures/classmethod.pyi]
+[out]

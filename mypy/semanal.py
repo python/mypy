@@ -3342,7 +3342,11 @@ def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
 
 def refers_to_fullname(node: Expression, fullname: str) -> bool:
     """Is node a name or member expression with the given full name?"""
-    return isinstance(node, RefExpr) and node.fullname == fullname
+    if not isinstance(node, RefExpr):
+        return False
+    return (node.fullname == fullname or
+            isinstance(node.node, TypeAlias) and isinstance(node.node.target, Instance)
+            and node.node.target.type.fullname() == fullname)
 
 
 def refers_to_class_or_function(node: Expression) -> bool:
