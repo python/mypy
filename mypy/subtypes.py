@@ -198,6 +198,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
             return True
+        if left.values and is_subtype(UnionType.make_simplified_union(left.values), right):
+            return True
         return is_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:
@@ -901,7 +903,9 @@ def flip_compat_check(is_compat: Callable[[Type, Type], bool]) -> Callable[[Type
 
 
 def unify_generic_callable(type: CallableType, target: CallableType,
-                           ignore_return: bool) -> Optional[CallableType]:
+                           ignore_return: bool,
+                           return_constraint_direction: int = mypy.constraints.SUBTYPE_OF,
+                           ) -> Optional[CallableType]:
     """Try to unify a generic callable type with another callable type.
 
     Return unified CallableType if successful; otherwise, return None.
@@ -914,7 +918,7 @@ def unify_generic_callable(type: CallableType, target: CallableType,
         constraints.extend(c)
     if not ignore_return:
         c = mypy.constraints.infer_constraints(
-            type.ret_type, target.ret_type, mypy.constraints.SUBTYPE_OF)
+            type.ret_type, target.ret_type, return_constraint_direction)
         constraints.extend(c)
     type_var_ids = [tvar.id for tvar in type.variables]
     inferred_vars = mypy.solve.solve_constraints(type_var_ids, constraints)
@@ -1036,7 +1040,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         if isinstance(self.right, TypeVarType) and left.id == self.right.id:
             return True
-        # TODO: Value restrictions
+        if left.values and is_subtype(UnionType.make_simplified_union(left.values), self.right):
+            return True
         return is_proper_subtype(left.upper_bound, self.right)
 
     def visit_callable_type(self, left: CallableType) -> bool:

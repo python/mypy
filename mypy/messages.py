@@ -967,13 +967,17 @@ class MessageBuilder:
                 index2=index2),
             context)
 
-    def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
-        self.fail('Overloaded function implementation does not accept all possible arguments '
-                  'of signature {}'.format(index1), context)
+    def overloaded_signatures_typevar_specific(self, index: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot satisfy signature {} '.format(index) +
+                  'due to inconsistencies in how they use type variables', context)
 
-    def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
+    def overloaded_signatures_arg_specific(self, index: int, context: Context) -> None:
+        self.fail('Overloaded function implementation does not accept all possible arguments '
+                  'of signature {}'.format(index), context)
+
+    def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation cannot produce return type '
-                  'of signature {}'.format(index1), context)
+                  'of signature {}'.format(index), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
