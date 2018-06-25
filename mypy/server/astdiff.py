@@ -53,8 +53,8 @@ Summary of how this works for certain kinds of differences:
 from typing import Set, Dict, Tuple, Optional, Sequence, Union
 
 from mypy.nodes import (
-    SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr,
-    OverloadedFuncDef, FuncItem, MODULE_REF, TYPE_ALIAS, UNBOUND_IMPORTED, TVAR
+    SymbolTable, TypeInfo, Var, SymbolNode, Decorator, TypeVarExpr, TypeAlias,
+    FuncBase, OverloadedFuncDef, FuncItem, MODULE_REF, UNBOUND_IMPORTED, TVAR
 )
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, UninhabitedType,
@@ -146,15 +146,17 @@ def snapshot_symbol_table(name_prefix: str, table: SymbolTable) -> Dict[str, Sna
                             node.variance,
                             [snapshot_type(value) for value in node.values],
                             snapshot_type(node.upper_bound))
-        elif symbol.kind == TYPE_ALIAS:
+        elif isinstance(symbol.node, TypeAlias):
             result[name] = ('TypeAlias',
-                            symbol.alias_tvars,
-                            snapshot_optional_type(symbol.type_override))
+                            symbol.node.alias_tvars,
+                            symbol.node.normalized,
+                            symbol.node.no_args,
+                            snapshot_optional_type(symbol.node.target))
         else:
             assert symbol.kind != UNBOUND_IMPORTED
             if node and get_prefix(node.fullname()) != name_prefix:
                 # This is a cross-reference to a node defined in another module.
-                result[name] = ('CrossRef', common, symbol.normalized)
+                result[name] = ('CrossRef', common)
             else:
                 result[name] = snapshot_definition(node, common)
     return result
@@ -167,13 +169,13 @@ def snapshot_definition(node: Optional[SymbolNode],
     The representation is nested tuples and dicts. Only externally
     visible attributes are included.
     """
-    if isinstance(node, (OverloadedFuncDef, FuncItem)):
+    if isinstance(node, FuncBase):
         # TODO: info
         if node.type:
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
-        return ('Func', common, node.is_property, signature)
+        return ('Func', common, node.is_property, node.is_class, node.is_static, signature)
     elif isinstance(node, Var):
         return ('Var', common, snapshot_optional_type(node.type))
     elif isinstance(node, Decorator):

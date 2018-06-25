@@ -1276,7 +1276,7 @@ def f(x: object) -> object: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # E: Revealed type is 'builtins.object'
+reveal_type(f(a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument2]
 from typing import overload, Any
@@ -1288,7 +1288,7 @@ def f(x: float) -> float: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # E: Revealed type is 'builtins.float'
+reveal_type(f(a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument3]
 from typing import overload, Any
@@ -1312,17 +1312,16 @@ def f(x: object, y: int, z: str) -> object: ...
 def f(x): pass
 
 a: Any
-# Any causes ambiguity; we fall back to returning object since it's a
-# supertype of int
-reveal_type(f(a, 1, ''))  # E: Revealed type is 'builtins.object'
+# Any causes ambiguity
+reveal_type(f(a, 1, ''))  # E: Revealed type is 'Any'
 # Any causes no ambiguity
 reveal_type(f(1, a, a))  # E: Revealed type is 'builtins.int'
 reveal_type(f('', a, a))  # E: Revealed type is 'builtins.object'
 # Like above, but use keyword arguments.
-reveal_type(f(y=1, z='', x=a))  # E: Revealed type is 'builtins.object'
+reveal_type(f(y=1, z='', x=a))  # E: Revealed type is 'Any'
 reveal_type(f(y=a, z='', x=1))  # E: Revealed type is 'builtins.int'
 reveal_type(f(z='', x=1, y=a))  # E: Revealed type is 'builtins.int'
-reveal_type(f(z='', x=a, y=1))  # E: Revealed type is 'builtins.object'
+reveal_type(f(z='', x=a, y=1))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument5]
 from typing import overload, Any, Union
@@ -1334,7 +1333,7 @@ def f(x: Union[int, float]) -> float: ...
 def f(x): pass
 
 a: Any
-reveal_type(f(a))  # E: Revealed type is 'builtins.float'
+reveal_type(f(a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument6]
 from typing import overload, Any
@@ -1372,7 +1371,7 @@ def g(x): pass
 
 a: Any
 reveal_type(f(1, *a))  # E: Revealed type is 'builtins.int'
-reveal_type(g(1, *a))  # E: Revealed type is 'builtins.object'
+reveal_type(g(1, *a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument8]
 from typing import overload, Any
@@ -1412,15 +1411,19 @@ reveal_type(f(d))  # E: Revealed type is 'builtins.list[builtins.int]'
 from typing import overload, Any
 
 @overload
-def f(*, x: int = 3, y: int = 3) -> int: ...
+def f(*, x: int = 3, y: int = 3) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
 @overload
 def f(**kwargs: str) -> str: ...
 def f(*args, **kwargs): pass
 
+# Checking an overload flagged as unsafe is a bit weird, but this is the
+# cleanest way to make sure 'Any' ambiguity checks work correctly with
+# keyword arguments.
 a: Any
 i: int
 reveal_type(f(x=a, y=i))  # E: Revealed type is 'builtins.int'
 reveal_type(f(y=a))       # E: Revealed type is 'Any'
+reveal_type(f(x=a, y=a))  # E: Revealed type is 'Any'
 
 [builtins fixtures/dict.pyi]
 
@@ -1439,6 +1442,86 @@ reveal_type(f(x=i, **a))  # E: Revealed type is 'builtins.int'
 reveal_type(f(**a))       # E: Revealed type is 'Any'
 
 [builtins fixtures/dict.pyi]
+
+[case testOverloadWithOverlappingItemsAndAnyArgument12]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> Any: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument13]
+from typing import Any, overload, TypeVar, Generic
+
+class slice: pass
+
+T = TypeVar('T')
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> T: ...
+    @overload
+    def f(self, x: slice) -> A[T]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument14]
+from typing import Any, overload, TypeVar, Generic
+
+T = TypeVar('T')
+
+class Wrapper(Generic[T]): pass
+class slice: pass
+
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> Wrapper[T]: ...
+    @overload
+    def f(self, x: slice) -> Wrapper[A[T]]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is '__main__.Wrapper[Any]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument15]
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: int) -> Union[str, int]: ...
+@overload
+def g(x: str) -> Union[int, str]: ...
+def g(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'builtins.str'
+reveal_type(g(a))  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument16]
+from typing import overload, Any, Union, Callable
+
+@overload
+def f(x: int) -> Callable[[int, int], int]: ...
+@overload
+def f(x: str) -> Callable[[str], str]: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))     # E: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(f(a)(a))  # E: Revealed type is 'Any'
 
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
@@ -1687,8 +1770,7 @@ def g(*, p1: X, p2: B) -> X: ...  # E: Overloaded function signatures 1 and 2 ov
 def g(*, p2: A, p1: X) -> Y: ...
 def g(*, p1, p2): ...
 
-[case testOverloadWithVariableArgsAreOverlapping-skip]
-# TODO: Re-enable this after adding support for partially overlapping arg counts
+[case testOverloadWithVariableArgsAreOverlapping]
 from wrapper import *
 [file wrapper.pyi]
 from typing import overload
@@ -1765,8 +1847,7 @@ def foo3(x: str) -> str: ...
 @overload
 def foo3(x: str, y: str) -> int: ...
 
-[case testOverloadPossibleOverlapWithArgsAndKwargs-skip]
-# TODO: Re-enable this after adding support for partially overlapping arg counts
+[case testOverloadPossibleOverlapWithArgsAndKwargs]
 from wrapper import *
 [file wrapper.pyi]
 from typing import overload
@@ -1777,9 +1858,232 @@ def foo1(*args: int) -> int: ...  # E: Overloaded function signatures 1 and 2 ov
 def foo1(**kwargs: int) -> str: ...
 
 @overload
+def foo2(**kwargs: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(*args: int) -> int: ...
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapWithVarargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*args: int) -> int: ...
+@overload
+def foo1(*args2: int) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+@overload
+def foo2(*args: int) -> str: ...
+@overload
+def foo2(*args2: str) -> int: ...
+
+@overload
+def foo3(*args: int) -> str: ...
+@overload
+def foo3(*args: str) -> int: ...
+
+[case testOverloadPossibleOverlapWithVarargs2]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*args: str) -> int: ...
+@overload
+def foo1(x: int, *args2: int) -> str: ...
+
+@overload
+def foo2(x: int, *args: int) -> str: ...
+@overload
+def foo2(*args2: str) -> int: ...
+
+@overload
+def foo3(*args: int) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo3(x: int, *args2: int) -> str: ...
+
+@overload
+def foo4(x: int, *args: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo4(*args2: int) -> int: ...
+
+[case testOverloadPossibleOverlapWithVarargs3]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+class Other: ...
+
+@overload
+def foo1(x: Other, *args: int) -> str: ...
+@overload
+def foo1(*args: str) -> int: ...
+
+@overload
+def foo2(*args: int) -> str: ...
+@overload
+def foo2(x: Other, *args: str) -> int: ...
+
+@overload
+def foo3(x: Other = ..., *args: int) -> str: ...
+@overload
+def foo3(*args: str) -> int: ...
+
+@overload
+def foo4(*args: int) -> str: ...
+@overload
+def foo4(x: Other = ..., *args: str) -> int: ...
+
+[case testOverloadPossibleOverlapWithVarargs4]
+from typing import overload
+
+@overload
+def foo1(x: int = 0, y: int = 0) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(*xs: int) -> str: ...
+def foo1(*args): pass
+
+@overload
+def foo2(*xs: int) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(x: int = 0, y: int = 0) -> int: ...
+def foo2(*args): pass
+
+[case testOverloadPossibleOverlapWithKwargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(**kwargs: int) -> int: ...
+@overload
+def foo1(**kwargs2: int) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+@overload
 def foo2(**kwargs: int) -> str: ...
 @overload
-def foo2(*args: int) -> int: ...  # E: Overloaded function signature 2 will never be matched: function 1's parameter type(s) are the same or broader
+def foo2(**kwargs2: str) -> int: ...
+
+@overload
+def foo(**kwargs: int) -> str: ...
+@overload
+def foo(**kwargs: str) -> int: ...
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithVarargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, *, y: str) -> str: ...
+@overload
+def foo1(*x: str) -> int: ...
+
+@overload
+def foo2(*x: str) -> int: ...
+@overload
+def foo2(x: str, *, y: str) -> str: ...
+
+[case testOverloadPossibleOverlapMixingOptionalArgsWithVarargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, y: str = ..., z: str = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(*x: str) -> int: ...
+
+@overload
+def foo2(*x: str) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(x: str, y: str = ..., z: str = ...) -> str: ...
+
+@overload
+def foo3(x: int, y: str = ..., z: str = ...) -> str: ...
+@overload
+def foo3(*x: str) -> int: ...
+
+[case testOverloadPossibleOverlapMixingOptionalArgsWithVarargs2]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, y: str = ..., z: int = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(*x: str) -> int: ...
+
+@overload
+def foo2(x: str, y: str = ..., z: int = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(*x: str) -> int: ...
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithKwargs]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*, x: str, y: str, z: str) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(**x: str) -> int: ...
+
+@overload
+def foo2(**x: str) -> int: ...
+@overload
+def foo2(*, x: str, y: str, z: str) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+
+@overload
+def foo3(*, x: int, y: str, z: str) -> str: ...
+@overload
+def foo3(*x: str) -> int: ...
+
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithKwargs2]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(*, x: str, y: str, z: int) -> str: ...
+@overload
+def foo1(**x: str) -> int: ...
+
+@overload
+def foo2(**x: str) -> int: ...
+@overload
+def foo2(*, x: str, y: str, z: int) -> str: ...
+
+@overload
+def foo3(*, x: str, y: str, z: int = ...) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo3(**x: str) -> int: ...
+
+@overload
+def foo4(**x: str) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo4(*, x: str, y: str, z: int = ...) -> str: ...
+[builtins fixtures/dict.pyi]
+
+[case testOverloadPossibleOverlapMixingNamedArgsWithKwargs3]
+from wrapper import *
+[file wrapper.pyi]
+from typing import overload
+
+@overload
+def foo1(x: str, *, y: str, z: str) -> str: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo1(**x: str) -> int: ...
+
+@overload
+def foo2(**x: str) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def foo2(x: str, *, y: str, z: str) -> str: ...
+
 [builtins fixtures/dict.pyi]
 
 [case testOverloadVarargInputAndVarargDefinition]
@@ -2157,7 +2461,7 @@ reveal_type(foo(compat))  # E: Revealed type is 'Union[builtins.int, builtins.st
 not_compat: Union[WrapperCo[A], WrapperContra[C]]
 foo(not_compat)  # E: Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "Union[WrapperCo[B], WrapperContra[B]]"
 
-[case testOverloadInferUnionSkipIfParameterNamesAreDifferent]
+[case testOverloadInferUnionIfParameterNamesAreDifferent]
 from typing import overload, Union
 
 class A: ...
@@ -2173,7 +2477,7 @@ def f(x): ...
 x: Union[A, B]
 reveal_type(f(A()))  # E: Revealed type is '__main__.B'
 reveal_type(f(B()))  # E: Revealed type is '__main__.C'
-f(x)                 # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "A"
+reveal_type(f(x))    # E: Revealed type is 'Union[__main__.B, __main__.C]'
 
 [case testOverloadInferUnionReturnFunctionsWithKwargs]
 from typing import overload, Union, Optional
@@ -2191,20 +2495,56 @@ def f(x: A, y: Optional[B] = None) -> C: ...
 def f(x: A, z: Optional[C] = None) -> B: ...
 def f(x, y=None, z=None): ...
 
-reveal_type(f(A(), B()))
-reveal_type(f(A(), C()))
+reveal_type(f(A(), B()))  # E: Revealed type is '__main__.C'
+reveal_type(f(A(), C()))  # E: Revealed type is '__main__.B'
 
 arg: Union[B, C]
-reveal_type(f(A(), arg))
-reveal_type(f(A()))
+reveal_type(f(A(), arg))  # E: Revealed type is 'Union[__main__.C, __main__.B]'
+reveal_type(f(A()))       # E: Revealed type is '__main__.D'
 
 [builtins fixtures/tuple.pyi]
-[out]
-main:16: error: Revealed type is '__main__.C'
-main:17: error: Revealed type is '__main__.B'
-main:20: error: Revealed type is '__main__.C'
-main:20: error: Argument 2 to "f" has incompatible type "Union[B, C]"; expected "Optional[B]"
-main:21: error: Revealed type is '__main__.D'
+
+[case testOverloadInferUnionWithDifferingLengths]
+from typing import overload, Union
+
+class Parent: ...
+class Child(Parent): ...
+
+class A: ...
+class B: ...
+
+@overload
+def f(x: A) -> Child: ...
+@overload
+def f(x: B, y: B = B()) -> Parent: ...
+def f(*args): ...
+
+# TODO: It would be nice if we could successfully do union math
+# in this case. See comments in checkexpr.union_overload_matches.
+x: Union[A, B]
+f(x)       # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "A"
+f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "B"
+
+[case testOverloadInferUnionWithMixOfPositionalAndOptionalArgs]
+# flags: --strict-optional
+from typing import overload, Union, Optional
+
+class A: ...
+class B: ...
+
+@overload
+def f(x: A) -> int: ...
+@overload
+def f(x: Optional[B] = None) -> str: ...
+def f(*args): ...
+
+x: Union[A, B]
+y: Optional[A]
+z: Union[A, Optional[B]]
+reveal_type(f(x))  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(f(y))  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(f(z))  # E: Revealed type is 'Union[builtins.int, builtins.str]'
+reveal_type(f())   # E: Revealed type is 'builtins.str'
 
 [case testOverloadingInferUnionReturnWithTypevarWithValueRestriction]
 from typing import overload, Union, TypeVar, Generic
@@ -2937,3 +3277,569 @@ def add_proxy(x, y):
 tup = (1, '2')
 reveal_type(foo(lambda (x, y): add_proxy(x, y), tup))  # E: Revealed type is 'builtins.str*'
 [builtins fixtures/primitives.pyi]
+
+[case testOverloadWithClassMethods]
+from typing import overload
+
+class Wrapper:
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+    @classmethod
+    def foo(cls, x): pass
+
+reveal_type(Wrapper.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadWithInconsistentClassMethods]
+from typing import overload
+
+class Wrapper1:
+    @overload   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+    def foo(cls, x): pass
+
+class Wrapper2:
+    @overload   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+    @overload
+    def foo(cls, x: str) -> str: ...
+    @classmethod
+    def foo(cls, x): pass
+
+class Wrapper3:
+    @overload   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    def foo(cls, x: int) -> int: ...
+    @overload
+    def foo(cls, x: str) -> str: ...
+    @classmethod
+    def foo(cls, x): pass
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadWithSwappedDecorators]
+from typing import overload
+
+class Wrapper1:
+    @classmethod
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @classmethod
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class Wrapper2:
+    @classmethod
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class Wrapper3:
+    @classmethod   # E: Overload does not consistently use the "@classmethod" decorator on all function signatures.
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+reveal_type(Wrapper1.foo(3))  # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper2.foo(3))  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadFaultyClassMethodInheritance]
+from typing import overload
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+class Parent:
+    @overload
+    @classmethod
+    def foo(cls, x: B) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class BadChild(Parent):
+    @overload  # E: Signature of "foo" incompatible with supertype "Parent"
+    @classmethod
+    def foo(cls, x: C) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class GoodChild(Parent):
+    @overload
+    @classmethod
+    def foo(cls, x: A) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadClassMethodMixingInheritance]
+from typing import overload
+
+class BadParent:
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+class BadChild(BadParent):
+    @overload                           # E: Signature of "foo" incompatible with supertype "BadParent"
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+class GoodParent:
+    @overload
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    def foo(cls, x: str) -> str: ...
+
+    def foo(cls, x): pass
+
+class GoodChild(GoodParent):
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x): pass
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadClassMethodImplementation]
+from typing import overload, Union
+
+class Wrapper:
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod    # E: Overloaded function implementation cannot produce return type of signature 1
+    def foo(cls, x: Union[int, str]) -> str:
+        reveal_type(cls)          # E: Revealed type is 'def () -> __main__.Wrapper'
+        reveal_type(cls.other())  # E: Revealed type is 'builtins.str'
+        return "..."
+
+[builtins fixtures/classmethod.pyi]
+
+[case testOverloadWithStaticMethods]
+from typing import overload
+
+class Wrapper:
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+    @staticmethod
+    def foo(x): pass
+
+reveal_type(Wrapper.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadWithInconsistentStaticMethods]
+from typing import overload, Union
+
+class Wrapper1:
+    @overload   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+    def foo(x): pass
+
+class Wrapper2:
+    @overload   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+    @staticmethod
+    def foo(x): pass
+
+class Wrapper3:
+    @overload   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @staticmethod
+    def foo(x: int) -> int: ...
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+    def foo(x: Union[int, str]): pass  # E: Self argument missing for a non-static method (or an invalid type for self)
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadWithSwappedDecorators]
+from typing import overload
+
+class Wrapper1:
+    @staticmethod
+    @overload
+    def foo(x: int) -> int: ...
+
+    @staticmethod
+    @overload
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class Wrapper2:
+    @staticmethod
+    @overload
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class Wrapper3:
+    @staticmethod   # E: Overload does not consistently use the "@staticmethod" decorator on all function signatures.
+    @overload
+    def foo(x: int) -> int: ...
+
+    @overload
+    def foo(x: str) -> str: ...  # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    @staticmethod
+    def foo(x): pass
+
+reveal_type(Wrapper1.foo(3))  # E: Revealed type is 'builtins.int'
+reveal_type(Wrapper2.foo(3))  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadFaultyStaticMethodInheritance]
+from typing import overload
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+class Parent:
+    @overload
+    @staticmethod
+    def foo(x: B) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class BadChild(Parent):
+    @overload  # E: Signature of "foo" incompatible with supertype "Parent"
+    @staticmethod
+    def foo(x: C) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class GoodChild(Parent):
+    @overload
+    @staticmethod
+    def foo(x: A) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadStaticMethodMixingInheritance]
+from typing import overload
+
+class BadParent:
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+class BadChild(BadParent):
+    @overload                            # E: Signature of "foo" incompatible with supertype "BadParent"
+    def foo(self, x: int) -> int: ...
+
+    @overload
+    def foo(self, x: str) -> str: ...
+
+    def foo(self, x): pass
+
+class GoodParent:
+    @overload
+    def foo(self, x: int) -> int: ...
+
+    @overload
+    def foo(self, x: str) -> str: ...
+
+    def foo(self, x): pass
+
+class GoodChild(GoodParent):
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod
+    def foo(x): pass
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testOverloadStaticMethodImplementation]
+from typing import overload, Union
+
+class Wrapper:
+    @staticmethod
+    def other() -> str:
+        return "..."
+
+    @overload
+    @staticmethod
+    def foo(x: int) -> int: ...
+
+    @overload
+    @staticmethod
+    def foo(x: str) -> str: ...
+
+    @staticmethod    # E: Overloaded function implementation cannot produce return type of signature 1
+    def foo(x: Union[int, str]) -> str:
+        return 3  # E: Incompatible return value type (got "int", expected "str")
+
+[builtins fixtures/staticmethod.pyi]
+
+[case testUnionMathOverloadingReturnsBestType]
+from typing import Union, overload
+
+@overload
+def f(x: Union[int, str]) -> int: ...
+@overload
+def f(x: object) -> object: ...
+def f(x):
+    pass
+
+x: Union[int, str]
+reveal_type(f(x))  # E: Revealed type is 'builtins.int'
+[out]
+
+[case testOverloadAndSelfTypes]
+from typing import overload, Union, TypeVar, Type
+
+T = TypeVar('T', bound='Parent')
+class Parent:
+    @overload
+    def foo(self: T, x: int) -> T: pass
+
+    @overload
+    def foo(self, x: str) -> str: pass
+
+    def foo(self: T, x: Union[int, str]) -> Union[T, str]:
+        reveal_type(self.bar())    # E: Revealed type is 'builtins.str'
+        return self
+
+    def bar(self) -> str: pass
+
+class Child(Parent):
+    def child_only(self) -> int: pass
+
+x: Union[int, str]
+reveal_type(Parent().foo(3))                  # E: Revealed type is '__main__.Parent*'
+reveal_type(Child().foo(3))                   # E: Revealed type is '__main__.Child*'
+reveal_type(Child().foo("..."))               # E: Revealed type is 'builtins.str'
+reveal_type(Child().foo(x))                   # E: Revealed type is 'Union[__main__.Child*, builtins.str]'
+reveal_type(Child().foo(3).child_only())      # E: Revealed type is 'builtins.int'
+
+[case testOverloadAndClassTypes]
+from typing import overload, Union, TypeVar, Type
+
+T = TypeVar('T', bound='Parent')
+class Parent:
+    @overload
+    @classmethod
+    def foo(cls: Type[T], x: int) -> Type[T]: pass
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: pass
+
+    @classmethod
+    def foo(cls: Type[T], x: Union[int, str]) -> Union[Type[T], str]:
+        reveal_type(cls.bar())    # E: Revealed type is 'builtins.str'
+        return cls
+
+    @classmethod
+    def bar(cls) -> str: pass
+
+class Child(Parent):
+    def child_only(self) -> int: pass
+
+x: Union[int, str]
+reveal_type(Parent.foo(3))                  # E: Revealed type is 'Type[__main__.Parent*]'
+reveal_type(Child.foo(3))                   # E: Revealed type is 'Type[__main__.Child*]'
+reveal_type(Child.foo("..."))               # E: Revealed type is 'builtins.str'
+reveal_type(Child.foo(x))                   # E: Revealed type is 'Union[Type[__main__.Child*], builtins.str]'
+reveal_type(Child.foo(3)().child_only())    # E: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.pyi]
+
+[case testOptionalIsNotAUnionIfNoStrictOverload]
+# flags: --no-strict-optional
+from typing import Optional, overload
+
+class B: pass
+class C(B): pass
+
+@overload
+def rp(x: C) -> C: ...
+@overload
+def rp(x: B) -> B: ...
+def rp(x):
+    pass
+
+x: Optional[C]
+reveal_type(rp(x))  # E: Revealed type is '__main__.C'
+[out]
+
+[case testOptionalIsNotAUnionIfNoStrictOverloadStr]
+# flags: -2 --no-strict-optional
+
+from typing import Optional
+from m import relpath
+a = '' # type: Optional[str]
+reveal_type(relpath(a))  # E: Revealed type is 'builtins.str'
+
+[file m.pyi]
+from typing import overload
+@overload
+def relpath(path: str) -> str: ...
+@overload
+def relpath(path: unicode) -> unicode: ...
+[out]
+
+[case testOverloadsWithNoneComingSecondAreAlwaysFlaggedInNoStrictOptional]
+# flags: --no-strict-optional
+from typing import overload
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: int) -> int:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def none_second(x: int) -> int:
+    return x
+
+[case testOverloadsWithNoneComingSecondIsOkInStrictOptional]
+# flags: --strict-optional
+from typing import overload, Optional
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...
+def none_second(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_loose_impl(x: None) -> None: ...
+@overload
+def none_loose_impl(x: int) -> int: ...
+def none_loose_impl(x: int) -> int:
+    return x
+[out]
+main:22: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:22: error: Overloaded function implementation cannot produce return type of signature 1

@@ -385,7 +385,7 @@ def default_lib_path(data_dir: str,
     else:
         # For Python 2, we only have stubs for 2.7
         versions = ["2.7"]
-    # E.g. for Python 3.5, try 3.5/, 3.4/, 3.3/, 3/, 2and3/.
+    # E.g. for Python 3.6, try 3.6/, 3.5/, 3.4/, 3/, 2and3/.
     for v in versions + [str(pyversion[0]), '2and3']:
         for lib_type in ['stdlib', 'third_party']:
             stubdir = os.path.join(typeshed_dir, lib_type, v)
@@ -862,6 +862,10 @@ def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
                                 stderr=subprocess.PIPE).decode())
 
 
+# Search paths are a two-tuple of path and whether to verify the module
+SearchPaths = List[Tuple[str, bool]]
+
+
 class FindModuleCache:
     """Module finder with integrated cache.
 
@@ -875,8 +879,8 @@ class FindModuleCache:
 
     def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
         self.fscache = fscache or FileSystemCache()
-        # Cache find_lib_path_dirs: (dir_chain, lib_path)
-        self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], List[str]]
+        # Cache find_lib_path_dirs: (dir_chain, lib_path) -> list of (package_path, should_verify)
+        self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], SearchPaths]
         # Cache find_module: (id, lib_path, python_version) -> result.
         self.results = {}  # type: Dict[Tuple[str, Tuple[str, ...], Optional[str]], Optional[str]]
 
@@ -884,7 +888,7 @@ class FindModuleCache:
         self.results.clear()
         self.dirs.clear()
 
-    def find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> List[str]:
+    def find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> SearchPaths:
         # Cache some repeated work within distinct find_module calls: finding which
         # elements of lib_path have even the subdirectory they'd need for the module
         # to exist.  This is shared among different module ids when they differ only
@@ -894,13 +898,13 @@ class FindModuleCache:
             self.dirs[key] = self._find_lib_path_dirs(dir_chain, lib_path)
         return self.dirs[key]
 
-    def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> List[str]:
+    def _find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> SearchPaths:
         dirs = []
         for pathitem in lib_path:
             # e.g., '/usr/lib/python3.4/foo/bar'
             dir = os.path.normpath(os.path.join(pathitem, dir_chain))
             if self.fscache.isdir(dir):
-                dirs.append(dir)
+                dirs.append((dir, True))
         return dirs
 
     def find_module(self, id: str, lib_path: Tuple[str, ...],
@@ -933,13 +937,26 @@ class FindModuleCache:
             typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_dir = os.path.join(pkg_dir, stub_name)
             if fscache.isdir(stub_dir):
+                stub_typed_file = os.path.join(stub_dir, 'py.typed')
                 stub_components = [stub_name] + components[1:]
                 path = os.path.join(pkg_dir, *stub_components[:-1])
                 if fscache.isdir(path):
-                    third_party_stubs_dirs.append(path)
+                    if fscache.isfile(stub_typed_file):
+                        # Stub packages can have a py.typed file, which must include
+                        # 'partial\n' to make the package partial
+                        # Partial here means that mypy should look at the runtime
+                        # package if installed.
+                        if fscache.read(stub_typed_file).decode().strip() == 'partial':
+                            runtime_path = os.path.join(pkg_dir, dir_chain)
+                        third_party_inline_dirs.append((runtime_path, True))
+                        # if the package is partial, we don't verify the module, as
+                        # the partial stub package may not have a __init__.pyi
+                        third_party_stubs_dirs.append((path, False))
+                    else:
+                        third_party_stubs_dirs.append((path, True))
             elif fscache.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
-                third_party_inline_dirs.append(path)
+                third_party_inline_dirs.append((path, True))
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, lib_path) + \
             third_party_stubs_dirs + third_party_inline_dirs
 
@@ -949,20 +966,26 @@ class FindModuleCache:
         # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
         seplast = os.sep + components[-1]  # so e.g. '/baz'
         sepinit = os.sep + '__init__'
-        for base_dir in candidate_base_dirs:
+        for base_dir, verify in candidate_base_dirs:
             base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
                 path_stubs = base_path + '-stubs' + sepinit + extension
-                if fscache.isfile_case(path) and verify_module(fscache, id, path):
+                if fscache.isfile_case(path):
+                    if verify and not verify_module(fscache, id, path):
+                        continue
                     return path
-                elif fscache.isfile_case(path_stubs) and verify_module(fscache, id, path_stubs):
+                elif fscache.isfile_case(path_stubs):
+                    if verify and not verify_module(fscache, id, path_stubs):
+                        continue
                     return path_stubs
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
-                if fscache.isfile_case(path) and verify_module(fscache, id, path):
+                if fscache.isfile_case(path):
+                    if verify and not verify_module(fscache, id, path):
+                        continue
                     return path
         return None
 
@@ -1738,6 +1761,11 @@ class State:
                  caller_line: int = 0,
                  ancestor_for: 'Optional[State]' = None,
                  root_source: bool = False,
+                 # If `temporary` is True, this State is being created to just
+                 # quickly parse/load the tree, without an intention to further
+                 # process it. With this flag, any changes to external state as well
+                 # as error reporting should be avoided.
+                 temporary: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
@@ -1759,9 +1787,10 @@ class State:
             try:
                 path, follow_imports = find_module_and_diagnose(
                     manager, id, self.options, caller_state, caller_line,
-                    ancestor_for, root_source)
+                    ancestor_for, root_source, skip_diagnose=temporary)
             except ModuleNotFound:
-                manager.missing_modules.add(id)
+                if not temporary:
+                    manager.missing_modules.add(id)
                 raise
             if follow_imports == 'silent':
                 self.ignore_all = True
@@ -2242,8 +2271,11 @@ def find_module_and_diagnose(manager: BuildManager,
                              caller_state: 'Optional[State]' = None,
                              caller_line: int = 0,
                              ancestor_for: 'Optional[State]' = None,
-                             root_source: bool = False) -> Tuple[str, str]:
+                             root_source: bool = False,
+                             skip_diagnose: bool = False) -> Tuple[str, str]:
     """Find a module by name, respecting follow_imports and producing diagnostics.
+
+    If the module is not found, then the ModuleNotFound exception is raised.
 
     Args:
       id: module to find
@@ -2252,6 +2284,8 @@ def find_module_and_diagnose(manager: BuildManager,
       caller_line: the line number of the import
       ancestor_for: the child module this is an ancestor of, if applicable
       root_source: whether this source was specified on the command line
+      skip_diagnose: skip any error diagnosis and reporting (but ModuleNotFound is
+          still raised if the module is missing)
 
     The specified value of follow_imports for a module can be overridden
     if the module is specified on the command line or if it is a stub,
@@ -2283,8 +2317,9 @@ def find_module_and_diagnose(manager: BuildManager,
                     and not options.follow_imports_for_stubs)  # except when they aren't
                 or id == 'builtins'):  # Builtins is always normal
             follow_imports = 'normal'
-
-        if follow_imports == 'silent':
+        if skip_diagnose:
+            pass
+        elif follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
             manager.log("Silencing %s (%s)" % (path, id))
         elif follow_imports == 'skip' or follow_imports == 'error':
@@ -2304,8 +2339,10 @@ def find_module_and_diagnose(manager: BuildManager,
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
+        if skip_diagnose:
+            raise ModuleNotFound
         if caller_state:
-            if not options.ignore_missing_imports:
+            if not (options.ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id)
             raise ModuleNotFound
         else:
@@ -2313,6 +2350,35 @@ def find_module_and_diagnose(manager: BuildManager,
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
             raise CompileError(["mypy: can't find module '%s'" % id])
+
+
+def in_partial_package(id: str, manager: BuildManager) -> bool:
+    """Check if a missing module can potentially be a part of a package.
+
+    This checks if there is any existing parent __init__.pyi stub that
+    defines a module-level __getattr__ (a.k.a. partial stub package).
+    """
+    while '.' in id:
+        parent, _ = id.rsplit('.', 1)
+        if parent in manager.modules:
+            parent_mod = manager.modules[parent]  # type: Optional[MypyFile]
+        else:
+            # Parent is not in build, try quickly if we can find it.
+            try:
+                parent_st = State(id=parent, path=None, source=None, manager=manager,
+                                  temporary=True)
+            except (ModuleNotFound, CompileError):
+                parent_mod = None
+            else:
+                parent_mod = parent_st.tree
+        if parent_mod is not None:
+            if parent_mod.is_partial_stub_package:
+                return True
+            else:
+                # Bail out soon, complete subpackage found
+                return False
+        id = parent
+    return False
 
 
 def module_not_found(manager: BuildManager, line: int, caller_state: State,
@@ -2833,6 +2899,13 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
+    if 'typing' in scc:
+        # For historical reasons we need to manually add typing aliases
+        # for built-in generic collections, see docstring of
+        # SemanticAnalyzerPass2.add_builtin_aliases for details.
+        typing_mod = graph['typing'].tree
+        assert typing_mod, "The typing module was not parsed"
+        manager.semantic_analyzer.add_builtin_aliases(typing_mod)
     for id in fresh:
         graph[id].fix_cross_refs()
     for id in stale:

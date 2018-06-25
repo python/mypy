@@ -154,6 +154,9 @@ class TransformVisitor(NodeVisitor[Node]):
         new._fullname = node._fullname
         new.type = self.optional_type(node.type)
         new.info = node.info
+        new.is_static = node.is_static
+        new.is_class = node.is_class
+        new.is_property = node.is_property
         if node.impl:
             new.impl = cast(OverloadPart, node.impl.accept(self))
         return new
@@ -475,8 +478,7 @@ class TransformVisitor(NodeVisitor[Node]):
                            self.type(node.upper_bound), variance=node.variance)
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
-        return TypeAliasExpr(node.type, node.tvars,
-                             fallback=node.fallback, in_runtime=node.in_runtime)
+        return TypeAliasExpr(node.type, node.tvars, node.no_args)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
         res = NewTypeExpr(node.name, node.old_type, line=node.line)

@@ -4,12 +4,12 @@ from typing import Dict, List, Set, Tuple
 from mypy.nodes import (
     ARG_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
     Context, Decorator, Expression, FuncDef, JsonDict, NameExpr,
-    SymbolTableNode, TempNode, TypeInfo, Var,
+    OverloadedFuncDef, SymbolTableNode, TempNode, TypeInfo, Var,
 )
 from mypy.plugin import ClassDefContext
 from mypy.plugins.common import _add_method, _get_decorator_bool_argument
 from mypy.types import (
-    CallableType, Instance, NoneTyp, TypeVarDef, TypeVarType,
+    CallableType, Instance, NoneTyp, Overloaded, TypeVarDef, TypeVarType,
 )
 
 # The set of decorators that generate dataclasses.
@@ -95,6 +95,16 @@ class DataclassTransformer:
                     func_type = stmt.func.type
                     if isinstance(func_type, CallableType):
                         func_type.arg_types[0] = self._ctx.api.class_type(self._ctx.cls.info)
+                if isinstance(stmt, OverloadedFuncDef) and stmt.is_class:
+                    func_type = stmt.type
+                    if isinstance(func_type, Overloaded):
+                        class_type = ctx.api.class_type(ctx.cls.info)
+                        for item in func_type.items():
+                            item.arg_types[0] = class_type
+                        if stmt.impl is not None:
+                            assert isinstance(stmt.impl, Decorator)
+                            if isinstance(stmt.impl.func.type, CallableType):
+                                stmt.impl.func.type.arg_types[0] = class_type
 
         # Add an eq method, but only if the class doesn't already have one.
         if decorator_arguments['eq'] and info.get('__eq__') is None:

@@ -241,7 +241,7 @@ class M(type):
 <m.C> -> m.C
 <mod.M.__init__> -> m
 <mod.M.__new__> -> m
-<mod.M> -> <m.C>, m
+<mod.M> -> <m.C.__metaclass__>, <m.C>, m
 <mod> -> m
 
 [case testMetaclassDepsDeclaredNested]
@@ -386,7 +386,7 @@ class I: pass
 <mod.I.(abstract)> -> <m.C.__init__>, m
 <mod.I.__init__> -> <m.C.__init__>
 <mod.I.__new__> -> <m.C.__new__>
-<mod.I> -> m, m.C
+<mod.I> -> m.C
 
 [case testAliasDepsGenericMod]
 from mod import I, S, D
@@ -700,6 +700,8 @@ class S: pass
 <mod.D> -> <m.f>, m, m.f
 <mod.I> -> <m.f>, m, m.f
 <mod.S> -> <m.f>, m, m.f
+<mod.T> -> m
+<mod.U> -> m
 
 [case testAliasDepsNestedClass]
 from mod import I, S, D
@@ -898,7 +900,7 @@ class D:
 <a.C> -> m, m.A.meth, m.f
 <b.D.__init__> -> m.f
 <b.D.__new__> -> m.f
-<b.D> -> <m.A.meth>, <m.x>, m, m.A.meth, m.f
+<b.D> -> <m.A.meth>, <m.x>, m, m.A.meth
 
 [case testFuncBasedEnum]
 from enum import Enum

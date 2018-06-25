@@ -508,13 +508,13 @@ python_version = 2.6
 mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
 == Return code: 0
 
-[case testPythonVersionTooOld32]
+[case testPythonVersionTooOld33]
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-python_version = 3.2
+python_version = 3.3
 [out]
-mypy.ini: [mypy]: python_version: Python 3.2 is not supported (must be 3.3 or higher)
+mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
 == Return code: 0
 
 [case testPythonVersionTooNew28]
@@ -542,11 +542,11 @@ mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be
 python_version = 2.7
 [out]
 
-[case testPythonVersionAccepted33]
+[case testPythonVersionAccepted34]
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-python_version = 3.3
+python_version = 3.4
 [out]
 
 [case testPythonVersionAccepted36]
