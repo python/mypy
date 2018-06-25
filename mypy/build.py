@@ -2276,6 +2276,7 @@ def find_module_and_diagnose(manager: BuildManager,
     """Find a module by name, respecting follow_imports and producing diagnostics.
 
     If the module is not found, then the ModuleNotFound exception is raised.
+
     Args:
       id: module to find
       options: the options for the module being loaded
