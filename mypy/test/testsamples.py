@@ -34,6 +34,18 @@ class SamplesSuite(Suite):
                 mypy_args.append('--python-version=3.5')
             run_mypy(mypy_args + [f])
 
+    def test_stdlibsamples(self) -> None:
+        seen = set()  # type: Set[str]
+        stdlibsamples_dir = os.path.join('test-data', 'stdlib-samples', '3.2', 'test')
+        modules = []  # type: List[str]
+        for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
+            if f not in seen:
+                seen.add(f)
+                modules.append(f)
+        if modules:
+            # TODO: Remove need for --no-strict-optional
+            run_mypy(['--no-strict-optional'] + modules)
+
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
     return [os.path.join(root, f)
