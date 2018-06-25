@@ -39,11 +39,6 @@ def run_mypy(args: List[str]) -> None:
         pytest.fail(msg="Sample check failed", pytrace=False)
 
 
-def use_builtins_fixtures(options: Options) -> None:
-    root_dir = dirname(dirname(dirname(__file__)))
-    options.path_prefix = os.path.join(root_dir, 'test-data', 'unit', 'lib-stub')
-
-
 def assert_string_arrays_equal(expected: List[str], actual: List[str],
                                msg: str) -> None:
     """Assert that two string arrays are equal.

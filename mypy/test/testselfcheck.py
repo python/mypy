@@ -8,4 +8,5 @@ class SelfCheckSuite(Suite):
         run_mypy(['--config-file', 'mypy_self_check.ini', '-p', 'mypy'])
 
     def test_testrunner(self) -> None:
-        run_mypy(['--config-file', 'mypy_self_check.ini', 'runtests.py', 'waiter.py'])
+        run_mypy(['--config-file', 'mypy_self_check.ini',
+                  '--no-warn-unused-configs', 'runtests.py', 'waiter.py'])
