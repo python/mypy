@@ -326,8 +326,8 @@ class Server:
         t0 = time.time()
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
-        manager.lib_path = tuple(mypy.build.compute_lib_path(
-            sources, manager.options, manager.data_dir))
+        manager.search_paths = mypy.build.compute_search_paths(
+            sources, manager.options, manager.data_dir)
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()

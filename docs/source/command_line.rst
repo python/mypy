@@ -152,6 +152,8 @@ This is computed from the following items:
   (a colon-separated list of directories).
 - The directories containing the sources given on the command line
   (see below).
+- The installed packages marked as safe for type checking (see
+  :ref:`PEP 561 support <installed-packages>`)
 - The relevant directories of the
   `typeshed <https://github.com/python/typeshed>`_ repo.
 
@@ -161,7 +163,7 @@ contain an ``__init__.py`` or ``__init__.pyi`` file.
 
 Second, mypy searches for stub files in addition to regular Python files
 and packages.
-The rules for searching a module ``foo`` are as follows:
+The rules for searching for a module ``foo`` are as follows:
 
 - The search looks in each of the directories in the search path
   (see above) until a match is found.

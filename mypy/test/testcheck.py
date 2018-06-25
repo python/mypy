@@ -7,7 +7,7 @@ import sys
 from typing import Dict, List, Set, Tuple
 
 from mypy import build
-from mypy.build import BuildSource, Graph
+from mypy.build import BuildSource, Graph, SearchPaths
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
 from mypy.test.helpers import (
@@ -276,8 +276,9 @@ class TypeCheckSuite(DataSuite):
             # analyze.
             module_names = m.group(1)
             out = []
+            search_paths = SearchPaths((test_temp_dir,), (), (), ())
             for module_name in module_names.split(' '):
-                path = build.FindModuleCache().find_module(module_name, (test_temp_dir,),
+                path = build.FindModuleCache().find_module(module_name, search_paths,
                                                            sys.executable)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
