@@ -37,6 +37,7 @@ def f(a: Any, n: int, c: C) -> None:
     c.n = a
     a = n
     n = a
+    a.a = n
 [out]
 def f(a, n, c):
     a :: object
@@ -48,7 +49,10 @@ def f(a, n, c):
     r3 :: bool
     r4 :: object
     r5 :: int
-    r6 :: None
+    r6 :: str
+    r7 :: object
+    r8 :: bool
+    r9 :: None
 L0:
     r0 = box(int, n)
     c.a = r0; r1 = is_error
@@ -58,8 +62,11 @@ L0:
     a = r4
     r5 = unbox(int, a)
     n = r5
-    r6 = None
-    return r6
+    r6 = unicode_0 :: static  ('a')
+    r7 = box(int, n)
+    r8 = setattr a, r6, r7
+    r9 = None
+    return r9
 
 [case testCoerceAnyInOps]
 from typing import Any, List

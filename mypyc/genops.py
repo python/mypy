@@ -585,7 +585,8 @@ class IRBuilder(NodeVisitor[Value]):
                 return self.add(SetAttr(target.obj, target.attr, rvalue_reg, line))
             else:
                 key = self.load_static_unicode(target.attr)
-                return self.add(PrimitiveOp([target.obj, key, rvalue_reg], py_setattr_op, line))
+                boxed_reg = self.box(rvalue_reg)
+                return self.add(PrimitiveOp([target.obj, key, boxed_reg], py_setattr_op, line))
         elif isinstance(target, AssignmentTargetIndex):
             target_reg2 = self.translate_special_method_call(
                 target.base,
