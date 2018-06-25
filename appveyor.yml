@@ -20,9 +20,8 @@ install:
 build: off
 
 test_script:
-    # Ignore lint and mypy self check (both run in Travis)
-    - "%PYTHON%\\python.exe runtests.py -x lint -x self-check -x pytest"
-    - "%PYTHON%\\python.exe runtests.py pytest -p -k -p \"not (PythonEvaluationSuite and python2)\""
+    # lint and mypy self check run in Travis
+    - "%PYTHON%\\python.exe -m pytest -k \"not (PythonEvaluationSuite and python2)\""
 
 skip_commits:
   files:
@@ -30,7 +29,6 @@ skip_commits:
     - '**/*.rst'
     - '**/*.md'
     - .gitignore
-    - .runtest_log.json
     - .travis.yml
     - CREDITS
     - LICENSE

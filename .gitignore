@@ -12,7 +12,6 @@ docs/build/
 .mypy_cache/
 .incremental_checker_cache.json
 .cache
-.runtest_log.json
 dmypy.json
 .dmypy.json
 
