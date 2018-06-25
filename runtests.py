@@ -158,21 +158,6 @@ def add_pytest(driver: Driver) -> None:
                       [('self-check', name) for name in SELFCHECK_FILES])
 
 
-def add_stdlibsamples(driver: Driver) -> None:
-    seen = set()  # type: Set[str]
-    stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', '3.2', 'test')
-    modules = []  # type: List[str]
-    for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
-        module = file_to_module(f[len(stdlibsamples_dir) + 1:])
-        if module not in seen:
-            seen.add(module)
-            modules.append(module)
-    if modules:
-        # TODO: Remove need for --no-strict-optional
-        driver.add_mypy_modules('stdlibsamples (3.2)', modules,
-                                cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
-
-
 def usage(status: int) -> None:
     print('Usage: %s [-h | -v | -q | --lf | --ff | [-x] FILTER | -a ARG | -p ARG]'
           '... [-- FILTER ...]'
@@ -310,7 +295,6 @@ def main() -> None:
 
     driver.add_flake8()
     add_pytest(driver)
-    add_stdlibsamples(driver)
 
     if list_only:
         driver.list_tasks()
