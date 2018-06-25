@@ -215,6 +215,10 @@ class MypyFile(SymbolNode):
     is_stub = False
     # Is this loaded from the cache and thus missing the actual body of the file?
     is_cache_skeleton = False
+    # Does this represent an __init__.pyi stub with a module __getattr__
+    # (i.e. a partial stub package), for such packages we suppress any missing
+    # module errors in addition to missing attribute errors.
+    is_partial_stub_package = False
 
     def __init__(self,
                  defs: List[Statement],
@@ -252,6 +256,7 @@ class MypyFile(SymbolNode):
                 'names': self.names.serialize(self._fullname),
                 'is_stub': self.is_stub,
                 'path': self.path,
+                'is_partial_stub_package': self.is_partial_stub_package,
                 }
 
     @classmethod
@@ -263,6 +268,7 @@ class MypyFile(SymbolNode):
         tree.names = SymbolTable.deserialize(data['names'])
         tree.is_stub = data['is_stub']
         tree.path = data['path']
+        tree.is_partial_stub_package = data['is_partial_stub_package']
         tree.is_cache_skeleton = True
         return tree
 
