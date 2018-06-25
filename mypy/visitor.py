@@ -351,6 +351,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     def visit_var(self, o: 'mypy.nodes.Var') -> T:
         pass
 
+    def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
+        pass
+
     # Statements
 
     def visit_block(self, o: 'mypy.nodes.Block') -> T:

@@ -1441,10 +1441,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         first = base1[name]
         second = base2[name]
         first_type = first.type
-        if first_type is None and isinstance(first.node, FuncDef):
+        if first_type is None and isinstance(first.node, FuncBase):
             first_type = self.function_type(first.node)
         second_type = second.type
-        if second_type is None and isinstance(second.node, FuncDef):
+        if second_type is None and isinstance(second.node, FuncBase):
             second_type = self.function_type(second.node)
         # TODO: What if some classes are generic?
         if (isinstance(first_type, FunctionLike) and
@@ -2835,7 +2835,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         func_def = FuncDef('__call__', [], Block([]), callable_type)
         func_def._fullname = cdef.fullname + '.__call__'
         func_def.info = info
-        info.names['__call__'] = SymbolTableNode(MDEF, func_def, callable_type)
+        info.names['__call__'] = SymbolTableNode(MDEF, func_def)
 
         cur_module.names[gen_name] = SymbolTableNode(GDEF, info)
 

@@ -24,10 +24,10 @@ from mypy.types import (
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
+    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, Expression, OverloadedFuncDef,
+    CallExpr
 )
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -241,8 +241,8 @@ class MessageBuilder:
             elif itype.type.fullname() == 'builtins.tuple':
                 item_type_str = self.format_bare(itype.args[0])
                 return 'Tuple[{}, ...]'.format(item_type_str)
-            elif itype.type.fullname() in reverse_type_aliases:
-                alias = reverse_type_aliases[itype.type.fullname()]
+            elif itype.type.fullname() in reverse_builtin_aliases:
+                alias = reverse_builtin_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
                 items = [self.format_bare(arg) for arg in itype.args]
                 return '{}[{}]'.format(alias, ', '.join(items))
@@ -829,6 +829,12 @@ class MessageBuilder:
         else:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
+
+    def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
+        kind = (' to Callable' if isinstance(item, CallableType) else
+                ' to Tuple' if isinstance(item, TupleType) else
+                ' to Union' if isinstance(item, UnionType) else '')
+        self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:

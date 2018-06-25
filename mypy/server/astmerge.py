@@ -256,7 +256,6 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
         self.fixup_type(node.type)
-        self.fixup_type(node.fallback)
         super().visit_type_alias_expr(node)
 
     # Others
@@ -439,9 +438,6 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 # Handle them here just in case these aren't exposed through the AST.
                 # TODO: Is this necessary?
                 fixup_var(node.node, replacements)
-        override = node.type_override
-        if override:
-            override.accept(TypeReplaceVisitor(replacements))
 
 
 def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:

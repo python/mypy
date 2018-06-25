@@ -1452,7 +1452,7 @@ last = XT[G]()
 reveal_type(notes) # E: Revealed type is 'y.G[y.G[builtins.int]]'
 reveal_type(another) # E: Revealed type is 'y.G[y.G*[builtins.int]]'
 reveal_type(second) # E: Revealed type is 'y.G[builtins.str*]'
-reveal_type(last) # E: Revealed type is 'y.G[y.G*]'
+reveal_type(last) # E: Revealed type is 'y.G[y.G*[Any]]'
 
 [file y.py]
 from typing import Generic, TypeVar
