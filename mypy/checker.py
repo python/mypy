@@ -493,8 +493,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Is the overload alternative's arguments subtypes of the implementation's?
                 if not is_callable_compatible(impl, sig1,
                                               is_compat=is_subtype,
-                                              ignore_return=True,
-                                              unify_generics=False):
+                                              ignore_return=True):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
                 # Is the overload alternative's return type a subtype of the implementation's?
