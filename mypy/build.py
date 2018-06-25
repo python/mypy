@@ -2337,7 +2337,7 @@ def in_partial_package(id: str, manager: BuildManager) -> bool:
     while '.' in id:
         parent, _ = id.rsplit('.', 1)
         if parent in manager.modules:
-            parent_mod = manager.modules[parent]
+            parent_mod = manager.modules[parent]  # type: Optional[MypyFile]
         else:
             # Parent is not in build, try quickly if we can find it.
             try:

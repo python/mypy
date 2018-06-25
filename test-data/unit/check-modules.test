@@ -2277,6 +2277,26 @@ def __getattr__(attr: str) -> Any: ...
 main:1: error: Cannot find module named 'a.b.c'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
+[case testModuleGetattrInit10]
+# flags: --config-file tmp/mypy.ini
+import a.b.c  # silenced
+import a.b.d  # error
+
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file a/b/__init__.pyi]
+# empty (i.e. complete subpackage)
+
+[file mypy.ini]
+[[mypy]
+[[mypy-a.b.c]
+ignore_missing_imports = True
+[builtins fixtures/module.pyi]
+[out]
+main:3: error: Cannot find module named 'a.b.d'
+main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
 [case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
 -- TODO: Fails because of missing ImportedName handling in mypy.typeanal
 import a
