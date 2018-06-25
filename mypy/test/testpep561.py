@@ -13,6 +13,7 @@ from mypy.util import try_find_python2_interpreter
 
 SIMPLE_PROGRAM = """
 from typedpkg.sample import ex
+from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 """
@@ -49,9 +50,17 @@ class TestPEP561(TestCase):
         """Context manager that creates a virtualenv in a temporary directory
 
         returns the path to the created Python executable"""
+        # Sadly, we need virtualenv, as the Python 3 venv module does not support creating a venv
+        # for Python 2, and Python 2 does not have its own venv.
         with tempfile.TemporaryDirectory() as venv_dir:
-            run_command([sys.executable, '-m', 'virtualenv', '-p{}'.format(python_executable),
-                        venv_dir], cwd=os.getcwd())
+            returncode, lines = run_command([sys.executable,
+                                             '-m',
+                                             'virtualenv',
+                                             '-p{}'.format(python_executable),
+                                            venv_dir], cwd=os.getcwd())
+            if returncode != 0:
+                err = '\n'.join(lines)
+                self.fail("Failed to create venv. Do you have virtualenv installed?\n" + err)
             if sys.platform == 'win32':
                 yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
             else:
@@ -71,10 +80,12 @@ class TestPEP561(TestCase):
         self.tempfile = os.path.join(self.temp_file_dir.name, 'simple.py')
         with open(self.tempfile, 'w+') as file:
             file.write(SIMPLE_PROGRAM)
+        self.msg_dne = \
+            "{}:3: error: Module 'typedpkg' has no attribute 'dne'\n".format(self.tempfile)
         self.msg_list = \
-            "{}:4: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile)
+            "{}:5: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile)
         self.msg_tuple = \
-            "{}:4: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile)
+            "{}:5: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile)
 
     def tearDown(self) -> None:
         self.temp_file_dir.cleanup()
@@ -91,7 +102,7 @@ class TestPEP561(TestCase):
             check_mypy_run(
                 [self.tempfile],
                 python_executable,
-                expected_out=self.msg_list,
+                expected_out=self.msg_dne + self.msg_list,
                 venv_dir=venv_dir,
             )
 
@@ -127,7 +138,7 @@ class TestPEP561(TestCase):
                 check_mypy_run(
                     [self.tempfile],
                     py2,
-                    expected_out=self.msg_list,
+                    expected_out=self.msg_dne + self.msg_list,
                     venv_dir=venv_dir,
                 )
 

@@ -24,6 +24,7 @@ dmypy.json
 # IDEs
 .idea
 *.swp
+.vscode
 
 # Operating Systems
 .DS_Store
