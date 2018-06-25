@@ -830,6 +830,12 @@ class MessageBuilder:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
 
+    def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
+        kind = (' to Callable' if isinstance(item, CallableType) else
+                ' to Tuple' if isinstance(item, TupleType) else
+                ' to Union' if isinstance(item, UnionType) else '')
+        self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
+
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
         callee_name = callable_name(callee_type)

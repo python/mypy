@@ -2193,10 +2193,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if alias_definition:
                 return AnyType(TypeOfAny.special_form)
             # This type is invalid in most runtime contexts.
-            kind = (' to Callable' if isinstance(item, CallableType) else
-                    ' to Tuple' if isinstance(item, TupleType) else
-                    ' to Union' if isinstance(item, UnionType) else '')
-            self.chk.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
+            self.msg.alias_invalid_in_runtime_context(item, ctx)
             return AnyType(TypeOfAny.from_error)
 
     def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
