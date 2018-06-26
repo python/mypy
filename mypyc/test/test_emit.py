@@ -3,7 +3,7 @@ import unittest
 from mypy.nodes import Var
 
 from mypyc.emit import Emitter, EmitterContext
-from mypyc.ops import Environment, RType, int_rprimitive, Label
+from mypyc.ops import Environment, RType, int_rprimitive, BasicBlock
 
 
 class TestEmitter(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestEmitter(unittest.TestCase):
         self.emitter = Emitter(self.context, self.env)
 
     def test_label(self) -> None:
-        assert self.emitter.label(Label(4)) == 'CPyL4'
+        assert self.emitter.label(BasicBlock(4)) == 'CPyL4'
 
     def test_reg(self) -> None:
         assert self.emitter.reg(self.n) == 'cpy_r_n'

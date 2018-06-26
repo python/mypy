@@ -5,7 +5,7 @@ from typing import List, Set, Dict, Optional
 
 from mypyc.common import REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX
 from mypyc.ops import (
-    Environment, Label, Value, Register, RType, RTuple, RInstance, ROptional,
+    Environment, BasicBlock, Value, Register, RType, RTuple, RInstance, ROptional,
     RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
     is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR
@@ -51,8 +51,8 @@ class Emitter:
         self._indent -= 4
         assert self._indent >= 0
 
-    def label(self, label: Label) -> str:
-        return 'CPyL%d' % label
+    def label(self, label: BasicBlock) -> str:
+        return 'CPyL%s' % label.label
 
     def reg(self, reg: Value) -> str:
         return REG_PREFIX + reg.name
@@ -68,7 +68,7 @@ class Emitter:
         for line in lines:
             self.emit_line(line)
 
-    def emit_label(self, label: Label) -> None:
+    def emit_label(self, label: BasicBlock) -> None:
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append('{}: ;\n'.format(self.label(label)))
 

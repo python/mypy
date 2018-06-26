@@ -7,8 +7,8 @@ from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, TupleGet, TupleSet, Call, PyCall, IncRef, DecRef, Box, Cast, Unbox,
-    Label, Value, Register, RType, RTuple, MethodCall, PyMethodCall, PrimitiveOp, EmitterInterface,
-    Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
+    BasicBlock, Value, Register, RType, RTuple, MethodCall, PyMethodCall, PrimitiveOp,
+    EmitterInterface, Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
 )
 from mypyc.namegen import NameGenerator
 
@@ -50,8 +50,12 @@ def generate_native_function(fn: FuncIR,
                                                                prefix=REG_PREFIX,
                                                                name=r.name))
 
+    # Before we emit the blocks, give them all labels
+    for i, block in enumerate(fn.blocks):
+        block.label = i
+
     for block in fn.blocks:
-        body.emit_label(block.label)
+        body.emit_label(block)
         for op in block.ops:
             op.accept(visitor)
 
@@ -280,7 +284,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     # Helpers
 
-    def label(self, label: Label) -> str:
+    def label(self, label: BasicBlock) -> str:
         return self.emitter.label(label)
 
     def reg(self, reg: Value) -> str:

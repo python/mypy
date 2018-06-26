@@ -8,7 +8,7 @@ from mypyc.ops import (
     Value, Register,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr, PyCall,
-    LoadStatic, Label, PyMethodCall, PrimitiveOp, MethodCall,
+    LoadStatic, PyMethodCall, PrimitiveOp, MethodCall,
 )
 
 
@@ -19,8 +19,10 @@ class CFG:
     non-empty set of exits.
     """
 
-    def __init__(self, succ: Dict[Label, List[Label]], pred: Dict[Label, List[Label]],
-                 exits: Set[Label]) -> None:
+    def __init__(self,
+                 succ: Dict[BasicBlock, List[BasicBlock]],
+                 pred: Dict[BasicBlock, List[BasicBlock]],
+                 exits: Set[BasicBlock]) -> None:
         assert exits
         self.succ = succ
         self.pred = pred
@@ -42,14 +44,13 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
          basic block index -> (successors blocks, predecesssor blocks)
     """
     succ_map = {}
-    pred_map = {}  # type: Dict[Label, List[Label]]
+    pred_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
     exits = set()
     for block in blocks:
 
         assert not any(isinstance(op, (Branch, Goto, Return)) for op in block.ops[:-1]), (
             "Control-flow ops must be at the end of blocks")
 
-        label = block.label
         last = block.ops[-1]
         if isinstance(last, Branch):
             # TODO: assume 1:1 correspondence between block index and label
@@ -58,9 +59,9 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
             succ = [last.label]
         else:
             succ = []
-            exits.add(label)
-        succ_map[label] = succ
-        pred_map[label] = []
+            exits.add(block)
+        succ_map[block] = succ
+        pred_map[block] = []
     for prev, nxt in succ_map.items():
         for label in nxt:
             pred_map[label].append(prev)
@@ -69,7 +70,7 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
 
 T = TypeVar('T')
 
-AnalysisDict = Dict[Tuple[Label, int], Set[T]]
+AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
 
 
 class AnalysisResult(Generic[T]):
@@ -373,24 +374,24 @@ def run_analysis(blocks: List[BasicBlock],
             opgen, opkill = op.accept(gen_and_kill)
             gen = ((gen - opkill) | opgen)
             kill = ((kill - opgen) | opkill)
-        block_gen[block.label] = gen
-        block_kill[block.label] = kill
+        block_gen[block] = gen
+        block_kill[block] = kill
 
     # Set up initial state for worklist algorithm.
-    worklist = [block.label for block in blocks]
+    worklist = list(blocks)
     if not backward:
         worklist = worklist[::-1]  # Reverse for a small performance improvement
     workset = set(worklist)
-    before = {}  # type: Dict[Label, Set[T]]
-    after = {}  # type: Dict[Label, Set[T]]
+    before = {}  # type: Dict[BasicBlock, Set[T]]
+    after = {}  # type: Dict[BasicBlock, Set[T]]
     for block in blocks:
         if kind == MAYBE_ANALYSIS:
-            before[block.label] = set()
-            after[block.label] = set()
+            before[block] = set()
+            after[block] = set()
         else:
             assert universe is not None, "Universe must be defined for a must analysis"
-            before[block.label] = set(universe)
-            after[block.label] = set(universe)
+            before[block] = set(universe)
+            after[block] = set(universe)
 
     if backward:
         pred_map = cfg.succ
@@ -425,10 +426,10 @@ def run_analysis(blocks: List[BasicBlock],
         after[label] = new_after
 
     # Run algorithm for each basic block to generate opcode-level sets.
-    op_before = {}  # type: Dict[Tuple[Label, int], Set[T]]
-    op_after = {}  # type: Dict[Tuple[Label, int], Set[T]]
+    op_before = {}  # type: Dict[Tuple[BasicBlock, int], Set[T]]
+    op_after = {}  # type: Dict[Tuple[BasicBlock, int], Set[T]]
     for block in blocks:
-        label = block.label
+        label = block
         cur = before[label]
         ops_enum = enumerate(block.ops)  # type: Iterator[Tuple[int, Op]]
         if backward:

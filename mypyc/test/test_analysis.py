@@ -83,10 +83,12 @@ class TestAnalysis(MypycDataSuite):
                         assert False, 'No recognized _AnalysisName suffix in test case'
 
                     actual.append('')
-                    for key in sorted(analysis_result.before.keys()):
+                    for key in sorted(analysis_result.before.keys(),
+                                      key=lambda x: (x[0].label, x[1])):
                         pre = ', '.join(sorted(reg.name
                                                for reg in analysis_result.before[key]))
                         post = ', '.join(sorted(reg.name
                                                 for reg in analysis_result.after[key]))
-                        actual.append('%-8s %-23s %s' % (key, '{%s}' % pre, '{%s}' % post))
+                        actual.append('%-8s %-23s %s' % ((key[0].label, key[1]),
+                                                         '{%s}' % pre, '{%s}' % post))
             assert_test_output(testcase, actual, 'Invalid source code output')

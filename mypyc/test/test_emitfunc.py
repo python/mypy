@@ -9,7 +9,7 @@ from mypyc.ops import (
     Environment, BasicBlock, FuncIR, RuntimeArg, RType, Goto, Return, LoadInt, Assign,
     IncRef, DecRef, Branch, Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp,
     RegisterOp,
-    ClassIR, RInstance, SetAttr, Op, Label, Value, int_rprimitive, bool_rprimitive,
+    ClassIR, RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
     list_rprimitive, dict_rprimitive, object_rprimitive, FuncSignature,
 )
 from mypyc.genops import compute_vtable
@@ -53,7 +53,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                               'prog')
 
     def test_goto(self) -> None:
-        self.assert_emit(Goto(Label(2)),
+        self.assert_emit(Goto(BasicBlock(2)),
                          "goto CPyL2;")
 
     def test_return(self) -> None:
@@ -115,13 +115,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """)
 
     def test_branch(self) -> None:
-        self.assert_emit(Branch(self.b, Label(8), Label(9), Branch.BOOL_EXPR),
+        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR),
                          """if (cpy_r_b) {
                                 goto CPyL8;
                             } else
                                 goto CPyL9;
                          """)
-        b = Branch(self.b, Label(8), Label(9), Branch.BOOL_EXPR)
+        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL_EXPR)
         b.negated = True
         self.assert_emit(b,
                          """if (!cpy_r_b) {
@@ -266,7 +266,7 @@ class TestGenerateFunction(unittest.TestCase):
         self.arg = RuntimeArg('arg', int_rprimitive)
         self.env = Environment()
         self.reg = self.env.add_local(self.var, int_rprimitive)
-        self.block = BasicBlock(Label(0))
+        self.block = BasicBlock(0)
 
     def test_simple(self) -> None:
         self.block.ops.append(Return(self.reg))
