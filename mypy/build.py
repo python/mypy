@@ -1802,6 +1802,11 @@ class State:
                  caller_line: int = 0,
                  ancestor_for: 'Optional[State]' = None,
                  root_source: bool = False,
+                 # If `temporary` is True, this State is being created to just
+                 # quickly parse/load the tree, without an intention to further
+                 # process it. With this flag, any changes to external state as well
+                 # as error reporting should be avoided.
+                 temporary: bool = False,
                  ) -> None:
         assert id or path or source is not None, "Neither id, path nor source given"
         self.manager = manager
@@ -1823,9 +1828,10 @@ class State:
             try:
                 path, follow_imports = find_module_and_diagnose(
                     manager, id, self.options, caller_state, caller_line,
-                    ancestor_for, root_source)
+                    ancestor_for, root_source, skip_diagnose=temporary)
             except ModuleNotFound:
-                manager.missing_modules.add(id)
+                if not temporary:
+                    manager.missing_modules.add(id)
                 raise
             if follow_imports == 'silent':
                 self.ignore_all = True
@@ -2306,8 +2312,11 @@ def find_module_and_diagnose(manager: BuildManager,
                              caller_state: 'Optional[State]' = None,
                              caller_line: int = 0,
                              ancestor_for: 'Optional[State]' = None,
-                             root_source: bool = False) -> Tuple[str, str]:
+                             root_source: bool = False,
+                             skip_diagnose: bool = False) -> Tuple[str, str]:
     """Find a module by name, respecting follow_imports and producing diagnostics.
+
+    If the module is not found, then the ModuleNotFound exception is raised.
 
     Args:
       id: module to find
@@ -2316,6 +2325,8 @@ def find_module_and_diagnose(manager: BuildManager,
       caller_line: the line number of the import
       ancestor_for: the child module this is an ancestor of, if applicable
       root_source: whether this source was specified on the command line
+      skip_diagnose: skip any error diagnosis and reporting (but ModuleNotFound is
+          still raised if the module is missing)
 
     The specified value of follow_imports for a module can be overridden
     if the module is specified on the command line or if it is a stub,
@@ -2347,8 +2358,9 @@ def find_module_and_diagnose(manager: BuildManager,
                     and not options.follow_imports_for_stubs)  # except when they aren't
                 or id == 'builtins'):  # Builtins is always normal
             follow_imports = 'normal'
-
-        if follow_imports == 'silent':
+        if skip_diagnose:
+            pass
+        elif follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
             manager.log("Silencing %s (%s)" % (path, id))
         elif follow_imports == 'skip' or follow_imports == 'error':
@@ -2368,8 +2380,10 @@ def find_module_and_diagnose(manager: BuildManager,
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
         # search path or the module has not been installed.
+        if skip_diagnose:
+            raise ModuleNotFound
         if caller_state:
-            if not options.ignore_missing_imports:
+            if not (options.ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id)
             raise ModuleNotFound
         else:
@@ -2377,6 +2391,35 @@ def find_module_and_diagnose(manager: BuildManager,
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
             raise CompileError(["mypy: can't find module '%s'" % id])
+
+
+def in_partial_package(id: str, manager: BuildManager) -> bool:
+    """Check if a missing module can potentially be a part of a package.
+
+    This checks if there is any existing parent __init__.pyi stub that
+    defines a module-level __getattr__ (a.k.a. partial stub package).
+    """
+    while '.' in id:
+        parent, _ = id.rsplit('.', 1)
+        if parent in manager.modules:
+            parent_mod = manager.modules[parent]  # type: Optional[MypyFile]
+        else:
+            # Parent is not in build, try quickly if we can find it.
+            try:
+                parent_st = State(id=parent, path=None, source=None, manager=manager,
+                                  temporary=True)
+            except (ModuleNotFound, CompileError):
+                parent_mod = None
+            else:
+                parent_mod = parent_st.tree
+        if parent_mod is not None:
+            if parent_mod.is_partial_stub_package:
+                return True
+            else:
+                # Bail out soon, complete subpackage found
+                return False
+        id = parent
+    return False
 
 
 def module_not_found(manager: BuildManager, line: int, caller_state: State,
@@ -2897,6 +2940,13 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # If the former, parse_file() is a no-op.
         graph[id].parse_file()
         graph[id].fix_suppressed_dependencies(graph)
+    if 'typing' in scc:
+        # For historical reasons we need to manually add typing aliases
+        # for built-in generic collections, see docstring of
+        # SemanticAnalyzerPass2.add_builtin_aliases for details.
+        typing_mod = graph['typing'].tree
+        assert typing_mod, "The typing module was not parsed"
+        manager.semantic_analyzer.add_builtin_aliases(typing_mod)
     for id in fresh:
         graph[id].fix_cross_refs()
     for id in stale:

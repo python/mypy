@@ -26,7 +26,7 @@ from mypy.nodes import (
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
     MODULE_REF, implicit_module_attrs
 )
-from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp
+from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
@@ -154,6 +154,17 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
         at_module = sem.is_module_scope()
+        if (at_module and func.name() == '__getattr__' and
+                self.sem.cur_mod_node.is_package_init_file() and self.sem.cur_mod_node.is_stub):
+            if isinstance(func.type, CallableType):
+                ret = func.type.ret_type
+                if isinstance(ret, UnboundType) and not ret.args:
+                    sym = self.sem.lookup_qualified(ret.name, func, suppress_errors=True)
+                    # We only interpret a package as partial if the __getattr__ return type
+                    # is either types.ModuleType of Any.
+                    if sym and sym.node and sym.node.fullname() in ('types.ModuleType',
+                                                                    'typing.Any'):
+                        self.sem.cur_mod_node.is_partial_stub_package = True
         if at_module and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]

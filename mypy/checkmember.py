@@ -9,8 +9,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
-    ARG_POS, ARG_STAR, ARG_STAR2,
-    Decorator, OverloadedFuncDef,
+    ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -18,6 +17,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type, freshen_functi
 from mypy.infer import infer_type_arguments
 from mypy.typevars import fill_typevars
 from mypy.plugin import AttributeContext
+from mypy.typeanal import set_any_tvars
 from mypy import messages
 from mypy import subtypes
 from mypy import meet
@@ -249,6 +249,17 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         v = Var(name, type=type_object_type(vv, builtin_type))
         v.info = info
 
+    if isinstance(vv, TypeAlias) and isinstance(vv.target, Instance):
+        # Similar to the above TypeInfo case, we allow using
+        # qualified type aliases in runtime context if it refers to an
+        # instance type. For example:
+        #     class C:
+        #         A = List[int]
+        #     x = C.A() <- this is OK
+        typ = instance_alias_type(vv, builtin_type)
+        v = Var(name, type=typ)
+        v.info = info
+
     if isinstance(v, Var):
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
                            original_type, not_ready_callback, chk=chk)
@@ -289,6 +300,19 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         if chk and chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
         return msg.has_no_attr(original_type, itype, name, node)
+
+
+def instance_alias_type(alias: TypeAlias,
+                        builtin_type: Callable[[str], Instance]) -> Type:
+    """Type of a type alias node targeting an instance, when appears in runtime context.
+
+    As usual, we first erase any unbound type variables to Any.
+    """
+    assert isinstance(alias.target, Instance), "Must be called only with aliases to classes"
+    target = set_any_tvars(alias.target, alias.alias_tvars, alias.line, alias.column)
+    assert isinstance(target, Instance)
+    tp = type_object_type(target.type, builtin_type)
+    return expand_type_by_instance(tp, target)
 
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
@@ -430,7 +454,7 @@ def analyze_class_attribute_access(itype: Instance,
         return None
 
     is_decorated = isinstance(node.node, Decorator)
-    is_method = is_decorated or isinstance(node.node, FuncDef)
+    is_method = is_decorated or isinstance(node.node, FuncBase)
     if is_lvalue:
         if is_method:
             msg.cant_assign_to_method(context)
@@ -466,6 +490,9 @@ def analyze_class_attribute_access(itype: Instance,
     if isinstance(node.node, MypyFile):
         # Reference to a module object.
         return builtin_type('types.ModuleType')
+
+    if isinstance(node.node, TypeAlias) and isinstance(node.node.target, Instance):
+        return instance_alias_type(node.node, builtin_type)
 
     if is_decorated:
         assert isinstance(node.node, Decorator)

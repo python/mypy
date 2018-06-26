@@ -1452,7 +1452,7 @@ last = XT[G]()
 reveal_type(notes) # E: Revealed type is 'y.G[y.G[builtins.int]]'
 reveal_type(another) # E: Revealed type is 'y.G[y.G*[builtins.int]]'
 reveal_type(second) # E: Revealed type is 'y.G[builtins.str*]'
-reveal_type(last) # E: Revealed type is 'y.G[y.G*]'
+reveal_type(last) # E: Revealed type is 'y.G[y.G*[Any]]'
 
 [file y.py]
 from typing import Generic, TypeVar
@@ -2172,6 +2172,128 @@ from c import x
 [file c.py]
 x = str()
 y = int()
+
+[case testModuleGetattrInit1]
+from a import b
+
+x = b.f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testModuleGetattrInit2]
+import a.b
+
+x = a.b.f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testModuleGetattrInit3]
+import a.b
+
+x = a.b.f()
+[file a/__init__.py]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+main:1: error: Cannot find module named 'a.b'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testModuleGetattrInit4]
+import a.b.c
+
+x = a.b.c.f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testModuleGetattrInit5]
+from a.b import f
+
+x = f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testModuleGetattrInit5a]
+from a.b import f
+
+x = f()
+[file a/__init__.pyi]
+from types import ModuleType
+def __getattr__(attr: str) -> ModuleType: ...
+[builtins fixtures/module.pyi]
+[out]
+
+
+[case testModuleGetattrInit5b]
+from a.b import f
+
+x = f()
+[file a/__init__.pyi]
+def __getattr__(attr: str) -> int: ...
+[builtins fixtures/module.pyi]
+[out]
+main:1: error: Cannot find module named 'a.b'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testModuleGetattrInit8]
+import a.b.c.d
+
+x = a.b.c.d.f()
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file a/b/__init__.pyi]
+# empty (i.e. complete subpackage)
+[builtins fixtures/module.pyi]
+[out]
+main:1: error: Cannot find module named 'a.b.c'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'a.b.c.d'
+
+[case testModuleGetattrInit8a]
+import a.b.c  # Error
+import a.d  # OK
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file a/b/__init__.pyi]
+# empty (i.e. complete subpackage)
+[builtins fixtures/module.pyi]
+[out]
+main:1: error: Cannot find module named 'a.b.c'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testModuleGetattrInit10]
+# flags: --config-file tmp/mypy.ini
+import a.b.c  # silenced
+import a.b.d  # error
+
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file a/b/__init__.pyi]
+# empty (i.e. complete subpackage)
+
+[file mypy.ini]
+[[mypy]
+[[mypy-a.b.c]
+ignore_missing_imports = True
+[builtins fixtures/module.pyi]
+[out]
+main:3: error: Cannot find module named 'a.b.d'
+main:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 
 [case testIndirectFromImportWithinCycleUsedAsBaseClass-skip]
 -- TODO: Fails because of missing ImportedName handling in mypy.typeanal

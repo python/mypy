@@ -2244,7 +2244,7 @@ class B:
     a_int = SameA[int]
 
 reveal_type(B().a_any) # E: Revealed type is 'def () -> __main__.A[Any, Any]'
-reveal_type(B().a_int()) # E: Revealed type is '__main__.A[builtins.int*, builtins.int*]'
+reveal_type(B().a_int()) # E: Revealed type is '__main__.A[builtins.int, builtins.int]'
 
 class C:
     a_int = SameA[int]

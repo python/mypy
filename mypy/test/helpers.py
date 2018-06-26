@@ -4,11 +4,13 @@ import subprocess
 import sys
 import time
 import shutil
+from os.path import dirname
 
 from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
 from mypy.test.config import test_temp_dir
+import mypy.api as api
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -25,6 +27,16 @@ skip = pytest.mark.skip
 # AssertStringArraysEqual displays special line alignment helper messages if
 # the first different line has at least this many characters,
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
+
+
+def run_mypy(args: List[str]) -> None:
+    __tracebackhide__ = True
+    outval, errval, status = api.run(args + ['--show-traceback',
+                                             '--no-site-packages'])
+    if status != 0:
+        sys.stdout.write(outval)
+        sys.stderr.write(errval)
+        pytest.fail(msg="Sample check failed", pytrace=False)
 
 
 def assert_string_arrays_equal(expected: List[str], actual: List[str],
