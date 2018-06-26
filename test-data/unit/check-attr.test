@@ -428,6 +428,38 @@ a = A.new()
 reveal_type(a.foo) # E: Revealed type is 'def () -> builtins.int'
 [builtins fixtures/classmethod.pyi]
 
+[case testAttrsOtherOverloads]
+import attr
+from typing import overload, Union
+
+@attr.s
+class A:
+    a = attr.ib()
+    b = attr.ib(default=3)
+
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x: Union[int, str]) -> Union[int, str]:
+        reveal_type(cls)            # E: Revealed type is 'def (a: Any, b: Any =) -> __main__.A'
+        reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
+        return x
+
+reveal_type(A.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(A.foo("foo"))  # E: Revealed type is 'builtins.str'
+
+[builtins fixtures/classmethod.pyi]
+
 [case testAttrsDefaultDecorator]
 import attr
 @attr.s
@@ -721,13 +753,13 @@ reveal_type(A)  # E: Revealed type is 'def (b: Any, a: Any) -> __main__.A'
 class B:
    a: int = attr.ib(default=8)
    b: int = attr.ib()
-   a: int = attr.ib()  # E: Name 'a' already defined
+   a: int = attr.ib()  # E: Name 'a' already defined on line 10
 reveal_type(B)  # E: Revealed type is 'def (b: builtins.int, a: builtins.int) -> __main__.B'
 @attr.s(auto_attribs=True)
 class C:
    a: int = 8
    b: int
-   a: int = attr.ib()  # E: Name 'a' already defined
+   a: int = attr.ib()  # E: Name 'a' already defined on line 16
 reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int) -> __main__.C'
 [builtins fixtures/bool.pyi]
 
@@ -844,3 +876,16 @@ class A:
     x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
     y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [builtins fixtures/list.pyi]
+
+[case testAttrsDefaultAndInit]
+import attr
+
+@attr.s
+class C:
+   a = attr.ib(init=False, default=42)
+   b = attr.ib()  # Ok because previous attribute is init=False
+   c = attr.ib(default=44)
+   d = attr.ib(init=False)  # Ok because this attribute is init=False
+   e = attr.ib()  # E: Non-default attributes not allowed after default attributes.
+
+[builtins fixtures/bool.pyi]

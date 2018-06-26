@@ -41,7 +41,6 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
         join = os.path.join
     else:
         join = posixpath.join  # type: ignore
-    include_path = os.path.dirname(path)
     with open(path, encoding='utf-8') as f:
         lst = f.readlines()
     for i in range(len(lst)):
@@ -162,11 +161,11 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                         ('Stale modules after pass {} must be a subset of rechecked '
                          'modules ({}:{})').format(passnum, path, p[i0].line))
 
-            if suite.optional_out:
+            if not suite.required_out_section:
                 ok = True
 
             if ok:
-                input = expand_includes(p[i0].data, include_path)
+                input = p[i0].data
                 expand_errors(input, tcout, 'main')
                 for file_path, contents in files:
                     expand_errors(contents.split('\n'), tcout, file_path)
@@ -249,9 +248,21 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         if self.skip:
             pytest.skip()
         suite = self.parent.obj()
-        suite.update_data = self.config.getoption('--update-data', False)
         suite.setup()
-        suite.run_case(self)
+        try:
+            suite.run_case(self)
+        except Exception:
+            # As a debugging aid, support copying the contents of the tmp directory somewhere
+            save_dir = self.config.getoption('--save-failures-to', None)  # type: Optional[str]
+            if save_dir:
+                assert self.tmpdir is not None
+                target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
+                print("Copying data from test {} to {}".format(self.name, target_dir))
+                if not os.path.isabs(target_dir):
+                    assert self.old_cwd
+                    target_dir = os.path.join(self.old_cwd, target_dir)
+                shutil.copytree(self.tmpdir.name, target_dir)
+            raise
 
     def setup(self) -> None:
         self.old_cwd = os.getcwd()
@@ -505,24 +516,6 @@ def collapse_line_continuation(l: List[str]) -> List[str]:
     return r
 
 
-def expand_includes(a: List[str], base_path: str) -> List[str]:
-    """Expand @includes within a list of lines.
-
-    Replace all lies starting with @include with the contents of the
-    file name following the prefix. Look for the files in base_path.
-    """
-
-    res = []  # type: List[str]
-    for s in a:
-        if s.startswith('@include '):
-            fn = s.split(' ', 1)[1].strip()
-            with open(os.path.join(base_path, fn)) as f:
-                res.extend(f.readlines())
-        else:
-            res.append(s)
-    return res
-
-
 def expand_variables(s: str) -> str:
     return s.replace('<ROOT>', root_dir)
 
@@ -598,6 +591,10 @@ def pytest_addoption(parser: Any) -> None:
     group.addoption('--update-data', action='store_true', default=False,
                     help='Update test data to reflect actual output'
                          ' (supported only for certain tests)')
+    group.addoption('--save-failures-to', default=None,
+                    help='Copy the temp directories from failing tests to a target directory')
+    group.addoption('--mypy-verbose', action='count',
+                    help='Set the verbose flag when creating mypy Options')
 
 
 # This function name is special to pytest.  See
@@ -657,16 +654,19 @@ def has_stable_flags(testcase: DataDrivenTestCase) -> bool:
 class DataSuite:
     # option fields - class variables
     files = None  # type: List[str]
-    base_path = '.'
+
+    base_path = test_temp_dir
+
+    # Allow external users of the test code to override the data prefix
     data_prefix = test_data_prefix
-    optional_out = False
+
+    required_out_section = False
+
     native_sep = False
+
     # Name suffix automatically added to each test case in the suite (can be
     # used to distinguish test cases in suites that share data files)
     test_name_suffix = ''
-
-    # Assigned from MypyDataCase.runtest
-    update_data = False
 
     def setup(self) -> None:
         """Setup fixtures (ad-hoc)"""

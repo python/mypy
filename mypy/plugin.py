@@ -4,7 +4,6 @@ from abc import abstractmethod
 from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
 
-import mypy.plugins.attrs
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
     TypeInfo, SymbolTableNode, MypyFile
@@ -82,7 +81,7 @@ class SemanticAnalyzerPluginInterface:
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
-                  aliasing: bool = False,
+                  allow_unbound_tvars: bool = False,
                   third_pass: bool = False) -> Type:
         raise NotImplementedError
 
@@ -302,13 +301,18 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
-        if fullname in mypy.plugins.attrs.attr_class_makers:
-            return mypy.plugins.attrs.attr_class_maker_callback
-        elif fullname in mypy.plugins.attrs.attr_dataclass_makers:
+        from mypy.plugins import attrs
+        from mypy.plugins import dataclasses
+
+        if fullname in attrs.attr_class_makers:
+            return attrs.attr_class_maker_callback
+        elif fullname in attrs.attr_dataclass_makers:
             return partial(
-                mypy.plugins.attrs.attr_class_maker_callback,
+                attrs.attr_class_maker_callback,
                 auto_attribs_default=True
             )
+        elif fullname in dataclasses.dataclass_makers:
+            return dataclasses.dataclass_class_maker_callback
         return None
 
 

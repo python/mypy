@@ -1,11 +1,11 @@
 """Calculation of the least upper bound types (joins)."""
 
 from collections import OrderedDict
-from typing import cast, List, Optional
+from typing import List, Optional
 
 from mypy.types import (
     Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
-    TupleType, TypedDictType, ErasedType, TypeList, UnionType, FunctionLike, Overloaded,
+    TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded,
     PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny
 )
 from mypy.maptype import map_instance_to_supertype

@@ -2,7 +2,7 @@ from functools import wraps
 import sys
 
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, Set, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, overload
 )
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -29,7 +29,6 @@ from mypy.types import (
     TypeOfAny
 )
 from mypy import defaults
-from mypy import experiments
 from mypy import messages
 from mypy.errors import Errors
 from mypy.options import Options
@@ -398,8 +397,7 @@ class ASTConverter(ast3.NodeTransformer):
                        self.as_required_block(n.body, n.lineno),
                        func_type)
         if is_coroutine:
-            # A coroutine is also a generator, mostly for internal reasons.
-            func_def.is_generator = func_def.is_coroutine = True
+            func_def.is_coroutine = True
         if func_type is not None:
             func_type.definition = func_def
             func_type.line = n.lineno

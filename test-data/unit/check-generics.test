@@ -960,11 +960,11 @@ U = Union[int]
 x: O
 y: U
 
-reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
 reveal_type(y)  # E: Revealed type is 'builtins.int'
 
-U[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
-O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+U[int]  # E: Type application targets a non-generic function or class
+O[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1  # E: Type application is only supported for generic classes
 [out]
 
 [case testAliasesInClassBodyNormalVsSubscripted]
@@ -977,8 +977,7 @@ class C:
     b = Union[int, str]  # This is an alias
     c: Type[object] = Iterable[int]  # This is however also a variable
     a = B
-    b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation \
-             # E: Incompatible types in assignment (expression has type "Type[int]", variable has type "Type alias to Union")
+    b = int  # E: Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
     c = int
     def f(self, x: a) -> None: pass  # E: Invalid type "__main__.C.a"
     def g(self, x: b) -> None: pass
@@ -1017,14 +1016,18 @@ CA = Callable[[T], int]
 TA = Tuple[T, int]
 UA = Union[T, int]
 
-cs = CA[str] + 1 # E: Unsupported left operand type for + ("Type alias to Callable")
+cs = CA + 1 # E: The type alias to Callable is invalid in runtime context
 reveal_type(cs) # E: Revealed type is 'Any'
 
-ts = TA[str]() # E: "Type alias to Tuple" not callable
+ts = TA() # E: The type alias to Tuple is invalid in runtime context
 reveal_type(ts) # E: Revealed type is 'Any'
 
-us = UA[str].x # E: "Type alias to Union" has no attribute "x"
+us = UA.x # E: The type alias to Union is invalid in runtime context
 reveal_type(us) # E: Revealed type is 'Any'
+
+xx = CA[str] + 1  # E: Type application is only supported for generic classes
+yy = TA[str]()  # E: Type application is only supported for generic classes
+zz = UA[str].x  # E: Type application is only supported for generic classes
 
 [out]
 

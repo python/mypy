@@ -313,13 +313,13 @@ f(b'')
 [file m.pyi]
 from typing import overload
 @overload
-def f(x): # type: (unicode) -> int
-  pass
-@overload
 def f(x): # type: (bytearray) -> int
   pass
+@overload
+def f(x): # type: (unicode) -> int
+  pass
 [out]
-_program.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+_program.py:2: error: No overload variant of "f" matches argument type "int"
 
 [case testByteArrayStrCompatibility_python2]
 def f(x): # type: (str) -> None
@@ -342,7 +342,7 @@ print b.x + 1
 [out]
 4
 
-[case testReModuleBytesPython2]
+[case testReModuleBytes_python2]
 # Regression tests for various overloads in the re module -- bytes version
 import re
 if False:
@@ -365,7 +365,7 @@ if False:
     re.subn(bpat, lambda m: b'', b'')[0] + b''
 [out]
 
-[case testReModuleStringPython2]
+[case testReModuleString_python2]
 # Regression tests for various overloads in the re module -- string version
 import re
 ure = u'a+'
@@ -393,3 +393,11 @@ def g():  # type: () -> int
     yield
 [out]
 _program.py:2: error: The return type of a generator function should be "Generator" or one of its supertypes
+
+[case testOsPathJoinWorksWithAny_python2]
+import os
+def f():  # no annotation
+   return 'tests'
+path = 'test'
+path = os.path.join(f(), 'test.py')
+[out]

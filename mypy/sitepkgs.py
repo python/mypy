@@ -7,9 +7,13 @@ library found in Python 2. This file is run each mypy run, so it should be kept 
 possible.
 """
 
+if __name__ == '__main__':
+    import sys
+    sys.path = sys.path[1:]  # we don't want to pick up mypy.types
 
 from distutils.sysconfig import get_python_lib
 import site
+
 MYPY = False
 if MYPY:
     from typing import List

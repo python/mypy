@@ -1351,13 +1351,13 @@ def f() -> Iterator[None]:
 2: <b>, __main__
 3: <b>, __main__, a
 [out]
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
 a.py:3: error: Cannot find module named 'b'
 a.py:3: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
 ==
-main:2: error: Revealed type is 'contextlib.GeneratorContextManager[builtins.None]'
+main:2: error: Revealed type is 'contextlib.GeneratorContextManager[None]'
 
 [case testDecoratorSpecialCase1]
 import a
@@ -2055,6 +2055,7 @@ def g() -> None: pass
 ==
 main:2: error: Cannot find module named 'm'
 main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:7: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 main:9: error: Cannot find module named 'n'
 
 [case testOverloadSpecialCase]
@@ -2083,7 +2084,35 @@ def g() -> None: pass
 ==
 main:2: error: Cannot find module named 'm'
 main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:12: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 main:14: error: Cannot find module named 'n'
+
+[case testOverloadClassmethodDisappears]
+from typing import overload
+from m import Wrapper
+reveal_type(Wrapper.foo(3))
+[file m.pyi]
+from typing import overload
+class Wrapper:
+    @overload
+    @classmethod
+    def foo(self, x: int) -> int: ...
+    @overload
+    @classmethod
+    def foo(self, x: str) -> str: ...
+[file m.pyi.2]
+from typing import overload
+class Wrapper:
+    @overload
+    def foo(cls, x: int) -> int: ...
+    @overload
+    def foo(cls, x: str) -> str: ...
+[builtins fixtures/classmethod.pyi]
+[out]
+main:3: error: Revealed type is 'builtins.int'
+==
+main:3: error: Revealed type is 'Any'
+main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
 
 [case testRefreshGenericClass]
 from typing import TypeVar, Generic
@@ -3509,7 +3538,7 @@ from b import B
 B(int())
 [out]
 ==
-c.py:2: error: Argument 1 has incompatible type "int"; expected "str"
+c.py:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
 
 [case testAliasFineInitGenericFunc]
 import c
@@ -3535,7 +3564,7 @@ from b import B
 def f() -> None:
     B(str())
 [out]
-c.py:3: error: Argument 1 has incompatible type "str"; expected "int"
+c.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
 ==
 
 [case testAliasFineInitChainedMod]
@@ -4856,11 +4885,12 @@ import T
 ==
 ==
 main:3: error: "C" expects no type arguments, but 1 given
+main:3: error: Invalid type "T"
 main:5: error: Free type variable expected in Generic[...]
 main:6: error: Invalid type "T"
+main:9: error: Invalid type "T"
 main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
 main:9: error: "C" expects no type arguments, but 1 given
-main:9: error: Invalid type "T"
 
 [case testChangeClassToModule]
 import a
@@ -6303,7 +6333,7 @@ def f(x):
     pass
 [out]
 ==
-main:3: error: No overload variant of "f" matches argument types [builtins.str]
+main:3: error: No overload variant of "f" matches argument type "str"
 
 [case testOverloadsDeleted]
 import mod
@@ -6412,7 +6442,7 @@ from typing import TypeVar
 T = TypeVar('T', bound=str)
 [out]
 ==
-a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+a.py:2: error: No overload variant of "f" matches argument type "int"
 
 [case testOverloadsGenericToNonGeneric]
 import a
@@ -6437,7 +6467,7 @@ from typing import TypeVar
 class T: pass
 [out]
 ==
-a.py:2: error: No overload variant of "f" matches argument types [builtins.int]
+a.py:2: error: No overload variant of "f" matches argument type "int"
 
 [case testOverloadsToNonOverloaded]
 import a
@@ -6592,7 +6622,7 @@ class C:
 [builtins fixtures/dict.pyi]
 [out]
 ==
-a.py:2: error: No overload variant of "B" matches argument types [builtins.int]
+a.py:2: error: No overload variant of "B" matches argument type "int"
 
 [case testOverloadedToNormalMethodMetaclass]
 import a
@@ -7137,3 +7167,125 @@ def f() -> int: return 0
 def f() -> str: return '0'
 [out]
 ==
+
+[case testRefreshIgnoreErrors1]
+[file mypy.ini]
+[[mypy]
+[[mypy-b]
+ignore_errors = True
+[file a.py]
+y = '1'
+[file a.py.2]
+y = 1
+[file b.py]
+from a import y
+def fu() -> None:
+    1+'lurr'
+    y
+[out]
+==
+
+[case testRefreshIgnoreErrors2]
+[file mypy.ini]
+[[mypy]
+[[mypy-b]
+ignore_errors = True
+[file b.py]
+def fu() -> int:
+    1+'lurr'
+    return 1
+[file b.py.2]
+def fu() -> int:
+    1+'lurr'
+    return 2
+[out]
+==
+
+[case testRefreshOptions]
+[file mypy.ini]
+[[mypy]
+disallow_any_generics = True
+[[mypy-b]
+disallow_any_generics = False
+[file a.py]
+y = '1'
+[file a.py.2]
+y = 1
+[file b.py]
+from typing import List
+from a import y
+x = []  # type: List
+[builtins fixtures/list.pyi]
+[out]
+==
+
+[case testImportOnTopOfAlias1]
+from a import A
+x: A
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+[file a.py.2]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+from b import A
+[file b.py]
+# empty
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:4: error: Module 'b' has no attribute 'A'
+a.py:4: error: Name 'A' already defined on line 3
+
+-- the order of errors is different with cache
+[case testImportOnTopOfAlias2]
+from a import A
+x: A
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+[file a.py.2]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+from b import A as A
+[file b.py]
+def A(x: str) -> str: pass
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "Type[List[Any]]")
+
+[case testRefreshForWithTypeComment1]
+[file a.py]
+from typing import List
+import b
+def foo(l: List[int]) -> None:
+    for x in l:  # type: object
+        pass
+    x = object()
+    b.x
+[file b.py]
+x = 1
+[file b.py.2]
+x = '1'
+[builtins fixtures/list.pyi]
+[out]
+==
+
+[case testRefreshForWithTypeComment2]
+from typing import List, Any
+import m
+def f(x: List[Any]) -> None:
+    for a in x:  # type: m.A
+        pass
+[file m.py]
+class A: pass
+[file m.py.2]
+[builtins fixtures/list.pyi]
+[out]
+==
+main:4: error: Name 'm.A' is not defined

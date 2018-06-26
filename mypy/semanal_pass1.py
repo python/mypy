@@ -13,7 +13,7 @@ in later passes. Examples of these include TypeVar and NamedTuple
 definitions, as these look like regular assignments until we are able to
 bind names, which only happens in pass 2.
 
-This pass also infers the reachability of certain if staments, such as
+This pass also infers the reachability of certain if statements, such as
 those with platform checks.
 """
 
@@ -26,13 +26,12 @@ from mypy.nodes import (
     TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
     MODULE_REF, implicit_module_attrs
 )
-from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp
+from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
-from mypy.util import correct_relative_import
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
@@ -155,6 +154,17 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
         at_module = sem.is_module_scope()
+        if (at_module and func.name() == '__getattr__' and
+                self.sem.cur_mod_node.is_package_init_file() and self.sem.cur_mod_node.is_stub):
+            if isinstance(func.type, CallableType):
+                ret = func.type.ret_type
+                if isinstance(ret, UnboundType) and not ret.args:
+                    sym = self.sem.lookup_qualified(ret.name, func, suppress_errors=True)
+                    # We only interpret a package as partial if the __getattr__ return type
+                    # is either types.ModuleType of Any.
+                    if sym and sym.node and sym.node.fullname() in ('types.ModuleType',
+                                                                    'typing.Any'):
+                        self.sem.cur_mod_node.is_partial_stub_package = True
         if at_module and func.name() in sem.globals:
             # Already defined in this module.
             original_sym = sem.globals[func.name()]
@@ -337,7 +347,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.sem.locals[-1][name].node == node.node):
-                    self.sem.name_already_defined(name, context)
+                    self.sem.name_already_defined(name, context, self.sem.locals[-1][name])
             self.sem.locals[-1][name] = node
         else:
             assert self.sem.type is None  # Pass 1 doesn't look inside classes
@@ -353,6 +363,6 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 if existing.type and node.type and is_same_type(existing.type, node.type):
                     ok = True
                 if not ok:
-                    self.sem.name_already_defined(name, context)
+                    self.sem.name_already_defined(name, context, existing)
             elif not existing:
                 self.sem.globals[name] = node

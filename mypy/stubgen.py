@@ -48,7 +48,7 @@ import traceback
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, Union, cast
+    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, cast
 )
 
 import mypy.build
@@ -63,11 +63,11 @@ from mypy.nodes import (
     IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
-from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
-from mypy.stubutil import is_c_module, write_header
+from mypy.stubgenc import generate_stub_for_c_module
+from mypy.stubutil import is_c_module, write_header, parse_all_signatures, find_unique_signatures
 from mypy.options import Options as MypyOptions
 from mypy.types import (
-    Type, TypeStrVisitor, AnyType, CallableType,
+    Type, TypeStrVisitor, CallableType,
     UnboundType, NoneTyp, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor
@@ -160,7 +160,8 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        module_path = mypy.build.FindModuleCache().find_module(module, ('.',) + tuple(search_path),
+        search_paths = mypy.build.SearchPaths(('.',) + tuple(search_path), (), (), ())
+        module_path = mypy.build.FindModuleCache().find_module(module, search_paths,
                                                                interpreter)
         if not module_path:
             raise SystemExit(
@@ -998,7 +999,7 @@ def usage(exit_nonzero: bool=True) -> None:
                           respect __all__)
           --include-private
                           generate stubs for objects and members considered private
-                          (single leading undescore and no trailing underscores)
+                          (single leading underscore and no trailing underscores)
           --doc-dir PATH  use .rst documentation in PATH (this may result in
                           better stubs in some cases; consider setting this to
                           DIR/Python-X.Y.Z/Doc/library)

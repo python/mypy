@@ -58,8 +58,7 @@ U = Union[int, str]
 
 [case testProhibitReassigningAliases]
 A = float
-A = int  # E: Cannot assign to a type \
-         # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
+A = int  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
 [out]
 
 [case testProhibitReassigningSubscriptedAliases]
@@ -263,9 +262,9 @@ A = List[T]
 from typing import Union
 void = type(None)
 x: void
-reveal_type(x)  # E: Revealed type is 'builtins.None'
+reveal_type(x)  # E: Revealed type is 'None'
 y: Union[int, void]
-reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/bool.pyi]
 
 [case testNoneAliasStrict]
@@ -278,3 +277,152 @@ z: Optional[int]
 x = y  # E: Incompatible types in assignment (expression has type "Optional[int]", variable has type "int")
 y = z
 [builtins fixtures/bool.pyi]
+
+[case testAliasToTupleAndCallable]
+from typing import Callable, Tuple
+C = Callable
+T = Tuple
+c: C
+t: T
+reveal_type(c)  # E: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(t)  # E: Revealed type is 'builtins.tuple[Any]'
+bad: C[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+also_bad: T[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testAliasRefOnClass]
+from typing import Generic, TypeVar, Type
+
+T = TypeVar('T')
+class C(Generic[T]):
+    pass
+
+class N:
+    A = C[T]
+    B = C[int]
+
+x: N.A[C]
+reveal_type(x)  # E: Revealed type is '__main__.C[__main__.C[Any]]'
+
+xx = N.A[C]()
+reveal_type(xx)  # E: Revealed type is '__main__.C[__main__.C*[Any]]'
+
+y = N.A()
+reveal_type(y)  # E: Revealed type is '__main__.C[Any]'
+
+M = N
+b = M.A[int]()
+reveal_type(b)  # E: Revealed type is '__main__.C[builtins.int*]'
+
+n: Type[N]
+w = n.B()
+reveal_type(w)  # E: Revealed type is '__main__.C[builtins.int]'
+[out]
+
+[case testTypeAliasesToNamedTuple]
+from nt import C, D, E
+
+A1 = C
+A2 = D
+A3 = E
+
+class Cls:
+    A1 = C
+    A2 = D
+    A3 = E
+
+A1('no')  # E: Argument 1 to "C" has incompatible type "str"; expected "int"
+a1 = A1(1)
+reveal_type(a1)  # E: Revealed type is 'Tuple[builtins.int, fallback=nt.C]'
+
+A2(0)  # E: Argument 1 to "D" has incompatible type "int"; expected "str"
+a2 = A2('yes')
+reveal_type(a2)  # E: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
+
+a3 = A3()
+reveal_type(a3)  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=nt.E]'
+
+Cls.A1('no')  # E: Argument 1 has incompatible type "str"; expected "int"
+ca1 = Cls.A1(1)
+reveal_type(ca1)  # E: Revealed type is 'Tuple[builtins.int, fallback=nt.C]'
+
+Cls.A2(0)  # E: Argument 1 has incompatible type "int"; expected "str"
+ca2 = Cls.A2('yes')
+reveal_type(ca2)  # E: Revealed type is 'Tuple[builtins.str, fallback=nt.D]'
+
+ca3 = Cls.A3()
+reveal_type(ca3)  # E: Revealed type is 'Tuple[builtins.int, builtins.str, fallback=nt.E]'
+[file nt.pyi]
+from typing import NamedTuple, Tuple
+
+class C(NamedTuple):
+    x: int
+
+D = NamedTuple('D', [('y', str)])
+
+class E(Tuple[int, str]):
+    pass
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testTypeAliasesToAny]
+from typing import Any
+
+A = Any
+A # this should not fail
+[out]
+
+[case testDoubleImportsOfAnAlias]
+from b import *
+from c import *
+[file b.py]
+from a import A
+[file c.py]
+from a import A
+[file a.py]
+A = int
+[out]
+
+[case testDoubleImportsOfAnAlias2]
+from b import A
+from c import A
+[file b.py]
+from a import A
+[file c.py]
+from a import A
+[file a.py]
+A = int
+[out]
+
+[case testDoubleImportsOfAnAlias3]
+from b import *
+from c import *
+[file b.py]
+from a import A
+[file c.py]
+from a import A
+[file a.py]
+from typing import Union
+A = Union[None]
+[out]
+
+[case testAliasToClassMethod]
+from typing import TypeVar, Generic, Union, Type
+
+T = TypeVar('T', bound=C)
+
+MYPY = False
+if MYPY:
+    test = classmethod
+
+class C:
+    @test
+    def meth(cls: Type[T], arg: int) -> Union[T, int]: ...
+
+class D(C): ...
+
+reveal_type(D.meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int]'
+reveal_type(D().meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int]'
+[builtins fixtures/classmethod.pyi]
+[out]

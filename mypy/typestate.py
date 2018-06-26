@@ -131,7 +131,7 @@ class TypeState:
 
         The first kind is generated immediately per-module in deps.py (see also an example there
         for motivation why it is needed). While two other kinds are generated here after all
-        modules are type checked anf we have recorded all the subtype checks. To understand these
+        modules are type checked and we have recorded all the subtype checks. To understand these
         two kinds, consider a simple example:
 
             class A:

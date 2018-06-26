@@ -28,16 +28,21 @@ You should perform all file system reads through the API to actually take
 advantage of the benefits.
 """
 
-import functools
 import hashlib
 import os
 import stat
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set
 
 
 class FileSystemCache:
     def __init__(self) -> None:
+        # The package root is not flushed with the caches.
+        # It is set by set_package_root() below.
+        self.package_root = []  # type: List[str]
         self.flush()
+
+    def set_package_root(self, package_root: List[str]) -> None:
+        self.package_root = package_root
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
@@ -49,6 +54,7 @@ class FileSystemCache:
         self.read_cache = {}  # type: Dict[str, bytes]
         self.read_error_cache = {}  # type: Dict[str, Exception]
         self.hash_cache = {}  # type: Dict[str, str]
+        self.fake_package_cache = set()  # type: Set[str]
 
     def stat(self, path: str) -> os.stat_result:
         if path in self.stat_cache:
@@ -58,6 +64,11 @@ class FileSystemCache:
         try:
             st = os.stat(path)
         except OSError as err:
+            if self.init_under_package_root(path):
+                try:
+                    return self._fake_init(path)
+                except OSError:
+                    pass
             # Take a copy to get rid of associated traceback and frame objects.
             # Just assigning to __traceback__ doesn't free them.
             self.stat_error_cache[path] = copy_os_error(err)
@@ -65,9 +76,88 @@ class FileSystemCache:
         self.stat_cache[path] = st
         return st
 
+    def init_under_package_root(self, path: str) -> bool:
+        """Is this path an __init__.py under a package root?
+
+        This is used to detect packages that don't contain __init__.py
+        files, which is needed to support Bazel.  The function should
+        only be called for non-existing files.
+
+        It will return True if it refers to a __init__.py file that
+        Bazel would create, so that at runtime Python would think the
+        directory containing it is a package.  For this to work you
+        must pass one or more package roots using the --package-root
+        flag.
+
+        As an exceptional case, any directory that is a package root
+        itself will not be considered to contain a __init__.py file.
+        This is different from the rules Bazel itself applies, but is
+        necessary for mypy to properly distinguish packages from other
+        directories.
+
+        See https://docs.bazel.build/versions/master/be/python.html,
+        where this behavior is described under legacy_create_init.
+        """
+        if not self.package_root:
+            return False
+        dirname, basename = os.path.split(path)
+        if basename != '__init__.py':
+            return False
+        try:
+            st = self.stat(dirname)
+        except OSError:
+            return False
+        else:
+            if not stat.S_ISDIR(st.st_mode):
+                return False
+        ok = False
+        drive, path = os.path.splitdrive(path)  # Ignore Windows drive name
+        path = os.path.normpath(path)
+        for root in self.package_root:
+            if path.startswith(root):
+                if path == root + basename:
+                    # A package root itself is never a package.
+                    ok = False
+                    break
+                else:
+                    ok = True
+        return ok
+
+    def _fake_init(self, path: str) -> os.stat_result:
+        """Prime the cache with a fake __init__.py file.
+
+        This makes code that looks for path believe an empty file by
+        that name exists.  Should only be called after
+        init_under_package_root() returns True.
+        """
+        dirname, basename = os.path.split(path)
+        assert basename == '__init__.py', path
+        assert not os.path.exists(path), path  # Not cached!
+        dirname = os.path.normpath(dirname)
+        st = self.stat(dirname)  # May raise OSError
+        # Get stat result as a sequence so we can modify it.
+        # (Alas, typeshed's os.stat_result is not a sequence yet.)
+        tpl = tuple(st)  # type: ignore
+        seq = list(tpl)  # type: List[float]
+        seq[stat.ST_MODE] = stat.S_IFREG | 0o444
+        seq[stat.ST_INO] = 1
+        seq[stat.ST_NLINK] = 1
+        seq[stat.ST_SIZE] = 0
+        tpl = tuple(seq)
+        st = os.stat_result(tpl)
+        self.stat_cache[path] = st
+        # Make listdir() and read() also pretend this file exists.
+        self.fake_package_cache.add(dirname)
+        return st
+
     def listdir(self, path: str) -> List[str]:
+        path = os.path.normpath(path)
         if path in self.listdir_cache:
-            return self.listdir_cache[path]
+            res = self.listdir_cache[path]
+            # Check the fake cache.
+            if path in self.fake_package_cache and '__init__.py' not in res:
+                res.append('__init__.py')  # Updates the result as well as the cache
+            return res
         if path in self.listdir_error_cache:
             raise copy_os_error(self.listdir_error_cache[path])
         try:
@@ -77,6 +167,9 @@ class FileSystemCache:
             self.listdir_error_cache[path] = copy_os_error(err)
             raise err
         self.listdir_cache[path] = results
+        # Check the fake cache.
+        if path in self.fake_package_cache and '__init__.py' not in results:
+            results.append('__init__.py')
         return results
 
     def isfile(self, path: str) -> bool:
@@ -133,12 +226,19 @@ class FileSystemCache:
         # earlier instant than the mtime reported by self.stat().
         self.stat(path)
 
-        try:
-            with open(path, 'rb') as f:
-                data = f.read()
-        except Exception as err:
-            self.read_error_cache[path] = err
-            raise
+        dirname, basename = os.path.split(path)
+        dirname = os.path.normpath(dirname)
+        # Check the fake cache.
+        if basename == '__init__.py' and dirname in self.fake_package_cache:
+            data = b''
+        else:
+            try:
+                with open(path, 'rb') as f:
+                    data = f.read()
+            except OSError as err:
+                self.read_error_cache[path] = err
+                raise
+
         md5hash = hashlib.md5(data).hexdigest()
         self.read_cache[path] = data
         self.hash_cache[path] = md5hash

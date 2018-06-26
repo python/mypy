@@ -15,13 +15,12 @@ on specified sources.
 import os
 import re
 
-from typing import List, Set, Tuple, Optional, cast
+from typing import List, cast
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource
+from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.server.update import FineGrainedBuildManager
 from mypy.test.config import test_temp_dir
 from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile
@@ -47,8 +46,6 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
     ]
-    base_path = test_temp_dir
-    optional_out = True
     # Whether to use the fine-grained cache in the testing. This is overridden
     # by a trivial subclass to produce a suite that uses the cache.
     use_cache = False

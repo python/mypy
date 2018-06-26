@@ -9,17 +9,19 @@ from os.path import join, isdir
 import sys
 
 from waiter import Waiter, LazySubprocess
+from mypy.test.testsamples import find_files, file_to_module
 
 
 def get_versions() -> List[str]:
+    # generates list of python versions to use.
+    # For Python2, this is only [2.7].
+    # Otherwise, it is [3.x, ..., 3.1, 3.0], where x is the version
+    # of the running interpreter.
     major = sys.version_info[0]
     minor = sys.version_info[1]
     if major == 2:
         return ['2.7']
     else:
-        # generates list of python versions to use.
-        # For Python2, this is only [2.7].
-        # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
         return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
 
 
@@ -71,17 +73,11 @@ class Driver:
         args.append('--no-site-packages')
         self.waiter.add(LazySubprocess(full_name, args, cwd=cwd, env=self.env))
 
-    def add_mypy(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
-        self.add_mypy_cmd(name, list(args), cwd=cwd)
-
     def add_mypy_modules(self, name: str, modules: Iterable[str], cwd: Optional[str] = None,
                          extra_args: Optional[List[str]] = None) -> None:
         args = extra_args or []
         args.extend(list(itertools.chain(*(['-m', mod] for mod in modules))))
         self.add_mypy_cmd(name, args, cwd=cwd)
-
-    def add_mypy_package(self, name: str, packagename: str, *flags: str) -> None:
-        self.add_mypy_cmd(name, ['-p', packagename] + list(flags))
 
     def add_pytest(self, files: List[Tuple[str, str]], coverage: bool = True) -> None:
         pytest_files = [name for kind, name in files
@@ -111,27 +107,7 @@ class Driver:
             print('{id}:{task}'.format(id=id, task=task.name))
 
 
-def add_selftypecheck(driver: Driver) -> None:
-    driver.add_mypy('file runtests.py', 'runtests.py')
-    driver.add_mypy('file waiter.py', 'waiter.py')
-    driver.add_mypy_package('package mypy', 'mypy', '--config-file', 'mypy_self_check.ini')
-
-
-def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
-    return [join(root, f)
-            for root, dirs, files in os.walk(base)
-            for f in files
-            if f.startswith(prefix) and f.endswith(suffix)]
-
-
-def file_to_module(file: str) -> str:
-    rv = os.path.splitext(file)[0].replace(os.sep, '.')
-    if rv.endswith('.__init__'):
-        rv = rv[:-len('.__init__')]
-    return rv
-
-
-def test_path(*names: str):
+def test_path(*names: str) -> List[str]:
     return [os.path.join('mypy', 'test', '{}.py'.format(name))
             for name in names]
 
@@ -166,64 +142,20 @@ SLOW_FILES = test_path(
     'testpythoneval',
     'testcmdline',
     'teststubgen',
+    'testsamples',
+)
+
+SELFCHECK_FILES = test_path(
+    'testselfcheck',
 )
 
 
 def add_pytest(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
-        assert f in PYTEST_FILES + SLOW_FILES, f
+        assert f in PYTEST_FILES + SLOW_FILES + SELFCHECK_FILES, f
     driver.add_pytest([('unit-test', name) for name in PYTEST_FILES] +
-                      [('integration', name) for name in SLOW_FILES])
-
-
-def add_stubs(driver: Driver) -> None:
-    def check_stubs(version: str, name: str = None) -> None:
-        if name is None:
-            name = version
-        modules = {'typing', '__builtin__', 'builtins'}
-        for stub_type in ['stdlib', 'third_party']:
-            stubdir = join('typeshed', stub_type, name)
-            for f in find_files(stubdir, suffix='.pyi'):
-                module = file_to_module(f[len(stubdir) + 1:])
-                modules.add(module)
-        modules.remove('__builtin__')
-        modules.remove('builtins')
-        if version == "3":
-            version = "3.3"
-        driver.add_mypy_modules('stubs Python {}'.format(name), sorted(modules),
-                                extra_args=['--python-version={}'.format(version)])
-
-    for version in ["3.3", "3.4", "3.5", "3.6", "3.7"]:
-        check_stubs(version)
-    sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
-    check_stubs(sys_ver_str, name="2and3-3.x")
-    check_stubs("2.7", name="2and3-2.7")
-    check_stubs("2.7", name="2")
-    check_stubs("3")
-
-
-def add_stdlibsamples(driver: Driver) -> None:
-    seen = set()  # type: Set[str]
-    stdlibsamples_dir = join(driver.cwd, 'test-data', 'stdlib-samples', '3.2', 'test')
-    modules = []  # type: List[str]
-    for f in find_files(stdlibsamples_dir, prefix='test_', suffix='.py'):
-        module = file_to_module(f[len(stdlibsamples_dir) + 1:])
-        if module not in seen:
-            seen.add(module)
-            modules.append(module)
-    if modules:
-        # TODO: Remove need for --no-strict-optional
-        driver.add_mypy_modules('stdlibsamples (3.2)', modules,
-                                cwd=stdlibsamples_dir, extra_args=['--no-strict-optional'])
-
-
-def add_samples(driver: Driver) -> None:
-    for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-        mypy_args = ['--no-strict-optional']
-        if f == os.path.join('test-data', 'samples', 'crawl2.py'):
-            # This test requires 3.5 for async functions
-            mypy_args.append('--python-version=3.5')
-        driver.add_mypy_cmd('file {}'.format(f), mypy_args + [f])
+                      [('integration', name) for name in SLOW_FILES] +
+                      [('self-check', name) for name in SELFCHECK_FILES])
 
 
 def usage(status: int) -> None:
@@ -363,10 +295,6 @@ def main() -> None:
 
     driver.add_flake8()
     add_pytest(driver)
-    add_selftypecheck(driver)
-    add_stubs(driver)
-    add_stdlibsamples(driver)
-    add_samples(driver)
 
     if list_only:
         driver.list_tasks()

@@ -2,7 +2,6 @@
 
 from typing import Iterable, List, Optional, Sequence
 
-from mypy import experiments
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
@@ -525,7 +524,9 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
     for item in items:
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
-        if mypy.subtypes.is_callable_subtype(item, template, ignore_return=True):
+        if mypy.subtypes.is_callable_compatible(item, template,
+                                                is_compat=mypy.subtypes.is_subtype,
+                                                ignore_return=True):
             return item
     # Fall back to the first item if we can't find a match. This is totally arbitrary --
     # maybe we should just bail out at this point.

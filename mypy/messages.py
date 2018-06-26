@@ -24,10 +24,10 @@ from mypy.types import (
     UninhabitedType, TypeOfAny, ForwardRef, UnboundType
 )
 from mypy.nodes import (
-    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_type_aliases,
+    TypeInfo, Context, MypyFile, op_methods, FuncDef, reverse_builtin_aliases,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, Expression
+    CallExpr
 )
 
 # Constants that represent simple type checker error message, i.e. messages
@@ -148,6 +148,11 @@ class MessageBuilder:
         new.disable_type_names = self.disable_type_names
         return new
 
+    def clean_copy(self) -> 'MessageBuilder':
+        errors = self.errors.copy()
+        errors.error_info_map = OrderedDict()
+        return MessageBuilder(errors, self.modules)
+
     def add_errors(self, messages: 'MessageBuilder') -> None:
         """Add errors in messages to this builder."""
         if self.disable_count <= 0:
@@ -236,8 +241,8 @@ class MessageBuilder:
             elif itype.type.fullname() == 'builtins.tuple':
                 item_type_str = self.format_bare(itype.args[0])
                 return 'Tuple[{}, ...]'.format(item_type_str)
-            elif itype.type.fullname() in reverse_type_aliases:
-                alias = reverse_type_aliases[itype.type.fullname()]
+            elif itype.type.fullname() in reverse_builtin_aliases:
+                alias = reverse_builtin_aliases[itype.type.fullname()]
                 alias = alias.split('.')[-1]
                 items = [self.format_bare(arg) for arg in itype.args]
                 return '{}[{}]'.format(alias, ', '.join(items))
@@ -748,10 +753,20 @@ class MessageBuilder:
                                      context: Context) -> None:
         name = callable_name(overload)
         if name:
-            self.fail('No overload variant of {} matches argument types {}'
-                      .format(name, arg_types), context)
+            name_str = ' of {}'.format(name)
         else:
-            self.fail('No overload variant matches argument types {}'.format(arg_types), context)
+            name_str = ''
+        arg_types_str = ', '.join(self.format(arg) for arg in arg_types)
+        num_args = len(arg_types)
+        if num_args == 0:
+            self.fail('All overload variants{} require at least one argument'.format(name_str),
+                      context)
+        elif num_args == 1:
+            self.fail('No overload variant{} matches argument type {}'
+                      .format(name_str, arg_types_str), context)
+        else:
+            self.fail('No overload variant{} matches argument types {}'
+                      .format(name_str, arg_types_str), context)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -814,6 +829,12 @@ class MessageBuilder:
         else:
             self.fail('Type application has too few types ({} expected)'
                       .format(expected_arg_count), context)
+
+    def alias_invalid_in_runtime_context(self, item: Type, ctx: Context) -> None:
+        kind = (' to Callable' if isinstance(item, CallableType) else
+                ' to Tuple' if isinstance(item, TupleType) else
+                ' to Union' if isinstance(item, UnionType) else '')
+        self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
 
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
@@ -927,18 +948,36 @@ class MessageBuilder:
                                                     self.format(typ)),
                   context)
 
-    def overloaded_signatures_overlap(self, index1: int, index2: int,
-                                      context: Context) -> None:
+    def overload_inconsistently_applies_decorator(self, decorator: str, context: Context) -> None:
+        self.fail(
+            'Overload does not consistently use the "@{}" '.format(decorator)
+            + 'decorator on all function signatures.',
+            context)
+
+    def overloaded_signatures_overlap(self, index1: int, index2: int, context: Context) -> None:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
-    def overloaded_signatures_arg_specific(self, index1: int, context: Context) -> None:
-        self.fail('Overloaded function implementation does not accept all possible arguments '
-                  'of signature {}'.format(index1), context)
+    def overloaded_signature_will_never_match(self, index1: int, index2: int,
+                                              context: Context) -> None:
+        self.fail(
+            'Overloaded function signature {index2} will never be matched: '
+            'signature {index1}\'s parameter type(s) are the same or broader'.format(
+                index1=index1,
+                index2=index2),
+            context)
 
-    def overloaded_signatures_ret_specific(self, index1: int, context: Context) -> None:
+    def overloaded_signatures_typevar_specific(self, index: int, context: Context) -> None:
+        self.fail('Overloaded function implementation cannot satisfy signature {} '.format(index) +
+                  'due to inconsistencies in how they use type variables', context)
+
+    def overloaded_signatures_arg_specific(self, index: int, context: Context) -> None:
+        self.fail('Overloaded function implementation does not accept all possible arguments '
+                  'of signature {}'.format(index), context)
+
+    def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation cannot produce return type '
-                  'of signature {}'.format(index1), context)
+                  'of signature {}'.format(index), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
@@ -966,6 +1005,10 @@ class MessageBuilder:
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
         self.fail('Invalid signature "{}"'.format(func_type), context)
+
+    def invalid_signature_for_special_method(
+            self, func_type: Type, context: Context, method_name: str) -> None:
+        self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.fail('Revealed type is \'{}\''.format(typ), context)
@@ -1240,6 +1283,13 @@ class MessageBuilder:
                     s = ', ' + s
                 s = definition_args[0] + s
             s = '{}({})'.format(tp.definition.name(), s)
+        elif tp.name:
+            first_arg = tp.def_extras.get('first_arg')
+            if first_arg:
+                if s:
+                    s = ', ' + s
+                s = first_arg + s
+            s = '{}({})'.format(tp.name.split()[0], s)  # skip "of Class" part
         else:
             s = '({})'.format(s)
 

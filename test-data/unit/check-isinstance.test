@@ -1780,9 +1780,9 @@ y: Optional[int]
 if y in x:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 else:
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 if y not in x:
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 else:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/list.pyi]
@@ -1796,9 +1796,9 @@ x: List[Optional[int]]
 y: Optional[int]
 
 if y not in x:
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 else:
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1810,9 +1810,9 @@ x: List[str]
 y: Optional[int]
 
 if y in x:
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 else:
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1827,7 +1827,7 @@ nested_any: List[List[Any]]
 if lst in nested_any:
     reveal_type(lst) # E: Revealed type is 'builtins.list[builtins.int]'
 if x in nested_any:
-    reveal_type(x) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(x) # E: Revealed type is 'Union[builtins.int, None]'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1842,7 +1842,7 @@ y: Optional[B]
 if y in (B(), C()):
     reveal_type(y) # E: Revealed type is '__main__.B'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[__main__.B, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[__main__.B, None]'
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1856,7 +1856,7 @@ nt: NT
 
 y: Optional[int]
 if y not in nt:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 else:
     reveal_type(y) # E: Revealed type is 'builtins.int'
 [builtins fixtures/tuple.pyi]
@@ -1871,9 +1871,9 @@ y: Optional[str]
 if y in x:
     reveal_type(y) # E: Revealed type is 'builtins.str'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, None]'
 if y not in x:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, None]'
 else:
     reveal_type(y) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
@@ -1890,9 +1890,9 @@ y = None  # type: Optional[int]
 if y in x:  # type: ignore
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 else:
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 if y not in x:  # type: ignore
-    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int, None]'
 else:
     reveal_type(y)  # E: Revealed type is 'builtins.int'
 
@@ -1907,14 +1907,14 @@ z: List[object]
 
 y: Optional[int]
 if y in x:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 
 if y not in z:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [out]
@@ -1930,13 +1930,13 @@ class C(Container[int]):
 y: Optional[int]
 # We never trust user defined types
 if y in C():
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 if y not in C():
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.int, None]'
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
 [out]
@@ -1950,9 +1950,9 @@ y: Optional[str]
 if y in {'a', 'b', 'c'}:
     reveal_type(y) # E: Revealed type is 'builtins.str'
 else:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, None]'
 if y not in s:
-    reveal_type(y) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+    reveal_type(y) # E: Revealed type is 'Union[builtins.str, None]'
 else:
     reveal_type(y) # E: Revealed type is 'builtins.str'
 [builtins fixtures/set.pyi]

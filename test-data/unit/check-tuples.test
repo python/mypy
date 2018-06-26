@@ -351,7 +351,7 @@ a, b = None, None # type: (A, B)
 a1, b1 = a, a # type: (A, B)  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 a2, b2 = b, b # type: (A, B)  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a3, b3 = a # type: (A, B)     # E: '__main__.A' object is not iterable
-a4, b4 = None # type: (A, B)  # E: 'builtins.None' object is not iterable
+a4, b4 = None # type: (A, B)  # E: 'None' object is not iterable
 a5, b5 = a, b, a # type: (A, B)  # E: Too many values to unpack (2 expected, 3 provided)
 
 ax, bx = a, b # type: (A, B)
@@ -365,7 +365,7 @@ class B: pass
 a, b = None, None # type: (A, B)
 def f(): pass
 
-a, b = None # E: 'builtins.None' object is not iterable
+a, b = None # E: 'None' object is not iterable
 a, b = a   # E: '__main__.A' object is not iterable
 a, b = f   # E: 'def () -> Any' object is not iterable
 
@@ -563,6 +563,29 @@ class A: pass
 [builtins fixtures/list.pyi]
 [out]
 
+[case testAssignmentToStarFromIterable]
+from typing import List, Tuple, Iterable
+
+class CustomIterable(Iterable[int]): pass
+
+a: List[int]
+b: Tuple[int, ...]
+c: Tuple[int, int, int]
+d: Iterable[int]
+e: CustomIterable
+
+a1, *a2 = a
+b1, *b2 = b
+c1, *c2 = c
+d1, *d2 = d
+e1, *e2 = e
+
+reveal_type(a2)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(b2)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(c2)  # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(d2)  # E: Revealed type is 'builtins.list[builtins.int]'
+reveal_type(e2)  # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/tuple.pyi]
 
 -- Nested tuple assignment
 -- ----------------------------

@@ -8,6 +8,20 @@ _ConverterType = Callable[[Any], _T]
 _FilterType = Callable[[Any, Any], bool]
 _ValidatorArgType = Union[_ValidatorType[_T], Sequence[_ValidatorType[_T]]]
 
+# This form catches explicit None or no default but with no other arguments returns Any.
+@overload
+def attrib(default: None = ...,
+           validator: None = ...,
+           repr: bool = ...,
+           cmp: bool = ...,
+           hash: Optional[bool] = ...,
+           init: bool = ...,
+           convert: None = ...,
+           metadata: Optional[Mapping[Any, Any]] = ...,
+           type: None = ...,
+           converter: None = ...,
+           factory: None = ...,
+           ) -> Any: ...
 # This form catches an explicit None or no default and infers the type from the other arguments.
 @overload
 def attrib(default: None = ...,
@@ -36,20 +50,6 @@ def attrib(default: _T,
            converter: Optional[_ConverterType[_T]] = ...,
            factory: Optional[Callable[[], _T]] = ...,
            ) -> _T: ...
-# This form catches explicit None or no default but with no other arguments returns Any.
-@overload
-def attrib(default: None = ...,
-           validator: None = ...,
-           repr: bool = ...,
-           cmp: bool = ...,
-           hash: Optional[bool] = ...,
-           init: bool = ...,
-           convert: None = ...,
-           metadata: Optional[Mapping[Any, Any]] = ...,
-           type: None = ...,
-           converter: None = ...,
-           factory: None = ...,
-           ) -> Any: ...
 # This form covers type=non-Type: e.g. forward references (str), Any
 @overload
 def attrib(default: Optional[_T] = ...,

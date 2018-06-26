@@ -5,12 +5,11 @@ from typing import Any, Dict, Optional
 from mypy.nodes import (
     MypyFile, SymbolNode, SymbolTable, SymbolTableNode,
     TypeInfo, FuncDef, OverloadedFuncDef, Decorator, Var,
-    TypeVarExpr, ClassDef, Block,
-    LDEF, MDEF, GDEF, TYPE_ALIAS
+    TypeVarExpr, ClassDef, Block, TypeAlias,
 )
 from mypy.types import (
-    CallableType, EllipsisType, Instance, Overloaded, TupleType, TypedDictType,
-    TypeList, TypeVarType, UnboundType, UnionType, TypeVisitor,
+    CallableType, Instance, Overloaded, TupleType, TypedDictType,
+    TypeVarType, UnboundType, UnionType, TypeVisitor,
     TypeType, NOT_READY
 )
 from mypy.visitor import NodeVisitor
@@ -77,26 +76,17 @@ class NodeFixer(NodeVisitor[None]):
                                                      self.quick_and_dirty)
                     if stnode is not None:
                         value.node = stnode.node
-                        value.type_override = stnode.type_override
-                        if (self.quick_and_dirty and value.kind == TYPE_ALIAS and
-                                stnode.type_override is None):
-                            value.type_override = Instance(stale_info(self.modules), [])
-                        value.alias_tvars = stnode.alias_tvars or []
                     elif not self.quick_and_dirty:
                         assert stnode is not None, "Could not find cross-ref %s" % (cross_ref,)
                     else:
                         # We have a missing crossref in quick mode, need to put something
                         value.node = stale_info(self.modules)
-                        if value.kind == TYPE_ALIAS:
-                            value.type_override = Instance(stale_info(self.modules), [])
             else:
                 if isinstance(value.node, TypeInfo):
                     # TypeInfo has no accept().  TODO: Add it?
                     self.visit_type_info(value.node)
                 elif value.node is not None:
                     value.node.accept(self)
-                if value.type_override is not None:
-                    value.type_override.accept(self.type_fixer)
 
     def visit_func_def(self, func: FuncDef) -> None:
         if self.current_info is not None:
@@ -140,6 +130,9 @@ class NodeFixer(NodeVisitor[None]):
             v.info = self.current_info
         if v.type is not None:
             v.type.accept(self.type_fixer)
+
+    def visit_type_alias(self, a: TypeAlias) -> None:
+        a.target.accept(self.type_fixer)
 
 
 class TypeFixer(TypeVisitor[None]):

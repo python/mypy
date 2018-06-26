@@ -11,7 +11,7 @@ import sys
 
 from typing import List
 
-from mypy.test.config import test_temp_dir
+from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import fix_cobertura_filename
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
@@ -29,8 +29,6 @@ cmdline_files = [
 
 class PythonCmdlineSuite(DataSuite):
     files = cmdline_files
-    base_path = test_temp_dir
-    optional_out = True
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -50,13 +48,23 @@ def test_python_cmdline(testcase: DataDrivenTestCase) -> None:
     args.append('--no-site-packages')
     # Type check the program.
     fixed = [python3_path, '-m', 'mypy']
+    env = os.environ.copy()
+    env['PYTHONPATH'] = PREFIX
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
-                               cwd=test_temp_dir)
+                               cwd=test_temp_dir,
+                               env=env)
     outb = process.stdout.read()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
+
+    if "PYCHARM_HOSTED" in os.environ:
+        pos = next((p for p, i in enumerate(out) if i.startswith('pydev debugger: ')), None)
+        if pos is not None:
+            del out[pos]  # the attaching debugger message itself
+            del out[pos]  # plus the extra new line added
+
     result = process.wait()
     # Remove temp file.
     os.remove(program_path)

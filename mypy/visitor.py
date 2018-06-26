@@ -1,7 +1,7 @@
 """Generic abstract syntax tree node visitor"""
 
 from abc import abstractmethod
-from typing import Dict, TypeVar, Generic
+from typing import TypeVar, Generic
 
 if False:
     # break import cycle only needed for mypy
@@ -349,6 +349,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
         pass
 
     def visit_var(self, o: 'mypy.nodes.Var') -> T:
+        pass
+
+    def visit_type_alias(self, o: 'mypy.nodes.TypeAlias') -> T:
         pass
 
     # Statements

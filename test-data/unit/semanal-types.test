@@ -1405,7 +1405,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Union[builtins.int, builtins.None])
+    def (x: Union[builtins.int, None])
     Block:2(
       PassStmt:2())))
 
@@ -1419,7 +1419,7 @@ MypyFile:1(
     f
     Args(
       Var(x))
-    def (x: Union[builtins.int, builtins.None, builtins.str])
+    def (x: Union[builtins.int, None, builtins.str])
     Block:2(
       PassStmt:2())))
 
@@ -1446,7 +1446,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(x [__main__.x])
     IntExpr(1)
-    Union[builtins.int, builtins.None]))
+    Union[builtins.int, None]))
 
 [case testInvalidOptionalType]
 from typing import Optional

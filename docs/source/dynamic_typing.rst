@@ -15,10 +15,10 @@ dynamically typed by defining it explicitly with the type ``Any``:
 
    from typing import Any
 
-   s = 1                 # Statically typed (type int)
-   d = 1  # type: Any    # Dynamically typed (type Any)
-   s = 'x'               # Type check error
-   d = 'x'               # OK
+   s = 1         # Statically typed (type int)
+   d: Any = 1    # Dynamically typed (type Any)
+   s = 'x'       # Type check error
+   d = 'x'       # OK
 
 Operations on Any values
 ------------------------

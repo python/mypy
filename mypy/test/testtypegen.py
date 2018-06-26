@@ -2,7 +2,7 @@
 
 import re
 
-from typing import Set, List
+from typing import Set
 
 from mypy import build
 from mypy.build import BuildSource
@@ -19,8 +19,8 @@ from mypy.options import Options
 
 
 class TypeExportSuite(DataSuite):
+    required_out_section = True
     files = ['typexport-basic.test']
-    base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         try:

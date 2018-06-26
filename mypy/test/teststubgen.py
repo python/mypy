@@ -112,6 +112,8 @@ class StubgenUtilSuite(Suite):
 
 
 class StubgenPythonSuite(DataSuite):
+    required_out_section = True
+    base_path = '.'
     files = ['stubgen.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:

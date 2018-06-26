@@ -2,24 +2,21 @@
 
 import os
 import re
-import shutil
 import sys
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set, Tuple
 
-from mypy import build, defaults
-from mypy.build import BuildSource, Graph
+from mypy import build
+from mypy.build import BuildSource, Graph, SearchPaths
 from mypy.test.config import test_temp_dir
-from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, DeleteFile
+from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     retry_on_error, update_testcase_output, parse_options,
     copy_and_fudge_mtime
 )
 from mypy.errors import CompileError
-from mypy.options import Options
 
-from mypy import experiments
 
 # List of files that contain test case descriptions.
 typecheck_files = [
@@ -77,13 +74,12 @@ typecheck_files = [
     'check-custom-plugin.test',
     'check-default-plugin.test',
     'check-attr.test',
+    'check-dataclasses.test',
 ]
 
 
 class TypeCheckSuite(DataSuite):
     files = typecheck_files
-    base_path = test_temp_dir
-    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         incremental = ('incremental' in testcase.name.lower()
@@ -141,7 +137,8 @@ class TypeCheckSuite(DataSuite):
         options.show_traceback = True
         if 'optional' in testcase.file:
             options.strict_optional = True
-        if incremental_step:
+        if incremental_step and options.incremental:
+            # Don't overwrite # flags: --no-incremental in incremental test cases
             options.incremental = True
         else:
             options.incremental = False
@@ -180,7 +177,7 @@ class TypeCheckSuite(DataSuite):
         else:
             raise AssertionError()
 
-        if output != a and self.update_data:
+        if output != a and testcase.config.getoption('--update-data', False):
             update_testcase_output(testcase, a)
         assert_string_arrays_equal(output, a, msg.format(testcase.file, testcase.line))
 
@@ -279,8 +276,9 @@ class TypeCheckSuite(DataSuite):
             # analyze.
             module_names = m.group(1)
             out = []
+            search_paths = SearchPaths((test_temp_dir,), (), (), ())
             for module_name in module_names.split(' '):
-                path = build.FindModuleCache().find_module(module_name, (test_temp_dir,),
+                path = build.FindModuleCache().find_module(module_name, search_paths,
                                                            sys.executable)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:

@@ -1,7 +1,6 @@
 """Identity AST transform test cases"""
 
 import os.path
-from typing import List
 
 from mypy import build
 from mypy.build import BuildSource
@@ -17,6 +16,7 @@ from mypy.options import Options
 
 
 class TransformSuite(DataSuite):
+    required_out_section = True
     # Reuse semantic analysis test cases.
     files = ['semanal-basic.test',
              'semanal-expressions.test',
@@ -26,7 +26,6 @@ class TransformSuite(DataSuite):
              'semanal-statements.test',
              'semanal-abstractclasses.test',
              'semanal-python2.test']
-    base_path = test_temp_dir
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:

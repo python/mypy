@@ -4,7 +4,7 @@ When the source code of a module has a change in fine-grained incremental mode,
 we build a new AST from the updated source. However, other parts of the program
 may have direct references to parts of the old AST (namely, those nodes exposed
 in the module symbol table). The merge operation changes the identities of new
-AST nodes that have a correspondance in the old AST to the old ones so that
+AST nodes that have a correspondence in the old AST to the old ones so that
 existing cross-references in other modules will continue to point to the correct
 nodes. Also internal cross-references within the new AST are replaced. AST nodes
 that aren't externally visible will get new, distinct object identities. This
@@ -15,7 +15,7 @@ external references (which would be slow and fragile) or always perform
 translation when looking up references (which would be hard to retrofit).
 
 The AST merge operation is performed after semantic analysis. Semantic
-analysis has to deal with potentionally multiple aliases to certain AST
+analysis has to deal with potentially multiple aliases to certain AST
 nodes (in particular, MypyFile nodes). Type checking assumes that we
 don't have multiple variants of a single AST node visible to the type
 checker.
@@ -28,7 +28,7 @@ Discussion of some notable special cases:
 
 * If a function is replaced with another function with an identical signature,
   call sites continue to point to the same object (by identity) and don't need
-  to be reprocessed. Similary, if a class is replaced with a class that is
+  to be reprocessed. Similarly, if a class is replaced with a class that is
   sufficiently similar (MRO preserved, etc.), class references don't need any
   processing. A typical incremental update to a file only changes a few
   externally visible things in a module, and this means that often only few
@@ -48,7 +48,7 @@ See the main entry point merge_asts for more details.
 from typing import Dict, List, cast, TypeVar, Optional
 
 from mypy.nodes import (
-    Node, MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
+    MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
     CastExpr,
@@ -256,7 +256,6 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> None:
         self.fixup_type(node.type)
-        self.fixup_type(node.fallback)
         super().visit_type_alias_expr(node)
 
     # Others
@@ -439,9 +438,6 @@ def replace_nodes_in_symbol_table(symbols: SymbolTable,
                 # Handle them here just in case these aren't exposed through the AST.
                 # TODO: Is this necessary?
                 fixup_var(node.node, replacements)
-        override = node.type_override
-        if override:
-            override.accept(TypeReplaceVisitor(replacements))
 
 
 def fixup_var(node: Var, replacements: Dict[SymbolNode, SymbolNode]) -> None:

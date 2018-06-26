@@ -45,8 +45,6 @@ def get_semanal_options() -> Options:
 
 class SemAnalSuite(DataSuite):
     files = semanal_files
-    base_path = test_temp_dir
-    optional_out = True
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -99,8 +97,6 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
 class SemAnalErrorSuite(DataSuite):
     files = ['semanal-errors.test']
-    base_path = test_temp_dir
-    optional_out = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)
@@ -128,8 +124,8 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
 # SymbolNode table export test cases
 
 class SemAnalSymtableSuite(DataSuite):
+    required_out_section = True
     files = ['semanal-symtable.test']
-    base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
@@ -158,8 +154,8 @@ class SemAnalSymtableSuite(DataSuite):
 
 # Type info export test cases
 class SemAnalTypeInfoSuite(DataSuite):
+    required_out_section = True
     files = ['semanal-typeinfo.test']
-    base_path = test_temp_dir
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         """Perform a test case."""
