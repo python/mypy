@@ -78,7 +78,11 @@ class TestPEP561(TestCase):
                 install_cmd.append('-e')
             install_cmd.append('.')
         else:
-            install_cmd = [python_executable, 'setup.py', 'install']
+            install_cmd = [python_executable, 'setup.py']
+            if editable:
+                install_cmd.append('develop')
+            else:
+                install_cmd.append('install')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
             self.fail('\n'.join(lines))
