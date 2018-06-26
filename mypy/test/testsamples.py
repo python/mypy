@@ -8,23 +8,30 @@ from mypy.test.helpers import Suite, run_mypy
 
 class SamplesSuite(Suite):
     def test_stubs(self) -> None:
-        # We only test each module in the one version mypy prefers to find.
-        # TODO: test stubs for other versions, especially Python 2 stubs.
-        seen = set()  # type: Set[str]
-        modules = []
-        # TODO: This should also test Python 2, and pass pyversion accordingly.
-        for version in ["2and3", "3", "3.5"]:
-            # FIX: remove 'builtins', this directory does not exist
-            for stub_type in ['builtins', 'stdlib', 'third_party']:
-                stubdir = os.path.join('typeshed', stub_type, version)
+        def check_stubs(version: str, name: str = None) -> None:
+            if name is None:
+                name = version
+            seen = set()
+            modules = []
+            for stub_type in ['stdlib', 'third_party']:
+                stubdir = os.path.join('typeshed', stub_type, name)
                 for f in find_files(stubdir, suffix='.pyi'):
                     module = file_to_module(f[len(stubdir) + 1:])
                     if module not in seen:
                         seen.add(module)
                         modules.extend(['-m', module])
-        if modules:
-            # these require at least 3.5 otherwise it will fail trying to import zipapp
-            run_mypy(['--python-version=3.5'] + modules)
+            if version == "3":
+                version = "3.4"
+            if modules:
+                run_mypy(['--python-version={}'.format(version)] + modules)
+
+        for version in ["3.4", "3.5", "3.6", "3.7"]:
+            check_stubs(version)
+        sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
+        check_stubs(sys_ver_str, name="2and3")
+        check_stubs("2.7", name="2and3")
+        check_stubs("2.7", name="2")
+        check_stubs("3")
 
     def test_samples(self) -> None:
         for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
