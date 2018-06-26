@@ -5,11 +5,12 @@ from typing import List, Optional, Set
 
 from mypy.test.helpers import Suite, run_mypy
 
+
 class TypeshedSuite(Suite):
     def check_stubs(self, version: str, name: Optional[str] = None) -> None:
         if name is None:
             name = version
-        seen = {'__builtin__',}
+        seen = {'__builtin__', }
         modules = ['__builtin__']
         for stub_type in ['stdlib', 'third_party']:
             stubdir = os.path.join('typeshed', stub_type, name)
@@ -26,14 +27,14 @@ class TypeshedSuite(Suite):
 
     def test_2(self) -> None:
         self.check_stubs("2.7", name="2")
-    
+
     def test_2and3_2(self) -> None:
         self.check_stubs("2.7", name="2and3")
-    
+
     def test_2and3_3(self) -> None:
         sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
         self.check_stubs(sys_ver_str, name="2and3")
-    
+
     def test_3(self) -> None:
         self.check_stubs("3")
 
@@ -45,7 +46,7 @@ class TypeshedSuite(Suite):
 
     def test_36(self) -> None:
         self.check_stubs("3.6")
-    
+
     def test_37(self) -> None:
         self.check_stubs("3.7")
 
