@@ -1101,3 +1101,125 @@ def third():
 L0:
     r0 = unicode_8 :: static  ('third: normal function')
     return r0
+
+[case testObjectAsBoolean]
+from typing import List
+
+def obj(x: object) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+def num(x: int) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+def lst(x: List[int]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+[out]
+def obj(x):
+    x :: object
+    r0 :: bool
+    r1, r2 :: int
+L0:
+    r0 = bool x :: object
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    return r1
+L2:
+    r2 = 0
+    return r2
+L3:
+    unreachable
+def num(x):
+    x, r0 :: int
+    r1 :: bool
+    r2, r3 :: int
+L0:
+    r0 = 0
+    r1 = x != r0 :: int
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = 1
+    return r2
+L2:
+    r3 = 0
+    return r3
+L3:
+    unreachable
+def lst(x):
+    x :: list
+    r0, r1 :: int
+    r2 :: bool
+    r3, r4 :: int
+L0:
+    r0 = len x :: list
+    r1 = 0
+    r2 = r0 != r1 :: int
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = 1
+    return r3
+L2:
+    r4 = 0
+    return r4
+L3:
+    unreachable
+
+[case testOptionalAsBoolean]
+from typing import Optional
+
+class A: pass
+
+def opt_int(x: Optional[int]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+def opt_a(x: Optional[A]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+[out]
+def opt_int(x):
+    x :: optional[int]
+    r0, r1 :: int
+    r2 :: bool
+    r3, r4 :: int
+L0:
+    if not x is None goto L1 else goto L3 :: object
+L1:
+    r0 = unbox(int, x)
+    r1 = 0
+    r2 = r0 != r1 :: int
+    if r2 goto L2 else goto L3 :: bool
+L2:
+    r3 = 1
+    return r3
+L3:
+    r4 = 0
+    return r4
+L4:
+    unreachable
+def opt_a(x):
+    x :: optional[A]
+    r0, r1 :: int
+L0:
+    if not x is None goto L1 else goto L2 :: object
+L1:
+    r0 = 1
+    return r0
+L2:
+    r1 = 0
+    return r1
+L3:
+    unreachable

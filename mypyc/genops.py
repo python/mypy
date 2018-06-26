@@ -55,7 +55,7 @@ from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_
 from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
     none_op, iter_op, next_op, no_err_occurred_op, py_getattr_op, py_setattr_op,
-    fast_isinstance_op,
+    fast_isinstance_op, bool_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -697,9 +697,7 @@ class IRBuilder(NodeVisitor[Value]):
             top = self.new_block()
             goto.label = top.label
             comparison = self.binary_op(index_reg, end_reg, '<', s.line)
-            branch = Branch(comparison, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
-            self.add(branch)
-            branches = [branch]
+            branches = self.add_bool_branch(comparison)
 
             body = self.new_block()
             self.set_branches(branches, True, body)
@@ -743,9 +741,7 @@ class IRBuilder(NodeVisitor[Value]):
             len_reg = self.add(PrimitiveOp([expr_reg], list_len_op, s.line))
 
             comparison = self.binary_op(index_reg, len_reg, '<', s.line)
-            branch = Branch(comparison, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
-            self.add(branch)
-            branches = [branch]
+            branches = self.add_bool_branch(comparison)
 
             body_block = self.new_block()
             self.set_branches(branches, True, body_block)
@@ -1197,9 +1193,7 @@ class IRBuilder(NodeVisitor[Value]):
         # Catch-all for arbitrary expressions.
         else:
             reg = self.accept(e)
-            branch = Branch(reg, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
-            self.add(branch)
-            return [branch]
+            return self.add_bool_branch(reg)
 
     def process_comparison(self, e: ComparisonExpr) -> List[Branch]:
         # TODO: Verify operand types.
@@ -1243,6 +1237,36 @@ class IRBuilder(NodeVisitor[Value]):
             else:
                 if b.false < 0:
                     b.false = target.label
+
+    def add_bool_branch(self, value: Value) -> List[Branch]:
+        if is_same_type(value.type, int_rprimitive):
+            zero = self.add(LoadInt(0))
+            value = self.binary_op(value, zero, '!=', value.line)
+        elif is_same_type(value.type, list_rprimitive):
+            length = self.primitive_op(list_len_op, [value], value.line)
+            zero = self.add(LoadInt(0))
+            value = self.binary_op(length, zero, '!=', value.line)
+        elif isinstance(value.type, ROptional):
+            branch = Branch(value, INVALID_LABEL, INVALID_LABEL, Branch.IS_NONE)
+            branch.negated = True
+            self.add(branch)
+            value_type = value.type.value_type
+            if isinstance(value_type, RInstance):
+                # Optional[X] where X is always truthy
+                # TODO: Support __bool__
+                return [branch]
+            else:
+                # Optional[X] where X may be falsey and requires a check
+                new = self.new_block()
+                self.set_branches([branch], True, new)
+                remaining = self.coerce(value, value.type.value_type, value.line)
+                more = self.add_bool_branch(remaining)
+                return [branch] + more
+        elif not is_same_type(value.type, bool_rprimitive):
+            value = self.primitive_op(bool_op, [value], value.line)
+        branch = Branch(value, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
+        self.add(branch)
+        return [branch]
 
     def visit_pass_stmt(self, o: PassStmt) -> Value:
         return INVALID_VALUE

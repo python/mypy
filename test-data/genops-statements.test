@@ -280,7 +280,7 @@ L2:
     r5 = unbox(int, r4)
     goto L1
 L3:
-    r6 = no_err_occurred 
+    r6 = no_err_occurred
     r7 = None
     return r7
 
@@ -302,9 +302,11 @@ def sum_over_even_values(d):
     r3 :: int
     r4, r5 :: object
     r6, r7, r8, r9 :: int
-    r10, r11 :: object
-    r12, r13 :: int
-    r14 :: bool
+    r10 :: bool
+    r11 :: int
+    r12, r13 :: object
+    r14, r15 :: int
+    r16 :: bool
 L0:
     r0 = 0
     s = r0
@@ -320,18 +322,20 @@ L2:
     r6 = unbox(int, r5)
     r7 = 2
     r8 = r6 % r7 :: int
-    if r8 goto L3 else goto L5 :: bool
+    r9 = 0
+    r10 = r8 != r9 :: int
+    if r10 goto L3 else goto L5 :: bool
 L3:
     goto L1
 L4:
 L5:
-    r9 = unbox(int, key)
-    r10 = box(int, r9)
-    r11 = d[r10] :: dict
-    r12 = unbox(int, r11)
-    r13 = s + r12 :: int
-    s = r13
+    r11 = unbox(int, key)
+    r12 = box(int, r11)
+    r13 = d[r12] :: dict
+    r14 = unbox(int, r13)
+    r15 = s + r14 :: int
+    s = r15
     goto L1
 L6:
-    r14 = no_err_occurred 
+    r16 = no_err_occurred
     return s

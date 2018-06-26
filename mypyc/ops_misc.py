@@ -6,7 +6,9 @@ from mypyc.ops import (
     EmitterInterface, PrimitiveOp, none_rprimitive, bool_rprimitive, object_rprimitive, ERR_NEVER,
     ERR_MAGIC, ERR_FALSE
 )
-from mypyc.ops_primitive import name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op
+from mypyc.ops_primitive import (
+    name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op, negative_int_emit
+)
 
 
 def emit_none(emitter: EmitterInterface, args: List[str], dest: str) -> None:
@@ -165,7 +167,6 @@ func_op('builtins.isinstance',
         error_kind=ERR_MAGIC,
         emit=emit_isinstance)
 
-
 # Faster isinstance() that only works with native classes and doesn't perform type checking
 # of the type argument.
 fast_isinstance_op = func_op(
@@ -175,3 +176,10 @@ fast_isinstance_op = func_op(
     error_kind=ERR_NEVER,
     emit=simple_emit('{dest} = PyObject_TypeCheck({args[0]}, (PyTypeObject *){args[1]});'),
     priority=0)
+
+bool_op = func_op(
+    'builtins.bool',
+    arg_types=[object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=negative_int_emit('{dest} = PyObject_IsTrue({args[0]});'))
