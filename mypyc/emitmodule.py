@@ -166,6 +166,13 @@ class ModuleGenerator:
                            'PyObject *m;')
         for cl in module.classes:
             type_struct = emitter.type_struct_name(cl)
+            if cl.traits:
+                bases = ([cl.base] if cl.base else []) + cl.traits
+                emitter.emit_lines('{}.tp_bases = PyTuple_Pack({}, {});'.format(
+                    type_struct,
+                    len(bases),
+                    ', '.join('&{}'.format(emitter.type_struct_name(b)) for b in bases)))
+
             emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
                                '    return NULL;')
         emitter.emit_lines('m = PyModule_Create(&{}module);'.format(module_prefix),

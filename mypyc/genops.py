@@ -75,7 +75,7 @@ def build_ir(modules: List[MypyFile],
     # Collect all class mappings so that we can bind arbitrary class name
     # references even if there are import cycles.
     for module_name, cdef in classes:
-        class_ir = ClassIR(cdef.name, module_name)
+        class_ir = ClassIR(cdef.name, module_name, is_trait(cdef))
         mapper.type_to_ir[cdef.info] = class_ir
 
     # Populate structural information in class IR.
@@ -103,9 +103,23 @@ def build_ir(modules: List[MypyFile],
     return result
 
 
+def is_trait(cdef: ClassDef) -> bool:
+    return any(d.fullname == 'mypy_extensions.trait' for d in cdef.decorators
+               if isinstance(d, NameExpr))
+
+
 def compute_vtable(cls: ClassIR) -> None:
     """Compute the vtable structure for a class."""
     if cls.vtable is not None: return
+
+    # Merge attributes from traits into the class
+    for t in cls.mro[1:]:
+        if not t.is_trait:
+            continue
+        for name, typ in t.attributes.items():
+            if not cls.is_trait and not any(name in b.attributes for b in cls.base_mro):
+                cls.attributes[name] = typ
+
     cls.vtable = {}
     entries = cls.vtable_entries
     if cls.base:
@@ -121,7 +135,9 @@ def compute_vtable(cls: ClassIR) -> None:
         if isinstance(entry, VTableMethod):
             method = entry.method
             if method.name in cls.methods:
-                if is_same_method_signature(method.sig, cls.methods[method.name].sig):
+                # TODO: emit a wrapper for __init__ that raises or something
+                if (is_same_method_signature(method.sig, cls.methods[method.name].sig)
+                        or method.name == '__init__'):
                     entry = VTableMethod(cls, cls.methods[method.name])
                 else:
                     entry = VTableMethod(cls, cls.glue_methods[(entry.cls, method.name)])
@@ -131,9 +147,12 @@ def compute_vtable(cls: ClassIR) -> None:
         cls.vtable[attr] = len(entries)
         entries.append(VTableAttr(cls, attr, is_getter=True))
         entries.append(VTableAttr(cls, attr, is_getter=False))
-    for fn in cls.methods.values():
-        cls.vtable[fn.name] = len(entries)
-        entries.append(VTableMethod(cls, fn))
+
+    for t in [cls] + cls.traits:
+        for fn in t.methods.values():
+            if fn == cls.get_method(fn.name):
+                cls.vtable[fn.name] = len(entries)
+                entries.append(VTableMethod(t, fn))
 
 
 class Mapper:
@@ -163,7 +182,8 @@ class Mapper:
                 return dict_rprimitive
             elif typ.type.fullname() == 'builtins.tuple':
                 return tuple_rprimitive  # Varying-length tuple
-            elif typ.type in self.type_to_ir:
+            # TODO: don't erase traits
+            elif typ.type in self.type_to_ir and not self.type_to_ir[typ.type].is_trait:
                 return RInstance(self.type_to_ir[typ.type])
             else:
                 return object_rprimitive
@@ -222,15 +242,28 @@ def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
             ir.method_types[name] = mapper.fdef_to_sig(node.node)
 
     # Set up the parent class
-    assert len(info.bases) == 1, "Only single inheritance is supported"
+    bases = [mapper.type_to_ir[base.type] for base in info.bases
+             if base.type.fullname() != 'builtins.object']
+    assert all(c.is_trait for c in bases[1:]), "Non trait bases must be first"
+    ir.traits = [c for c in bases if c.is_trait]
+
     mro = []
+    base_mro = []
     for cls in info.mro:
         if cls.fullname() == 'builtins.object': continue
-        assert cls in mapper.type_to_ir, "Can't subclass cpython types yet"
-        mro.append(mapper.type_to_ir[cls])
-    if len(mro) > 1:
-        ir.base = mro[1]
+        assert cls in mapper.type_to_ir, "Can't subclass cpython types"
+        base_ir = mapper.type_to_ir[cls]
+        if not base_ir.is_trait:
+            base_mro.append(base_ir)
+        mro.append(base_ir)
+
+    if len(base_mro) > 1:
+        ir.base = base_mro[1]
+    assert all(base_mro[i].base == base_mro[i + 1] for i in range(len(base_mro) - 1)), (
+        "non-trait MRO must be linear")
+
     ir.mro = mro
+    ir.base_mro = base_mro
 
 
 class AssignmentTarget(object):
@@ -332,7 +365,7 @@ class IRBuilder(NodeVisitor[Value]):
                 # If this overrides a parent class method with a different type, we need
                 # to generate a glue method to mediate between them.
                 for cls in ir.mro[1:]:
-                    if (name in cls.method_types
+                    if (name in cls.method_types and name != '__init__'
                             and not is_same_method_signature(ir.method_types[name],
                                                              cls.method_types[name])):
                         f = self.gen_glue_method(cls.method_types[name], func, ir, cls,

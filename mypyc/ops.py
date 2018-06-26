@@ -1232,9 +1232,10 @@ class ClassIR:
     This also describes the runtime structure of native instances.
     """
 
-    def __init__(self, name: str, module_name: str) -> None:
+    def __init__(self, name: str, module_name: str, is_trait: bool = False) -> None:
         self.name = name
         self.module_name = module_name
+        self.is_trait = is_trait
         self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
@@ -1247,7 +1248,12 @@ class ClassIR:
         self.vtable = None  # type: Optional[Dict[str, int]]
         self.vtable_entries = []  # type: List[Union[VTableMethod, VTableAttr]]
         self.base = None  # type: Optional[ClassIR]
-        self.mro = []  # type: List[ClassIR]
+        self.traits = []  # type: List[ClassIR]
+        # Supply a working mro for most generated classes. Real classes will need to
+        # fix it up.
+        self.mro = [self]  # type: List[ClassIR]
+        # base_mro is the chain of concrete (non-trait) ancestors
+        self.base_mro = [self]  # type: List[ClassIR]
 
     def vtable_entry(self, name: str) -> int:
         assert self.vtable is not None, "vtable not computed yet"
@@ -1273,10 +1279,10 @@ class ClassIR:
         return '{}Object'.format(self.name_prefix(names))
 
     def get_method(self, name: str) -> Optional[FuncIR]:
-        match = self.methods.get(name)
-        if not match and self.base:
-            match = self.base.get_method(name)
-        return match
+        for ir in self.mro:
+            if name in ir.methods:
+                return ir.methods[name]
+        return None
 
 
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str]], str]

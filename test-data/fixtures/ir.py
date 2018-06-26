@@ -13,6 +13,8 @@ class object:
 
 class type: pass
 
+class ellipsis: pass
+
 # Primitive types are special in generated code.
 
 class int:
@@ -36,6 +38,7 @@ class str:
     def __add__(self, x: str) -> str: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
+    def join(self, x: Iterable[str]) -> str: pass
 
 class float:
     def __init__(self, x: object) -> None: pass

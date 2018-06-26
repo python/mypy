@@ -8,7 +8,7 @@ from mypyc.ops import (
     Environment, Label, Value, Register, RType, RTuple, RInstance, ROptional,
     RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
-    object_rprimitive, is_str_rprimitive, ClassIR
+    is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR
 )
 from mypyc.namegen import NameGenerator
 
@@ -233,6 +233,10 @@ class Emitter:
                 err,
                 '{} = NULL;'.format(dest),
                 '}')
+        elif is_object_rprimitive(typ):
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
+            self.emit_line('{} = {};'.format(dest, src))
         elif isinstance(typ, ROptional):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))

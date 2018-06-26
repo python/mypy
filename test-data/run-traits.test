@@ -1,0 +1,117 @@
+[case testTraitBasic1]
+from mypy_extensions import trait
+
+class A:
+    line: int
+    def foo(self) -> None:
+        print("foo")
+
+@trait
+class T:
+    def bar(self) -> None:
+        print("bar")
+
+class C(A, T):
+    pass
+
+def use_t(t: T) -> None:
+    t.bar()
+
+def use_c(c: C) -> None:
+    use_t(c)
+    c.foo()
+    c.bar()
+
+[file driver.py]
+from native import A, T, C, use_c, use_t
+c = C()
+c.foo()
+c.bar()
+use_c(c)
+use_t(c)
+[out]
+foo
+bar
+bar
+foo
+bar
+bar
+
+[case testTraitBasic2]
+from mypy_extensions import trait
+
+class A:
+    line: int
+    def foo(self) -> None:
+        print("foo")
+
+@trait
+class T:
+    def bar(self) -> None:
+        print("bar", self.baz())
+    def baz(self) -> int:
+        return -1
+
+@trait
+class T2:
+    line: int
+    def baz(self) -> int:
+        return -2
+
+class C(A, T):
+    def __init__(self) -> None:
+        self.line = 1337
+        self.x = 12
+    def baz(self) -> int:
+        return self.x
+
+class D(C, T2):
+    def __init__(self) -> None:
+        self.line = 1337
+        self.x = 13
+
+
+def use_t(t: T) -> None:
+    t.bar()
+def use_t2(t: T2) -> int:
+    return t.line
+
+def use_c(c: C) -> int:
+    use_t(c)
+    c.foo()
+    c.bar()
+    return c.line
+
+def use_d(d: D) -> int:
+    return d.baz()
+
+[file driver.py]
+from native import A, T, C, D, use_c, use_t, use_d, use_t2
+c = C()
+d = D()
+c.foo()
+c.bar()
+print("baz", c.baz())
+print("baz", d.baz())
+use_c(c)
+use_t(c)
+use_c(d)
+use_t(d)
+assert use_d(d) == 13
+print(d.line)
+assert d.line == 1337
+assert use_t2(d) == 1337
+[out]
+foo
+bar 12
+baz 12
+baz 13
+bar 12
+foo
+bar 12
+bar 12
+bar 13
+foo
+bar 13
+bar 13
+1337
