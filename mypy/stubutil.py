@@ -87,7 +87,8 @@ def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
 
 
 def is_c_module(module: ModuleType) -> bool:
-    return '__file__' not in module.__dict__ or module.__dict__['__file__'].endswith('.so')
+    return '__file__' not in module.__dict__ or any(module.__dict__['__file__'].endswith(
+      ext) for ext in ['.so', '.pyd'])
 
 
 def write_header(file: IO[str], module_name: Optional[str] = None,
