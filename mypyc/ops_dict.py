@@ -6,7 +6,7 @@ from mypyc.ops import (
     EmitterInterface, PrimitiveOp, dict_rprimitive, object_rprimitive, bool_rprimitive, ERR_FALSE,
     ERR_MAGIC
 )
-from mypyc.ops_primitive import method_op, binary_op, func_op, simple_emit
+from mypyc.ops_primitive import method_op, binary_op, func_op, simple_emit, negative_int_emit
 
 
 def emit_get_item(emitter: EmitterInterface, args: List[str], dest: str) -> None:
@@ -33,21 +33,12 @@ dict_set_item_op = method_op(
     emit=simple_emit('{dest} = PyDict_SetItem({args[0]}, {args[1]}, {args[2]}) >= 0;'))
 
 
-def emit_in(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_lines('int %s = PyDict_Contains(%s, %s);' % (temp, args[1], args[0]),
-                       'if (%s < 0)' % temp,
-                       '    %s = %s;' % (dest, bool_rprimitive.c_error_value()),
-                       'else',
-                       '    %s = %s;' % (dest, temp))
-
-
 binary_op(op='in',
           arg_types=[object_rprimitive, dict_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_MAGIC,
           format_str='{dest} = {args[0]} in {args[1]} :: dict',
-          emit=emit_in)
+          emit=negative_int_emit('{dest} = PyDict_Contains({args[1]}, {args[0]});'))
 
 
 # NOTE: PyDict_Update is technically not equivalent to update, but the cases where it
