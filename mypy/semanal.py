@@ -855,6 +855,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """
         concrete = set()  # type: Set[str]
         abstract = []  # type: List[str]
+        abstract_in_this_class = []  # type: List[str]
         for base in typ.mro:
             for name, symnode in base.names.items():
                 node = symnode.node
@@ -871,12 +872,30 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                        if base is typ:
+                            abstract_in_this_class.append(name)
                 elif isinstance(node, Var):
                     if node.is_abstract_var and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                        if base is typ:
+                            abstract_in_this_class.append(name)
                 concrete.add(name)
+        # In stubs, abstract classes need to be explicitly marked because it is too
+        # easy to accidentally leave a concrete class abstract by forgetting to
+        # implement some methods.
         typ.abstract_attributes = sorted(abstract)
+        if not self.is_stub_file:
+            return
+        if (typ.declared_metaclass and typ.declared_metaclass.type.fullname() == 'abc.ABCMeta'):
+            return
+        if typ.is_protocol:
+            return
+        if abstract and not abstract_in_this_class:
+            attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
+            self.fail("Class {} has abstract attributes {}".format(typ.fullname(), attrs), typ)
+            self.note("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
+                      typ)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).

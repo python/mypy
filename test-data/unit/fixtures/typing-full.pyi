@@ -6,7 +6,7 @@
 # Many of the definitions have special handling in the type checker, so they
 # can just be initialized to anything.
 
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
@@ -98,7 +98,7 @@ class Awaitable(Protocol[T]):
     @abstractmethod
     def __await__(self) -> Generator[Any, Any, T]: pass
 
-class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S]):
+class AwaitableGenerator(Generator[T, U, V], Awaitable[V], Generic[T, U, V, S], metaclass=ABCMeta):
     pass
 
 class Coroutine(Awaitable[V], Generic[T, U, V]):
@@ -128,7 +128,7 @@ class Sequence(Iterable[T_co], Protocol):
     def __getitem__(self, n: Any) -> T_co: pass
 
 @runtime
-class Mapping(Iterable[T], Protocol[T, T_co]):
+class Mapping(Iterable[T], Protocol[T, T_co], metaclass=ABCMeta):
     def __getitem__(self, key: T) -> T_co: pass
     @overload
     def get(self, k: T) -> Optional[T_co]: pass
@@ -139,7 +139,7 @@ class Mapping(Iterable[T], Protocol[T, T_co]):
     def __contains__(self, arg: object) -> int: pass
 
 @runtime
-class MutableMapping(Mapping[T, U], Protocol):
+class MutableMapping(Mapping[T, U], Protocol, metaclass=ABCMeta):
     def __setitem__(self, k: T, v: U) -> None: pass
 
 class SupportsInt(Protocol):
