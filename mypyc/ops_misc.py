@@ -7,7 +7,8 @@ from mypyc.ops import (
     ERR_MAGIC, ERR_FALSE
 )
 from mypyc.ops_primitive import (
-    name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op, negative_int_emit
+    name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op, custom_op,
+    negative_int_emit,
 )
 
 
@@ -140,6 +141,25 @@ py_setattr_op = func_op(
     error_kind=ERR_FALSE,
     emit=simple_emit('{dest} = PyObject_SetAttr({args[0]}, {args[1]}, {args[2]}) >= 0;')
 )
+
+
+py_call_op = custom_op(
+    arg_types=[object_rprimitive],
+    result_type=object_rprimitive,
+    is_var_arg=True,
+    error_kind=ERR_MAGIC,
+    format_str = '{dest} = py_call({comma_args})',
+    emit=simple_emit('{dest} = PyObject_CallFunctionObjArgs({comma_args}, NULL);'))
+
+
+py_method_call_op = custom_op(
+    arg_types=[object_rprimitive],
+    result_type=object_rprimitive,
+    is_var_arg=True,
+    error_kind=ERR_MAGIC,
+    format_str = '{dest} = py_method_call({comma_args})',
+    emit=simple_emit('{dest} = PyObject_CallMethodObjArgs({comma_args}, NULL);'))
+
 
 func_op('builtins.isinstance',
         arg_types=[object_rprimitive, object_rprimitive],

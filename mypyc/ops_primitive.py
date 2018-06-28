@@ -28,13 +28,13 @@ name_ref_ops = {}  # type: Dict[str, OpDescription]
 def simple_emit(template: str) -> EmitCallback:
     """Construct a simple PrimitiveOp emit callback function.
 
-    It just applies a str.format teplate to 'args' and 'dest'.
+    It just applies a str.format template to 'args', 'dest', and 'comma_args'.
 
     For more complex cases you need to define a custom function.
     """
 
     def emit(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-        emitter.emit_line(template.format(args=args, dest=dest))
+        emitter.emit_line(template.format(args=args, dest=dest, comma_args=', '.join(args)))
 
     return emit
 

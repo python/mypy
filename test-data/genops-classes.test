@@ -258,7 +258,7 @@ L0:
     r0 = builtins.module :: static
     r1 = unicode_0 :: static  ('id')
     r2 = getattr r0, r1
-    r3 = r2(x) :: object
+    r3 = py_call(r2, x)
     r4 = unbox(int, r3)
     return r4
 def C.foo__B_glue(self, x):

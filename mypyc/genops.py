@@ -42,8 +42,8 @@ from mypyc.common import MAX_SHORT_INT
 from mypyc.ops import (
     BasicBlock, Environment, Op, LoadInt, RType, Value, Register, Return, FuncIR, Assign,
     Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable, TupleGet, TupleSet,
-    ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, PyCall, ROptional,
-    PyMethodCall, MethodCall, INVALID_VALUE, INVALID_LABEL, int_rprimitive,
+    ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, ROptional,
+    MethodCall, INVALID_VALUE, INVALID_LABEL, int_rprimitive,
     is_int_rprimitive, float_rprimitive, is_float_rprimitive, bool_rprimitive, list_rprimitive,
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
@@ -55,6 +55,7 @@ from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_
 from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
     none_op, iter_op, next_op, no_err_occurred_op, py_getattr_op, py_setattr_op,
+    py_call_op, py_method_call_op,
     fast_isinstance_op, bool_op,
 )
 from mypyc.subtype import is_subtype
@@ -1027,19 +1028,13 @@ class IRBuilder(NodeVisitor[Value]):
         key = self.load_static_unicode(attr)
         return self.add(PrimitiveOp([obj, key], py_getattr_op, line))
 
-    def py_call(self, function: Value, args: List[Value],
-                target_type: RType, line: int) -> Value:
+    def py_call(self, function: Value, args: List[Value], line: int) -> Value:
         arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
-        return self.add(PyCall(function, arg_boxes, line))
+        return self.add(PrimitiveOp([function] + arg_boxes, py_call_op, line))
 
-    def py_method_call(self,
-                       obj: Value,
-                       method: Value,
-                       args: List[Value],
-                       target_type: RType,
-                       line: int) -> Value:
+    def py_method_call(self, obj: Value, method: Value, args: List[Value], line: int) -> Value:
         arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
-        return self.add(PyMethodCall(obj, method, arg_boxes))
+        return self.add(PrimitiveOp([obj, method] + arg_boxes, py_method_call_op, line))
 
     def coerce_native_call_args(self,
                                 args: Sequence[Value],
@@ -1090,7 +1085,6 @@ class IRBuilder(NodeVisitor[Value]):
             return self.primitive_op(fast_isinstance_op, args, expr.line)
 
         # Handle data-driven special-cased primitive call ops.
-        target_type = self.node_type(expr)
         if fullname is not None and expr.arg_kinds == [ARG_POS] * len(args):
             ops = func_ops.get(fullname, [])
             target = self.matching_primitive_op(ops, args, expr.line)
@@ -1112,7 +1106,7 @@ class IRBuilder(NodeVisitor[Value]):
         else:
             # Fall back to a Python call
             function = self.accept(callee)
-            return self.py_call(function, args, target_type, expr.line)
+            return self.py_call(function, args, expr.line)
 
     def get_native_signature(self, callee: RefExpr) -> Optional[CallableType]:
         """Get the signature of a native function, or return None if not available.
@@ -1142,7 +1136,7 @@ class IRBuilder(NodeVisitor[Value]):
             # Fall back to a PyCall for module calls
             function = self.accept(callee)
             args = [self.accept(arg) for arg in expr.args]
-            return self.py_call(function, args, self.node_type(expr), expr.line)
+            return self.py_call(function, args, expr.line)
         else:
             obj = self.accept(callee.expr)
             args = [self.accept(arg) for arg in expr.args]
@@ -1175,8 +1169,7 @@ class IRBuilder(NodeVisitor[Value]):
 
             # Fall back to Python method call
             method_name = self.load_static_unicode(callee.name)
-            return self.py_method_call(
-                obj, method_name, args, self.node_type(expr), expr.line)
+            return self.py_method_call(obj, method_name, args, expr.line)
 
     def translate_cast_expr(self, expr: CastExpr) -> Value:
         src = self.accept(expr.expr)

@@ -682,73 +682,6 @@ class MethodCall(RegisterOp):
         return visitor.visit_method_call(self)
 
 
-# Python-interopability operations are prefixed with Py. Typically these act as a replacement
-# for native operations (without the Py prefix) which call into Python rather than compiled
-# native code. For example, this is needed to call builtins.
-
-
-class PyCall(RegisterOp):
-    """Python call f(arg, ...).
-
-    All registers must be unboxed. Corresponds to PyObject_CallFunctionObjArgs in C.
-    """
-
-    error_kind = ERR_MAGIC
-
-    def __init__(self, function: Value, args: List[Value],
-                 line: int) -> None:
-        super().__init__(line)
-        self.function = function
-        self.args = args
-        self.type = object_rprimitive
-
-    def to_str(self, env: Environment) -> str:
-        args = ', '.join(env.format('%r', arg) for arg in self.args)
-        s = env.format('%r(%s)', self.function, args)
-        if not self.is_void:
-            s = env.format('%r = ', self) + s
-        return s + ' :: object'
-
-    def sources(self) -> List[Value]:
-        return self.args[:] + [self.function]
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_py_call(self)
-
-
-class PyMethodCall(RegisterOp):
-    """Python method call obj.m(arg, ...)
-
-    All registers must be unboxed. Corresponds to PyObject_CallMethodObjArgs in C.
-    """
-
-    error_kind = ERR_MAGIC
-
-    def __init__(self,
-                 obj: Value,
-                 method: Value,
-                 args: List[Value],
-                 line: int = -1) -> None:
-        super().__init__(line)
-        self.obj = obj
-        self.method = method
-        self.args = args
-        self.type = object_rprimitive
-
-    def to_str(self, env: Environment) -> str:
-        args = ', '.join(env.format('%r', arg) for arg in self.args)
-        s = env.format('%r.%r(%s)', self.obj, self.method, args)
-        if not self.is_void:
-            s = env.format('%r = ', self) + s
-        return s + ' :: object'
-
-    def sources(self) -> List[Value]:
-        return self.args[:] + [self.obj, self.method]
-
-    def accept(self, visitor: 'OpVisitor[T]') -> T:
-        return visitor.visit_py_method_call(self)
-
-
 class EmitterInterface:
     @abstractmethod
     def reg(self, name: Value) -> str:
@@ -1352,15 +1285,7 @@ class OpVisitor(Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def visit_py_call(self, op: PyCall) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
     def visit_method_call(self, op: MethodCall) -> T:
-        raise NotImplementedError
-
-    @abstractmethod
-    def visit_py_method_call(self, op: PyMethodCall) -> T:
         raise NotImplementedError
 
     @abstractmethod
