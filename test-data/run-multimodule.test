@@ -212,3 +212,121 @@ Traceback (most recent call last):
     fail2()
   File "tmp/other.py", line 3, in fail2
 IndexError: list assignment index out of range
+
+[case testMultiModuleCycle]
+import other
+
+def f1() -> int:
+    return other.f2()
+
+def f3() -> int:
+    return 5
+[file other.py]
+import native
+
+def f2() -> int:
+    return native.f3()
+[file driver.py]
+from native import f1
+assert f1() == 5
+
+[case testMultiModuleCycleWithClasses]
+import other
+
+class D: pass
+
+def f() -> other.C:
+    return other.C()
+
+def g(c: other.C) -> D:
+    return c.d
+
+[file other.py]
+import native
+
+class C:
+    def __init__(self) -> None:
+        self.d = native.D()
+
+def h(d: native.D) -> None:
+    pass
+
+[file driver.py]
+from native import f, g
+from other import C, h
+
+c = f()
+assert isinstance(c, C)
+assert g(c) is c.d
+h(c.d)
+
+try:
+    g(1)
+except TypeError:
+    pass
+else:
+    assert False
+
+try:
+    h(1)
+except TypeError:
+    pass
+else:
+    assert False
+
+[case testMultiModuleCycleWithInheritance]
+import other
+
+class Deriv1(other.Base1):
+    pass
+
+class Base2:
+    y: int
+    def __init__(self) -> None:
+        self.y = 2
+
+[file other.py]
+import native
+
+class Base1:
+    x: int
+    def __init__(self) -> None:
+        self.x = 1
+
+class Deriv2(native.Base2):
+    pass
+
+[file driver.py]
+from native import Deriv1
+from other import Deriv2
+a = Deriv1()
+assert a.x == 1
+b = Deriv2()
+assert b.y == 2
+
+[case testImportCycleWithNonCompiledModule]
+import m
+
+class C: pass
+
+def f1() -> int:
+    m.D()
+    return m.f2()
+
+def f3() -> int:
+    return 2
+
+[file m.py]
+# This module is NOT compiled
+import native
+
+class D: pass
+
+def f2() -> int:
+    native.C()
+    return native.f3()
+
+[file driver.py]
+from native import f1
+
+assert f1() == 2

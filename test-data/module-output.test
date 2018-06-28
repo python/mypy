@@ -8,6 +8,7 @@ def f(x: int) -> int:
 #include <Python.h>
 #include <CPy.h>
 
+static CPyModule *CPyStatic_module;
 static PyObject *CPyStatic_globals;
 static CPyModule *CPyStatic_builtins_module;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
@@ -29,11 +30,14 @@ static struct PyModuleDef module = {
 
 PyMODINIT_FUNC PyInit_prog(void)
 {
-    PyObject *m;
-    m = PyModule_Create(&module);
-    if (m == NULL)
+    if (CPyStatic_module != NULL) {
+        Py_INCREF(CPyStatic_module);
+        return CPyStatic_module;
+    }
+    CPyStatic_module = PyModule_Create(&module);
+    if (CPyStatic_module == NULL)
         return NULL;
-    CPyStatic_globals = PyModule_GetDict(m);
+    CPyStatic_globals = PyModule_GetDict(CPyStatic_module);
     if (CPyStatic_globals == NULL)
         return NULL;
     if (CPyStatic_builtins_module == NULL) {
@@ -41,7 +45,7 @@ PyMODINIT_FUNC PyInit_prog(void)
         if (CPyStatic_builtins_module == NULL)
             return NULL;
     }
-    return m;
+    return CPyStatic_module;
 }
 
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x) {

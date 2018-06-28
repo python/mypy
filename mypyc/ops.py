@@ -13,7 +13,7 @@ can hold various things:
 from abc import abstractmethod, abstractproperty
 import re
 from typing import (
-    List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, NewType, Callable,
+    List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
     Union, Iterable, Type,
 )
 from collections import OrderedDict

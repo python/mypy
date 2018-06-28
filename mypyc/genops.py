@@ -981,16 +981,16 @@ class IRBuilder(NodeVisitor[Value]):
     def visit_float_expr(self, expr: FloatExpr) -> Value:
         return self.load_static_float(expr.value)
 
-    def is_native_name_expr(self, expr: NameExpr) -> bool:
-        assert expr.node, "RefExpr not resolved"
+    def is_native_ref_expr(self, expr: RefExpr) -> bool:
+        if expr.node is None:
+            return False
         if '.' in expr.node.fullname():
             module_name = '.'.join(expr.node.fullname().split('.')[:-1])
             return module_name in self.modules
-
         return True
 
-    def is_native_module_name_expr(self, expr: NameExpr) -> bool:
-        return self.is_native_name_expr(expr) and expr.kind == GDEF
+    def is_native_module_ref_expr(self, expr: RefExpr) -> bool:
+        return self.is_native_ref_expr(expr) and expr.kind == GDEF
 
     def visit_name_expr(self, expr: NameExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
@@ -1059,14 +1059,17 @@ class IRBuilder(NodeVisitor[Value]):
             callee = callee.analyzed.expr  # Unwrap type application
 
         if isinstance(callee, MemberExpr):
-            # TODO: Could be call to module-level function
-            return self.translate_method_call(expr, callee)
+            if self.is_native_ref_expr(callee):
+                # Call to module-level function or such
+                return self.translate_call(expr, callee)
+            else:
+                return self.translate_method_call(expr, callee)
         else:
             return self.translate_call(expr, callee)
 
     def translate_call(self, expr: CallExpr, callee: Expression) -> Value:
         """Translate a non-method call."""
-        assert isinstance(callee, NameExpr)  # TODO: Allow arbitrary callees
+        assert isinstance(callee, RefExpr)  # TODO: Allow arbitrary callees
 
         # Gen the args
         fullname = callee.fullname
@@ -1080,9 +1083,9 @@ class IRBuilder(NodeVisitor[Value]):
         if (fullname == 'builtins.isinstance'
                 and len(expr.args) == 2
                 and expr.arg_kinds == [ARG_POS, ARG_POS]
-                and isinstance(expr.args[1], NameExpr)
+                and isinstance(expr.args[1], RefExpr)
                 and isinstance(expr.args[1].node, TypeInfo)
-                and self.is_native_module_name_expr(expr.args[1])):
+                and self.is_native_module_ref_expr(expr.args[1])):
             # Special case native isinstance() checks as this makes them much faster.
             return self.primitive_op(fast_isinstance_op, args, expr.line)
 
@@ -1111,13 +1114,13 @@ class IRBuilder(NodeVisitor[Value]):
             function = self.accept(callee)
             return self.py_call(function, args, target_type, expr.line)
 
-    def get_native_signature(self, callee: NameExpr) -> Optional[CallableType]:
+    def get_native_signature(self, callee: RefExpr) -> Optional[CallableType]:
         """Get the signature of a native function, or return None if not available.
 
         This only works for normal functions, not methods.
         """
         signature = None
-        if self.is_native_module_name_expr(callee):
+        if self.is_native_module_ref_expr(callee):
             node = callee.node
             if isinstance(node, TypeInfo):
                 node = node['__init__'].node
@@ -1599,7 +1602,7 @@ class IRBuilder(NodeVisitor[Value]):
         func_reg = self.environment.add_local(fdef, object_rprimitive)
         return self.add(Assign(func_reg, temp_reg))
 
-    def is_builtin_name_expr(self, expr: NameExpr) -> bool:
+    def is_builtin_ref_expr(self, expr: RefExpr) -> bool:
         assert expr.node, "RefExpr not resolved"
         return '.' in expr.node.fullname() and expr.node.fullname().split('.')[0] == 'builtins'
 
@@ -1610,9 +1613,9 @@ class IRBuilder(NodeVisitor[Value]):
         from the _globals dictionary in the C-generated code.
         """
         # If the global is from 'builtins', turn it into a module attr load instead
-        if self.is_builtin_name_expr(expr):
+        if self.is_builtin_ref_expr(expr):
             return self.load_static_module_attr(expr)
-        if self.is_native_module_name_expr(expr) and isinstance(expr.node, TypeInfo):
+        if self.is_native_module_ref_expr(expr) and isinstance(expr.node, TypeInfo):
             assert expr.fullname is not None
             return self.load_native_type_object(expr.fullname)
         _globals = self.add(LoadStatic(object_rprimitive, 'globals', self.module_name))
