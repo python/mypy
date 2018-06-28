@@ -2464,3 +2464,12 @@ y = a.b.c.d.f()
 [file a/b/__init__.py]
 # empty
 [out]
+
+[case testModuleGetattrBusted]
+from a import A
+x: A.B
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]

@@ -1416,6 +1416,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     else:
                         name = id
                     ast_node = Var(name, type=typ)
+                    if self.type:
+                        ast_node._fullname = self.type.fullname() + "." + name
+                    else:
+                        ast_node._fullname = self.qualified_name(name)
                     symbol = SymbolTableNode(GDEF, ast_node)
                     self.add_symbol(name, symbol, imp)
                     continue
@@ -3083,7 +3087,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         n = names.get(parts[i], None)
                         if n and isinstance(n.node, ImportedName):
                             n = self.dereference_module_cross_ref(n)
-                    # TODO: What if node is Var or FuncDef?
+                    # If it is a variable of function, the error will be reported during the
+                    # type checking phase. We return None, since there is no symbol to return
+                    # for x.y if x is a Var or FuncDef.
+                    elif isinstance(n.node, (Var, FuncDef)):
+                        return None
                     if not n:
                         if not suppress_errors:
                             self.name_not_defined(name, ctx)
