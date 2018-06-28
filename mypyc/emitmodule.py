@@ -55,7 +55,7 @@ def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], op
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     emitter.emit_lines(
-        '{};'.format(native_function_header(fn, emitter.names)),
+        '{};'.format(native_function_header(fn, emitter)),
         '{};'.format(wrapper_function_header(fn, emitter.names)))
 
 

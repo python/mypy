@@ -100,19 +100,61 @@ class Emitter:
     def type_struct_name(self, cl: ClassIR) -> str:
         return self.static_name(cl.name, cl.module_name, prefix=TYPE_PREFIX)
 
+    def ctype(self, rtype: RType) -> str:
+        if isinstance(rtype, RTuple):
+            return 'struct {}'.format(self.tuple_struct_name(rtype))
+        return rtype._ctype
+
+    def ctype_spaced(self, rtype: RType) -> str:
+        """Adds a space after ctype for non-pointers."""
+        ctype = self.ctype(rtype)
+        if ctype[-1] == '*':
+            return ctype
+        else:
+            return ctype + ' '
+
+    def tuple_ctype(self, rtuple: RTuple) -> str:
+        return 'struct {}'.format(self.tuple_struct_name(rtuple))
+
+    def tuple_unique_id(self, rtuple: RTuple) -> str:
+        """Generate a unique id which is used in naming corresponding C identifiers.
+
+        This is necessary since C does not have anonymous structural type equivalence
+        in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
+
+        TODO: a better unique id. (#38)
+        """
+        return str(abs(hash(rtuple)))[0:15]
+
+    def tuple_struct_name(self, rtuple: RTuple) -> str:
+        # max c length is 31 chars, this should be enough entropy to be unique.
+        return 'tuple_def_' + self.tuple_unique_id(rtuple)
+
+    def tuple_c_declaration(self, rtuple: RTuple) -> List[str]:
+        result = ['struct {} {{'.format(self.tuple_struct_name(rtuple))]
+        i = 0
+        for typ in rtuple.types:
+            result.append('    {}f{};'.format(self.ctype_spaced(typ), i))
+            i += 1
+        result.append('};')
+        result.append('')
+
+        return result
+
     # Higher-level operations
 
     def declare_tuple_struct(self, tuple_type: RTuple) -> None:
-        if tuple_type.struct_name() not in self.context.declarations:
+        struct_name = self.tuple_struct_name(tuple_type)
+        if struct_name not in self.context.declarations:
             dependencies = set()
             for typ in tuple_type.types:
                 # XXX other types might eventually need similar behavior
                 if isinstance(typ, RTuple):
-                    dependencies.add(typ.struct_name())
+                    dependencies.add(self.tuple_struct_name(typ))
 
-            self.context.declarations[tuple_type.struct_name()] = HeaderDeclaration(
+            self.context.declarations[struct_name] = HeaderDeclaration(
                 dependencies,
-                tuple_type.get_c_declaration(),
+                self.tuple_c_declaration(tuple_type),
             )
 
     def emit_inc_ref(self, dest: str, rtype: RType) -> None:
@@ -203,7 +245,7 @@ class Emitter:
                 '}')
         elif is_tuple_rprimitive(typ):
             if declare_dest:
-                self.emit_line('{} {};'.format(typ.ctype, dest))
+                self.emit_line('{} {};'.format(self.ctype(typ), dest))
             self.emit_lines(
                 'if (PyTuple_Check({}))'.format(src),
                 '    {} = {};'.format(dest, src),
@@ -298,7 +340,7 @@ class Emitter:
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
-                self.emit_line('{} {};'.format(typ.ctype, dest))
+                self.emit_line('{} {};'.format(self.ctype(typ), dest))
             self.emit_line(
                 'if (!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(src, src,
                                                                               len(typ.types)))
@@ -383,7 +425,7 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_visit('{}.f{}'.format(target, i), item_type)
-        elif rtype.ctype == 'PyObject *':
+        elif self.ctype(rtype) == 'PyObject *':
             # The simplest case.
             self.emit_line('Py_VISIT({});'.format(target))
         else:
@@ -407,7 +449,7 @@ class Emitter:
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_gc_clear('{}.f{}'.format(target, i), item_type)
-        elif rtype.ctype == 'PyObject *' and rtype.c_undefined_value() == 'NULL':
+        elif self.ctype(rtype) == 'PyObject *' and rtype.c_undefined_value() == 'NULL':
             # The simplest case.
             self.emit_line('Py_CLEAR({});'.format(target))
         else:

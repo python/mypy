@@ -14,21 +14,21 @@ from mypyc.ops import (
 from mypyc.namegen import NameGenerator
 
 
-def native_function_type(fn: FuncIR) -> str:
-    args = ', '.join(arg.type.ctype for arg in fn.args)
-    ret = fn.ret_type.ctype
+def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
+    args = ', '.join(emitter.ctype(arg.type) for arg in fn.args)
+    ret = emitter.ctype(fn.ret_type)
     return '{} (*)({})'.format(ret, args)
 
 
-def native_function_header(fn: FuncIR, names: NameGenerator) -> str:
+def native_function_header(fn: FuncIR, emitter: Emitter) -> str:
     args = []
     for arg in fn.args:
-        args.append('{}{}{}'.format(arg.type.ctype_spaced(), REG_PREFIX, arg.name))
+        args.append('{}{}{}'.format(emitter.ctype_spaced(arg.type), REG_PREFIX, arg.name))
 
     return 'static {ret_type}{prefix}{name}({args})'.format(
-        ret_type=fn.ret_type.ctype_spaced(),
+        ret_type=emitter.ctype_spaced(fn.ret_type),
         prefix=NATIVE_PREFIX,
-        name=fn.cname(names),
+        name=fn.cname(emitter.names),
         args=', '.join(args) or 'void')
 
 
@@ -40,13 +40,13 @@ def generate_native_function(fn: FuncIR,
     body = Emitter(emitter.context, fn.env)
     visitor = FunctionEmitterVisitor(body, declarations, fn.name, source_path, module_name)
 
-    declarations.emit_line('{} {{'.format(native_function_header(fn, emitter.names)))
+    declarations.emit_line('{} {{'.format(native_function_header(fn, emitter)))
     body.indent()
 
     for r, i in fn.env.indexes.items():
         if i < len(fn.args):
             continue  # skip the arguments
-        ctype = r.type.ctype_spaced()
+        ctype = emitter.ctype_spaced(r.type)
         declarations.emit_line('{ctype}{prefix}{name};'.format(ctype=ctype,
                                                                prefix=REG_PREFIX,
                                                                name=r.name))
@@ -167,7 +167,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         if isinstance(op.type, RTuple):
             values = [item.c_undefined_value() for item in op.type.types]
             tmp = self.temp_name()
-            self.emit_line('%s %s = { %s };' % (op.type.ctype, tmp, ', '.join(values)))
+            self.emit_line('%s %s = { %s };' % (self.ctype(op.type), tmp, ', '.join(values)))
             self.emit_line('%s = %s;' % (self.reg(op), tmp))
         else:
             self.emit_line('%s = %s;' % (self.reg(op),
@@ -181,7 +181,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             dest, obj,
             rtype.getter_index(op.attr),
             rtype.struct_name(self.names),
-            rtype.attr_type(op.attr).ctype))
+            self.ctype(rtype.attr_type(op.attr))))
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
@@ -195,7 +195,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             rtype.setter_index(op.attr),
             src,
             rtype.struct_name(self.names),
-            rtype.attr_type(op.attr).ctype))
+            self.ctype(rtype.attr_type(op.attr))))
 
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,
@@ -241,7 +241,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         args = ', '.join([obj] + [self.reg(arg) for arg in op.args])
         method = rtype.class_ir.get_method(op.method)
         assert method is not None
-        mtype = native_function_type(method)
+        mtype = native_function_type(method, self.emitter)
         self.emit_line('{}CPY_GET_METHOD({}, {}, {}, {})({});'.format(
             dest, obj, method_idx, rtype.struct_name(self.names), mtype, args))
 
@@ -300,6 +300,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def reg(self, reg: Value) -> str:
         return self.emitter.reg(reg)
+
+    def ctype(self, rtype: RType) -> str:
+        return self.emitter.ctype(rtype)
 
     def emit_line(self, line: str) -> None:
         self.emitter.emit_line(line)

@@ -36,10 +36,10 @@ class RType:
     """Abstract base class for runtime types (erased, only concrete; no generics)."""
 
     name = None  # type: str
-    ctype = None  # type: str
     is_unboxed = False
     c_undefined = None  # type: str
     is_refcounted = True  # If unboxed: does the unboxed version use reference counting?
+    _ctype = None  # type: str  # C type; use Emitter.ctype() to access
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -48,13 +48,6 @@ class RType:
     @abstractmethod
     def c_undefined_value(self) -> str:
         raise NotImplementedError
-
-    def ctype_spaced(self) -> str:
-        """Adds a space after ctype for non-pointers."""
-        if self.ctype[-1] == '*':
-            return self.ctype
-        else:
-            return self.ctype + ' '
 
     def c_error_value(self) -> str:
         return self.c_undefined_value()
@@ -105,7 +98,7 @@ class RPrimitive(RType):
                  ctype: str = 'PyObject *') -> None:
         self.name = name
         self.is_unboxed = is_unboxed
-        self.ctype = ctype
+        self._ctype = ctype
         self.is_refcounted = is_refcounted
         if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
@@ -185,14 +178,15 @@ def is_tuple_rprimitive(rtype: RType) -> bool:
 
 
 class RTuple(RType):
-    """Fixed-length tuple."""
+    """Fixed-length unboxed tuple (represented as a C struct)."""
 
     is_unboxed = True
 
     def __init__(self, types: List[RType]) -> None:
         self.name = 'tuple'
         self.types = tuple(types)
-        self.ctype = 'struct {}'.format(self.struct_name())
+        # Emitter has logic for generating a C type for RTuple.
+        self._ctype = ''
         self.is_refcounted = any(t.is_refcounted for t in self.types)
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -204,21 +198,6 @@ class RTuple(RType):
         #
         #    struct foo _tmp = { <item0-undefined>, <item1-undefined>, ... };
         assert False, "Tuple undefined value can't be represented as a C expression"
-
-    @property
-    def unique_id(self) -> str:
-        """Generate a unique id which is used in naming corresponding C identifiers.
-
-        This is necessary since C does not have anonymous structural type equivalence
-        in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
-
-        TODO: a better unique id. (#38)
-        """
-        return str(abs(hash(self)))[0:15]
-
-    def struct_name(self) -> str:
-        # max c length is 31 charas, this should be enough entropy to be unique.
-        return 'tuple_def_' + self.unique_id
 
     def __str__(self) -> str:
         return 'tuple[%s]' % ', '.join(str(typ) for typ in self.types)
@@ -232,17 +211,6 @@ class RTuple(RType):
     def __hash__(self) -> int:
         return hash((self.name, self.types))
 
-    def get_c_declaration(self) -> List[str]:
-        result = ['struct {} {{'.format(self.struct_name())]
-        i = 0
-        for typ in self.types:
-            result.append('    {}f{};'.format(typ.ctype_spaced(), i))
-            i += 1
-        result.append('};')
-        result.append('')
-
-        return result
-
 
 class RInstance(RType):
     """Instance of user-defined class (compiled to C extension class)."""
@@ -252,7 +220,7 @@ class RInstance(RType):
     def __init__(self, class_ir: 'ClassIR') -> None:
         self.name = class_ir.name
         self.class_ir = class_ir
-        self.ctype = 'PyObject *'
+        self._ctype = 'PyObject *'
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rinstance(self)
@@ -287,7 +255,7 @@ class ROptional(RType):
     def __init__(self, value_type: RType) -> None:
         self.name = 'optional'
         self.value_type = value_type
-        self.ctype = 'PyObject *'
+        self._ctype = 'PyObject *'
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_roptional(self)

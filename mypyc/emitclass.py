@@ -64,7 +64,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         # TODO: Use RInstance
         ctor = FuncIR(cl.name, None, module, FuncSignature(init_args, object_rprimitive),
                       [], Environment())
-        emitter.emit_line(native_function_header(ctor, emitter.names) + ';')
+        emitter.emit_line(native_function_header(ctor, emitter) + ';')
 
         emit_line()
         generate_new_for_class(cl, new_name, vtable_name, setup_name, emitter)
@@ -171,7 +171,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
-                emitter.emit_line('{}{};'.format(rtype.ctype_spaced(), attr))
+                emitter.emit_line('{}{};'.format(emitter.ctype_spaced(rtype), attr))
     emitter.emit_line('}} {};'.format(cl.struct_name(emitter.names)))
 
 
@@ -179,7 +179,7 @@ def generate_native_getters_and_setters(cl: ClassIR,
                                         emitter: Emitter) -> None:
     for attr, rtype in cl.attributes.items():
         # Native getter
-        emitter.emit_line('{}{}({} *self)'.format(rtype.ctype_spaced(),
+        emitter.emit_line('{}{}({} *self)'.format(emitter.ctype_spaced(rtype),
                                                native_getter_name(cl, attr, emitter.names),
                                                cl.struct_name(emitter.names)))
         emitter.emit_line('{')
@@ -199,7 +199,7 @@ def generate_native_getters_and_setters(cl: ClassIR,
         emitter.emit_line(
             'bool {}({} *self, {}value)'.format(native_setter_name(cl, attr, emitter.names),
                                                 cl.struct_name(emitter.names),
-                                                rtype.ctype_spaced()))
+                                                emitter.ctype_spaced(rtype)))
         emitter.emit_line('{')
         if rtype.is_refcounted:
             emitter.emit_line('if (self->{} != {}) {{'.format(attr, rtype.c_undefined_value()))
@@ -256,7 +256,7 @@ def generate_constructor_for_class(cl: ClassIR,
                                    vtable_name: str,
                                    emitter: Emitter) -> None:
     """Generate a native function that allocates and initializes an instance of a class."""
-    emitter.emit_line('{}'.format(native_function_header(fn, emitter.names)))
+    emitter.emit_line('{}'.format(native_function_header(fn, emitter)))
     emitter.emit_line('{')
     emitter.emit_line('PyObject *self = {}();'.format(setup_name))
     emitter.emit_line('if (self == NULL)')
