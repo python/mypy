@@ -6,9 +6,7 @@ test_capi
 *.o
 *.a
 
-/env
-/env-debug
-/env-3.5
+/env*
 /.mypy_cache
 /.cache
 /.pytest_cache
