@@ -3,33 +3,11 @@
 from mypy_extensions import trait
 from typing import List, TypeVar, cast, Generic
 from abc import abstractmethod
+import other_strconv as strconv
+#from other_visitor import ExpressionVisitor, StatementVisitor, NodeVisitor
+import other_visitor as visitor
 
 T = TypeVar('T')
-
-############ visitor.py
-@trait
-class ExpressionVisitor(Generic[T]):
-    @abstractmethod
-    def visit_lambda_expr(self, o: 'LambdaExpr') -> T:
-        return cast(T, None)
-
-@trait
-class StatementVisitor(Generic[T]):
-    @abstractmethod
-    def visit_block(self, o: 'Block') -> T:
-        return cast(T, None)
-
-    @abstractmethod
-    def visit_func_def(self, o: 'FuncDef') -> T:
-        return cast(T, None)
-
-    @abstractmethod
-    def visit_expr_stmt(self, o: 'ExprStmt') -> T:
-        return cast(T, None)
-
-@trait
-class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
-    pass
 
 ############ nodes.py
 
@@ -40,17 +18,17 @@ class Context:
         self.line = line
 
 class Node(Context):
-    def accept(self, visitor: NodeVisitor[T]) -> T: return cast(T, None)
+    def accept(self, visitor: visitor.NodeVisitor[T]) -> T: return cast(T, None)
     def to_str(self) -> str:
-        return self.accept(StrConv())
+        return self.accept(strconv.StrConv())
 
 @trait
 class Statement(Node):
-    def accept(self, visitor: StatementVisitor[T]) -> T: return cast(T, None)
+    def accept(self, visitor: visitor.StatementVisitor[T]) -> T: return cast(T, None)
 
 @trait
 class Expression(Node):
-    def accept(self, visitor: ExpressionVisitor[T]) -> T: return cast(T, None)
+    def accept(self, visitor: visitor.ExpressionVisitor[T]) -> T: return cast(T, None)
 
 @trait
 class SymbolNode(Node):
@@ -68,14 +46,14 @@ class Block(Statement):
     def __init__(self, stmts: List[Statement]) -> None:
         self.stmts = stmts
 
-    def accept(self, visitor: StatementVisitor[T]) -> T:
+    def accept(self, visitor: visitor.StatementVisitor[T]) -> T:
         return visitor.visit_block(self)
 
 class ExprStmt(Statement):
     def __init__(self, expr: Expression) -> None:
         self.expr = expr
 
-    def accept(self, visitor: StatementVisitor[T]) -> T:
+    def accept(self, visitor: visitor.StatementVisitor[T]) -> T:
         return visitor.visit_expr_stmt(self)
 
 class FuncItem(FuncBase):
@@ -87,18 +65,54 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         #super().__init__(body)
         FuncItem.__init__(self, body)
         self._name = name
-    def accept(self, visitor: StatementVisitor[T]) -> T:
+    def accept(self, visitor: visitor.StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)
     def name(self) -> str:
         return self._name
 
 class LambdaExpr(FuncItem, Expression):
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+    def accept(self, visitor: visitor.ExpressionVisitor[T]) -> T:
         return visitor.visit_lambda_expr(self)
 
-############ strconv.py
+[file other_visitor.py]
+from mypy_extensions import trait
+from typing import TypeVar, cast, Generic
+from abc import abstractmethod
+import native as nodes
+
+T = TypeVar('T')
+
+@trait
+class ExpressionVisitor(Generic[T]):
+    @abstractmethod
+    def visit_lambda_expr(self, o: 'nodes.LambdaExpr') -> T:
+        return cast(T, None)
+
+@trait
+class StatementVisitor(Generic[T]):
+    @abstractmethod
+    def visit_block(self, o: 'nodes.Block') -> T:
+        return cast(T, None)
+
+    @abstractmethod
+    def visit_func_def(self, o: 'nodes.FuncDef') -> T:
+        return cast(T, None)
+
+    @abstractmethod
+    def visit_expr_stmt(self, o: 'nodes.ExprStmt') -> T:
+        return cast(T, None)
+
+@trait
+class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
+    pass
+
+[file other_strconv.py]
+from typing import List
+import native as nodes
+from other_visitor import NodeVisitor
+
 class StrConv(NodeVisitor[str]):
-    def visit_block(self, b: Block) -> str:
+    def visit_block(self, b: nodes.Block) -> str:
         # we really need comprehensions!
         # TODO: PartialType unsupported
         things = []  # type: List[str]
@@ -106,13 +120,13 @@ class StrConv(NodeVisitor[str]):
             things.append(s.accept(self))
         return "{" + "; ".join(things) + "}"
 
-    def visit_func_def(self, f: FuncDef) -> str:
+    def visit_func_def(self, f: nodes.FuncDef) -> str:
         return "def " + f.name() + "(): " + f.body.accept(self)
 
-    def visit_expr_stmt(self, e: ExprStmt) -> str:
+    def visit_expr_stmt(self, e: nodes.ExprStmt) -> str:
         return e.expr.accept(self)
 
-    def visit_lambda_expr(self, b: LambdaExpr) -> str:
+    def visit_lambda_expr(self, b: nodes.LambdaExpr) -> str:
         return "(fn: " + b.body.accept(self) + ")"
 
 [file driver.py]

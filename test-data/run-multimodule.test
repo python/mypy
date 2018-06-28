@@ -304,6 +304,28 @@ assert a.x == 1
 b = Deriv2()
 assert b.y == 2
 
+[case testMultiModuleTraitInheritance]
+from other import Base1, Base2
+
+class Deriv1(Base1, Base2):
+    pass
+
+[file other.py]
+from mypy_extensions import trait
+
+@trait
+class Base1:
+    def foo(self) -> int: return 10
+@trait
+class Base2:
+    def bar(self) -> int: return 12
+
+[file driver.py]
+from native import Deriv1
+a = Deriv1()
+assert a.foo() == 10 and a.bar() == 12
+
+
 [case testImportCycleWithNonCompiledModule]
 import m
 

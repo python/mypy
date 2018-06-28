@@ -169,17 +169,7 @@ class ModuleGenerator:
                            'Py_INCREF({});'.format(module_static),
                            'return {};'.format(module_static),
                            '}')
-        for cl in module.classes:
-            type_struct = emitter.type_struct_name(cl)
-            if cl.traits:
-                bases = ([cl.base] if cl.base else []) + cl.traits
-                emitter.emit_lines('{}.tp_bases = PyTuple_Pack({}, {});'.format(
-                    type_struct,
-                    len(bases),
-                    ', '.join('&{}'.format(emitter.type_struct_name(b)) for b in bases)))
 
-            emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
-                               '    return NULL;')
         emitter.emit_lines('{} = PyModule_Create(&{}module);'.format(module_static, module_prefix),
                            'if ({} == NULL)'.format(module_static),
                            '    return NULL;')
@@ -194,6 +184,19 @@ class ModuleGenerator:
             module.from_imports,
             emitter,
         )
+
+        for cl in module.classes:
+            type_struct = emitter.type_struct_name(cl)
+            # FIXME: This ought to be driven by emitclass, maybe?
+            bases = ([cl.base] if cl.base else []) + cl.traits
+            if len(bases) > 1:
+                emitter.emit_lines('{}.tp_bases = PyTuple_Pack({}, {});'.format(
+                    type_struct,
+                    len(bases),
+                    ', '.join('&{}'.format(emitter.type_struct_name(b)) for b in bases)))
+
+            emitter.emit_lines('if (PyType_Ready(&{}) < 0)'.format(type_struct),
+                               '    return NULL;')
 
         for (_, literal), identifier in module.literals.items():
             symbol = emitter.static_name(identifier, None)
