@@ -928,3 +928,24 @@ uno!
 eins?
 second: normal function
 third: normal function
+
+[case testMultipleAssignment]
+from typing import Tuple, List, Any
+
+def from_tuple(t: Tuple[int, str]) -> List[Any]:
+    x, y = t
+    return [y, x]
+
+def from_list(l: List[int]) -> List[int]:
+    x, y = l
+    return [y, x]
+
+def from_any(o: Any) -> List[Any]:
+    x, y = o
+    return [y, x]
+[file driver.py]
+from native import from_tuple, from_list, from_any
+
+assert from_tuple((1, 'x')) == ['x', 1]
+assert from_list([3, 4]) == [4, 3]
+assert from_any('xy') == ['y', 'x']

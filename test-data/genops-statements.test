@@ -339,3 +339,159 @@ L5:
 L6:
     r16 = no_err_occurred
     return s
+
+[case testMultipleAssignment]
+from typing import Tuple, Any
+
+def from_tuple(t: Tuple[int, str]) -> None:
+    x, y = t
+
+def from_any(a: Any) -> None:
+    x, y = a
+[out]
+def from_tuple(t):
+    t :: tuple[int, str]
+    x :: int
+    y :: str
+    r0 :: int
+    r1 :: str
+    r2 :: None
+L0:
+    r0 = t[0]
+    x = r0
+    r1 = t[1]
+    y = r1
+    r2 = None
+    return r2
+def from_any(a):
+    a, x, y, r0, r1 :: object
+    r2 :: bool
+    r3 :: object
+    r4 :: bool
+    r5 :: object
+    r6 :: bool
+    r7 :: None
+L0:
+    r0 = iter a :: object
+    r1 = next r0 :: object
+    if is_error(r1) goto L1 else goto L2
+L1:
+    raise ValueError('not enough values to unpack')
+    unreachable
+L2:
+    x = r1
+    r3 = next r0 :: object
+    if is_error(r3) goto L3 else goto L4
+L3:
+    raise ValueError('not enough values to unpack')
+    unreachable
+L4:
+    y = r3
+    r5 = next r0 :: object
+    if is_error(r5) goto L6 else goto L5
+L5:
+    raise ValueError('too many values to unpack')
+    unreachable
+L6:
+    r7 = None
+    return r7
+
+[case testMultiAssignmentCoercions]
+from typing import Tuple, Any
+
+def from_tuple(t: Tuple[int, Any]) -> None:
+    x: object
+    y: int
+    x, y = t
+
+def from_any(a: Any) -> None:
+    x: int
+    x, y = a
+[out]
+def from_tuple(t):
+    t :: tuple[int, object]
+    x :: object
+    y, r0 :: int
+    r1, r2 :: object
+    r3 :: int
+    r4 :: None
+L0:
+    r0 = t[0]
+    r1 = box(int, r0)
+    x = r1
+    r2 = t[1]
+    r3 = unbox(int, r2)
+    y = r3
+    r4 = None
+    return r4
+def from_any(a):
+    a :: object
+    x :: int
+    y, r0, r1 :: object
+    r2 :: bool
+    r3 :: int
+    r4 :: object
+    r5 :: bool
+    r6 :: object
+    r7 :: bool
+    r8 :: None
+L0:
+    r0 = iter a :: object
+    r1 = next r0 :: object
+    if is_error(r1) goto L1 else goto L2
+L1:
+    raise ValueError('not enough values to unpack')
+    unreachable
+L2:
+    r3 = unbox(int, r1)
+    x = r3
+    r4 = next r0 :: object
+    if is_error(r4) goto L3 else goto L4
+L3:
+    raise ValueError('not enough values to unpack')
+    unreachable
+L4:
+    y = r4
+    r6 = next r0 :: object
+    if is_error(r6) goto L6 else goto L5
+L5:
+    raise ValueError('too many values to unpack')
+    unreachable
+L6:
+    r8 = None
+    return r8
+
+[case testMultiAssignmentNested]
+from typing import Tuple, Any, List
+
+class A:
+    x: int
+
+def multi_assign(t: Tuple[int, Tuple[str, Any]], a: A, l: List[str]) -> None:
+    z: int
+    a.x, (l[0], z) = t
+[out]
+def multi_assign(t, a, l):
+    t :: tuple[int, tuple[str, object]]
+    a :: A
+    l :: list
+    z, r0, r1 :: int
+    r2 :: bool
+    r3 :: tuple[str, object]
+    r4 :: str
+    r5 :: bool
+    r6 :: object
+    r7 :: int
+    r8 :: None
+L0:
+    r0 = 0
+    r1 = t[0]
+    a.x = r1; r2 = is_error
+    r3 = t[1]
+    r4 = r3[0]
+    r5 = l.__setitem__(r0, r4) :: list
+    r6 = r3[1]
+    r7 = unbox(int, r6)
+    z = r7
+    r8 = None
+    return r8

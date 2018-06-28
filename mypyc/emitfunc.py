@@ -9,6 +9,7 @@ from mypyc.ops import (
     LoadStatic, TupleGet, TupleSet, Call, PyCall, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, Register, RType, RTuple, MethodCall, PyMethodCall, PrimitiveOp,
     EmitterInterface, Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
+    RaiseStandardError,
 )
 from mypyc.namegen import NameGenerator
 
@@ -281,6 +282,16 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_unreachable(self, op: Unreachable) -> None:
         pass  # Nothing to do
+
+    def visit_raise_standard_error(self, op: RaiseStandardError) -> None:
+        # TODO: Better escaping of backspaces and such
+        if op.message is not None:
+            message = op.message.replace('"', '\\"')
+            self.emitter.emit_line(
+                'PyErr_SetString(PyExc_{}, "{}");'.format(op.class_name, message))
+        else:
+            self.emitter.emit_line('PyErr_SetNone(PyExc_{});'.format(op.class_name))
+        self.emitter.emit_line('{} = 0;'.format(self.reg(op)))
 
     # Helpers
 

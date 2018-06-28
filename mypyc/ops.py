@@ -1161,6 +1161,38 @@ class Unbox(RegisterOp):
         return visitor.visit_unbox(self)
 
 
+class RaiseStandardError(RegisterOp):
+    """Raise built-in exception with an optional error string.
+
+    We have a separate opcode for this for convenience and to
+    generate smaller, more idiomatic C code.
+    """
+
+    # TODO: Make it more explicit at IR level that this always raises
+
+    error_kind = ERR_FALSE
+
+    VALUE_ERROR = 'ValueError'
+
+    def __init__(self, class_name: str, message: Optional[str], line: int) -> None:
+        super().__init__(line)
+        self.class_name = class_name
+        self.message = message
+        self.type = bool_rprimitive
+
+    def to_str(self, env: Environment) -> str:
+        if self.message is not None:
+            return 'raise %s(%r)' % (self.class_name, self.message)
+        else:
+            return 'raise %s' % self.class_name
+
+    def sources(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_raise_standard_error(self)
+
+
 class RuntimeArg:
     def __init__(self, name: str, typ: RType) -> None:
         self.name = name
@@ -1395,6 +1427,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_unbox(self, op: Unbox) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_raise_standard_error(self, op: RaiseStandardError) -> T:
         raise NotImplementedError
 
 
