@@ -3083,6 +3083,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         n = names.get(parts[i], None)
                         if n and isinstance(n.node, ImportedName):
                             n = self.dereference_module_cross_ref(n)
+                        elif '__getattr__' in names:
+                            getattr_defn = names['__getattr__']
+                            if isinstance(getattr_defn.node, (FuncDef, Var)):
+                                if isinstance(getattr_defn.node.type, CallableType):
+                                    typ = getattr_defn.node.type.ret_type
+                                else:
+                                    typ = AnyType(TypeOfAny.from_error)
+                                name = parts[i]
+                                v = Var(name, type=typ)
+                                v._fullname = name
+                                n = SymbolTableNode(GDEF, v)
+                                names[name] = n
                     # TODO: What if node is Var or FuncDef?
                     if not n:
                         if not suppress_errors:

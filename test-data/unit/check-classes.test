@@ -4451,3 +4451,21 @@ class C(B):
     def meth(cls, x: int) -> int: ...
 [builtins fixtures/classmethod.pyi]
 [out]
+
+[case testGetAttrImportAnnotation]
+import a
+x: a.A
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testGetAttrImportBaseClass]
+import a
+class B(a.A): ...
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
