@@ -105,11 +105,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                 item_type = typ.types[0]
                 cond = '{}.f0 {} {}'.format(self.reg(op.left),
                                             compare,
-                                            item_type.c_error_value())
+                                            self.c_error_value(item_type))
             else:
                 cond = '{} {} {}'.format(self.reg(op.left),
                                          compare,
-                                         typ.c_error_value())
+                                         self.c_error_value(typ))
         else:
             assert False, "Invalid branch"
 
@@ -165,13 +165,13 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         if isinstance(op.type, RTuple):
-            values = [item.c_undefined_value() for item in op.type.types]
+            values = [self.c_undefined_value(item) for item in op.type.types]
             tmp = self.temp_name()
             self.emit_line('%s %s = { %s };' % (self.ctype(op.type), tmp, ', '.join(values)))
             self.emit_line('%s = %s;' % (self.reg(op), tmp))
         else:
             self.emit_line('%s = %s;' % (self.reg(op),
-                                         op.type.c_error_value()))
+                                         self.c_error_value(op.type)))
 
     def visit_get_attr(self, op: GetAttr) -> None:
         dest = self.reg(op)
@@ -303,6 +303,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def ctype(self, rtype: RType) -> str:
         return self.emitter.ctype(rtype)
+
+    def c_error_value(self, rtype: RType) -> str:
+        return self.emitter.c_error_value(rtype)
+
+    def c_undefined_value(self, rtype: RType) -> str:
+        return self.emitter.c_undefined_value(rtype)
 
     def emit_line(self, line: str) -> None:
         self.emitter.emit_line(line)

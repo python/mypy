@@ -45,13 +45,6 @@ class RType:
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         raise NotImplementedError
 
-    @abstractmethod
-    def c_undefined_value(self) -> str:
-        raise NotImplementedError
-
-    def c_error_value(self) -> str:
-        return self.c_undefined_value()
-
     def short_name(self) -> str:
         return short_name(self.name)
 
@@ -77,9 +70,6 @@ class RVoid(RType):
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rvoid(self)
-
-    def c_undefined_value(self) -> str:
-        return ''
 
 
 void_rtype = RVoid()
@@ -108,9 +98,6 @@ class RPrimitive(RType):
             self.c_undefined = '2'
         else:
             assert False, 'Uncognized ctype: %r' % ctype
-
-    def c_undefined_value(self) -> str:
-        return self.c_undefined
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rprimitive(self)
@@ -192,13 +179,6 @@ class RTuple(RType):
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rtuple(self)
 
-    def c_undefined_value(self) -> str:
-        # This doesn't work since this is expected to return a C expression, but
-        # defining an undefined tuple requires declaring a temp variable, such as:
-        #
-        #    struct foo _tmp = { <item0-undefined>, <item1-undefined>, ... };
-        assert False, "Tuple undefined value can't be represented as a C expression"
-
     def __str__(self) -> str:
         return 'tuple[%s]' % ', '.join(str(typ) for typ in self.types)
 
@@ -224,9 +204,6 @@ class RInstance(RType):
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rinstance(self)
-
-    def c_undefined_value(self) -> str:
-        return 'NULL'
 
     def struct_name(self, names: NameGenerator) -> str:
         return self.class_ir.struct_name(names)
@@ -259,9 +236,6 @@ class ROptional(RType):
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_roptional(self)
-
-    def c_undefined_value(self) -> str:
-        return 'NULL'
 
     def __repr__(self) -> str:
         return '<ROptional %s>' % self.value_type
@@ -778,6 +752,10 @@ class PyMethodCall(RegisterOp):
 class EmitterInterface:
     @abstractmethod
     def reg(self, name: Value) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def c_error_value(self, rtype: RType) -> str:
         raise NotImplementedError
 
     @abstractmethod

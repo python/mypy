@@ -46,7 +46,7 @@ def negative_int_emit(template: str) -> EmitCallback:
         temp = emitter.temp_name()
         emitter.emit_line(template.format(args=args, dest='int %s' % temp))
         emitter.emit_lines('if (%s < 0)' % temp,
-                           '    %s = %s;' % (dest, bool_rprimitive.c_error_value()),
+                           '    %s = %s;' % (dest, emitter.c_error_value(bool_rprimitive)),
                            'else',
                            '    %s = %s;' % (dest, temp))
 
