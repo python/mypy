@@ -3087,11 +3087,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         n = names.get(parts[i], None)
                         if n and isinstance(n.node, ImportedName):
                             n = self.dereference_module_cross_ref(n)
-                    # If it is a variable of function, the error will be reported during the
-                    # type checking phase. We return None, since there is no symbol to return
-                    # for x.y if x is a Var or FuncDef.
-                    elif isinstance(n.node, (Var, FuncDef)):
-                        return None
+                    # TODO: What if node is Var or FuncDef?
+                    # Currently, missing these cases results in controversial behavior, when
+                    # lookup_qualified(x.y.z) returns Var(x).
                     if not n:
                         if not suppress_errors:
                             self.name_not_defined(name, ctx)
