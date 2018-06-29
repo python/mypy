@@ -1225,8 +1225,18 @@ class D:
 [out]
 main:5: error: Revealed type is 'Any'
 main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
+main:5: note: Possible overload variant(s):
+main:5: note:     @overload
+main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:5: note:     @overload
+main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
 main:6: error: Revealed type is 'Any'
 main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
+main:6: note: Possible overload variant(s):
+main:6: note:     @overload
+main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:6: note:     @overload
+main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
 
 
 [case testAccessingGenericNonDataDescriptor]

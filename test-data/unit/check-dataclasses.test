@@ -120,7 +120,11 @@ from dataclasses import dataclass, field
 @dataclass
 class Person:
     name: str
-    age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None"
+    age: int = field(init=None)  # E: No overload variant of "field" matches argument type "None" \
+                                 # N: Possible overload variant(s): \
+                                 # N:     @overload \
+                                 # N:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ...) -> Any \
+                                 # N:     <2 more overload(s) not shown>
 
 [builtins fixtures/list.pyi]
 

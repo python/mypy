@@ -320,6 +320,11 @@ def f(x): # type: (unicode) -> int
   pass
 [out]
 _program.py:2: error: No overload variant of "f" matches argument type "int"
+_program.py:2: note: Possible overload variant(s):
+_program.py:2: note:     @overload
+_program.py:2: note:     def f(x: bytearray) -> int
+_program.py:2: note:     @overload
+_program.py:2: note:     def f(x: unicode) -> int
 
 [case testByteArrayStrCompatibility_python2]
 def f(x): # type: (str) -> None

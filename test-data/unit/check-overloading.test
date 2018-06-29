@@ -1142,7 +1142,7 @@ def i(x: List[str]) -> int: pass  # E: Overloaded function signatures 1 and 2 ov
 def i(x: List[T]) -> None: pass
 [builtins fixtures/list.pyi]
 
-[case testOverlapWithTypeVarsWithValues]
+[case testOverloadOverlapWithTypeVarsWithValues]
 from foo import *
 [file foo.pyi]
 from typing import overload, TypeVar
@@ -1156,7 +1156,12 @@ def f(x: AnyStr) -> str: pass
 f(1)() # E: "int" not callable
 f('1')() # E: "str" not callable
 f(b'1')() # E: "str" not callable
-f(1.0) # E: No overload variant of "f" matches argument type "float"
+f(1.0) # E: No overload variant of "f" matches argument type "float" \
+       # N: Possible overload variant(s): \
+       # N:     @overload \
+       # N:     def f(x: int) -> int \
+       # N:     @overload \
+       # N:     def [AnyStr in (bytes, str)] f(x: AnyStr) -> str
 
 @overload
 def g(x: AnyStr, *a: AnyStr) -> None: pass
