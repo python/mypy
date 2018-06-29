@@ -1198,12 +1198,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif len(erased_targets) > 0:
             # Pick the first plausible erased target as the fallback
             # TODO: Adjust the error message here to make it clear there was no match.
+            #       In order to do this, we need to find a clean way of associating
+            #       a note with whatever error message 'self.check_call' will generate.
+            #       In particular, the note's line and column numbers need to be the same
+            #       as the error's.
             target = erased_targets[0]  # type: Type
         else:
             # There was no plausible match: give up
-            if not self.chk.should_suppress_optional_error(arg_types):
-                arg_messages.no_variant_matches_arguments(callee, arg_types, context)
             target = AnyType(TypeOfAny.from_error)
+            if not self.chk.should_suppress_optional_error(arg_types):
+                arg_messages.no_variant_matches_arguments(
+                    plausible_targets, callee, arg_types, context)
 
         return self.check_call(target, args, arg_kinds, context, arg_names,
                                arg_messages=arg_messages,

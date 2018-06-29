@@ -534,7 +534,11 @@ class A:
 a = None # type: A
 a.g()
 a.g(B())
-a.g(a) # E: No overload variant matches argument type "A"
+a.g(a) # E: No overload variant matches argument type "A" \
+       # N: Possible overload variant(s): \
+       # N:     @overload \
+       # N:     def f(self, b: B) -> None \
+       # N:     <1 more overload(s) not shown>
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
 

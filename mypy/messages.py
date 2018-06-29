@@ -749,7 +749,10 @@ class MessageBuilder:
             s = " '{}'".format(typ.source)
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
-    def no_variant_matches_arguments(self, overload: Overloaded, arg_types: List[Type],
+    def no_variant_matches_arguments(self,
+                                     plausible_targets: List[CallableType],
+                                     overload: Overloaded,
+                                     arg_types: List[Type],
                                      context: Context) -> None:
         name = callable_name(overload)
         if name:
@@ -767,6 +770,13 @@ class MessageBuilder:
         else:
             self.fail('No overload variant{} matches argument types {}'
                       .format(name_str, arg_types_str), context)
+
+        self.note('Possible overload variant(s):', context)
+        self.pretty_overload(plausible_targets,
+                             overload,
+                             context,
+                             offset=2,
+                             max_items=2)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -1207,13 +1217,13 @@ class MessageBuilder:
                         self.note(self.pretty_callable(exp), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(exp, Overloaded)
-                        self.pretty_overload(exp, context, OFFSET, MAX_ITEMS)
+                        self.pretty_overload(exp.items(), exp, context, OFFSET, MAX_ITEMS)
                     self.note('Got:', context, offset=OFFSET)
                     if isinstance(got, CallableType):
                         self.note(self.pretty_callable(got), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(got, Overloaded)
-                        self.pretty_overload(got, context, OFFSET, MAX_ITEMS)
+                        self.pretty_overload(got.items(), got, context, OFFSET, MAX_ITEMS)
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
@@ -1233,13 +1243,17 @@ class MessageBuilder:
                           .format(supertype.type.name(), name), context)
         self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS)
 
-    def pretty_overload(self, tp: Overloaded, context: Context,
+    def pretty_overload(self, targets: List[CallableType], func: Overloaded, context: Context,
                         offset: int, max_items: int) -> None:
-        for item in tp.items()[:max_items]:
+        if len(targets) == 0:
+            targets = func.items()
+        for item in targets[:max_items]:
             self.note('@overload', context, offset=2 * offset)
             self.note(self.pretty_callable(item), context, offset=2 * offset)
-        if len(tp.items()) > max_items:
-            self.note('<{} more overload(s) not shown>'.format(len(tp.items()) - max_items),
+        shown = min(max_items, len(targets))
+        max_available = len(func.items())
+        if shown < max_available:
+            self.note('<{} more overload(s) not shown>'.format(max_available - shown),
                       context, offset=2 * offset)
 
     def print_more(self, conflicts: Sequence[Any], context: Context,

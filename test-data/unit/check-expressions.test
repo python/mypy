@@ -866,7 +866,12 @@ from typing import overload
 a, b, c = None, None, None  # type: (A, B, C)
 a[b]
 a[c]
-a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int"
+a[1]  # E: No overload variant of "__getitem__" of "A" matches argument type "int" \
+      # N: Possible overload variant(s): \
+      # N:     @overload \
+      # N:     def __getitem__(self, B) -> int \
+      # N:     @overload \
+      # N:     def __getitem__(self, C) -> str
 
 i, s = None, None  # type: (int, str)
 i = a[b]

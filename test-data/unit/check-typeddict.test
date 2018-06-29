@@ -1205,7 +1205,12 @@ def f(x: int) -> None: ...
 def f(x): pass
 
 a: A
-f(a)  # E: No overload variant of "f" matches argument type "A"
+f(a)  # E: No overload variant of "f" matches argument type "A" \
+      # N: Possible overload variant(s): \
+      # N:     @overload \
+      # N:     def f(x: str) -> None \
+      # N:     @overload \
+      # N:     def f(x: int) -> None
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
