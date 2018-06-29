@@ -312,6 +312,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             actual = actual.as_anonymous().fallback
         if isinstance(actual, Instance):
             instance = actual
+            erased = erase_typevars(template)
+            assert isinstance(erased, Instance)
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if (self.direction == SUBTYPE_OF and
@@ -344,7 +346,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # It never produces any "false" constraints but gives up soon
                     # on purely structural inference cycles, see #3829.
                     not any(is_same_type(template, t) for t in template.type.inferring) and
-                    mypy.subtypes.is_subtype(instance, erase_typevars(template))):
+                    mypy.subtypes.is_protocol_implementation(instance, erased)):
                 template.type.inferring.append(template)
                 self.infer_constraints_from_protocol_members(res, instance, template,
                                                              original_actual, template)
@@ -353,7 +355,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
                   # We avoid infinite recursion for structural subtypes also here.
                   not any(is_same_type(instance, i) for i in instance.type.inferring) and
-                  mypy.subtypes.is_subtype(erase_typevars(template), instance)):
+                  mypy.subtypes.is_protocol_implementation(erased, instance)):
                 instance.type.inferring.append(instance)
                 self.infer_constraints_from_protocol_members(res, instance, template,
                                                              template, instance)
