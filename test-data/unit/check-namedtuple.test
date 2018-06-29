@@ -51,6 +51,23 @@ a.y = 5 # E: Property "y" defined in "X" is read-only
 -- a.z = 5 # not supported yet
 
 
+[case testTypingNamedTupleAttributesAreReadOnly]
+from typing import NamedTuple
+from typing_extensions import Protocol
+
+class HasX(Protocol): 
+    x: str
+    
+class A(NamedTuple):
+    x: str
+
+a: HasX = A("foo")
+a.x = "bar"
+[out]
+main:10: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
+main:10: note: Protocol member HasX.x expected settable variable, got read-only attribute
+
+
 [case testNamedTupleCreateWithPositionalArguments]
 from collections import namedtuple
 
