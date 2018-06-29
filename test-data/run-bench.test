@@ -78,6 +78,7 @@ if os.environ.get('MYPYC_RUN_BENCH') == '1':
     print("Build speedup:", ibuild/nbuild)
 
 [case testBenchmarkVisitorTree]
+from mypy_extensions import trait
 from typing import cast, Generic, TypeVar
 
 T = TypeVar('T')
@@ -95,6 +96,7 @@ class Node(Tree):
     def accept(self, v: 'TreeVisitor[T]') -> T:
         return v.visit_node(self)
 
+@trait
 class TreeVisitor(Generic[T]):
     def visit_leaf(self, x: Leaf) -> T: return cast(T, None)
     def visit_node(self, x: Node) -> T: return cast(T, None)

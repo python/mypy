@@ -48,7 +48,8 @@ from mypyc.ops import (
     is_list_rprimitive, dict_rprimitive, is_dict_rprimitive, str_rprimitive, is_tuple_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
-    VTableAttr, VTableMethod, NAMESPACE_TYPE, RaiseStandardError,
+    VTableAttr, VTableMethod, VTableEntries,
+    NAMESPACE_TYPE, RaiseStandardError,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
@@ -108,6 +109,34 @@ def is_trait(cdef: ClassDef) -> bool:
                if isinstance(d, NameExpr))
 
 
+def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
+    """Generate the part of a vtable corresponding to a parent class or trait"""
+    updated = []
+    for entry in parent.vtable_entries:
+        if isinstance(entry, VTableMethod):
+            method = entry.method
+            if method.name in cls.methods:
+                # TODO: emit a wrapper for __init__ that raises or something
+                if (is_same_method_signature(method.sig, cls.methods[method.name].sig)
+                        or method.name == '__init__'):
+                    entry = VTableMethod(cls, entry.name, cls.methods[method.name])
+                else:
+                    entry = VTableMethod(cls, entry.name,
+                                         cls.glue_methods[(entry.cls, method.name)])
+            elif parent.is_trait:
+                assert cls.vtable is not None
+                entry = cls.vtable_entries[cls.vtable[entry.name]]
+        else:
+            # If it is an attribute from a trait, we need to find out real class it got
+            # mixed in at and point to that.
+            if parent.is_trait:
+                assert cls.vtable is not None
+                entry = cls.vtable_entries[cls.vtable[entry.name] + int(entry.is_setter)]
+
+        updated.append(entry)
+    return updated
+
+
 def compute_vtable(cls: ClassIR) -> None:
     """Compute the vtable structure for a class."""
     if cls.vtable is not None: return
@@ -121,38 +150,33 @@ def compute_vtable(cls: ClassIR) -> None:
                 cls.attributes[name] = typ
 
     cls.vtable = {}
-    entries = cls.vtable_entries
     if cls.base:
         compute_vtable(cls.base)
         assert cls.base.vtable is not None
         cls.vtable.update(cls.base.vtable)
-        prefix = cls.base.vtable_entries
-    else:
-        prefix = []
+        cls.vtable_entries = specialize_parent_vtable(cls, cls.base)
 
     # Include the vtable from the parent classes, but handle method overrides.
-    for entry in prefix:
-        if isinstance(entry, VTableMethod):
-            method = entry.method
-            if method.name in cls.methods:
-                # TODO: emit a wrapper for __init__ that raises or something
-                if (is_same_method_signature(method.sig, cls.methods[method.name].sig)
-                        or method.name == '__init__'):
-                    entry = VTableMethod(cls, cls.methods[method.name])
-                else:
-                    entry = VTableMethod(cls, cls.glue_methods[(entry.cls, method.name)])
-        entries.append(entry)
+    entries = cls.vtable_entries
 
     for attr in cls.attributes:
         cls.vtable[attr] = len(entries)
-        entries.append(VTableAttr(cls, attr, is_getter=True))
-        entries.append(VTableAttr(cls, attr, is_getter=False))
+        entries.append(VTableAttr(cls, attr, is_setter=False))
+        entries.append(VTableAttr(cls, attr, is_setter=True))
 
     for t in [cls] + cls.traits:
         for fn in t.methods.values():
+            # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name):
                 cls.vtable[fn.name] = len(entries)
-                entries.append(VTableMethod(t, fn))
+                entries.append(VTableMethod(t, fn.name, fn))
+
+    # Compute vtables for all of the traits that the class implements
+    all_traits = [t for t in cls.mro if t.is_trait]
+    if not cls.is_trait:
+        for trait in all_traits:
+            compute_vtable(trait)
+            cls.trait_vtables[trait] = specialize_parent_vtable(cls, trait)
 
 
 class Mapper:
@@ -182,8 +206,7 @@ class Mapper:
                 return dict_rprimitive
             elif typ.type.fullname() == 'builtins.tuple':
                 return tuple_rprimitive  # Varying-length tuple
-            # TODO: don't erase traits
-            elif typ.type in self.type_to_ir and not self.type_to_ir[typ.type].is_trait:
+            elif typ.type in self.type_to_ir:
                 return RInstance(self.type_to_ir[typ.type])
             else:
                 return object_rprimitive
@@ -257,11 +280,11 @@ def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
             base_mro.append(base_ir)
         mro.append(base_ir)
 
-    if len(base_mro) > 1:
-        ir.base = base_mro[1]
+    base_idx = 1 if not ir.is_trait else 0
+    if len(base_mro) > base_idx:
+        ir.base = base_mro[base_idx]
     assert all(base_mro[i].base == base_mro[i + 1] for i in range(len(base_mro) - 1)), (
         "non-trait MRO must be linear")
-
     ir.mro = mro
     ir.base_mro = base_mro
 

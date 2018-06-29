@@ -1126,18 +1126,69 @@ class FuncIR:
         return '\n'.join(format_func(self))
 
 
+# Some notes on the vtable layout:
+# Each concrete class has a vtable that contains function pointers for its
+# methods and for getters/setters of its attributes. So that subclasses
+# may be efficiently used when their parent class is expected, the layout
+# of child vtables must be an extension of their base class's vtable.
+#
+# This makes multiple inheritance tricky, since obviously we cannot be
+# an extension of multiple parent classes. We solve this by requriing
+# all but one parent to be "traits", which we can operate on in a
+# somewhat less efficient way. For each trait implemented by a class,
+# we generate a separate vtable for the methods in that trait.
+# We then store an array of (trait type, trait vtable) pointers alongside
+# a class's main vtable. When we want to call a trait method, we
+# (at runtime!) search the array of trait vtables to find the correct one,
+# then call through it.
+#
+# To keep down the number of indirections necessary, we store the
+# array of trait vtables in the memory *before* the class vtable, and
+# search it backwards.  (This is a trick we can only do once---there
+# are only two directions to store data in---but I don't think we'll
+# need it again.)
+# There are some tricks we could try in the future to store the trait
+# vtables inline in the trait table (which would cut down one indirection),
+# but this seems good enough for now.#
+#
+# As an example:
+# Imagine that we have a class B that inherits from a concrete class A
+# and traits T1 and T2, and that A has attribute x and methods foo() and
+# bar() and B overrides bar() with a more specific type.
+# Then B's vtable will look something like:
+#
+#      T1 type object
+#      ptr to B's T1 trait vtable
+#      T2 type object
+#      ptr to B's T2 trait vtable
+# -> | Getter for x
+#    | Setter for x
+#    | A.foo
+#    | Glue function that converts between A.bar's type and B.bar
+#      B.bar
+#      B.baz
+#
+# The arrow points to the "start" of the vtable (what vtable pointers
+# point to) and the bars indicate which parts correspond to the parent
+# class A's vtable layout.
+
 # Descriptions of method and attribute entries in class vtables.
 # The 'cls' field is the class that the method/attr was defined in,
 # which might be a parent class.
+
 VTableMethod = NamedTuple(
     'VTableMethod', [('cls', 'ClassIR'),
+                     ('name', str),
                      ('method', FuncIR)])
 
 
 VTableAttr = NamedTuple(
     'VTableAttr', [('cls', 'ClassIR'),
                    ('name', str),
-                   ('is_getter', bool)])
+                   ('is_setter', bool)])
+
+
+VTableEntries = List[Union[VTableMethod, VTableAttr]]
 
 
 class ClassIR:
@@ -1160,7 +1211,10 @@ class ClassIR:
         # to IR of glue method.
         self.glue_methods = {}  # type: Dict[Tuple[ClassIR, str], FuncIR]
         self.vtable = None  # type: Optional[Dict[str, int]]
-        self.vtable_entries = []  # type: List[Union[VTableMethod, VTableAttr]]
+        self.vtable_entries = []  # type: VTableEntries
+        self.trait_vtables = OrderedDict()  # type: OrderedDict[ClassIR, VTableEntries]
+        # N.B: base might not actually quite be the direct base.
+        # It is the nearest concrete base, but we allow a trait in between.
         self.base = None  # type: Optional[ClassIR]
         self.traits = []  # type: List[ClassIR]
         # Supply a working mro for most generated classes. Real classes will need to
@@ -1168,6 +1222,12 @@ class ClassIR:
         self.mro = [self]  # type: List[ClassIR]
         # base_mro is the chain of concrete (non-trait) ancestors
         self.base_mro = [self]  # type: List[ClassIR]
+
+    def real_base(self) -> Optional['ClassIR']:
+        """Return the actual concrete base class, if there is one."""
+        if len(self.mro) > 1 and not self.mro[1].is_trait:
+            return self.mro[1]
+        return None
 
     def vtable_entry(self, name: str) -> int:
         assert self.vtable is not None, "vtable not computed yet"

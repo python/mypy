@@ -10,25 +10,31 @@ class A:
 class T:
     def bar(self) -> None:
         print("bar")
+    def baz(self) -> object:
+        return None
 
 class C(A, T):
-    pass
+    def baz(self) -> int:
+        return 10
 
-def use_t(t: T) -> None:
+def use_t(t: T) -> object:
     t.bar()
+    return t.baz()
 
-def use_c(c: C) -> None:
+def use_c(c: C) -> int:
     use_t(c)
     c.foo()
     c.bar()
+    return c.baz()
 
 [file driver.py]
 from native import A, T, C, use_c, use_t
 c = C()
 c.foo()
 c.bar()
-use_c(c)
-use_t(c)
+assert c.baz() == 10
+assert use_c(c) == 10
+assert use_t(c) == 10
 [out]
 foo
 bar
@@ -74,6 +80,7 @@ class D(C, T2):
 def use_t(t: T) -> None:
     t.bar()
 def use_t2(t: T2) -> int:
+    t.line = t.line
     return t.line
 
 def use_c(c: C) -> int:

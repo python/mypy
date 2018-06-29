@@ -34,17 +34,41 @@ static void CPyDebug_Print(const char *msg) {
     fflush(stdout);
 }
 
+// Search backwards through the trait part of a vtable (which sits *before*
+// the start of the vtable proper) looking for the subvtable describing a trait
+// implementation. We don't do any bounds checking so we'd better be pretty sure
+// we know that it is there.
+static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableItem *vtable) {
+	int i;
+    for (i = -2; ; i -= 2) {
+        if ((PyTypeObject *)vtable[i] == trait) {
+            return (CPyVTableItem *)vtable[i + 1];
+        }
+    }
+}
+
 // Get attribute value using vtable (may return an undefined value)
-#define CPY_GET_ATTR(obj, vtable_index, object_type, attr_type) \
+#define CPY_GET_ATTR(obj, type, vtable_index, object_type, attr_type)    \
     ((attr_type (*)(object_type *))((object_type *)obj)->vtable[vtable_index])((object_type *)obj)
 
+#define CPY_GET_ATTR_TRAIT(obj, trait, vtable_index, object_type, attr_type)   \
+    ((attr_type (*)(object_type *))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])((object_type *)obj)
+
 // Set attribute value using vtable
-#define CPY_SET_ATTR(obj, vtable_index, value, object_type, attr_type) \
+#define CPY_SET_ATTR(obj, type, vtable_index, value, object_type, attr_type) \
     ((bool (*)(object_type *, attr_type))((object_type *)obj)->vtable[vtable_index])( \
         (object_type *)obj, value)
 
-#define CPY_GET_METHOD(obj, vtable_index, object_type, method_type) \
+#define CPY_SET_ATTR_TRAIT(obj, trait, vtable_index, value, object_type, attr_type) \
+    ((bool (*)(object_type *, attr_type))(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable))[vtable_index])( \
+        (object_type *)obj, value)
+
+#define CPY_GET_METHOD(obj, type, vtable_index, object_type, method_type) \
     ((method_type)(((object_type *)obj)->vtable[vtable_index]))
+
+#define CPY_GET_METHOD_TRAIT(obj, trait, vtable_index, object_type, method_type) \
+    ((method_type)(CPy_FindTraitVtable(trait, ((object_type *)obj)->vtable)[vtable_index]))
+
 
 static void CPyError_OutOfMemory(void) {
     fprintf(stderr, "fatal: out of memory\n");

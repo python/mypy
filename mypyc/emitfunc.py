@@ -177,8 +177,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
-        self.emit_line('%s = CPY_GET_ATTR(%s, %d, %s, %s);' % (
-            dest, obj,
+        version = '_TRAIT' if rtype.class_ir.is_trait else ''
+        self.emit_line('%s = CPY_GET_ATTR%s(%s, &%s, %d, %s, %s);' % (
+            dest,
+            version,
+            obj,
+            self.emitter.type_struct_name(rtype.class_ir),
             rtype.getter_index(op.attr),
             rtype.struct_name(self.names),
             self.ctype(rtype.attr_type(op.attr))))
@@ -189,9 +193,12 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         src = self.reg(op.src)
         rtype = op.class_type
         # TODO: Track errors
-        self.emit_line('%s = CPY_SET_ATTR(%s, %d, %s, %s, %s);' % (
+        version = '_TRAIT' if rtype.class_ir.is_trait else ''
+        self.emit_line('%s = CPY_SET_ATTR%s(%s, &%s, %d, %s, %s, %s);' % (
             dest,
+            version,
             obj,
+            self.emitter.type_struct_name(rtype.class_ir),
             rtype.setter_index(op.attr),
             src,
             rtype.struct_name(self.names),
@@ -242,8 +249,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         method = rtype.class_ir.get_method(op.method)
         assert method is not None
         mtype = native_function_type(method, self.emitter)
-        self.emit_line('{}CPY_GET_METHOD({}, {}, {}, {})({});'.format(
-            dest, obj, method_idx, rtype.struct_name(self.names), mtype, args))
+        version = '_TRAIT' if rtype.class_ir.is_trait else ''
+        self.emit_line('{}CPY_GET_METHOD{}({}, &{}, {}, {}, {})({});'.format(
+            dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
+            method_idx, rtype.struct_name(self.names), mtype, args))
 
     def visit_inc_ref(self, op: IncRef) -> None:
         src = self.reg(op.src)

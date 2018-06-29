@@ -190,12 +190,14 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o) != -1;""")
 
     def test_get_attr(self) -> None:
-        self.assert_emit(GetAttr(self.r, 'y', 1),
-                         """cpy_r_r0 = CPY_GET_ATTR(cpy_r_r, 2, AObject, CPyTagged);""")
+        self.assert_emit(
+            GetAttr(self.r, 'y', 1),
+            """cpy_r_r0 = CPY_GET_ATTR(cpy_r_r, &CPyType_A, 2, AObject, CPyTagged);""")
 
     def test_set_attr(self) -> None:
-        self.assert_emit(SetAttr(self.r, 'y', self.m, 1),
-                         """cpy_r_r0 = CPY_SET_ATTR(cpy_r_r, 3, cpy_r_m, AObject, CPyTagged);""")
+        self.assert_emit(
+            SetAttr(self.r, 'y', self.m, 1),
+            """cpy_r_r0 = CPY_SET_ATTR(cpy_r_r, &CPyType_A, 3, cpy_r_m, AObject, CPyTagged);""")
 
     def test_dict_get_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o2], dict_get_item_op, 1),

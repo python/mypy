@@ -2,14 +2,14 @@
 
 import textwrap
 
-from typing import Optional
+from typing import Optional, List, Tuple
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import (
     ClassIR, FuncIR, RType, Environment, object_rprimitive, FuncSignature,
-    VTableMethod, VTableAttr,
+    VTableMethod, VTableAttr, VTableEntries,
 )
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
@@ -36,7 +36,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         vtable_name = '{}_vtable'.format(name_prefix)
 
     methods_name = '{}_methods'.format(name_prefix)
-    base_arg = "&{}".format(emitter.type_struct_name(cl.base)) if cl.base else "0"
+    base_arg = "&{}".format(
+        emitter.type_struct_name(cl.base)) if cl.base and not cl.traits else "0"
 
     def emit_line() -> None:
         emitter.emit_line()
@@ -76,7 +77,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         generate_dealloc_for_class(cl, dealloc_name, clear_name, emitter)
         emit_line()
         generate_native_getters_and_setters(cl, emitter)
-        generate_vtable(cl, vtable_name, emitter)
+        vtable_name = generate_vtables(cl, vtable_name, emitter)
         emit_line()
         generate_getseter_declarations(cl, emitter)
         emit_line()
@@ -213,17 +214,47 @@ def generate_native_getters_and_setters(cl: ClassIR,
         emitter.emit_line()
 
 
-def generate_vtable(base: ClassIR,
+def generate_vtables(base: ClassIR,
+                     vtable_name: str,
+                     emitter: Emitter) -> str:
+    """Emit the vtables for a class.
+
+    This includes both the primary vtable and any trait implementation vtables.
+
+    Returns the expression to use to refer to the vtable, which might be
+    different than the name, if there are trait vtables."""
+
+    subtables = []
+    for trait, vtable in base.trait_vtables.items():
+        name = '{}_{}_trait_vtable'.format(
+            base.name_prefix(emitter.names), trait.name_prefix(emitter.names))
+        generate_vtable(vtable, name, emitter, [])
+        subtables.append((trait, name))
+
+    generate_vtable(base.vtable_entries, vtable_name, emitter, subtables)
+
+    return vtable_name if not subtables else "{} + {}".format(vtable_name, len(subtables) * 2)
+
+
+def generate_vtable(entries: VTableEntries,
                     vtable_name: str,
-                    emitter: Emitter) -> None:
+                    emitter: Emitter,
+                    subtables: List[Tuple[ClassIR, str]]) -> None:
     emitter.emit_line('static CPyVTableItem {}[] = {{'.format(vtable_name))
-    for entry in base.vtable_entries:
+    if subtables:
+        emitter.emit_line('/* Array of trait vtables */')
+        for trait, table in subtables:
+            emitter.emit_line('(CPyVTableItem)&{}, (CPyVTableItem){},'.format(
+                emitter.type_struct_name(trait), table))
+        emitter.emit_line('/* Start of real vtable */')
+
+    for entry in entries:
         if isinstance(entry, VTableMethod):
             emitter.emit_line('(CPyVTableItem){}{},'.format(NATIVE_PREFIX,
                                                             entry.method.cname(emitter.names)))
         else:
-            cl, attr, is_getter = entry
-            namer = native_getter_name if is_getter else native_setter_name
+            cl, attr, is_setter = entry
+            namer = native_setter_name if is_setter else native_getter_name
             emitter.emit_line('(CPyVTableItem){},'.format(namer(cl, attr, emitter.names)))
     emitter.emit_line('};')
 
