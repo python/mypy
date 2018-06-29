@@ -183,3 +183,10 @@ bool_op = func_op(
     result_type=bool_rprimitive,
     error_kind=ERR_MAGIC,
     emit=negative_int_emit('{dest} = PyObject_IsTrue({args[0]});'))
+
+new_slice_op = func_op(
+    'builtins.slice',
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = PySlice_New({args[0]}, {args[1]}, {args[2]});'))

@@ -493,6 +493,16 @@ def contains(x: Any, y: Any) -> Any:
         return True
     else:
         return False
+def slice1(x: Any) -> Any:
+    return x[:]
+def slice2(x: Any, y: Any) -> Any:
+    return x[y:]
+def slice3(x: Any, y: Any) -> Any:
+    return x[:y]
+def slice4(x: Any, y: Any, z: Any) -> Any:
+    return x[y:z]
+def slice5(x: Any, y: Any, z: Any, zz: Any) -> Any:
+    return x[y:z:zz]
 [file driver.py]
 from native import *
 assert add(5, 6) == 11
@@ -525,6 +535,13 @@ assert ge('b', 'a')
 assert contains('x', 'axb')
 assert not contains('X', 'axb')
 assert contains('x', {'x', 'y'})
+a = [1, 3, 5]
+assert slice1(a) == a
+assert slice1(a) is not a
+assert slice2(a, 1) == [3, 5]
+assert slice3(a, -1) == [1, 3]
+assert slice4(a, 1, -1) == [3]
+assert slice5(a, 2, 0, -1) == [5, 3]
 
 [case testGenericMiscOps]
 from typing import Any

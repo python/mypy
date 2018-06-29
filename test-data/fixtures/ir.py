@@ -75,6 +75,8 @@ class dict(Generic[T, S]):
     def update(self, x: Dict[T, S]) -> None: pass
     def pop(self, x: int) -> T: pass
 
+class slice: pass
+
 def id(o: object) -> int: pass
 def len(o: Sized) -> int: pass
 def print(*object) -> None: pass
