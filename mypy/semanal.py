@@ -1416,6 +1416,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     else:
                         name = id
                     ast_node = Var(name, type=typ)
+                    if self.type:
+                        ast_node._fullname = self.type.fullname() + "." + name
+                    else:
+                        ast_node._fullname = self.qualified_name(name)
                     symbol = SymbolTableNode(GDEF, ast_node)
                     self.add_symbol(name, symbol, imp)
                     continue
@@ -3096,6 +3100,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                 n = SymbolTableNode(GDEF, v)
                                 names[name] = n
                     # TODO: What if node is Var or FuncDef?
+                    # Currently, missing these cases results in controversial behavior, when
+                    # lookup_qualified(x.y.z) returns Var(x).
                     if not n:
                         if not suppress_errors:
                             self.name_not_defined(name, ctx)
