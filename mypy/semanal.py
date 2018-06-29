@@ -3101,6 +3101,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def create_getattr_var(self, getattr_defn: SymbolTableNode,
                            name: str, fullname: str) -> Optional[SymbolTableNode]:
+        """Create a dummy global symbol using __getattr__ return type.
+
+        If not possible, return None.
+        """
         if isinstance(getattr_defn.node, (FuncDef, Var)):
             if isinstance(getattr_defn.node.type, CallableType):
                 typ = getattr_defn.node.type.ret_type
