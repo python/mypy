@@ -50,6 +50,32 @@ L0:
     r1 = None
     return r1
 
+[case testNewDictWithValues]
+def f(x: object) -> None:
+    d = {1: 2, '': x}
+[out]
+def f(x):
+    x :: object
+    d, r0 :: dict
+    r1, r2 :: int
+    r3, r4 :: object
+    r5 :: bool
+    r6 :: str
+    r7 :: bool
+    r8 :: None
+L0:
+    r0 = {}
+    r1 = 1
+    r2 = 2
+    r3 = box(int, r1)
+    r4 = box(int, r2)
+    r5 = r0.__setitem__(r3, r4) :: dict
+    r6 = unicode_0 :: static
+    r7 = r0.__setitem__(r6, x) :: dict
+    d = r0
+    r8 = None
+    return r8
+
 [case testInDict]
 from typing import Dict
 def f(d: Dict[int, int]) -> bool:
@@ -148,5 +174,5 @@ L2:
     r7 = d.__setitem__(r2, r6) :: dict
     goto L1
 L3:
-    r8 = no_err_occurred 
+    r8 = no_err_occurred
     return d
