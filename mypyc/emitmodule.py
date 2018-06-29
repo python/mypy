@@ -123,6 +123,9 @@ class ModuleGenerator:
         for declaration in self.toposort_declarations():
             declarations.emit_lines(*declaration.body)
 
+        for static_def in self.context.statics.values():
+            declarations.emit_line(static_def)
+
         return ''.join(declarations.fragments + emitter.fragments)
 
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:

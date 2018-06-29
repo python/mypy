@@ -26,10 +26,19 @@ class EmitterContext:
         self.temp_counter = 0
         self.names = NameGenerator(module_names)
 
+        # The two maps below are used for generating declarations or
+        # definitions at the top of the C file. The main idea is that they can
+        # be generated at any time during the emit phase.
+
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
         self.declarations = OrderedDict()  # type: Dict[str, HeaderDeclaration]
+
+        # A map from C identifier to code that defined the C identifier. This
+        # is similar to to 'declarations', but these may appear after the
+        # declarations in the generated code.
+        self.statics = OrderedDict()  # type: Dict[str, str]
 
 
 class Emitter:
@@ -119,11 +128,7 @@ class Emitter:
         elif isinstance(rtype, RPrimitive):
             return rtype.c_undefined
         elif isinstance(rtype, RTuple):
-            # This doesn't work since this is expected to return a C expression, but
-            # defining an undefined tuple requires declaring a temp variable, such as:
-            #
-            #    struct foo _tmp = { <item0-undefined>, <item1-undefined>, ... };
-            assert False, "Tuple undefined value can't be represented as a C expression"
+            return self.tuple_undefined_value(rtype)
         assert False, rtype
 
     def c_error_value(self, rtype: RType) -> str:
@@ -156,6 +161,18 @@ class Emitter:
         result.append('')
 
         return result
+
+    def tuple_undefined_value(self, rtuple: RTuple) -> str:
+        context = self.context
+        id = self.tuple_unique_id(rtuple)
+        name = 'tuple_undefined_' + id
+        if name not in context.statics:
+            struct_name = self.tuple_struct_name(rtuple)
+            values = ', '.join(self.c_undefined_value(item)
+                               for item in rtuple.types)
+            init = 'struct {} {} = {{ {} }};'.format(struct_name, name, values)
+            context.statics[name] = init
+        return name
 
     # Higher-level operations
 

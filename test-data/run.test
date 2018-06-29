@@ -966,3 +966,13 @@ from native import from_tuple, from_list, from_any
 assert from_tuple((1, 'x')) == ['x', 1]
 assert from_list([3, 4]) == [4, 3]
 assert from_any('xy') == ['y', 'x']
+
+[case testUnboxTuple]
+from typing import List, Tuple
+
+def f(x: List[Tuple[int, int]]) -> int:
+    a, b = x[0]
+    return a + b
+[file driver.py]
+from native import f
+assert f([(5, 6)]) == 11
