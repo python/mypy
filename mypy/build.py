@@ -276,19 +276,17 @@ def compute_search_paths(sources: List[BuildSource],
         mypypath.insert(0, alt_lib_path)
 
     package_path = tuple(_get_site_packages_dirs(options.python_executable))
-    for site in package_path:
-        if site in mypypath:
-            print("site-packages is in the MYPYPATH. Please remove it.", file=sys.stderr)
-        elif site in python_path:
-            print("site-packages is in the PYTHONPAT. Please change directory so it is not.",
+    for site_dir in package_path:
+        assert site_dir not in lib_path
+        if site_dir in mypypath:
+            print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
+        elif site_dir in python_path:
+            print("{} is in the PYTHONPATH. Please change directory so it is not.".format(site_dir),
                   file=sys.stderr)
-        elif site in lib_path:
-            print("this should never, ever happen", file=sys.stderr)
         else:
             # this site not in any of the other paths, we are safe.
             continue
         sys.exit(1)
-
     return SearchPaths(tuple(reversed(python_path)),
                        tuple(mypypath),
                        package_path,
