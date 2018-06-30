@@ -280,13 +280,13 @@ def compute_search_paths(sources: List[BuildSource],
         assert site_dir not in lib_path
         if site_dir in mypypath:
             print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
+            sys.exit(1)
         elif site_dir in python_path:
-            print("{} is in the PYTHONPATH. Please change directory so it is not.".format(site_dir),
+            print("{} is in the PYTHONPATH. Please change directory"
+                  " so it is not.".format(site_dir),
                   file=sys.stderr)
-        else:
-            # this site not in any of the other paths, we are safe.
-            continue
-        sys.exit(1)
+            sys.exit(1)
+
     return SearchPaths(tuple(reversed(python_path)),
                        tuple(mypypath),
                        package_path,
