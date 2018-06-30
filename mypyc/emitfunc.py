@@ -94,9 +94,6 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         if op.op == Branch.BOOL_EXPR:
             expr_result = self.reg(op.left)  # right isn't used
             cond = '{}{}'.format(neg, expr_result)
-        elif op.op == Branch.IS_NONE:
-            compare = '!=' if op.negated else '=='
-            cond = '{} {} Py_None'.format(self.reg(op.left), compare)
         elif op.op == Branch.IS_ERROR:
             typ = op.left.type
             compare = '!=' if op.negated else '=='

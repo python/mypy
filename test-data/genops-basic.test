@@ -1192,34 +1192,42 @@ def opt_a(x: Optional[A]) -> int:
 [out]
 def opt_int(x):
     x :: optional[int]
-    r0, r1 :: int
-    r2 :: bool
-    r3, r4 :: int
+    r0 :: None
+    r1 :: bool
+    r2, r3 :: int
+    r4 :: bool
+    r5, r6 :: int
 L0:
-    if not x is None goto L1 else goto L3 :: object
+    r0 = None
+    r1 = x is not r0
+    if r1 goto L1 else goto L3 :: bool
 L1:
-    r0 = unbox(int, x)
-    r1 = 0
-    r2 = r0 != r1 :: int
-    if r2 goto L2 else goto L3 :: bool
+    r2 = unbox(int, x)
+    r3 = 0
+    r4 = r2 != r3 :: int
+    if r4 goto L2 else goto L3 :: bool
 L2:
-    r3 = 1
-    return r3
+    r5 = 1
+    return r5
 L3:
-    r4 = 0
-    return r4
+    r6 = 0
+    return r6
 L4:
     unreachable
 def opt_a(x):
     x :: optional[A]
-    r0, r1 :: int
+    r0 :: None
+    r1 :: bool
+    r2, r3 :: int
 L0:
-    if not x is None goto L1 else goto L2 :: object
+    r0 = None
+    r1 = x is not r0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    return r0
+    r2 = 1
+    return r2
 L2:
-    r1 = 0
-    return r1
+    r3 = 0
+    return r3
 L3:
     unreachable

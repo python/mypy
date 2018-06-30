@@ -457,12 +457,10 @@ class Branch(Op):
     error_kind = ERR_NEVER
 
     BOOL_EXPR = 100
-    IS_NONE = 101
-    IS_ERROR = 102  # Check for magic c_error_value (works for arbitary types)
+    IS_ERROR = 101  # Check for magic c_error_value (works for arbitary types)
 
     op_names = {
         BOOL_EXPR: ('%r', 'bool'),
-        IS_NONE: ('%r is None', 'object'),
         IS_ERROR: ('is_error(%r)', ''),
     }
 

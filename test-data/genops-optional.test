@@ -10,15 +10,17 @@ def f(x: Optional[A]) -> int:
 [out]
 def f(x):
     x :: optional[A]
-    r0, r1 :: int
+    r0 :: bool
+    r1, r2 :: int
 L0:
-    if x is None goto L1 else goto L2 :: object
+    r0 = x is None
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    return r0
-L2:
-    r1 = 2
+    r1 = 1
     return r1
+L2:
+    r2 = 2
+    return r2
 
 [case testIsNotNone]
 from typing import Optional
@@ -32,15 +34,17 @@ def f(x: Optional[A]) -> int:
 [out]
 def f(x):
     x :: optional[A]
-    r0, r1 :: int
+    r0 :: bool
+    r1, r2 :: int
 L0:
-    if not x is None goto L1 else goto L2 :: object
+    r0 = x is None
+    if not r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    return r0
-L2:
-    r1 = 2
+    r1 = 1
     return r1
+L2:
+    r2 = 2
+    return r2
 
 [case testAssignToOptional]
 from typing import Optional
@@ -131,15 +135,18 @@ def f(x: Optional[A]) -> A:
 [out]
 def f(x):
     x :: optional[A]
-    y, r0, r1, r2 :: A
+    y, r0 :: A
+    r1 :: bool
+    r2, r3 :: A
 L0:
     r0 = A()
     y = r0
-    if not x is None goto L1 else goto L2 :: object
+    r1 = x is None
+    if not r1 goto L1 else goto L2 :: bool
 L1:
-    r1 = cast(A, x)
-    y = r1
     r2 = cast(A, x)
-    return r2
+    y = r2
+    r3 = cast(A, x)
+    return r3
 L2:
     return y

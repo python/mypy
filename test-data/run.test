@@ -493,6 +493,16 @@ def contains(x: Any, y: Any) -> Any:
         return True
     else:
         return False
+def identity(x: Any, y: Any) -> Any:
+    if x is y:
+        return True
+    else:
+        return False
+def disidentity(x: Any, y: Any) -> Any:
+    if x is not y:
+        return True
+    else:
+        return False
 def slice1(x: Any) -> Any:
     return x[:]
 def slice2(x: Any, y: Any) -> Any:
@@ -542,6 +552,11 @@ assert slice2(a, 1) == [3, 5]
 assert slice3(a, -1) == [1, 3]
 assert slice4(a, 1, -1) == [3]
 assert slice5(a, 2, 0, -1) == [5, 3]
+o1, o2 = object(), object()
+assert identity(o1, o1)
+assert not identity(o1, o2)
+assert not disidentity(o1, o1)
+assert disidentity(o1, o2)
 
 [case testGenericMiscOps]
 from typing import Any

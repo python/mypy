@@ -102,6 +102,28 @@ binary_op('in',
           emit=negative_int_emit('{dest} = PySequence_Contains({args[1]}, {args[0]});'),
           priority=0)
 
+binary_op('is',
+          arg_types=[object_rprimitive, object_rprimitive],
+          result_type=bool_rprimitive,
+          error_kind=ERR_NEVER,
+          emit=negative_int_emit('{dest} = {args[0]} == {args[1]};'),
+          priority=0)
+
+binary_op('is not',
+          arg_types=[object_rprimitive, object_rprimitive],
+          result_type=bool_rprimitive,
+          error_kind=ERR_NEVER,
+          emit=negative_int_emit('{dest} = {args[0]} != {args[1]};'),
+          priority=0)
+
+is_none_op = custom_op(
+    arg_types=[object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+    format_str = '{dest} = {args[0]} is None',
+    emit=simple_emit('{dest} = {args[0]} == Py_None;'))
+
+
 for op, funcname in [('-', 'PyNumber_Negative'),
                      ('+', 'PyNumber_Positive'),
                      ('~', 'PyNumber_Invert')]:

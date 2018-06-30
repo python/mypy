@@ -62,31 +62,28 @@ def f(x: Optional[A]) -> int:
     return 3
 [out]
 L0:
-    if x is None goto L1 else goto L2 :: object
+    r0 = x is None
+    if r0 goto L1 else goto L2 :: bool
 L1:
-    r0 = 1
-    return r0
+    r1 = 1
+    return r1
 L2:
     inc_ref x
-    r1 = cast(A, x)
-    if is_error(r1) goto L6 (error at f:8) else goto L3
+    r2 = cast(A, x)
+    if is_error(r2) goto L6 (error at f:8) else goto L3
 L3:
-    if not r1 is None goto L7 else goto L8 :: object
+    r3 = r2 is None
+    dec_ref r2
+    if not r3 goto L4 else goto L5 :: bool
 L4:
-    r2 = 2
-    return r2
-L5:
-    r3 = 3
-    return r3
-L6:
-    r4 = <error> :: int
+    r4 = 2
     return r4
-L7:
-    dec_ref r1
-    goto L4
-L8:
-    dec_ref r1
-    goto L5
+L5:
+    r5 = 3
+    return r5
+L6:
+    r6 = <error> :: int
+    return r6
 
 [case testListSum]
 from typing import List
