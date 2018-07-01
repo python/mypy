@@ -84,7 +84,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
-                  aliasing: bool = False,
+                  allow_unbound_tvars: bool = False,
                   third_pass: bool = False) -> Type:
         raise NotImplementedError
 

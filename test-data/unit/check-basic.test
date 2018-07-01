@@ -332,3 +332,35 @@ import c
 import e
 [file e.py]
 1+'no'  # E: Unsupported operand types for + ("int" and "str")
+
+[case testModuleAsTypeNoCrash]
+import mock
+from typing import Union
+
+class A: ...
+class B: ...
+
+x: Union[mock, A]  # E: Invalid type "mock"
+
+if isinstance(x, B):
+    pass
+[file mock.py]
+[builtins fixtures/isinstance.pyi]
+[out]
+
+[case testModuleAsTypeNoCrash2]
+import mock
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> Union[mock, str]: ...  # E: Invalid type "mock"
+def f(x):
+    pass
+
+x: Any
+f(x)
+[file mock.py]
+[builtins fixtures/isinstance.pyi]
+[out]

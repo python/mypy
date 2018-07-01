@@ -1,5 +1,6 @@
 import re
 import sys
+import os
 
 from typing import Optional, Tuple, Sequence, MutableSequence, List, MutableMapping, IO
 from types import ModuleType
@@ -87,7 +88,8 @@ def find_unique_signatures(sigs: Sequence[Sig]) -> List[Sig]:
 
 
 def is_c_module(module: ModuleType) -> bool:
-    return '__file__' not in module.__dict__ or module.__dict__['__file__'].endswith('.so')
+    return ('__file__' not in module.__dict__ or
+            os.path.splitext(module.__dict__['__file__'])[-1] in ['.so', '.pyd'])
 
 
 def write_header(file: IO[str], module_name: Optional[str] = None,

@@ -3538,7 +3538,7 @@ from b import B
 B(int())
 [out]
 ==
-c.py:2: error: Argument 1 has incompatible type "int"; expected "str"
+c.py:2: error: Argument 1 to "A" has incompatible type "int"; expected "str"
 
 [case testAliasFineInitGenericFunc]
 import c
@@ -3564,7 +3564,7 @@ from b import B
 def f() -> None:
     B(str())
 [out]
-c.py:3: error: Argument 1 has incompatible type "str"; expected "int"
+c.py:3: error: Argument 1 to "A" has incompatible type "str"; expected "int"
 ==
 
 [case testAliasFineInitChainedMod]
@@ -4885,11 +4885,12 @@ import T
 ==
 ==
 main:3: error: "C" expects no type arguments, but 1 given
+main:3: error: Invalid type "T"
 main:5: error: Free type variable expected in Generic[...]
 main:6: error: Invalid type "T"
+main:9: error: Invalid type "T"
 main:9: error: Bad number of arguments for type alias, expected: 0, given: 1
 main:9: error: "C" expects no type arguments, but 1 given
-main:9: error: Invalid type "T"
 
 [case testChangeClassToModule]
 import a
@@ -7200,7 +7201,6 @@ def fu() -> int:
 [out]
 ==
 
-
 [case testRefreshOptions]
 [file mypy.ini]
 [[mypy]
@@ -7218,3 +7218,74 @@ x = []  # type: List
 [builtins fixtures/list.pyi]
 [out]
 ==
+
+[case testImportOnTopOfAlias1]
+from a import A
+x: A
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+[file a.py.2]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+from b import A
+[file b.py]
+# empty
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:4: error: Module 'b' has no attribute 'A'
+a.py:4: error: Name 'A' already defined on line 3
+
+-- the order of errors is different with cache
+[case testImportOnTopOfAlias2]
+from a import A
+x: A
+[file a.py]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+[file a.py.2]
+from typing import TypeVar, List
+T = TypeVar('T')
+A = List[T]
+from b import A as A
+[file b.py]
+def A(x: str) -> str: pass
+[builtins fixtures/list.pyi]
+[out]
+==
+a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "Type[List[Any]]")
+
+[case testRefreshForWithTypeComment1]
+[file a.py]
+from typing import List
+import b
+def foo(l: List[int]) -> None:
+    for x in l:  # type: object
+        pass
+    x = object()
+    b.x
+[file b.py]
+x = 1
+[file b.py.2]
+x = '1'
+[builtins fixtures/list.pyi]
+[out]
+==
+
+[case testRefreshForWithTypeComment2]
+from typing import List, Any
+import m
+def f(x: List[Any]) -> None:
+    for a in x:  # type: m.A
+        pass
+[file m.py]
+class A: pass
+[file m.py.2]
+[builtins fixtures/list.pyi]
+[out]
+==
+main:4: error: Name 'm.A' is not defined

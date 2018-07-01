@@ -201,7 +201,7 @@ overridden by the pattern sections matching the module name.
   strict Optional checks. If False, mypy treats ``None`` as
   compatible with every type.
 
-  **Note::** This was False by default
+  **Note:** This was False by default
   in mypy versions earlier than 0.600.
 
 - ``disallow_any_unimported`` (Boolean, default false) disallows usage of types that come

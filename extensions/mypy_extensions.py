@@ -135,3 +135,7 @@ def KwArg(type=Any):
 
 # Return type that indicates a function does not return
 class NoReturn: pass
+
+
+def trait(cls):
+    return cls

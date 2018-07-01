@@ -8,6 +8,6 @@ setup(
     name='typedpkg-stubs',
     author="The mypy team",
     version='0.1',
-    package_data={'typedpkg-stubs': ['sample.pyi', '__init__.pyi']},
+    package_data={'typedpkg-stubs': ['sample.pyi', '__init__.pyi', 'py.typed']},
     packages=['typedpkg-stubs'],
 )

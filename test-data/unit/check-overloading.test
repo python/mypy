@@ -204,6 +204,17 @@ class A: pass
 class B: pass
 [builtins fixtures/isinstance.pyi]
 
+[case testTypeCheckOverloadWithUntypedImplAndMultipleVariants]
+from typing import overload
+
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> int: ...  # E: Overloaded function signatures 2 and 3 overlap with incompatible return types
+@overload
+def f(x: object) -> str: ...
+def f(x): ...
+
 [case testTypeCheckOverloadWithImplTooSpecificArg]
 from typing import overload, Any
 
@@ -284,13 +295,60 @@ def f(x: 'A') -> 'A': ...
 @overload
 def f(x: 'B') -> 'B': ...
 
-def f(x: Union[T, B]) -> T:  # E: Overloaded function implementation cannot produce return type of signature 2
+def f(x: Union[T, B]) -> T:  # E: Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
     ...
 
 reveal_type(f(A())) # E: Revealed type is '__main__.A'
 reveal_type(f(B())) # E: Revealed type is '__main__.B'
 
 [builtins fixtures/isinstance.pyi]
+
+[case testTypeCheckOverloadImplementationTypeVarWithValueRestriction]
+from typing import overload, TypeVar, Union
+
+class A: pass
+class B: pass
+class C: pass
+
+T = TypeVar('T', A, B)
+
+@overload
+def foo(x: T) -> T: ...
+@overload
+def foo(x: C) -> int: ...
+def foo(x: Union[A, B, C]) -> Union[A, B, int]:
+    if isinstance(x, C):
+        return 3
+    else:
+        return x
+
+@overload
+def bar(x: T) -> T: ...
+@overload
+def bar(x: C) -> int: ...
+def bar(x: Union[T, C]) -> Union[T, int]:
+    if isinstance(x, C):
+        return 3
+    else:
+        return x
+
+[builtins fixtures/isinstancelist.pyi]
+
+[case testTypeCheckOverloadImplementationTypeVarDifferingUsage]
+from typing import overload, Union, List, TypeVar
+
+T = TypeVar('T')
+
+@overload
+def foo(t: List[T]) -> T: ...
+@overload
+def foo(t: T) -> T: ...
+def foo(t: Union[List[T], T]) -> T:
+    if isinstance(t, list):
+        return t[0]
+    else:
+        return t
+[builtins fixtures/isinstancelist.pyi]
 
 [case testTypeCheckOverloadedFunctionBody]
 from foo import *
@@ -1442,6 +1500,86 @@ reveal_type(f(x=i, **a))  # E: Revealed type is 'builtins.int'
 reveal_type(f(**a))       # E: Revealed type is 'Any'
 
 [builtins fixtures/dict.pyi]
+
+[case testOverloadWithOverlappingItemsAndAnyArgument12]
+from typing import overload, Any
+
+@overload
+def f(x: int) -> Any: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument13]
+from typing import Any, overload, TypeVar, Generic
+
+class slice: pass
+
+T = TypeVar('T')
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> T: ...
+    @overload
+    def f(self, x: slice) -> A[T]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is 'Any'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument14]
+from typing import Any, overload, TypeVar, Generic
+
+T = TypeVar('T')
+
+class Wrapper(Generic[T]): pass
+class slice: pass
+
+class A(Generic[T]):
+    @overload
+    def f(self, x: int) -> Wrapper[T]: ...
+    @overload
+    def f(self, x: slice) -> Wrapper[A[T]]: ...
+    def f(self, x): ...
+
+i: Any
+a: A[Any]
+reveal_type(a.f(i))  # E: Revealed type is '__main__.Wrapper[Any]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument15]
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> str: ...
+def f(x): pass
+
+@overload
+def g(x: int) -> Union[str, int]: ...
+@overload
+def g(x: str) -> Union[int, str]: ...
+def g(x): pass
+
+a: Any
+reveal_type(f(a))  # E: Revealed type is 'builtins.str'
+reveal_type(g(a))  # E: Revealed type is 'Union[builtins.str, builtins.int]'
+
+[case testOverloadWithOverlappingItemsAndAnyArgument16]
+from typing import overload, Any, Union, Callable
+
+@overload
+def f(x: int) -> Callable[[int, int], int]: ...
+@overload
+def f(x: str) -> Callable[[str], str]: ...
+def f(x): pass
+
+a: Any
+reveal_type(f(a))     # E: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(f(a)(a))  # E: Revealed type is 'Any'
 
 [case testOverloadOnOverloadWithType]
 from typing import Any, Type, TypeVar, overload
@@ -3774,3 +3912,49 @@ y = f(x, x, x, x, x, x, x, x) # 8 args
 reveal_type(y)
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testOverloadsWithNoneComingSecondAreAlwaysFlaggedInNoStrictOptional]
+# flags: --no-strict-optional
+from typing import overload
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: int) -> int:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+def none_second(x: int) -> int:
+    return x
+
+[case testOverloadsWithNoneComingSecondIsOkInStrictOptional]
+# flags: --strict-optional
+from typing import overload, Optional
+
+@overload
+def none_first(x: None) -> None: ...
+@overload
+def none_first(x: int) -> int: ...
+def none_first(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_second(x: int) -> int: ...
+@overload
+def none_second(x: None) -> None: ...
+def none_second(x: Optional[int]) -> Optional[int]:
+    return x
+
+@overload
+def none_loose_impl(x: None) -> None: ...
+@overload
+def none_loose_impl(x: int) -> int: ...
+def none_loose_impl(x: int) -> int:
+    return x
+[out]
+main:22: error: Overloaded function implementation does not accept all possible arguments of signature 1
+main:22: error: Overloaded function implementation cannot produce return type of signature 1

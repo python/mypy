@@ -51,6 +51,23 @@ a.y = 5 # E: Property "y" defined in "X" is read-only
 -- a.z = 5 # not supported yet
 
 
+[case testTypingNamedTupleAttributesAreReadOnly]
+from typing import NamedTuple
+from typing_extensions import Protocol
+
+class HasX(Protocol): 
+    x: str
+    
+class A(NamedTuple):
+    x: str
+
+a: HasX = A("foo")
+a.x = "bar"
+[out]
+main:10: error: Incompatible types in assignment (expression has type "A", variable has type "HasX")
+main:10: note: Protocol member HasX.x expected settable variable, got read-only attribute
+
+
 [case testNamedTupleCreateWithPositionalArguments]
 from collections import namedtuple
 
@@ -486,7 +503,7 @@ def f(x: a.N) -> None:
 tmp/b.py:4: error: Revealed type is 'Tuple[Any, fallback=a.N]'
 tmp/b.py:6: error: Revealed type is 'Tuple[Any, fallback=a.N]'
 
-[case testSimpleSelfReferrentialNamedTuple]
+[case testSimpleSelfReferentialNamedTuple]
 from typing import NamedTuple
 class MyNamedTuple(NamedTuple):
     parent: 'MyNamedTuple'
@@ -500,7 +517,7 @@ reveal_type(x.parent)
 main:2: error: Recursive types not fully supported yet, nested types replaced with "Any"
 main:9: error: Revealed type is 'Tuple[Any, fallback=__main__.MyNamedTuple]'
 
--- Some crazy selef-referential named tuples and types dicts
+-- Some crazy self-referential named tuples and types dicts
 -- to be sure that everything works
 
 [case testCrossFileNamedTupleForwardRefs]

@@ -495,7 +495,7 @@ class Instance(Type):
     The list of type variables may be empty.
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'from_generic_builtin', 'type_ref')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
@@ -505,8 +505,6 @@ class Instance(Type):
         self.args = args
         self.erased = erased  # True if result of type variable substitution
         self.invalid = False  # True if recovered after incorrect number of type arguments error
-        # True if created from a generic builtin (e.g. list() or set())
-        self.from_generic_builtin = False
         self.type_ref = None  # type: Optional[str]
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
@@ -644,12 +642,6 @@ class FunctionLike(Type):
 
     @abstractmethod
     def get_name(self) -> Optional[str]: pass
-
-    @abstractmethod
-    def is_classmethod(self) -> bool: pass
-
-    @abstractmethod
-    def is_staticmethod(self) -> bool: pass
 
 
 FormalArgument = NamedTuple('FormalArgument', [
@@ -833,12 +825,6 @@ class CallableType(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self.name
-
-    def is_classmethod(self) -> bool:
-        return isinstance(self.definition, FuncBase) and self.definition.is_class
-
-    def is_staticmethod(self) -> bool:
-        return isinstance(self.definition, FuncBase) and self.definition.is_static
 
     def max_fixed_args(self) -> int:
         n = len(self.arg_types)
@@ -1057,12 +1043,6 @@ class Overloaded(FunctionLike):
 
     def get_name(self) -> Optional[str]:
         return self._items[0].name
-
-    def is_classmethod(self) -> bool:
-        return self._items[0].is_classmethod()
-
-    def is_staticmethod(self) -> bool:
-        return self._items[0].is_staticmethod()
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_overloaded(self)

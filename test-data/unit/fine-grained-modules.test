@@ -221,7 +221,6 @@ main:1: error: Cannot find module named 'p.a'
 ==
 main:1: error: Cannot find module named 'p.a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Module has no attribute "a"
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 [builtins fixtures/module.pyi]
@@ -826,7 +825,6 @@ a.py:2: error: Too many arguments for "g"
 ==
 a.py:1: error: Cannot find module named 'm.x'
 a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-a.py:2: error: Module has no attribute "x"
 
 [case testDeletePackage1]
 import p.a
@@ -873,7 +871,6 @@ main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
 main:1: error: Cannot find module named 'p.a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Module has no attribute "a"
 ==
 main:1: error: Cannot find module named 'p'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)

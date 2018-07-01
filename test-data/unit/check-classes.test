@@ -2244,7 +2244,7 @@ class B:
     a_int = SameA[int]
 
 reveal_type(B().a_any) # E: Revealed type is 'def () -> __main__.A[Any, Any]'
-reveal_type(B().a_int()) # E: Revealed type is '__main__.A[builtins.int*, builtins.int*]'
+reveal_type(B().a_int()) # E: Revealed type is '__main__.A[builtins.int, builtins.int]'
 
 class C:
     a_int = SameA[int]
@@ -4376,3 +4376,96 @@ class C1(object):
 main:4: error: Revealed local types are:
 main:4: error: t: builtins.str
 main:4: error: y: builtins.float
+
+[case testAbstractClasses]
+import a
+import b
+
+[file a.pyi]
+from abc import ABCMeta, abstractmethod
+from typing import Protocol
+
+class A:  # OK, has @abstractmethod
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class B(A):  # E: Class a.B has abstract attributes "f"  # N: If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass
+    pass
+
+class C(A, metaclass=ABCMeta):  # OK, has ABCMeta as a metaclass
+    pass
+
+class D(A):  # OK, implements the abstract method
+    def f(self) -> None:
+        pass
+
+class E(Protocol):  # OK, is a protocol
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class F(E, Protocol):  # OK, is a protocol
+    pass
+
+[file b.py]
+# All of these are OK because this is not a stub file.
+from abc import ABCMeta, abstractmethod
+from typing import Protocol
+
+class A:
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class B(A):
+    pass
+
+class C(A, metaclass=ABCMeta):
+    pass
+
+class D(A):
+    def f(self) -> None:
+        pass
+
+class E(Protocol):
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class F(E, Protocol):
+    pass
+
+[case testClassMethodOverride]
+from typing import Callable, Any
+
+def deco(f: Callable[..., Any]) -> Callable[..., Any]: ...
+
+class B:
+    @classmethod
+    def meth(cls, x: int) -> int: ...
+
+class C(B):
+    @classmethod
+    @deco
+    def meth(cls, x: int) -> int: ...
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testGetAttrImportAnnotation]
+import a
+x: a.A
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testGetAttrImportBaseClass]
+import a
+class B(a.A): ...
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]

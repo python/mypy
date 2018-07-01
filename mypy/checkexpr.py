@@ -4,7 +4,9 @@ from collections import OrderedDict
 from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable, Sequence, Any
 
 from mypy.errors import report_internal_error
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, set_any_tvars
+from mypy.typeanal import (
+    has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias
+)
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
@@ -21,15 +23,15 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr,
-    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, TVAR, LITERAL_TYPE, REVEAL_TYPE
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolTable,
+    ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
 from mypy import nodes
 import mypy.checker
 from mypy import types
 from mypy.sametypes import is_same_type
-from mypy.erasetype import replace_meta_vars
+from mypy.erasetype import replace_meta_vars, erase_type
 from mypy.messages import MessageBuilder
 from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
@@ -182,6 +184,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 result = self.named_type('builtins.object')
         elif isinstance(node, Decorator):
             result = self.analyze_var_ref(node.var, e)
+        elif isinstance(node, TypeAlias):
+            # Something that refers to a type alias appears in runtime context.
+            # Note that we suppress bogus errors for alias redefinitions,
+            # they are already reported in semanal.py.
+            result = self.alias_type_in_runtime_context(node.target, node.alias_tvars,
+                                                        node.no_args, e,
+                                                        alias_definition=e.is_alias_rvalue
+                                                        or lvalue)
         else:
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
@@ -221,8 +231,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         pass
                 if ((isinstance(typ, IndexExpr)
                         and isinstance(typ.analyzed, (TypeApplication, TypeAliasExpr)))
-                        # node.kind == TYPE_ALIAS only for aliases like It = Iterable[int].
-                        or (isinstance(typ, NameExpr) and node and node.kind == nodes.TYPE_ALIAS)):
+                        or (isinstance(typ, NameExpr) and node and
+                            isinstance(node.node, TypeAlias) and not node.node.no_args)):
                     self.msg.type_arguments_not_allowed(e)
                 if isinstance(typ, RefExpr) and isinstance(typ.node, TypeInfo):
                     if typ.node.typeddict_type:
@@ -1311,14 +1321,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         elif any_causes_overload_ambiguity(matches, return_types, arg_types, arg_kinds, arg_names):
             # An argument of type or containing the type 'Any' caused ambiguity.
-            if all(is_subtype(ret_type, return_types[-1]) and
-                   is_subtype(return_types[-1], ret_type)
-                   for ret_type in return_types[:-1]):
-                # The last match is mutually compatible with all previous ones, so it's safe
-                # to return that inferred type.
-                return return_types[-1], inferred_types[-1]
+            # We try returning a precise type if we can. If not, we give up and just return 'Any'.
+            if all_same_types(return_types):
+                return return_types[0], inferred_types[0]
+            elif all_same_types(erase_type(typ) for typ in return_types):
+                return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
-                # We give up and return 'Any'.
                 return self.check_call(callee=AnyType(TypeOfAny.special_form),
                                        args=args,
                                        arg_kinds=arg_kinds,
@@ -2064,60 +2072,119 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return NoneTyp()
 
     def visit_type_application(self, tapp: TypeApplication) -> Type:
-        """Type check a type application (expr[type, ...])."""
-        tp = self.accept(tapp.expr)
-        if isinstance(tp, CallableType):
-            if not tp.is_type_obj():
+        """Type check a type application (expr[type, ...]).
+
+        There are two different options here, depending on whether expr refers
+        to a type alias or directly to a generic class. In the first case we need
+        to use a dedicated function typeanal.expand_type_aliases. This
+        is due to the fact that currently type aliases machinery uses
+        unbound type variables, while normal generics use bound ones;
+        see TypeAlias docstring for more details.
+        """
+        if isinstance(tapp.expr, RefExpr) and isinstance(tapp.expr.node, TypeAlias):
+            # Subscription of a (generic) alias in runtime context, expand the alias.
+            target = tapp.expr.node.target
+            all_vars = tapp.expr.node.alias_tvars
+            item = expand_type_alias(target, all_vars, tapp.types, self.chk.fail,
+                                     tapp.expr.node.no_args, tapp)
+            if isinstance(item, Instance):
+                tp = type_object_type(item.type, self.named_type)
+                return self.apply_type_arguments_to_callable(tp, item.args, tapp)
+            else:
                 self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
-            if len(tp.variables) != len(tapp.types):
-                self.msg.incompatible_type_application(len(tp.variables),
-                                                       len(tapp.types), tapp)
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, tapp.types, tapp)
-        elif isinstance(tp, Overloaded):
+        # Type application of a normal generic class in runtime context.
+        # This is typically used as `x = G[int]()`.
+        tp = self.accept(tapp.expr)
+        if isinstance(tp, (CallableType, Overloaded)):
             if not tp.is_type_obj():
                 self.chk.fail(messages.ONLY_CLASS_APPLICATION, tapp)
-            for item in tp.items():
-                if len(item.variables) != len(tapp.types):
-                    self.msg.incompatible_type_application(len(item.variables),
-                                                           len(tapp.types), tapp)
-                    return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(item, tapp.types, tapp)
-                               for item in tp.items()])
+            return self.apply_type_arguments_to_callable(tp, tapp.types, tapp)
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
         return AnyType(TypeOfAny.special_form)
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
-        """Get type of a type alias (could be generic) in a runtime expression."""
-        if isinstance(alias.type, Instance) and alias.type.invalid:
+        """Right hand side of a type alias definition.
+
+        It has the same type as if the alias itself was used in a runtime context.
+        For example, here:
+
+            A = reveal_type(List[T])
+            reveal_type(A)
+
+        both `reveal_type` instances will reveal the same type `def (...) -> builtins.list[Any]`.
+        Note that type variables are implicitly substituted with `Any`.
+        """
+        return self.alias_type_in_runtime_context(alias.type, alias.tvars, alias.no_args,
+                                                  alias, alias_definition=True)
+
+    def alias_type_in_runtime_context(self, target: Type, alias_tvars: List[str],
+                                      no_args: bool, ctx: Context,
+                                      *,
+                                      alias_definition: bool = False) -> Type:
+        """Get type of a type alias (could be generic) in a runtime expression.
+
+        Note that this function can be called only if the alias appears _not_
+        as a target of type application, which is treated separately in the
+        visit_type_application method. Some examples where this method is called are
+        casts and instantiation:
+
+            class LongName(Generic[T]): ...
+            A = LongName[int]
+
+            x = A()
+            y = cast(A, ...)
+        """
+        if isinstance(target, Instance) and target.invalid:
             # An invalid alias, error already has been reported
             return AnyType(TypeOfAny.from_error)
-        item = alias.type
-        if not alias.in_runtime:
-            # We don't replace TypeVar's with Any for alias used as Alias[T](42).
-            item = set_any_tvars(item, alias.tvars, alias.line, alias.column)
+        # If this is a generic alias, we set all variables to `Any`.
+        # For example:
+        #     A = List[Tuple[T, T]]
+        #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
+        item = set_any_tvars(target, alias_tvars, ctx.line, ctx.column)
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
             tp = type_object_type(item.type, self.named_type)
+            if no_args:
+                return tp
+            return self.apply_type_arguments_to_callable(tp, item.args, ctx)
+        elif (isinstance(item, TupleType) and
+              # Tuple[str, int]() fails at runtime, only named tuples and subclasses work.
+              item.fallback.type.fullname() != 'builtins.tuple'):
+            return type_object_type(item.fallback.type, self.named_type)
+        elif isinstance(item, AnyType):
+            return AnyType(TypeOfAny.from_another_any, source_any=item)
         else:
-            # This type is invalid in most runtime contexts
-            # and corresponding an error will be reported.
-            return alias.fallback
+            if alias_definition:
+                return AnyType(TypeOfAny.special_form)
+            # This type is invalid in most runtime contexts.
+            self.msg.alias_invalid_in_runtime_context(item, ctx)
+            return AnyType(TypeOfAny.from_error)
+
+    def apply_type_arguments_to_callable(self, tp: Type, args: List[Type], ctx: Context) -> Type:
+        """Apply type arguments to a generic callable type coming from a type object.
+
+        This will first perform type arguments count checks, report the
+        error as needed, and return the correct kind of Any. As a special
+        case this returns Any for non-callable types, because if type object type
+        is not callable, then an error should be already reported.
+        """
         if isinstance(tp, CallableType):
-            if len(tp.variables) != len(item.args):
+            if len(tp.variables) != len(args):
                 self.msg.incompatible_type_application(len(tp.variables),
-                                                       len(item.args), item)
+                                                       len(args), ctx)
                 return AnyType(TypeOfAny.from_error)
-            return self.apply_generic_arguments(tp, item.args, item)
-        elif isinstance(tp, Overloaded):
+            return self.apply_generic_arguments(tp, args, ctx)
+        if isinstance(tp, Overloaded):
             for it in tp.items():
-                if len(it.variables) != len(item.args):
+                if len(it.variables) != len(args):
                     self.msg.incompatible_type_application(len(it.variables),
-                                                           len(item.args), item)
+                                                           len(args), ctx)
                     return AnyType(TypeOfAny.from_error)
-            return Overloaded([self.apply_generic_arguments(it, item.args, item)
+            return Overloaded([self.apply_generic_arguments(it, args, ctx)
                                for it in tp.items()])
         return AnyType(TypeOfAny.special_form)
 
