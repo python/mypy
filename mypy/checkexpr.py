@@ -1,7 +1,11 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
 from collections import OrderedDict
-from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable, Sequence, Any
+from contextlib import contextmanager
+from typing import (
+    cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable,
+    Sequence, Any, Iterator
+)
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -1368,25 +1372,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         if not any(self.real_union(typ) for typ in arg_types):
             # No unions in args, just fall back to normal inference
-            for arg, typ in zip(args, arg_types):
-                self.type_overrides[arg] = typ
-            res = self.infer_overload_return_type(plausible_targets, args, arg_types,
-                                                  arg_kinds, arg_names, callable_name,
-                                                  object_type, context, arg_messages)
-            for arg, typ in zip(args, arg_types):
-                del self.type_overrides[arg]
+            with self.type_overrides_set(args, arg_types):
+                res = self.infer_overload_return_type(plausible_targets, args, arg_types,
+                                                      arg_kinds, arg_names, callable_name,
+                                                      object_type, context, arg_messages)
             return res
+
         # Try direct match before splitting
-        for arg, typ in zip(args, arg_types):
-            self.type_overrides[arg] = typ
-        direct = self.infer_overload_return_type(plausible_targets, args, arg_types,
-                                                 arg_kinds, arg_names, callable_name,
-                                                 object_type, context, arg_messages)
-        for arg, typ in zip(args, arg_types):
-            del self.type_overrides[arg]
+        with self.type_overrides_set(args, arg_types):
+            direct = self.infer_overload_return_type(plausible_targets, args, arg_types,
+                                                     arg_kinds, arg_names, callable_name,
+                                                     object_type, context, arg_messages)
         if direct is not None and not isinstance(direct[0], (UnionType, AnyType)):
             # We only return non-unions soon, to avoid greedy match.
             return direct
+
+        # Split the first remaining union type in arguments
         first_union = next(typ for typ in arg_types if self.real_union(typ))
         idx = arg_types.index(first_union)
         assert isinstance(first_union, UnionType)
@@ -1407,11 +1408,103 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if returns:
             return (UnionType.make_simplified_union(returns, context.line, context.column),
-                    UnionType.make_simplified_union(inferred_types, context.line, context.column))
+                    self.union_overload_matches(inferred_types))
         return None
 
     def real_union(self, typ: Type) -> bool:
         return isinstance(typ, UnionType) and len(typ.relevant_items()) > 1
+
+    @contextmanager
+    def type_overrides_set(self, exprs: Iterable[Expression],
+                           overrides: Iterable[Type]) -> Iterator[None]:
+        """Set _temporary_ type overrides for given expressions."""
+        assert len(exprs) == len(overrides)
+        for expr, typ in zip(exprs, overrides):
+            self.type_overrides[expr] = typ
+        try:
+            yield
+        finally:
+            for expr in exprs:
+                del self.type_overrides[expr]
+
+    def union_overload_matches(self, callables: List[Type]) -> Union[AnyType, CallableType]:
+        """Accepts a list of overload signatures and attempts to combine them together into a
+        new CallableType consisting of the union of all of the given arguments and return types.
+
+        If there is at least one non-callabe type, return Any (this can happen if there is
+        an ambiguity because of Any in arguments).
+        """
+        assert callables, "Trying to merge no callables"
+        if not all(isinstance(c, CallableType) for c in callables):
+            return AnyType(TypeOfAny.special_form)
+        if len(callables) == 1:
+            return callables[0]
+
+        # Note: we are assuming here that if a user uses some TypeVar 'T' in
+        # two different overloads, they meant for that TypeVar to mean the
+        # same thing.
+        #
+        # This function will make sure that all instances of that TypeVar 'T'
+        # refer to the same underlying TypeVarType and TypeVarDef objects to
+        # simplify the union-ing logic below.
+        #
+        # (If the user did *not* mean for 'T' to be consistently bound to the
+        # same type in their overloads, well, their code is probably too
+        # confusing and ought to be re-written anyways.)
+        callables, variables = merge_typevars_in_callables_by_name(callables)
+
+        new_args = [[] for _ in range(len(callables[0].arg_types))]  # type: List[List[Type]]
+        new_kinds = list(callables[0].arg_kinds)
+        new_returns = []  # type: List[Type]
+
+        too_complex = False
+        for target in callables:
+            # We fall back to Callable[..., Union[<returns>]] if the overloads do not have
+            # the exact same signature. The only exception is if one arg is optional and
+            # the other is positional: in that case, we continue unioning (and expect a
+            # positional arg).
+            # TODO: Enhance the merging logic to handle a wider variety of signatures.
+            if len(new_kinds) != len(target.arg_kinds):
+                too_complex = True
+                break
+            for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
+                if new_kind == target_kind:
+                    continue
+                elif new_kind in (ARG_POS, ARG_OPT) and target_kind in (ARG_POS, ARG_OPT):
+                    new_kinds[i] = ARG_POS
+                else:
+                    too_complex = True
+                    break
+
+            if too_complex:
+                break  # outer loop
+
+            for i, arg in enumerate(target.arg_types):
+                new_args[i].append(arg)
+            new_returns.append(target.ret_type)
+
+        union_return = UnionType.make_simplified_union(new_returns)
+        if too_complex:
+            any = AnyType(TypeOfAny.special_form)
+            return callables[0].copy_modified(
+                arg_types=[any, any],
+                arg_kinds=[ARG_STAR, ARG_STAR2],
+                arg_names=[None, None],
+                ret_type=union_return,
+                variables=variables,
+                implicit=True)
+
+        final_args = []
+        for args_list in new_args:
+            new_type = UnionType.make_simplified_union(args_list)
+            final_args.append(new_type)
+
+        return callables[0].copy_modified(
+            arg_types=final_args,
+            arg_kinds=new_kinds,
+            ret_type=union_return,
+            variables=variables,
+            implicit=True)
 
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
                                     arg_names: Optional[Sequence[Optional[str]]],
