@@ -40,7 +40,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding
+from mypy.util import DecodeError, decode_python_encoding, commonpath
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -1820,7 +1820,7 @@ class State:
         if not path and source is None:
             assert id is not None
             try:
-                path, follow_imports = find_module_and_diagnose(
+                path, follow_imports, self.ignore_all = find_module_and_diagnose(
                     manager, id, self.options, caller_state, caller_line,
                     ancestor_for, root_source, skip_diagnose=temporary)
             except ModuleNotFound:
@@ -2307,7 +2307,7 @@ def find_module_and_diagnose(manager: BuildManager,
                              caller_line: int = 0,
                              ancestor_for: 'Optional[State]' = None,
                              root_source: bool = False,
-                             skip_diagnose: bool = False) -> Tuple[str, str]:
+                             skip_diagnose: bool = False) -> Tuple[str, str, bool]:
     """Find a module by name, respecting follow_imports and producing diagnostics.
 
     If the module is not found, then the ModuleNotFound exception is raised.
@@ -2328,6 +2328,7 @@ def find_module_and_diagnose(manager: BuildManager,
 
     Returns a tuple containing (file path, target's effective follow_imports setting)
     """
+    ignore_all = False
     file_id = id
     if id == 'builtins' and options.python_version[0] == 2:
         # The __builtin__ module is called internally by mypy
@@ -2342,6 +2343,11 @@ def find_module_and_diagnose(manager: BuildManager,
     path = manager.find_module_cache.find_module(file_id, manager.search_paths,
                                                  manager.options.python_executable)
     if path:
+        if os.path.isabs(path):
+            for dir in manager.search_paths.package_path:
+                if commonpath([dir, path]) == dir:
+                    # Silence errors in site-package dirs
+                    ignore_all = True
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
         # - silent -> analyze but silence errors
@@ -2369,7 +2375,7 @@ def find_module_and_diagnose(manager: BuildManager,
                                     id, path)
             raise ModuleNotFound
 
-        return (path, follow_imports)
+        return (path, follow_imports, ignore_all)
     else:
         # Could not find a module.  Typically the reason is a
         # misspelled module name, missing stub, module not in
