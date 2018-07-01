@@ -1245,7 +1245,7 @@ class MessageBuilder:
 
     def pretty_overload(self, targets: List[CallableType], func: Overloaded, context: Context,
                         offset: int, max_items: int) -> None:
-        if len(targets) == 0:
+        if not targets:
             targets = func.items()
         for item in targets[:max_items]:
             self.note('@overload', context, offset=2 * offset)
