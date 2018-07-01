@@ -1153,8 +1153,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #         typevar. See https://github.com/python/mypy/issues/4063 for related discussion.
         erased_targets = None  # type: Optional[List[CallableType]]
         unioned_result = None  # type: Optional[Tuple[Type, Type]]
-        unioned_errors = None  # type: Optional[MessageBuilder]
-        union_success = False
         if any(self.real_union(arg) for arg in arg_types):
             unioned_errors = arg_messages.clean_copy()
             union_interrupted = False
@@ -1169,7 +1167,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 # Record if we succeeded. Next we need to see if maybe normal procedure
                 # gives a narrower type.
-                union_success = unioned_return is not None and not unioned_errors.is_errors()
                 if unioned_return:
                     returns, inferred_types = zip(*unioned_return)
                     unioned_result = (UnionType.make_simplified_union(returns,
@@ -1181,19 +1178,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         inferred_result = self.infer_overload_return_type(plausible_targets, args, arg_types,
                                                           arg_kinds, arg_names, callable_name,
                                                           object_type, context, arg_messages)
-        if inferred_result is not None:
-            # Success! Stop early by returning the best among normal and unioned.
-            if not union_success:
+        # If any of checks succeed, stop early.
+        if inferred_result is not None and unioned_result is not None:
+            # Both unioned and direct checks succeeded, choose the more precise type.
+            if (is_subtype(inferred_result[0], unioned_result[0]) and
+                    not isinstance(inferred_result[0], AnyType)):
                 return inferred_result
-            else:
-                assert unioned_result is not None
-                if (is_subtype(inferred_result[0], unioned_result[0]) and
-                        not isinstance(inferred_result[0], AnyType)):
-                    return inferred_result
-                return unioned_result
-        elif union_success:
-            assert unioned_result is not None
             return unioned_result
+        elif unioned_result is not None:
+            return unioned_result
+        elif inferred_result is not None:
+            return inferred_result
 
         # Step 4: Failure. At this point, we know there is no match. We fall back to trying
         #         to find a somewhat plausible overload target using the erased types
@@ -1209,13 +1204,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # Step 5: We try and infer a second-best alternative if possible. If not, fall back
         #         to using 'Any'.
-        if unioned_result is not None:
-            # When possible, return the error messages generated from the union-math attempt:
-            # they tend to be a little nicer.
-            assert unioned_errors is not None
-            arg_messages.add_errors(unioned_errors)
-            return unioned_result
-        elif len(erased_targets) > 0:
+        if len(erased_targets) > 0:
             # Pick the first plausible erased target as the fallback
             # TODO: Adjust the error message here to make it clear there was no match.
             target = erased_targets[0]  # type: Type
@@ -1394,11 +1383,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               level: int = 0
                               ) -> Optional[List[Tuple[Type, Type]]]:
         """Accepts a list of overload signatures and attempts to match calls by destructuring
-        the first union. Returns None if there is no match.
+        the first union.
+
+        Return a list of (<return type>, <inferred variant type>) if call succeeds for every
+        item of the desctructured union. Returns None if there is no match.
         """
+        # Step 1: If we are already too deep, then stop immediately. Otherwise mypy might
+        # hang for long time because of a weird overload call. The caller will get
+        # the exception and generate an appropriate note message, if needed.
         if level >= MAX_UNIONS:
             raise TooManyUnions
-        if not any(self.real_union(typ) for typ in arg_types):
+
+        # Step 2: Find position of the first union in arguments. Return the normal infered
+        # type if no more unions left.
+        for idx, typ in enumerate(arg_types):
+            if self.real_union(typ):
+                break
+        else:
             # No unions in args, just fall back to normal inference
             with self.type_overrides_set(args, arg_types):
                 res = self.infer_overload_return_type(plausible_targets, args, arg_types,
@@ -1408,7 +1409,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return [res]
             return None
 
-        # Try direct match before splitting
+        # Step 3: Try a direct match before splitting to avoid unnecessary union splits
+        # and save performance.
         with self.type_overrides_set(args, arg_types):
             direct = self.infer_overload_return_type(plausible_targets, args, arg_types,
                                                      arg_kinds, arg_names, callable_name,
@@ -1417,9 +1419,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # We only return non-unions soon, to avoid greedy match.
             return [direct]
 
-        # Split the first remaining union type in arguments
-        first_union = next(typ for typ in arg_types if self.real_union(typ))
-        idx = arg_types.index(first_union)
+        # Step 4: Split the first remaining union type in arguments into items and
+        # try to match each item individually (recursive).
+        first_union = arg_types[idx]
         assert isinstance(first_union, UnionType)
         res_items = []
         for item in first_union.relevant_items():
@@ -1432,19 +1434,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if sub_result is not None:
                 res_items.append(sub_result)
             else:
+                # Some item doesn't match, return soon.
                 return None
 
-        # Flatten union results into a single list of unique items
-        if res_items:
-            seen = set()  # type: Set[Tuple[Type, Type]]
-            result = []
-            for sub_result in res_items:
-                for pair in sub_result:
-                    if pair not in seen:
-                        seen.add(pair)
-                        result.append(pair)
-            return result
-        return None
+        # Step 5: If spliting succeeded, then flatten union results into a single
+        # list of unique items.
+        seen = set()  # type: Set[Tuple[Type, Type]]
+        result = []
+        for sub_result in res_items:
+            for pair in sub_result:
+                if pair not in seen:
+                    seen.add(pair)
+                    result.append(pair)
+        return result
 
     def real_union(self, typ: Type) -> bool:
         return isinstance(typ, UnionType) and len(typ.relevant_items()) > 1
