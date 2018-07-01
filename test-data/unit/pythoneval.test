@@ -1294,7 +1294,7 @@ JsonBlob = Dict[str, Any]
 Column = Union[List[str], List[int], List[bool], List[float], List[DateTime], List[JsonBlob]]
 
 def print_custom_table() -> None:
-    a: Column
+    a = None  # type: Column
 
     for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
         print(row)
