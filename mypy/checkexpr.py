@@ -1224,11 +1224,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if not self.chk.should_suppress_optional_error(arg_types):
                 arg_messages.no_variant_matches_arguments(callee, arg_types, context)
             target = AnyType(TypeOfAny.from_error)
-
-        return self.check_call(target, args, arg_kinds, context, arg_names,
-                               arg_messages=arg_messages,
-                               callable_name=callable_name,
-                               object_type=object_type)
+        result = self.check_call(target, args, arg_kinds, context, arg_names,
+                                 arg_messages=arg_messages,
+                                 callable_name=callable_name,
+                                 object_type=object_type)
+        if union_interrupted:
+            self.chk.msg.note("Not all union combinations were tried"
+                              " because there are too many unions", context)
+        return result
 
     def plausible_overload_call_targets(self,
                                         arg_types: List[Type],

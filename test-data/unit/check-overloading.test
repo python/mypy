@@ -3957,3 +3957,26 @@ def none_loose_impl(x: int) -> int:
 [out]
 main:22: error: Overloaded function implementation does not accept all possible arguments of signature 1
 main:22: error: Overloaded function implementation cannot produce return type of signature 1
+
+[case testTooManyUnionsException]
+from typing import overload, Union
+
+@overload
+def f(*args: int) -> int: ...
+@overload
+def f(*args: str) -> str: ...
+def f(*args):
+    pass
+
+x: Union[int, str]
+f(x, x, x, x, x, x, x, x)
+[out]
+main:11: error: Argument 1 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 2 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 3 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 4 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 5 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 6 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 7 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: error: Argument 8 to "f" has incompatible type "Union[int, str]"; expected "int"
+main:11: note: Not all union combinations were tried because there are too many unions
