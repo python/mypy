@@ -2579,7 +2579,7 @@ def f(x: B, y: B = B()) -> Parent: ...
 def f(*args): ...
 
 x: Union[A, B]
-f(x)       # OK
+reveal_type(f(x))  # E: Revealed type is '__main__.Parent'
 f(x, B())  # E: Argument 1 to "f" has incompatible type "Union[A, B]"; expected "B"
 
 [case testOverloadInferUnionWithMixOfPositionalAndOptionalArgs]
@@ -2656,7 +2656,7 @@ def wrapper() -> None:
 
     obj2: Union[W1[A], W2[B]]
 
-    foo(obj2)  # OK
+    reveal_type(foo(obj2))  # E: Revealed type is 'Union[__main__.A*, __main__.B*]'
     bar(obj2)  # E: Cannot infer type argument 1 of "bar"
 
     b1_overload: A = foo(obj2)  # E: Incompatible types in assignment (expression has type "Union[A, B]", variable has type "A")
@@ -3878,7 +3878,7 @@ class C:
     def f(self, other: C) -> C: ...
 
 class D(C):
-    @overload  # type: ignore
+    @overload
     def f(self, other: D) -> D: ...
     @overload
     def f(self, other: C) -> C: ...
@@ -3886,11 +3886,10 @@ class D(C):
 
 x: D
 y: Union[D, Any]
-# TODO: update after we decide on https://github.com/python/mypy/pull/5254
-reveal_type(x.f(y))  # E: Revealed type is 'Any'
+reveal_type(x.f(y))  # E: Revealed type is 'Union[__main__.D, Any]'
 [out]
 
-[case testManyUnionsInOverload-skip]
+[case testManyUnionsInOverload]
 from typing import overload, TypeVar, Union
 
 T = TypeVar('T')
@@ -3909,7 +3908,7 @@ class B: pass
 x: Union[int, str, A, B]
 y = f(x, x, x, x, x, x, x, x) # 8 args
 
-reveal_type(y)
+reveal_type(y)  # E: Revealed type is 'Union[builtins.int, builtins.str, __main__.A, __main__.B]'
 [builtins fixtures/dict.pyi]
 [out]
 

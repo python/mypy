@@ -530,9 +530,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                    callable_node: Optional[Expression] = None,
                    arg_messages: Optional[MessageBuilder] = None,
                    callable_name: Optional[str] = None,
-                   object_type: Optional[Type] = None,
-                   *,
-                   arg_types_override: Optional[List[Type]] = None) -> Tuple[Type, Type]:
+                   object_type: Optional[Type] = None) -> Tuple[Type, Type]:
         """Type check a call.
 
         Also infer type arguments if the callee is a generic function.
@@ -588,11 +586,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     callee, context)
                 callee = self.infer_function_type_arguments(
                     callee, args, arg_kinds, formal_to_actual, context)
-            if arg_types_override is not None:
-                arg_types = arg_types_override.copy()
-            else:
-                arg_types = self.infer_arg_types_in_context2(
-                    callee, args, arg_kinds, formal_to_actual)
+
+            arg_types = self.infer_arg_types_in_context2(
+                callee, args, arg_kinds, formal_to_actual)
 
             self.check_argument_count(callee, arg_types, arg_kinds,
                                       arg_names, formal_to_actual, context, self.msg)
@@ -1165,7 +1161,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return inferred_result
             else:
                 assert unioned_result is not None
-                if is_subtype(inferred_result[0], unioned_result[0]):
+                if (is_subtype(inferred_result[0], unioned_result[0]) and
+                        not isinstance(inferred_result[0], AnyType)):
                     return inferred_result
                 return unioned_result
         elif union_success:
@@ -1380,11 +1377,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 del self.type_overrides[arg]
             return res
         # Try direct match before splitting
+        for arg, typ in zip(args, arg_types):
+            self.type_overrides[arg] = typ
         direct = self.infer_overload_return_type(plausible_targets, args, arg_types,
                                                  arg_kinds, arg_names, callable_name,
                                                  object_type, context, arg_messages)
-        if direct is not None and not isinstance(direct[0], UnionType):
-            # We only return non-unions soon, to avoid gredy match.
+        for arg, typ in zip(args, arg_types):
+            del self.type_overrides[arg]
+        if direct is not None and not isinstance(direct[0], (UnionType, AnyType)):
+            # We only return non-unions soon, to avoid greedy match.
             return direct
         first_union = next(typ for typ in arg_types if self.real_union(typ))
         idx = arg_types.index(first_union)
