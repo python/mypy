@@ -1157,9 +1157,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         #         typevar. See https://github.com/python/mypy/issues/4063 for related discussion.
         erased_targets = None  # type: Optional[List[CallableType]]
         unioned_result = None  # type: Optional[Tuple[Type, Type]]
+        union_interrupted = False  # did we try all union combinations?
         if any(self.real_union(arg) for arg in arg_types):
             unioned_errors = arg_messages.clean_copy()
-            union_interrupted = False
             try:
                 unioned_return = self.union_overload_result(plausible_targets, args,
                                                             arg_types, arg_kinds, arg_names,
@@ -1173,7 +1173,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # gives a narrower type.
                 if unioned_return:
                     returns, inferred_types = zip(*unioned_return)
-                    unioned_result = (UnionType.make_simplified_union(returns,
+                    unioned_result = (UnionType.make_simplified_union(list(returns),
                                                                       context.line,
                                                                       context.column),
                                       self.union_overload_matches(inferred_types))
@@ -1456,8 +1456,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return isinstance(typ, UnionType) and len(typ.relevant_items()) > 1
 
     @contextmanager
-    def type_overrides_set(self, exprs: Iterable[Expression],
-                           overrides: Iterable[Type]) -> Iterator[None]:
+    def type_overrides_set(self, exprs: Sequence[Expression],
+                           overrides: Sequence[Type]) -> Iterator[None]:
         """Set _temporary_ type overrides for given expressions."""
         assert len(exprs) == len(overrides)
         for expr, typ in zip(exprs, overrides):
@@ -1468,7 +1468,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for expr in exprs:
                 del self.type_overrides[expr]
 
-    def union_overload_matches(self, types: List[Type]) -> Union[AnyType, CallableType]:
+    def union_overload_matches(self, types: Sequence[Type]) -> Union[AnyType, CallableType]:
         """Accepts a list of overload signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
 
