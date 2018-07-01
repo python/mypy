@@ -345,6 +345,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # This is a conservative way break the inference cycles.
                     # It never produces any "false" constraints but gives up soon
                     # on purely structural inference cycles, see #3829.
+                    # Note that we use is_protocol_implementation instead of is_subtype
+                    # because some type may be considered a subtype of a protocol
+                    # due to _promote, but still not implement the protocol.
                     not any(is_same_type(template, t) for t in template.type.inferring) and
                     mypy.subtypes.is_protocol_implementation(instance, erased)):
                 template.type.inferring.append(template)
