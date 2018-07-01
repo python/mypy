@@ -4,6 +4,7 @@ import os
 from os.path import splitdrive
 import re
 import subprocess
+import sys
 from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
@@ -209,15 +210,14 @@ def replace_object_state(new: object, old: object) -> None:
 
 
 # backport commonpath for 3.4
-if os.name == 'nt':
+if sys.platform == 'win32':
     def commonpath(paths: Sequence[str]) -> str:
         """Given a sequence of path names, returns the longest common sub-path."""
 
         if not paths:
             raise ValueError('commonpath() arg is an empty sequence')
 
-        _paths = tuple(map(os.fspath, paths))  # type: Sequence[str]
-        if isinstance(_paths[0], bytes):
+        if isinstance(paths[0], bytes):
             sep = b'\\'
             altsep = b'/'
             curdir = b'.'
@@ -227,7 +227,7 @@ if os.name == 'nt':
             curdir = '.'
 
         try:
-            drivesplits = [splitdrive(p.replace(altsep, sep).lower()) for p in _paths]
+            drivesplits = [splitdrive(p.replace(altsep, sep).lower()) for p in paths]
             split_paths = [p.split(sep) for d, p in drivesplits]
 
             try:
@@ -241,7 +241,7 @@ if os.name == 'nt':
             if len(set(d for d, p in drivesplits)) != 1:
                 raise ValueError("Paths don't have the same drive")
 
-            drive, path = splitdrive(_paths[0].replace(altsep, sep))
+            drive, path = splitdrive(paths[0].replace(altsep, sep))
             common = path.split(sep)
             common = [c for c in common if c and c != curdir]
 
@@ -258,17 +258,15 @@ if os.name == 'nt':
             prefix = drive + sep if isabs else drive
             return prefix + sep.join(common)
         except (TypeError, AttributeError):
-            genericpath._check_arg_types('commonpath', *_paths)
+            genericpath._check_arg_types('commonpath', *paths)
             raise
 else:
     def commonpath(paths: Sequence[str]) -> str:
         """Given a sequence of path names, returns the longest common sub-path."""
-
         if not paths:
             raise ValueError('commonpath() arg is an empty sequence')
 
-        _paths = tuple(map(os.fspath, paths))  # type: Sequence[str]
-        if isinstance(_paths[0], bytes):
+        if isinstance(paths[0], bytes):
             sep = b'/'
             curdir = b'.'
         else:
@@ -276,10 +274,10 @@ else:
             curdir = '.'
 
         try:
-            split_paths = [path.split(sep) for path in _paths]
+            split_paths = [path.split(sep) for path in paths]
 
             try:
-                isabs, = set(p[:1] == sep for p in _paths)
+                isabs, = set(p[:1] == sep for p in paths)
             except ValueError:
                 raise ValueError("Can't mix absolute and relative paths") from None
 
@@ -295,5 +293,5 @@ else:
             prefix = sep if isabs else sep[:0]
             return prefix + sep.join(common)
         except (TypeError, AttributeError):
-            genericpath._check_arg_types('commonpath', *_paths)
+            genericpath._check_arg_types('commonpath', *paths)
             raise
