@@ -134,6 +134,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg = msg
         self.plugin = plugin
         self.type_context = [None]
+        # Temporary overrides for expression types. This is currently
+        # used by the union math in overloads.
+        # TODO: refactor this to use a pattern similar to one in
+        # multiassign_from_union, or maybe even combine the two?
         self.type_overrides = {}  # type: Dict[Expression, Type]
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
 
