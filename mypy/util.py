@@ -1,5 +1,5 @@
 """Utility functions with no non-trivial dependencies."""
-import genericpath  # type: ignore # no 
+import genericpath  # type: ignore  # no stub files yet
 import os
 from os.path import splitdrive
 import re
@@ -207,6 +207,7 @@ def replace_object_state(new: object, old: object) -> None:
                     elif hasattr(new, attr):
                         delattr(new, attr)
 
+
 # backport commonpath for 3.4
 if os.name == 'nt':
     def commonpath(paths: Sequence[str]) -> str:
@@ -215,8 +216,8 @@ if os.name == 'nt':
         if not paths:
             raise ValueError('commonpath() arg is an empty sequence')
 
-        paths = tuple(map(os.fspath, paths))
-        if isinstance(paths[0], bytes):
+        _paths = tuple(map(os.fspath, paths))  # type: Sequence[str]
+        if isinstance(_paths[0], bytes):
             sep = b'\\'
             altsep = b'/'
             curdir = b'.'
@@ -226,7 +227,7 @@ if os.name == 'nt':
             curdir = '.'
 
         try:
-            drivesplits = [splitdrive(p.replace(altsep, sep).lower()) for p in paths]
+            drivesplits = [splitdrive(p.replace(altsep, sep).lower()) for p in _paths]
             split_paths = [p.split(sep) for d, p in drivesplits]
 
             try:
@@ -240,7 +241,7 @@ if os.name == 'nt':
             if len(set(d for d, p in drivesplits)) != 1:
                 raise ValueError("Paths don't have the same drive")
 
-            drive, path = splitdrive(paths[0].replace(altsep, sep))
+            drive, path = splitdrive(_paths[0].replace(altsep, sep))
             common = path.split(sep)
             common = [c for c in common if c and c != curdir]
 
@@ -257,7 +258,7 @@ if os.name == 'nt':
             prefix = drive + sep if isabs else drive
             return prefix + sep.join(common)
         except (TypeError, AttributeError):
-            genericpath._check_arg_types('commonpath', *paths)
+            genericpath._check_arg_types('commonpath', *_paths)
             raise
 else:
     def commonpath(paths: Sequence[str]) -> str:
@@ -266,8 +267,8 @@ else:
         if not paths:
             raise ValueError('commonpath() arg is an empty sequence')
 
-        paths = tuple(map(os.fspath, paths))
-        if isinstance(paths[0], bytes):
+        _paths = tuple(map(os.fspath, paths))  # type: Sequence[str]
+        if isinstance(_paths[0], bytes):
             sep = b'/'
             curdir = b'.'
         else:
@@ -275,10 +276,10 @@ else:
             curdir = '.'
 
         try:
-            split_paths = [path.split(sep) for path in paths]
+            split_paths = [path.split(sep) for path in _paths]
 
             try:
-                isabs, = set(p[:1] == sep for p in paths)
+                isabs, = set(p[:1] == sep for p in _paths)
             except ValueError:
                 raise ValueError("Can't mix absolute and relative paths") from None
 
@@ -294,5 +295,5 @@ else:
             prefix = sep if isabs else sep[:0]
             return prefix + sep.join(common)
         except (TypeError, AttributeError):
-            genericpath._check_arg_types('commonpath', *paths)
+            genericpath._check_arg_types('commonpath', *_paths)
             raise
