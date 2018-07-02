@@ -1297,5 +1297,6 @@ def print_custom_table() -> None:
     a = None  # type: Column
 
     for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
-        print(row)
+        reveal_type(row)
 [out]
+_testLoadsOfOverloads.py:24: error: Revealed type is 'builtins.str*'
