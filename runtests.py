@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-from sys import exit
 from os import system
-import sys
+from sys import argv, exit
 
-prog, *args = sys.argv
+prog, *args = argv
 
 cmds = {
     'self': 'python3 -m mypy --config-file mypy_self_check.ini -p mypy',
