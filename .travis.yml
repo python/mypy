@@ -17,5 +17,5 @@ install:
 
 script:
   - pytest -n12
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8 -j0; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8 -j12; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3.5.1' ]]; then python3 -m mypy --config-file mypy_self_check.ini -p mypy; fi
