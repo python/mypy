@@ -207,11 +207,10 @@ def _get_site_packages_dirs(python_executable: Optional[str],
     To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
     def make_abspath(path: str, root: str) -> str:
         """Take a path and make it absolute relative to root if not already absolute."""
-        path = os.path.normpath(path)
-        if os.path.abspath(path) == path:
-            return path
+        if os.path.isabs(path):
+            return os.path.normpath(path)
         else:
-            return os.path.join(root, path)
+            return os.path.join(root, os.path.normpath(path))
 
     if python_executable is None:
         return []
