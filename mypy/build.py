@@ -1870,7 +1870,7 @@ class State:
             self.dep_line_map = {id: line
                                  for id, line in zip(all_deps, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
-            if temporary and '__init__' in self.path:
+            if temporary:
                 self.load_tree(temporary=True)
         else:
             # When doing a fine-grained cache load, pretend we only
