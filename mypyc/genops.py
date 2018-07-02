@@ -931,6 +931,8 @@ class IRBuilder(NodeVisitor[Value]):
         return self.unary_op(self.accept(expr.expr), expr.op, expr.line)
 
     def visit_op_expr(self, expr: OpExpr) -> Value:
+        if expr.op in ('and', 'or'):
+            return self.shortcircuit_expr(expr)
         return self.binary_op(self.accept(expr.left), self.accept(expr.right), expr.op, expr.line)
 
     def matching_primitive_op(self,
@@ -1203,6 +1205,33 @@ class IRBuilder(NodeVisitor[Value]):
         src = self.accept(expr.expr)
         target_type = self.type_to_rtype(expr.type)
         return self.coerce(src, target_type, expr.line)
+
+    def shortcircuit_expr(self, expr: OpExpr) -> Value:
+        expr_type = self.node_type(expr)
+        # Having actual Phi nodes would be really nice here!
+        target = self.alloc_temp(expr_type)
+        left_body, right_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+        true_body, false_body = (
+            (right_body, left_body) if expr.op == 'and' else (left_body, right_body))
+
+        left_value = self.accept(expr.left)
+        branches = self.add_bool_branch(left_value)
+        self.set_branches(branches, True, true_body)
+        self.set_branches(branches, False, false_body)
+
+        self.activate_block(left_body)
+        left_coerced = self.coerce(left_value, expr_type, expr.line)
+        self.add(Assign(target, left_coerced))
+        self.add(Goto(next))
+
+        self.activate_block(right_body)
+        right_value = self.accept(expr.right)
+        right_coerced = self.coerce(right_value, expr_type, expr.line)
+        self.add(Assign(target, right_coerced))
+        self.add(Goto(next))
+
+        self.activate_block(next)
+        return target
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
         branches = self.process_conditional(expr.cond)
@@ -1520,9 +1549,12 @@ class IRBuilder(NodeVisitor[Value]):
         self.blocks.append([])
         self.new_block()
 
+    def activate_block(self, block: BasicBlock) -> None:
+        self.blocks[-1].append(block)
+
     def new_block(self) -> BasicBlock:
         block = BasicBlock()
-        self.blocks[-1].append(block)
+        self.activate_block(block)
         return block
 
     def goto_new_block(self) -> BasicBlock:

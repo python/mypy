@@ -493,7 +493,6 @@ class Branch(Op):
         return env.format(fmt, self.true, self.false)
 
     def invert(self) -> None:
-        self.true, self.false = self.false, self.true
         self.negated = not self.negated
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:

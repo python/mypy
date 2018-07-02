@@ -123,7 +123,7 @@ L2:
 L3:
     return x
 
-[case testAnd]
+[case testAnd1]
 def f(x: int, y: int) -> int:
     if x < y and x > y:
         x = 1
@@ -150,6 +150,28 @@ L3:
     x = r3
 L4:
     return x
+
+[case testAnd2]
+def f(x: object, y: object) -> str:
+    return str(x) or str(y)
+[out]
+def f(x, y):
+    x, y :: object
+    r0, r1 :: str
+    r2 :: bool
+    r3 :: str
+L0:
+    r1 = str x :: object
+    r2 = bool r1 :: object
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r0 = r1
+    goto L3
+L2:
+    r3 = str y :: object
+    r0 = r3
+L3:
+    return r0
 
 [case testOr]
 def f(x: int, y: int) -> int:
@@ -178,6 +200,28 @@ L3:
     x = r3
 L4:
     return x
+
+[case testOr2]
+def f(x: object, y: object) -> str:
+    return str(x) and str(y)
+[out]
+def f(x, y):
+    x, y :: object
+    r0, r1 :: str
+    r2 :: bool
+    r3 :: str
+L0:
+    r1 = str x :: object
+    r2 = bool r1 :: object
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r0 = r1
+    goto L3
+L2:
+    r3 = str y :: object
+    r0 = r3
+L3:
+    return r0
 
 [case testSimpleNot]
 def f(x: int, y: int) -> int:
@@ -210,7 +254,7 @@ def f(x, y):
     r2 :: int
 L0:
     r0 = x < y :: int
-    if not r0 goto L2 else goto L1 :: bool
+    if not r0 goto L1 else goto L3 :: bool
 L1:
     r1 = x > y :: int
     if not r1 goto L2 else goto L3 :: bool

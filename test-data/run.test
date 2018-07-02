@@ -503,6 +503,11 @@ def disidentity(x: Any, y: Any) -> Any:
         return True
     else:
         return False
+def not_eq_cond(a: Any, b: Any) -> bool:
+    if not (a == b):
+        return True
+    else:
+        return False
 def eq2(a: Any, b: Any) -> bool:
     return a == b
 def slice1(x: Any) -> Any:
@@ -561,6 +566,8 @@ assert not disidentity(o1, o1)
 assert disidentity(o1, o2)
 assert eq2('xz', 'x' + 'z')
 assert not eq2('x', 'y')
+assert not not_eq_cond('xz', 'x' + 'z')
+assert not_eq_cond('x', 'y')
 
 [case testGenericMiscOps]
 from typing import Any
@@ -964,6 +971,41 @@ uno!
 eins?
 second: normal function
 third: normal function
+
+[case testControlFlowExprs]
+from typing import Tuple
+def foo() -> object:
+    print('foo')
+    return 'foo'
+def bar() -> object:
+    print('bar')
+    return 'bar'
+
+def f(b: bool) -> Tuple[object, object, object]:
+    x = foo() if b else bar()
+    y = b or foo()
+    z = b and foo()
+    return (x, y, z)
+def g() -> Tuple[object, object]:
+    return (foo() or bar(), foo() and bar())
+
+[file driver.py]
+from native import f, g
+assert f(True) == ('foo', True, 'foo')
+print()
+assert f(False) == ('bar', 'foo', False)
+print()
+assert g() == ('foo', 'bar')
+[out]
+foo
+foo
+
+bar
+foo
+
+foo
+foo
+bar
 
 [case testMultipleAssignment]
 from typing import Tuple, List, Any
