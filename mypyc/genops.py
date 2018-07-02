@@ -928,11 +928,7 @@ class IRBuilder(NodeVisitor[Value]):
         return INVALID_VALUE
 
     def visit_unary_expr(self, expr: UnaryExpr) -> Value:
-        ereg = self.accept(expr.expr)
-        ops = unary_ops.get(expr.op, [])
-        target = self.matching_primitive_op(ops, [ereg], expr.line)
-        assert target, 'Unsupported unary operation: %s' % expr.op
-        return target
+        return self.unary_op(self.accept(expr.expr), expr.op, expr.line)
 
     def visit_op_expr(self, expr: OpExpr) -> Value:
         return self.binary_op(self.accept(expr.left), self.accept(expr.right), expr.op, expr.line)
@@ -976,6 +972,15 @@ class IRBuilder(NodeVisitor[Value]):
         ops = binary_ops.get(expr_op, [])
         target = self.matching_primitive_op(ops, [lreg, rreg], line)
         assert target, 'Unsupported binary operation: %s' % expr_op
+        return target
+
+    def unary_op(self,
+                 lreg: Value,
+                 expr_op: str,
+                 line: int) -> Value:
+        ops = unary_ops.get(expr_op, [])
+        target = self.matching_primitive_op(ops, [lreg], line)
+        assert target, 'Unsupported unary operation: %s' % expr_op
         return target
 
     def visit_index_expr(self, expr: IndexExpr) -> Value:
@@ -1277,9 +1282,7 @@ class IRBuilder(NodeVisitor[Value]):
     # Conditional expressions
 
     def process_conditional(self, e: Node) -> List[Branch]:
-        if isinstance(e, ComparisonExpr):
-            return self.process_comparison(e)
-        elif isinstance(e, OpExpr) and e.op in ['and', 'or']:
+        if isinstance(e, OpExpr) and e.op in ['and', 'or']:
             if e.op == 'and':
                 # Short circuit 'and' in a conditional context.
                 lbranches = self.process_conditional(e.left)
@@ -1304,40 +1307,29 @@ class IRBuilder(NodeVisitor[Value]):
             reg = self.accept(e)
             return self.add_bool_branch(reg)
 
-    def process_comparison(self, e: ComparisonExpr) -> List[Branch]:
-        # TODO: Verify operand types.
+    def visit_comparison_expr(self, e: ComparisonExpr) -> Value:
         assert len(e.operators) == 1, 'more than 1 operator not supported'
         op = e.operators[0]
+        negate = False
+        if op == 'is not':
+            op, negate = 'is', True
+        elif op == 'not in':
+            op, negate = 'in', True
 
         rhs = e.operands[1]
-        negate = False
-        if (op in ['is', 'is not'] and isinstance(rhs, NameExpr) and rhs.node
+        if (op == 'is' and isinstance(rhs, NameExpr) and rhs.node
                 and rhs.node.fullname() == 'builtins.None'):
             # Special case 'is None' checks.
             left = self.accept(e.operands[0])
-
             target = self.add(PrimitiveOp([left], is_none_op, e.line))
-            if op == 'is not':
-                negate = True
-
         else:
             left = self.accept(e.operands[0])
             right = self.accept(e.operands[1])
-            # Generate a bool value and branch based on it.
-            if op in ['in', 'not in']:
-                target = self.binary_op(left, right, 'in', e.line)
-            else:
-                target = self.binary_op(left, right, op, e.line)
-            target = self.coerce(target, bool_rprimitive, e.line)
-            if op == 'not in':
-                negate = True
+            target = self.binary_op(left, right, op, e.line)
 
-        branch = Branch(target, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
-        branch.negated = negate
-        if op == 'not in':
-            branch.negated = True
-        self.add(branch)
-        return [branch]
+        if negate:
+            target = self.unary_op(target, 'not', e.line)
+        return target
 
     def set_branches(self, branches: List[Branch], condition: bool,
                      target: BasicBlock) -> None:
@@ -1418,9 +1410,6 @@ class IRBuilder(NodeVisitor[Value]):
         raise NotImplementedError
 
     def visit_bytes_expr(self, o: BytesExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_comparison_expr(self, o: ComparisonExpr) -> Value:
         raise NotImplementedError
 
     def visit_complex_expr(self, o: ComplexExpr) -> Value:

@@ -134,6 +134,22 @@ for op, funcname in [('-', 'PyNumber_Negative'),
              emit=simple_emit('{dest} = %s({args[0]});' % funcname),
              priority=0)
 
+unary_op(op='not',
+         arg_type=object_rprimitive,
+         result_type=bool_rprimitive,
+         error_kind=ERR_MAGIC,
+         format_str='{dest} = not {args[0]}',
+         emit=negative_int_emit('{dest} = PyObject_Not({args[0]});'),
+         priority=0)
+
+unary_op(op='not',
+         arg_type=bool_rprimitive,
+         result_type=bool_rprimitive,
+         error_kind=ERR_NEVER,
+         format_str='{dest} = !{args[0]}',
+         emit=negative_int_emit('{dest} = !{args[0]};'),
+         priority=1)
+
 method_op('__getitem__',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=object_rprimitive,

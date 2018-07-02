@@ -122,9 +122,9 @@ class EqualVisitor(TreeVisitor[bool]):
     def visit_node(self, right: Node) -> bool:
         if isinstance(self.left, Node):
             # our boolean stuff is crap
-            if self.left.value == right.value:
-                if equal(self.left.left, right.left):
-                    return equal(self.left.right, right.right)
+            if (self.left.value == right.value and equal(self.left.left, right.left)
+                    and equal(self.left.right, right.right)):
+                return True
         return False
 
 def sum_tree(x: Tree) -> int:

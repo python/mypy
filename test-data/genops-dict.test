@@ -115,18 +115,19 @@ def f(d):
     d :: dict
     r0 :: int
     r1 :: object
-    r2, r3, r4 :: bool
+    r2, r3, r4, r5 :: bool
 L0:
     r0 = 4
     r1 = box(int, r0)
     r2 = r1 in d :: dict
-    if not r2 goto L1 else goto L2 :: bool
+    r3 = !r2
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r3 = True
-    return r3
-L2:
-    r4 = False
+    r4 = True
     return r4
+L2:
+    r5 = False
+    return r5
 L3:
     unreachable
 

@@ -74,16 +74,17 @@ L2:
 L3:
     r3 = r2 is None
     dec_ref r2
-    if not r3 goto L4 else goto L5 :: bool
+    r4 = !r3
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    r4 = 2
-    return r4
-L5:
-    r5 = 3
+    r5 = 2
     return r5
-L6:
-    r6 = <error> :: int
+L5:
+    r6 = 3
     return r6
+L6:
+    r7 = <error> :: int
+    return r7
 
 [case testListSum]
 from typing import List

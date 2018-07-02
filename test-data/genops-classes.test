@@ -124,25 +124,26 @@ class Node:
 def Node.length(self):
     self :: Node
     r0 :: optional[Node]
-    r1 :: bool
-    r2 :: int
-    r3 :: optional[Node]
-    r4 :: Node
-    r5, r6, r7 :: int
+    r1, r2 :: bool
+    r3 :: int
+    r4 :: optional[Node]
+    r5 :: Node
+    r6, r7, r8 :: int
 L0:
     r0 = self.next
     r1 = r0 is None
-    if not r1 goto L1 else goto L2 :: bool
+    r2 = !r1
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = 1
-    r3 = self.next
-    r4 = cast(Node, r3)
-    r5 = r4.length()
-    r6 = r2 + r5 :: int
-    return r6
-L2:
-    r7 = 1
+    r3 = 1
+    r4 = self.next
+    r5 = cast(Node, r4)
+    r6 = r5.length()
+    r7 = r3 + r6 :: int
     return r7
+L2:
+    r8 = 1
+    return r8
 
 [case testSubclass]
 class A:
