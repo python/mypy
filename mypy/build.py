@@ -1870,6 +1870,8 @@ class State:
             self.dep_line_map = {id: line
                                  for id, line in zip(all_deps, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
+            if temporary:
+                self.load_tree(temporary=True)
         else:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
@@ -1952,16 +1954,16 @@ class State:
         # TODO: Assert deps file wasn't changed.
         self.fine_grained_deps = {k: set(v) for k, v in deps.items()}
 
-    def load_tree(self) -> None:
+    def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
         with open(self.meta.data_json) as f:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
-
-        self.manager.modules[self.id] = self.tree
-        self.manager.add_stats(fresh_trees=1)
+        if not temporary:
+            self.manager.modules[self.id] = self.tree
+            self.manager.add_stats(fresh_trees=1)
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"

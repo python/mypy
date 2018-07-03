@@ -4754,3 +4754,39 @@ def f(): pass
 [file a.py.2]
 [out]
 [out2]
+
+[case testModuleGetattrInitIncremental]
+import c
+[file c.py]
+import a.b
+x = a.b.f()
+[file c.py.2]
+import a.b
+x = a.b.f()
+# touch
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+[out2]
+
+[case testModuleGetattrInitIncremental2]
+import c
+[file c.py]
+import a.b.c
+[file c.py.2]
+import a.b.c
+# touch
+[file a/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file a/b.pyi]
+# empty
+[builtins fixtures/module.pyi]
+[out]
+tmp/c.py:1: error: Cannot find module named 'a.b.c'
+tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+[out2]
+tmp/c.py:1: error: Cannot find module named 'a.b.c'
+tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
