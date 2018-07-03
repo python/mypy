@@ -43,7 +43,7 @@ from mypyc.ops import (
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
     Return, FuncIR, Assign, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable,
     TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, ROptional,
-    MethodCall, INVALID_VALUE, INVALID_LABEL, INVALID_CLASS, int_rprimitive, float_rprimitive,
+    MethodCall, INVALID_VALUE, INVALID_CLASS, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, str_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
@@ -343,13 +343,9 @@ class IRBuilder(NodeVisitor[Value]):
         # generated, its corresponding FuncInfo is popped off the stack.
         self.func_infos = []  # type: List[FuncInfo]
 
-        # These lists operate as stack frames for loops. Each loop adds a new
-        # frame (i.e. adds a new empty list [] to the outermost list). Each
-        # break or continue is inserted within that frame as they are visited
-        # and at the end of the loop the stack is popped and any break/continue
-        # gotos have their targets rewritten to the next basic block.
-        self.break_gotos = []  # type: List[List[Goto]]
-        self.continue_gotos = []  # type: List[List[Goto]]
+        # This list operate as stack frames for loops. Each loop adds a new
+        # frame containing the continue and break targets for the loop.
+        self.loop_exits = []  # type: List[Tuple[BasicBlock, BasicBlock]]
 
         self.mapper = mapper
         self.imports = []  # type: List[str]
@@ -740,27 +736,27 @@ class IRBuilder(NodeVisitor[Value]):
                                           line: int) -> None:
         iterator = self.primitive_op(iter_op, [rvalue_reg], line)
         for litem in target.items:
+            error_block, ok_block = BasicBlock(), BasicBlock()
             ritem = self.primitive_op(next_op, [iterator], line)
-            branch = Branch(ritem, INVALID_LABEL, INVALID_LABEL, Branch.IS_ERROR)
-            self.add(branch)
-            error_block = self.new_block()
-            self.set_branches([branch], True, error_block)
+            self.add(Branch(ritem, error_block, ok_block, Branch.IS_ERROR))
+
+            self.activate_block(error_block)
             self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
                                         'not enough values to unpack', line))
             self.add(Unreachable())
-            ok_block = self.new_block()
-            self.set_branches([branch], False, ok_block)
+
+            self.activate_block(ok_block)
             self.assign_to_target(litem, ritem, line)
         extra = self.primitive_op(next_op, [iterator], line)
-        branch = Branch(extra, INVALID_LABEL, INVALID_LABEL, Branch.IS_ERROR)
-        self.add(branch)
-        error_block = self.new_block()
-        self.set_branches([branch], False, error_block)
+        error_block, ok_block = BasicBlock(), BasicBlock()
+        self.add(Branch(extra, ok_block, error_block, Branch.IS_ERROR))
+
+        self.activate_block(error_block)
         self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
                                     'too many values to unpack', line))
         self.add(Unreachable())
-        ok_block = self.new_block()
-        self.set_branches([branch], True, ok_block)
+
+        self.activate_block(ok_block)
 
     def assign(self,
                lvalue: Lvalue,
@@ -771,76 +767,59 @@ class IRBuilder(NodeVisitor[Value]):
         return target
 
     def visit_if_stmt(self, stmt: IfStmt) -> Value:
+        if_body, next = BasicBlock(), BasicBlock()
+        else_body = BasicBlock() if stmt.else_body else next
+
         # If statements are normalized
         assert len(stmt.expr) == 1
 
-        branches = self.process_conditional(stmt.expr[0])
-        if_body = self.new_block()
-        self.set_branches(branches, True, if_body)
+        self.process_conditional(stmt.expr[0], if_body, else_body)
+        self.activate_block(if_body)
         stmt.body[0].accept(self)
-        if_leave = self.add_leave()
+        self.add_leave(next)
         if stmt.else_body:
-            else_body = self.new_block()
-            self.set_branches(branches, False, else_body)
+            self.activate_block(else_body)
             stmt.else_body.accept(self)
-            else_leave = self.add_leave()
-            next = self.new_block()
-            if else_leave:
-                else_leave.label = next
-        else:
-            # No else block.
-            next = self.new_block()
-            self.set_branches(branches, False, next)
-        if if_leave:
-            if_leave.label = next
+            self.add_leave(next)
+        self.activate_block(next)
         return INVALID_VALUE
 
-    def add_leave(self) -> Optional[Goto]:
+    def add_leave(self, target: BasicBlock) -> None:
         if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], Return):
-            leave = Goto(INVALID_LABEL)
-            self.add(leave)
-            return leave
-        return None
+            self.add(Goto(target))
 
-    def push_loop_stack(self) -> None:
-        self.break_gotos.append([])
-        self.continue_gotos.append([])
+    def push_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
+        self.loop_exits.append((continue_block, break_block))
 
-    def pop_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
-        for continue_goto in self.continue_gotos.pop():
-            continue_goto.label = continue_block
-
-        for break_goto in self.break_gotos.pop():
-            break_goto.label = break_block
+    def pop_loop_stack(self) -> None:
+        self.loop_exits.pop()
 
     def visit_while_stmt(self, s: WhileStmt) -> Value:
-        self.push_loop_stack()
+        body, next, top = BasicBlock(), BasicBlock(), BasicBlock()
+
+        self.push_loop_stack(top, next)
 
         # Split block so that we get a handle to the top of the loop.
-        goto = Goto(INVALID_LABEL)
-        self.add(goto)
-        top = self.new_block()
-        goto.label = top
-        branches = self.process_conditional(s.expr)
+        self.goto_and_activate(top)
+        self.process_conditional(s.expr, body, next)
 
-        body = self.new_block()
-        # Bind "true" branches to the body block.
-        self.set_branches(branches, True, body)
+        self.activate_block(body)
         s.body.accept(self)
         # Add branch to the top at the end of the body.
         self.add(Goto(top))
-        next = self.new_block()
-        # Bind "false" branches to the new block.
-        self.set_branches(branches, False, next)
 
-        self.pop_loop_stack(top, next)
+        self.activate_block(next)
+
+        self.pop_loop_stack()
         return INVALID_VALUE
 
     def visit_for_stmt(self, s: ForStmt) -> Value:
         if (isinstance(s.expr, CallExpr)
                 and isinstance(s.expr.callee, RefExpr)
                 and s.expr.callee.fullname == 'builtins.range'):
-            self.push_loop_stack()
+            body, next, top, end_block = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+
+            self.push_loop_stack(end_block, next)
 
             # Special case for x in range(...)
             # TODO: Check argument counts and kinds; check the lvalue
@@ -854,24 +833,18 @@ class IRBuilder(NodeVisitor[Value]):
 
             # Initialize loop index to 0.
             index_target = self.assign(s.index, IntExpr(0))
-            goto = Goto(INVALID_LABEL)
-            self.add(goto)
+            self.add(Goto(top))
 
             # Add loop condition check.
-            top = self.new_block()
-            goto.label = top
+            self.activate_block(top)
             index_reg = self.read_from_target(index_target, s.line)
             comparison = self.binary_op(index_reg, end_reg, '<', s.line)
-            branches = self.add_bool_branch(comparison)
+            self.add_bool_branch(comparison, body, next)
 
-            body = self.new_block()
-            self.set_branches(branches, True, body)
+            self.activate_block(body)
             s.body.accept(self)
 
-            end_goto = Goto(INVALID_LABEL)
-            self.add(end_goto)
-            end_block = self.new_block()
-            end_goto.label = end_block
+            self.goto_and_activate(end_block)
 
             # Increment index register.
             one_reg = self.add(LoadInt(1))
@@ -880,14 +853,15 @@ class IRBuilder(NodeVisitor[Value]):
 
             # Go back to loop condition check.
             self.add(Goto(top))
-            next = self.new_block()
-            self.set_branches(branches, False, next)
+            self.activate_block(next)
 
-            self.pop_loop_stack(end_block, next)
+            self.pop_loop_stack()
             return INVALID_VALUE
 
         elif is_list_rprimitive(self.node_type(s.expr)):
-            self.push_loop_stack()
+            body_block, next_block, end_block = BasicBlock(), BasicBlock(), BasicBlock()
+
+            self.push_loop_stack(end_block, next_block)
 
             expr_reg = self.accept(s.expr)
 
@@ -907,11 +881,9 @@ class IRBuilder(NodeVisitor[Value]):
             len_reg = self.add(PrimitiveOp([expr_reg], list_len_op, s.line))
 
             comparison = self.binary_op(index_reg, len_reg, '<', s.line)
-            branches = self.add_bool_branch(comparison)
+            self.add_bool_branch(comparison, body_block, next_block)
 
-            body_block = self.new_block()
-            self.set_branches(branches, True, body_block)
-
+            self.activate_block(body_block)
             target_list_type = self.types[s.expr]
             assert isinstance(target_list_type, Instance)
             target_type = self.type_to_rtype(target_list_type.args[0])
@@ -922,19 +894,20 @@ class IRBuilder(NodeVisitor[Value]):
 
             s.body.accept(self)
 
-            end_block = self.goto_new_block()
+            self.goto_and_activate(end_block)
             self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', s.line)))
             self.add(Goto(condition_block))
 
-            next_block = self.new_block()
-            self.set_branches(branches, False, next_block)
+            self.activate_block(next_block)
 
-            self.pop_loop_stack(end_block, next_block)
+            self.pop_loop_stack()
 
             return INVALID_VALUE
 
         else:
-            self.push_loop_stack()
+            body_block, end_block, next_block = BasicBlock(), BasicBlock(), BasicBlock()
+
+            self.push_loop_stack(next_block, end_block)
 
             assert isinstance(s.index, NameExpr)
             assert isinstance(s.index.node, Var)
@@ -949,18 +922,15 @@ class IRBuilder(NodeVisitor[Value]):
             # checked to see if the value returned is NULL, which would signal either the end of
             # the Iterable being traversed or an exception being raised. Note that Branch.IS_ERROR
             # checks only for NULL (an exception does not necessarily have to be raised).
-            next_block = self.goto_new_block()
+            self.goto_and_activate(next_block)
             next_reg = self.add(PrimitiveOp([iter_reg], next_op, s.line))
-            branch = Branch(next_reg, INVALID_LABEL, INVALID_LABEL, Branch.IS_ERROR)
-            self.add(branch)
-            branches = [branch]
+            self.add(Branch(next_reg, end_block, body_block, Branch.IS_ERROR))
 
             # Create a new block for the body of the loop. Set the previous branch to go here if
             # the conditional evaluates to false. Assign the value obtained from __next__ to the
             # lvalue so that it can be referenced by code in the body of the loop. At the end of
             # the body, goto the label that calls the iterator's __next__ function again.
-            body_block = self.new_block()
-            self.set_branches(branches, False, body_block)
+            self.activate_block(body_block)
             self.assign_to_target(lvalue, next_reg, s.line)
             s.body.accept(self)
             self.add(Goto(next_block))
@@ -969,23 +939,20 @@ class IRBuilder(NodeVisitor[Value]):
             # conditional evaluates to true. If an exception was raised during the loop, then
             # err_reg wil be set to True. If no_err_occurred_op returns False, then the exception
             # will be propagated using the ERR_FALSE flag.
-            end_block = self.new_block()
-            self.set_branches(branches, True, end_block)
+            self.activate_block(end_block)
             self.add(PrimitiveOp([], no_err_occurred_op, s.line))
 
-            self.pop_loop_stack(next_block, end_block)
+            self.pop_loop_stack()
 
             return INVALID_VALUE
 
     def visit_break_stmt(self, node: BreakStmt) -> Value:
-        self.break_gotos[-1].append(Goto(INVALID_LABEL))
-        self.add(self.break_gotos[-1][-1])
+        self.add(Goto(self.loop_exits[-1][1]))
         self.new_block()
         return INVALID_VALUE
 
     def visit_continue_stmt(self, node: ContinueStmt) -> Value:
-        self.continue_gotos[-1].append(Goto(INVALID_LABEL))
-        self.add(self.continue_gotos[-1][-1])
+        self.add(Goto(self.loop_exits[-1][0]))
         self.new_block()
         return INVALID_VALUE
 
@@ -1279,9 +1246,7 @@ class IRBuilder(NodeVisitor[Value]):
             (right_body, left_body) if expr.op == 'and' else (left_body, right_body))
 
         left_value = self.accept(expr.left)
-        branches = self.add_bool_branch(left_value)
-        self.set_branches(branches, True, true_body)
-        self.set_branches(branches, False, false_body)
+        self.add_bool_branch(left_value, true_body, false_body)
 
         self.activate_block(left_body)
         left_coerced = self.coerce(left_value, expr_type, expr.line)
@@ -1298,30 +1263,26 @@ class IRBuilder(NodeVisitor[Value]):
         return target
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
-        branches = self.process_conditional(expr.cond)
+        if_body, else_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+
+        self.process_conditional(expr.cond, if_body, else_body)
         expr_type = self.node_type(expr)
         # Having actual Phi nodes would be really nice here!
         target = self.alloc_temp(expr_type)
 
-        if_body = self.new_block()
-        self.set_branches(branches, True, if_body)
+        self.activate_block(if_body)
         true_value = self.accept(expr.if_expr)
         true_value = self.coerce(true_value, expr_type, expr.line)
         self.add(Assign(target, true_value))
-        if_goto_next = Goto(INVALID_LABEL)
-        self.add(if_goto_next)
+        self.add(Goto(next))
 
-        else_body = self.new_block()
-        self.set_branches(branches, False, else_body)
+        self.activate_block(else_body)
         false_value = self.accept(expr.else_expr)
         false_value = self.coerce(false_value, expr_type, expr.line)
         self.add(Assign(target, false_value))
-        else_goto_next = Goto(INVALID_LABEL)
-        self.add(else_goto_next)
+        self.add(Goto(next))
 
-        next = self.new_block()
-        if_goto_next.label = next
-        else_goto_next.label = next
+        self.activate_block(next)
 
         return target
 
@@ -1374,31 +1335,26 @@ class IRBuilder(NodeVisitor[Value]):
 
     # Conditional expressions
 
-    def process_conditional(self, e: Node) -> List[Branch]:
+    def process_conditional(self, e: Node, true: BasicBlock, false: BasicBlock) -> None:
         if isinstance(e, OpExpr) and e.op in ['and', 'or']:
             if e.op == 'and':
                 # Short circuit 'and' in a conditional context.
-                lbranches = self.process_conditional(e.left)
-                new = self.new_block()
-                self.set_branches(lbranches, True, new)
-                rbranches = self.process_conditional(e.right)
-                return lbranches + rbranches
+                new = BasicBlock()
+                self.process_conditional(e.left, new, false)
+                self.activate_block(new)
+                self.process_conditional(e.right, true, false)
             else:
                 # Short circuit 'or' in a conditional context.
-                lbranches = self.process_conditional(e.left)
-                new = self.new_block()
-                self.set_branches(lbranches, False, new)
-                rbranches = self.process_conditional(e.right)
-                return lbranches + rbranches
+                new = BasicBlock()
+                self.process_conditional(e.left, true, new)
+                self.activate_block(new)
+                self.process_conditional(e.right, true, false)
         elif isinstance(e, UnaryExpr) and e.op == 'not':
-            branches = self.process_conditional(e.expr)
-            for b in branches:
-                b.invert()
-            return branches
+            self.process_conditional(e.expr, false, true)
         # Catch-all for arbitrary expressions.
         else:
             reg = self.accept(e)
-            return self.add_bool_branch(reg)
+            self.add_bool_branch(reg, true, false)
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Value:
         assert len(e.operators) == 1, 'more than 1 operator not supported'
@@ -1424,21 +1380,7 @@ class IRBuilder(NodeVisitor[Value]):
             target = self.unary_op(target, 'not', e.line)
         return target
 
-    def set_branches(self, branches: List[Branch], condition: bool,
-                     target: BasicBlock) -> None:
-        """Set branch targets for the given condition (True or False).
-
-        If the target has already been set for a branch, skip the branch.
-        """
-        for b in branches:
-            if condition:
-                if b.true is INVALID_LABEL:
-                    b.true = target
-            else:
-                if b.false is INVALID_LABEL:
-                    b.false = target
-
-    def add_bool_branch(self, value: Value) -> List[Branch]:
+    def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_same_type(value.type, int_rprimitive):
             zero = self.add(LoadInt(0))
             value = self.binary_op(value, zero, '!=', value.line)
@@ -1449,25 +1391,22 @@ class IRBuilder(NodeVisitor[Value]):
         elif isinstance(value.type, ROptional):
             is_none = self.binary_op(value, self.add(PrimitiveOp([], none_op, value.line)),
                                      'is not', value.line)
-            branch = Branch(is_none, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
+            branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
             self.add(branch)
             value_type = value.type.value_type
             if isinstance(value_type, RInstance):
                 # Optional[X] where X is always truthy
                 # TODO: Support __bool__
-                return [branch]
+                pass
             else:
                 # Optional[X] where X may be falsey and requires a check
-                new = self.new_block()
-                self.set_branches([branch], True, new)
+                branch.true = self.new_block()
                 remaining = self.coerce(value, value.type.value_type, value.line)
-                more = self.add_bool_branch(remaining)
-                return [branch] + more
+                self.add_bool_branch(remaining, true, false)
+            return
         elif not is_same_type(value.type, bool_rprimitive):
             value = self.primitive_op(bool_op, [value], value.line)
-        branch = Branch(value, INVALID_LABEL, INVALID_LABEL, Branch.BOOL_EXPR)
-        self.add(branch)
-        return [branch]
+        self.add(Branch(value, true, false, Branch.BOOL_EXPR))
 
     def visit_nonlocal_decl(self, o: NonlocalDecl) -> Value:
         return INVALID_VALUE
@@ -1617,16 +1556,18 @@ class IRBuilder(NodeVisitor[Value]):
     def activate_block(self, block: BasicBlock) -> None:
         self.blocks[-1].append(block)
 
+    def goto_and_activate(self, block: BasicBlock) -> None:
+        self.add(Goto(block))
+        self.activate_block(block)
+
     def new_block(self) -> BasicBlock:
         block = BasicBlock()
         self.activate_block(block)
         return block
 
     def goto_new_block(self) -> BasicBlock:
-        goto = Goto(INVALID_LABEL)
-        self.add(goto)
-        block = self.new_block()
-        goto.label = block
+        block = BasicBlock()
+        self.goto_and_activate(block)
         return block
 
     def leave(self) -> Tuple[List[BasicBlock], Environment, RType]:

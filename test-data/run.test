@@ -914,6 +914,104 @@ assert increment_attr_o(O()).x == 2
 assert increment_all_indices([1, 2, 3]) == [2, 3, 4]
 assert increment_all_keys({'a':1, 'b':2, 'c':3}) == {'a':2, 'b':3, 'c':4}
 
+[case testNestedFunctions]
+from typing import Callable
+
+def outer() -> Callable[[], object]:
+    def inner() -> object:
+        return None
+    return inner
+
+def first() -> Callable[[], Callable[[], str]]:
+    def second() -> Callable[[], str]:
+        def third() -> str:
+            return 'third: nested function'
+        return third
+    return second
+
+def uno(num: float) -> Callable[[str], str]:
+    def dos(s: str) -> str:
+        return s + '!'
+    return dos
+
+def eins(num: float) -> str:
+    def zwei(s: str) -> str:
+        return s + '?'
+    a = zwei('eins')
+    b = zwei('zwei')
+    return a
+
+def inner() -> str:
+    return 'inner: normal function'
+
+def second() -> str:
+    return 'second: normal function'
+
+def third() -> str:
+    return 'third: normal function'
+
+[file driver.py]
+from native import outer, inner, first, uno, eins, second, third
+print(outer()())
+print(inner())
+print(first()()())
+print(uno(5.0)('uno'))
+print(eins(4.0))
+print(second())
+print(third())
+[out]
+None
+inner: normal function
+third: nested function
+uno!
+eins?
+second: normal function
+third: normal function
+
+[case testControlFlowExprs]
+from typing import Tuple
+def foo() -> object:
+    print('foo')
+    return 'foo'
+def bar() -> object:
+    print('bar')
+    return 'bar'
+
+def f(b: bool) -> Tuple[object, object, object]:
+    x = foo() if b else bar()
+    y = b or foo()
+    z = b and foo()
+    return (x, y, z)
+def g() -> Tuple[object, object]:
+    return (foo() or bar(), foo() and bar())
+
+def nand(p: bool, q: bool) -> bool:
+    if not (p and q):
+        return True
+    return False
+[file driver.py]
+from native import f, g, nand
+assert f(True) == ('foo', True, 'foo')
+print()
+assert f(False) == ('bar', 'foo', False)
+print()
+assert g() == ('foo', 'bar')
+
+assert nand(True, True) == False
+assert nand(True, False) == True
+assert nand(False, True) == True
+assert nand(False, False) == True
+[out]
+foo
+foo
+
+bar
+foo
+
+foo
+foo
+bar
+
 [case testMultipleAssignment]
 from typing import Tuple, List, Any
 

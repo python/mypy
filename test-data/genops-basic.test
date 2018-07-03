@@ -235,7 +235,7 @@ def f(x, y):
     r1 :: int
 L0:
     r0 = x < y :: int
-    if not r0 goto L1 else goto L2 :: bool
+    if r0 goto L2 else goto L1 :: bool
 L1:
     r1 = 1
     x = r1
@@ -254,10 +254,10 @@ def f(x, y):
     r2 :: int
 L0:
     r0 = x < y :: int
-    if not r0 goto L1 else goto L3 :: bool
+    if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = x > y :: int
-    if not r1 goto L2 else goto L3 :: bool
+    if r1 goto L3 else goto L2 :: bool
 L2:
     r2 = 1
     x = r2

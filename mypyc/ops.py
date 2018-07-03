@@ -434,11 +434,6 @@ class BasicBlock:
         self.ops = []  # type: List[Op]
 
 
-# This is used for placeholder labels which aren't assigned yet (but will
-# be eventually. It's kind of a hack.
-INVALID_LABEL = BasicBlock(-88888)
-
-
 ERR_NEVER = 0  # Never generates an exception
 ERR_MAGIC = 1  # Generates magic value (c_error_value) based on target RType on exception
 ERR_FALSE = 2  # Generates false (bool) on exception
