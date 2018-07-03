@@ -1065,3 +1065,27 @@ class CallableTuple(Tuple[str, int]):
         return n
 
 [builtins fixtures/tuple.pyi]
+
+[case testTupleCompatibleWithSequence]
+from typing import Sequence
+s: Sequence[str]
+s = tuple()
+reveal_type(s) # E: Revealed type is 'builtins.tuple[builtins.str]'
+
+[builtins fixtures/tuple.pyi]
+
+[case testTupleInstanceCompatibleWithIterable]
+from typing import Iterable, Tuple
+x: Iterable[int] = ()
+y: Tuple[int, ...] = (1, 2, 3)
+x = y
+reveal_type(x) # E: Revealed type is 'builtins.tuple[builtins.int]'
+
+[builtins fixtures/tuple.pyi]
+
+[case testTupleTypeCompatibleWithIterable]
+from typing import Iterable, Tuple
+x: Iterable[int] = ()
+y: Tuple[int, int] = (1, 2)
+x = y
+reveal_type(x) # E: Revealed type is 'Tuple[builtins.int, builtins.int]'

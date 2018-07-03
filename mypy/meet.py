@@ -142,6 +142,17 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     if tup_overlap is not None:
         return tup_overlap
 
+    if isinstance(t, TupleType):
+        if isinstance(s, Instance) and is_subtype(t, s):
+            if all(is_overlapping_types(ti, si, use_promotions)
+                    for ti, si in zip(t.items, s.args)):
+                return True
+    if isinstance(s, TupleType):
+        if isinstance(t, Instance) and is_subtype(s, t):
+            if all(is_overlapping_types(ti, si, use_promotions)
+                    for ti, si in zip(s.items, t.args)):
+                return True
+
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Consider two classes non-disjoint if one is included in the mro
@@ -192,9 +203,8 @@ def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bo
                 if all(is_overlapping_types(ti, si, use_promotions)
                        for ti, si in zip(t.items, s.items)):
                     return True
-        # TupleType and non-tuples do not overlap
-        return False
-    # No tuples are involved here
+    # TupleType and non-tuples are handled later
+    # Otherwise, no tuples are involved
     return None
 
 
@@ -323,7 +333,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return TupleType(items, t.fallback)
         # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
         elif (isinstance(self.s, Instance) and
-              self.s.type.fullname() == 'builtins.tuple' and self.s.args):
+              (self.s.type.fullname() == 'builtins.tuple' or is_subtype(t, self.s))
+              and self.s.args):
             return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
         elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
             # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
