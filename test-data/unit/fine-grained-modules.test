@@ -762,7 +762,6 @@ main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 a.py:3: error: Name 'z' is not defined
-<ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name 'y' is not defined
 
 [case testRenameModule]
 import a
