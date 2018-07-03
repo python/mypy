@@ -27,8 +27,7 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Cast, Box, RType,
-    Value, Register,
+    Return, Op, Cast, Box, RType, Value, Register, AssignmentTargetRegister
 )
 
 

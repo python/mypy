@@ -21,6 +21,7 @@ from mypyc.test.testutil import (
 import pytest  # type: ignore  # no pytest in typeshed
 
 files = [
+    'run-functions.test',
     'run.test',
     'run-classes.test',
     'run-traits.test',

@@ -1,0 +1,188 @@
+[case testNestedFunctions]
+from typing import Callable
+
+def a() -> Callable[[], object]:
+    def inner() -> object:
+        return None
+    return inner
+
+def b() -> Callable[[], Callable[[], str]]:
+    def first() -> Callable[[], str]:
+        def second() -> str:
+            return 'b.first.second: nested function'
+        return second
+    return first
+
+def c(num: float) -> Callable[[str], str]:
+    def inner(s: str) -> str:
+        return s + '!'
+    return inner
+
+def d(num: float) -> str:
+    def inner(s: str) -> str:
+        return s + '?'
+    a = inner('one')
+    b = inner('two')
+    return a
+
+def e() -> int:
+    return 0
+
+def f() -> int:
+    def inner() -> int:
+        return e()
+    return inner()
+
+def g() -> Callable[[], Callable[[], int]]:
+    def inner() -> Callable[[], int]:
+        return e
+    return inner
+
+def h(num: int) -> int:
+    def inner() -> int:
+        return num
+    return inner()
+
+def i() -> int:
+    num = 3
+    def inner() -> int:
+        return num
+    return inner()
+
+def j(num: int) -> int:
+    x = 1
+    y = 2
+    def inner() -> int:
+        nonlocal x
+        x = 3
+        return num + x + y
+    return inner()
+
+def k() -> int:
+    num = 3
+    def inner() -> int:
+        nonlocal num
+        num = 5
+        return num
+    return inner() + num
+
+def l() -> int:
+    num = 3
+    def inner() -> int:
+        num = 5
+        return num
+    return inner() + num
+
+def m() -> Callable[[], int]:
+    num = 1
+    def inner() -> int:
+        num += 1
+        return num
+    num += 1
+    return inner
+
+def n() -> int:
+    x = 1
+    def add_one() -> None:
+        x += 1
+    def add_two() -> None:
+        x += 2
+    add_one()
+    add_two()
+    return x
+
+def triple(a: int) -> Callable[[], Callable[[int], int]]:
+    x = 1
+    def outer() -> Callable[[int], int]:
+        nonlocal x
+        x += 1
+        x += a
+        a += 1
+        def inner(b: int) -> int:
+            x += b
+            return x
+        return inner
+    return outer
+
+def if_else(flag: int) -> str:
+    if flag < 0:
+        def inner() -> str:
+            return 'if_else.inner: first definition'
+    elif flag > 0:
+        def inner() -> str:
+            return 'if_else.inner: second definition'
+    else:
+        def inner() -> str:
+            return 'if_else.inner: third definition'
+    return inner()
+
+def for_loop() -> int:
+    for i in range(5):
+        def inner(i: int) -> int:
+            return i
+        if i == 3:
+            return inner(i)
+    return 0
+
+def while_loop() -> int:
+    i = 0
+    while i < 5:
+        def inner(i: int) -> int:
+            return i
+        if i == 3:
+            return inner(i)
+        i += 1
+    return 0
+
+def outer() -> str:
+    return 'outer: normal function'
+
+def inner() -> str:
+    return 'inner: normal function'
+
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def outer(self, num: int) -> int:
+        y = 5
+        def inner() -> int:
+            return self.x + y + num
+        return inner()
+
+[file driver.py]
+from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, triple, if_else, for_loop, while_loop, outer, inner, A
+
+assert a()() == None
+assert b()()() == 'b.first.second: nested function'
+assert c(5.0)('c') == 'c!'
+assert d(4.0) == 'one?'
+assert e() == 0
+assert f() == 0
+assert g()()() == 0
+assert h(3) == 3
+assert i() == 3
+assert j(3) == 8
+assert k() == 10
+assert l() == 8
+assert m()() == 3
+assert n() == 4
+
+triple_outer = triple(2)
+triple_inner = triple_outer()
+
+assert triple_inner(4) == 8
+assert triple_inner(4) == 12
+assert triple_outer()(4) == 20
+
+assert if_else(-1) == 'if_else.inner: first definition'
+assert if_else(1) == 'if_else.inner: second definition'
+assert if_else(0) == 'if_else.inner: third definition'
+
+assert for_loop() == 3
+assert while_loop() == 3
+
+assert outer() == 'outer: normal function'
+assert inner() == 'inner: normal function'
+
+assert A(3).outer(4) == 12

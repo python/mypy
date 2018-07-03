@@ -250,13 +250,75 @@ class ROptional(RType):
         return hash(('optional', self.value_type))
 
 
+class AssignmentTarget(object):
+    type = None  # type: RType
+
+    @abstractmethod
+    def to_str(self, env: 'Environment') -> str:
+        raise NotImplementedError
+
+
+class AssignmentTargetRegister(AssignmentTarget):
+    """Register as assignment target"""
+
+    def __init__(self, register: 'Register') -> None:
+        self.register = register
+        self.type = register.type
+
+    def to_str(self, env: 'Environment') -> str:
+        return self.register.name
+
+
+class AssignmentTargetIndex(AssignmentTarget):
+    """base[index] as assignment target"""
+
+    def __init__(self, base: 'Value', index: 'Value') -> None:
+        self.base = base
+        self.index = index
+        # TODO: This won't be right for user-defined classes. Store the
+        #       lvalue type in mypy and remove this special case.
+        self.type = object_rprimitive
+
+    def to_str(self, env: 'Environment') -> str:
+        return '{}[{}]'.format(self.base.name, self.index.name)
+
+
+class AssignmentTargetAttr(AssignmentTarget):
+    """obj.attr as assignment target"""
+
+    def __init__(self, obj: 'Value', attr: str) -> None:
+        self.obj = obj
+        self.attr = attr
+        if isinstance(obj.type, RInstance):
+            self.obj_type = obj.type  # type: RType
+            self.type = obj.type.attr_type(attr)
+        else:
+            self.obj_type = object_rprimitive
+            self.type = object_rprimitive
+
+    def to_str(self, env: 'Environment') -> str:
+        return '{}.{}'.format(self.obj.to_str(env), self.attr)
+
+
+class AssignmentTargetTuple(AssignmentTarget):
+    """x, ..., y as assignment target"""
+
+    def __init__(self, items: List[AssignmentTarget]) -> None:
+        self.items = items
+        # The shouldn't be relevant, but provide it just in case.
+        self.type = object_rprimitive
+
+    def to_str(self, env: 'Environment') -> str:
+        return '({})'.format(', '.join(item.to_str(env) for item in self.items))
+
+
 class Environment:
     """Maintain the register symbol table and manage temp generation"""
 
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
         self.indexes = OrderedDict()  # type: Dict[Value, int]
-        self.symtable = {}  # type: Dict[SymbolNode, Register]
+        self.symtable = {}  # type: Dict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
 
     def regs(self) -> Iterable['Value']:
@@ -269,12 +331,22 @@ class Environment:
     def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':
         assert isinstance(symbol, SymbolNode)
         reg = Register(typ, symbol.line, is_arg = is_arg)
-
-        self.symtable[symbol] = reg
+        self.symtable[symbol] = AssignmentTargetRegister(reg)
         self.add(reg, symbol.name())
         return reg
 
-    def lookup(self, symbol: SymbolNode) -> 'Register':
+    def add_local_reg(self, symbol: SymbolNode,
+                      typ: RType, is_arg: bool = False) -> AssignmentTargetRegister:
+        self.add_local(symbol, typ, is_arg)
+        target = self.symtable[symbol]
+        assert isinstance(target, AssignmentTargetRegister)
+        return target
+
+    def add_target(self, symbol: SymbolNode, target: AssignmentTarget) -> AssignmentTarget:
+        self.symtable[symbol] = target
+        return target
+
+    def lookup(self, symbol: SymbolNode) -> AssignmentTarget:
         return self.symtable[symbol]
 
     def add_temp(self, typ: RType, is_arg: bool = False) -> 'Register':
@@ -1193,7 +1265,6 @@ class ClassIR:
 
     This also describes the runtime structure of native instances.
     """
-
     def __init__(self, name: str, module_name: str, is_trait: bool = False) -> None:
         self.name = name
         self.module_name = module_name
@@ -1254,6 +1325,9 @@ class ClassIR:
             if name in ir.methods:
                 return ir.methods[name]
         return None
+
+
+INVALID_CLASS = ClassIR('<INVALID_CLASS>', '')
 
 
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str]], str]

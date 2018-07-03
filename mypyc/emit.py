@@ -5,8 +5,8 @@ from typing import List, Set, Dict, Optional
 
 from mypyc.common import REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX
 from mypyc.ops import (
-    Environment, BasicBlock, Value, Register, RType, RTuple, RInstance, ROptional,
-    RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
+    Any, AssignmentTarget, Environment, BasicBlock, Value, Register, RType, RTuple, RInstance,
+    ROptional, RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_tuple_rprimitive, is_none_rprimitive,
     is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR
 )

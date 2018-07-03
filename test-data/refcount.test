@@ -658,7 +658,7 @@ L2:
     dec_ref r5 :: int
     goto L1
 L3:
-    r6 = no_err_occurred
+    r6 = no_err_occurred 
     r7 = None
     return r7
 L4:

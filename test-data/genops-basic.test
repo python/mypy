@@ -1021,130 +1021,414 @@ L0:
 [case testNestedFunctions]
 from typing import Callable
 
-def outer() -> Callable[[], str]:
-    def inner() -> str:
-        return 'inner: nested function'
+def a() -> Callable[[], object]:
+    def inner() -> object:
+        return None
     return inner
 
-def first() -> Callable[[], Callable[[], str]]:
-    def second() -> Callable[[], str]:
-        def third() -> str:
-            return 'third: nested function'
-        return third
-    return second
+def b() -> Callable[[], Callable[[], str]]:
+    def first() -> Callable[[], str]:
+        def second() -> str:
+            return 'b.first.second: nested function'
+        return second
+    return first
 
-def uno(num: float) -> Callable[[str], str]:
-    def dos(s: str) -> str:
+def c(num: float) -> Callable[[str], str]:
+    def inner(s: str) -> str:
         return s + '!'
-    return dos
+    return inner
 
-def eins(num: float) -> str:
-    def zwei(s: str) -> str:
+def d(num: float) -> str:
+    def inner(s: str) -> str:
         return s + '?'
-    a = zwei('eins')
-    b = zwei('zwei')
+    a = inner('one')
+    b = inner('two')
     return a
 
 def inner() -> str:
     return 'inner: normal function'
 
+def first() -> str:
+    return 'first: normal function'
+
 def second() -> str:
     return 'second: normal function'
-
-def third() -> str:
-    return 'third: normal function'
 [out]
-def inner_outer_obj.__call__(self):
-    self :: object
-    r0 :: str
+def inner_a_obj.__call__(self):
+    self :: inner_a_obj
+    r0 :: None
 L0:
-    r0 = unicode_0 :: static  ('inner: nested function')
+    r0 = None
     return r0
-def outer():
-    r0 :: str
+def a():
+    r0 :: a__env
+    r1 :: inner_a_obj
+    r2 :: bool
     inner :: object
 L0:
-    r0 = inner_outer_obj()
-    inner = r0
+    r0 = a__env()
+    r1 = inner_a_obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    inner = r1
     return inner
-def third_first_second_obj.__call__(self):
-    self :: object
+def second_b_first_obj.__call__(self):
+    self :: second_b_first_obj
     r0 :: str
 L0:
-    r0 = unicode_1 :: static  ('third: nested function')
+    r0 = unicode_0 :: static  ('b.first.second: nested function')
     return r0
-def second_first_obj.__call__(self):
-    self :: object
-    r0 :: str
-    third :: object
+def first_b_obj.__call__(self):
+    self :: first_b_obj
+    r0 :: first_b_env
+    r1 :: b__env
+    r2 :: bool
+    r3 :: second_b_first_obj
+    r4 :: bool
+    second :: object
 L0:
-    r0 = third_first_second_obj()
-    third = r0
-    return third
-def first():
-    r0, second :: object
-L0:
-    r0 = second_first_obj()
-    second = r0
+    r0 = first_b_env()
+    r1 = self.__mypyc_env__
+    r0.__mypyc_env__ = r1; r2 = is_error
+    r3 = second_b_first_obj()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    second = r3
     return second
-def dos_uno_obj.__call__(self, s):
-    self :: object
+def b():
+    r0 :: b__env
+    r1 :: first_b_obj
+    r2 :: bool
+    first :: object
+L0:
+    r0 = b__env()
+    r1 = first_b_obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    first = r1
+    return first
+def inner_c_obj.__call__(self, s):
+    self :: inner_c_obj
     s, r0, r1 :: str
 L0:
-    r0 = unicode_2 :: static  ('!')
+    r0 = unicode_1 :: static  ('!')
     r1 = s + r0
     return r1
-def uno(num):
+def c(num):
     num :: float
-    r0 :: str
-    dos :: object
+    r0 :: c__env
+    r1 :: bool
+    r2 :: inner_c_obj
+    r3 :: bool
+    inner :: object
 L0:
-    r0 = dos_uno_obj()
-    dos = r0
-    return dos
-def zwei_eins_obj.__call__(self, s):
-    self :: object
+    r0 = c__env()
+    r0.num = num; r1 = is_error
+    r2 = inner_c_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    inner = r2
+    return inner
+def inner_d_obj.__call__(self, s):
+    self :: inner_d_obj
     s, r0, r1 :: str
 L0:
-    r0 = unicode_3 :: static  ('?')
+    r0 = unicode_2 :: static  ('?')
     r1 = s + r0
     return r1
-def eins(num):
+def d(num):
     num :: float
-    r0 :: str
-    zwei :: object
-    a, r1 :: str
-    r2 :: object
-    r3, b, r4 :: str
+    r0 :: d__env
+    r1 :: bool
+    r2 :: inner_d_obj
+    r3 :: bool
+    inner :: object
+    r4 :: str
     r5 :: object
     r6 :: str
+    r7 :: bool
+    r8 :: str
+    r9 :: object
+    r10 :: str
+    r11 :: bool
+    r12 :: str
 L0:
-    r0 = zwei_eins_obj()
-    zwei = r0
-    r1 = unicode_4 :: static  ('eins')
-    r2 = py_call(zwei, r1)
-    r3 = cast(str, r2)
-    a = r3
-    r4 = unicode_5 :: static  ('zwei')
-    r5 = py_call(zwei, r4)
+    r0 = d__env()
+    r0.num = num; r1 = is_error
+    r2 = inner_d_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    inner = r2
+    r4 = unicode_3 :: static  ('one')
+    r5 = py_call(inner, r4)
     r6 = cast(str, r5)
-    b = r6
-    return a
+    r0.a = r6; r7 = is_error
+    r8 = unicode_4 :: static  ('two')
+    r9 = py_call(inner, r8)
+    r10 = cast(str, r9)
+    r0.b = r10; r11 = is_error
+    r12 = r0.a
+    return r12
 def inner():
     r0 :: str
 L0:
-    r0 = unicode_6 :: static  ('inner: normal function')
+    r0 = unicode_5 :: static  ('inner: normal function')
+    return r0
+def first():
+    r0 :: str
+L0:
+    r0 = unicode_6 :: static  ('first: normal function')
     return r0
 def second():
     r0 :: str
 L0:
     r0 = unicode_7 :: static  ('second: normal function')
     return r0
-def third():
+
+[case testFreeVars]
+from typing import Callable
+
+def a(num: int) -> int:
+    def inner() -> int:
+        return num
+    return inner()
+
+def b() -> int:
+    num = 3
+    def inner() -> int:
+        nonlocal num
+        num = 4
+        foo = 6
+        return num
+    return inner() + num
+
+def c(flag: bool) -> str:
+    if flag:
+        def inner() -> str:
+            return 'f.inner: first definition'
+    else:
+        def inner() -> str:
+            return 'f.inner: second definition'
+    return inner()
+    
+[out]
+def inner_a_obj.__call__(self):
+    self :: inner_a_obj
+    r0 :: a__env
+    r1 :: int
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.num
+    return r1
+def a(num):
+    num :: int
+    r0 :: a__env
+    r1 :: bool
+    r2 :: inner_a_obj
+    r3 :: bool
+    inner, r4 :: object
+    r5 :: int
+L0:
+    r0 = a__env()
+    r0.num = num; r1 = is_error
+    r2 = inner_a_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    inner = r2
+    r4 = py_call(inner)
+    r5 = unbox(int, r4)
+    return r5
+def inner_b_obj.__call__(self):
+    self :: inner_b_obj
+    r0 :: b__env
+    r1 :: int
+    r2 :: bool
+    foo, r3 :: int
+    r4 :: b__env
+    r5 :: int
+L0:
+    r0 = self.__mypyc_env__
+    r1 = 4
+    r0.num = r1; r2 = is_error
+    r3 = 6
+    foo = r3
+    r4 = self.__mypyc_env__
+    r5 = r4.num
+    return r5
+def b():
+    r0 :: b__env
+    r1 :: int
+    r2 :: bool
+    r3 :: inner_b_obj
+    r4 :: bool
+    inner, r5 :: object
+    r6, r7, r8 :: int
+L0:
+    r0 = b__env()
+    r1 = 3
+    r0.num = r1; r2 = is_error
+    r3 = inner_b_obj()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    inner = r3
+    r5 = py_call(inner)
+    r6 = unbox(int, r5)
+    r7 = r0.num
+    r8 = r6 + r7 :: int
+    return r8
+def inner_c_obj.__call__(self):
+    self :: inner_c_obj
     r0 :: str
 L0:
-    r0 = unicode_8 :: static  ('third: normal function')
+    r0 = unicode_0 :: static  ('f.inner: first definition')
     return r0
+def inner_c_obj_0.__call__(self):
+    self :: inner_c_obj_0
+    r0 :: str
+L0:
+    r0 = unicode_1 :: static  ('f.inner: second definition')
+    return r0
+def c(flag):
+    flag :: bool
+    r0 :: c__env
+    r1, r2 :: bool
+    r3 :: inner_c_obj
+    r4 :: bool
+    inner :: object
+    r5 :: inner_c_obj_0
+    r6 :: bool
+    r7 :: object
+    r8 :: str
+L0:
+    r0 = c__env()
+    r0.flag = flag; r1 = is_error
+    r2 = r0.flag
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = inner_c_obj()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    inner = r3
+    goto L3
+L2:
+    r5 = inner_c_obj_0()
+    r5.__mypyc_env__ = r0; r6 = is_error
+    inner = r5
+L3:
+    r7 = py_call(inner)
+    r8 = cast(str, r7)
+    return r8
+
+[case testSpecialNestedd]
+def a() -> int:
+    x = 1
+    def b() -> int:
+        x += 1        
+        def c() -> int:
+            return x
+        return c()
+    return b()
+
+[out]
+def c_a_b_obj.__call__(self):
+    self :: c_a_b_obj
+    r0 :: b_a_env
+    r1 :: a__env
+    r2 :: int
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_env__
+    r2 = r1.x
+    return r2
+def b_a_obj.__call__(self):
+    self :: b_a_obj
+    r0 :: b_a_env
+    r1 :: a__env
+    r2 :: bool
+    r3 :: a__env
+    r4, r5, r6 :: int
+    r7 :: bool
+    r8 :: c_a_b_obj
+    r9 :: bool
+    c, r10 :: object
+    r11 :: int
+L0:
+    r0 = b_a_env()
+    r1 = self.__mypyc_env__
+    r0.__mypyc_env__ = r1; r2 = is_error
+    r3 = self.__mypyc_env__
+    r4 = 1
+    r5 = r3.x
+    r6 = r5 + r4 :: int
+    r3.x = r6; r7 = is_error
+    r8 = c_a_b_obj()
+    r8.__mypyc_env__ = r0; r9 = is_error
+    c = r8
+    r10 = py_call(c)
+    r11 = unbox(int, r10)
+    return r11
+def a():
+    r0 :: a__env
+    r1 :: int
+    r2 :: bool
+    r3 :: b_a_obj
+    r4 :: bool
+    b, r5 :: object
+    r6 :: int
+L0:
+    r0 = a__env()
+    r1 = 1
+    r0.x = r1; r2 = is_error
+    r3 = b_a_obj()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    b = r3
+    r5 = py_call(b)
+    r6 = unbox(int, r5)
+    return r6
+
+[case testNestedFunctionInsideStatements]
+def f(flag: bool) -> str:
+    if flag:
+        def inner() -> str:
+            return 'f.inner: first definition'
+    else:
+        def inner() -> str:
+            return 'f.inner: second definition'
+    return inner()
+[out]
+def inner_f_obj.__call__(self):
+    self :: inner_f_obj
+    r0 :: str
+L0:
+    r0 = unicode_0 :: static  ('f.inner: first definition')
+    return r0
+def inner_f_obj_0.__call__(self):
+    self :: inner_f_obj_0
+    r0 :: str
+L0:
+    r0 = unicode_1 :: static  ('f.inner: second definition')
+    return r0
+def f(flag):
+    flag :: bool
+    r0 :: f__env
+    r1, r2 :: bool
+    r3 :: inner_f_obj
+    r4 :: bool
+    inner :: object
+    r5 :: inner_f_obj_0
+    r6 :: bool
+    r7 :: object
+    r8 :: str
+L0:
+    r0 = f__env()
+    r0.flag = flag; r1 = is_error
+    r2 = r0.flag
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = inner_f_obj()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    inner = r3
+    goto L3
+L2:
+    r5 = inner_f_obj_0()
+    r5.__mypyc_env__ = r0; r6 = is_error
+    inner = r5
+L3:
+    r7 = py_call(inner)
+    r8 = cast(str, r7)
+    return r8
 
 [case testObjectAsBoolean]
 from typing import List
