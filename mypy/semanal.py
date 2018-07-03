@@ -855,6 +855,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         """
         concrete = set()  # type: Set[str]
         abstract = []  # type: List[str]
+        abstract_in_this_class = []  # type: List[str]
         for base in typ.mro:
             for name, symnode in base.names.items():
                 node = symnode.node
@@ -871,12 +872,30 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if fdef.is_abstract and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                        if base is typ:
+                            abstract_in_this_class.append(name)
                 elif isinstance(node, Var):
                     if node.is_abstract_var and name not in concrete:
                         typ.is_abstract = True
                         abstract.append(name)
+                        if base is typ:
+                            abstract_in_this_class.append(name)
                 concrete.add(name)
+        # In stubs, abstract classes need to be explicitly marked because it is too
+        # easy to accidentally leave a concrete class abstract by forgetting to
+        # implement some methods.
         typ.abstract_attributes = sorted(abstract)
+        if not self.is_stub_file:
+            return
+        if (typ.declared_metaclass and typ.declared_metaclass.type.fullname() == 'abc.ABCMeta'):
+            return
+        if typ.is_protocol:
+            return
+        if abstract and not abstract_in_this_class:
+            attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
+            self.fail("Class {} has abstract attributes {}".format(typ.fullname(), attrs), typ)
+            self.note("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
+                      typ)
 
     def setup_type_promotion(self, defn: ClassDef) -> None:
         """Setup extra, ad-hoc subtyping relationships between classes (promotion).
@@ -1386,19 +1405,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # If it is still not resolved, check for a module level __getattr__
             if (module and not node and (module.is_stub or self.options.python_version >= (3, 7))
                     and '__getattr__' in module.names):
-                getattr_defn = module.names['__getattr__']
-                if isinstance(getattr_defn.node, (FuncDef, Var)):
-                    if isinstance(getattr_defn.node.type, CallableType):
-                        typ = getattr_defn.node.type.ret_type
-                    else:
-                        typ = AnyType(TypeOfAny.from_error)
-                    if as_id:
-                        name = as_id
-                    else:
-                        name = id
-                    ast_node = Var(name, type=typ)
-                    symbol = SymbolTableNode(GDEF, ast_node)
-                    self.add_symbol(name, symbol, imp)
+                name = as_id if as_id else id
+                if self.type:
+                    fullname = self.type.fullname() + "." + name
+                else:
+                    fullname = self.qualified_name(name)
+                gvar = self.create_getattr_var(module.names['__getattr__'], name, fullname)
+                if gvar:
+                    self.add_symbol(name, gvar, imp)
                     continue
             if node and node.kind != UNBOUND_IMPORTED and not node.module_hidden:
                 if not node:
@@ -3064,7 +3078,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         n = names.get(parts[i], None)
                         if n and isinstance(n.node, ImportedName):
                             n = self.dereference_module_cross_ref(n)
+                        elif '__getattr__' in names:
+                            gvar = self.create_getattr_var(names['__getattr__'],
+                                                           parts[i], parts[i])
+                            if gvar:
+                                names[name] = gvar
+                                n = gvar
                     # TODO: What if node is Var or FuncDef?
+                    # Currently, missing these cases results in controversial behavior, when
+                    # lookup_qualified(x.y.z) returns Var(x).
                     if not n:
                         if not suppress_errors:
                             self.name_not_defined(name, ctx)
@@ -3076,6 +3098,22 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 n = self.rebind_symbol_table_node(n)
                 return n
             return None
+
+    def create_getattr_var(self, getattr_defn: SymbolTableNode,
+                           name: str, fullname: str) -> Optional[SymbolTableNode]:
+        """Create a dummy global symbol using __getattr__ return type.
+
+        If not possible, return None.
+        """
+        if isinstance(getattr_defn.node, (FuncDef, Var)):
+            if isinstance(getattr_defn.node.type, CallableType):
+                typ = getattr_defn.node.type.ret_type
+            else:
+                typ = AnyType(TypeOfAny.from_error)
+            v = Var(name, type=typ)
+            v._fullname = fullname
+            return SymbolTableNode(GDEF, v)
+        return None
 
     def rebind_symbol_table_node(self, n: SymbolTableNode) -> Optional[SymbolTableNode]:
         """If node refers to old version of module, return reference to new version.

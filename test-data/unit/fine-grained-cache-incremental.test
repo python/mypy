@@ -183,3 +183,28 @@ a.py:8: note:     x: expected "int", got "str"
 [rechecked]
 [out]
 ==
+
+[case testInvalidateCachePart]
+# cmd: mypy a1.py a2.py b.py p/__init__.py p/c.py
+[file a1.py]
+import p
+from b import x
+from p.c import C
+
+[file a2.py]
+import p
+from b import x
+from p.c import C
+
+[file b.py]
+x = 10
+
+[file p/__init__.py]
+[file p/c.py]
+class C: pass
+
+[delete ../.mypy_cache/3.6/b.meta.json.2]
+[delete ../.mypy_cache/3.6/p/c.meta.json.2]
+
+[out]
+==

@@ -1277,3 +1277,31 @@ def d() -> Dict[int, int]:
     return {}
 [out]
 _testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+
+[case testLoadsOfOverloads]
+from typing import overload, Any, TypeVar, Iterable, List, Dict, Callable, Union
+
+S = TypeVar('S')
+T = TypeVar('T')
+
+@overload
+def simple_map() -> None: ...
+@overload
+def simple_map(func: Callable[[T], S], one: Iterable[T]) -> S: ...
+@overload
+def simple_map(func: Callable[..., S], *iterables: Iterable[Any]) -> S: ...
+def simple_map(*args): pass
+
+def format_row(*entries: object) -> str: pass
+
+class DateTime: pass
+JsonBlob = Dict[str, Any]
+Column = Union[List[str], List[int], List[bool], List[float], List[DateTime], List[JsonBlob]]
+
+def print_custom_table() -> None:
+    a = None  # type: Column
+
+    for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
+        reveal_type(row)
+[out]
+_testLoadsOfOverloads.py:24: error: Revealed type is 'builtins.str*'
