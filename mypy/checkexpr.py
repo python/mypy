@@ -63,7 +63,9 @@ ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, M
                       None]
 
 # Maximum nesting level for math union in overloads, setting this to large values
-# may cause performance issues.
+# may cause performance issues. The reason is that although union math algorithm we use
+# nicely captures most corner cases, its worst case complexity is exponential,
+# see https://github.com/python/mypy/pull/5255#discussion_r196896335 for discussion.
 MAX_UNIONS = 5
 
 
@@ -1173,6 +1175,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # gives a narrower type.
                 if unioned_return:
                     returns, inferred_types = zip(*unioned_return)
+                    # Note that we use `union_overload_matches` instead of just returning
+                    # a union of inferred callables because for example a call
+                    # Union[int -> int, str -> str](Union[int, str]) is invalid and
+                    # we don't want to introduce internal inconsistencies.
                     unioned_result = (UnionType.make_simplified_union(list(returns),
                                                                       context.line,
                                                                       context.column),
@@ -1398,7 +1404,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if level >= MAX_UNIONS:
             raise TooManyUnions
 
-        # Step 2: Find position of the first union in arguments. Return the normal infered
+        # Step 2: Find position of the first union in arguments. Return the normal inferred
         # type if no more unions left.
         for idx, typ in enumerate(arg_types):
             if self.real_union(typ):
@@ -1436,20 +1442,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                     object_type, context, arg_messages,
                                                     level + 1)
             if sub_result is not None:
-                res_items.append(sub_result)
+                res_items.extend(sub_result)
             else:
                 # Some item doesn't match, return soon.
                 return None
 
-        # Step 5: If spliting succeeded, then flatten union results into a single
-        # list of unique items.
+        # Step 5: If splitting succeeded, then filter out duplicate items before returning.
         seen = set()  # type: Set[Tuple[Type, Type]]
         result = []
-        for sub_result in res_items:
-            for pair in sub_result:
-                if pair not in seen:
-                    seen.add(pair)
-                    result.append(pair)
+        for pair in res_items:
+            if pair not in seen:
+                seen.add(pair)
+                result.append(pair)
         return result
 
     def real_union(self, typ: Type) -> bool:
@@ -1472,7 +1476,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Accepts a list of overload signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
 
-        If there is at least one non-callabe type, return Any (this can happen if there is
+        If there is at least one non-callable type, return Any (this can happen if there is
         an ambiguity because of Any in arguments).
         """
         assert types, "Trying to merge no callables"
