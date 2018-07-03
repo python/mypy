@@ -690,16 +690,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = self.analyze_type_type_callee(item.upper_bound,
                                                    context)  # type: Optional[Type]
             if isinstance(callee, CallableType):
-                if callee.is_generic():
-                    callee = None
-                else:
-                    callee = callee.copy_modified(ret_type=item)
+                callee = callee.copy_modified(ret_type=item)
             elif isinstance(callee, Overloaded):
-                if callee.items()[0].is_generic():
-                    callee = None
-                else:
-                    callee = Overloaded([c.copy_modified(ret_type=item)
-                                         for c in callee.items()])
+                callee = Overloaded([c.copy_modified(ret_type=item)
+                                     for c in callee.items()])
             if callee:
                 return callee
 
