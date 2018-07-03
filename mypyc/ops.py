@@ -21,6 +21,7 @@ from collections import OrderedDict
 from mypy.nodes import SymbolNode, Var, FuncDef
 
 from mypyc.namegen import NameGenerator
+from mypyc.common import TOP_LEVEL_NAME
 
 
 T = TypeVar('T')
@@ -1471,6 +1472,10 @@ def format_func(fn: FuncIR) -> List[str]:
     code = format_blocks(fn.blocks, fn.env)
     lines.extend(code)
     return lines
+
+
+def is_empty_module_top_level(fn: FuncIR) -> bool:
+    return fn.name == TOP_LEVEL_NAME and len(fn.blocks) == 1 and len(fn.blocks[0].ops) == 2
 
 
 class RTypeVisitor(Generic[T]):

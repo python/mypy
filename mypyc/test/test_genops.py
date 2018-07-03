@@ -13,7 +13,7 @@ from mypy.options import Options
 from mypy import experiments
 
 from mypyc import genops
-from mypyc.ops import format_func
+from mypyc.ops import format_func, FuncIR, is_empty_module_top_level
 
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
@@ -67,6 +67,9 @@ class TestGenOps(MypycDataSuite):
                     module = modules[0][1]
                     actual = []
                     for fn in module.functions:
+                        if is_empty_module_top_level(fn):
+                            # Skip trivial module top levels that only return.
+                            continue
                         actual.extend(format_func(fn))
 
             assert_test_output(testcase, actual, 'Invalid source code output',

@@ -352,3 +352,27 @@ def f2() -> int:
 from native import f1
 
 assert f1() == 2
+
+[case testImportCycleWithTopLevelStatements]
+import other
+x = 1
+print(x)
+
+[file other.py]
+import native
+x = 2
+print(x)
+
+[file driver.py]
+import other
+print('-')
+import native
+print('>', native.x)
+print('>', other.x)
+
+[out]
+1
+2
+-
+> 1
+> 2

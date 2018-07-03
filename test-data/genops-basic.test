@@ -1559,3 +1559,65 @@ L2:
     return r3
 L3:
     unreachable
+
+[case testModuleTopLevel]
+x = 1
+print(x)
+
+def f() -> None:
+    print(x)
+[out]
+def f():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: int
+    r4 :: object
+    r5 :: str
+    r6, r7, r8 :: object
+    r9, r10 :: None
+L0:
+    r0 = __main__.globals :: static
+    r1 = unicode_0 :: static  ('x')
+    r2 = r0[r1] :: dict
+    r3 = unbox(int, r2)
+    r4 = builtins.module :: static
+    r5 = unicode_1 :: static  ('print')
+    r6 = getattr r4, r5
+    r7 = box(int, r3)
+    r8 = py_call(r6, r7)
+    r9 = cast(None, r8)
+    r10 = None
+    return r10
+def __top_level__():
+    r0 :: object
+    r1 :: str
+    r2 :: int
+    r3 :: object
+    r4 :: bool
+    r5 :: object
+    r6 :: str
+    r7 :: object
+    r8 :: int
+    r9 :: object
+    r10 :: str
+    r11, r12, r13 :: object
+    r14, r15 :: None
+L0:
+    r0 = __main__.globals :: static
+    r1 = unicode_0 :: static  ('x')
+    r2 = 1
+    r3 = box(int, r2)
+    r4 = r0.__setitem__(r1, r3) :: object
+    r5 = __main__.globals :: static
+    r6 = unicode_0 :: static  ('x')
+    r7 = r5[r6] :: dict
+    r8 = unbox(int, r7)
+    r9 = builtins.module :: static
+    r10 = unicode_1 :: static  ('print')
+    r11 = getattr r9, r10
+    r12 = box(int, r8)
+    r13 = py_call(r11, r12)
+    r14 = cast(None, r13)
+    r15 = None
+    return r15

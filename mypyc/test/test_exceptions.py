@@ -40,7 +40,8 @@ class TestExceptionTransform(MypycDataSuite):
             except CompileError as e:
                 actual = e.messages
             else:
-                assert len(ir) == 1, "Only 1 function definition expected per test case"
+                # Expect one function + module top level function.
+                assert len(ir) == 2, "Only 1 function definition expected per test case"
                 fn = ir[0]
                 insert_exception_handling(fn)
                 insert_ref_count_opcodes(fn)

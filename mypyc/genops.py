@@ -37,7 +37,7 @@ from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
 from mypy.checkmember import bind_self
 
-from mypyc.common import ENV_ATTR_NAME, MAX_SHORT_INT
+from mypyc.common import ENV_ATTR_NAME, MAX_SHORT_INT, TOP_LEVEL_NAME
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
@@ -373,10 +373,19 @@ class IRBuilder(NodeVisitor[Value]):
             ir = self.mapper.type_to_ir[cls.info]
             self.classes.append(ir)
 
-        # Generate ops.
         self.current_module_name = mypyfile.fullname()
+        self.enter('<top level>')
+
+        # Generate ops.
         for node in mypyfile.defs:
             node.accept(self)
+        self.maybe_add_implicit_return()
+
+        # Generate special function representing module top level.
+        blocks, env, ret_type = self.leave()
+        sig = FuncSignature([], none_rprimitive)
+        func_ir = FuncIR(TOP_LEVEL_NAME, None, self.module_name, sig, blocks, env)
+        self.functions.append(func_ir)
 
         return INVALID_VALUE
 
@@ -521,8 +530,8 @@ class IRBuilder(NodeVisitor[Value]):
         self.func_infos.append(func_info)
 
         # If there is more than one environment in the environment stack, then we are visiting a
-        # non-global function.
-        func_info.is_nested = len(self.environments) > 1
+        # non-global function (the top-most environment is for the module top level).
+        func_info.is_nested = len(self.environments) > 2
         func_info.contains_nested = self.contains_func_def(fdef)
 
         namespace = self.gen_func_ns()
@@ -540,11 +549,7 @@ class IRBuilder(NodeVisitor[Value]):
         self.ret_types[-1] = sig.ret_type
 
         fdef.body.accept(self)
-
-        if is_none_rprimitive(self.ret_types[-1]) or is_object_rprimitive(self.ret_types[-1]):
-            self.add_implicit_return()
-        else:
-            self.add_implicit_unreachable()
+        self.maybe_add_implicit_return()
 
         blocks, env, ret_type = self.leave()
 
@@ -556,6 +561,13 @@ class IRBuilder(NodeVisitor[Value]):
         self.func_infos.pop()
 
         return func
+
+    def maybe_add_implicit_return(self) -> None:
+        if (is_none_rprimitive(self.ret_types[-1]) or
+                is_object_rprimitive(self.ret_types[-1])):
+            self.add_implicit_return()
+        else:
+            self.add_implicit_unreachable()
 
     def visit_func_def(self, fdef: FuncDef) -> Value:
         self.functions.append(self.gen_func_def(fdef, self.mapper.fdef_to_sig(fdef)))
@@ -618,30 +630,38 @@ class IRBuilder(NodeVisitor[Value]):
     def get_assignment_target(self, lvalue: Lvalue) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
             # Assign to local variable.
-            assert lvalue.kind == LDEF
             assert isinstance(lvalue.node, SymbolNode)  # TODO: Can this fail?
-            if lvalue.node not in self.environment.symtable:
-                fn_info = self.func_infos[-1]
-                if fn_info.is_nested:
-                    target = self.load_from_outer_scope(lvalue.node)
-                    if target:
-                        return target
+            if lvalue.kind == LDEF:
+                if lvalue.node not in self.environment.symtable:
+                    fn_info = self.func_infos[-1]
+                    if fn_info.is_nested:
+                        target = self.load_from_outer_scope(lvalue.node)
+                        if target:
+                            return target
 
-                if fn_info.contains_nested:
-                    # First, define a new variable in the current function's environment class.
-                    # Next, define a target that refers to the newly defined variable in that
-                    # environment class. Add the target to the table containing class environment
-                    # variables, as well as the current environment.
-                    fn_info.env_class.attributes[lvalue.node.name()] = self.node_type(lvalue)
-                    target = AssignmentTargetAttr(fn_info.env_class_val, lvalue.node.name())
-                    return self.environment.add_target(lvalue.node, target)
+                    if fn_info.contains_nested:
+                        # First, define a new variable in the current
+                        # function's environment class.  Next, define a target
+                        # that refers to the newly defined variable in that
+                        # environment class. Add the target to the table
+                        # containing class environment variables, as well as
+                        # the current environment.
+                        fn_info.env_class.attributes[lvalue.node.name()] = self.node_type(lvalue)
+                        target = AssignmentTargetAttr(fn_info.env_class_val, lvalue.node.name())
+                        return self.environment.add_target(lvalue.node, target)
 
-                # If the function neither is nested nor contains a nested function, then define a
-                # new local variable.
-                return self.environment.add_local_reg(lvalue.node, self.node_type(lvalue))
+                    # If the function neither is nested nor contains a nested
+                    # function, then define a new local variable.
+                    return self.environment.add_local_reg(lvalue.node, self.node_type(lvalue))
+                else:
+                    # Assign to a previously defined variable.
+                    return self.environment.lookup(lvalue.node)
+            elif lvalue.kind == GDEF:
+                globals_dict = self.load_globals_dict()
+                name = self.load_static_unicode(lvalue.name)
+                return AssignmentTargetIndex(globals_dict, name)
             else:
-                # Assign to a previously defined variable.
-                return self.environment.lookup(lvalue.node)
+                assert False, lvalue.kind
         elif isinstance(lvalue, IndexExpr):
             # Indexed assignment x[y] = e
             base = self.accept(lvalue.base)
@@ -1467,6 +1487,10 @@ class IRBuilder(NodeVisitor[Value]):
     def visit_pass_stmt(self, o: PassStmt) -> Value:
         return INVALID_VALUE
 
+    def visit_global_decl(self, o: GlobalDecl) -> Value:
+        # Pure declaration -- no runtime effect
+        return INVALID_VALUE
+
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr handled in CallExpr"
 
@@ -1510,9 +1534,6 @@ class IRBuilder(NodeVisitor[Value]):
         raise NotImplementedError
 
     def visit_generator_expr(self, o: GeneratorExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_global_decl(self, o: GlobalDecl) -> Value:
         raise NotImplementedError
 
     def visit_lambda_expr(self, o: LambdaExpr) -> Value:
@@ -1698,9 +1719,10 @@ class IRBuilder(NodeVisitor[Value]):
 
             # Traverse through the environment classes and call GetAttr until the environment that
             # contains the symbol is reached.
-            self.func_infos[index].env_class.attributes[symbol.name()] = rtype
+            func_index = index - 1  # Adjust for no func_info for module top-level
+            self.func_infos[func_index].env_class.attributes[symbol.name()] = rtype
             env = self.func_infos[-1].self_reg
-            for i in range(index, len(self.func_infos)):
+            for i in range(func_index, len(self.func_infos)):
                 env = self.add(GetAttr(env, ENV_ATTR_NAME, symbol.line))
             return AssignmentTargetAttr(env, symbol.name())
 
@@ -1733,7 +1755,8 @@ class IRBuilder(NodeVisitor[Value]):
 
     def gen_func_ns(self) -> str:
         """Generates a namespace for a nested function using its outer function names."""
-        return '_'.join(env.name for env in self.environments if env.name)
+        return '_'.join(env.name for env in self.environments
+                        if env.name and env.name != '<top level>')
 
     def setup_callable_class(self, fdef: FuncDef, namespace: str) -> ClassIR:
         """Generates a callable class representing a nested function and sets up the 'self'
@@ -1896,9 +1919,12 @@ class IRBuilder(NodeVisitor[Value]):
         if self.is_native_module_ref_expr(expr) and isinstance(expr.node, TypeInfo):
             assert expr.fullname is not None
             return self.load_native_type_object(expr.fullname)
-        _globals = self.add(LoadStatic(object_rprimitive, 'globals', self.module_name))
+        _globals = self.load_globals_dict()
         reg = self.load_static_unicode(expr.name)
         return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
+
+    def load_globals_dict(self) -> Value:
+        return self.add(LoadStatic(object_rprimitive, 'globals', self.module_name))
 
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""

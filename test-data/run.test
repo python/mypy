@@ -944,3 +944,53 @@ def f(x: List[Tuple[int, int]]) -> int:
 [file driver.py]
 from native import f
 assert f([(5, 6)]) == 11
+
+[case testModuleTopLevel]
+x = 1
+print(x)
+
+def f() -> None:
+    print(x + 1)
+
+def g() -> None:
+    global x
+    x = 77
+
+[file driver.py]
+import native
+native.f()
+native.x = 5
+native.f()
+native.g()
+print(native.x)
+
+[out]
+1
+2
+6
+77
+
+[case testExceptionAtModuleTopLevel]
+from typing import Any
+
+def f(x: int) -> None: pass
+
+y: Any = ''
+f(y)
+
+[file driver.py]
+import traceback
+try:
+    import native
+except TypeError:
+    traceback.print_exc()
+else:
+    assert False
+
+[out]
+Traceback (most recent call last):
+  File "tmp/driver.py", line 3, in <module>
+    import native
+  File "tmp/py/native.py", line 6, in <module>
+    f(y)
+TypeError: int object expected

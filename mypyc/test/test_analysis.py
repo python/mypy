@@ -55,7 +55,7 @@ class TestAnalysis(MypycDataSuite):
                 else:
                     modules = genops.build_ir([result.files['__main__']], result.types)
                     module = modules[0][1]
-                    assert len(module.functions) == 1, (
+                    assert len(module.functions) == 2, (
                         "Only 1 function definition expected per test case")
                     fn = module.functions[0]
                     actual = format_func(fn)

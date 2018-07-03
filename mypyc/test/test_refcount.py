@@ -40,7 +40,8 @@ class TestRefCountTransform(MypycDataSuite):
             except CompileError as e:
                 actual = e.messages
             else:
-                assert len(ir) == 1, "Only 1 function definition expected per test case"
+                # Expect one function + module top level function.
+                assert len(ir) == 2, "Only 1 function definition expected per test case"
                 fn = ir[0]
                 insert_ref_count_opcodes(fn)
                 actual = format_func(fn)
