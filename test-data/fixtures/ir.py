@@ -1,7 +1,10 @@
 # These builtins stubs are used implicitly in AST to IR generation
 # test cases.
 
-from typing import TypeVar, Generic, List, Iterator, Iterable, Sized, Dict
+from typing import (
+    TypeVar, Generic, List, Iterator, Iterable, Sized, Dict, Optional, Tuple, Any,
+    overload,
+)
 
 T = TypeVar('T')
 S = TypeVar('S')
@@ -11,7 +14,8 @@ class object:
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
 
-class type: pass
+class type:
+    def __init__(self, o: object) -> None: ...
 
 class ellipsis: pass
 
@@ -76,6 +80,12 @@ class dict(Generic[T, S]):
     def pop(self, x: int) -> T: pass
 
 class slice: pass
+
+class BaseException: pass
+
+class Exception(BaseException):
+    def __init__(self, message: Optional[str] = None) -> None: pass
+
 
 def id(o: object) -> int: pass
 def len(o: Sized) -> int: pass

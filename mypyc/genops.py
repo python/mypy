@@ -32,6 +32,7 @@ from mypy.nodes import (
 import mypy.nodes
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
+    TypeType, FunctionLike,
 )
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
@@ -56,7 +57,7 @@ from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
     none_op, iter_op, next_op, no_err_occurred_op, py_getattr_op, py_setattr_op,
     py_call_op, py_method_call_op, fast_isinstance_op, bool_op, new_slice_op,
-    is_none_op,
+    is_none_op, type_op, raise_exception_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -227,6 +228,8 @@ class Mapper:
                 value_type = typ.items[0]
             return ROptional(self.type_to_rtype(value_type))
         elif isinstance(typ, AnyType):
+            return object_rprimitive
+        elif isinstance(typ, TypeType):
             return object_rprimitive
         elif isinstance(typ, TypeVarType):
             # Erase type variable to upper bound.
@@ -1423,6 +1426,28 @@ class IRBuilder(NodeVisitor[Value]):
                 get_arg(expr.stride)]
         return self.primitive_op(new_slice_op, args, expr.line)
 
+    def visit_raise_stmt(self, s: RaiseStmt) -> Value:
+        assert s.expr is not None, "re-raise not implemented yet"
+        assert s.from_expr is None, "from_expr not implemented"
+
+        # TODO: Do we want to dynamically handle the case where the
+        # type is Any so we don't statically know what to do?
+        typ = self.types[s.expr]
+        if isinstance(typ, TypeType):
+            typ = typ.item
+        assert not isinstance(typ, AnyType), "can't raise Any"
+
+        if isinstance(typ, FunctionLike) and typ.is_type_obj():
+            etyp = self.accept(s.expr)
+            exc = self.primitive_op(py_call_op, [etyp], s.expr.line)
+        else:
+            exc = self.accept(s.expr)
+            etyp = self.primitive_op(type_op, [exc], s.expr.line)
+
+        self.primitive_op(raise_exception_op, [etyp, exc], s.line)
+        self.add(Unreachable())
+        return INVALID_VALUE
+
     def visit_pass_stmt(self, o: PassStmt) -> Value:
         return INVALID_VALUE
 
@@ -1494,9 +1519,6 @@ class IRBuilder(NodeVisitor[Value]):
         raise NotImplementedError
 
     def visit_print_stmt(self, o: PrintStmt) -> Value:
-        raise NotImplementedError
-
-    def visit_raise_stmt(self, o: RaiseStmt) -> Value:
         raise NotImplementedError
 
     def visit_reveal_expr(self, o: RevealExpr) -> Value:

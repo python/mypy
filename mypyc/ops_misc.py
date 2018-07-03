@@ -228,3 +228,18 @@ new_slice_op = func_op(
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = PySlice_New({args[0]}, {args[1]}, {args[2]});'))
+
+type_op = func_op(
+    'builtins.type',
+    arg_types=[object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_NEVER,
+    emit=simple_emit('{dest} = PyObject_Type({args[0]});'))
+
+# TODO: Making this raise conditionally is kind of hokey.
+raise_exception_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    format_str = 'raise_exception({args[0]}, {args[1]}); {dest} = 0',
+    emit=simple_emit('PyErr_SetObject({args[0]}, {args[1]}); {dest} = 0;'))

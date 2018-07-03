@@ -399,12 +399,32 @@ def f(x: List[int]) -> None:
 def g(x: List[int]) -> bool:
     x[5] = 2
     return True
+
+def r1() -> None:
+    q1()
+
+def q1() -> None:
+    raise Exception("test")
+
+def r2() -> None:
+    q2()
+
+def q2() -> None:
+    raise Exception
 [file driver.py]
-from native import f
+from native import f, r1, r2
 import traceback
 try:
     f([])
 except IndexError:
+    traceback.print_exc()
+try:
+    r1()
+except Exception:
+    traceback.print_exc()
+try:
+    r2()
+except Exception:
     traceback.print_exc()
 [out]
 Traceback (most recent call last):
@@ -415,6 +435,22 @@ Traceback (most recent call last):
   File "tmp/py/native.py", line 6, in g
     x[5] = 2
 IndexError: list assignment index out of range
+Traceback (most recent call last):
+  File "tmp/driver.py", line 8, in <module>
+    r1()
+  File "tmp/py/native.py", line 10, in r1
+    q1()
+  File "tmp/py/native.py", line 13, in q1
+    raise Exception("test")
+Exception: test
+Traceback (most recent call last):
+  File "tmp/driver.py", line 12, in <module>
+    r2()
+  File "tmp/py/native.py", line 16, in r2
+    q2()
+  File "tmp/py/native.py", line 19, in q2
+    raise Exception
+Exception
 
 [case testGenericEquality]
 def eq(a: object, b: object) -> bool:
