@@ -209,7 +209,7 @@ Our first attempt at writing this function might look like this:
         elif x2 is not None and y2 is not None:
             return DragEvent(x1, y1, x2, y2)
         else:
-            raise Exception("Bad arguments")
+            raise TypeError("Bad arguments")
 
 While this function signature works, it's too loose: it implies ``mouse_event``
 could return either object regardless of the number of arguments
@@ -254,7 +254,7 @@ to more accurately describe the function's behavior:
         elif x2 is not None and y2 is not None:
             return DragEvent(x1, y1, x2, y2)
         else:
-            raise Exception("Bad arguments")
+            raise TypeError("Bad arguments")
 
 This allows mypy to understand calls to ``mouse_event`` much more precisely.
 For example, mypy will understand that ``mouse_event(5, 25)`` will
@@ -319,7 +319,7 @@ function should be omitted: stubs do not contain runtime logic.
 .. note::
 
    While we can leave the variant body empty using the ``pass`` keyword,
-   the more common convention is to instead use the ellipse (``...``) literal.
+   the more common convention is to instead use the ellipsis (``...``) literal.
 
 Type checking calls to overloads
 --------------------------------
@@ -340,26 +340,26 @@ program:
     from typing import List, overload
 
     @overload
-    def summarize(data: List[int]) -> int: ...
+    def summarize(data: List[int]) -> float: ...
 
     @overload
     def summarize(data: List[str]) -> str: ...
 
     def summarize(data):
-        if len(data) == 0:
-            return 0
+        if not data:
+            return 0.0
         elif isinstance(data[0], int):
-            # Do int-specific code
+            # Do int specific code
         else:
             # Do str-specific code
 
-    # What is the type of 'output'? str or int?
+    # What is the type of 'output'? float or str?
     output = summarize([])
 
 The ``summarize([])`` call matches both variants: an empty list could
 be either a ``List[int]`` or a ``List[str]``. In this case, mypy
 will break the tie by picking the first matching variant: ``output``
-will have an inferred type of ``int``. The implementor is responsible
+will have an inferred type of ``float``. The implementor is responsible
 for making sure ``summarize`` breaks ties in the same way at runtime.
 
 There are however are two exceptions to the "pick the first match" rule.
@@ -381,7 +381,7 @@ matching variant returns:
 
     some_list: Union[List[int], List[str]]
 
-    # output3 is of type 'Union[int, str]'
+    # output3 is of type 'Union[float, str]'
     output3 = summarize(some_list)
 
 .. note::
@@ -482,11 +482,10 @@ when we try using it like so:
     some_obj: object = 42
     unsafe_func(some_obj) + " danger danger"  # Type checks, yet crashes at runtime!
 
-This program type checks according to the annotations, but will actually crash
-at runtime! Since ``some_obj`` is of type ``object``, mypy will decide that
-``unsafe_func`` must return something of type ``str`` and concludes the above will
-type check. But in reality, ``unsafe_func`` will return an int, causing the code
-to crash at runtime!
+Since ``some_obj`` is of type ``object``, mypy will decide that ``unsafe_func``
+must return something of type ``str`` and concludes the above will type check.
+But in reality, ``unsafe_func`` will return an int, causing the code to crash
+at runtime!
 
 To prevent these kinds of issues, mypy will detect and prohibit inherently unsafely
 overlapping overloads on a best-effort basis. Two variants are considered unsafely
@@ -512,7 +511,7 @@ suppose we modify the above snippet so it calls ``summarize`` instead of
 
 We run into a similar issue here. This program type checks if we look just at the
 annotations on the overloads. But since ``summarize(...)`` is designed to be biased
-towards returning an int when it receives an empty list, this program will actually
+towards returning a float when it receives an empty list, this program will actually
 crash during runtime.
 
 The reason mypy does not flag definitions like ``summarize`` as being potentially
