@@ -152,3 +152,41 @@ L1:
     return r4
 L2:
     return y
+
+[case testPartialOptionalType]
+def f(y: int) -> None:
+    x = None
+    if y == 1:
+        x = y
+    if x is not None:
+        y = x
+[out]
+def f(y):
+    y :: int
+    x :: optional[int]
+    r0 :: None
+    r1 :: int
+    r2 :: bool
+    r3 :: object
+    r4, r5 :: bool
+    r6 :: int
+    r7 :: None
+L0:
+    r0 = None
+    x = r0
+    r1 = 1
+    r2 = y == r1 :: int
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = box(int, y)
+    x = r3
+L2:
+    r4 = x is None
+    r5 = !r4
+    if r5 goto L3 else goto L4 :: bool
+L3:
+    r6 = unbox(int, x)
+    y = r6
+L4:
+    r7 = None
+    return r7

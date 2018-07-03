@@ -31,7 +31,7 @@ from mypy.nodes import (
 )
 import mypy.nodes
 from mypy.types import (
-    Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType,
+    Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
 )
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
@@ -233,6 +233,9 @@ class Mapper:
             # TODO: Erase to object if object has value restriction -- or union (once supported)?
             assert not typ.values, 'TypeVar with value restriction not supported'
             return self.type_to_rtype(typ.upper_bound)
+        elif isinstance(typ, PartialType):
+            assert typ.var.type is not None
+            return self.type_to_rtype(typ.var.type)
         assert False, '%s unsupported' % type(typ)
 
     def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:

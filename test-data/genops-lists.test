@@ -198,3 +198,24 @@ L3:
     goto L1
 L4:
     return l
+
+[case testPartialListType]
+def f() -> None:
+    x = []
+    x.append(1)
+[out]
+def f():
+    x, r0 :: list
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+    r4, r5 :: None
+L0:
+    r0 = []
+    x = r0
+    r1 = 1
+    r2 = box(int, r1)
+    r3 = x.append(r2) :: list
+    r4 = None
+    r5 = None
+    return r5
