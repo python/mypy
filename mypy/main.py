@@ -385,6 +385,9 @@ def process_options(args: List[str],
         '--no-site-packages', action='store_true',
         dest='special-opts:no_executable',
         help="do not search for installed PEP 561 compliant packages")
+    imports_group.add_argument(
+        '--no-silence-site-packages', action='store_true',
+        help="Do not silence errors in PEP 561 compliant installed packages")
 
     platform_group = parser.add_argument_group(
         title='platform configuration',

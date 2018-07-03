@@ -751,6 +751,7 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAddFileWhichImportsLibModuleWithErrors]
+# flags: --no-silence-site-packages
 import a
 a.x = 0
 [file a.py.2]
@@ -758,10 +759,11 @@ import broken
 x = broken.x
 z
 [out]
-main:1: error: Cannot find module named 'a'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Cannot find module named 'a'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 a.py:3: error: Name 'z' is not defined
+<ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name 'y' is not defined
 
 [case testRenameModule]
 import a

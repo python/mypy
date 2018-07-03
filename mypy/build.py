@@ -2368,11 +2368,12 @@ def find_module_and_diagnose(manager: BuildManager,
                     skipping_module(manager, caller_line, caller_state,
                                     id, path)
             raise ModuleNotFound
-        if os.path.isabs(path):
-            for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-                if commonpath([dir, path]) == dir:
-                    # Silence errors in site-package dirs and typeshed
-                    follow_imports = 'silent'
+        if not manager.options.no_silence_site_packages:
+            if os.path.isabs(path):
+                for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
+                    if commonpath([dir, path]) == dir:
+                        # Silence errors in site-package dirs and typeshed
+                        follow_imports = 'silent'
         return (path, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
