@@ -1225,17 +1225,13 @@ class D:
 [out]
 main:5: error: Revealed type is 'Any'
 main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variant(s):
-main:5: note:     @overload
+main:5: note: Possible overload variants:
 main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:5: note:     @overload
 main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
 main:6: error: Revealed type is 'Any'
 main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
-main:6: note: Possible overload variant(s):
-main:6: note:     @overload
+main:6: note: Possible overload variants:
 main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:6: note:     @overload
 main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
 
 
@@ -1335,10 +1331,8 @@ class D(Generic[T, V]):
 [out]
 main:5: error: Revealed type is 'Any'
 main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variant(s):
-main:5: note:     @overload
+main:5: note: Possible overload variants:
 main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
-main:5: note:     @overload
 main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
 
 
@@ -2134,10 +2128,9 @@ c = C(1)
 c.a # E: "C" has no attribute "a"
 C('', '')
 C('') # E: No overload variant of "C" matches argument type "str" \
-      # N: Possible overload variant(s): \
-      # N:     @overload \
+      # N: Possible overload variant: \
       # N:     def __new__(cls, foo: int) -> C \
-      # N:     <1 more overload(s) not shown>
+      # N:     <1 more non-matching overload not shown>
 [builtins fixtures/__new__.pyi]
 
 
@@ -2560,10 +2553,9 @@ u = new(User)
 [builtins fixtures/classmethod.pyi]
 [out]
 tmp/foo.pyi:16: error: No overload variant of "User" matches argument type "str"
-tmp/foo.pyi:16: note: Possible overload variant(s):
-tmp/foo.pyi:16: note:     @overload
+tmp/foo.pyi:16: note: Possible overload variant:
 tmp/foo.pyi:16: note:     def __init__(self, arg: int) -> U
-tmp/foo.pyi:16: note:     <1 more overload(s) not shown>
+tmp/foo.pyi:16: note:     <1 more non-matching overload not shown>
 tmp/foo.pyi:17: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -2778,10 +2770,8 @@ def f(a: Type[User]) -> None: pass
 def f(a: type) -> None: pass
 
 f(3)  # E: No overload variant of "f" matches argument type "int" \
-      # N: Possible overload variant(s): \
-      # N:     @overload \
+      # N: Possible overload variants: \
       # N:     def f(a: Type[User]) -> None \
-      # N:     @overload \
       # N:     def f(a: type) -> None
 [builtins fixtures/classmethod.pyi]
 [out]
@@ -2800,10 +2790,8 @@ def f(a: int) -> None: pass
 
 f(User)
 f(User())  # E: No overload variant of "f" matches argument type "User" \
-           # N: Possible overload variant(s): \
-           # N:     @overload \
+           # N: Possible overload variants: \
            # N:     def f(a: Type[User]) -> None \
-           # N:     @overload \
            # N:     def f(a: int) -> None
 [builtins fixtures/classmethod.pyi]
 [out]
@@ -2826,18 +2814,14 @@ def f(a: Type[B]) -> None: pass
 def f(a: int) -> None: pass
 
 f(A)  # E: No overload variant of "f" matches argument type "Type[A]" \
-      # N: Possible overload variant(s): \
-      # N:     @overload \
+      # N: Possible overload variants: \
       # N:     def f(a: Type[B]) -> None \
-      # N:     @overload \
       # N:     def f(a: int) -> None
 f(B)
 f(C)
 f(AType)  # E: No overload variant of "f" matches argument type "Type[A]" \
-          # N: Possible overload variant(s): \
-          # N:     @overload \
+          # N: Possible overload variants: \
           # N:     def f(a: Type[B]) -> None \
-          # N:     @overload \
           # N:     def f(a: int) -> None
 f(BType)
 f(CType)

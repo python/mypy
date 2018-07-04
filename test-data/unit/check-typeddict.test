@@ -907,16 +907,12 @@ from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
 d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
-        # N: Possible overload variant(s): \
-        # N:     @overload \
+        # N: Possible overload variants: \
         # N:     def get(self, k: str) -> object \
-        # N:     @overload \
         # N:     def [V] get(self, k: str, default: object) -> object
 d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
-                 # N: Possible overload variant(s): \
-                 # N:     @overload \
+                 # N: Possible overload variants: \
                  # N:     def get(self, k: str) -> object \
-                 # N:     @overload \
                  # N:     def [V] get(self, k: str, default: Union[int, V]) -> object
 x = d.get('z') # E: TypedDict "D" has no key 'z'
 reveal_type(x) # E: Revealed type is 'Any'
@@ -1216,10 +1212,8 @@ def f(x): pass
 
 a: A
 f(a)  # E: No overload variant of "f" matches argument type "A" \
-      # N: Possible overload variant(s): \
-      # N:     @overload \
+      # N: Possible overload variants: \
       # N:     def f(x: str) -> None \
-      # N:     @overload \
       # N:     def f(x: int) -> None
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]

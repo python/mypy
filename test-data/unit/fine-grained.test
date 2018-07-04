@@ -2113,10 +2113,8 @@ main:3: error: Revealed type is 'builtins.int'
 ==
 main:3: error: Revealed type is 'Any'
 main:3: error: No overload variant of "foo" of "Wrapper" matches argument type "int"
-main:3: note: Possible overload variant(s):
-main:3: note:     @overload
+main:3: note: Possible overload variants:
 main:3: note:     def foo(cls: Wrapper, x: int) -> int
-main:3: note:     @overload
 main:3: note:     def foo(cls: Wrapper, x: str) -> str
 
 [case testRefreshGenericClass]
@@ -6339,10 +6337,8 @@ def f(x):
 [out]
 ==
 main:3: error: No overload variant of "f" matches argument type "str"
-main:3: note: Possible overload variant(s):
-main:3: note:     @overload
+main:3: note: Possible overload variants:
 main:3: note:     def f(x: int) -> None
-main:3: note:     @overload
 main:3: note:     def f(x: C) -> int
 
 [case testOverloadsDeleted]
@@ -6453,10 +6449,8 @@ T = TypeVar('T', bound=str)
 [out]
 ==
 a.py:2: error: No overload variant of "f" matches argument type "int"
-a.py:2: note: Possible overload variant(s):
-a.py:2: note:     @overload
+a.py:2: note: Possible overload variants:
 a.py:2: note:     def f(x: C) -> None
-a.py:2: note:     @overload
 a.py:2: note:     def [c.T <: str] f(x: c.T) -> c.T
 
 [case testOverloadsGenericToNonGeneric]
@@ -6483,10 +6477,8 @@ class T: pass
 [out]
 ==
 a.py:2: error: No overload variant of "f" matches argument type "int"
-a.py:2: note: Possible overload variant(s):
-a.py:2: note:     @overload
+a.py:2: note: Possible overload variants:
 a.py:2: note:     def f(x: C) -> None
-a.py:2: note:     @overload
 a.py:2: note:     def f(x: T) -> T
 
 [case testOverloadsToNonOverloaded]
@@ -6643,10 +6635,9 @@ class C:
 [out]
 ==
 a.py:2: error: No overload variant of "B" matches argument type "int"
-a.py:2: note: Possible overload variant(s):
-a.py:2: note:     @overload
+a.py:2: note: Possible overload variant:
 a.py:2: note:     def __init__(self, x: str) -> B
-a.py:2: note:     <1 more overload(s) not shown>
+a.py:2: note:     <1 more non-matching overload not shown>
 
 [case testOverloadedToNormalMethodMetaclass]
 import a

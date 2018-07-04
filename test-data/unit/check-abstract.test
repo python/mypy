@@ -526,10 +526,8 @@ a = B() # type: A
 a.f(1)
 a.f('')
 a.f(B()) # E: No overload variant of "f" of "A" matches argument type "B" \
-         # N: Possible overload variant(s): \
-         # N:     @overload \
+         # N: Possible overload variants: \
          # N:     def f(self, x: int) -> int \
-         # N:     @overload \
          # N:     def f(self, x: str) -> str
 
 [case testOverloadedAbstractMethodWithAlternativeDecoratorOrder]
@@ -558,10 +556,8 @@ a = B() # type: A
 a.f(1)
 a.f('')
 a.f(B()) # E: No overload variant of "f" of "A" matches argument type "B" \
-         # N: Possible overload variant(s): \
-         # N:     @overload \
+         # N: Possible overload variants: \
          # N:     def f(self, x: int) -> int \
-         # N:     @overload \
          # N:     def f(self, x: str) -> str
 
 [case testOverloadedAbstractMethodVariantMissingDecorator1]

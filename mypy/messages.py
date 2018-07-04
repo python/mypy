@@ -771,12 +771,7 @@ class MessageBuilder:
             self.fail('No overload variant{} matches argument types {}'
                       .format(name_str, arg_types_str), context)
 
-        self.note('Possible overload variant(s):', context)
-        self.pretty_overload(plausible_targets,
-                             overload,
-                             context,
-                             offset=2,
-                             max_items=2)
+        self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -1217,13 +1212,13 @@ class MessageBuilder:
                         self.note(self.pretty_callable(exp), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(exp, Overloaded)
-                        self.pretty_overload(exp.items(), exp, context, OFFSET, MAX_ITEMS)
+                        self.pretty_overload(exp, context, OFFSET, MAX_ITEMS)
                     self.note('Got:', context, offset=OFFSET)
                     if isinstance(got, CallableType):
                         self.note(self.pretty_callable(got), context, offset=2 * OFFSET)
                     else:
                         assert isinstance(got, Overloaded)
-                        self.pretty_overload(got.items(), got, context, OFFSET, MAX_ITEMS)
+                        self.pretty_overload(got, context, OFFSET, MAX_ITEMS)
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
@@ -1243,18 +1238,49 @@ class MessageBuilder:
                           .format(supertype.type.name(), name), context)
         self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS)
 
-    def pretty_overload(self, targets: List[CallableType], func: Overloaded, context: Context,
+    def pretty_overload(self, func: Overloaded, context: Context,
                         offset: int, max_items: int) -> None:
-        if not targets:
-            targets = func.items()
+        targets = func.items()
         for item in targets[:max_items]:
             self.note('@overload', context, offset=2 * offset)
             self.note(self.pretty_callable(item), context, offset=2 * offset)
-        shown = min(max_items, len(targets))
-        max_available = len(func.items())
+
+        max_available = len(targets)
+        shown = min(max_items, max_available)
         if shown < max_available:
-            self.note('<{} more overload(s) not shown>'.format(max_available - shown),
-                      context, offset=2 * offset)
+            left = max_available - shown
+            msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
+            self.note(msg, context, offset=2 * offset)
+
+    def pretty_overload_matches(self,
+                                targets: List[CallableType],
+                                func: Overloaded,
+                                context: Context,
+                                offset: int,
+                                max_items: int) -> None:
+        if not targets:
+            targets = func.items()
+
+        shown = min(max_items, len(targets))
+        max_matching = len(targets)
+        max_available = len(func.items())
+
+        self.note('Possible overload variant{}:'.format(plural_s(shown)), context)
+        for item in targets[:max_items]:
+            self.note(self.pretty_callable(item), context, offset=2 * offset)
+
+        assert shown <= max_matching <= max_available
+        if shown < max_matching <= max_available:
+            left = max_matching - shown
+            msg = '<{} more matching overload{} not shown, out of {} total overloads>'.format(
+                left, plural_s(left), max_available)
+            self.note(msg, context, offset=2 * offset)
+        elif shown == max_matching < max_available:
+            left = max_available - shown
+            msg = '<{} more non-matching overload{} not shown>'.format(left, plural_s(left))
+            self.note(msg, context, offset=2 * offset)
+        else:
+            assert shown == max_matching == max_available
 
     def print_more(self, conflicts: Sequence[Any], context: Context,
                    offset: int, max_items: int) -> None:
@@ -1419,8 +1445,9 @@ def strip_quotes(s: str) -> str:
     return s
 
 
-def plural_s(s: Sequence[Any]) -> str:
-    if len(s) > 1:
+def plural_s(s: Union[int, Sequence[Any]]) -> str:
+    count = s if isinstance(s, int) else len(s)
+    if count > 1:
         return 's'
     else:
         return ''
