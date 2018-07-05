@@ -1089,3 +1089,18 @@ x: Iterable[int] = ()
 y: Tuple[int, int] = (1, 2)
 x = y
 reveal_type(x) # E: Revealed type is 'Tuple[builtins.int, builtins.int]'
+
+[case testTupleOverlapDifferentTuples]
+from typing import Optional, Tuple
+class A: pass
+class B: pass
+
+possibles: Tuple[int, Tuple[A]]
+x: Optional[Tuple[B]]
+
+if x in possibles:
+    reveal_type(x) # E: Revealed type is 'Union[Tuple[__main__.B], None]'
+else:
+    reveal_type(x) # E: Revealed type is 'Union[Tuple[__main__.B], None]'
+
+[builtins fixtures/tuple.pyi]
