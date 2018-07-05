@@ -32,7 +32,7 @@ from mypy.nodes import (
 import mypy.nodes
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
-    TypeType, FunctionLike,
+    TypeType, FunctionLike, Overloaded
 )
 from mypy.visitor import NodeVisitor
 from mypy.subtypes import is_named_instance
@@ -239,6 +239,8 @@ class Mapper:
         elif isinstance(typ, PartialType):
             assert typ.var.type is not None
             return self.type_to_rtype(typ.var.type)
+        elif isinstance(typ, Overloaded):
+            return object_rprimitive
         assert False, '%s unsupported' % type(typ)
 
     def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:

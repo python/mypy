@@ -1660,3 +1660,31 @@ L0:
     r14 = cast(None, r13)
     r15 = None
     return r15
+
+[case testCallOverloaded]
+import m
+def f() -> str:
+    return m.f(1)
+[file m.pyi]
+from typing import overload
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> int: ...
+[out]
+def f():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: int
+    r4, r5 :: object
+    r6 :: str
+L0:
+    r0 = m.module :: static
+    r1 = unicode_0 :: static  ('f')
+    r2 = getattr r0, r1
+    r3 = 1
+    r4 = box(int, r3)
+    r5 = py_call(r2, r4)
+    r6 = cast(str, r5)
+    return r6
