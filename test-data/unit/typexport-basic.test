@@ -1,7 +1,7 @@
 -- Test cases for exporting node types from the type checker.
 --
 -- Each test case consists of at least two sections.
--- The first section contains [case NAME-skip] followed by the input code,
+-- The first section contains [case NAME] followed by the input code,
 -- while the second section contains [out] followed by the output from the type
 -- checker.
 --
@@ -1145,6 +1145,14 @@ IntExpr(3) : builtins.int
 ListExpr(3) : builtins.list[builtins.str]
 OpExpr(3) : builtins.list[builtins.str]
 
+[case testStringFormatting]
+## .*
+'%d' % 1
+[builtins fixtures/primitives.pyi]
+[out]
+IntExpr(2) : builtins.int
+OpExpr(2) : builtins.str
+StrExpr(2) : builtins.str
 
 -- TODO
 --
