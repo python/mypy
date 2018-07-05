@@ -200,11 +200,12 @@ SearchPaths = NamedTuple('SearchPaths',
 
 @functools.lru_cache(maxsize=None)
 def _get_site_packages_dirs(python_executable: Optional[str],
-                            fscache: FileSystemCache) -> List[str]:
+                            fscache: FileSystemCache) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
-    This runs a subprocess call, which generates a list of the site package directories.
-    To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
+    This runs a subprocess call, which generates a list of the egg directories, and the site
+    package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
+    lru_cache the results."""
     def make_abspath(path: str, root: str) -> str:
         """Take a path and make it absolute relative to root if not already absolute."""
         if os.path.isabs(path):
@@ -213,7 +214,7 @@ def _get_site_packages_dirs(python_executable: Optional[str],
             return os.path.join(root, os.path.normpath(path))
 
     if python_executable is None:
-        return []
+        return [], []
     if python_executable == sys.executable:
         # Use running Python's package dirs
         site_packages = sitepkgs.getsitepackages()
@@ -229,7 +230,7 @@ def _get_site_packages_dirs(python_executable: Optional[str],
         if fscache.isfile(pth):
             with open(pth) as f:
                 egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
-    return egg_dirs + site_packages
+    return egg_dirs, site_packages
 
 
 def compute_search_paths(sources: List[BuildSource],
@@ -292,8 +293,8 @@ def compute_search_paths(sources: List[BuildSource],
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
-    package_path = tuple(_get_site_packages_dirs(options.python_executable, fscache))
-    for site_dir in package_path:
+    egg_dirs, site_packages = _get_site_packages_dirs(options.python_executable, fscache)
+    for site_dir in site_packages:
         assert site_dir not in lib_path
         if site_dir in mypypath:
             print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
@@ -306,7 +307,7 @@ def compute_search_paths(sources: List[BuildSource],
 
     return SearchPaths(tuple(reversed(python_path)),
                        tuple(mypypath),
-                       package_path,
+                       tuple(egg_dirs + site_packages),
                        tuple(lib_path))
 
 
