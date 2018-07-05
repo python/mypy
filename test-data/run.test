@@ -149,6 +149,8 @@ print(primes(13))
 [out]
 [[0, 0, 1, 1]
 [[0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1]
+-- argh ]]
+
 
 [case testListAppend]
 from typing import List
@@ -451,6 +453,24 @@ Traceback (most recent call last):
   File "tmp/py/native.py", line 19, in q2
     raise Exception
 Exception
+
+[case testTryExcept]
+def g(b: bool) -> None:
+    try:
+        if b:
+            x = [0]
+            x[1]
+        else:
+            raise Exception('hi')
+    except:
+        print("caught!")
+[file driver.py]
+from native import g
+g(True)
+g(False)
+[out]
+caught!
+caught!
 
 [case testGenericEquality]
 def eq(a: object, b: object) -> bool:

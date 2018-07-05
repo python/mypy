@@ -18,10 +18,9 @@ from mypyc.ops import (
 
 
 def insert_exception_handling(ir: FuncIR) -> None:
-    # Generate error block if any ops may raise an exception. If an op fails, we'll
-    # branch to this block. The block just returns an error value.
-    #
-    # TODO: Support try statements.
+    # Generate error block if any ops may raise an exception. If an op
+    # fails without its own error handler, we'll branch to this
+    # block. The block just returns an error value.
     error_label = None
     for block in ir.blocks:
         can_raise = any(op.can_raise() for op in block.ops)
@@ -43,7 +42,7 @@ def add_handler_block(ir: FuncIR) -> BasicBlock:
 
 
 def split_blocks_at_errors(blocks: List[BasicBlock],
-                           error_label: BasicBlock,
+                           default_error_handler: BasicBlock,
                            func: str) -> List[BasicBlock]:
     new_blocks = []  # type: List[BasicBlock]
     mapping = {}
@@ -78,6 +77,9 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                 # indicated by a special value stored in a register.
                 assert not op.is_void, "void op generating errors?"
 
+                # If the block has an error handler specified, use it. Otherwise
+                # fall back to the default.
+                error_label = block.error_handler or default_error_handler
                 branch = Branch(op,
                                 true_label=error_label,
                                 false_label=next_block,

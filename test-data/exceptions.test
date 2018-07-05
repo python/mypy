@@ -138,3 +138,50 @@ L9:
     dec_ref sum :: int
     dec_ref i :: int
     goto L6
+
+[case testTryExcept]
+def g() -> None:
+    try:
+        object()
+    except:
+        print("weeee")
+[out]
+L0:
+L1:
+    r0 = builtins.module :: static
+    r1 = unicode_0 :: static  ('object')
+    r2 = getattr r0, r1
+    if is_error(r2) goto L4 (error at g:3) else goto L2
+L2:
+    r3 = py_call(r2)
+    dec_ref r2
+    if is_error(r3) goto L4 (error at g:3) else goto L10
+L3:
+    goto L8
+L4:
+    clear_exception(); r4 = 0
+    r5 = unicode_1 :: static  ('weeee')
+    r6 = builtins.module :: static
+    r7 = unicode_2 :: static  ('print')
+    r8 = getattr r6, r7
+    if is_error(r8) goto L9 (error at g:5) else goto L5
+L5:
+    r9 = py_call(r8, r5)
+    dec_ref r8
+    if is_error(r9) goto L9 (error at g:5) else goto L6
+L6:
+    r10 = cast(None, r9)
+    if is_error(r10) goto L9 (error at g:5) else goto L11
+L7:
+L8:
+    r11 = None
+    return r11
+L9:
+    r12 = <error> :: None
+    return r12
+L10:
+    dec_ref r3
+    goto L3
+L11:
+    dec_ref r10
+    goto L7

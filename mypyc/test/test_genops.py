@@ -29,6 +29,7 @@ files = [
     'genops-tuple.test',
     'genops-any.test',
     'genops-generics.test',
+    'genops-try.test',
 ]
 
 

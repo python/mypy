@@ -243,3 +243,11 @@ raise_exception_op = custom_op(
     error_kind=ERR_FALSE,
     format_str = 'raise_exception({args[0]}, {args[1]}); {dest} = 0',
     emit=simple_emit('PyErr_SetObject({args[0]}, {args[1]}); {dest} = 0;'))
+
+# This having a return value is pretty ugly
+clear_exception_op = custom_op(
+    arg_types=[],
+    result_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+    format_str = 'clear_exception(); {dest} = 0',
+    emit=simple_emit('PyErr_Clear(); {dest} = 0; (void){dest};'))

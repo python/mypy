@@ -57,7 +57,7 @@ from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
     none_op, iter_op, next_op, no_err_occurred_op, py_getattr_op, py_setattr_op,
     py_call_op, py_method_call_op, fast_isinstance_op, bool_op, new_slice_op,
-    is_none_op, type_op, raise_exception_op,
+    is_none_op, type_op, raise_exception_op, clear_exception_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -351,6 +351,8 @@ class IRBuilder(NodeVisitor[Value]):
         # This list operate as stack frames for loops. Each loop adds a new
         # frame containing the continue and break targets for the loop.
         self.loop_exits = []  # type: List[Tuple[BasicBlock, BasicBlock]]
+        # Stack of except handler entry blocks
+        self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
 
         self.mapper = mapper
         self.imports = []  # type: List[str]
@@ -1450,6 +1452,30 @@ class IRBuilder(NodeVisitor[Value]):
         self.add(Unreachable())
         return INVALID_VALUE
 
+    def visit_try_stmt(self, t: TryStmt) -> Value:
+        assert len(t.handlers) == 1 and t.types[0] is None and t.vars[0] is None, (
+            "Only bare except supported")
+        assert not t.else_body, "try/else not implemented"
+        assert not t.finally_body, "try/finally not implemented"
+
+        except_entry, exit_block = BasicBlock(), BasicBlock()
+
+        self.error_handlers.append(except_entry)
+        self.goto_and_activate(BasicBlock())
+        self.accept(t.body)
+        self.add(Goto(exit_block))
+        self.error_handlers.pop()
+
+        self.activate_block(except_entry)
+        except_body = t.handlers[0]
+        self.primitive_op(clear_exception_op, [], except_body.line)
+        self.accept(except_body)
+        self.add(Goto(exit_block))
+
+        self.activate_block(exit_block)
+
+        return INVALID_VALUE
+
     def visit_pass_stmt(self, o: PassStmt) -> Value:
         return INVALID_VALUE
 
@@ -1538,9 +1564,6 @@ class IRBuilder(NodeVisitor[Value]):
     def visit_temp_node(self, o: TempNode) -> Value:
         raise NotImplementedError
 
-    def visit_try_stmt(self, o: TryStmt) -> Value:
-        raise NotImplementedError
-
     def visit_type_alias_expr(self, o: TypeAliasExpr) -> Value:
         raise NotImplementedError
 
@@ -1574,10 +1597,12 @@ class IRBuilder(NodeVisitor[Value]):
         self.environment = Environment(name)
         self.environments.append(self.environment)
         self.ret_types.append(none_rprimitive)
+        self.error_handlers.append(None)
         self.blocks.append([])
         self.new_block()
 
     def activate_block(self, block: BasicBlock) -> None:
+        block.error_handler = self.error_handlers[-1]
         self.blocks[-1].append(block)
 
     def goto_and_activate(self, block: BasicBlock) -> None:
@@ -1598,6 +1623,7 @@ class IRBuilder(NodeVisitor[Value]):
         blocks = self.blocks.pop()
         env = self.environments.pop()
         ret_type = self.ret_types.pop()
+        self.error_handlers.pop()
         self.environment = self.environments[-1]
         return blocks, env, ret_type
 
