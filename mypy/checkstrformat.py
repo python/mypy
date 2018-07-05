@@ -80,6 +80,7 @@ class StringFormatterChecker:
         """Check the types of the 'replacements' in a string interpolation
         expression: str % replacements
         """
+        self.exprchk.accept(expr)
         specifiers = self.parse_conversion_specifiers(expr.value)
         has_mapping_keys = self.analyze_conversion_specifiers(specifiers, expr)
         if isinstance(expr, BytesExpr) and (3, 0) <= self.chk.options.python_version < (3, 5):
