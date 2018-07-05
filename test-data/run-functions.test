@@ -105,6 +105,9 @@ def triple(a: int) -> Callable[[], Callable[[int], int]]:
     return outer
 
 def if_else(flag: int) -> str:
+    def dummy_funtion() -> str:
+        return 'if_else.dummy_function'
+
     if flag < 0:
         def inner() -> str:
             return 'if_else.inner: first definition'
@@ -117,6 +120,9 @@ def if_else(flag: int) -> str:
     return inner()
 
 def for_loop() -> int:
+    def dummy_funtion() -> str:
+        return 'for_loop.dummy_function'
+
     for i in range(5):
         def inner(i: int) -> int:
             return i
@@ -125,6 +131,9 @@ def for_loop() -> int:
     return 0
 
 def while_loop() -> int:
+    def dummy_funtion() -> str:
+        return 'while_loop.dummy_function'
+
     i = 0
     while i < 5:
         def inner(i: int) -> int:
