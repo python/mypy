@@ -83,6 +83,7 @@ class GetDependenciesSuite(DataSuite):
         options.show_traceback = True
         options.cache_dir = os.devnull
         options.python_version = python_version
+        options.export_types = True
         try:
             result = build.build(sources=[BuildSource('main', None, source)],
                                  options=options,

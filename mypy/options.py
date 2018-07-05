@@ -195,6 +195,8 @@ class Options:
         self.local_partial_types = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
+        # If True, export inferred types for all expressions as BuildResult.types
+        self.export_types = False
         # List of package roots -- directories under these are packages even
         # if they don't have __init__.py.
         self.package_root = []  # type: List[str]
