@@ -489,6 +489,14 @@ def h() -> None:
             break
     print(str(wrapsys.exc_info()[1]))
 
+def i() -> None:
+    try:
+        r(True)
+    except:
+        print(str(wrapsys.exc_info()[1]))
+        raise
+
+
 [file wrapsys.py]
 # This is a gross hack around some limitations of the test system/mypyc.
 from typing import Any
@@ -497,7 +505,8 @@ def exc_info() -> Any:
     return sys.exc_info()  # type: ignore
 
 [file driver.py]
-from native import g, f, h
+import traceback
+from native import g, f, h, i
 g(True)
 g(False)
 
@@ -505,7 +514,20 @@ f(True)
 f(False)
 
 h()
+
+try:
+    i()
+except:
+    traceback.print_exc()
 [out]
+Traceback (most recent call last):
+  File "tmp/driver.py", line 12, in <module>
+    i()
+  File "tmp/py/native.py", line 37, in i
+    r(True)
+  File "tmp/py/native.py", line 15, in r
+    x[1]
+IndexError: list index out of range
 caught!
 caught!
 list index out of range
@@ -514,6 +536,7 @@ hi
 None
 gonna break
 None
+list index out of range
 
 [case testGenericEquality]
 def eq(a: object, b: object) -> bool:

@@ -22,6 +22,13 @@ raise_exception_op = custom_op(
     format_str = 'raise_exception({args[0]}, {args[1]}); {dest} = 0',
     emit=simple_emit('PyErr_SetObject({args[0]}, {args[1]}); {dest} = 0;'))
 
+reraise_exception_op = custom_op(
+    arg_types=[],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    format_str = 'reraise_exc; {dest} = 0',
+    emit=simple_emit('CPy_Reraise(); {dest} = 0;'))
+
 clear_exception_op = custom_op(
     arg_types=[],
     result_type=void_rtype,

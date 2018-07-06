@@ -547,6 +547,13 @@ static void CPy_CatchError(PyObject **p_type, PyObject **p_value, PyObject **p_t
     PyErr_SetExcInfo(*p_type, *p_value, *p_traceback);
 }
 
+static void CPy_Reraise(void) {
+    PyObject *p_type, *p_value, *p_traceback;
+    PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);
+    PyErr_Restore(p_type, p_value, p_traceback);
+}
+
+
 #ifdef __cplusplus
 }
 #endif

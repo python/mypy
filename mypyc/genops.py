@@ -61,7 +61,7 @@ from mypyc.ops_misc import (
     is_none_op, type_op,
 )
 from mypyc.ops_exc import (
-    no_err_occurred_op, raise_exception_op, clear_exception_op,
+    no_err_occurred_op, raise_exception_op, reraise_exception_op, clear_exception_op,
     error_catch_op, clear_exc_info_op,
 )
 from mypyc.subtype import is_subtype
@@ -1490,6 +1490,11 @@ class IRBuilder(NodeVisitor[Value]):
         return self.primitive_op(new_slice_op, args, expr.line)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> Value:
+        if s.expr is None:
+            self.primitive_op(reraise_exception_op, [], s.line)
+            self.add(Unreachable())
+            return INVALID_VALUE
+
         assert s.expr is not None, "re-raise not implemented yet"
         assert s.from_expr is None, "from_expr not implemented"
 
