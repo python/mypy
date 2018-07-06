@@ -65,6 +65,8 @@ class Options:
         self.custom_typeshed_dir = None  # type: Optional[str]
         self.mypy_path = []  # type: List[str]
         self.report_dirs = {}  # type: Dict[str, str]
+        # Show errors in PEP 561 packages/site-packages modules
+        self.no_silence_site_packages = False
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.

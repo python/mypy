@@ -1,9 +1,12 @@
 """Utility functions with no non-trivial dependencies."""
-
+import genericpath  # type: ignore  # no stub files yet
+import os
+import pathlib
 import re
 import subprocess
+import sys
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Dict
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
 
 T = TypeVar('T')
@@ -204,3 +207,8 @@ def replace_object_state(new: object, old: object) -> None:
                         setattr(new, attr, getattr(old, attr))
                     elif hasattr(new, attr):
                         delattr(new, attr)
+
+
+def is_sub_path(path1: str, path2: str) -> bool:
+    """Given two paths, return if path1 is a sub-path of path2."""
+    return pathlib.Path(path2) in pathlib.Path(path1).parents
