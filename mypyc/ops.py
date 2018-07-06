@@ -1126,6 +1126,7 @@ class RaiseStandardError(RegisterOp):
     error_kind = ERR_FALSE
 
     VALUE_ERROR = 'ValueError'
+    ASSERTION_ERROR = 'AssertionError'
 
     def __init__(self, class_name: str, message: Optional[str], line: int) -> None:
         super().__init__(line)

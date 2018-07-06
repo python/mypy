@@ -1143,7 +1143,7 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_member_expr(self, expr: MemberExpr) -> Value:
         if self.is_module_member_expr(expr):
-            return self.load_static_module_attr(expr)
+            return self.load_module_attr(expr)
         else:
             obj = self.accept(expr.expr)
             if isinstance(obj.type, RInstance):
@@ -1580,6 +1580,28 @@ class IRBuilder(NodeVisitor[Value]):
         # Pure declaration -- no runtime effect
         return INVALID_VALUE
 
+    def visit_assert_stmt(self, a: AssertStmt) -> Value:
+        cond = self.accept(a.expr)
+        ok_block, error_block = BasicBlock(), BasicBlock()
+        self.add_bool_branch(cond, ok_block, error_block)
+        self.activate_block(error_block)
+        if a.msg is None:
+            # Special case (for simpler generated code)
+            self.add(RaiseStandardError(RaiseStandardError.ASSERTION_ERROR, None, a.line))
+        elif isinstance(a.msg, StrExpr):
+            # Another special case
+            self.add(RaiseStandardError(RaiseStandardError.ASSERTION_ERROR, a.msg.value,
+                                        a.line))
+        else:
+            # The general case -- explicitly construct an exception instance
+            message = self.accept(a.msg)
+            exc_type = self.load_module_attr_by_fullname('builtins.AssertionError', a.line)
+            exc = self.primitive_op(py_call_op, [exc_type, message], a.line)
+            self.primitive_op(raise_exception_op, [exc_type, exc], a.line)
+        self.add(Unreachable())
+        self.activate_block(ok_block)
+        return INVALID_VALUE
+
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr handled in CallExpr"
 
@@ -1593,9 +1615,6 @@ class IRBuilder(NodeVisitor[Value]):
         raise NotImplementedError
 
     def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_assert_stmt(self, o: AssertStmt) -> Value:
         raise NotImplementedError
 
     def visit_bytes_expr(self, o: BytesExpr) -> Value:
@@ -2011,7 +2030,7 @@ class IRBuilder(NodeVisitor[Value]):
         """
         # If the global is from 'builtins', turn it into a module attr load instead
         if self.is_builtin_ref_expr(expr):
-            return self.load_static_module_attr(expr)
+            return self.load_module_attr(expr)
         if self.is_native_module_ref_expr(expr) and isinstance(expr.node, TypeInfo):
             assert expr.fullname is not None
             return self.load_native_type_object(expr.fullname)
@@ -2041,12 +2060,14 @@ class IRBuilder(NodeVisitor[Value]):
         static_symbol = self.mapper.literal_static_name(value)
         return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
 
-    def load_static_module_attr(self, expr: RefExpr) -> Value:
+    def load_module_attr(self, expr: RefExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
-        module = '.'.join(expr.node.fullname().split('.')[:-1])
-        name = expr.node.fullname().split('.')[-1]
+        return self.load_module_attr_by_fullname(expr.node.fullname(), expr.line)
+
+    def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
+        module, _, name = fullname.rpartition('.')
         left = self.add(LoadStatic(object_rprimitive, 'module', module))
-        return self.py_get_attr(left, name, expr.line)
+        return self.py_get_attr(left, name, line)
 
     def load_native_type_object(self, fullname: str) -> Value:
         module, name = fullname.rsplit('.', 1)

@@ -280,7 +280,7 @@ L2:
     r5 = unbox(int, r4)
     goto L1
 L3:
-    r6 = no_err_occurred 
+    r6 = no_err_occurred
     r7 = None
     return r7
 
@@ -337,7 +337,7 @@ L5:
     s = r15
     goto L1
 L6:
-    r16 = no_err_occurred 
+    r16 = no_err_occurred
     return s
 
 [case testMultipleAssignment]
@@ -495,3 +495,72 @@ L0:
     z = r7
     r8 = None
     return r8
+
+[case testAssert]
+from typing import Optional
+
+def no_msg(x: bool) -> int:
+    assert x
+    return 1
+
+def literal_msg(x: object) -> int:
+    assert x, 'message'
+    return 2
+
+def complex_msg(x: Optional[str], s: str) -> None:
+    assert x, s
+[out]
+def no_msg(x):
+    x, r0 :: bool
+    r1 :: int
+L0:
+    if x goto L2 else goto L1 :: bool
+L1:
+    raise AssertionError
+    unreachable
+L2:
+    r1 = 1
+    return r1
+def literal_msg(x):
+    x :: object
+    r0, r1 :: bool
+    r2 :: int
+L0:
+    r0 = bool x :: object
+    if r0 goto L2 else goto L1 :: bool
+L1:
+    raise AssertionError('message')
+    unreachable
+L2:
+    r2 = 2
+    return r2
+def complex_msg(x, s):
+    x :: optional[str]
+    s :: str
+    r0 :: None
+    r1 :: bool
+    r2 :: str
+    r3 :: bool
+    r4 :: object
+    r5 :: str
+    r6, r7 :: object
+    r8 :: bool
+    r9 :: None
+L0:
+    r0 = None
+    r1 = x is not r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = cast(str, x)
+    r3 = bool r2 :: object
+    if r3 goto L3 else goto L2 :: bool
+L2:
+    r4 = builtins.module :: static
+    r5 = unicode_0 :: static  ('AssertionError')
+    r6 = getattr r4, r5
+    r7 = py_call(r6, s)
+    raise_exception(r6, r7); r8 = 0
+    unreachable
+L3:
+    r9 = None
+    return r9
