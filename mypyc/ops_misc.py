@@ -46,12 +46,6 @@ next_op = func_op(name='builtins.next',
                   error_kind=ERR_NEVER,
                   emit=simple_emit('{dest} = PyIter_Next({args[0]});'))
 
-no_err_occurred_op = func_op(name='no_err_occurred',
-                             arg_types=[],
-                             result_type=bool_rprimitive,
-                             error_kind=ERR_FALSE,
-                             emit=simple_emit('{dest} = (PyErr_Occurred() == NULL);'))
-
 #
 # Fallback primitive operations that operate on 'object' operands
 #
@@ -235,19 +229,3 @@ type_op = func_op(
     result_type=object_rprimitive,
     error_kind=ERR_NEVER,
     emit=simple_emit('{dest} = PyObject_Type({args[0]});'))
-
-# TODO: Making this raise conditionally is kind of hokey.
-raise_exception_op = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    format_str = 'raise_exception({args[0]}, {args[1]}); {dest} = 0',
-    emit=simple_emit('PyErr_SetObject({args[0]}, {args[1]}); {dest} = 0;'))
-
-# This having a return value is pretty ugly
-clear_exception_op = custom_op(
-    arg_types=[],
-    result_type=bool_rprimitive,
-    error_kind=ERR_NEVER,
-    format_str = 'clear_exception(); {dest} = 0',
-    emit=simple_emit('PyErr_Clear(); {dest} = 0; (void){dest};'))

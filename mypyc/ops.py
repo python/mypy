@@ -193,6 +193,9 @@ class RTuple(RType):
         return hash((self.name, self.types))
 
 
+exc_rtuple = RTuple([object_rprimitive, object_rprimitive, object_rprimitive])
+
+
 class RInstance(RType):
     """Instance of user-defined class (compiled to C extension class)."""
 

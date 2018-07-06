@@ -55,9 +55,12 @@ from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, nam
 from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
 from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
-    none_op, iter_op, next_op, no_err_occurred_op, py_getattr_op, py_setattr_op,
+    none_op, iter_op, next_op, py_getattr_op, py_setattr_op,
     py_call_op, py_method_call_op, fast_isinstance_op, bool_op, new_slice_op,
-    is_none_op, type_op, raise_exception_op, clear_exception_op,
+    is_none_op, type_op,
+)
+from mypyc.ops_exc import (
+    no_err_occurred_op, raise_exception_op, clear_exception_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
