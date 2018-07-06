@@ -39,6 +39,8 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     subprocess killed by signal.
     """
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
+    if sys.platform == 'win32':
+        raise ValueError('Mypy daemon is not supported on Windows yet')
     sys.stdout.flush()
     sys.stderr.flush()
     pid = os.fork()

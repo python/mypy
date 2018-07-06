@@ -130,7 +130,7 @@ class Waiter:
         self.current = {}  # type: Dict[int, Tuple[int, LazySubprocess]]
         if limit == 0:
             try:
-                sched_getaffinity = os.sched_getaffinity
+                sched_getaffinity = os.sched_getaffinity  # type: ignore
             except AttributeError:
                 # no support for affinity on OSX/Windows
                 limit = cpu_count()
