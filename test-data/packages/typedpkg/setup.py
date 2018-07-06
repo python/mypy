@@ -2,7 +2,7 @@
 This setup file installs packages to test mypy's PEP 561 implementation
 """
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='typedpkg',
@@ -11,4 +11,5 @@ setup(
     package_data={'typedpkg': ['py.typed']},
     packages=['typedpkg'],
     include_package_data=True,
+    zip_safe=False,
 )

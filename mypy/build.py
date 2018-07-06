@@ -199,26 +199,44 @@ SearchPaths = NamedTuple('SearchPaths',
 
 
 @functools.lru_cache(maxsize=None)
-def _get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
+def _get_site_packages_dirs(python_executable: Optional[str],
+                            fscache: FileSystemCache) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
-    This runs a subprocess call, which generates a list of the site package directories.
-    To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
+    This runs a subprocess call, which generates a list of the egg directories, and the site
+    package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
+    lru_cache the results."""
+    def make_abspath(path: str, root: str) -> str:
+        """Take a path and make it absolute relative to root if not already absolute."""
+        if os.path.isabs(path):
+            return os.path.normpath(path)
+        else:
+            return os.path.join(root, os.path.normpath(path))
+
     if python_executable is None:
-        return []
+        return [], []
     if python_executable == sys.executable:
         # Use running Python's package dirs
-        return sitepkgs.getsitepackages()
+        site_packages = sitepkgs.getsitepackages()
     else:
         # Use subprocess to get the package directory of given Python
         # executable
-        return ast.literal_eval(subprocess.check_output([python_executable, sitepkgs.__file__],
-                                stderr=subprocess.PIPE).decode())
+        site_packages = ast.literal_eval(
+            subprocess.check_output([python_executable, sitepkgs.__file__],
+            stderr=subprocess.PIPE).decode())
+    egg_dirs = []
+    for dir in site_packages:
+        pth = os.path.join(dir, 'easy-install.pth')
+        if fscache.isfile(pth):
+            with open(pth) as f:
+                egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
+    return egg_dirs, site_packages
 
 
 def compute_search_paths(sources: List[BuildSource],
                      options: Options,
                      data_dir: str,
+                     fscache: FileSystemCache,
                      alt_lib_path: Optional[str] = None) -> SearchPaths:
     """Compute the search paths as specified in PEP 561.
 
@@ -275,9 +293,21 @@ def compute_search_paths(sources: List[BuildSource],
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
+    egg_dirs, site_packages = _get_site_packages_dirs(options.python_executable, fscache)
+    for site_dir in site_packages:
+        assert site_dir not in lib_path
+        if site_dir in mypypath:
+            print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
+            sys.exit(1)
+        elif site_dir in python_path:
+            print("{} is in the PYTHONPATH. Please change directory"
+                  " so it is not.".format(site_dir),
+                  file=sys.stderr)
+            sys.exit(1)
+
     return SearchPaths(tuple(reversed(python_path)),
                        tuple(mypypath),
-                       tuple(_get_site_packages_dirs(options.python_executable)),
+                       tuple(egg_dirs + site_packages),
                        tuple(lib_path))
 
 
@@ -294,7 +324,7 @@ def _build(sources: List[BuildSource],
     data_dir = default_data_dir(bin_dir)
     fscache = fscache or FileSystemCache()
 
-    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
+    search_paths = compute_search_paths(sources, options, data_dir, fscache, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
@@ -1841,6 +1871,8 @@ class State:
             self.dep_line_map = {id: line
                                  for id, line in zip(all_deps, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
+            if temporary:
+                self.load_tree(temporary=True)
         else:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
@@ -1923,16 +1955,16 @@ class State:
         # TODO: Assert deps file wasn't changed.
         self.fine_grained_deps = {k: set(v) for k, v in deps.items()}
 
-    def load_tree(self) -> None:
+    def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
         with open(self.meta.data_json) as f:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
-
-        self.manager.modules[self.id] = self.tree
-        self.manager.add_stats(fresh_trees=1)
+        if not temporary:
+            self.manager.modules[self.id] = self.tree
+            self.manager.add_stats(fresh_trees=1)
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"

@@ -6,7 +6,7 @@ from typing import Tuple, List, Generator, Optional
 from unittest import TestCase, main
 
 import mypy.api
-from mypy.build import _get_site_packages_dirs
+from mypy.build import _get_site_packages_dirs, FileSystemCache
 from mypy.test.config import package_path
 from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
@@ -67,10 +67,22 @@ class TestPEP561(TestCase):
                 yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
 
     def install_package(self, pkg: str,
-                        python_executable: str = sys.executable) -> None:
+                        python_executable: str = sys.executable,
+                        use_pip: bool = True,
+                        editable: bool = False) -> None:
         """Context manager to temporarily install a package from test-data/packages/pkg/"""
         working_dir = os.path.join(package_path, pkg)
-        install_cmd = [python_executable, '-m', 'pip', 'install', '.']
+        if use_pip:
+            install_cmd = [python_executable, '-m', 'pip', 'install']
+            if editable:
+                install_cmd.append('-e')
+            install_cmd.append('.')
+        else:
+            install_cmd = [python_executable, 'setup.py']
+            if editable:
+                install_cmd.append('develop')
+            else:
+                install_cmd.append('install')
         returncode, lines = run_command(install_cmd, cwd=working_dir)
         if returncode != 0:
             self.fail('\n'.join(lines))
@@ -92,7 +104,7 @@ class TestPEP561(TestCase):
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
-        dirs = _get_site_packages_dirs(sys.executable)
+        dirs = _get_site_packages_dirs(sys.executable, FileSystemCache())
         assert dirs
 
     def test_typedpkg_stub_package(self) -> None:
@@ -154,6 +166,28 @@ class TestPEP561(TestCase):
                     expected_out=self.msg_tuple,
                     venv_dir=venv_dir,
                 )
+
+    def test_typedpkg_egg(self) -> None:
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('typedpkg', python_executable, use_pip=False)
+            check_mypy_run(
+                [self.tempfile],
+                python_executable,
+                expected_out=self.msg_tuple,
+                venv_dir=venv_dir,
+            )
+
+    def test_typedpkg_editable(self) -> None:
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('typedpkg', python_executable, editable=True)
+            check_mypy_run(
+                [self.tempfile],
+                python_executable,
+                expected_out=self.msg_tuple,
+                venv_dir=venv_dir,
+            )
 
 
 if __name__ == '__main__':

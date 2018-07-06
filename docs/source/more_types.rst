@@ -2,7 +2,8 @@ More types
 ==========
 
 This section introduces a few additional kinds of types, including ``NoReturn``,
-``NewType``, ``TypedDict``, and types for async code. All of these are only
+``NewType``, ``TypedDict``, and types for async code. It also discusses how to
+give functions more precise types using overloads. All of these are only
 situationally useful, so feel free to skip this section and come back when you
 have a need for some of them.
 
@@ -14,6 +15,10 @@ Here's a quick summary of what's covered here:
   separate type by mypy but is identical to the original type at runtime.
   For example, you can have ``UserId`` as a variant of ``int`` that is
   just an ``int`` at runtime.
+
+* ``@overload`` lets you define a function that can accept multiple distinct
+  signatures. This is useful for if you need to encode a relationship between
+  the arguments and the return type that would be difficult to express normally.
 
 * ``TypedDict`` lets you give precise types for dictionaries that represent
   objects with a fixed schema, such as ``{'id': 1, 'items': ['x']}``.
@@ -177,6 +182,385 @@ create subclasses of these objects either.
             ...
 
         name_by_id(3)  # int is not the same as UserId
+
+.. _function-overloading:
+
+Function overloading
+********************
+
+Sometimes the arguments and types in a function depend on each other
+in ways that can't be captured with a ``Union``. For example, suppose
+we want to write a function that can accept x-y coordinates. If we pass
+in just a single x-y coordinate, we return a ``ClickEvent`` object. However,
+if we pass in two x-y coordinates, we return a ``DragEvent`` object.
+
+Our first attempt at writing this function might look like this:
+
+.. code-block:: python
+
+    from typing import Union, Optional
+
+    def mouse_event(x1: int, 
+                    y1: int,
+                    x2: Optional[int] = None,
+                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
+        if x2 is None and y2 is None:
+            return ClickEvent(x1, y1)
+        elif x2 is not None and y2 is not None:
+            return DragEvent(x1, y1, x2, y2)
+        else:
+            raise TypeError("Bad arguments")
+
+While this function signature works, it's too loose: it implies ``mouse_event``
+could return either object regardless of the number of arguments
+we pass in. It also does not prohibit a caller from passing in the wrong
+number of ints: mypy would treat calls like ``mouse_event(1, 2, 20)`` as being
+valid, for example.
+
+We can do better by using `overloading
+<https://www.python.org/dev/peps/pep-0484/#function-method-overloading>`_
+which lets us give the same function multiple type annotations (signatures)
+to more accurately describe the function's behavior:
+
+.. code-block:: python
+
+    from typing import Union, overload
+
+    # Overload *variants* for 'mouse_event'.
+    # These variants give extra information to the type checker.
+    # They are ignored at runtime.
+
+    @overload
+    def mouse_event(x1: int, y1: int) -> ClickEvent: ...
+    @overload
+    def mouse_event(x1: int, y1: int, x2: int, y2: int) -> DragEvent: ...
+
+    # The actual *implementation* of 'mouse_event'.
+    # The implementation contains the actual runtime logic.
+    #
+    # It may or may not have type hints. If it does, mypy
+    # will check the body of the implementation against the
+    # type hints.
+    #
+    # Mypy will also check and make sure the signature is
+    # consistent with the provided variants.
+
+    def mouse_event(x1: int, 
+                    y1: int,
+                    x2: Optional[int] = None,
+                    y2: Optional[int] = None) -> Union[ClickEvent, DragEvent]:
+        if x2 is None and y2 is None:
+            return ClickEvent(x1, y1)
+        elif x2 is not None and y2 is not None:
+            return DragEvent(x1, y1, x2, y2)
+        else:
+            raise TypeError("Bad arguments")
+
+This allows mypy to understand calls to ``mouse_event`` much more precisely.
+For example, mypy will understand that ``mouse_event(5, 25)`` will
+always have a return type of ``ClickEvent`` and will report errors for
+calls like ``mouse_event(5, 25, 2)``.
+
+As another example, suppose we want to write a custom container class that
+implements the ``__getitem__`` method (``[]`` bracket indexing). If this
+method receives an integer we return a single item. If it receives a
+``slice``, we return a ``Sequence`` of items.
+
+We can precisely encode this relationship between the argument and the
+return type by using overloads like so:
+
+.. code-block:: python
+
+    from typing import Sequence, TypeVar, Union, overload
+
+    T = TypeVar('T')
+
+    class MyList(Sequence[T]):
+        @overload
+        def __getitem__(self, index: int) -> T: ...
+
+        @overload
+        def __getitem__(self, index: slice) -> Sequence[T]: ...
+
+        def __getitem__(self, index: Union[int, slice]) -> Union[T, Sequence[T]]:
+            if isinstance(index, int):
+                # Return a T here
+            elif isinstance(index, slice):
+                # Return a sequence of Ts here
+            else:
+                raise TypeError(...)
+
+.. note::
+
+   If you just need to constrain a type variable to certain types or
+   subtypes, you can use a :ref:`value restriction
+   <type-variable-value-restriction>`.
+
+
+Runtime behavior
+----------------
+
+An overloaded function must consist of two or more overload *variants*
+followed by an *implementation*. The variants and the implementations
+must be adjacent in the code: think of them as one indivisible unit.
+
+The variant bodies must all be empty; only the implementation is allowed
+to contain code. This is because at runtime, the variants are completely
+ignored: they're overridden by the final implementation function.
+
+This means that an overloaded function is still an ordinary Python
+function! There is no automatic dispatch handling and you must manually
+handle the different types in the implementation (e.g. by using
+``if`` statements and ``isinstance`` checks).
+
+If you are adding an overload within a stub file, the implementation
+function should be omitted: stubs do not contain runtime logic.
+
+.. note::
+
+   While we can leave the variant body empty using the ``pass`` keyword,
+   the more common convention is to instead use the ellipsis (``...``) literal.
+
+Type checking calls to overloads
+--------------------------------
+
+When you call an overloaded function, mypy will infer the correct return
+type by picking the best matching variant, after taking into consideration
+both the argument types and arity. However, a call is never type
+checked against the implementation. This is why mypy will report calls
+like ``mouse_event(5, 25, 3)`` as being invalid even though it matches the
+implementation signature.
+
+If there are multiple equally good matching variants, mypy will select
+the variant that was defined first. For example, consider the following
+program:
+
+.. code-block:: python
+
+    from typing import List, overload
+
+    @overload
+    def summarize(data: List[int]) -> float: ...
+
+    @overload
+    def summarize(data: List[str]) -> str: ...
+
+    def summarize(data):
+        if not data:
+            return 0.0
+        elif isinstance(data[0], int):
+            # Do int specific code
+        else:
+            # Do str-specific code
+
+    # What is the type of 'output'? float or str?
+    output = summarize([])
+
+The ``summarize([])`` call matches both variants: an empty list could
+be either a ``List[int]`` or a ``List[str]``. In this case, mypy
+will break the tie by picking the first matching variant: ``output``
+will have an inferred type of ``float``. The implementor is responsible
+for making sure ``summarize`` breaks ties in the same way at runtime.
+
+There are however are two exceptions to the "pick the first match" rule.
+First, if multiple variants match due to an argument being of type
+``Any``, mypy will make the inferred type also be ``Any``:
+
+.. code-block:: python
+
+    dynamic_var: Any = some_dynamic_function()
+
+    # output2 is of type 'Any'
+    output2 = summarize(dynamic_var)
+
+Second, if multiple variants match due to one or more of the arguments
+being a union, mypy will make the inferred type be the union of the 
+matching variant returns:
+
+.. code-block:: python
+
+    some_list: Union[List[int], List[str]]
+
+    # output3 is of type 'Union[float, str]'
+    output3 = summarize(some_list)
+
+.. note::
+
+   Due to the "pick the first match" rule, changing the order of your
+   overload variants can change how mypy type checks your program.
+
+   To minimize potential issues, we recommend that you:
+   
+   1. Make sure your overload variants are listed in the same order as
+      the runtime checks (e.g. ``isinstance`` checks) in your implementation.   
+   2. Order your variants and runtime checks from most to least specific.
+      (See the following section for an example).
+
+Type checking the variants
+--------------------------
+
+Mypy will perform several checks on your overload variant definitions
+to ensure they behave as expected. First, mypy will check and make sure
+that no overload variant is shadowing a subsequent one. For example,
+consider the following function which adds together two ``Expression``
+objects, and contains a special-case to handle receiving two ``Literal``
+types:
+
+.. code-block:: python
+
+    from typing import overload, Union
+
+    class Expression:
+        # ...snip...
+
+    class Literal(Expression):
+        # ...snip...
+
+    # Warning -- the first overload variant shadows the second!
+
+    @overload
+    def add(left: Expression, right: Expression) -> Expression: ...
+
+    @overload
+    def add(left: Literal, right: Literal) -> Literal: ...
+
+    def add(left: Expression, right: Expression) -> Expression:
+        # ...snip...
+
+While this code snippet is technically type-safe, it does contain an
+anti-pattern: the second variant will never be selected! If we try calling
+``add(Literal(3), Literal(4))``, mypy will always pick the first variant
+and evaluate the function call to be of type ``Expression``, not ``Literal``.
+This is because ``Literal`` is a subtype of ``Expression``, which means
+the "pick the first match" rule will always halt after considering the
+first overload.
+
+Because having an overload variant that can never be matched is almost
+certainly a mistake, mypy will report an error. To fix the error, we can
+either 1) delete the second overload or 2) swap the order of the overloads:
+
+.. code-block:: python
+
+    # Everything is ok now -- the variants are correctly ordered
+    # from most to least specific.
+
+    @overload
+    def add(left: Literal, right: Literal) -> Literal: ...
+
+    @overload
+    def add(left: Expression, right: Expression) -> Expression: ...
+
+    def add(left: Expression, right: Expression) -> Expression:
+        # ...snip...
+
+Mypy will also type check the different variants and flag any overloads
+that have inherently unsafely overlapping variants. For example, consider
+the following unsafe overload definition:
+
+.. code-block:: python
+
+    from typing import overload, Union
+
+    @overload
+    def unsafe_func(x: int) -> int: ...
+
+    @overload
+    def unsafe_func(x: object) -> str: ...
+
+    def unsafe_func(x: object) -> Union[int, str]:
+        if isinstance(x, int):
+            return 42
+        else:
+            return "some string"
+
+On the surface, this function definition appears to be fine. However, it will
+result in a discrepency between the inferred type and the actual runtime type
+when we try using it like so:
+
+.. code-block:: python
+
+    some_obj: object = 42
+    unsafe_func(some_obj) + " danger danger"  # Type checks, yet crashes at runtime!
+
+Since ``some_obj`` is of type ``object``, mypy will decide that ``unsafe_func``
+must return something of type ``str`` and concludes the above will type check.
+But in reality, ``unsafe_func`` will return an int, causing the code to crash
+at runtime!
+
+To prevent these kinds of issues, mypy will detect and prohibit inherently unsafely
+overlapping overloads on a best-effort basis. Two variants are considered unsafely
+overlapping when both of the following are true:
+
+1. All of the arguments of the first variant are compatible with the second.
+2. The return type of the first variant is *not* compatible with (e.g. is not a
+   subtype of) the second.
+
+So in this example, the ``int`` argument in the first variant is a subtype of
+the ``object`` argument in the second, yet the ``int`` return type not is a subtype of
+``str``. Both conditions are true, so mypy will correctly flag ``unsafe_func`` as
+being unsafe.
+
+However, mypy will not detect *all* unsafe uses of overloads. For example,
+suppose we modify the above snippet so it calls ``summarize`` instead of
+``unsafe_func``:
+
+.. code-block:: python
+
+    some_list: List[str] = []
+    summarize(some_list) + "danger danger"  # Type safe, yet crashes at runtime!
+
+We run into a similar issue here. This program type checks if we look just at the
+annotations on the overloads. But since ``summarize(...)`` is designed to be biased
+towards returning a float when it receives an empty list, this program will actually
+crash during runtime.
+
+The reason mypy does not flag definitions like ``summarize`` as being potentially
+unsafe is because if it did, it would be extremely difficult to write a safe
+overload. For example, suppose we define an overload with two variants that accept
+types ``A`` and ``B`` respectively. Even if those two types were completely unrelated,
+the user could still potentially trigger a runtime error similar to the ones above by
+passing in a value of some third type ``C`` that inherits from both ``A`` and ``B``.
+
+Thankfully, these types of situations are relatively rare. What this does mean,
+however, is that you should exercise caution when designing or using an overloaded
+function that can potentially receive values that are an instance of two seemingly
+unrelated types.
+
+
+Type checking the implementation
+--------------------------------
+
+The body of an implementation is type-checked against the
+type hints provided on the implementation. For example, in the
+``MyList`` example up above, the code in the body is checked with
+argument list ``index: Union[int, slice]`` and a return type of 
+``Union[T, Sequence[T]]``. If there are no annotations on the
+implementation, then the body is not type checked. If you want to
+force mypy to check the body anyways, use the ``--check-untyped-defs``
+flag (:ref:`more details here <additional-command-line-flags>`).
+
+The variants must also also be compatible with the implementation
+type hints. In the ``MyList`` example, mypy will check that the
+parameter type ``int`` and the return type ``T`` are compatible with
+``Union[int, slice]`` and ``Union[T, Sequence]`` for the
+first variant. For the second variant it verifies the parameter
+type ``slice`` and the return type ``Sequence[T]`` are compatible
+with ``Union[int, slice]`` and ``Union[T, Sequence]``.
+
+.. note::
+
+   The overload semantics documented above are new as of mypy 0.620.
+
+   Previously, mypy used to perform type erasure on all overload variants. For
+   example, the ``summarize`` example from the previous section used to be
+   illegal because ``List[str]`` and ``List[int]`` both erased to just ``List[Any]``.
+   This restriction was removed in mypy 0.620.
+
+   Mypy also previously used to select the best matching variant using a different
+   algorithm. If this algorithm failed to find a match, it would default to returning
+   ``Any``. The new algorithm uses the "pick the first match" rule and will fall back
+   to returning ``Any`` only if the input arguments also contain ``Any``.
+
 
 .. _async-and-await:
 

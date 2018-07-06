@@ -1225,8 +1225,14 @@ class D:
 [out]
 main:5: error: Revealed type is 'Any'
 main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
+main:5: note: Possible overload variants:
+main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
 main:6: error: Revealed type is 'Any'
 main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
+main:6: note: Possible overload variants:
+main:6: note:     def __get__(self, inst: None, own: Type[Base]) -> D
+main:6: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
 
 
 [case testAccessingGenericNonDataDescriptor]
@@ -1325,6 +1331,10 @@ class D(Generic[T, V]):
 [out]
 main:5: error: Revealed type is 'Any'
 main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
+main:5: note: Possible overload variants:
+main:5: note:     def __get__(self, inst: None, own: None) -> D[A, int]
+main:5: note:     def __get__(self, inst: A, own: Type[A]) -> int
+
 
 [case testAccessingNonDataDescriptorSubclass]
 from typing import Any
@@ -2117,7 +2127,10 @@ class C:
 c = C(1)
 c.a # E: "C" has no attribute "a"
 C('', '')
-C('') # E: No overload variant of "C" matches argument type "str"
+C('') # E: No overload variant of "C" matches argument type "str" \
+      # N: Possible overload variant: \
+      # N:     def __new__(cls, foo: int) -> C \
+      # N:     <1 more non-matching overload not shown>
 [builtins fixtures/__new__.pyi]
 
 
@@ -2540,6 +2553,9 @@ u = new(User)
 [builtins fixtures/classmethod.pyi]
 [out]
 tmp/foo.pyi:16: error: No overload variant of "User" matches argument type "str"
+tmp/foo.pyi:16: note: Possible overload variant:
+tmp/foo.pyi:16: note:     def __init__(self, arg: int) -> U
+tmp/foo.pyi:16: note:     <1 more non-matching overload not shown>
 tmp/foo.pyi:17: error: Too many arguments for "foo" of "User"
 
 [case testTypeUsingTypeCInUpperBound]
@@ -2753,7 +2769,10 @@ def f(a: Type[User]) -> None: pass
 @overload
 def f(a: type) -> None: pass
 
-f(3)  # E: No overload variant of "f" matches argument type "int"
+f(3)  # E: No overload variant of "f" matches argument type "int" \
+      # N: Possible overload variants: \
+      # N:     def f(a: Type[User]) -> None \
+      # N:     def f(a: type) -> None
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2770,7 +2789,10 @@ def f(a: Type[User]) -> None: pass
 def f(a: int) -> None: pass
 
 f(User)
-f(User())  # E: No overload variant of "f" matches argument type "User"
+f(User())  # E: No overload variant of "f" matches argument type "User" \
+           # N: Possible overload variants: \
+           # N:     def f(a: Type[User]) -> None \
+           # N:     def f(a: int) -> None
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -2791,10 +2813,16 @@ def f(a: Type[B]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
-f(A)  # E: No overload variant of "f" matches argument type "Type[A]"
+f(A)  # E: No overload variant of "f" matches argument type "Type[A]" \
+      # N: Possible overload variants: \
+      # N:     def f(a: Type[B]) -> None \
+      # N:     def f(a: int) -> None
 f(B)
 f(C)
-f(AType)  # E: No overload variant of "f" matches argument type "Type[A]"
+f(AType)  # E: No overload variant of "f" matches argument type "Type[A]" \
+          # N: Possible overload variants: \
+          # N:     def f(a: Type[B]) -> None \
+          # N:     def f(a: int) -> None
 f(BType)
 f(CType)
 [builtins fixtures/classmethod.pyi]
@@ -4377,6 +4405,65 @@ main:4: error: Revealed local types are:
 main:4: error: t: builtins.str
 main:4: error: y: builtins.float
 
+[case testAbstractClasses]
+import a
+import b
+
+[file a.pyi]
+from abc import ABCMeta, abstractmethod
+from typing import Protocol
+
+class A:  # OK, has @abstractmethod
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class B(A):  # E: Class a.B has abstract attributes "f"  # N: If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass
+    pass
+
+class C(A, metaclass=ABCMeta):  # OK, has ABCMeta as a metaclass
+    pass
+
+class D(A):  # OK, implements the abstract method
+    def f(self) -> None:
+        pass
+
+class E(Protocol):  # OK, is a protocol
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class F(E, Protocol):  # OK, is a protocol
+    pass
+
+[file b.py]
+# All of these are OK because this is not a stub file.
+from abc import ABCMeta, abstractmethod
+from typing import Protocol
+
+class A:
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class B(A):
+    pass
+
+class C(A, metaclass=ABCMeta):
+    pass
+
+class D(A):
+    def f(self) -> None:
+        pass
+
+class E(Protocol):
+    @abstractmethod
+    def f(self) -> None:
+        pass
+
+class F(E, Protocol):
+    pass
+
 [case testClassMethodOverride]
 from typing import Callable, Any
 
@@ -4391,4 +4478,22 @@ class C(B):
     @deco
     def meth(cls, x: int) -> int: ...
 [builtins fixtures/classmethod.pyi]
+[out]
+
+[case testGetAttrImportAnnotation]
+import a
+x: a.A
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testGetAttrImportBaseClass]
+import a
+class B(a.A): ...
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
 [out]

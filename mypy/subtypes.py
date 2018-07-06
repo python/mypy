@@ -524,7 +524,7 @@ def get_member_flags(name: str, info: TypeInfo) -> Set[int]:
         if v.var.is_staticmethod or v.var.is_classmethod:
             return {IS_CLASS_OR_STATIC}
     # just a variable
-    if isinstance(v, Var):
+    if isinstance(v, Var) and not v.is_property:
         flags = {IS_SETTABLE}
         if v.is_classvar:
             flags.add(IS_CLASSVAR)
