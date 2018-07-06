@@ -34,6 +34,7 @@ class TypeExportSuite(DataSuite):
             options.strict_optional = False  # TODO: Enable strict optional checking
             options.use_builtins_fixtures = True
             options.show_traceback = True
+            options.export_types = True
             result = build.build(sources=[BuildSource('main', None, src)],
                                  options=options,
                                  alt_lib_path=test_temp_dir)

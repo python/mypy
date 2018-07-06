@@ -86,7 +86,7 @@ class BuildResult:
         self.manager = manager
         self.graph = graph
         self.files = manager.modules
-        self.types = manager.all_types  # Non-empty for tests only or if dumping deps
+        self.types = manager.all_types  # Non-empty if export_types True in options
         self.used_cache = manager.cache_enabled
         self.errors = []  # type: List[str]  # Filled in by build if desired
 
@@ -662,7 +662,7 @@ class BuildManager:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
-      all_types:       Map {Expression: Type} collected from all modules (tests only)
+      all_types:       Map {Expression: Type} from all modules (enabled by export_types)
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
@@ -708,7 +708,7 @@ class BuildManager:
                                                   self.errors, self.plugin)
         self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
                                                              self.semantic_analyzer)
-        self.all_types = {}  # type: Dict[Expression, Type]  # Used by tests only
+        self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
@@ -2173,10 +2173,9 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            # Some tests want to look at the set of all types.
+            # Some tests (and tools) want to look at the set of all types.
             options = manager.options
-            if ((options.use_builtins_fixtures and not options.fine_grained_incremental) or
-                    manager.options.dump_deps):
+            if options.export_types:
                 manager.all_types.update(self.type_map())
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
