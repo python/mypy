@@ -10,7 +10,7 @@ from mypy.types import (
 from mypy.subtypes import (
     is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
 )
-from mypy.sametypes import is_same_type
+from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 
 from mypy import experiments
@@ -36,7 +36,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(declared, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
                                                 for x in declared.relevant_items()])
-    elif not is_overlapping_erased_types(declared, narrowed, use_promotions=True):
+    elif not is_overlapping_types(declared, narrowed):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
@@ -60,27 +60,36 @@ def get_possible_variants(typ: Type) -> List[Type]:
         else:
             return [typ.upper_bound]
     elif isinstance(typ, UnionType):
-        return typ.items + [typ]
+        return typ.items
     elif isinstance(typ, Overloaded):
-        # Note: doing 'return typ.items() + [typ]' makes mypy
+        # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
         out = []  # type: List[Type]
         out.extend(typ.items())
-        out.append(typ)
         return out
     else:
         return [typ]
 
 
-def is_partially_overlapping(left: Type, right: Type) -> bool:
-    # We should never encounter these types
+def is_overlapping_types(left: Type, right: Type) -> bool:
+    """Can a value of type 'left' also be of type 'right' or vice-versa?"""
+    # We should never encounter these types, but if we do, we handle
+    # them in the same way we handle 'Any'.
+
     illegal_types = (UnboundType, PartialType, ErasedType, DeletedType)
     if isinstance(left, illegal_types) or isinstance(right, illegal_types):
-        raise AssertionError(
-            "Encountered unexpected types: left={} right={}".format(type(left), type(right)))
+        # TODO: Replace this with an 'assert False'.
+        return True
 
-    # 'Any' may or may not be partially overlapping with the other type
+    # 'Any' may or may not be overlapping with the other type
     if isinstance(left, AnyType) or isinstance(right, AnyType):
+        return True
+
+    # We check for complete overlaps first as a general-purpose failsafe.
+    # If this check fails, we start checking to see if there exists a
+    # *partial* overlap between types.
+
+    if is_subtype(left, right) or is_subtype(right, left):
         return True
 
     # There are a number of different types that can have "variants" or are "union-like".
@@ -95,21 +104,31 @@ def is_partially_overlapping(left: Type, right: Type) -> bool:
     #
     # The logic to check whether any of these types are overlapping are essentially the
     # same: we obtain the list of possible variants and make sure there exists
-    # items in both the intersection and the difference.
+    # items in the intersection.
 
     left_possible = get_possible_variants(left)
     right_possible = get_possible_variants(right)
 
-    # However, TypeVars get special treatment. It's sufficient to check to see
-    # if at least one overlap exists.
+    # We start by checking TypeVars first: this is because in some of the checks
+    # below, it's convenient to just return early in certain cases.
     #
-    # The TypeVar checks must come before any single-variant types.
+    # If we were to defer checking TypeVars to down below, that would end up
+    # causing issues since the TypeVars would never have the opportunity to
+    # try binding to the relevant types.
     if isinstance(left, TypeVarType) or isinstance(right, TypeVarType):
         for l in left_possible:
             for r in right_possible:
                 if is_overlapping_types(l, r):
                     return True
         return False
+
+    # Now that we've finished handling TypeVars, we're free to end early
+    # if one one of the types is None and we're running in strict-optional
+    # mode. (We must perform this check after the TypeVar checks because
+    # a TypeVar could be bound to None, for example.)
+    if experiments.STRICT_OPTIONAL:
+        if isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
+            return False
 
     # Next, we handle single-variant types that may be inherently partially overlapping:
     #
@@ -120,10 +139,6 @@ def is_partially_overlapping(left: Type, right: Type) -> bool:
     # into their (Instance) fallbacks.
 
     if isinstance(left, TypedDictType) and isinstance(right, TypedDictType):
-        # If one is a subtype of the other, no partial overlap
-        if is_subtype(left, right) or is_subtype(right, left):
-            return False
-
         # All required keys in left are present and overlapping with something in right
         for key in left.required_keys:
             if key not in right.items:
@@ -164,7 +179,7 @@ def is_partially_overlapping(left: Type, right: Type) -> bool:
     # but do require custom logic to inspect.
 
     if isinstance(left, TypeType) and isinstance(right, TypeType):
-        return is_partially_overlapping(left.item, right.item)
+        return is_overlapping_types(left.item, right.item)
     elif isinstance(left, TypeType) or isinstance(right, TypeType):
         # TODO: Can Callable[[...], T] and Type[T] be partially overlapping?
         return False
@@ -182,6 +197,11 @@ def is_partially_overlapping(left: Type, right: Type) -> bool:
     # Next, we check if left and right are instances
 
     if isinstance(left, Instance) and isinstance(right, Instance):
+        if left.type.is_protocol and is_protocol_implementation(right, left):
+            return True
+        if right.type.is_protocol and is_protocol_implementation(left, right):
+            return True
+
         # Two unrelated types cannot be partially overlapping: they're disjoint.
         # We don't need to handle promotions because promotable types either
         # are overlapping or are not -- they can't be partially overlapping.
@@ -194,146 +214,32 @@ def is_partially_overlapping(left: Type, right: Type) -> bool:
 
         if len(left.args) == len(right.args):
             for left_arg, right_arg in zip(left.args, right.args):
-                if is_partially_overlapping(left_arg, right_arg):
+                if is_overlapping_types(left_arg, right_arg):
                     return True
+
         return False
 
     # We handle all remaining types here: in particular, types like
     # UnionType, Overloaded, NoneTyp, and UninhabitedType.
+    #
+    # We deliberately skip singleton variant types to avoid
+    # infinitely recursing.
 
-    found_same = False
-    found_diff = False
-    for a in left_possible:
-        for b in right_possible:
-            if is_same_type(a, b):
-                found_same = True
-                break
-        else:
-            found_diff = True
+    if len(left_possible) >= 1 or len(right_possible) >= 1:
+        for a in left_possible:
+            for b in right_possible:
+                if is_overlapping_types(a, b):
+                    return True
 
-        # Return early if possible
-        if found_same and found_diff:
-            return True
+    # We ought to have handled every case by now: we conclude the
+    # two types are not overlapping, either completely or partially.
+
     return False
 
 
-def is_overlapping_types(t: Type, s: Type) -> bool:
-    return is_subtype(t, s) or is_subtype(s, t) or is_partially_overlapping(t, s)
-
-
-def is_overlapping_erased_types(t: Type, s: Type, use_promotions: bool = False) -> bool:
-    """Can a value of type t be a value of type s, or vice versa?
-
-    Note that this effectively checks against erased types, since type
-    variables are erased at runtime and the overlapping check is based
-    on runtime behavior. The exception is protocol types, it is not safe,
-    but convenient and is an opt-in behavior.
-
-    If use_promotions is True, also consider type promotions (int and
-    float would only be overlapping if it's True).
-
-    This does not consider multiple inheritance. For example, A and B in
-    the following example are not considered overlapping, even though
-    via C they can be overlapping:
-
-        class A: ...
-        class B: ...
-        class C(A, B): ...
-
-    The rationale is that this case is usually very unlikely as multiple
-    inheritance is rare. Also, we can't reliably determine whether
-    multiple inheritance actually occurs somewhere in a program, due to
-    stub files hiding implementation details, dynamic loading etc.
-
-    TODO: Don't consider callables always overlapping.
-    TODO: Don't consider type variables with values always overlapping.
-    """
-    # Any overlaps with everything
-    if isinstance(t, AnyType) or isinstance(s, AnyType):
-        return True
-    # object overlaps with everything
-    if (isinstance(t, Instance) and t.type.fullname() == 'builtins.object' or
-            isinstance(s, Instance) and s.type.fullname() == 'builtins.object'):
-        return True
-
-    # Since we are effectively working with the erased types, we only
-    # need to handle occurrences of TypeVarType at the top level.
-    if isinstance(t, TypeVarType):
-        t = t.erase_to_union_or_bound()
-    if isinstance(s, TypeVarType):
-        s = s.erase_to_union_or_bound()
-    if isinstance(t, TypedDictType):
-        t = t.as_anonymous().fallback
-    if isinstance(s, TypedDictType):
-        s = s.as_anonymous().fallback
-
-    if isinstance(t, UnionType):
-        return any(is_overlapping_erased_types(item, s)
-                   for item in t.relevant_items())
-    if isinstance(s, UnionType):
-        return any(is_overlapping_erased_types(t, item)
-                   for item in s.relevant_items())
-
-    # We must check for TupleTypes before Instances, since Tuple[A, ...]
-    # is an Instance
-    tup_overlap = is_overlapping_tuples(t, s, use_promotions)
-    if tup_overlap is not None:
-        return tup_overlap
-
-    if isinstance(t, Instance):
-        if isinstance(s, Instance):
-            # Consider two classes non-disjoint if one is included in the mro
-            # of another.
-            if use_promotions:
-                # Consider cases like int vs float to be overlapping where
-                # there is only a type promotion relationship but not proper
-                # subclassing.
-                if t.type._promote and is_overlapping_erased_types(t.type._promote, s):
-                    return True
-                if s.type._promote and is_overlapping_erased_types(s.type._promote, t):
-                    return True
-            if t.type in s.type.mro or s.type in t.type.mro:
-                return True
-            if t.type.is_protocol and is_protocol_implementation(s, t):
-                return True
-            if s.type.is_protocol and is_protocol_implementation(t, s):
-                return True
-            return False
-    if isinstance(t, TypeType) and isinstance(s, TypeType):
-        # If both types are TypeType, compare their inner types.
-        return is_overlapping_erased_types(t.item, s.item, use_promotions)
-    elif isinstance(t, TypeType) or isinstance(s, TypeType):
-        # If exactly only one of t or s is a TypeType, check if one of them
-        # is an `object` or a `type` and otherwise assume no overlap.
-        one = t if isinstance(t, TypeType) else s
-        other = s if isinstance(t, TypeType) else t
-        if isinstance(other, Instance):
-            return other.type.fullname() in {'builtins.object', 'builtins.type'}
-        else:
-            return isinstance(other, CallableType) and is_subtype(other, one)
-    if experiments.STRICT_OPTIONAL:
-        if isinstance(t, NoneTyp) != isinstance(s, NoneTyp):
-            # NoneTyp does not overlap with other non-Union types under strict Optional checking
-            return False
-    # We conservatively assume that non-instance, non-union, non-TupleType and non-TypeType types
-    # can overlap any other types.
-    return True
-
-
-def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bool]:
-    """Part of is_overlapping_types(), for tuples only"""
-    t = adjust_tuple(t, s) or t
-    s = adjust_tuple(s, t) or s
-    if isinstance(t, TupleType) or isinstance(s, TupleType):
-        if isinstance(t, TupleType) and isinstance(s, TupleType):
-            if t.length() == s.length():
-                if all(is_overlapping_erased_types(ti, si, use_promotions)
-                       for ti, si in zip(t.items, s.items)):
-                    return True
-        # TupleType and non-tuples do not overlap
-        return False
-    # No tuples are involved here
-    return None
+def is_overlapping_erased_types(left: Type, right: Type) -> bool:
+    """The same as 'is_overlapping_erased_types', except the types are erased first."""
+    return is_overlapping_types(erase_type(left), erase_type(right))
 
 
 def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:

@@ -52,7 +52,7 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
-from mypy.meet import is_overlapping_erased_types, is_partially_overlapping
+from mypy.meet import is_overlapping_erased_types, is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
@@ -3417,7 +3417,7 @@ def conditional_type_map(expr: Expression,
                and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
-            elif not is_overlapping_erased_types(current_type, proposed_type):
+            elif not is_overlapping_types(current_type, proposed_type):
                 # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
@@ -3673,7 +3673,7 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
     alternatives then 'other' and that their argument counts are overlapping.
     """
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
-        return is_more_precise(t, s) or is_partially_overlapping(t, s)
+        return is_more_precise(t, s) or is_overlapping_types(t, s)
 
     # Try detaching callables from the containing class so we can try unifying
     # free type variables against each other.
