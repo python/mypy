@@ -14,6 +14,7 @@ It would be translated to something that conceptually looks like this:
    return r3
 """
 from typing import Dict, List, Tuple, Optional, Union, Sequence, Set
+from abc import abstractmethod
 
 from mypy.nodes import (
     Node, MypyFile, SymbolNode, Statement, FuncItem, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
@@ -335,6 +336,38 @@ class FuncInfo(object):
         # TODO: add field for ret_type: RType = none_rprimitive
 
 
+class NonlocalControl:
+    """Represents a stack frame of constructs that modify nonlocal control flow.
+
+    The nonlocal control flow constructs are break, continue, and
+    return, and their behavior is modified by a number of other
+    constructs.  The most obvious is loop, which override where break
+    and continue jump to, but also `except` (which needs to clear
+    exc_info when left) and (eventually) finally blocks (which need to
+    ensure that the finally block is always executed when leaving the
+    try/except blocks).
+    """
+    @abstractmethod
+    def gen_break(self, builder: 'IRBuilder') -> None: pass
+
+    @abstractmethod
+    def gen_continue(self, builder: 'IRBuilder') -> None: pass
+
+    @abstractmethod
+    def gen_return(self, builder: 'IRBuilder', value: Value) -> None: pass
+
+
+class BaseNonlocalControl(NonlocalControl):
+    def gen_break(self, builder: 'IRBuilder') -> None:
+        assert False, "break outside of loop"
+
+    def gen_continue(self, builder: 'IRBuilder') -> None:
+        assert False, "continue outside of loop"
+
+    def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+        builder.add(Return(value))
+
+
 class IRBuilder(NodeVisitor[Value]):
     def __init__(self,
                  types: Dict[Expression, Type],
@@ -358,9 +391,9 @@ class IRBuilder(NodeVisitor[Value]):
         self.fn_info = FuncInfo()
         self.fn_infos = [self.fn_info]  # type: List[FuncInfo]
 
-        # This list operate as stack frames for loops. Each loop adds a new
-        # frame containing the continue and break targets for the loop.
-        self.loop_exits = []  # type: List[Tuple[BasicBlock, BasicBlock]]
+        # This list operates as a stack of constructs that modify the
+        # behavior of nonlocal control flow constructs.
+        self.nonlocal_control = []  # type: List[NonlocalControl]
         # Stack of except handler entry blocks
         self.error_handlers = [None]  # type: List[Optional[BasicBlock]]
 
@@ -616,7 +649,7 @@ class IRBuilder(NodeVisitor[Value]):
             retval = self.coerce(retval, self.ret_types[-1], stmt.line)
         else:
             retval = self.add(PrimitiveOp([], none_op, line=-1))
-        self.add(Return(retval))
+        self.nonlocal_control[-1].gen_return(self, retval)
         return INVALID_VALUE
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> Value:
@@ -803,11 +836,30 @@ class IRBuilder(NodeVisitor[Value]):
         if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], Return):
             self.add(Goto(target))
 
+    class LoopNonlocalControl(NonlocalControl):
+        def __init__(self, outer: NonlocalControl,
+                     continue_block: BasicBlock, break_block: BasicBlock) -> None:
+            self.outer = outer
+            self.continue_block = continue_block
+            self.break_block = break_block
+
+        def gen_break(self, builder: 'IRBuilder') -> None:
+            builder.add(Goto(self.break_block))
+            builder.new_block()
+
+        def gen_continue(self, builder: 'IRBuilder') -> None:
+            builder.add(Goto(self.continue_block))
+            builder.new_block()
+
+        def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+            self.outer.gen_return(builder, value)
+
     def push_loop_stack(self, continue_block: BasicBlock, break_block: BasicBlock) -> None:
-        self.loop_exits.append((continue_block, break_block))
+        self.nonlocal_control.append(
+            IRBuilder.LoopNonlocalControl(self.nonlocal_control[-1], continue_block, break_block))
 
     def pop_loop_stack(self) -> None:
-        self.loop_exits.pop()
+        self.nonlocal_control.pop()
 
     def visit_while_stmt(self, s: WhileStmt) -> Value:
         body, next, top = BasicBlock(), BasicBlock(), BasicBlock()
@@ -962,13 +1014,11 @@ class IRBuilder(NodeVisitor[Value]):
             return INVALID_VALUE
 
     def visit_break_stmt(self, node: BreakStmt) -> Value:
-        self.add(Goto(self.loop_exits[-1][1]))
-        self.new_block()
+        self.nonlocal_control[-1].gen_break(self)
         return INVALID_VALUE
 
     def visit_continue_stmt(self, node: ContinueStmt) -> Value:
-        self.add(Goto(self.loop_exits[-1][0]))
-        self.new_block()
+        self.nonlocal_control[-1].gen_continue(self)
         return INVALID_VALUE
 
     def visit_unary_expr(self, expr: UnaryExpr) -> Value:
@@ -1606,6 +1656,7 @@ class IRBuilder(NodeVisitor[Value]):
         self.environments.append(self.environment)
         self.ret_types.append(none_rprimitive)
         self.error_handlers.append(None)
+        self.nonlocal_control.append(BaseNonlocalControl())
         self.blocks.append([])
         self.new_block()
 
@@ -1632,6 +1683,7 @@ class IRBuilder(NodeVisitor[Value]):
         env = self.environments.pop()
         ret_type = self.ret_types.pop()
         self.error_handlers.pop()
+        self.nonlocal_control.pop()
         self.environment = self.environments[-1]
         return blocks, env, ret_type
 
