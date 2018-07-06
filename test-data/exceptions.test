@@ -159,7 +159,8 @@ L2:
 L3:
     goto L8
 L4:
-    clear_exception(); r4 = 0
+    r4 = err_catch
+    dec_ref r4
     r5 = unicode_1 :: static  ('weeee')
     r6 = builtins.module :: static
     r7 = unicode_2 :: static  ('print')
@@ -173,6 +174,7 @@ L6:
     r10 = cast(None, r9)
     if is_error(r10) goto L9 (error at g:5) else goto L11
 L7:
+    clear_exc_info
 L8:
     r11 = None
     return r11

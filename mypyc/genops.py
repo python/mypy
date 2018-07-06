@@ -62,6 +62,7 @@ from mypyc.ops_misc import (
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, clear_exception_op,
+    error_catch_op, clear_exc_info_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -1510,6 +1511,31 @@ class IRBuilder(NodeVisitor[Value]):
         self.add(Unreachable())
         return INVALID_VALUE
 
+    class ExceptNonlocalControl(NonlocalControl):
+        """Nonlocal control for except blocks.
+
+        Just makes sure that sys.exc_info always gets cleared when we leave.
+        This is super annoying.
+        """
+        def __init__(self, outer: NonlocalControl, line: int) -> None:
+            self.outer = outer
+            self.line = line
+
+        def gen_cleanup(self, builder: 'IRBuilder') -> None:
+            # TODO: skip generating the clear if we just generated one
+            builder.primitive_op(clear_exc_info_op, [], self.line)
+
+        def gen_break(self, builder: 'IRBuilder') -> None:
+            self.gen_cleanup(builder)
+            self.outer.gen_break(builder)
+
+        def gen_continue(self, builder: 'IRBuilder') -> None:
+            self.gen_cleanup(builder)
+            self.outer.gen_continue(builder)
+
+        def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+            self.outer.gen_return(builder, value)
+
     def visit_try_stmt(self, t: TryStmt) -> Value:
         assert len(t.handlers) == 1 and t.types[0] is None and t.vars[0] is None, (
             "Only bare except supported")
@@ -1518,16 +1544,24 @@ class IRBuilder(NodeVisitor[Value]):
 
         except_entry, exit_block = BasicBlock(), BasicBlock()
 
+        # Compile the try block with an error handler
         self.error_handlers.append(except_entry)
         self.goto_and_activate(BasicBlock())
         self.accept(t.body)
         self.add(Goto(exit_block))
         self.error_handlers.pop()
 
+        # Compile the except block with the nonlocal control flow overridden to clear exc_info
         self.activate_block(except_entry)
         except_body = t.handlers[0]
-        self.primitive_op(clear_exception_op, [], except_body.line)
+        self.primitive_op(error_catch_op, [], except_body.line)  # TODO: use this value
+
+        self.nonlocal_control.append(
+            IRBuilder.ExceptNonlocalControl(self.nonlocal_control[-1], except_body.line))
         self.accept(except_body)
+        self.nonlocal_control.pop()
+
+        self.primitive_op(clear_exc_info_op, [], except_body.line)
         self.add(Goto(exit_block))
 
         self.activate_block(exit_block)

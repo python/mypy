@@ -43,6 +43,8 @@ def generate_native_function(fn: FuncIR,
     body.indent()
 
     for r, i in fn.env.indexes.items():
+        if isinstance(r.type, RTuple):
+            emitter.declare_tuple_struct(r.type)
         if i < len(fn.args):
             continue  # skip the arguments
         ctype = emitter.ctype_spaced(r.type)

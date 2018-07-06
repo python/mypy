@@ -8,6 +8,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#if 0
+} // why isn't emacs smart enough to not indent this
+#endif
 
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
@@ -39,7 +42,7 @@ static void CPyDebug_Print(const char *msg) {
 // implementation. We don't do any bounds checking so we'd better be pretty sure
 // we know that it is there.
 static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableItem *vtable) {
-	int i;
+    int i;
     for (i = -2; ; i -= 2) {
         if ((PyTypeObject *)vtable[i] == trait) {
             return (CPyVTableItem *)vtable[i + 1];
@@ -532,6 +535,16 @@ static void CPy_AddTraceback(const char *filename, const char *funcname, int lin
     PyTraceBack_Here(frame_obj);
     Py_DECREF(code_obj);
     Py_DECREF(frame_obj);
+}
+
+static void CPy_CatchError(PyObject **p_type, PyObject **p_value, PyObject **p_traceback) {
+    PyErr_Fetch(p_type, p_value, p_traceback);
+    // SetExcInfo steals references, so incref them
+    Py_XINCREF(*p_type);
+    Py_XINCREF(*p_value);
+    Py_XINCREF(*p_traceback);
+    PyErr_Clear();
+    PyErr_SetExcInfo(*p_type, *p_value, *p_traceback);
 }
 
 #ifdef __cplusplus

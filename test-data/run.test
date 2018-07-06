@@ -455,6 +455,7 @@ Traceback (most recent call last):
 Exception
 
 [case testTryExcept]
+import wrapsys
 def g(b: bool) -> None:
     try:
         if b:
@@ -464,13 +465,55 @@ def g(b: bool) -> None:
             raise Exception('hi')
     except:
         print("caught!")
+
+def r(b: bool) -> None:
+    if b:
+        x = [0]
+        x[1]
+    else:
+        raise Exception('hi')
+
+def f(b: bool) -> None:
+    try:
+        r(b)
+    except:
+        print(str(wrapsys.exc_info()[1]))
+    print(str(wrapsys.exc_info()[1]))
+
+def h() -> None:
+    while True:
+        try:
+            raise Exception('gonna break')
+        except:
+            print(str(wrapsys.exc_info()[1]))
+            break
+    print(str(wrapsys.exc_info()[1]))
+
+[file wrapsys.py]
+# This is a gross hack around some limitations of the test system/mypyc.
+from typing import Any
+import sys
+def exc_info() -> Any:
+    return sys.exc_info()  # type: ignore
+
 [file driver.py]
-from native import g
+from native import g, f, h
 g(True)
 g(False)
+
+f(True)
+f(False)
+
+h()
 [out]
 caught!
 caught!
+list index out of range
+None
+hi
+None
+gonna break
+None
 
 [case testGenericEquality]
 def eq(a: object, b: object) -> bool:
