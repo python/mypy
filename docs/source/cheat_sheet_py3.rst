@@ -47,14 +47,13 @@ Built-in types
 
 .. code-block:: python
 
-   from typing import List, Set, Dict, Tuple, Text, Optional, AnyStr
+   from typing import List, Set, Dict, Tuple, Optional
 
    # For simple built-in types, just use the name of the type
    x: int = 1
    x: float = 1.0
    x: bool = True
    x: str = "test"
-   x: str = u"test"
    x: bytes = b"test"
 
    # For collections, the name of the type is capitalized, and the
@@ -70,10 +69,6 @@ Built-in types
 
    # For tuples, we specify the types of all the elements
    x: Tuple[int, str, float] = (3, "yes", 7.5)
-
-   # For textual data, use Text if you care about Python 2 compatibility
-   # ("Text" means "unicode" in Python 2 and "str" in Python 3)
-   x: List[Text] = ["string", u"unicode"]
 
    # Use Optional[] for values that could be None
    x: Optional[str] = some_function()
@@ -269,7 +264,6 @@ See :ref:`async-and-await` for the full detail on typing coroutines and asynchro
 .. code-block:: python
 
    import asyncio
-   from typing import Generator, Any
 
    # A coroutine is typed like a normal function
    async def countdown35(tag: str, count: int) -> str:
