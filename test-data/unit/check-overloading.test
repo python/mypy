@@ -2229,7 +2229,7 @@ foo(*y)  # E: No overload variant of "foo" matches argument type "List[str]" \
          # N: Possible overload variants: \
          # N:     def foo(x: int, y: int, z: int, *args: int) -> C \
          # N:     def foo(x: int) -> A \
-         # N:     <1 more matching overload not shown, out of 3 total overloads>
+         # N:     def foo(x: int, y: int) -> B
 [builtins fixtures/list.pyi]
 
 [case testOverloadMultipleVarargDefinition]
@@ -4038,3 +4038,43 @@ main:11: error: Argument 6 to "f" has incompatible type "Union[int, str]"; expec
 main:11: error: Argument 7 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: error: Argument 8 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: note: Not all union combinations were tried because there are too many unions
+
+[case testOverloadErrorMessageManyMatches]
+from typing import overload
+
+class A: pass
+class B: pass
+class C: pass
+class D: pass
+
+@overload
+def f(x: A) -> None: ...
+@overload
+def f(x: B) -> None: ...
+@overload
+def f(x: C) -> None: ...
+@overload
+def f(x: D) -> None: ...
+@overload
+def f(x: int, y: int) -> None: ...
+def f(*args): pass
+
+f(3)  # E: No overload variant of "f" matches argument type "int" \
+      # N: Possible overload variants: \
+      # N:     def f(x: A) -> None \
+      # N:     def f(x: B) -> None \
+      # N:     <2 more similar overloads not shown, out of 5 total overloads>
+
+@overload
+def g(x: A) -> None: ...
+@overload
+def g(x: B) -> None: ...
+@overload
+def g(x: C) -> None: ...
+def g(*args): pass
+
+g(3)  # E: No overload variant of "g" matches argument type "int" \
+      # N: Possible overload variants: \
+      # N:     def g(x: A) -> None \
+      # N:     def g(x: B) -> None \
+      # N:     def g(x: C) -> None

@@ -1238,17 +1238,13 @@ class MessageBuilder:
                           .format(supertype.type.name(), name), context)
         self.print_more(conflict_flags, context, OFFSET, MAX_ITEMS)
 
-    def pretty_overload(self, func: Overloaded, context: Context,
+    def pretty_overload(self, tp: Overloaded, context: Context,
                         offset: int, max_items: int) -> None:
-        targets = func.items()
-        for item in targets[:max_items]:
+        for item in tp.items()[:max_items]:
             self.note('@overload', context, offset=2 * offset)
             self.note(self.pretty_callable(item), context, offset=2 * offset)
-
-        max_available = len(targets)
-        shown = min(max_items, max_available)
-        if shown < max_available:
-            left = max_available - shown
+        left = len(tp.items()) - max_items
+        if left > 0:
             msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
             self.note(msg, context, offset=2 * offset)
 
@@ -1265,14 +1261,19 @@ class MessageBuilder:
         max_matching = len(targets)
         max_available = len(func.items())
 
+        # If there are 3 matches but max_items == 2, we might as well show
+        # all three items instead of having the 3rd item be an error message.
+        if shown + 1 == max_matching:
+            shown = max_matching
+
         self.note('Possible overload variant{}:'.format(plural_s(shown)), context)
-        for item in targets[:max_items]:
+        for item in targets[:shown]:
             self.note(self.pretty_callable(item), context, offset=2 * offset)
 
         assert shown <= max_matching <= max_available
         if shown < max_matching <= max_available:
             left = max_matching - shown
-            msg = '<{} more matching overload{} not shown, out of {} total overloads>'.format(
+            msg = '<{} more similar overload{} not shown, out of {} total overloads>'.format(
                 left, plural_s(left), max_available)
             self.note(msg, context, offset=2 * offset)
         elif shown == max_matching < max_available:
