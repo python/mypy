@@ -28,7 +28,7 @@ class SamplesSuite(Suite):
 
     def test_samples(self) -> None:
         for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
-            mypy_args = ['--no-strict-optional', '--platform=linux']
+            mypy_args = ['--no-strict-optional']
             if f == os.path.join('test-data', 'samples', 'crawl2.py'):
                 # This test requires 3.5 for async functions
                 mypy_args.append('--python-version=3.5')
@@ -44,7 +44,7 @@ class SamplesSuite(Suite):
                 modules.append(f)
         if modules:
             # TODO: Remove need for --no-strict-optional
-            run_mypy(['--no-strict-optional'] + modules)
+            run_mypy(['--no-strict-optional', '--platform=linux'] + modules)
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
