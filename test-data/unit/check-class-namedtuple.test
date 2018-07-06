@@ -523,7 +523,10 @@ class Overloader(NamedTuple):
 
 reveal_type(Overloader(1).method('string'))  # E: Revealed type is 'builtins.str'
 reveal_type(Overloader(1).method(1))  # E: Revealed type is 'builtins.int'
-Overloader(1).method(('tuple',))  # E: No overload variant of "method" of "Overloader" matches argument type "Tuple[str]"
+Overloader(1).method(('tuple',))  # E: No overload variant of "method" of "Overloader" matches argument type "Tuple[str]" \
+                                  # N: Possible overload variants: \
+                                  # N:     def method(self, y: str) -> str \
+                                  # N:     def method(self, y: int) -> int
 
 [case testNewNamedTupleMethodInheritance]
 from typing import NamedTuple, TypeVar
