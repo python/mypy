@@ -118,6 +118,8 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
             isinstance(s, Instance) and s.type.fullname() == 'builtins.object'):
         return True
 
+    if is_subtype(t, s) or is_subtype(s, t):
+        return True
     # Since we are effectively working with the erased types, we only
     # need to handle occurrences of TypeVarType at the top level.
     if isinstance(t, TypeVarType):
@@ -191,7 +193,7 @@ def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bo
                 if all(is_overlapping_types(ti, si, use_promotions)
                        for ti, si in zip(t.items, s.items)):
                     return True
-        return is_subtype(t, s) or is_subtype(s, t)
+        return False
     # TupleType and non-tuples are handled later
     # Otherwise, no tuples are involved
     return False
