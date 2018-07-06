@@ -37,6 +37,7 @@ class TestCompiler(MypycDataSuite):
             options.show_traceback = True
             options.strict_optional = True
             options.python_version = (3, 6)
+            options.export_types = True
             source = build.BuildSource('prog.py', 'prog', text)
 
             try:

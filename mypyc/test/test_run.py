@@ -48,6 +48,7 @@ class TestRun(MypycDataSuite):
             options.show_traceback = True
             options.strict_optional = True
             options.python_version = (3, 6)
+            options.export_types = True
 
             os.mkdir('tmp/py')
             source_path = 'tmp/py/native.py'
