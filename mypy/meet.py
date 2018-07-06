@@ -141,9 +141,6 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
     if is_overlapping_tuples(t, s, use_promotions):
         return True
 
-    if is_subtype(t, s) or is_subtype(s, t):
-            return True
-
     if isinstance(t, Instance):
         if isinstance(s, Instance):
             # Consider two classes non-disjoint if one is included in the mro
@@ -194,10 +191,10 @@ def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bo
                 if all(is_overlapping_types(ti, si, use_promotions)
                        for ti, si in zip(t.items, s.items)):
                     return True
-        return False
+        return is_subtype(t, s) or is_subtype(s, t)
     # TupleType and non-tuples are handled later
     # Otherwise, no tuples are involved
-    return None
+    return False
 
 
 def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:
