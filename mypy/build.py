@@ -40,7 +40,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding, commonpath
+from mypy.util import DecodeError, decode_python_encoding, is_sub_path
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -2369,11 +2369,10 @@ def find_module_and_diagnose(manager: BuildManager,
                                     id, path)
             raise ModuleNotFound
         if not manager.options.no_silence_site_packages:
-            if os.path.isabs(path):
-                for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
-                    if commonpath([dir, path]) == dir:
-                        # Silence errors in site-package dirs and typeshed
-                        follow_imports = 'silent'
+            for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
+                if is_sub_path(path, dir):
+                    # Silence errors in site-package dirs and typeshed
+                    follow_imports = 'silent'
         return (path, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
