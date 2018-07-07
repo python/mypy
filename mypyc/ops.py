@@ -18,7 +18,7 @@ from typing import (
 )
 from collections import OrderedDict
 
-from mypy.nodes import SymbolNode, Var, FuncDef
+from mypy.nodes import Block, SymbolNode, Var, FuncDef
 
 from mypyc.namegen import NameGenerator
 from mypyc.common import TOP_LEVEL_NAME
@@ -1199,6 +1199,9 @@ class FuncIR:
 
     def __str__(self) -> str:
         return '\n'.join(format_func(self))
+
+
+INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))
 
 
 # Some notes on the vtable layout:

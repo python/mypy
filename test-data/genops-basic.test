@@ -1123,16 +1123,14 @@ L0:
 def c(num):
     num :: float
     r0 :: c__env
-    r1 :: bool
-    r2 :: inner_c_obj
-    r3 :: bool
+    r1 :: inner_c_obj
+    r2 :: bool
     inner :: object
 L0:
     r0 = c__env()
-    r0.num = num; r1 = is_error
-    r2 = inner_c_obj()
-    r2.__mypyc_env__ = r0; r3 = is_error
-    inner = r2
+    r1 = inner_c_obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    inner = r1
     return inner
 def inner_d_obj.__call__(self, s):
     self :: inner_d_obj
@@ -1147,35 +1145,28 @@ L0:
 def d(num):
     num :: float
     r0 :: d__env
-    r1 :: bool
-    r2 :: inner_d_obj
-    r3 :: bool
+    r1 :: inner_d_obj
+    r2 :: bool
     inner :: object
-    r4 :: str
-    r5 :: object
-    r6 :: str
-    r7 :: bool
+    a, r3 :: str
+    r4 :: object
+    r5, b, r6 :: str
+    r7 :: object
     r8 :: str
-    r9 :: object
-    r10 :: str
-    r11 :: bool
-    r12 :: str
 L0:
     r0 = d__env()
-    r0.num = num; r1 = is_error
-    r2 = inner_d_obj()
-    r2.__mypyc_env__ = r0; r3 = is_error
-    inner = r2
-    r4 = unicode_3 :: static  ('one')
-    r5 = py_call(inner, r4)
-    r6 = cast(str, r5)
-    r0.a = r6; r7 = is_error
-    r8 = unicode_4 :: static  ('two')
-    r9 = py_call(inner, r8)
-    r10 = cast(str, r9)
-    r0.b = r10; r11 = is_error
-    r12 = r0.a
-    return r12
+    r1 = inner_d_obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    inner = r1
+    r3 = unicode_3 :: static  ('one')
+    r4 = py_call(inner, r3)
+    r5 = cast(str, r4)
+    a = r5
+    r6 = unicode_4 :: static  ('two')
+    r7 = py_call(inner, r6)
+    r8 = cast(str, r7)
+    b = r8
+    return a
 def inner():
     r0 :: str
 L0:
@@ -1297,32 +1288,29 @@ L0:
 def c(flag):
     flag :: bool
     r0 :: c__env
-    r1, r2 :: bool
-    r3 :: inner_c_obj
-    r4 :: bool
+    r1 :: inner_c_obj
+    r2 :: bool
     inner :: object
-    r5 :: inner_c_obj_0
-    r6 :: bool
-    r7 :: object
-    r8 :: str
+    r3 :: inner_c_obj_0
+    r4 :: bool
+    r5 :: object
+    r6 :: str
 L0:
     r0 = c__env()
-    r0.flag = flag; r1 = is_error
-    r2 = r0.flag
-    if r2 goto L1 else goto L2 :: bool
+    if flag goto L1 else goto L2 :: bool
 L1:
-    r3 = inner_c_obj()
-    r3.__mypyc_env__ = r0; r4 = is_error
-    inner = r3
+    r1 = inner_c_obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    inner = r1
     goto L3
 L2:
-    r5 = inner_c_obj_0()
-    r5.__mypyc_env__ = r0; r6 = is_error
-    inner = r5
+    r3 = inner_c_obj_0()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    inner = r3
 L3:
-    r7 = py_call(inner)
-    r8 = cast(str, r7)
-    return r8
+    r5 = py_call(inner)
+    r6 = cast(str, r5)
+    return r6
 
 [case testMultiplyNestedd]
 def a() -> int:
@@ -1418,31 +1406,84 @@ L0:
 def f(flag):
     flag :: bool
     r0 :: f__env
-    r1, r2 :: bool
-    r3 :: inner_f_obj
-    r4 :: bool
+    r1 :: inner_f_obj
+    r2 :: bool
     inner :: object
-    r5 :: inner_f_obj_0
-    r6 :: bool
-    r7 :: object
-    r8 :: str
+    r3 :: inner_f_obj_0
+    r4 :: bool
+    r5 :: object
+    r6 :: str
 L0:
     r0 = f__env()
-    r0.flag = flag; r1 = is_error
-    r2 = r0.flag
-    if r2 goto L1 else goto L2 :: bool
+    if flag goto L1 else goto L2 :: bool
 L1:
-    r3 = inner_f_obj()
-    r3.__mypyc_env__ = r0; r4 = is_error
-    inner = r3
+    r1 = inner_f_obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    inner = r1
     goto L3
 L2:
-    r5 = inner_f_obj_0()
-    r5.__mypyc_env__ = r0; r6 = is_error
-    inner = r5
+    r3 = inner_f_obj_0()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    inner = r3
 L3:
-    r7 = py_call(inner)
-    r8 = cast(str, r7)
+    r5 = py_call(inner)
+    r6 = cast(str, r5)
+    return r6
+
+[case testNestedFunctionUnusedFreeVars]
+def f(foo: int, bar: int) -> None:
+    x = 1
+    y = 2
+    def g() -> None:
+        nonlocal y
+        y = 3
+        nonlocal bar
+        bar += 2
+    z = 3
+    
+[out]
+def g_f_obj.__call__(self):
+    self :: g_f_obj
+    r0 :: f__env
+    r1 :: int
+    r2 :: bool
+    r3, r4, r5 :: int
+    r6 :: bool
+    r7 :: None
+L0:
+    r0 = self.__mypyc_env__
+    r1 = 3
+    r0.y = r1; r2 = is_error
+    r3 = 2
+    r4 = r0.bar
+    r5 = r4 + r3 :: int
+    r0.bar = r5; r6 = is_error
+    r7 = None
+    return r7
+def f(foo, bar):
+    foo, bar :: int
+    r0 :: f__env
+    r1 :: bool
+    x, r2, r3 :: int
+    r4 :: bool
+    r5 :: g_f_obj
+    r6 :: bool
+    g :: object
+    z, r7 :: int
+    r8 :: None
+L0:
+    r0 = f__env()
+    r0.bar = bar; r1 = is_error
+    r2 = 1
+    x = r2
+    r3 = 2
+    r0.y = r3; r4 = is_error
+    r5 = g_f_obj()
+    r5.__mypyc_env__ = r0; r6 = is_error
+    g = r5
+    r7 = 3
+    z = r7
+    r8 = None
     return r8
 
 [case testNestedFunctionRangeLoop]
@@ -1472,49 +1513,43 @@ L0:
     return r7
 def f():
     r0 :: f__env
-    r1, r2 :: int
+    r1, i, r2 :: int
     r3 :: bool
-    r4 :: int
-    r5 :: bool
-    r6 :: int
-    r7 :: object
-    r8 :: str
-    r9, r10, r11 :: object
-    r12 :: None
-    r13, r14 :: int
-    r15 :: bool
-    r16 :: g_f_obj
-    r17 :: bool
+    r4 :: object
+    r5 :: str
+    r6, r7, r8 :: object
+    r9 :: None
+    r10, r11 :: int
+    r12 :: g_f_obj
+    r13 :: bool
     g :: object
-    r18 :: None
+    r14 :: None
 L0:
     r0 = f__env()
     r1 = 10
     r2 = 0
-    r0.i = r2; r3 = is_error
+    i = r2
 L1:
-    r4 = r0.i
-    r5 = r4 < r1 :: int
-    if r5 goto L2 else goto L4 :: bool
+    r3 = i < r1 :: int
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r6 = r0.i
-    r7 = builtins.module :: static
-    r8 = unicode_0 :: static  ('print')
-    r9 = getattr r7, r8
-    r10 = box(int, r6)
-    r11 = py_call(r9, r10)
-    r12 = cast(None, r11)
+    r4 = builtins.module :: static
+    r5 = unicode_0 :: static  ('print')
+    r6 = getattr r4, r5
+    r7 = box(int, i)
+    r8 = py_call(r6, r7)
+    r9 = cast(None, r8)
 L3:
-    r13 = 1
-    r14 = r4 + r13 :: int
-    r0.i = r14; r15 = is_error
+    r10 = 1
+    r11 = i + r10 :: int
+    i = r11
     goto L1
 L4:
-    r16 = g_f_obj()
-    r16.__mypyc_env__ = r0; r17 = is_error
-    g = r16
-    r18 = None
-    return r18
+    r12 = g_f_obj()
+    r12.__mypyc_env__ = r0; r13 = is_error
+    g = r12
+    r14 = None
+    return r14
 
 [case testObjectAsBoolean]
 from typing import List

@@ -143,6 +143,18 @@ def while_loop() -> int:
         i += 1
     return 0
 
+def free_vars(foo: int, bar: int) -> int:
+    x = 1
+    y = 2
+    def g() -> None:
+        nonlocal y
+        y = 3
+        nonlocal bar
+        bar += y
+    z = 3
+    g()
+    return bar
+
 def outer() -> str:
     return 'outer: normal function'
 
@@ -160,7 +172,7 @@ class A:
         return inner()
 
 [file driver.py]
-from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, triple, if_else, for_loop, while_loop, outer, inner, A
+from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, triple, if_else, for_loop, while_loop, free_vars, outer, inner, A
 
 assert a()() == None
 assert b()()() == 'b.first.second: nested function'
@@ -190,6 +202,8 @@ assert if_else(0) == 'if_else.inner: third definition'
 
 assert for_loop() == 3
 assert while_loop() == 3
+
+assert free_vars(1, 2) == 5
 
 assert outer() == 'outer: normal function'
 assert inner() == 'inner: normal function'
