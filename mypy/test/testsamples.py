@@ -44,7 +44,7 @@ class SamplesSuite(Suite):
                 modules.append(f)
         if modules:
             # TODO: Remove need for --no-strict-optional
-            run_mypy(['--no-strict-optional'] + modules)
+            run_mypy(['--no-strict-optional', '--platform=linux'] + modules)
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
