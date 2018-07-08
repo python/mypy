@@ -3078,7 +3078,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         n = names.get(parts[i], None)
                         if n and isinstance(n.node, ImportedName):
                             n = self.dereference_module_cross_ref(n)
-                        elif '__getattr__' in names:
+                        elif not n and '__getattr__' in names:
                             gvar = self.create_getattr_var(names['__getattr__'],
                                                            parts[i], parts[i])
                             if gvar:

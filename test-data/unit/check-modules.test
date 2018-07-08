@@ -2484,3 +2484,14 @@ from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
+
+[case testNoGetattrInterference]
+import testmod as t
+def f(x: t.Cls) -> None:
+    reveal_type(x)  # E: Revealed type is 'testmod.Cls'
+[file testmod.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+class Cls: ...
+[builtins fixtures/module.pyi]
+[out]
