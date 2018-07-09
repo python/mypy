@@ -321,7 +321,12 @@ class TypeMeetVisitor(TypeVisitor[Type]):
         if isinstance(s, FunctionLike):
             if s.items() == t.items():
                 return Overloaded(t.items())
-            return meet_types(t.fallback, s.fallback)
+            elif is_subtype(s, t):
+                return s
+            elif is_subtype(t, s):
+                return t
+            else:
+                return meet_types(t.fallback, s.fallback)
         return meet_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
