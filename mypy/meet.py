@@ -5,7 +5,7 @@ from mypy.join import is_similar_callables, combine_similar_callables, join_type
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
-    UninhabitedType, TypeType, TypeOfAny
+    UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation
 
@@ -313,6 +313,16 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return result
         else:
             return self.default(self.s)
+
+    def visit_overloaded(self, t: Overloaded) -> Type:
+        # TODO: Implement a better algorithm that covers at least the same cases
+        # as TypeJoinVisitor.visit_overloaded().
+        s = self.s
+        if isinstance(s, FunctionLike):
+            if s.items() == t.items():
+                return Overloaded(t.items())
+            return meet_types(t.fallback, s.fallback)
+        return meet_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():

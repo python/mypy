@@ -4078,3 +4078,25 @@ g(3)  # E: No overload variant of "g" matches argument type "int" \
       # N:     def g(x: A) -> None \
       # N:     def g(x: B) -> None \
       # N:     def g(x: C) -> None
+
+[case testOverloadedInIter]
+from lib import f, g
+
+for fun in [f, g]:
+    reveal_type(fun)  # E: Revealed type is 'Overload(def (x: builtins.int) -> builtins.str, def (x: builtins.str) -> builtins.int)'
+[file lib.pyi]
+from typing import overload
+
+@overload
+def f(x: int) -> str: ...
+@overload
+def f(x: str) -> int: ...
+
+@overload
+def g(x: int) -> str: ...
+@overload
+def g(x: str) -> int: ...
+
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
