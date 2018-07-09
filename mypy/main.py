@@ -148,9 +148,6 @@ def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
                        fscache=fscache)
 
 
-FOOTER = "environment variables: Define MYPYPATH for additional module search path entries."
-
-
 class SplitNamespace(argparse.Namespace):
     def __init__(self, standard_namespace: object, alt_namespace: object, alt_prefix: str) -> None:
         self.__dict__['_standard_namespace'] = standard_namespace
@@ -195,7 +192,7 @@ def parse_version(v: str) -> Tuple[int, int]:
 
 
 # Make the help output a little less jarring.
-class AugmentedHelpFormatter(argparse.HelpFormatter):
+class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=28)
 
@@ -297,6 +294,37 @@ def infer_python_version_and_executable(options: Options,
         options.python_executable = special_opts.python_executable
 
 
+HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files [files ...]]"""
+
+
+DESCRIPTION = """
+Mypy is a program that will type check your Python code.
+
+Pass in any files or folders you want to type check. Mypy will
+recursively traverse any provided folders to find .py files:
+
+    $ mypy my_program.py my_src_folder
+
+For more information on getting started, see:
+
+- http://mypy.readthedocs.io/en/latest/getting_started.html
+
+For more details on both running mypy and using the flags below, see:
+
+- http://mypy.readthedocs.io/en/latest/running_mypy.html
+- http://mypy.readthedocs.io/en/latest/command_line.html
+
+You can also use a config file to configure mypy instead of using
+command line flags. For more details, see:
+
+- http://mypy.readthedocs.io/en/latest/config_file.html
+"""
+
+FOOTER = """environment variables:
+  Define MYPYPATH for additional module search path entries."""
+
+
 def process_options(args: List[str],
                     require_targets: bool = True,
                     server_options: bool = False,
@@ -308,7 +336,10 @@ def process_options(args: List[str],
     call fscache.set_package_root() to set the cache's package root.
     """
 
-    parser = argparse.ArgumentParser(prog='mypy', epilog=FOOTER,
+    parser = argparse.ArgumentParser(prog='mypy',
+                                     usage=HEADER,
+                                     description=DESCRIPTION,
+                                     epilog=FOOTER,
                                      fromfile_prefix_chars='@',
                                      formatter_class=AugmentedHelpFormatter)
 
@@ -456,6 +487,9 @@ def process_options(args: List[str],
                         help="warn if missing type annotation in typeshed, only relevant with"
                              " --check-untyped-defs enabled",
                         group=untyped_group)
+    add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
+                        help="disallow decorating typed functions with untyped decorators",
+                        group=untyped_group)
 
     none_group = parser.add_argument_group(
         title='None and Optional handling',
@@ -481,6 +515,9 @@ def process_options(args: List[str],
     add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
                         help="warn about casting an expression to its inferred type",
                         group=lint_group)
+    add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
+                        help="warn about unneeded '# type: ignore' comments",
+                        group=lint_group)
     add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
                         help="do not warn about functions that end without returning",
                         group=lint_group)
@@ -488,16 +525,17 @@ def process_options(args: List[str],
                         help="warn about returning values of type Any"
                              " from non-Any typed functions",
                         group=lint_group)
-    add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
-                        help="warn about unneeded '# type: ignore' comments",
-                        group=lint_group)
 
+    # Note: this group is intentionally added here even though we don't add
+    # --strict to this group near the end.
+    #
+    # That way, this group will appear after the various strictness groups
+    # but before the remaining flags.
+    # We add `--strict` near the end so we don't accidentally miss any strictness
+    # flags that are added after this group.
     strictness_group = parser.add_argument_group(
         title='other strictness checks',
         description="Other miscellaneous strictness checks.")
-    add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
-                        help="disallow decorating typed functions with untyped decorators",
-                        group=strictness_group)
 
     incremental_group = parser.add_argument_group(
         title='incremental mode',
@@ -553,19 +591,6 @@ def process_options(args: List[str],
                         help="show column numbers in error messages",
                         group=error_group)
 
-    analysis_group = parser.add_argument_group(
-        title='extra analysis',
-        description="Extract additional information and analysis.")
-    analysis_group.add_argument(
-        '--stats', action='store_true', dest='dump_type_stats', help=argparse.SUPPRESS)
-    analysis_group.add_argument(
-        '--inferstats', action='store_true', dest='dump_inference_stats',
-        help=argparse.SUPPRESS)
-    analysis_group.add_argument(
-        '--find-occurrences', metavar='CLASS.MEMBER',
-        dest='special-opts:find_occurrences',
-        help="print out all usages of a class member (experimental)")
-
     strict_help = "strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names))
     strictness_group.add_argument(
@@ -588,6 +613,10 @@ def process_options(args: List[str],
     other_group.add_argument(
         '--scripts-are-modules', action='store_true',
         help="script x becomes module x instead of __main__")
+    other_group.add_argument(
+        '--find-occurrences', metavar='CLASS.MEMBER',
+        dest='special-opts:find_occurrences',
+        help="print out all usages of a class member (experimental)")
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
@@ -599,6 +628,11 @@ def process_options(args: List[str],
             help="use the cache in fine-grained incremental mode")
 
     # hidden options
+    parser.add_argument(
+        '--stats', action='store_true', dest='dump_type_stats', help=argparse.SUPPRESS)
+    parser.add_argument(
+        '--inferstats', action='store_true', dest='dump_inference_stats',
+        help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
