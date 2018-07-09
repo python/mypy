@@ -2464,3 +2464,23 @@ y = a.b.c.d.f()
 [file a/b/__init__.py]
 # empty
 [out]
+
+[case testModuleGetattrBusted]
+from a import A
+x: A
+reveal_type(x)  # E: Revealed type is 'Any'
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]
+
+[case testModuleGetattrBusted2]
+from a import A
+def f(x: A.B) -> None: ...
+reveal_type(f)  # E: Revealed type is 'def (x: Any)'
+[file a.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[builtins fixtures/module.pyi]
+[out]

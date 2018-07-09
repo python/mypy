@@ -43,7 +43,7 @@ If you would like to publish a library package to a package repository (e.g.
 PyPI) for either internal or external use in type checking, packages that
 supply type information via type comments or annotations in the code should put
 a ``py.typed`` in their package directory. For example, with a directory
-structure as follows:
+structure as follows
 
 .. code-block:: text
 
@@ -53,7 +53,7 @@ structure as follows:
         lib.py
         py.typed
 
-the setup.py might look like:
+the setup.py might look like
 
 .. code-block:: python
 
@@ -67,8 +67,13 @@ the setup.py might look like:
         packages=["package_a"]
     )
 
+.. note::
+
+   If you use setuptools, you must pass the option ``zip_safe=False`` to
+   ``setup()``, or mypy will not be able to find the installed package.
+
 Some packages have a mix of stub files and runtime files. These packages also
-require a ``py.typed`` file. An example can be seen below:
+require a ``py.typed`` file. An example can be seen below
 
 .. code-block:: text
 
