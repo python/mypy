@@ -537,7 +537,7 @@ argument list ``index: Union[int, slice]`` and a return type of
 ``Union[T, Sequence[T]]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
 force mypy to check the body anyways, use the ``--check-untyped-defs``
-flag (:ref:`more details here <additional-command-line-flags>`).
+flag (:ref:`more details here <untyped-definitions-and-calls>`).
 
 The variants must also also be compatible with the implementation
 type hints. In the ``MyList`` example, mypy will check that the
