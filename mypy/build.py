@@ -40,7 +40,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding
+from mypy.util import DecodeError, decode_python_encoding, is_sub_path
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -86,7 +86,7 @@ class BuildResult:
         self.manager = manager
         self.graph = graph
         self.files = manager.modules
-        self.types = manager.all_types  # Non-empty for tests only or if dumping deps
+        self.types = manager.all_types  # Non-empty if export_types True in options
         self.used_cache = manager.cache_enabled
         self.errors = []  # type: List[str]  # Filled in by build if desired
 
@@ -200,11 +200,12 @@ SearchPaths = NamedTuple('SearchPaths',
 
 @functools.lru_cache(maxsize=None)
 def _get_site_packages_dirs(python_executable: Optional[str],
-                            fscache: FileSystemCache) -> List[str]:
+                            fscache: FileSystemCache) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
-    This runs a subprocess call, which generates a list of the site package directories.
-    To avoid repeatedly calling a subprocess (which can be slow!) we lru_cache the results."""
+    This runs a subprocess call, which generates a list of the egg directories, and the site
+    package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
+    lru_cache the results."""
     def make_abspath(path: str, root: str) -> str:
         """Take a path and make it absolute relative to root if not already absolute."""
         if os.path.isabs(path):
@@ -213,7 +214,7 @@ def _get_site_packages_dirs(python_executable: Optional[str],
             return os.path.join(root, os.path.normpath(path))
 
     if python_executable is None:
-        return []
+        return [], []
     if python_executable == sys.executable:
         # Use running Python's package dirs
         site_packages = sitepkgs.getsitepackages()
@@ -229,7 +230,7 @@ def _get_site_packages_dirs(python_executable: Optional[str],
         if fscache.isfile(pth):
             with open(pth) as f:
                 egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
-    return egg_dirs + site_packages
+    return egg_dirs, site_packages
 
 
 def compute_search_paths(sources: List[BuildSource],
@@ -292,8 +293,8 @@ def compute_search_paths(sources: List[BuildSource],
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
-    package_path = tuple(_get_site_packages_dirs(options.python_executable, fscache))
-    for site_dir in package_path:
+    egg_dirs, site_packages = _get_site_packages_dirs(options.python_executable, fscache)
+    for site_dir in site_packages:
         assert site_dir not in lib_path
         if site_dir in mypypath:
             print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
@@ -306,7 +307,7 @@ def compute_search_paths(sources: List[BuildSource],
 
     return SearchPaths(tuple(reversed(python_path)),
                        tuple(mypypath),
-                       package_path,
+                       tuple(egg_dirs + site_packages),
                        tuple(lib_path))
 
 
@@ -661,7 +662,7 @@ class BuildManager:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
-      all_types:       Map {Expression: Type} collected from all modules (tests only)
+      all_types:       Map {Expression: Type} from all modules (enabled by export_types)
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
@@ -707,7 +708,7 @@ class BuildManager:
                                                   self.errors, self.plugin)
         self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
                                                              self.semantic_analyzer)
-        self.all_types = {}  # type: Dict[Expression, Type]  # Used by tests only
+        self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
@@ -1870,6 +1871,8 @@ class State:
             self.dep_line_map = {id: line
                                  for id, line in zip(all_deps, self.meta.dep_lines)}
             self.child_modules = set(self.meta.child_modules)
+            if temporary:
+                self.load_tree(temporary=True)
         else:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
@@ -1952,16 +1955,16 @@ class State:
         # TODO: Assert deps file wasn't changed.
         self.fine_grained_deps = {k: set(v) for k, v in deps.items()}
 
-    def load_tree(self) -> None:
+    def load_tree(self, temporary: bool = False) -> None:
         assert self.meta is not None, "Internal error: this method must be called only" \
                                       " for cached modules"
         with open(self.meta.data_json) as f:
             data = json.load(f)
         # TODO: Assert data file wasn't changed.
         self.tree = MypyFile.deserialize(data)
-
-        self.manager.modules[self.id] = self.tree
-        self.manager.add_stats(fresh_trees=1)
+        if not temporary:
+            self.manager.modules[self.id] = self.tree
+            self.manager.add_stats(fresh_trees=1)
 
     def fix_cross_refs(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -2170,10 +2173,9 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            # Some tests want to look at the set of all types.
+            # Some tests (and tools) want to look at the set of all types.
             options = manager.options
-            if ((options.use_builtins_fixtures and not options.fine_grained_incremental) or
-                    manager.options.dump_deps):
+            if options.export_types:
                 manager.all_types.update(self.type_map())
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
@@ -2385,7 +2387,11 @@ def find_module_and_diagnose(manager: BuildManager,
                     skipping_module(manager, caller_line, caller_state,
                                     id, path)
             raise ModuleNotFound
-
+        if not manager.options.no_silence_site_packages:
+            for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
+                if is_sub_path(path, dir):
+                    # Silence errors in site-package dirs and typeshed
+                    follow_imports = 'silent'
         return (path, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a

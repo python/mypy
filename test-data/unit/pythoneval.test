@@ -1045,6 +1045,9 @@ _testTypedDictGet.py:7: error: Revealed type is 'builtins.int'
 _testTypedDictGet.py:8: error: Revealed type is 'builtins.str'
 _testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
+_testTypedDictGet.py:10: note: Possible overload variants:
+_testTypedDictGet.py:10: note:     def get(self, k: str) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, k: str, default: object) -> object 
 _testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'
 
 [case testTypedDictMappingMethods]
@@ -1272,3 +1275,31 @@ def d() -> Dict[int, int]:
     return {}
 [out]
 _testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+
+[case testLoadsOfOverloads]
+from typing import overload, Any, TypeVar, Iterable, List, Dict, Callable, Union
+
+S = TypeVar('S')
+T = TypeVar('T')
+
+@overload
+def simple_map() -> None: ...
+@overload
+def simple_map(func: Callable[[T], S], one: Iterable[T]) -> S: ...
+@overload
+def simple_map(func: Callable[..., S], *iterables: Iterable[Any]) -> S: ...
+def simple_map(*args): pass
+
+def format_row(*entries: object) -> str: pass
+
+class DateTime: pass
+JsonBlob = Dict[str, Any]
+Column = Union[List[str], List[int], List[bool], List[float], List[DateTime], List[JsonBlob]]
+
+def print_custom_table() -> None:
+    a = None  # type: Column
+
+    for row in simple_map(format_row, a, a, a, a, a, a, a, a):  # 8 columns
+        reveal_type(row)
+[out]
+_testLoadsOfOverloads.py:24: error: Revealed type is 'builtins.str*'
