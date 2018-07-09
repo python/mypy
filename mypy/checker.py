@@ -19,7 +19,7 @@ from mypy.nodes import (
     UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
-    Import, ImportFrom, ImportAll, ImportBase,
+    Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT,
 )
@@ -3171,6 +3171,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)
         node = sym.node
+        if isinstance(node, TypeAlias):
+            assert isinstance(node.target, Instance)
+            node = node.target.type
         assert isinstance(node, TypeInfo)
         any_type = AnyType(TypeOfAny.from_omitted_generics)
         return Instance(node, [any_type] * len(node.defn.type_vars))
