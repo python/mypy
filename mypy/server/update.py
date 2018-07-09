@@ -522,7 +522,14 @@ def update_module_isolated(module: str,
 
     # Process the changed file.
     state.parse_file()
+    assert state.tree is not None, "file must be at least parsed"
     # TODO: state.fix_suppressed_dependencies()?
+    if module == 'typing':
+        # We need to manually add typing aliases to builtins, like we
+        # do in process_stale_scc. Because this can't be done until
+        # builtins is also loaded, there isn't an obvious way to
+        # refactor this.
+        manager.semantic_analyzer.add_builtin_aliases(state.tree)
     try:
         state.semantic_analysis()
     except CompileError as err:
@@ -533,7 +540,6 @@ def update_module_isolated(module: str,
     state.semantic_analysis_apply_patches()
 
     # Merge old and new ASTs.
-    assert state.tree is not None, "file must be at least parsed"
     new_modules_dict = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
     replace_modules_with_new_variants(manager, graph, {orig_module: orig_tree}, new_modules_dict)
 

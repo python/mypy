@@ -1230,6 +1230,31 @@ def f() -> None: pass
 ==
 main:2: error: Module 'a' has no attribute 'f'
 
+[case testRefreshTyping]
+from typing import Sized
+from c import A
+
+# Force typing to get refreshed by using a protocol from it
+x : Sized = A()
+
+[file c.py]
+class D:
+    def __len__(self) -> int: return 0
+A = D
+[file c.py.2]
+class C:
+    def __len__(self) -> int: return 0
+A = C
+[file z.py]
+from typing import Tuple, List
+T = List[int]
+[file z.py.2]
+from typing import Tuple, List
+T = List[int]
+[builtins fixtures/list.pyi]
+[out]
+==
+
 [case testNamedTupleRefresh]
 from typing import NamedTuple
 from a import f
