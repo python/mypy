@@ -40,7 +40,7 @@ from mypy.subtypes import is_named_instance
 from mypy.checkmember import bind_self
 
 from mypyc.common import ENV_ATTR_NAME, MAX_SHORT_INT, TOP_LEVEL_NAME
-from mypyc.freesymbols import FreeVariablesVisitor
+from mypyc.freevariables import FreeVariablesVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
