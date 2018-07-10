@@ -1309,7 +1309,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if not sym:
             return None
         node = sym.node
-        assert isinstance(node, TypeInfo)
+        if isinstance(node, TypeAlias):
+            assert isinstance(node.target, Instance)
+            node = node.target.type
+        assert isinstance(node, TypeInfo), node
         if args is not None:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
