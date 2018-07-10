@@ -85,24 +85,14 @@ def transform_block(block: BasicBlock,
                 maybe_append_dec_ref(ops, dest)
         elif isinstance(op, RegisterOp):
             # These operations construct a new reference.
-            tmp_reg = None  # type: Optional[Value]
-            if (op not in pre_borrow[key] and
-                    op in pre_live[key]):
-                if op not in op.sources():
-                    maybe_append_dec_ref(ops, op)
-                else:
-                    tmp_reg = env.add_temp(op.type)
-                    ops.append(Assign(tmp_reg, op))
+            assert op not in pre_live[key]
             ops.append(op)
             for src in op.unique_sources():
                 # Decrement source that won't be live afterwards.
                 if src not in post_live[key] and src not in pre_borrow[key]:
-                    if src != op:
-                        maybe_append_dec_ref(ops, src)
+                    maybe_append_dec_ref(ops, src)
             if not op.is_void and op not in post_live[key]:
                 maybe_append_dec_ref(ops, op)
-            if tmp_reg is not None:
-                maybe_append_dec_ref(ops, tmp_reg)
         elif isinstance(op, Return) and op.reg in pre_borrow[key]:
             # The return op returns a new reference.
             maybe_append_inc_ref(ops, op.reg)
