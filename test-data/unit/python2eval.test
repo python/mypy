@@ -404,3 +404,11 @@ def f():  # no annotation
 path = 'test'
 path = os.path.join(f(), 'test.py')
 [out]
+
+[case testBytesWorkInPython2WithFullStubs_python2]
+MYPY = False
+if MYPY:
+    import lib
+[file lib.pyi]
+x = b'abc'
+[out]
