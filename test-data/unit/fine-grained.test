@@ -1233,9 +1233,10 @@ main:2: error: Module 'a' has no attribute 'f'
 [case testRefreshTyping]
 from typing import Sized
 from c import A
+import z
 
 # Force typing to get refreshed by using a protocol from it
-x : Sized = A()
+x: Sized = A()
 
 [file c.py]
 class D:
@@ -1246,11 +1247,11 @@ class C:
     def __len__(self) -> int: return 0
 A = C
 [file z.py]
-from typing import Tuple, List
+from typing import List
 T = List[int]
 [file z.py.2]
-from typing import Tuple, List
-T = List[int]
+from typing import List
+T = List[int]  # yo
 [builtins fixtures/list.pyi]
 [out]
 ==
