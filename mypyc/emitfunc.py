@@ -273,7 +273,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emitter.emit_unbox(self.reg(op.src), self.reg(op), op.type)
 
     def visit_unreachable(self, op: Unreachable) -> None:
-        pass  # Nothing to do
+        self.emitter.emit_line('CPy_Unreachable();')
 
     def visit_raise_standard_error(self, op: RaiseStandardError) -> None:
         # TODO: Better escaping of backspaces and such
