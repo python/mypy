@@ -31,6 +31,14 @@ from mypyc.ops import (
 )
 
 
+DecIncs = Tuple[Tuple[Value, ...], Tuple[Value, ...]]
+
+# A of basic blocks that decrement and increment specific values and
+# then jump to some target block. This lets us cut down on how much
+# code we generate in some circumstances.
+BlockCache = Dict[Tuple[BasicBlock, DecIncs], BasicBlock]
+
+
 def insert_ref_count_opcodes(ir: FuncIR) -> None:
     """Insert reference count inc/dec opcodes to a function.
 
@@ -40,9 +48,11 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     borrowed = set(reg for reg in ir.env.regs() if reg.is_borrowed)
     live = analyze_live_regs(ir.blocks, cfg)
     borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
+    cache = {}  # type: BlockCache
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
             insert_branch_inc_and_decrefs(block,
+                                          cache,
                                           ir.blocks,
                                           live.before,
                                           borrow.before,
@@ -104,6 +114,7 @@ def transform_block(block: BasicBlock,
 
 def insert_branch_inc_and_decrefs(
         block: BasicBlock,
+        cache: BlockCache,
         blocks: List[BasicBlock],
         pre_live: AnalysisDict[Value],
         pre_borrow: AnalysisDict[Value],
@@ -138,27 +149,24 @@ def insert_branch_inc_and_decrefs(
             omitted = {branch.left}
         else:
             omitted = set()
-        true_opcodes = (
+        true_decincs = (
             after_branch_decrefs(
-                branch.true, pre_live, source_borrowed, source_live_regs, env, omitted) +
+                branch.true, pre_live, source_borrowed, source_live_regs, env, omitted),
             after_branch_increfs(
                 branch.true, pre_borrow, source_borrowed, env))
-        if true_opcodes:
-            branch.true = add_block(true_opcodes, blocks, branch.true)
+        branch.true = add_block(true_decincs, cache, blocks, branch.true)
 
-        false_opcodes = (
+        false_decincs = (
             after_branch_decrefs(
-                branch.false, pre_live, source_borrowed, source_live_regs, env) +
+                branch.false, pre_live, source_borrowed, source_live_regs, env),
             after_branch_increfs(
                 branch.false, pre_borrow, source_borrowed, env))
-        if false_opcodes:
-            branch.false = add_block(false_opcodes, blocks, branch.false)
+        branch.false = add_block(false_decincs, cache, blocks, branch.false)
     elif isinstance(block.ops[-1], Goto):
         goto = block.ops[-1]
-        new_opcodes = after_branch_increfs(
-            goto.label, pre_borrow, source_borrowed, env)
-        if new_opcodes:
-            goto.label = add_block(new_opcodes, blocks, goto.label)
+        new_decincs = ((), after_branch_increfs(
+            goto.label, pre_borrow, source_borrowed, env))
+        goto.label = add_block(new_decincs, cache, blocks, goto.label)
 
 
 def after_branch_decrefs(label: BasicBlock,
@@ -166,32 +174,43 @@ def after_branch_decrefs(label: BasicBlock,
                          source_borrowed: Set[Value],
                          source_live_regs: Set[Value],
                          env: Environment,
-                         omitted: Iterable[Value] = ()) -> List[Op]:
+                         omitted: Iterable[Value] = ()) -> Tuple[Value, ...]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
     if decref:
-        return [DecRef(reg)
-                for reg in sorted(decref, key=lambda r: env.indexes[r])
-                if reg.type.is_refcounted and reg not in omitted]
-    return []
+        return tuple(reg
+                     for reg in sorted(decref, key=lambda r: env.indexes[r])
+                     if reg.type.is_refcounted and reg not in omitted)
+    return ()
 
 
 def after_branch_increfs(label: BasicBlock,
                          pre_borrow: AnalysisDict[Value],
                          source_borrowed: Set[Value],
-                         env: Environment) -> List[Op]:
+                         env: Environment) -> Tuple[Value, ...]:
     target_borrowed = pre_borrow[label, 0]
     incref = source_borrowed - target_borrowed
     if incref:
-        return [IncRef(reg)
-                for reg in sorted(incref, key=lambda r: env.indexes[r])
-                if reg.type.is_refcounted]
-    return []
+        return tuple(reg
+                     for reg in sorted(incref, key=lambda r: env.indexes[r])
+                     if reg.type.is_refcounted)
+    return ()
 
 
-def add_block(ops: Iterable[Op], blocks: List[BasicBlock], label: BasicBlock) -> BasicBlock:
+def add_block(decincs: DecIncs, cache: BlockCache,
+              blocks: List[BasicBlock], label: BasicBlock) -> BasicBlock:
+    decs, incs = decincs
+    if not decs and not incs:
+        return label
+
+    # TODO: be able to share *partial* results
+    if (label, decincs) in cache:
+        return cache[label, decincs]
+
     block = BasicBlock()
     blocks.append(block)
-    block.ops.extend(ops)
+    block.ops.extend(DecRef(reg) for reg in decs)
+    block.ops.extend(IncRef(reg) for reg in incs)
     block.ops.append(Goto(label))
+    cache[label, decincs] = block
     return block

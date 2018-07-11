@@ -110,7 +110,7 @@ L2:
 L3:
     r4 = unbox(int, r3)
     dec_ref r3
-    if is_error(r4) goto L9 (error at sum:6) else goto L4
+    if is_error(r4) goto L8 (error at sum:6) else goto L4
 L4:
     r5 = sum + r4 :: int
     dec_ref sum :: int
@@ -131,10 +131,6 @@ L7:
     dec_ref i :: int
     goto L5
 L8:
-    dec_ref sum :: int
-    dec_ref i :: int
-    goto L6
-L9:
     dec_ref sum :: int
     dec_ref i :: int
     goto L6
