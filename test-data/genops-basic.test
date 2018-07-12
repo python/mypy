@@ -1105,6 +1105,12 @@ def opt_a(x: Optional[A]) -> int:
         return 1
     else:
         return 0
+
+def opt_o(x: Optional[object]) -> int:
+    if x:
+        return 1
+    else:
+        return 0
 [out]
 def opt_int(x):
     x :: optional[int]
@@ -1146,6 +1152,29 @@ L2:
     r3 = 0
     return r3
 L3:
+    unreachable
+def opt_o(x):
+    x :: optional[object]
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+    r3 :: bool
+    r4, r5 :: int
+L0:
+    r0 = None
+    r1 = x is not r0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = cast(object, x)
+    r3 = bool r2 :: object
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = 1
+    return r4
+L3:
+    r5 = 0
+    return r5
+L4:
     unreachable
 
 [case testRaise]

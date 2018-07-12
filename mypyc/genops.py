@@ -1489,7 +1489,9 @@ class IRBuilder(NodeVisitor[Value]):
             else:
                 # Optional[X] where X may be falsey and requires a check
                 branch.true = self.new_block()
-                remaining = self.coerce(value, value.type.value_type, value.line)
+                # unbox_or_cast instead of coerce because we want the
+                # type to change even if it is a subtype.
+                remaining = self.unbox_or_cast(value, value.type.value_type, value.line)
                 self.add_bool_branch(remaining, true, false)
             return
         elif not is_same_type(value.type, bool_rprimitive):
