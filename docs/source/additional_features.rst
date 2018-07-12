@@ -9,7 +9,7 @@ of the previous sections.
 The attrs package
 *****************
 
-`attrs <https://www.attrs.org/en/stable>`_ is a package that lets you define
+`attrs <http://www.attrs.org/en/stable>`_ is a package that lets you define
 classes without writing boilerplate code. Mypy can detect uses of the
 package and will generate the necessary method definitions for decorated
 classes using the type annotations it finds.
@@ -75,7 +75,7 @@ Caveats/Known Issues
   will complain about not understanding the argument and the type annotation in
   ``__init__`` will be replaced by ``Any``.
 
-* `Validator decorators <http://www.attrs.org/en/stable/examples.html#decorator>`_
+* `Validator decorators <http://www.attrs.org/en/stable/examples.html#validators>`_
   and `default decorators <http://www.attrs.org/en/stable/examples.html#defaults>`_
   are not type-checked against the attribute they are setting/validating.
 
