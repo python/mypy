@@ -184,7 +184,7 @@ resources:
 * Read :ref:`existing-code` if you have a significant existing
   codebase without many type annotations.
 
-* Read the `blog post <http://blog.zulip.org/2016/10/13/static-types-in-python-oh-mypy/>`_
+* Read the `blog post <https://blog.zulip.org/2016/10/13/static-types-in-python-oh-mypy/>`_
   about the Zulip project's experiences with adopting mypy.
 
 * If you prefer watching talks instead of reading, here are
