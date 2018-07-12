@@ -155,6 +155,10 @@ def free_vars(foo: int, bar: int) -> int:
     g()
     return bar
 
+def lambdas(x: int, y: int) -> int:
+    s = lambda a, b: a + b + x + y
+    return s(1, 2)
+
 def outer() -> str:
     return 'outer: normal function'
 
@@ -172,7 +176,7 @@ class A:
         return inner()
 
 [file driver.py]
-from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, triple, if_else, for_loop, while_loop, free_vars, outer, inner, A
+from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, triple, if_else, for_loop, while_loop, free_vars, lambdas, outer, inner, A
 
 assert a()() == None
 assert b()()() == 'b.first.second: nested function'
@@ -204,6 +208,7 @@ assert for_loop() == 3
 assert while_loop() == 3
 
 assert free_vars(1, 2) == 5
+assert lambdas(3, 4) == 10
 
 assert outer() == 'outer: normal function'
 assert inner() == 'inner: normal function'
