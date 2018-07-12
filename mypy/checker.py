@@ -1003,7 +1003,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             reverse_type = reverse_type.copy_modified(arg_types=[reverse_type.arg_types[0]] * 2,
                                                       arg_kinds=[ARG_POS] * 2,
                                                       arg_names=[reverse_type.arg_names[0], "_"])
-        assert len(reverse_type.arg_types) == 2
+        assert len(reverse_type.arg_types) >= 2
 
         forward_name = nodes.normal_from_reverse_op[reverse_name]
         forward_inst = reverse_type.arg_types[1]
