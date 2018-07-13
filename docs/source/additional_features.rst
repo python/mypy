@@ -141,7 +141,7 @@ Caveats/Known Issues
 * Method definitions added by mypy currently overwrite any existing method
   definitions.
 
-* Some functions in ``dataclasses`` module (such as ``replace()`` and ``asdict()``)
+* Some functions in ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
   have imprecise (too permissive) types.
 
 .. _remote-cache:
