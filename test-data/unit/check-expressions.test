@@ -674,6 +674,10 @@ s = A() < B()
 n = A() < B() # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 s = object() < B() # E: Unsupported operand types for > ("B" and "object")
 
+[case testReversibleComparisonWithExtraArgument]
+class C:
+    def __lt__(self, o: object, x: str = "") -> int: ...
+
 [case testErrorContextAndBinaryOperators]
 import typing
 class A:
