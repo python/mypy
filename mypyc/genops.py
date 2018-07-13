@@ -591,6 +591,9 @@ class IRBuilder(NodeVisitor[Value]):
         | c_obj |   --------------------------+
         +-------+
         """
+        assert all(arg.initializer is None for arg in fitem.arguments), (
+            "Default args unimplemented")
+
         self.enter(FuncInfo(fitem, name, self.gen_func_ns()))
 
         # The top-most environment is for the module top level.
@@ -1203,6 +1206,9 @@ class IRBuilder(NodeVisitor[Value]):
         callee = expr.callee
         if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
             callee = callee.analyzed.expr  # Unwrap type application
+
+        assert all(kind == ARG_POS for kind in expr.arg_kinds), (
+            "Only positional arguments implemented")
 
         if isinstance(callee, MemberExpr):
             if self.is_native_ref_expr(callee):
