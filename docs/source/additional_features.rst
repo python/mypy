@@ -53,7 +53,7 @@ That enables this to work:
         two: Dict[str, str] = attr.Factory(dict)
         bad: str = attr.ib(16)   # Error: can't assign int to str
 
-In Python 3.7, similar functionality have been added to the standard library
+In Python 3.7, similar functionality has been added to the standard library
 via dataclasses. They can be defined using the ``@dataclasses.dataclass``
 decorator:
 
@@ -141,7 +141,7 @@ Caveats/Known Issues
 * Method definitions added by mypy currently overwrite any existing method
   definitions.
 
-* Some functions in ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
+* Some functions in the ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
   have imprecise (too permissive) types.
 
 .. _remote-cache:
