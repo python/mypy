@@ -4,10 +4,75 @@ Additional features
 This section discusses various features that did not fit in naturally in one
 of the previous sections.
 
+Dataclasses
+***********
+
+In Python 3.7, a new ``dataclasses`` module has been added to the standard library.
+This module allows defining and customizing simple boilerplate-free classes.
+They can be defined using the ``@dataclasses.dataclass`` decorator:
+
+.. code-block:: python
+
+    from dataclasses import dataclass, field
+
+    @dataclass
+    class Application:
+        name: str
+        plugins: List[str] = field(default_factory=list)
+
+    test = Application("Testing...")  # OK
+    bad = Application("Testing...", "with plugin")  # Error: List[str] expected
+
+Mypy will detect special methods (such as ``__lt__``) depending on the flags used to
+define dataclasses. For example:
+
+.. code-block:: python
+
+    from dataclasses import dataclass
+
+    @dataclass(order=True)
+    class OrderedPoint:
+        x: int
+        y: int
+
+    @dataclass(order=False)
+    class UnorderedPoint:
+        x: int
+        y: int
+
+    OrderedPoint(1, 2) < OrderedPoint(3, 4)  # OK
+    UnorderedPoint(1, 2) < UnorderedPoint(3, 4)  # Error: Unsupported operand types
+
+Dataclasses can be generic and can be used in any other way a normal
+class can be used:
+
+.. code-block:: python
+
+    from dataclasses import dataclass
+    from typing import Generic, TypeVar
+
+    T = TypeVar('T')
+
+    @dataclass
+    class BoxedData(Generic[T]):
+        data: T
+        label: str
+
+    def unbox(bd: BoxedData[T]) -> T:
+        ...
+
+    val = unbox(BoxedData(42, "<important>"))  # OK, inferred type is int
+
+For more information see `official docs <https://docs.python.org/3/library/dataclasses.html>`_
+and `PEP 557 <https://www.python.org/dev/peps/pep-0557/>`_.
+
+**Note:** Some functions in the ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
+have imprecise (too permissive) types. This will be fixed in future releases.
+
 .. _attrs_package:
 
-The attrs package and dataclasses
-*********************************
+The attrs package
+*****************
 
 `attrs <http://www.attrs.org/en/stable>`_ is a package that lets you define
 classes without writing boilerplate code. Mypy can detect uses of the
@@ -53,65 +118,6 @@ That enables this to work:
         two: Dict[str, str] = attr.Factory(dict)
         bad: str = attr.ib(16)   # Error: can't assign int to str
 
-In Python 3.7, similar functionality has been added to the standard library
-via dataclasses. They can be defined using the ``@dataclasses.dataclass``
-decorator:
-
-.. code-block:: python
-
-    from dataclasses import dataclass, field
-
-    @dataclass
-    class Application:
-        name: str
-        plugins: List[str] = field(default_factory=list)
-
-    test = Application("Testing...")  # OK
-    bad = Application("Testing...", "with plugin")  # Error: List[str] expected
-
-Mypy will detect special methods depending on the flags used to define dataclasses.
-For example:
-
-.. code-block:: python
-
-    from dataclasses import dataclass
-
-    @dataclass(order=True)
-    class OrderedPoint:
-        x: int
-        y: int
-
-    @dataclass(order=False)
-    class UnorderedPoint:
-        x: int
-        y: int
-
-    OrderedPoint(1, 2) < OrderedPoint(3, 4)  # OK
-    UnorderedPoint(1, 2) < UnorderedPoint(3, 4)  # Error: Unsupported operand types
-
-Dataclasses can be generic and can be used in any other way a normal
-class can be used:
-
-.. code-block:: python
-
-    from dataclasses import dataclass
-    from typing import Generic, TypeVar
-
-    T = TypeVar('T')
-
-    @dataclass
-    class BoxedData(Generic[T]):
-        data: T
-        label: str
-
-    def unbox(bd: BoxedData[T]) -> T:
-        ...
-
-    val = unbox(BoxedData(42, "<important>"))  # OK, inferred type is int
-
-For more information see `official docs <https://docs.python.org/3/library/dataclasses.html>`_
-and `PEP 557 <https://www.python.org/dev/peps/pep-0557/>`_.
-
 Caveats/Known Issues
 ====================
 
@@ -140,9 +146,6 @@ Caveats/Known Issues
 
 * Method definitions added by mypy currently overwrite any existing method
   definitions.
-
-* Some functions in the ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
-  have imprecise (too permissive) types.
 
 .. _remote-cache:
 
