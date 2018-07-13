@@ -13,8 +13,10 @@ It would be translated to something that conceptually looks like this:
    r3 = r2 + r1 :: int
    return r3
 """
-from typing import Dict, List, Tuple, Optional, Union, Sequence, Set
+from typing import Dict, List, Tuple, Optional, Union, Sequence, Set, NoReturn
 from abc import abstractmethod
+import sys
+import traceback
 
 from mypy.nodes import (
     Node, MypyFile, SymbolNode, Statement, FuncItem, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
@@ -287,6 +289,9 @@ def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
             ir.method_types[name] = mapper.fdef_to_sig(node.node)
 
     # Set up the parent class
+    assert all(base.type in mapper.type_to_ir for base in info.bases
+               if base.type.fullname() != 'builtins.object'), (
+        "Can't subclass cpython types")
     bases = [mapper.type_to_ir[base.type] for base in info.bases
              if base.type.fullname() != 'builtins.object']
     assert all(c.is_trait for c in bases[1:]), "Non trait bases must be first"
@@ -296,7 +301,6 @@ def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
     base_mro = []
     for cls in info.mro:
         if cls.fullname() == 'builtins.object': continue
-        assert cls in mapper.type_to_ir, "Can't subclass cpython types"
         base_ir = mapper.type_to_ir[cls]
         if not base_ir.is_trait:
             base_mro.append(base_ir)
@@ -413,14 +417,13 @@ class IRBuilder(NodeVisitor[Value]):
         self.from_imports = {}  # type: Dict[str, List[Tuple[str, str]]]
         self.imports = []  # type: List[str]
 
-        self.current_module_name = None  # type: Optional[str]
-
     def visit_mypy_file(self, mypyfile: MypyFile) -> Value:
         if mypyfile.fullname() in ('typing', 'abc'):
             # These module are special; their contents are currently all
             # built-in primitives.
             return INVALID_VALUE
 
+        self.module_path = mypyfile.path
         self.module_name = mypyfile.fullname()
 
         classes = [node for node in mypyfile.defs if isinstance(node, ClassDef)]
@@ -430,12 +433,11 @@ class IRBuilder(NodeVisitor[Value]):
             ir = self.mapper.type_to_ir[cls.info]
             self.classes.append(ir)
 
-        self.current_module_name = mypyfile.fullname()
         self.enter(FuncInfo(name='<top level>'))
 
         # Generate ops.
         for node in mypyfile.defs:
-            node.accept(self)
+            self.accept(node)
         self.maybe_add_implicit_return()
 
         # Generate special function representing module top level.
@@ -607,7 +609,7 @@ class IRBuilder(NodeVisitor[Value]):
 
         self.ret_types[-1] = sig.ret_type
 
-        fitem.body.accept(self)
+        self.accept(fitem.body)
         self.maybe_add_implicit_return()
 
         blocks, env, ret_type, fn_info = self.leave()
@@ -661,7 +663,7 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_block(self, block: Block) -> Value:
         for stmt in block.body:
-            stmt.accept(self)
+            self.accept(stmt)
         return INVALID_VALUE
 
     def visit_expression_stmt(self, stmt: ExpressionStmt) -> Value:
@@ -847,11 +849,11 @@ class IRBuilder(NodeVisitor[Value]):
 
         self.process_conditional(stmt.expr[0], if_body, else_body)
         self.activate_block(if_body)
-        stmt.body[0].accept(self)
+        self.accept(stmt.body[0])
         self.add_leave(next)
         if stmt.else_body:
             self.activate_block(else_body)
-            stmt.else_body.accept(self)
+            self.accept(stmt.else_body)
             self.add_leave(next)
         self.activate_block(next)
         return INVALID_VALUE
@@ -895,7 +897,7 @@ class IRBuilder(NodeVisitor[Value]):
         self.process_conditional(s.expr, body, next)
 
         self.activate_block(body)
-        s.body.accept(self)
+        self.accept(s.body)
         # Add branch to the top at the end of the body.
         self.add(Goto(top))
 
@@ -928,7 +930,7 @@ class IRBuilder(NodeVisitor[Value]):
             self.add_bool_branch(comparison, body, next)
 
             self.activate_block(body)
-            s.body.accept(self)
+            self.accept(s.body)
 
             self.goto_and_activate(end_block)
 
@@ -978,7 +980,7 @@ class IRBuilder(NodeVisitor[Value]):
             self.assign_to_target(lvalue,
                                   self.unbox_or_cast(value_box, target_type, s.line), s.line)
 
-            s.body.accept(self)
+            self.accept(s.body)
 
             self.goto_and_activate(end_block)
             self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', s.line)))
@@ -1018,7 +1020,7 @@ class IRBuilder(NodeVisitor[Value]):
             # the body, goto the label that calls the iterator's __next__ function again.
             self.activate_block(body_block)
             self.assign_to_target(lvalue, next_reg, s.line)
-            s.body.accept(self)
+            self.accept(s.body)
             self.add(Goto(next_block))
 
             # Create a new block for when the loop is finished. Set the branch to go here if the
@@ -1810,12 +1812,21 @@ class IRBuilder(NodeVisitor[Value]):
             return desc.arg_types[-1]
         return desc.arg_types[n]
 
+    def crash_report(self, line: int) -> NoReturn:
+        traceback.print_exc()
+        print("{}:{}: mypyc crashed here".format(self.module_path, line))
+        sys.exit(2)
+        assert False
+
     def accept(self, node: Node) -> Value:
-        res = node.accept(self)
-        if isinstance(node, Expression):
-            assert res != INVALID_VALUE
-            res = self.coerce(res, self.node_type(node), node.line)
-        return res
+        try:
+            res = node.accept(self)
+            if isinstance(node, Expression):
+                assert res != INVALID_VALUE
+                res = self.coerce(res, self.node_type(node), node.line)
+            return res
+        except Exception:
+            self.crash_report(node.line)
 
     def alloc_temp(self, type: RType) -> Register:
         return self.environment.add_temp(type)
