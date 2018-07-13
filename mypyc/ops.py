@@ -507,7 +507,13 @@ class Op(Value):
         pass
 
 
-class Goto(Op):
+class ControlOp(Op):
+    # Basically just for hierarchy organization.
+    # We could plausibly have a targets() method if we wanted.
+    pass
+
+
+class Goto(ControlOp):
     """Unconditional jump."""
 
     error_kind = ERR_NEVER
@@ -526,7 +532,7 @@ class Goto(Op):
         return visitor.visit_goto(self)
 
 
-class Branch(Op):
+class Branch(ControlOp):
     """if [not] r1 goto 1 else goto 2"""
 
     # Branch ops must *not* raise an exception. If a comparison, for example, can raise an
@@ -576,7 +582,7 @@ class Branch(Op):
         return visitor.visit_branch(self)
 
 
-class Return(Op):
+class Return(ControlOp):
     error_kind = ERR_NEVER
 
     def __init__(self, reg: Value, line: int = -1) -> None:
@@ -590,7 +596,7 @@ class Return(Op):
         return visitor.visit_return(self)
 
 
-class Unreachable(Op):
+class Unreachable(ControlOp):
     """Added to the end of non-None returning functions.
 
     Mypy statically guarantees that the end of the function is not unreachable

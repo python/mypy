@@ -51,6 +51,7 @@ from mypyc.ops import (
     MethodCall, INVALID_VALUE, INVALID_CLASS, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, str_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
+    ControlOp,
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
     VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError,
@@ -655,13 +656,13 @@ class IRBuilder(NodeVisitor[Value]):
 
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
-        if not block.ops or not isinstance(block.ops[-1], Return):
+        if not block.ops or not isinstance(block.ops[-1], ControlOp):
             retval = self.add(PrimitiveOp([], none_op, line=-1))
             self.add(Return(retval))
 
     def add_implicit_unreachable(self) -> None:
         block = self.blocks[-1][-1]
-        if not block.ops or not isinstance(block.ops[-1], Return):
+        if not block.ops or not isinstance(block.ops[-1], ControlOp):
             self.add(Unreachable())
 
     def visit_block(self, block: Block) -> Value:
@@ -862,7 +863,7 @@ class IRBuilder(NodeVisitor[Value]):
         return INVALID_VALUE
 
     def add_leave(self, target: BasicBlock) -> None:
-        if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], Return):
+        if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], ControlOp):
             self.add(Goto(target))
 
     class LoopNonlocalControl(NonlocalControl):
@@ -1580,12 +1581,13 @@ class IRBuilder(NodeVisitor[Value]):
         assert not t.finally_body, "try/finally not implemented"
 
         except_entry, exit_block = BasicBlock(), BasicBlock()
+        cleanup_block = BasicBlock()
 
         # Compile the try block with an error handler
         self.error_handlers.append(except_entry)
         self.goto_and_activate(BasicBlock())
         self.accept(t.body)
-        self.add(Goto(exit_block))
+        self.add_leave(exit_block)
         self.error_handlers.pop()
 
         # Compile the except block with the nonlocal control flow overridden to clear exc_info
@@ -1596,8 +1598,10 @@ class IRBuilder(NodeVisitor[Value]):
         self.nonlocal_control.append(
             IRBuilder.ExceptNonlocalControl(self.nonlocal_control[-1], except_body.line))
         self.accept(except_body)
+        self.add_leave(cleanup_block)
         self.nonlocal_control.pop()
 
+        self.activate_block(cleanup_block)
         self.primitive_op(clear_exc_info_op, [], except_body.line)
         self.add(Goto(exit_block))
 
@@ -1797,6 +1801,10 @@ class IRBuilder(NodeVisitor[Value]):
         return blocks, env, ret_type, fn_info
 
     def add(self, op: Op) -> Value:
+        if self.blocks[-1][-1].ops:
+            assert not isinstance(self.blocks[-1][-1].ops[-1], ControlOp), (
+                "Can't add to finished block")
+
         self.blocks[-1][-1].ops.append(op)
         if isinstance(op, RegisterOp):
             self.environment.add_op(op)

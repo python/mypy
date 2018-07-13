@@ -21,7 +21,7 @@ L1:
     r1 = unicode_0 :: static  ('object')
     r2 = getattr r0, r1
     r3 = py_call(r2)
-    goto L3
+    goto L4
 L2: (handler for L1)
     r4 = err_catch
     r5 = unicode_1 :: static  ('weeee')
@@ -30,8 +30,9 @@ L2: (handler for L1)
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
     r10 = cast(None, r9)
-    clear_exc_info
 L3:
+    clear_exc_info
+L4:
     r11 = None
     return r11
 
@@ -70,7 +71,7 @@ L3:
     r4 = unicode_1 :: static  ('hi')
     r5 = str r4 :: object
 L4:
-    goto L6
+    goto L7
 L5: (handler for L1, L2, L3, L4)
     r6 = err_catch
     r7 = unicode_2 :: static  ('weeee')
@@ -79,8 +80,9 @@ L5: (handler for L1, L2, L3, L4)
     r10 = getattr r8, r9
     r11 = py_call(r10, r7)
     r12 = cast(None, r11)
-    clear_exc_info
 L6:
+    clear_exc_info
+L7:
     r13 = None
     return r13
 
@@ -129,7 +131,7 @@ L2:
     r7 = unicode_2 :: static  ('object')
     r8 = getattr r6, r7
     r9 = py_call(r8)
-    goto L4
+    goto L5
 L3: (handler for L2)
     r10 = err_catch
     r11 = unicode_3 :: static  ('b')
@@ -138,10 +140,11 @@ L3: (handler for L2)
     r14 = getattr r12, r13
     r15 = py_call(r14, r11)
     r16 = cast(None, r15)
-    clear_exc_info
 L4:
-    goto L6
-L5: (handler for L1, L3, L4)
+    clear_exc_info
+L5:
+    goto L8
+L6: (handler for L1, L3, L4, L5)
     r17 = err_catch
     r18 = unicode_4 :: static  ('weeee')
     r19 = builtins.module :: static
@@ -149,7 +152,8 @@ L5: (handler for L1, L3, L4)
     r21 = getattr r19, r20
     r22 = py_call(r21, r18)
     r23 = cast(None, r22)
+L7:
     clear_exc_info
-L6:
+L8:
     r24 = None
     return r24

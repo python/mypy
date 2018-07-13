@@ -6,6 +6,7 @@ from typing import Dict, Tuple, List, Set, TypeVar, Iterator, Generic, Optional,
 
 from mypyc.ops import (
     Value, Register,
+    ControlOp,
     BasicBlock, OpVisitor, Assign, LoadInt, LoadErrorValue, RegisterOp, Goto, Branch, Return, Call,
     Environment, Box, Unbox, Cast, Op, Unreachable, TupleGet, TupleSet, GetAttr, SetAttr,
     LoadStatic, PrimitiveOp, MethodCall, RaiseStandardError,
@@ -48,7 +49,7 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
     exits = set()
     for block in blocks:
 
-        assert not any(isinstance(op, (Branch, Goto, Return)) for op in block.ops[:-1]), (
+        assert not any(isinstance(op, ControlOp) for op in block.ops[:-1]), (
             "Control-flow ops must be at the end of blocks")
 
         last = block.ops[-1]

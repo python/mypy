@@ -1189,7 +1189,6 @@ def foo():
     r1 :: str
     r2, r3, r4 :: object
     r5 :: bool
-    r6 :: None
 L0:
     r0 = builtins.module :: static
     r1 = unicode_0 :: static  ('Exception')
@@ -1198,14 +1197,11 @@ L0:
     r4 = type r3 :: object
     raise_exception(r4, r3); r5 = 0
     unreachable
-    r6 = None
-    return r6
 def bar():
     r0 :: object
     r1 :: str
     r2, r3 :: object
     r4 :: bool
-    r5 :: None
 L0:
     r0 = builtins.module :: static
     r1 = unicode_0 :: static  ('Exception')
@@ -1213,8 +1209,6 @@ L0:
     r3 = py_call(r2)
     raise_exception(r2, r3); r4 = 0
     unreachable
-    r5 = None
-    return r5
 
 [case testModuleTopLevel]
 x = 1

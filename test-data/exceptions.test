@@ -151,9 +151,9 @@ L1:
 L2:
     r3 = py_call(r2)
     dec_ref r2
-    if is_error(r3) goto L4 (error at g:3) else goto L10
+    if is_error(r3) goto L4 (error at g:3) else goto L11
 L3:
-    goto L8
+    goto L9
 L4:
     r4 = err_catch
     dec_ref r4
@@ -161,25 +161,26 @@ L4:
     r6 = builtins.module :: static
     r7 = unicode_2 :: static  ('print')
     r8 = getattr r6, r7
-    if is_error(r8) goto L9 (error at g:5) else goto L5
+    if is_error(r8) goto L10 (error at g:5) else goto L5
 L5:
     r9 = py_call(r8, r5)
     dec_ref r8
-    if is_error(r9) goto L9 (error at g:5) else goto L6
+    if is_error(r9) goto L10 (error at g:5) else goto L6
 L6:
     r10 = cast(None, r9)
-    if is_error(r10) goto L9 (error at g:5) else goto L11
+    if is_error(r10) goto L10 (error at g:5) else goto L12
 L7:
-    clear_exc_info
 L8:
+    clear_exc_info
+L9:
     r11 = None
     return r11
-L9:
+L10:
     r12 = <error> :: None
     return r12
-L10:
+L11:
     dec_ref r3
     goto L3
-L11:
+L12:
     dec_ref r10
     goto L7
