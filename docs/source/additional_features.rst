@@ -4,6 +4,8 @@ Additional features
 This section discusses various features that did not fit in naturally in one
 of the previous sections.
 
+.. _dataclasses_support:
+
 Dataclasses
 ***********
 
