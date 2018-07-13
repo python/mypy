@@ -4,6 +4,13 @@ Revision history
 List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
 detailed release notes):
 
+- July 2018
+    * Publish ``mypy`` version 0.620 on PyPI.
+
+      * Improve support for :ref:`overloads <function-overloading>`.
+
+      * Add support for :ref:`dataclasses <dataclasses_support>`.
+
 - June 2018
     * Publish ``mypy`` version 0.610 on PyPI.
 
