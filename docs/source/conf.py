@@ -30,7 +30,7 @@ from mypy.version import __version__ as mypy_version
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+extensions = [ 'sphinxcontrib.spelling' ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -266,3 +266,16 @@ texinfo_documents = [
 #texinfo_no_detailmenu = False
 
 rst_prolog = '.. |...| unicode:: U+2026   .. ellipsis\n'
+
+
+# -- Options for spelling extension ----------------------------------------------
+
+spelling_lang='en_US'
+
+# String specifying a file containing a list of words known to be spelled
+# correctly but that do not appear in the language dictionary selected by
+# spelling_lang. The file should contain one word per line.
+spelling_word_list_filename='../dictionary.txt'
+
+# Boolean controlling whether suggestions for misspelled words are printed.
+spelling_show_suggestions=True
