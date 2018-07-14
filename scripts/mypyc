@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Mypyc command-line tool.
+
+Usage:
+
+    $ mypyc foo.py [...]
+    $ python3 -c 'import foo'  # Uses compiled 'foo'
+
+Limitations:
+
+* Can only compile top-level modules
+* There's no easy way to look at the generated code as the C file gets
+  deleted at the end
+"""
+
+import os
+import os.path
+import sys
+import tempfile
+
+base_path = os.path.join(os.path.dirname(__file__), '..')
+
+sys.path.extend([os.path.join(base_path, 'external/mypy'), base_path])
+
+import shutil
+from typing import List, Optional, IO
+
+from mypy.errors import CompileError
+from mypy.options import Options
+from mypy.main import process_options
+from mypy import build
+
+from mypyc import emitmodule
+from mypyc.buildc import (
+    BuildError, build_shared_lib_for_modules, build_c_extension_shim, build_c_extension
+)
+
+
+def handle_build_error(err: BuildError, c_path: Optional[str]) -> None:
+    print(err.output.decode('utf8'))
+    if c_path is not None:
+        extra = ' (%s)' % c_path
+    else:
+        extra = ''
+    sys.exit('Internal error: C compilation failed' + extra)
+
+
+def build_using_shared_lib(fobj: IO[str], ctext: str, module_names: List[str]) -> None:
+    common_path = fobj.name
+    fobj.write(ctext)
+    fobj.flush()
+    try:
+        shared_lib = build_shared_lib_for_modules(common_path, module_names)
+    except BuildError as err:
+        handle_build_error(err, common_path)
+
+    for module in module_names:
+        so_path = '%s.so' % module
+        try:
+            native_lib_path = build_c_extension_shim(module, shared_lib)
+        except BuildError as err:
+            handle_build_error(err, None)
+        shutil.copy(native_lib_path, so_path)
+
+
+def build_single_module(fobj: IO[str], ctext: str, module: str) -> None:
+    c_path = fobj.name
+    so_path = '%s.so' % module
+
+    with open(c_path, 'w') as f:
+        f.write(ctext)
+
+    try:
+        native_lib_path = build_c_extension(c_path, module)
+    except BuildError as err:
+        handle_build_error(err, c_path)
+
+    shutil.copy(native_lib_path, so_path)
+
+
+def main() -> None:
+    sources, options = process_options(sys.argv[1:])
+    if options.python_version[0] == 2:
+        sys.exit('Python 2 not supported')
+    if not options.strict_optional:
+        sys.exit('Disabling strict optional checking not supported')
+    options.show_traceback = True
+    # Needed to get types for all AST nodes
+    options.export_types = True
+    # TODO: Support incremental checking
+    options.incremental = False
+
+    module_names = [source.module for source in sources]
+
+    try:
+        ctext = emitmodule.compile_modules_to_c(
+            sources=sources,
+            module_names=module_names,
+            options=options)
+    except CompileError as e:
+        for line in e.messages:
+            print(line)
+        sys.exit(1)
+
+    use_shared_lib = len(module_names) > 1
+    with tempfile.NamedTemporaryFile(mode='w+',
+                                     prefix='mypyc-tmp-',
+                                     suffix='.c',
+                                     dir='.') as fobj:
+        if use_shared_lib:
+            build_using_shared_lib(fobj, ctext, module_names)
+        else:
+            build_single_module(fobj, ctext, module_names[0])
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,58 @@
+"""Test cases for invoking mypyc on the command line.
+
+These are slow -- do not add test cases unless you have a very good reason to do so.
+"""
+
+import os
+import os.path
+import re
+import subprocess
+import sys
+
+from mypy.test.data import DataDrivenTestCase
+from mypy.test.config import test_temp_dir
+from mypy.test.helpers import assert_string_arrays_equal
+
+from mypyc.test.testutil import MypycDataSuite
+
+files = [
+    'commandline.test',
+]
+
+
+base_path = os.path.join(os.path.dirname(__file__), '..', '..')
+
+python3_path = sys.executable
+
+
+class TestCommandLine(MypycDataSuite):
+    files = files
+    base_path = test_temp_dir
+    optional_out = True
+
+    def run_case(self, testcase: DataDrivenTestCase) -> None:
+        # Parse options from test case description (arguments must not have spaces)
+        text = '\n'.join(testcase.input)
+        m = re.search(r'# *cmd: *(.*)', text)
+        assert m is not None, 'Test case missing "# cmd: <files>" section'
+        args = m.group(1).split()
+
+        # Write main program to run (not compiled)
+        program = '_%s.py' % testcase.name
+        program_path = os.path.join(test_temp_dir, program)
+        with open(program_path, 'w') as f:
+            f.write(text)
+
+        # Compile program
+        subprocess.check_call(['%s/scripts/mypyc' % base_path] + args, cwd='tmp')
+
+        # Run main program
+        out = subprocess.check_output(
+            [python3_path, program],
+            cwd='tmp')
+
+        # Verify output
+        actual = out.decode().splitlines()
+        assert_string_arrays_equal(testcase.output, actual,
+                                   'Invalid output ({}, line {})'.format(
+                                       testcase.file, testcase.line))

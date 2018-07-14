@@ -91,7 +91,7 @@ class TestRun(MypycDataSuite):
                 with open(common_path, 'w') as f:
                     f.write(ctext)
                 try:
-                    shared_lib = buildc.build_shared_lib_for_modules(common_path)
+                    shared_lib = buildc.build_shared_lib_for_modules(common_path, module_names)
                 except buildc.BuildError as err:
                     show_c_error(common_path, err.output)
                     raise

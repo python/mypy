@@ -1,7 +1,7 @@
 """Generate C code for a Python C extension module from Python source code."""
 
 from collections import OrderedDict
-from typing import List, Tuple, Dict, Iterable, Set, TypeVar
+from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
 
 from mypy.build import BuildSource, build
 from mypy.errors import CompileError
@@ -26,7 +26,7 @@ class MarkedDeclaration:
 
 
 def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], options: Options,
-                         alt_lib_path: str) -> str:
+                         alt_lib_path: Optional[str] = None) -> str:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
     assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,

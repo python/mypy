@@ -1,6 +1,7 @@
 """Build C extension module from C source."""
 
 import glob
+import hashlib
 import os
 import shutil
 import subprocess
@@ -43,19 +44,30 @@ PyInit_{modname}(void)
 
 
 def build_c_extension_shim(module_name: str, shared_lib: str) -> str:
+    assert shared_lib.startswith('lib') and shared_lib.endswith('.so')
+    libname = shared_lib[3:-3]
     tempdir = tempfile.mkdtemp()
     cpath = os.path.join(tempdir, '%s.c' % module_name)
     with open(cpath, 'w') as f:
         f.write(shim_template.format(modname=module_name))
     try:
-        setup_path = make_setup_py(cpath, tempdir, libraries=repr('stuff'), library_dirs=repr('.'))
+        setup_path = make_setup_py(cpath,
+                                   tempdir,
+                                   libraries=repr(libname),
+                                   library_dirs=repr('.'))
         return run_setup_py_build(setup_path, module_name)
     finally:
         shutil.rmtree(tempdir)
 
 
-def build_shared_lib_for_modules(cpath: str) -> str:
-    out_file = 'libstuff.so'
+def shared_lib_name(modules: List[str]) -> str:
+    h = hashlib.sha1()
+    h.update(','.join(modules).encode())
+    return 'libmypyc_%s.so' % h.hexdigest()[:20]
+
+
+def build_shared_lib_for_modules(cpath: str, modules: List[str]) -> str:
+    out_file = shared_lib_name(modules)
     name = os.path.splitext(os.path.basename(cpath))[0]
     lib_path = build_c_extension(cpath, name, preserve_setup = True)
     shutil.copy(lib_path, out_file)
@@ -69,6 +81,7 @@ def include_dir() -> str:
 # TODO: Make compiler arguments platform-specific.
 setup_format = """\
 from distutils.core import setup, Extension
+from distutils import sysconfig
 import sys
 
 module = Extension('{package_name}',
@@ -78,13 +91,18 @@ module = Extension('{package_name}',
                    libraries=[{libraries}],
                    library_dirs=[{library_dirs}])
 
-# Force the creation of dynamic libraries instead of bundles so that
+vars = sysconfig.get_config_vars()
+
+# On OS X, Force the creation of dynamic libraries instead of bundles so that
 # we can link against multi-module shared libraries.
 # From https://stackoverflow.com/a/32765319
 if sys.platform == 'darwin':
-    from distutils import sysconfig
-    vars = sysconfig.get_config_vars()
     vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
+
+# And on Linux, set the rpath to $ORIGIN so they will look for the shared
+# library in the directory that they live in.
+elif sys.platform == 'linux':
+    vars['LDSHARED'] += ' -Wl,-rpath,"$ORIGIN"'
 
 setup(name='{package_name}',
       version='1.0',
@@ -116,6 +134,6 @@ def run_setup_py_build(setup_path: str, module_name: str) -> str:
         subprocess.check_output(['python', setup_path, 'build'], stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as err:
         raise BuildError(err.output)
-    so_path = glob.glob('build/*/%s*.so' % module_name)
-    assert len(so_path) == 1
+    so_path = glob.glob('build/*/%s.*.so' % module_name)
+    assert len(so_path) == 1, so_path
     return so_path[0]

@@ -1,0 +1,51 @@
+-- Test cases for invoking mypyc on the command line
+--
+-- These are slow -- do not add test cases unless you have a very good reason to do so.
+
+[case testCompileTwoModules]
+# cmd: a.py b.py
+import a
+import b
+print('<main>', b.g(a.A()))
+try:
+    a.f('')
+except TypeError:
+    pass
+else:
+    assert False
+
+[file a.py]
+import b
+
+print('<a>', ord('A') == 65)  # Test full builtins
+
+class A:
+    def __init__(self) -> None:
+        self.x = 4
+
+def f(x: int) -> b.B:
+    return b.B(x)
+
+class B:
+    def __init__(self, x: int, y: str) -> None:
+        self.x = x
+
+print('<a>', f(5).x)
+
+[file b.py]
+import a
+
+class B:
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+def g(a: a.A) -> int:
+    return a.x
+
+print('<b>', 'here')
+
+[out]
+<b> here
+<a> True
+<a> 5
+<main> 4
