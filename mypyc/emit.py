@@ -205,7 +205,7 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_inc_ref('{}.f{}'.format(dest, i), item_type)
         elif not rtype.is_unboxed:
-            self.emit_line('Py_INCREF(%s);' % dest)
+            self.emit_line('CPy_INCREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def emit_dec_ref(self, dest: str, rtype: RType) -> None:
@@ -220,7 +220,7 @@ class Emitter:
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref('{}.f{}'.format(dest, i), item_type)
         elif not rtype.is_unboxed:
-            self.emit_line('Py_DECREF(%s);' % dest)
+            self.emit_line('CPy_DECREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
