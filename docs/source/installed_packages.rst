@@ -99,7 +99,7 @@ the setup.py might look like:
     )
 
 In this example, both ``lib.py`` and ``lib.pyi`` exist. At runtime, the Python
-interpeter will use ``lib.py``, but mypy will use ``lib.pyi`` instead.
+interpreter will use ``lib.py``, but mypy will use ``lib.pyi`` instead.
 
 If the package is stub-only (not imported at runtime), the package should have
 a prefix of the runtime package name and a suffix of ``-stubs``.

@@ -188,7 +188,7 @@ def build(sources: List[BuildSource],
         raise
 
 
-# python_path is usercode, mypy_path is set via config or envionment variable,
+# python_path is usercode, mypy_path is set via config or environment variable,
 # package_path is calculated by _get_site_packages_dirs, and typeshed_path points
 # to typeshed. Each is a tuple of paths to be searched in find_module()
 SearchPaths = NamedTuple('SearchPaths',
@@ -508,7 +508,7 @@ def cache_meta_from_dict(meta: Dict[str, Any],
     Args:
       meta: JSON metadata read from the metadata cache file
       data_json: Path to the .data.json file containing the AST trees
-      deps_json: Optionally, path to the .deps.json file containign
+      deps_json: Optionally, path to the .deps.json file containing
                  fine-grained dependency information.
     """
     sentinel = None  # type: Any  # Values to be validated by the caller
@@ -2766,7 +2766,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         undeps = set()
         if fresh:
             # Check if any dependencies that were suppressed according
-            # to the cache have heen added back in this run.
+            # to the cache have been added back in this run.
             # NOTE: Newly suppressed dependencies are handled by is_fresh().
             for id in scc:
                 undeps.update(graph[id].suppressed)
