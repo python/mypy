@@ -8,7 +8,7 @@ from typing import Dict, List, Set, Tuple
 
 from mypy import build
 from mypy.build import BuildSource, Graph, SearchPaths
-from mypy.test.config import test_temp_dir
+from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
@@ -152,6 +152,9 @@ class TypeCheckSuite(DataSuite):
             sources.append(BuildSource(program_path, module_name,
                                        None if incremental_step else program_text))
 
+        plugin_dir = os.path.join(test_data_prefix, 'plugins')
+        sys.path.insert(0, plugin_dir)
+
         res = None
         try:
             res = build.build(sources=sources,
@@ -160,6 +163,10 @@ class TypeCheckSuite(DataSuite):
             a = res.errors
         except CompileError as e:
             a = e.messages
+        finally:
+            assert sys.path[0] == plugin_dir
+            del sys.path[0]
+
         a = normalize_error_messages(a)
 
         # Make sure error messages match

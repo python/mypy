@@ -602,8 +602,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         try:
             module = importlib.import_module(module_name)
         except Exception:
-            print('Error importing plugin {}\n'.format(plugin_path))
-            raise  # Propagate to display traceback
+            plugin_error("Error importing plugin '{}'".format(plugin_path))
         finally:
             if plugin_dir is not None:
                 assert sys.path[0] == plugin_dir
