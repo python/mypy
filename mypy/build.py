@@ -585,12 +585,14 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
         func_name = 'plugin'
         plugin_dir = None  # type: Optional[str]
         fnam = os.path.basename(plugin_path)
-        if fnam.endswith('.py'):
+        if plugin_path.endswith('.py'):
             if not os.path.isfile(plugin_path):
                 plugin_error("Can't find plugin '{}'".format(plugin_path))
             plugin_dir = os.path.dirname(plugin_path)
             module_name = fnam[:-3]
             sys.path.insert(0, plugin_dir)
+        elif re.search(r'\/', plugin_path):
+            plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
         else:
             if ':' in plugin_path:
                 module_name, func_name = plugin_path.rsplit(':', 1)
@@ -608,7 +610,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
                 del sys.path[0]
 
         if not hasattr(module, func_name):
-            plugin_error('Plugin \'{}\' does not define entry point function "%s"'.format(
+            plugin_error('Plugin \'{}\' does not define entry point function "{}"'.format(
                 plugin_path, func_name))
 
         try:
