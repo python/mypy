@@ -563,6 +563,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
     Return a plugin that encapsulates all plugins chained together. Always
     at least include the default plugin (it's last in the chain).
     """
+    import importlib
 
     default_plugin = DefaultPlugin(options)  # type: Plugin
     if not options.config_file:
@@ -581,32 +582,41 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
     for plugin_path in options.plugins:
         # Plugin paths are relative to the config file location.
         plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
-
-        if not os.path.isfile(plugin_path):
-            plugin_error("Can't find plugin '{}'".format(plugin_path))
-        plugin_dir = os.path.dirname(plugin_path)
+        func_name = 'plugin'
+        plugin_dir = None  # type: Optional[str]
         fnam = os.path.basename(plugin_path)
-        if not fnam.endswith('.py'):
-            plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
-        module_name = fnam[:-3]
-        import importlib
-        sys.path.insert(0, plugin_dir)
+        if fnam.endswith('.py'):
+            if not os.path.isfile(plugin_path):
+                plugin_error("Can't find plugin '{}'".format(plugin_path))
+            plugin_dir = os.path.dirname(plugin_path)
+            module_name = fnam[:-3]
+            sys.path.insert(0, plugin_dir)
+        else:
+            if ':' in plugin_path:
+                module_name, func_name = plugin_path.rsplit(':', 1)
+            else:
+                module_name = plugin_path
+
         try:
-            m = importlib.import_module(module_name)
+            module = importlib.import_module(module_name)
         except Exception:
             print('Error importing plugin {}\n'.format(plugin_path))
             raise  # Propagate to display traceback
         finally:
-            assert sys.path[0] == plugin_dir
-            del sys.path[0]
-        if not hasattr(m, 'plugin'):
-            plugin_error('Plugin \'{}\' does not define entry point function "plugin"'.format(
-                plugin_path))
+            if plugin_dir is not None:
+                assert sys.path[0] == plugin_dir
+                del sys.path[0]
+
+        if not hasattr(module, func_name):
+            plugin_error('Plugin \'{}\' does not define entry point function "%s"'.format(
+                plugin_path, func_name))
+
         try:
-            plugin_type = getattr(m, 'plugin')(__version__)
+            plugin_type = getattr(module, func_name)(__version__)
         except Exception:
             print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path))
             raise  # Propagate to display traceback
+
         if not isinstance(plugin_type, type):
             plugin_error(
                 'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
