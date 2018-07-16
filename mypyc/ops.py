@@ -447,6 +447,9 @@ ERR_NEVER = 0  # Never generates an exception
 ERR_MAGIC = 1  # Generates magic value (c_error_value) based on target RType on exception
 ERR_FALSE = 2  # Generates false (bool) on exception
 
+# Hack: using this line number for an op will supress it in tracebacks
+NO_TRACEBACK_LINE_NO = -10000
+
 
 class Value:
     # Source line number

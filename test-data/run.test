@@ -455,6 +455,7 @@ Traceback (most recent call last):
 Exception
 
 [case testTryExcept]
+from typing import Any
 import wrapsys
 def g(b: bool) -> None:
     try:
@@ -466,16 +467,20 @@ def g(b: bool) -> None:
     except:
         print("caught!")
 
-def r(b: bool) -> None:
-    if b:
-        x = [0]
-        x[1]
-    else:
+def r(x: int) -> None:
+    if x == 0:
+        [0][1]
+    elif x == 1:
         raise Exception('hi')
+    elif x == 2:
+        {1: 1}[0]
+    elif x == 3:
+        a = object()  # type: Any
+        a.lol
 
 def f(b: bool) -> None:
     try:
-        r(b)
+        r(int(b))
     except:
         print(str(wrapsys.exc_info()[1]))
     print(str(wrapsys.exc_info()[1]))
@@ -491,10 +496,33 @@ def h() -> None:
 
 def i() -> None:
     try:
-        r(True)
+        r(0)
     except:
-        print(str(wrapsys.exc_info()[1]))
+        print(type(wrapsys.exc_info()[1]))
         raise
+
+def j(n: int) -> None:
+    try:
+        r(n)
+    except (IndexError, KeyError):
+        print("lookup!")
+    except AttributeError as e:
+        print("attr! --", e)
+
+def k() -> None:
+    try:
+        r(1)
+    except:
+        r(0)
+
+def l() -> None:
+    try:
+        r(0)
+    except IndexError:
+        try:
+            r(2)
+        except KeyError as e:
+            print("key! --", e)
 
 
 [file wrapsys.py]
@@ -506,37 +534,89 @@ def exc_info() -> Any:
 
 [file driver.py]
 import traceback
-from native import g, f, h, i
-g(True)
-g(False)
-
-f(True)
-f(False)
-
-h()
-
+import sys
+from native import g, f, h, i, j, k, l
+print("== i ==")
 try:
     i()
 except:
-    traceback.print_exc()
+    traceback.print_exc(file=sys.stdout)
+
+print("== k ==")
+try:
+    k()
+except:
+    traceback.print_exc(file=sys.stdout)
+
+print("== g ==")
+g(True)
+g(False)
+
+print("== f ==")
+f(True)
+f(False)
+
+print("== h ==")
+h()
+
+print("== j ==")
+j(0)
+j(2)
+j(3)
+try:
+    j(1)
+except:
+    print("out!")
+
+print("== l ==")
+l()
 [out]
+== i ==
+<class 'IndexError'>
+Traceback (most recent call last):
+  File "tmp/driver.py", line 6, in <module>
+    i()
+  File "tmp/py/native.py", line 42, in i
+    r(0)
+  File "tmp/py/native.py", line 15, in r
+    [0][1]
+IndexError: list index out of range
+== k ==
+Traceback (most recent call last):
+  File "tmp/py/native.py", line 57, in k
+    r(1)
+  File "tmp/py/native.py", line 17, in r
+    raise Exception('hi')
+Exception: hi
+
+During handling of the above exception, another exception occurred:
+
 Traceback (most recent call last):
   File "tmp/driver.py", line 12, in <module>
-    i()
-  File "tmp/py/native.py", line 37, in i
-    r(True)
+    k()
+  File "tmp/py/native.py", line 59, in k
+    r(0)
   File "tmp/py/native.py", line 15, in r
-    x[1]
+    [0][1]
 IndexError: list index out of range
+== g ==
 caught!
 caught!
-list index out of range
-None
+== f ==
 hi
 None
+list index out of range
+None
+== h ==
 gonna break
 None
-list index out of range
+== j ==
+lookup!
+lookup!
+attr! -- 'object' object has no attribute 'lol'
+out!
+== l ==
+key! -- 0
 
 [case testGenericEquality]
 def eq(a: object, b: object) -> bool:

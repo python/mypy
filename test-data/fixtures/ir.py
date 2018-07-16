@@ -86,6 +86,14 @@ class BaseException: pass
 class Exception(BaseException):
     def __init__(self, message: Optional[str] = None) -> None: pass
 
+class AttributeError(Exception): pass
+
+class LookupError(Exception): pass
+
+class KeyError(LookupError): pass
+
+class IndexError(LookupError): pass
+
 
 def id(o: object) -> int: pass
 def len(o: Sized) -> int: pass

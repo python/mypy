@@ -56,6 +56,7 @@ from mypyc.ops import (
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
     VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError,
+    NO_TRACEBACK_LINE_NO,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
@@ -66,8 +67,8 @@ from mypyc.ops_misc import (
     is_none_op, type_op,
 )
 from mypyc.ops_exc import (
-    no_err_occurred_op, raise_exception_op, reraise_exception_op, clear_exception_op,
-    error_catch_op, clear_exc_info_op,
+    no_err_occurred_op, raise_exception_op, reraise_exception_op,
+    error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -376,6 +377,27 @@ class BaseNonlocalControl(NonlocalControl):
 
     def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
         builder.add(Return(value))
+
+
+class CleanupNonlocalControl(NonlocalControl):
+    """Abstract nonlocal control that runs some cleanup code. """
+    def __init__(self, outer: NonlocalControl) -> None:
+        self.outer = outer
+
+    @abstractmethod
+    def gen_cleanup(self, builder: 'IRBuilder') -> None: ...
+
+    def gen_break(self, builder: 'IRBuilder') -> None:
+        self.gen_cleanup(builder)
+        self.outer.gen_break(builder)
+
+    def gen_continue(self, builder: 'IRBuilder') -> None:
+        self.gen_cleanup(builder)
+        self.outer.gen_continue(builder)
+
+    def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+        self.gen_cleanup(builder)
+        self.outer.gen_return(builder, value)
 
 
 class IRBuilder(NodeVisitor[Value]):
@@ -1540,7 +1562,7 @@ class IRBuilder(NodeVisitor[Value]):
 
     def visit_raise_stmt(self, s: RaiseStmt) -> Value:
         if s.expr is None:
-            self.primitive_op(reraise_exception_op, [], s.line)
+            self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
             self.add(Unreachable())
             return INVALID_VALUE
 
@@ -1565,61 +1587,87 @@ class IRBuilder(NodeVisitor[Value]):
         self.add(Unreachable())
         return INVALID_VALUE
 
-    class ExceptNonlocalControl(NonlocalControl):
+    class ExceptNonlocalControl(CleanupNonlocalControl):
         """Nonlocal control for except blocks.
 
-        Just makes sure that sys.exc_info always gets cleared when we leave.
+        Just makes sure that sys.exc_info always gets restored when we leave.
         This is super annoying.
         """
-        def __init__(self, outer: NonlocalControl, line: int) -> None:
-            self.outer = outer
-            self.line = line
+        def __init__(self, outer: NonlocalControl, saved: Value) -> None:
+            super().__init__(outer)
+            self.saved = saved
 
         def gen_cleanup(self, builder: 'IRBuilder') -> None:
-            # TODO: skip generating the clear if we just generated one
-            builder.primitive_op(clear_exc_info_op, [], self.line)
-
-        def gen_break(self, builder: 'IRBuilder') -> None:
-            self.gen_cleanup(builder)
-            self.outer.gen_break(builder)
-
-        def gen_continue(self, builder: 'IRBuilder') -> None:
-            self.gen_cleanup(builder)
-            self.outer.gen_continue(builder)
-
-        def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
-            self.outer.gen_return(builder, value)
+            # Don't bother plumbing a line through because it can't fail
+            builder.primitive_op(restore_exc_info_op, [self.saved], -1)
 
     def visit_try_stmt(self, t: TryStmt) -> Value:
-        assert len(t.handlers) == 1 and t.types[0] is None and t.vars[0] is None, (
-            "Only bare except supported")
-        assert not t.else_body, "try/else not implemented"
+        assert t.handlers, "try needs except"
         assert not t.finally_body, "try/finally not implemented"
 
-        except_entry, exit_block = BasicBlock(), BasicBlock()
-        cleanup_block = BasicBlock()
+        except_entry, exit_block, cleanup_block = BasicBlock(), BasicBlock(), BasicBlock()
+        # If there is an else block, jump there after the try, otherwise just leave
+        else_block = BasicBlock() if t.else_body else exit_block
 
         # Compile the try block with an error handler
         self.error_handlers.append(except_entry)
         self.goto_and_activate(BasicBlock())
         self.accept(t.body)
-        self.add_leave(exit_block)
+        self.add_leave(else_block)
         self.error_handlers.pop()
 
-        # Compile the except block with the nonlocal control flow overridden to clear exc_info
+        # The error handler catches the error and then checks it
+        # against the except clauses. We compile the error handler
+        # itself with an error handler so that it can properly restore
+        # the *old* exc_info if an exception occurs.
+        # The exception chaining will be done automatically when the
+        # exception is raised, based on the exception in exc_info.
+        self.error_handlers.append(cleanup_block)
         self.activate_block(except_entry)
-        except_body = t.handlers[0]
-        self.primitive_op(error_catch_op, [], except_body.line)  # TODO: use this value
-
+        old_exc = self.primitive_op(error_catch_op, [], t.line)
+        # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
         self.nonlocal_control.append(
-            IRBuilder.ExceptNonlocalControl(self.nonlocal_control[-1], except_body.line))
-        self.accept(except_body)
-        self.add_leave(cleanup_block)
-        self.nonlocal_control.pop()
+            IRBuilder.ExceptNonlocalControl(self.nonlocal_control[-1], old_exc))
 
+        # Process the bodies
+        next_block = None
+        for type, var, body in zip(t.types, t.vars, t.handlers):
+            if type:
+                next_block, body_block = BasicBlock(), BasicBlock()
+                matches = self.primitive_op(exc_matches_op, [self.accept(type)], type.line)
+                self.add(Branch(matches, body_block, next_block, Branch.BOOL_EXPR))
+                self.activate_block(body_block)
+            if var:
+                target = self.get_assignment_target(var)
+                self.assign_to_target(
+                    target, self.primitive_op(get_exc_value_op, [], var.line), var.line)
+            self.accept(body)
+            self.add_leave(cleanup_block)
+            if next_block:
+                self.activate_block(next_block)
+
+        # Reraise the exception if needed
+        if next_block:
+            self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+            self.add(Unreachable())
+
+        self.nonlocal_control.pop()
+        self.error_handlers.pop()
+
+        # Cleanup for if we leave except through normal control flow
+        # or a raised exception: restore the saved exc_info
+        # information and continue propagating the exception if it
+        # exists.
         self.activate_block(cleanup_block)
-        self.primitive_op(clear_exc_info_op, [], except_body.line)
+        self.primitive_op(restore_exc_info_op, [old_exc], t.line)
+        self.primitive_op(no_err_occurred_op, [], NO_TRACEBACK_LINE_NO)
         self.add(Goto(exit_block))
+
+        # If present, compile the else body in the obvious way
+        if t.else_body:
+            self.activate_block(else_block)
+            self.accept(t.else_body)
+            self.add(Goto(exit_block))
 
         self.activate_block(exit_block)
 
