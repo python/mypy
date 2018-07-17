@@ -473,6 +473,17 @@ static bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
     }
 }
 
+static bool CPySet_Remove(PyObject *set, PyObject *key) {
+    int success = PySet_Discard(set, key);
+    if (success == 1) {
+        return true;
+    }
+    if (success == 0) {
+        _PyErr_SetKeyError(key);
+    }
+    return false;
+}
+
 static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     if (CPyTagged_CheckShort(index)) {
         long long n = CPyTagged_ShortAsLongLong(index);

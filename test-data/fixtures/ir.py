@@ -80,8 +80,14 @@ class dict(Generic[T, S]):
     def pop(self, x: int) -> T: pass
 
 class set(Generic[T]):
-    def add(self, x: T) -> None: pass
+    def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
     def __iter__(self) -> Iterator[T]: pass
+    def __len__(self) -> int: pass
+    def add(self, x: T) -> None: pass
+    def remove(self, x: T) -> None: pass
+    def discard(self, x: T) -> None: pass
+    def clear(self) -> None: pass
+    def pop(self) -> T: pass
 
 class slice: pass
 

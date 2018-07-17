@@ -4,7 +4,7 @@ def f() -> Set[int]:
     return {1, 2, 3}
 [out]
 def f():
-    r0 :: object
+    r0 :: set
     r1 :: int
     r2 :: object
     r3 :: bool
@@ -15,16 +15,16 @@ def f():
     r8 :: object
     r9 :: bool
 L0:
-    r0 = set()
+    r0 = set
     r1 = 1
     r2 = box(int, r1)
-    r3 = r0.add(r2)
+    r3 = r0.add(r2) :: set
     r4 = 2
     r5 = box(int, r4)
-    r6 = r0.add(r5)
+    r6 = r0.add(r5) :: set
     r7 = 3
     r8 = box(int, r7)
-    r9 = r0.add(r8)
+    r9 = r0.add(r8) :: set
     return r0
 
 [case testNewEmptySet]
@@ -33,7 +33,179 @@ def f() -> Set[int]:
     return set()
 [out]
 def f():
-    r0 :: object
+    r0 :: set
 L0:
-    r0 = set()
+    r0 = set
     return r0
+
+[case testNewSetFromIterable]
+from typing import Set, List
+def f(l: List[T]) -> Set[T]:
+    return set(l)
+[out]
+def f(l):
+    l :: list
+    r0 :: set
+L0:
+    r0 = set l :: object
+    return r0
+
+[case testSetSize]
+from typing import Set
+def f() -> int:
+    return len({1, 2, 3})
+[out]
+def f():
+    r0 :: set
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+    r4 :: int
+    r5 :: object
+    r6 :: bool
+    r7 :: int
+    r8 :: object
+    r9 :: bool
+    r10 :: int
+L0:
+    r0 = set
+    r1 = 1
+    r2 = box(int, r1)
+    r3 = r0.add(r2) :: set
+    r4 = 2
+    r5 = box(int, r4)
+    r6 = r0.add(r5) :: set
+    r7 = 3
+    r8 = box(int, r7)
+    r9 = r0.add(r8) :: set
+    r10 = len r0 :: set
+    return r10
+
+[case testSetContains]
+from typing import Set
+def f() -> bool:
+    x = {3, 4}
+    return (5 in x)
+[out]
+def f():
+    x, r0 :: set
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+    r4 :: int
+    r5 :: object
+    r6 :: bool
+    r7 :: int
+    r8 :: object
+    r9 :: bool
+L0:
+    r0 = set
+    r1 = 3
+    r2 = box(int, r1)
+    r3 = r0.add(r2) :: set
+    r4 = 4
+    r5 = box(int, r4)
+    r6 = r0.add(r5) :: set
+    x = r0
+    r7 = 5
+    r8 = box(int, r7)
+    r9 = r8 in x :: set
+    return r9
+
+[case testSetRemove]
+from typing import Set
+def f() -> Set[int]:
+    x = set()  # type: Set[int]
+    x.remove(1)
+    return x
+[out]
+def f():
+    x, r0 :: set
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = set
+    x = r0
+    r1 = 1
+    r2 = box(int, r1)
+    r3 = x.remove(r2) :: set
+    r4 = None
+    return x
+
+[case testSetDiscard]
+from typing import Set
+def f() -> Set[int]:
+    x = set()  # type: Set[int]
+    x.discard(1)
+    return x
+[out]
+def f():
+    x, r0 :: set
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = set
+    x = r0
+    r1 = 1
+    r2 = box(int, r1)
+    r3 = x.discard(r2) :: set
+    r4 = None
+    return x
+
+[case testSetAdd]
+from typing import Set
+def f() -> Set[int]:
+    x = set()  # type: Set[int]
+    x.add(1)
+    return x
+[out]
+def f():
+    x, r0 :: set
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = set
+    x = r0
+    r1 = 1
+    r2 = box(int, r1)
+    r3 = x.add(r2) :: set
+    r4 = None
+    return x
+
+[case testSetClear]
+from typing import Set
+def f() -> Set[int]:
+    x = set()  # type: Set[int]
+    x.clear()
+    return x
+[out]
+def f():
+    x, r0 :: set
+    r1 :: bool
+    r2 :: None
+L0:
+    r0 = set
+    x = r0
+    r1 = x.clear() :: set
+    r2 = None
+    return x
+
+[case testSetPop]
+from typing import Set
+def f(s : Set[int]) -> int:
+    return s.pop()
+[out]
+def f(s):
+    s :: set
+    r0 :: object
+    r1 :: int
+L0:
+    r0 = s.pop() :: set
+    r1 = unbox(int, r0)
+    return r1

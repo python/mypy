@@ -122,6 +122,8 @@ list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=Tr
 
 dict_rprimitive = RPrimitive('builtins.dict', is_unboxed=False, is_refcounted=True)
 
+set_rprimitive = RPrimitive('builtins.set', is_unboxed=False, is_refcounted=True)
+
 # At the C layer, str is refered to as unicode (PyUnicode)
 str_rprimitive = RPrimitive('builtins.str', is_unboxed=False, is_refcounted=True)
 
@@ -155,6 +157,10 @@ def is_list_rprimitive(rtype: RType) -> bool:
 
 def is_dict_rprimitive(rtype: RType) -> bool:
     return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.dict'
+
+
+def is_set_rprimitive(rtype: RType) -> bool:
+    return isinstance(rtype, RPrimitive) and rtype.name == 'builtins.set'
 
 
 def is_str_rprimitive(rtype: RType) -> bool:

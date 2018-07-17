@@ -50,9 +50,9 @@ from mypyc.ops import (
     Return, FuncIR, Assign, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable,
     TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, ROptional,
     MethodCall, INVALID_VALUE, INVALID_CLASS, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
-    bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, str_rprimitive,
-    tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, PrimitiveOp,
-    ControlOp,
+    bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
+    str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
+    PrimitiveOp, ControlOp,
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
     VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError,
@@ -225,6 +225,8 @@ class Mapper:
                 return list_rprimitive
             elif typ.type.fullname() == 'builtins.dict':
                 return dict_rprimitive
+            elif typ.type.fullname() == 'builtins.set':
+                return set_rprimitive
             elif typ.type.fullname() == 'builtins.tuple':
                 return tuple_rprimitive  # Varying-length tuple
             elif typ.type in self.type_to_ir:
