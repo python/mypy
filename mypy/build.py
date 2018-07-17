@@ -2217,7 +2217,8 @@ class State:
             return
         self.fine_grained_deps = get_dependencies(target=self.tree,
                                                   type_map=self.type_map(),
-                                                  python_version=self.options.python_version)
+                                                  python_version=self.options.python_version,
+                                                  options=self.manager.options)
 
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
@@ -2570,7 +2571,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
-        dump_all_dependencies(manager.modules, manager.all_types, manager.options.python_version)
+        dump_all_dependencies(manager.modules, manager.all_types,
+                              manager.options.python_version, manager.options)
     return graph
 
 

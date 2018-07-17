@@ -193,6 +193,7 @@ class Options:
         self.show_column_numbers = False  # type: bool
         self.dump_graph = False
         self.dump_deps = False
+        self.tweaked_deps = False
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
         # Some behaviors are changed when using Bazel (https://bazel.build).

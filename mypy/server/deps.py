@@ -105,13 +105,15 @@ from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
 from mypy.scope import Scope
 from mypy.typestate import TypeState
+from mypy.options import Options
 
 
 def get_dependencies(target: MypyFile,
                      type_map: Dict[Expression, Type],
-                     python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
+                     python_version: Tuple[int, int],
+                     options: Options) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
-    visitor = DependencyVisitor(type_map, python_version, target.alias_deps)
+    visitor = DependencyVisitor(type_map, python_version, target.alias_deps, options)
     target.accept(visitor)
     return visitor.map
 
@@ -148,7 +150,8 @@ class DependencyVisitor(TraverserVisitor):
     def __init__(self,
                  type_map: Dict[Expression, Type],
                  python_version: Tuple[int, int],
-                 alias_deps: 'DefaultDict[str, Set[str]]') -> None:
+                 alias_deps: 'DefaultDict[str, Set[str]]',
+                 options: Optional[Options] = None) -> None:
         self.scope = Scope()
         self.type_map = type_map
         self.python2 = python_version[0] == 2
@@ -165,6 +168,7 @@ class DependencyVisitor(TraverserVisitor):
         self.map = {}  # type: Dict[str, Set[str]]
         self.is_class = False
         self.is_package_init_file = False
+        self.options = options
 
     def visit_mypy_file(self, o: MypyFile) -> None:
         self.scope.enter_file(o.fullname())
@@ -201,6 +205,10 @@ class DependencyVisitor(TraverserVisitor):
         # generate dependency.
         if not o.func.is_overload and self.scope.current_function_name() is None:
             self.add_dependency(make_trigger(o.func.fullname()))
+        if self.options is not None and self.options.tweaked_deps:
+            for d in o.decorators:
+                if isinstance(d, RefExpr) and d.fullname is not None:
+                    self.add_dependency(make_trigger(d.fullname), make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
@@ -263,6 +271,9 @@ class DependencyVisitor(TraverserVisitor):
                                         target=make_trigger(info.fullname() + '.' + name))
         for base_info in non_trivial_bases(info):
             for name, node in base_info.names.items():
+                if self.options and self.options.tweaked_deps:
+                    if name not in info.names:
+                        continue
                 self.add_dependency(make_trigger(base_info.fullname() + '.' + name),
                                     target=make_trigger(info.fullname() + '.' + name))
             self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
@@ -368,6 +379,21 @@ class DependencyVisitor(TraverserVisitor):
             if o.type:
                 for trigger in get_type_triggers(o.type):
                     self.add_dependency(trigger)
+        if self.options and self.options.tweaked_deps:
+            if (isinstance(rvalue, CallExpr) and isinstance(rvalue.callee, RefExpr)
+                    and rvalue.callee.fullname is not None):
+                fname = None  # type: Optional[str]
+                if isinstance(rvalue.callee.node, TypeInfo):
+                    init = rvalue.callee.node.get('__init__')
+                    if init and isinstance(init.node, FuncBase):
+                        fname = init.node.fullname()
+                else:
+                    fname = rvalue.callee.fullname
+                if fname is None:
+                    return
+                for lv in o.lvalues:
+                    if isinstance(lv, RefExpr) and lv.fullname:
+                        self.add_dependency(make_trigger(fname), make_trigger(lv.fullname))
 
     def process_lvalue(self, lvalue: Expression) -> None:
         """Generate additional dependencies for an lvalue."""
@@ -815,7 +841,8 @@ def has_user_bases(info: TypeInfo) -> bool:
 
 def dump_all_dependencies(modules: Dict[str, MypyFile],
                           type_map: Dict[Expression, Type],
-                          python_version: Tuple[int, int]) -> None:
+                          python_version: Tuple[int, int],
+                          options: Options) -> None:
     """Generate dependencies for all interesting modules and print them to stdout."""
     all_deps = {}  # type: Dict[str, Set[str]]
     for id, node in modules.items():
@@ -824,7 +851,7 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
         if id in ('builtins', 'typing') or '/typeshed/' in node.path:
             continue
         assert id == node.fullname()
-        deps = get_dependencies(node, type_map, python_version)
+        deps = get_dependencies(node, type_map, python_version, options)
         for trigger, targets in deps.items():
             all_deps.setdefault(trigger, set()).update(targets)
     TypeState.add_all_protocol_deps(all_deps)
