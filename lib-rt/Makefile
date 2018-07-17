@@ -9,21 +9,10 @@ PYTHONCONFIG ?= python3-config
 
 CFLAGS += -I ../external/googletest -I ../external/googletest/include -std=c++11
 
-ifeq ($(OS),Darwin)
-    CFLAGS += -I /Library/Frameworks/Python.framework/Versions/3.6/include/python3.6m
-    CFLAGS += -mmacosx-version-min=10.10
-else
-    CFLAGS += $(shell $(PYTHONCONFIG) --cflags)
-    CFLAGS += -fPIC
-endif
+CFLAGS += $(shell $(PYTHONCONFIG) --cflags)
+CFLAGS += -fPIC
 
-ifeq ($(OS),Darwin)
-    LDFLAGS += -lc -lc++
-    LDFLAGS += -L/Library/Frameworks/Python.framework/Versions/3.6/lib/python3.6/config-3.6m-darwin
-    LDFLAGS += -lpython3.6m -lcrt1.o -mmacosx-version-min=10.10
-else
-    LDFLAGS += $(shell $(PYTHONCONFIG) --ldflags)
-endif
+LDFLAGS += $(shell $(PYTHONCONFIG) --ldflags)
 
 test_capi.o: test_capi.cc CPy.h
 	c++ -c -o test_capi.o $(CFLAGS) test_capi.cc
