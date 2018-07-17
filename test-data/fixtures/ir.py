@@ -79,6 +79,10 @@ class dict(Generic[T, S]):
     def update(self, x: Dict[T, S]) -> None: pass
     def pop(self, x: int) -> T: pass
 
+class set(Generic[T]):
+    def add(self, x: T) -> None: pass
+    def __iter__(self) -> Iterator[T]: pass
+
 class slice: pass
 
 class BaseException: pass

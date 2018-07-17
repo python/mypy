@@ -1,0 +1,39 @@
+[case testNewSet]
+from typing import Set
+def f() -> Set[int]:
+    return {1, 2, 3}
+[out]
+def f():
+    r0 :: object
+    r1 :: int
+    r2 :: object
+    r3 :: bool
+    r4 :: int
+    r5 :: object
+    r6 :: bool
+    r7 :: int
+    r8 :: object
+    r9 :: bool
+L0:
+    r0 = set()
+    r1 = 1
+    r2 = box(int, r1)
+    r3 = r0.add(r2)
+    r4 = 2
+    r5 = box(int, r4)
+    r6 = r0.add(r5)
+    r7 = 3
+    r8 = box(int, r7)
+    r9 = r0.add(r8)
+    return r0
+
+[case testNewEmptySet]
+from typing import Set
+def f() -> Set[int]:
+    return set()
+[out]
+def f():
+    r0 :: object
+L0:
+    r0 = set()
+    return r0

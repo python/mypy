@@ -31,6 +31,7 @@ files = [
     'genops-any.test',
     'genops-generics.test',
     'genops-try.test',
+    'genops-set.test',
 ]
 
 

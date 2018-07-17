@@ -362,6 +362,24 @@ assert eq('foo') == 0
 assert eq('zar') == 1
 assert eq('bar') == 2
 
+[case testSetLiteral]
+from typing import Set
+def f() -> Set[int]:
+    return {1, 2, 3, 5, 8}
+[file driver.py]
+from native import f
+val = f()
+assert 1 in val
+assert 2 in val
+assert 3 in val
+assert 5 in val
+assert 8 in val
+assert len(val) == 5
+s = 0
+for i in val:
+    s += i
+assert s == 19
+
 [case testDictUpdate]
 from typing import Dict
 def f(x: int) -> int:

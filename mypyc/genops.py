@@ -60,6 +60,7 @@ from mypyc.ops import (
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
+from mypyc.ops_set import new_set_op, set_add_op
 from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
     none_op, iter_op, next_op, py_getattr_op, py_setattr_op,
@@ -1465,6 +1466,13 @@ class IRBuilder(NodeVisitor[Value]):
                 line=expr.line)
         return dict_reg
 
+    def visit_set_expr(self, expr: SetExpr) -> Value:
+        set_reg = self.primitive_op(new_set_op, [], expr.line)
+        for key_expr in expr.items:
+            key_reg = self.accept(key_expr)
+            self.primitive_op(set_add_op, [set_reg, key_reg], expr.line)
+        return set_reg
+
     def visit_str_expr(self, expr: StrExpr) -> Value:
         return self.load_static_unicode(expr.value)
 
@@ -1781,9 +1789,6 @@ class IRBuilder(NodeVisitor[Value]):
         raise NotImplementedError
 
     def visit_reveal_expr(self, o: RevealExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_set_expr(self, o: SetExpr) -> Value:
         raise NotImplementedError
 
     def visit_star_expr(self, o: StarExpr) -> Value:
