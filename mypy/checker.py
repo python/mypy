@@ -3638,7 +3638,7 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
                                               other: CallableType) -> bool:
     """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
 
-    We consider two functions 's' and 't' to be unsafely overlapping both if
+    We consider two functions 's' and 't' to be unsafely overlapping if both
     of the following are true:
 
     1.  s's parameters are all more precise or partially overlapping with t's
@@ -3666,7 +3666,7 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
                                                         other: CallableType) -> bool:
     """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
 
-    We consider two functions 's' and 't' to be unsafely overlapping both if
+    We consider two functions 's' and 't' to be unsafely overlapping if both
     of the following are true:
 
     1.  s's parameters are all more precise or partially overlapping with t's
@@ -3678,8 +3678,8 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
         return is_more_precise(t, s) or is_overlapping_types(t, s)
 
-    # Try detaching callables from the containing class so we can try unifying
-    # free type variables against each other.
+    # Try detaching callables from the containing class so that all TypeVars
+    # are treated as being free.
     #
     # This lets us identify cases where the two signatures use completely
     # incompatible types -- e.g. see the testOverloadingInferUnionReturnWithMixedTypevars
@@ -3712,7 +3712,7 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
 
 
 def detach_callable(typ: CallableType) -> CallableType:
-    """Ensures that the callable's type variables are 'detached' and independent of the context
+    """Ensures that the callable's type variables are 'detached' and independent of the context.
 
     A callable normally keeps track of the type variables it uses within its 'variables' field.
     However, if the callable is from a method and that method is using a class type variable,

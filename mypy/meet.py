@@ -5,7 +5,7 @@ from mypy.join import is_similar_callables, combine_similar_callables, join_type
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
-    UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, is_named_instance,
+    UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike,
 )
 from mypy.subtypes import (
     is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
@@ -54,6 +54,30 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
 
 
 def get_possible_variants(typ: Type) -> List[Type]:
+    """This function takes any "Union-like" type and returns a list of the available "options".
+
+    Specifically, there are currently exactly three different types that can have
+    "variants" or are "union-like":
+
+    - Unions
+    - TypeVars with value restrictions
+    - Overloads
+
+    This function will return a list of each "option" present in those types.
+
+    If this function receives any other type, we return a list containing just that
+    original type. (E.g. pretend the type was contained within a singleton union).
+
+    The only exception is regular TypeVars: we return a list containing that TypeVar's
+    upper bound.
+
+    This function is useful primarily when checking to see if two types are overlapping:
+    the algorithm to check if two unions are overlapping is fundamentally the same as
+    the algorithm for checking if two overloads are overlapping.
+
+    Normalizing both kinds of types in the same way lets us reuse the same algorithm
+    for both.
+    """
     if isinstance(typ, TypeVarType):
         if len(typ.values) > 0:
             return typ.values
@@ -73,12 +97,13 @@ def get_possible_variants(typ: Type) -> List[Type]:
 
 def is_overlapping_types(left: Type, right: Type) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?"""
+
     # We should never encounter these types, but if we do, we handle
     # them in the same way we handle 'Any'.
-
     illegal_types = (UnboundType, PartialType, ErasedType, DeletedType)
     if isinstance(left, illegal_types) or isinstance(right, illegal_types):
-        # TODO: Replace this with an 'assert False'.
+        # TODO: Replace this with an 'assert False' once we are confident we
+        # never accidentally generate these types.
         return True
 
     # 'Any' may or may not be overlapping with the other type
@@ -92,19 +117,12 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     if is_subtype(left, right) or is_subtype(right, left):
         return True
 
-    # There are a number of different types that can have "variants" or are "union-like".
-    # For example:
+    # See the docstring for 'get_possible_variants' for more info on what the
+    # following lines are doing.
     #
-    # - Unions
-    # - TypeVars with value restrictions
-    # - Overloads
-    #
-    # We extract the component variants into a list. Types with a single variant are
-    # stored in a singleton list.
-    #
-    # The logic to check whether any of these types are overlapping are essentially the
-    # same: we obtain the list of possible variants and make sure there exists
-    # items in the intersection.
+    # Note that we use 'left_possible' and 'right_possible' in two different
+    # locations: immediately after to handle TypeVars, and near the end of
+    # 'is_overlapping_types' to handle types like Unions or Overloads.
 
     left_possible = get_possible_variants(left)
     right_possible = get_possible_variants(right)
@@ -136,46 +154,23 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     # - Tuples
     #
     # If we cannot identify a partial overlap and end early, we degrade these two types
-    # into their (Instance) fallbacks.
+    # into their 'Instance' fallbacks.
 
     if isinstance(left, TypedDictType) and isinstance(right, TypedDictType):
-        # All required keys in left are present and overlapping with something in right
-        for key in left.required_keys:
-            if key not in right.items:
-                return False
-            if not is_overlapping_types(left.items[key], right.items[key]):
-                return False
-
-        # Repeat check in the other direction
-        for key in right.required_keys:
-            if key not in left.items:
-                return False
-            if not is_overlapping_types(left.items[key], right.items[key]):
-                return False
-
-        # The presence of any additional optional keys does not affect whether the two
-        # TypedDicts are partially overlapping: the dicts would be overlapping if the
-        # keys happened to be missing.
-        return True
+        return are_typed_dicts_overlapping(left, right)
     elif isinstance(left, TypedDictType):
         left = left.fallback
     elif isinstance(right, TypedDictType):
         right = right.fallback
 
     if is_tuple(left) and is_tuple(right):
-        left = adjust_tuple(left, right) or left
-        right = adjust_tuple(right, left) or right
-        assert isinstance(left, TupleType)
-        assert isinstance(right, TupleType)
-        if len(left.items) != len(right.items):
-            return False
-        return all(is_overlapping_types(l, r) for l, r in zip(left.items, right.items))
+        return are_tuples_overlapping(left, right)
     elif isinstance(left, TupleType):
         left = left.fallback
     elif isinstance(right, TupleType):
         right = right.fallback
 
-    # Next, we handle single-variant types that are not inherently partially overlapping,
+    # Next, we handle single-variant types that cannot be inherently partially overlapping,
     # but do require custom logic to inspect.
 
     if isinstance(left, TypeType) and isinstance(right, TypeType):
@@ -222,7 +217,7 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     # We handle all remaining types here: in particular, types like
     # UnionType, Overloaded, NoneTyp, and UninhabitedType.
     #
-    # We deliberately skip singleton variant types to avoid
+    # We deliberately skip comparing two singleton variant types to avoid
     # infinitely recursing.
 
     if len(left_possible) >= 1 or len(right_possible) >= 1:
@@ -240,6 +235,41 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
 def is_overlapping_erased_types(left: Type, right: Type) -> bool:
     """The same as 'is_overlapping_erased_types', except the types are erased first."""
     return is_overlapping_types(erase_type(left), erase_type(right))
+
+
+def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType) -> bool:
+    """Returns 'true' if left and right are overlapping TypeDictTypes."""
+    # All required keys in left are present and overlapping with something in right
+    for key in left.required_keys:
+        if key not in right.items:
+            return False
+        if not is_overlapping_types(left.items[key], right.items[key]):
+            return False
+
+    # Repeat check in the other direction
+    for key in right.required_keys:
+        if key not in left.items:
+            return False
+        if not is_overlapping_types(left.items[key], right.items[key]):
+            return False
+
+    # The presence of any additional optional keys does not affect whether the two
+    # TypedDicts are partially overlapping: the dicts would be overlapping if the
+    # keys happened to be missing.
+    return True
+
+
+def are_tuples_overlapping(left: Type, right: Type) -> bool:
+    """Returns true if left and right are overlapping tuples.
+
+    Precondition: is_tuple(left) and is_tuple(right) are both true."""
+    left = adjust_tuple(left, right) or left
+    right = adjust_tuple(right, left) or right
+    assert isinstance(left, TupleType)
+    assert isinstance(right, TupleType)
+    if len(left.items) != len(right.items):
+        return False
+    return all(is_overlapping_types(l, r) for l, r in zip(left.items, right.items))
 
 
 def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:
