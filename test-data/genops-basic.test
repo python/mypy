@@ -637,6 +637,19 @@ L0:
     r1 = unicode_1 :: static  ('some other string')
     return r1
 
+[case testBytesLiteral]
+def f() -> bytes:
+    x = b'\xf0'
+    return b'1234'
+[out]
+def f():
+    x, r0, r1 :: object
+L0:
+    r0 = bytes_0 :: static  (b'\xf0')
+    x = r0
+    r1 = bytes_1 :: static  (b'1234')
+    return r1
+
 [case testPyMethodCall1]
 from typing import List
 def f(x: List[int]) -> int:

@@ -1353,7 +1353,7 @@ class ClassIR:
 INVALID_CLASS = ClassIR('<INVALID_CLASS>', '')
 
 
-LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str]], str]
+LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes]], str]
 
 
 class ModuleIR:

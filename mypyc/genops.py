@@ -269,7 +269,7 @@ class Mapper:
         ret = self.type_to_rtype(fdef.type.ret_type)
         return FuncSignature(args, ret)
 
-    def literal_static_name(self, value: Union[int, float, str]) -> str:
+    def literal_static_name(self, value: Union[int, float, str, bytes]) -> str:
         # Include type to distinguish between 1 and 1.0, and so on.
         key = (type(value), value)
         if key not in self.literals:
@@ -277,6 +277,8 @@ class Mapper:
                 prefix = 'unicode_'
             elif isinstance(value, float):
                 prefix = 'float_'
+            elif isinstance(value, bytes):
+                prefix = 'bytes_'
             else:
                 assert isinstance(value, int)
                 prefix = 'int_'
@@ -1132,6 +1134,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_float_expr(self, expr: FloatExpr) -> Value:
         return self.load_static_float(expr.value)
 
+    def visit_bytes_expr(self, expr: BytesExpr) -> Value:
+        value = bytes(expr.value, 'utf8').decode('unicode-escape').encode('raw-unicode-escape')
+        return self.load_static_bytes(value)
+
     def is_native_ref_expr(self, expr: RefExpr) -> bool:
         if expr.node is None:
             return False
@@ -1716,9 +1722,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_backquote_expr(self, o: BackquoteExpr) -> Value:
         raise NotImplementedError
 
-    def visit_bytes_expr(self, o: BytesExpr) -> Value:
-        raise NotImplementedError
-
     def visit_complex_expr(self, o: ComplexExpr) -> Value:
         raise NotImplementedError
 
@@ -2153,6 +2156,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """Loads a static float value into a register."""
         static_symbol = self.mapper.literal_static_name(value)
         return self.add(LoadStatic(float_rprimitive, static_symbol, ann=value))
+
+    def load_static_bytes(self, value: bytes) -> Value:
+        """Loads a static bytes value into a register."""
+        static_symbol = self.mapper.literal_static_name(value)
+        return self.add(LoadStatic(object_rprimitive, static_symbol, ann=value))
 
     def load_static_unicode(self, value: str) -> Value:
         """Loads a static unicode value into a register.
