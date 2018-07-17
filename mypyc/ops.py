@@ -486,13 +486,12 @@ class Register(Value):
         return False
 
 
-# Unfortunately we have visitors which are statement-like rather than expression-like.
-# It doesn't make sense to have the visitor return Optional[Value] because every
-# method either always returns no value or returns a value.
+# An invalid register value.
 #
-# Eventually we may want to separate expression visitors and statement-like visitors at
-# the type level but until then returning INVALID_VALUE from a statement-like visitor
-# seems acceptable.
+# This is mostly a relic from when the statement and expression
+# visitors both returned the same type, but there are some places that
+# use it to avoid needing to make some value Optional. Those are
+# probably worth cleaning up.
 INVALID_VALUE = Register(void_rtype, name='<INVALID_VALUE>')
 
 

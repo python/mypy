@@ -13,7 +13,7 @@ from typing import Optional, List, Dict
 
 from mypyc.ops import (
     FuncIR, BasicBlock, LoadErrorValue, Return, Goto, Branch, ERR_NEVER, ERR_MAGIC,
-    ERR_FALSE, INVALID_VALUE, RegisterOp, PrimitiveOp,
+    ERR_FALSE, RegisterOp, PrimitiveOp,
     NO_TRACEBACK_LINE_NO,
 )
 
