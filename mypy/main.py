@@ -612,6 +612,12 @@ def process_options(args: List[str],
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
     parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
+    # --logical-deps adds some more dependencies that are not semantically needed, but
+    # may be helpful to determine relative importance of classes and functions for overall
+    # type precision in a code base. It also _removes_ some deps, so this flag should be never
+    # used except for generating code stats. This also automatically enables --cache-fine-grained.
+    # NOTE: This is an experimental option that may be modified or removed at any time.
+    parser.add_argument('--logical-deps', action='store_true', help=argparse.SUPPRESS)
     # --bazel changes some behaviors for use with Bazel (https://bazel.build).
     parser.add_argument('--bazel', action='store_true', help=argparse.SUPPRESS)
     # --package-root adds a directory below which directories are considered
@@ -775,6 +781,10 @@ def process_options(args: List[str],
     # Let quick_and_dirty imply incremental.
     if options.quick_and_dirty:
         options.incremental = True
+
+    # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
+    if options.logical_deps:
+        options.cache_fine_grained = True
 
     # Set target.
     if special_opts.modules + special_opts.packages:
