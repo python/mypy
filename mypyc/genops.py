@@ -1578,7 +1578,7 @@ class IRBuilder(NodeVisitor[Value]):
 
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             etyp = self.accept(s.expr)
-            exc = self.primitive_op(py_call_op, [etyp], s.expr.line)
+            exc = self.py_call(etyp, [], s.expr.line)
         else:
             exc = self.accept(s.expr)
             etyp = self.primitive_op(type_op, [exc], s.expr.line)
@@ -1714,7 +1714,7 @@ class IRBuilder(NodeVisitor[Value]):
             # The general case -- explicitly construct an exception instance
             message = self.accept(a.msg)
             exc_type = self.load_module_attr_by_fullname('builtins.AssertionError', a.line)
-            exc = self.primitive_op(py_call_op, [exc_type, message], a.line)
+            exc = self.py_call(exc_type, [message], a.line)
             self.primitive_op(raise_exception_op, [exc_type, exc], a.line)
         self.add(Unreachable())
         self.activate_block(ok_block)
