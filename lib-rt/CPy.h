@@ -606,12 +606,22 @@ static void CPy_Reraise(void) {
     PyErr_Restore(p_type, p_value, p_traceback);
 }
 
+// We want to avoid the public PyErr_GetExcInfo API for these because
+// it requires a bunch of spurious refcount traffic on the parts of
+// the triple we don't care about. Unfortunately the layout of the
+// data structure changed in 3.7 so we need to handle that.
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 7
+#define CPy_ExcState() PyThreadState_GET()->exc_info
+#else
+#define CPy_ExcState() PyThreadState_GET()
+#endif
+
 static bool CPy_ExceptionMatches(PyObject *type) {
-    return PyErr_GivenExceptionMatches(PyThreadState_GET()->exc_type, type);
+    return PyErr_GivenExceptionMatches(CPy_ExcState()->exc_type, type);
 }
 
 static PyObject *CPy_GetExcValue(void) {
-    PyObject *exc = PyThreadState_GET()->exc_value;
+    PyObject *exc = CPy_ExcState()->exc_value;
     Py_INCREF(exc);
     return exc;
 }
