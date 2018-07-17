@@ -19,7 +19,7 @@ from mypy.nodes import (
     UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
-    Import, ImportFrom, ImportAll, ImportBase,
+    Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT,
 )
@@ -1006,7 +1006,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             reverse_type = reverse_type.copy_modified(arg_types=[reverse_type.arg_types[0]] * 2,
                                                       arg_kinds=[ARG_POS] * 2,
                                                       arg_names=[reverse_type.arg_names[0], "_"])
-        assert len(reverse_type.arg_types) == 2
+        assert len(reverse_type.arg_types) >= 2
 
         forward_name = nodes.normal_from_reverse_op[reverse_name]
         forward_inst = reverse_type.arg_types[1]
@@ -2907,7 +2907,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, TypeVarType):
             # We could do better probably?
             # Refine the the type variable's bound as our type in the case that
-            # callable() is true. This unfortuantely loses the information that
+            # callable() is true. This unfortunately loses the information that
             # the type is a type variable in that branch.
             # This matches what is done for isinstance, but it may be possible to
             # do better.
@@ -3174,6 +3174,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Assume that the name refers to a type.
         sym = self.lookup_qualified(name)
         node = sym.node
+        if isinstance(node, TypeAlias):
+            assert isinstance(node.target, Instance)
+            node = node.target.type
         assert isinstance(node, TypeInfo)
         any_type = AnyType(TypeOfAny.from_omitted_generics)
         return Instance(node, [any_type] * len(node.defn.type_vars))

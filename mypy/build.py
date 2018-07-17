@@ -40,7 +40,7 @@ from mypy.semanal_pass3 import SemanticAnalyzerPass3
 from mypy.checker import TypeChecker
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, report_internal_error
-from mypy.util import DecodeError, decode_python_encoding
+from mypy.util import DecodeError, decode_python_encoding, is_sub_path
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
@@ -86,7 +86,7 @@ class BuildResult:
         self.manager = manager
         self.graph = graph
         self.files = manager.modules
-        self.types = manager.all_types  # Non-empty for tests only or if dumping deps
+        self.types = manager.all_types  # Non-empty if export_types True in options
         self.used_cache = manager.cache_enabled
         self.errors = []  # type: List[str]  # Filled in by build if desired
 
@@ -188,7 +188,7 @@ def build(sources: List[BuildSource],
         raise
 
 
-# python_path is usercode, mypy_path is set via config or envionment variable,
+# python_path is usercode, mypy_path is set via config or environment variable,
 # package_path is calculated by _get_site_packages_dirs, and typeshed_path points
 # to typeshed. Each is a tuple of paths to be searched in find_module()
 SearchPaths = NamedTuple('SearchPaths',
@@ -508,7 +508,7 @@ def cache_meta_from_dict(meta: Dict[str, Any],
     Args:
       meta: JSON metadata read from the metadata cache file
       data_json: Path to the .data.json file containing the AST trees
-      deps_json: Optionally, path to the .deps.json file containign
+      deps_json: Optionally, path to the .deps.json file containing
                  fine-grained dependency information.
     """
     sentinel = None  # type: Any  # Values to be validated by the caller
@@ -662,7 +662,7 @@ class BuildManager:
                        Semantic analyzer, pass 2
       semantic_analyzer_pass3:
                        Semantic analyzer, pass 3
-      all_types:       Map {Expression: Type} collected from all modules (tests only)
+      all_types:       Map {Expression: Type} from all modules (enabled by export_types)
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
       stale_modules:   Set of modules that needed to be rechecked (only used by tests)
@@ -708,7 +708,7 @@ class BuildManager:
                                                   self.errors, self.plugin)
         self.semantic_analyzer_pass3 = SemanticAnalyzerPass3(self.modules, self.errors,
                                                              self.semantic_analyzer)
-        self.all_types = {}  # type: Dict[Expression, Type]  # Used by tests only
+        self.all_types = {}  # type: Dict[Expression, Type]  # Enabled by export_types
         self.indirection_detector = TypeIndirectionVisitor()
         self.stale_modules = set()  # type: Set[str]
         self.rechecked_modules = set()  # type: Set[str]
@@ -2173,10 +2173,9 @@ class State:
         if self.options.semantic_analysis_only:
             return
         with self.wrap_context():
-            # Some tests want to look at the set of all types.
+            # Some tests (and tools) want to look at the set of all types.
             options = manager.options
-            if ((options.use_builtins_fixtures and not options.fine_grained_incremental) or
-                    manager.options.dump_deps):
+            if options.export_types:
                 manager.all_types.update(self.type_map())
 
             # We should always patch indirect dependencies, even in full (non-incremental) builds,
@@ -2218,7 +2217,8 @@ class State:
             return
         self.fine_grained_deps = get_dependencies(target=self.tree,
                                                   type_map=self.type_map(),
-                                                  python_version=self.options.python_version)
+                                                  python_version=self.options.python_version,
+                                                  options=self.manager.options)
 
     def valid_references(self) -> Set[str]:
         assert self.ancestors is not None
@@ -2388,7 +2388,11 @@ def find_module_and_diagnose(manager: BuildManager,
                     skipping_module(manager, caller_line, caller_state,
                                     id, path)
             raise ModuleNotFound
-
+        if not manager.options.no_silence_site_packages:
+            for dir in manager.search_paths.package_path + manager.search_paths.typeshed_path:
+                if is_sub_path(path, dir):
+                    # Silence errors in site-package dirs and typeshed
+                    follow_imports = 'silent'
         return (path, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
@@ -2567,7 +2571,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
     if manager.options.dump_deps:
         # This speeds up startup a little when not using the daemon mode.
         from mypy.server.deps import dump_all_dependencies
-        dump_all_dependencies(manager.modules, manager.all_types, manager.options.python_version)
+        dump_all_dependencies(manager.modules, manager.all_types,
+                              manager.options.python_version, manager.options)
     return graph
 
 
@@ -2763,7 +2768,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         undeps = set()
         if fresh:
             # Check if any dependencies that were suppressed according
-            # to the cache have heen added back in this run.
+            # to the cache have been added back in this run.
             # NOTE: Newly suppressed dependencies are handled by is_fresh().
             for id in scc:
                 undeps.update(graph[id].suppressed)

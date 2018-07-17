@@ -1134,3 +1134,118 @@ def f(b: B) -> None:
 <m.B.__setitem__> -> m.f
 <m.B> -> <m.f>, m.B, m.f
 <m.g> -> m.f
+
+[case testLogicalDecorator]
+# flags: --logical-deps
+from mod import dec
+@dec
+def f() -> None:
+    pass
+[file mod.py]
+from typing import Callable
+def dec(f: Callable[[], None]) -> Callable[[], None]:
+    pass
+[out]
+<m.f> -> m
+<mod.dec> -> <m.f>, m
+
+[case testLogicalDecoratorWithArgs]
+# flags: --logical-deps
+from mod import dec
+@dec(str())
+def f() -> None:
+    pass
+[file mod.py]
+from typing import Callable
+def dec(arg: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
+    pass
+[out]
+<m.f> -> m
+<mod.dec> -> <m.f>, m
+
+[case testLogicalDecoratorMember]
+# flags: --logical-deps
+import mod
+@mod.dec
+def f() -> None:
+    pass
+[file mod.py]
+from typing import Callable
+def dec(f: Callable[[], None]) -> Callable[[], None]:
+    pass
+[out]
+<m.f> -> m
+<mod.dec> -> <m.f>, m
+<mod> -> m
+
+[case testLogicalDefinition]
+# flags: --logical-deps
+from mod import func
+b = func()
+[file mod.py]
+def func() -> int:
+    pass
+[out]
+<m.b> -> m
+<mod.func> -> <m.b>, m
+
+[case testLogicalDefinitionIrrelevant]
+# flags: --logical-deps
+from mod import func
+def outer() -> None:
+    a = func()
+b: int = func()
+c = int()
+c = func()
+[file mod.py]
+def func() -> int:
+    pass
+[out]
+<m.b> -> m
+<m.c> -> m
+<mod.func> -> m, m.outer
+
+[case testLogicalDefinitionMember]
+# flags: --logical-deps
+import mod
+b = mod.func()
+[file mod.py]
+def func() -> int:
+    pass
+[out]
+<m.b> -> m
+<mod.func> -> <m.b>, m
+<mod> -> m
+
+[case testLogicalDefinitionClass]
+# flags: --logical-deps
+from mod import Cls
+b = Cls()
+[file mod.py]
+class Base:
+    def __init__(self) -> None: pass
+class Cls(Base): pass
+[out]
+<m.b> -> m
+<mod.Base.__init__> -> <m.b>
+<mod.Cls.__init__> -> m
+<mod.Cls.__new__> -> m
+<mod.Cls> -> <m.b>, m
+
+[case testLogicalBaseAttribute]
+# flags: --logical-deps
+from mod import C
+class D(C):
+    x: int
+[file mod.py]
+class C:
+    x: int
+    y: int
+[out]
+<m.D.x> -> m
+<m.D> -> m.D
+<mod.C.(abstract)> -> <m.D.__init__>, m
+<mod.C.__init__> -> <m.D.__init__>
+<mod.C.__new__> -> <m.D.__new__>
+<mod.C.x> -> <m.D.x>
+<mod.C> -> m, m.D

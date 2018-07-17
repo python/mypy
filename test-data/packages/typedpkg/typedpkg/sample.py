@@ -4,4 +4,4 @@ from typing import Iterable, Tuple
 def ex(a):
     # type: (Iterable[str]) -> Tuple[str, ...]
     """Example typed package."""
-    return tuple(a)
+    return list(a)

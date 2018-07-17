@@ -1309,7 +1309,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if not sym:
             return None
         node = sym.node
-        assert isinstance(node, TypeInfo)
+        if isinstance(node, TypeAlias):
+            assert isinstance(node.target, Instance)
+            node = node.target.type
+        assert isinstance(node, TypeInfo), node
         if args is not None:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
@@ -3078,7 +3081,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         n = names.get(parts[i], None)
                         if n and isinstance(n.node, ImportedName):
                             n = self.dereference_module_cross_ref(n)
-                        elif '__getattr__' in names:
+                        elif not n and '__getattr__' in names:
                             gvar = self.create_getattr_var(names['__getattr__'],
                                                            parts[i], parts[i])
                             if gvar:

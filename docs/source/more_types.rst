@@ -17,8 +17,8 @@ Here's a quick summary of what's covered here:
   just an ``int`` at runtime.
 
 * ``@overload`` lets you define a function that can accept multiple distinct
-  signatures. This is useful for if you need to encode a relationship between
-  the arguments and the return type that would be difficult to express normally.
+  signatures. This is useful if you need to encode a relationship between the
+  arguments and the return type that would be difficult to express normally.
 
 * ``TypedDict`` lets you give precise types for dictionaries that represent
   objects with a fixed schema, such as ``{'id': 1, 'items': ['x']}``.
@@ -474,7 +474,7 @@ the following unsafe overload definition:
             return "some string"
 
 On the surface, this function definition appears to be fine. However, it will
-result in a discrepency between the inferred type and the actual runtime type
+result in a discrepancy between the inferred type and the actual runtime type
 when we try using it like so:
 
 .. code-block:: python

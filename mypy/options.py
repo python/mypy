@@ -65,6 +65,8 @@ class Options:
         self.custom_typeshed_dir = None  # type: Optional[str]
         self.mypy_path = []  # type: List[str]
         self.report_dirs = {}  # type: Dict[str, str]
+        # Show errors in PEP 561 packages/site-packages modules
+        self.no_silence_site_packages = False
         self.ignore_missing_imports = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
@@ -191,10 +193,13 @@ class Options:
         self.show_column_numbers = False  # type: bool
         self.dump_graph = False
         self.dump_deps = False
+        self.logical_deps = False
         # If True, partial types can't span a module top level and a function
         self.local_partial_types = False
         # Some behaviors are changed when using Bazel (https://bazel.build).
         self.bazel = False
+        # If True, export inferred types for all expressions as BuildResult.types
+        self.export_types = False
         # List of package roots -- directories under these are packages even
         # if they don't have __init__.py.
         self.package_root = []  # type: List[str]
