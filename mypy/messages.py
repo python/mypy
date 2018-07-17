@@ -794,6 +794,16 @@ class MessageBuilder:
         self.fail('Result type of {} incompatible in assignment'.format(op),
                   context)
 
+    def overload_signature_incompatible_with_supertype(
+            self, name: str, name_in_super: str, supertype: str,
+            overload: Overloaded, context: Context) -> None:
+        target = self.override_target(name, name_in_super, supertype)
+        self.fail('Signature of "{}" incompatible with {}'.format(
+            name, target), context)
+
+        note_template = 'Overload variants must be defined in the same order as they are in "{}"'
+        self.note(note_template.format(supertype), context)
+
     def signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
             context: Context) -> None:
