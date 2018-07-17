@@ -1135,8 +1135,8 @@ def f(b: B) -> None:
 <m.B> -> <m.f>, m.B, m.f
 <m.g> -> m.f
 
-[case testTweakedDecorator]
-# flags: --tweaked-deps
+[case testLogicalDecorator]
+# flags: --logical-deps
 from mod import dec
 @dec
 def f() -> None:
@@ -1149,8 +1149,22 @@ def dec(f: Callable[[], None]) -> Callable[[], None]:
 <m.f> -> m
 <mod.dec> -> <m.f>, m
 
-[case testTweakedDecoratorMember]
-# flags: --tweaked-deps
+[case testLogicalDecoratorWithArgs]
+# flags: --logical-deps
+from mod import dec
+@dec(str())
+def f() -> None:
+    pass
+[file mod.py]
+from typing import Callable
+def dec(arg: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
+    pass
+[out]
+<m.f> -> m
+<mod.dec> -> <m.f>, m
+
+[case testLogicalDecoratorMember]
+# flags: --logical-deps
 import mod
 @mod.dec
 def f() -> None:
@@ -1164,8 +1178,8 @@ def dec(f: Callable[[], None]) -> Callable[[], None]:
 <mod.dec> -> <m.f>, m
 <mod> -> m
 
-[case testTweakedDefinition]
-# flags: --tweaked-deps
+[case testLogicalDefinition]
+# flags: --logical-deps
 from mod import func
 b = func()
 [file mod.py]
@@ -1175,8 +1189,24 @@ def func() -> int:
 <m.b> -> m
 <mod.func> -> <m.b>, m
 
-[case testTweakedDefinitionMember]
-# flags: --tweaked-deps
+[case testLogicalDefinitionIrrelevant]
+# flags: --logical-deps
+from mod import func
+def outer() -> None:
+    a = func()
+b: int = func()
+c = int()
+c = func()
+[file mod.py]
+def func() -> int:
+    pass
+[out]
+<m.b> -> m
+<m.c> -> m
+<mod.func> -> m, m.outer
+
+[case testLogicalDefinitionMember]
+# flags: --logical-deps
 import mod
 b = mod.func()
 [file mod.py]
@@ -1187,8 +1217,8 @@ def func() -> int:
 <mod.func> -> <m.b>, m
 <mod> -> m
 
-[case testTweakedDefinitionClass]
-# flags: --tweaked-deps
+[case testLogicalDefinitionClass]
+# flags: --logical-deps
 from mod import Cls
 b = Cls()
 [file mod.py]
@@ -1202,8 +1232,8 @@ class Cls(Base): pass
 <mod.Cls.__new__> -> m
 <mod.Cls> -> <m.b>, m
 
-[case testTweakedBaseAttribute]
-# flags: --tweaked-deps
+[case testLogicalBaseAttribute]
+# flags: --logical-deps
 from mod import C
 class D(C):
     x: int

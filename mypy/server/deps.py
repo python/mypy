@@ -205,10 +205,22 @@ class DependencyVisitor(TraverserVisitor):
         # generate dependency.
         if not o.func.is_overload and self.scope.current_function_name() is None:
             self.add_dependency(make_trigger(o.func.fullname()))
-        if self.options is not None and self.options.tweaked_deps:
+        if self.options is not None and self.options.logical_deps:
+            # Add logical dependencies from decorators to the function. For example,
+            # if we have
+            #     @dec
+            #     def func(): ...
+            # then if `dec` is unannotated, then it will "spoil" `func` and consequently
+            # all call sites, making them all `Any`.
             for d in o.decorators:
+                tname = None  # type: Optional[str]
                 if isinstance(d, RefExpr) and d.fullname is not None:
-                    self.add_dependency(make_trigger(d.fullname), make_trigger(o.func.fullname()))
+                    tname = d.fullname
+                if (isinstance(d, CallExpr) and isinstance(d.callee, RefExpr) and
+                        d.callee.fullname is not None):
+                    tname = d.callee.fullname
+                if tname is not None:
+                    self.add_dependency(make_trigger(tname), make_trigger(o.func.fullname()))
         super().visit_decorator(o)
 
     def visit_class_def(self, o: ClassDef) -> None:
@@ -271,7 +283,16 @@ class DependencyVisitor(TraverserVisitor):
                                         target=make_trigger(info.fullname() + '.' + name))
         for base_info in non_trivial_bases(info):
             for name, node in base_info.names.items():
-                if self.options and self.options.tweaked_deps:
+                if self.options and self.options.logical_deps:
+                    # Skip logical dependency if an attribute is not overridden. For example,
+                    # in case of:
+                    #     class Base:
+                    #         x = 1
+                    #         y = 2
+                    #     class Sub(Base):
+                    #         x = 3
+                    # we skip <Base.y> -> <Child.y>, because even if `y` is unannotated it
+                    # doesn't affect precision of Liskov checking.
                     if name not in info.names:
                         continue
                 self.add_dependency(make_trigger(base_info.fullname() + '.' + name),
@@ -379,11 +400,16 @@ class DependencyVisitor(TraverserVisitor):
             if o.type:
                 for trigger in get_type_triggers(o.type):
                     self.add_dependency(trigger)
-        if self.options and self.options.tweaked_deps:
+        if self.options and self.options.logical_deps and o.unanalyzed_type is None:
+            # Special case: for definitions without an explicit type like this:
+            #     x = func(...)
+            # we add a logical dependency <func> -> <x>, because if `func` is not annotated,
+            # then it will make all points of use of `x` unchecked.
             if (isinstance(rvalue, CallExpr) and isinstance(rvalue.callee, RefExpr)
                     and rvalue.callee.fullname is not None):
                 fname = None  # type: Optional[str]
                 if isinstance(rvalue.callee.node, TypeInfo):
+                    # use actual __init__ as a dependency source
                     init = rvalue.callee.node.get('__init__')
                     if init and isinstance(init.node, FuncBase):
                         fname = init.node.fullname()
@@ -392,7 +418,9 @@ class DependencyVisitor(TraverserVisitor):
                 if fname is None:
                     return
                 for lv in o.lvalues:
-                    if isinstance(lv, RefExpr) and lv.fullname:
+                    if isinstance(lv, RefExpr) and lv.fullname and lv.is_new_def:
+                        if lv.kind == LDEF:
+                            return  # local definitions don't generate logical deps
                         self.add_dependency(make_trigger(fname), make_trigger(lv.fullname))
 
     def process_lvalue(self, lvalue: Expression) -> None:
