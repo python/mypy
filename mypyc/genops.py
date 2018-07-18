@@ -77,6 +77,8 @@ from mypyc.ops_exc import (
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
 
+GenFunc = Callable[[], None]
+
 
 def build_ir(modules: List[MypyFile],
              types: Dict[Expression, Type]) -> List[Tuple[str, ModuleIR]]:
@@ -929,7 +931,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.for_loop_helper(s.index, s.expr, body, s.line)
 
     def for_loop_helper(self, index: Lvalue, expr: Expression,
-                        body_insts: Callable[[], None], line: int) -> None:
+                        body_insts: GenFunc, line: int) -> None:
         """Generate IR for a loop.
 
         "index" is the loop index Lvalue
@@ -1597,17 +1599,25 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Don't bother plumbing a line through because it can't fail
             builder.primitive_op(restore_exc_info_op, [self.saved], -1)
 
-    def visit_try_except_stmt(self, t: TryStmt) -> None:
-        assert t.handlers, "try needs except"
+    def visit_try_except(self,
+                         body: GenFunc,
+                         handlers: Sequence[
+                             Tuple[Optional[Expression], Optional[Expression], GenFunc]],
+                         else_body: Optional[GenFunc],
+                         line: int) -> None:
+        """Generalized try/except/else handling that takes functions to gen the bodies.
+
+        The point of this is to also be able to support with."""
+        assert handlers, "try needs except"
 
         except_entry, exit_block, cleanup_block = BasicBlock(), BasicBlock(), BasicBlock()
         # If there is an else block, jump there after the try, otherwise just leave
-        else_block = BasicBlock() if t.else_body else exit_block
+        else_block = BasicBlock() if else_body else exit_block
 
         # Compile the try block with an error handler
         self.error_handlers.append(except_entry)
         self.goto_and_activate(BasicBlock())
-        self.accept(t.body)
+        body()
         self.add_leave(else_block)
         self.error_handlers.pop()
 
@@ -1619,14 +1629,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # exception is raised, based on the exception in exc_info.
         self.error_handlers.append(cleanup_block)
         self.activate_block(except_entry)
-        old_exc = self.primitive_op(error_catch_op, [], t.line)
+        old_exc = self.primitive_op(error_catch_op, [], line)
         # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
         self.nonlocal_control.append(
             IRBuilder.ExceptNonlocalControl(self.nonlocal_control[-1], old_exc))
 
         # Process the bodies
         next_block = None
-        for type, var, body in zip(t.types, t.vars, t.handlers):
+        for type, var, handler_body in handlers:
             if type:
                 next_block, body_block = BasicBlock(), BasicBlock()
                 matches = self.primitive_op(exc_matches_op, [self.accept(type)], type.line)
@@ -1636,7 +1646,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 target = self.get_assignment_target(var)
                 self.assign_to_target(
                     target, self.primitive_op(get_exc_value_op, [], var.line), var.line)
-            self.accept(body)
+            handler_body()
             self.add_leave(cleanup_block)
             if next_block:
                 self.activate_block(next_block)
@@ -1654,23 +1664,30 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # information and continue propagating the exception if it
         # exists.
         self.activate_block(cleanup_block)
-        self.primitive_op(restore_exc_info_op, [old_exc], t.line)
+        self.primitive_op(restore_exc_info_op, [old_exc], line)
         self.primitive_op(no_err_occurred_op, [], NO_TRACEBACK_LINE_NO)
         self.add(Goto(exit_block))
 
         # If present, compile the else body in the obvious way
-        if t.else_body:
+        if else_body:
             self.activate_block(else_block)
-            self.accept(t.else_body)
+            else_body()
             self.add(Goto(exit_block))
 
         self.activate_block(exit_block)
 
-    def visit_try_body(self, t: TryStmt) -> None:
-        if t.handlers:
-            self.visit_try_except_stmt(t)
-        else:
+    def visit_try_except_stmt(self, t: TryStmt) -> None:
+        def body() -> None:
             self.accept(t.body)
+
+        # Work around scoping woes
+        def make_handler(body: Block) -> GenFunc:
+            return lambda: self.accept(body)
+
+        handlers = [(type, var, make_handler(body)) for type, var, body in
+                    zip(t.types, t.vars, t.handlers)]
+        else_body = (lambda: self.accept(t.else_body)) if t.else_body else None
+        self.visit_try_except(body, handlers, else_body, t.line)
 
     class TryFinallyNonlocalControl(NonlocalControl):
         def __init__(self, target: BasicBlock) -> None:
@@ -1719,14 +1736,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             builder.goto_and_activate(target)
 
     def try_finally_try(self, err_handler: BasicBlock, return_entry: BasicBlock,
-                        main_entry: BasicBlock, try_body: TryStmt) -> Optional[Register]:
+                        main_entry: BasicBlock, try_body: GenFunc) -> Optional[Register]:
         # Compile the try block with an error handler
         control = IRBuilder.TryFinallyNonlocalControl(return_entry)
         self.error_handlers.append(err_handler)
 
         self.nonlocal_control.append(control)
         self.goto_and_activate(BasicBlock())
-        self.visit_try_body(try_body)
+        try_body()
         self.add_leave(main_entry)
         self.nonlocal_control.pop()
         self.error_handlers.pop()
@@ -1759,7 +1776,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return old_exc
 
     def try_finally_body(
-            self, finally_block: BasicBlock, finally_body: Block,
+            self, finally_block: BasicBlock, finally_body: GenFunc,
             ret_reg: Optional[Value], old_exc: Value) -> Tuple[BasicBlock, FinallyNonlocalControl]:
         cleanup_block = BasicBlock()
         # Compile the finally block with the nonlocal control flow overridden to restore exc_info
@@ -1768,7 +1785,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.nonlocal_control[-1], ret_reg, old_exc)
         self.nonlocal_control.append(finally_control)
         self.activate_block(finally_block)
-        self.accept(finally_body)
+        finally_body()
         self.nonlocal_control.pop()
 
         return cleanup_block, finally_control
@@ -1812,7 +1829,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         return out_block
 
-    def visit_try_finally_stmt(self, try_body: TryStmt, finally_body: Block) -> None:
+    def visit_try_finally_stmt(self, try_body: GenFunc, finally_body: GenFunc) -> None:
+        """Generalized try/finally handling that takes functions to gen the bodies.
+
+        The point of this is to also be able to support with."""
         # Finally is a big pain, because there are so many ways that
         # exits can occur. We emit 10+ basic blocks for every finally!
 
@@ -1844,7 +1864,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # try/except/else/finally, we treat the try/except/else as the
         # body of a try/finally block.
         if t.finally_body:
-            self.visit_try_finally_stmt(t, t.finally_body)
+            def visit_try_body() -> None:
+                if t.handlers:
+                    self.visit_try_except_stmt(t)
+                else:
+                    self.accept(t.body)
+            body = t.finally_body
+
+            self.visit_try_finally_stmt(visit_try_body, lambda: self.accept(body))
         else:
             self.visit_try_except_stmt(t)
 
