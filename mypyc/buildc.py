@@ -87,7 +87,7 @@ import sys
 module = Extension('{package_name}',
                    sources=['{cpath}'],
                    extra_compile_args=['-Wno-unused-function', '-Wno-unused-label', '-Werror',
-                                       '-Wno-unreachable-code'],
+                                       '-Wno-unreachable-code', '-Wno-unused-variables'],
                    libraries=[{libraries}],
                    library_dirs=[{library_dirs}])
 
