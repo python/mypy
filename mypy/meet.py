@@ -84,7 +84,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
         else:
             return [typ.upper_bound]
     elif isinstance(typ, UnionType):
-        return typ.items
+        return typ.relevant_items()
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
