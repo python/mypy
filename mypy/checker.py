@@ -3653,13 +3653,24 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
+    #if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
+    #    print("in first")
 
-    return is_callable_compatible(signature, other,
+    signature = detach_callable(signature)
+    other = detach_callable(other)
+
+    return (is_callable_compatible(signature, other,
                                   is_compat=is_more_precise,
                                   is_compat_return=lambda l, r: not is_subtype(l, r),
                                   ignore_return=False,
                                   check_args_covariantly=True,
-                                  allow_partial_overlap=True)
+                                  allow_partial_overlap=True) or
+            is_callable_compatible(other, signature,
+                                   is_compat=is_more_precise,
+                                   is_compat_return=lambda l, r: not is_subtype(r, l),
+                                   ignore_return=False,
+                                   check_args_covariantly=False,
+                                   allow_partial_overlap=True))
 
 
 def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
@@ -3675,6 +3686,9 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
+    #if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
+    #    print("in second")
+
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
         return is_more_precise(t, s) or is_overlapping_types(t, s)
 
@@ -3723,9 +3737,35 @@ def detach_callable(typ: CallableType) -> CallableType:
 
     The caller can then unify on all type variables whether or not the callable is originally
     from a class or not."""
-    type_vars = typ.accept(TypeVarExtractor())
+    type_list = typ.arg_types + [typ.ret_type]
+    old_type_list = list(type_list)
+
+    appear_map = {}  # type: Dict[str, List[int]]
+    for i, inner_type in enumerate(type_list):
+        typevars_available = inner_type.accept(TypeVarExtractor())
+        for var in typevars_available:
+            if var.fullname not in appear_map:
+                appear_map[var.fullname] = []
+            appear_map[var.fullname].append(i)
+
+    from mypy.erasetype import erase_type
+
+    used_type_var_names = set()
+    for var_name, appearances in appear_map.items():
+        '''if len(appearances) == 1:
+            entry = appearances[0]
+            type_list[entry] = erase_type(type_list[entry])
+        else:
+            used_type_var_names.add(var_name)'''
+
+        used_type_var_names.add(var_name)
+
+    all_type_vars = typ.accept(TypeVarExtractor())
     new_variables = []
-    for var in type_vars:
+    for var in set(all_type_vars):
+        if var.fullname not in used_type_var_names:
+            continue
+        #new_variables.append(var)
         new_variables.append(TypeVarDef(
             name=var.name,
             fullname=var.fullname,
@@ -3734,21 +3774,36 @@ def detach_callable(typ: CallableType) -> CallableType:
             upper_bound=var.upper_bound,
             variance=var.variance,
         ))
-    return typ.copy_modified(variables=new_variables)
+    out = typ.copy_modified(
+        variables=new_variables,
+        arg_types=type_list[:-1],
+        ret_type=type_list[-1],
+    )
+    '''
+    print(typ.name)
+    print('    before:', typ)
+    print('    after: ', out)
+    print('    type list (old):', old_type_list)
+    print('    type list (new):', type_list)
+    print('    old_vars:', typ.variables)
+    print('    new_vars:', out.variables)
+    print('    appear_map:', appear_map)
+    #'''
+    return out
 
 
-class TypeVarExtractor(TypeQuery[Set[TypeVarType]]):
+class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
     def __init__(self) -> None:
         super().__init__(self._merge)
 
-    def _merge(self, iter: Iterable[Set[TypeVarType]]) -> Set[TypeVarType]:
-        out = set()
+    def _merge(self, iter: Iterable[List[TypeVarType]]) -> List[TypeVarType]:
+        out = []
         for item in iter:
-            out.update(item)
+            out.extend(item)
         return out
 
-    def visit_type_var(self, t: TypeVarType) -> Set[TypeVarType]:
-        return {t}
+    def visit_type_var(self, t: TypeVarType) -> List[TypeVarType]:
+        return [t]
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
