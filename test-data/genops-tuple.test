@@ -21,10 +21,9 @@ def f() -> int:
     return t[1]
 [out]
 def f():
-    t :: tuple[bool, int]
     r0 :: bool
     r1 :: int
-    r2 :: tuple[bool, int]
+    r2, t :: tuple[bool, int]
     r3 :: int
 L0:
     r0 = True
@@ -83,9 +82,9 @@ def f() -> int:
     return t[1]
 [out]
 def f():
-    t :: tuple
     r0, r1 :: int
     r2 :: tuple[int, int]
+    t :: tuple
     r3 :: object
     r4 :: int
     r5 :: object
@@ -100,4 +99,3 @@ L0:
     r5 = t[r4] :: tuple
     r6 = unbox(int, r5)
     return r6
-

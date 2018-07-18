@@ -520,14 +520,14 @@ def f(a: List[int], b: List[int]) -> None:
 [out]
 L0:
     r0 = 0
-    r1 = 0
-    r2 = b[r1] :: list
-    dec_ref r1 :: int
-    r3 = unbox(int, r2)
-    dec_ref r2
-    r4 = box(int, r3)
-    r5 = a.__setitem__(r0, r4) :: list
+    r1 = b[r0] :: list
     dec_ref r0 :: int
+    r2 = unbox(int, r1)
+    dec_ref r1
+    r3 = 0
+    r4 = box(int, r2)
+    r5 = a.__setitem__(r3, r4) :: list
+    dec_ref r3 :: int
     dec_ref r4
     r6 = None
     return r6

@@ -22,16 +22,16 @@ def f(d: Dict[int, bool]) -> None:
 [out]
 def f(d):
     d :: dict
-    r0 :: int
-    r1 :: bool
+    r0 :: bool
+    r1 :: int
     r2, r3 :: object
     r4 :: bool
     r5 :: None
 L0:
-    r0 = 0
-    r1 = False
-    r2 = box(int, r0)
-    r3 = box(bool, r1)
+    r0 = False
+    r1 = 0
+    r2 = box(int, r1)
+    r3 = box(bool, r0)
     r4 = d.__setitem__(r2, r3) :: dict
     r5 = None
     return r5
@@ -42,7 +42,7 @@ def f() -> None:
     d = {}  # type: Dict[bool, int]
 [out]
 def f():
-    d, r0 :: dict
+    r0, d :: dict
     r1 :: None
 L0:
     r0 = {}
@@ -56,12 +56,13 @@ def f(x: object) -> None:
 [out]
 def f(x):
     x :: object
-    d, r0 :: dict
+    r0 :: dict
     r1, r2 :: int
     r3, r4 :: object
     r5 :: bool
     r6 :: str
     r7 :: bool
+    d :: dict
     r8 :: None
 L0:
     r0 = {}

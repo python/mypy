@@ -42,14 +42,13 @@ def f() -> int:
     return d.x + 1
 [out]
 def f():
-    c, r0 :: C
+    r0, c :: C
     r1 :: int
     r2 :: bool
-    a, r3 :: list
-    d :: C
+    r3, a :: list
     r4 :: int
     r5 :: object
-    r6 :: C
+    r6, d :: C
     r7, r8, r9 :: int
 L0:
     r0 = C()

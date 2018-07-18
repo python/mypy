@@ -51,7 +51,7 @@ def f() -> None:
     2 + c.x
 [out]
 def f():
-    c, r0 :: C
+    r0, c :: C
     r1 :: int
     r2 :: object
     r3 :: bool
@@ -114,9 +114,8 @@ L0:
     return r1
 def f(x):
     x :: C
-    y :: int
     r0 :: object
-    r1, r2, r3 :: int
+    r1, y, r2, r3 :: int
     r4 :: object
     r5 :: None
     r6 :: int

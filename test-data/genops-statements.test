@@ -5,7 +5,7 @@ def f() -> None:
         x = x + i
 [out]
 def f():
-    x, r0, r1, i, r2 :: int
+    r0, x, r1, i, r2 :: int
     r3 :: bool
     r4, r5, r6 :: int
     r7 :: None
@@ -37,7 +37,7 @@ def f() -> None:
       break
 [out]
 def f():
-    n, r0, r1 :: int
+    r0, n, r1 :: int
     r2 :: bool
     r3 :: None
 L0:
@@ -93,7 +93,7 @@ def f() -> None:
         break
 [out]
 def f():
-    n, r0, r1 :: int
+    r0, n, r1 :: int
     r2 :: bool
     r3 :: int
     r4 :: bool
@@ -129,7 +129,7 @@ def f() -> None:
       continue
 [out]
 def f():
-    n, r0, r1 :: int
+    r0, n, r1 :: int
     r2 :: bool
     r3 :: None
 L0:
@@ -185,7 +185,7 @@ def f() -> None:
         continue
 [out]
 def f():
-    n, r0, r1 :: int
+    r0, n, r1 :: int
     r2 :: bool
     r3 :: int
     r4 :: bool
@@ -225,7 +225,7 @@ def f(ls: List[int]) -> int:
 [out]
 def f(ls):
     ls :: list
-    y, r0, r1, r2, r3, r4 :: int
+    r0, y, r1, r2, r3, r4 :: int
     r5 :: bool
     r6 :: object
     x, r7, r8, r9 :: int
@@ -297,7 +297,7 @@ def sum_over_even_values(d: Dict[int, int]) -> int:
 [out]
 def sum_over_even_values(d):
     d :: dict
-    s, r0 :: int
+    r0, s :: int
     r1, r2 :: object
     key, r3 :: int
     r4, r5 :: object

@@ -88,13 +88,14 @@ def f() -> bool:
     return (5 in x)
 [out]
 def f():
-    x, r0 :: set
+    r0 :: set
     r1 :: int
     r2 :: object
     r3 :: bool
     r4 :: int
     r5 :: object
     r6 :: bool
+    x :: set
     r7 :: int
     r8 :: object
     r9 :: bool
@@ -120,7 +121,7 @@ def f() -> Set[int]:
     return x
 [out]
 def f():
-    x, r0 :: set
+    r0, x :: set
     r1 :: int
     r2 :: object
     r3 :: bool
@@ -142,7 +143,7 @@ def f() -> Set[int]:
     return x
 [out]
 def f():
-    x, r0 :: set
+    r0, x :: set
     r1 :: int
     r2 :: object
     r3 :: bool
@@ -164,7 +165,7 @@ def f() -> Set[int]:
     return x
 [out]
 def f():
-    x, r0 :: set
+    r0, x :: set
     r1 :: int
     r2 :: object
     r3 :: bool
@@ -186,7 +187,7 @@ def f() -> Set[int]:
     return x
 [out]
 def f():
-    x, r0 :: set
+    r0, x :: set
     r1 :: bool
     r2 :: None
 L0:

@@ -704,7 +704,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.nonlocal_control[-1].gen_return(self, retval)
 
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
-        assert len(stmt.lvalues) == 1
+        assert len(stmt.lvalues) >= 1
         if isinstance(stmt.rvalue, CallExpr) and isinstance(stmt.rvalue.analyzed, TypeVarExpr):
             # Just ignore type variable declarations -- they are a compile-time only thing.
             # TODO: It would be nice to actually construct TypeVar objects to match Python
@@ -717,7 +717,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # name binding as a side effect.
             self.get_assignment_target(lvalue)
             return
-        self.assign(lvalue, stmt.rvalue)
+
+        line = stmt.rvalue.line
+        rvalue_reg = self.accept(stmt.rvalue)
+        for lvalue in stmt.lvalues:
+            target = self.get_assignment_target(lvalue)
+            self.assign_to_target(target, rvalue_reg, line)
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
         target = self.get_assignment_target(stmt.lvalue)

@@ -128,11 +128,11 @@ def d(num):
     r1 :: inner_d_obj
     r2 :: bool
     inner :: object
-    a, r3 :: str
+    r3 :: str
     r4 :: object
-    r5, b, r6 :: str
+    r5, a, r6 :: str
     r7 :: object
-    r8 :: str
+    r8, b :: str
 L0:
     r0 = d__env()
     r1 = inner_d_obj()
@@ -220,7 +220,7 @@ def inner_b_obj.__call__(self):
     r0 :: b__env
     r1 :: int
     r2 :: bool
-    foo, r3, r4 :: int
+    r3, foo, r4 :: int
 L0:
     r0 = self.__mypyc_env__
     r1 = 4
@@ -428,10 +428,9 @@ L0:
 def f(x, y):
     x, y :: int
     r0 :: f__env
-    s :: object
     r1 :: __mypyc_lambda_0___f_obj
     r2 :: bool
-    r3, r4, r5 :: object
+    s, r3, r4, r5 :: object
     r6 :: None
 L0:
     r0 = f__env()

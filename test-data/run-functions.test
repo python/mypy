@@ -1,5 +1,5 @@
 [case testNestedFunctions]
-from typing import Callable
+from typing import Callable, List
 
 def a() -> Callable[[], object]:
     def inner() -> object:
@@ -175,8 +175,27 @@ class A:
             return self.x + y + num
         return inner()
 
+def o() -> int:
+    a = [0, 0]
+    b = 0
+    def b_incr() -> List[int]:
+        b += 10
+        return a
+    c = 0
+    def c_incr() -> int:
+        c += 1
+        return c
+
+    # x = 1, y = 1
+    x = y = c_incr()
+
+    # a = [2, 2], b = 20
+    b_incr()[0] = b_incr()[1] = c_incr()
+    # Should return 26.
+    return x + y + a[0] + a[1] + b
+
 [file driver.py]
-from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, triple, if_else, for_loop, while_loop, free_vars, lambdas, outer, inner, A
+from native import a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, triple, if_else, for_loop, while_loop, free_vars, lambdas, outer, inner, A
 
 assert a()() == None
 assert b()()() == 'b.first.second: nested function'
@@ -192,6 +211,7 @@ assert k() == 10
 assert l() == 8
 assert m()() == 3
 assert n() == 4
+assert o() == 26
 
 triple_outer = triple(2)
 triple_inner = triple_outer()
