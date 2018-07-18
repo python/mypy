@@ -24,10 +24,7 @@ class TestExternal(unittest.TestCase):
                               env=env,
                               cwd=os.path.join(base_dir, 'external', 'googletest', 'make'))
         # Build and run C unit tests.
-        if sys.platform == 'darwin':
-            env = {}
-        else:
-            env = os.environ.copy()
+        env = os.environ.copy()
         if 'GTEST_COLOR' not in os.environ:
             env['GTEST_COLOR'] = 'yes'  # Use fancy colors
         status = subprocess.call(['make', 'test'],
