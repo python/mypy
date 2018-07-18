@@ -99,6 +99,10 @@ if sys.platform == 'darwin':
 # library in the directory that they live in.
 elif sys.platform == 'linux':
     vars['LDSHARED'] += ' -Wl,-rpath,"$ORIGIN"'
+
+    # This flag is needed for gcc but does not exist on clang. Currently we only support gcc for
+    # linux.
+    # TODO: Add support for clang on linux. Possibly also add support for gcc on Darwin.
     extra_compile_args += ['-Wno-unused-but-set-variable']
 
 module = Extension('{package_name}',
