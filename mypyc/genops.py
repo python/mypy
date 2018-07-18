@@ -52,10 +52,11 @@ from mypyc.ops import (
     MethodCall, INVALID_VALUE, INVALID_CLASS, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
+    exc_rtuple,
     PrimitiveOp, ControlOp,
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
     VTableAttr, VTableMethod, VTableEntries,
-    NAMESPACE_TYPE, RaiseStandardError,
+    NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue,
     NO_TRACEBACK_LINE_NO,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
@@ -1596,9 +1597,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Don't bother plumbing a line through because it can't fail
             builder.primitive_op(restore_exc_info_op, [self.saved], -1)
 
-    def visit_try_stmt(self, t: TryStmt) -> None:
+    def visit_try_except_stmt(self, t: TryStmt) -> None:
         assert t.handlers, "try needs except"
-        assert not t.finally_body, "try/finally not implemented"
 
         except_entry, exit_block, cleanup_block = BasicBlock(), BasicBlock(), BasicBlock()
         # If there is an else block, jump there after the try, otherwise just leave
@@ -1665,6 +1665,188 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Goto(exit_block))
 
         self.activate_block(exit_block)
+
+    def visit_try_body(self, t: TryStmt) -> None:
+        if t.handlers:
+            self.visit_try_except_stmt(t)
+        else:
+            self.accept(t.body)
+
+    class TryFinallyNonlocalControl(NonlocalControl):
+        def __init__(self, target: BasicBlock) -> None:
+            self.target = target
+            self.ret_reg = None  # type: Optional[Register]
+
+        def gen_break(self, builder: 'IRBuilder') -> None:
+            assert False, "unimplemented"
+
+        def gen_continue(self, builder: 'IRBuilder') -> None:
+            assert False, "unimplemented"
+
+        def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+            if self.ret_reg is None:
+                self.ret_reg = builder.alloc_temp(builder.ret_types[-1])
+
+            builder.add(Assign(self.ret_reg, value))
+            builder.add(Goto(self.target))
+
+    class FinallyNonlocalControl(CleanupNonlocalControl):
+        """Nonlocal control for finally blocks.
+
+        Just makes sure that sys.exc_info always gets restored when we
+        leave and the return register is decrefed if it isn't null.
+        """
+        def __init__(self, outer: NonlocalControl, ret_reg: Optional[Value], saved: Value) -> None:
+            super().__init__(outer)
+            self.ret_reg = ret_reg
+            self.saved = saved
+
+        def gen_cleanup(self, builder: 'IRBuilder') -> None:
+            # Do an error branch on the return value register, which
+            # may be undefined. This will allow it to be properly
+            # decrefed if it is not null. This is kind of a hack.
+            if self.ret_reg:
+                target = BasicBlock()
+                builder.add(Branch(self.ret_reg, target, target, Branch.IS_ERROR))
+                builder.activate_block(target)
+
+            # Restore the old exc_info
+            # Don't bother plumbing a line through because it can't fail
+            target, cleanup = BasicBlock(), BasicBlock()
+            builder.add(Branch(self.saved, target, cleanup, Branch.IS_ERROR))
+            builder.activate_block(cleanup)
+            builder.primitive_op(restore_exc_info_op, [self.saved], -1)
+            builder.goto_and_activate(target)
+
+    def try_finally_try(self, err_handler: BasicBlock, return_entry: BasicBlock,
+                        main_entry: BasicBlock, try_body: TryStmt) -> Optional[Register]:
+        # Compile the try block with an error handler
+        control = IRBuilder.TryFinallyNonlocalControl(return_entry)
+        self.error_handlers.append(err_handler)
+
+        self.nonlocal_control.append(control)
+        self.goto_and_activate(BasicBlock())
+        self.visit_try_body(try_body)
+        self.add_leave(main_entry)
+        self.nonlocal_control.pop()
+        self.error_handlers.pop()
+
+        return control.ret_reg
+
+    def try_finally_entry_blocks(self,
+                                 err_handler: BasicBlock, return_entry: BasicBlock,
+                                 main_entry: BasicBlock, finally_block: BasicBlock,
+                                 ret_reg: Optional[Register]) -> Value:
+        old_exc = self.alloc_temp(exc_rtuple)
+
+        # Entry block for non-exceptional flow
+        self.activate_block(main_entry)
+        if ret_reg:
+            self.add(Assign(ret_reg, self.add(LoadErrorValue(self.ret_types[-1]))))
+        self.add(Goto(return_entry))
+
+        self.activate_block(return_entry)
+        self.add(Assign(old_exc, self.add(LoadErrorValue(exc_rtuple))))
+        self.add(Goto(finally_block))
+
+        # Entry block for errors
+        self.activate_block(err_handler)
+        if ret_reg:
+            self.add(Assign(ret_reg, self.add(LoadErrorValue(self.ret_types[-1]))))
+        self.add(Assign(old_exc, self.primitive_op(error_catch_op, [], -1)))
+        self.add(Goto(finally_block))
+
+        return old_exc
+
+    def try_finally_body(
+            self, finally_block: BasicBlock, finally_body: Block,
+            ret_reg: Optional[Value], old_exc: Value) -> Tuple[BasicBlock, FinallyNonlocalControl]:
+        cleanup_block = BasicBlock()
+        # Compile the finally block with the nonlocal control flow overridden to restore exc_info
+        self.error_handlers.append(cleanup_block)
+        finally_control = IRBuilder.FinallyNonlocalControl(
+            self.nonlocal_control[-1], ret_reg, old_exc)
+        self.nonlocal_control.append(finally_control)
+        self.activate_block(finally_block)
+        self.accept(finally_body)
+        self.nonlocal_control.pop()
+
+        return cleanup_block, finally_control
+
+    def try_finally_resolve_control(self, cleanup_block: BasicBlock,
+                                    finally_control: FinallyNonlocalControl,
+                                    old_exc: Value, ret_reg: Optional[Value]) -> BasicBlock:
+        """Resolve the control flow out of a finally block.
+
+        This means returning if there was a return, propagating
+        exceptions, break/continue (soon), or just continuing on.
+        """
+        reraise, rest = BasicBlock(), BasicBlock()
+        self.add(Branch(old_exc, rest, reraise, Branch.IS_ERROR))
+
+        # Reraise the exception if there was one
+        self.activate_block(reraise)
+        self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+        self.add(Unreachable())
+        self.error_handlers.pop()
+
+        # If there was a return, keep returning
+        if ret_reg:
+            self.activate_block(rest)
+            return_block, rest = BasicBlock(), BasicBlock()
+            self.add(Branch(ret_reg, rest, return_block, Branch.IS_ERROR))
+
+            self.activate_block(return_block)
+            self.nonlocal_control[-1].gen_return(self, ret_reg)
+
+        # TODO: handle break/continue
+        self.activate_block(rest)
+        out_block = BasicBlock()
+        self.add(Goto(out_block))
+
+        # If there was an exception, restore again
+        self.activate_block(cleanup_block)
+        finally_control.gen_cleanup(self)
+        self.primitive_op(no_err_occurred_op, [], NO_TRACEBACK_LINE_NO)  # HACK always raises
+        self.add(Unreachable())
+
+        return out_block
+
+    def visit_try_finally_stmt(self, try_body: TryStmt, finally_body: Block) -> None:
+        # Finally is a big pain, because there are so many ways that
+        # exits can occur. We emit 10+ basic blocks for every finally!
+
+        err_handler, main_entry, return_entry, finally_block = (
+            BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock())
+
+        # Compile the body of the try
+        ret_reg = self.try_finally_try(
+            err_handler, return_entry, main_entry, try_body)
+
+        # Set up the entry blocks for the finally statement
+        old_exc = self.try_finally_entry_blocks(
+            err_handler, return_entry, main_entry, finally_block, ret_reg)
+
+        # Compile the body of the finally
+        cleanup_block, finally_control = self.try_finally_body(
+            finally_block, finally_body, ret_reg, old_exc)
+
+        # Resolve the control flow out of the finally block
+        out_block = self.try_finally_resolve_control(
+            cleanup_block, finally_control, old_exc, ret_reg)
+
+        self.activate_block(out_block)
+
+    def visit_try_stmt(self, t: TryStmt) -> None:
+        # Our compilation strategy for try/except/else/finally is to
+        # treat try/except/else and try/finally as separate language
+        # constructs that we compile separately. When we have a
+        # try/except/else/finally, we treat the try/except/else as the
+        # body of a try/finally block.
+        if t.finally_body:
+            self.visit_try_finally_stmt(t, t.finally_body)
+        else:
+            self.visit_try_except_stmt(t)
 
     def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
         typ = self.types[expr]

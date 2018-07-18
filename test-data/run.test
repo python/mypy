@@ -723,6 +723,126 @@ out!
 == l ==
 key! -- 0
 
+[case testTryFinally]
+from typing import Any
+import wrapsys
+
+def a(b1: bool, b2: int) -> None:
+    try:
+        if b1:
+            raise Exception('hi')
+    finally:
+        print('finally:', str(wrapsys.exc_info()[1]))
+        if b2 == 2:
+            return
+        if b2 == 1:
+            raise Exception('again!')
+
+def b(b1: int, b2: int) -> str:
+    try:
+        if b1 == 1:
+            raise Exception('hi')
+        elif b1 == 2:
+            [0][1]
+        elif b1 == 3:
+            return 'try'
+    except IndexError:
+        print('except')
+    finally:
+        print('finally:', str(wrapsys.exc_info()[1]))
+        if b2 == 2:
+            return 'finally'
+        if b2 == 1:
+            raise Exception('again!')
+    return 'outer'
+
+def c() -> str:
+    try:
+        try:
+            return 'wee'
+        finally:
+            print("out a")
+    finally:
+        print("out b")
+
+
+[file wrapsys.py]
+# This is a gross hack around some limitations of the test system/mypyc.
+from typing import Any
+import sys
+def exc_info() -> Any:
+    return sys.exc_info()  # type: ignore
+
+[file driver.py]
+import traceback
+import sys
+from native import a, b, c
+
+def run(f):
+    try:
+        x = f()
+        if x:
+            print("returned:", x)
+    except Exception as e:
+        print("caught:", type(e).__name__ + ": " + str(e))
+
+print("== a ==")
+for i in range(3):
+    for b1 in [False, True]:
+        run(lambda: a(b1, i))
+
+print("== b ==")
+for i in range(4):
+    for j in range(3):
+        run(lambda: b(i, j))
+
+print("== b ==")
+print(c())
+
+[out]
+== a ==
+finally: None
+finally: hi
+caught: Exception: hi
+finally: None
+caught: Exception: again!
+finally: hi
+caught: Exception: again!
+finally: None
+finally: hi
+== b ==
+finally: None
+returned: outer
+finally: None
+caught: Exception: again!
+finally: None
+returned: finally
+finally: hi
+caught: Exception: hi
+finally: hi
+caught: Exception: again!
+finally: hi
+returned: finally
+except
+finally: None
+returned: outer
+except
+finally: None
+caught: Exception: again!
+except
+finally: None
+returned: finally
+finally: None
+returned: try
+finally: None
+caught: Exception: again!
+finally: None
+returned: finally
+== b ==
+out a
+out b
+wee
+
 [case testGenericEquality]
 def eq(a: object, b: object) -> bool:
     if a == b:

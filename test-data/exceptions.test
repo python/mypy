@@ -187,3 +187,98 @@ L12:
 L13:
     dec_ref r10
     goto L7
+
+[case testGenopsTryFinally]
+def a() -> str:
+    try:
+        print()
+        return 'hi'
+    finally:
+        print('goodbye!')
+[out]
+L0:
+L1:
+    r0 = builtins.module :: static
+    r1 = unicode_0 :: static  ('print')
+    r2 = getattr r0, r1
+    if is_error(r2) goto L7 (error at a:3) else goto L2
+L2:
+    r3 = py_call(r2)
+    dec_ref r2
+    if is_error(r3) goto L7 (error at a:3) else goto L3
+L3:
+    r4 = cast(None, r3)
+    if is_error(r4) goto L7 (error at a:3) else goto L24
+L4:
+    r5 = unicode_1 :: static  ('hi')
+    inc_ref r5
+    r6 = r5
+    goto L6
+L5:
+    r8 = <error> :: str
+    r6 = r8
+L6:
+    r9 = <error> :: tuple[object, object, object]
+    r7 = r9
+    goto L8
+L7:
+    r10 = <error> :: str
+    r6 = r10
+    r11 = error_catch
+    r7 = r11
+L8:
+    r12 = unicode_2 :: static  ('goodbye!')
+    r13 = builtins.module :: static
+    r14 = unicode_0 :: static  ('print')
+    r15 = getattr r13, r14
+    if is_error(r15) goto L17 (error at a:6) else goto L9
+L9:
+    r16 = py_call(r15, r12)
+    dec_ref r15
+    if is_error(r16) goto L17 (error at a:6) else goto L10
+L10:
+    r17 = cast(None, r16)
+    if is_error(r17) goto L17 (error at a:6) else goto L25
+L11:
+    if is_error(r7) goto L14 else goto L12
+L12:
+    reraise_exc; r18 = 0
+    if not r18 goto L17 else goto L26 :: bool
+L13:
+    unreachable
+L14:
+    if is_error(r6) goto L16 else goto L15
+L15:
+    return r6
+L16:
+    goto L22
+L17:
+    if is_error(r6) goto L18 else goto L27
+L18:
+    if is_error(r7) goto L20 else goto L19
+L19:
+    restore_exc_info r7
+    dec_ref r7
+L20:
+    r19 = no_err_occurred
+    if not r19 goto L23 else goto L21 :: bool
+L21:
+    unreachable
+L22:
+    unreachable
+L23:
+    r20 = <error> :: str
+    return r20
+L24:
+    dec_ref r4
+    goto L4
+L25:
+    dec_ref r17
+    goto L11
+L26:
+    dec_ref r6
+    dec_ref r7
+    goto L13
+L27:
+    dec_ref r6
+    goto L18

@@ -139,7 +139,7 @@ def assert_test_output(testcase: DataDrivenTestCase, actual: List[str],
 def print_with_line_numbers(s: str) -> None:
     lines = s.splitlines()
     for i, line in enumerate(lines):
-        print('%-4d %s' % (i, line))
+        print('%-4d %s' % (i + 1, line))
 
 
 def heading(text: str) -> None:
