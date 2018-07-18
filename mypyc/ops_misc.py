@@ -158,6 +158,13 @@ method_op('__setitem__',
           emit=simple_emit('{dest} = PyObject_SetItem({args[0]}, {args[1]}, {args[2]}) >= 0;'),
           priority=0)
 
+method_op('__delitem__',
+          arg_types=[object_rprimitive, object_rprimitive],
+          result_type=bool_rprimitive,
+          error_kind=ERR_FALSE,
+          emit=simple_emit('{dest} = PyObject_DelItem({args[0]}, {args[1]}) >= 0;'),
+          priority=0)
+
 py_getattr_op = func_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive],

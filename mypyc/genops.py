@@ -2077,9 +2077,31 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         handle_loop(loop_params)
 
+    def visit_del_stmt(self, o: DelStmt) -> None:
+        if isinstance(o.expr, TupleExpr):
+            for expr_item in o.expr.items:
+                    self.visit_del_item(expr_item)
+        else:
+            self.visit_del_item(o.expr)
+
+    def visit_del_item(self, expr: Expression) -> None:
+        if isinstance(expr, IndexExpr):
+            base_reg = self.accept(expr.base)
+            index_reg = self.accept(expr.index)
+            self.translate_special_method_call(
+                base_reg,
+                '__delitem__',
+                [index_reg],
+                result_type=None,
+                line=expr.line
+            )
+        else:
+            assert False, 'Unsupported del operation'
+
     # Unimplemented constructs
     # TODO: some of these are actually things that should never show up,
     # so properly sort those out.
+
     def visit__promote_expr(self, o: PromoteExpr) -> Value:
         raise NotImplementedError
 
@@ -2093,9 +2115,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         raise NotImplementedError
 
     def visit_decorator(self, o: Decorator) -> None:
-        raise NotImplementedError
-
-    def visit_del_stmt(self, o: DelStmt) -> None:
         raise NotImplementedError
 
     def visit_ellipsis(self, o: EllipsisExpr) -> Value:

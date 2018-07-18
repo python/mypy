@@ -562,3 +562,158 @@ L2:
 L3:
     r9 = None
     return r9
+
+[case testDel]
+def delList() -> None:
+    l = [1, 2]
+    del l[1]
+def delDict() -> None:
+    d = {"one":1, "two":2}
+    del d["one"]
+def delListMultiple() -> None:
+    l = [1, 2, 3, 4, 5, 6, 7]
+    del l[1], l[2], l[3]
+def delDictMultiple() -> None:
+    d = {"one":1, "two":2, "three":3, "four":4}
+    del d["one"], d["four"]
+[out]
+def delList():
+    r0, r1 :: int
+    r2, r3 :: object
+    r4, l :: list
+    r5 :: int
+    r6 :: object
+    r7 :: bool
+    r8 :: None
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = box(int, r0)
+    r3 = box(int, r1)
+    r4 = [r2, r3]
+    l = r4
+    r5 = 1
+    r6 = box(int, r5)
+    r7 = l.__delitem__(r6) :: object
+    r8 = None
+    return r8
+def delDict():
+    r0 :: dict
+    r1 :: str
+    r2 :: int
+    r3 :: object
+    r4 :: bool
+    r5 :: str
+    r6 :: int
+    r7 :: object
+    r8 :: bool
+    d :: dict
+    r9 :: str
+    r10 :: bool
+    r11 :: None
+L0:
+    r0 = {}
+    r1 = unicode_0 :: static  ('one')
+    r2 = 1
+    r3 = box(int, r2)
+    r4 = r0.__setitem__(r1, r3) :: dict
+    r5 = unicode_1 :: static  ('two')
+    r6 = 2
+    r7 = box(int, r6)
+    r8 = r0.__setitem__(r5, r7) :: dict
+    d = r0
+    r9 = unicode_0 :: static  ('one')
+    r10 = d.__delitem__(r9) :: object
+    r11 = None
+    return r11
+def delListMultiple():
+    r0, r1, r2, r3, r4, r5, r6 :: int
+    r7, r8, r9, r10, r11, r12, r13 :: object
+    r14, l :: list
+    r15 :: int
+    r16 :: object
+    r17 :: bool
+    r18 :: int
+    r19 :: object
+    r20 :: bool
+    r21 :: int
+    r22 :: object
+    r23 :: bool
+    r24 :: None
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = 4
+    r4 = 5
+    r5 = 6
+    r6 = 7
+    r7 = box(int, r0)
+    r8 = box(int, r1)
+    r9 = box(int, r2)
+    r10 = box(int, r3)
+    r11 = box(int, r4)
+    r12 = box(int, r5)
+    r13 = box(int, r6)
+    r14 = [r7, r8, r9, r10, r11, r12, r13]
+    l = r14
+    r15 = 1
+    r16 = box(int, r15)
+    r17 = l.__delitem__(r16) :: object
+    r18 = 2
+    r19 = box(int, r18)
+    r20 = l.__delitem__(r19) :: object
+    r21 = 3
+    r22 = box(int, r21)
+    r23 = l.__delitem__(r22) :: object
+    r24 = None
+    return r24
+def delDictMultiple():
+    r0 :: dict
+    r1 :: str
+    r2 :: int
+    r3 :: object
+    r4 :: bool
+    r5 :: str
+    r6 :: int
+    r7 :: object
+    r8 :: bool
+    r9 :: str
+    r10 :: int
+    r11 :: object
+    r12 :: bool
+    r13 :: str
+    r14 :: int
+    r15 :: object
+    r16 :: bool
+    d :: dict
+    r17 :: str
+    r18 :: bool
+    r19 :: str
+    r20 :: bool
+    r21 :: None
+L0:
+    r0 = {}
+    r1 = unicode_0 :: static  ('one')
+    r2 = 1
+    r3 = box(int, r2)
+    r4 = r0.__setitem__(r1, r3) :: dict
+    r5 = unicode_1 :: static  ('two')
+    r6 = 2
+    r7 = box(int, r6)
+    r8 = r0.__setitem__(r5, r7) :: dict
+    r9 = unicode_2 :: static  ('three')
+    r10 = 3
+    r11 = box(int, r10)
+    r12 = r0.__setitem__(r9, r11) :: dict
+    r13 = unicode_3 :: static  ('four')
+    r14 = 4
+    r15 = box(int, r14)
+    r16 = r0.__setitem__(r13, r15) :: dict
+    d = r0
+    r17 = unicode_0 :: static  ('one')
+    r18 = d.__delitem__(r17) :: object
+    r19 = unicode_3 :: static  ('four')
+    r20 = d.__delitem__(r19) :: object
+    r21 = None
+    return r21
