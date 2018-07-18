@@ -41,7 +41,7 @@ Usually, "E: " is preferred because it makes it easier to associate the
 errors with the code generating them at a glance, and to change the code of
 the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
-- to run just this test, use `pytest -k testNewSyntaxBasics -n0`
+- to run just this test, use `pytest -n0 -k testNewSyntaxBasics`
 
 
 Fixtures
@@ -86,9 +86,10 @@ module:
 
     $ python2 -m pip install -U typing
 
-To run all tests, run the script `runtests.py` in the mypy repository:
+The unit test suites are driven by the `pytest` framework. To run all tests,
+run `pytest` in the mypy repository:
 
-    $ ./runtests.py
+    $ pytest
 
 Note that some tests will be disabled for older python versions.
 
@@ -97,21 +98,22 @@ and will type check mypy and verify that all stubs are valid. This may
 take several minutes to run, so you don't want to use this all the time
 while doing development.
 
-You can run a subset of test suites by passing positive or negative
-filters:
+Test suites for individual components are in the files `mypy/test/test*.py`.
 
-    $ ./runtests.py lex parse -x lint -x stub
+You can run tests from a specific module directly, a specific suite within a
+ module, or a test in a suite (even if it's data-driven):
 
-You can get a list of available test suites through the `-l` option
-(though this doesn't show all available subtasks):
+    $ pytest mypy/test/testdiff.py
 
-    $ ./runtests.py -l
+    $ pytest mypy/test/testsemanal.py::SemAnalTypeInfoSuite
+    
+    $ pytest -n0 mypy/test/testargs.py::ArgSuite::test_coherence
+    
+    $ pytest -n0 mypy/test/testcheck.py::TypeCheckSuite::testCallingVariableWithFunctionType
 
-The unit test suites are driven by the `pytest` framework. Test suites for
-individual components are in the files `mypy/test/test*.py`. To control
-which unit tests are run and how, you can run `pytest` directly:
+To control which tests are run and how, you can use the `-k` switch:
 
-    $ pytest -k MethodCall
+    $ pytest -k "MethodCall"
 
 You can also run the type checker for manual testing without
 installing it by setting up the Python module search path suitably:
@@ -132,9 +134,13 @@ You can check a module or string instead of a file:
     $ python3 -m mypy -m MODULE
     $ python3 -m mypy -c 'import MODULE'
 
+To run mypy on itself:
+
+    $ python3 -m mypy --config-file mypy_self_check.ini -p mypy
+
 To run the linter:
 
-    $ ./runtests.py lint
+    $ flake8
 
 Many test suites store test case descriptions in text files
 (`test-data/unit/*.test`). The module `mypy.test.data` parses these
@@ -144,17 +150,11 @@ Python evaluation test cases are a little different from unit tests
 (`mypy/test/testpythoneval.py`, `test-data/unit/pythoneval.test`). These
 type check programs and run them. Unlike the unit tests, these use the
 full builtins and library stubs instead of minimal ones. Run them using
-`runtests.py testpythoneval`.
+`pytest -k testpythoneval`.
 
-`runtests.py` by default runs tests in parallel using as many processes as
-there are logical cores the `runtests.py` process is allowed to use (on
-some platforms this information isn't available, so 2 processes are used by
-default). You can change the number of workers using `-j` option.
-
-All pytest tests run as a single test from the perspective of `runtests.py`,
-and so `-j` option has no effect on them. Instead, `pytest` itself determines
-the number of processes to use. The default (set in `./pytest.ini`) is the
-number of logical cores; this can be overridden using `-n` option.
+`pytest` determines the number of processes to use. The default (set in
+`./pytest.ini`) is the number of logical cores; this can be overridden using
+`-n` option. To run a single process, use `pytest -n0`.
 
 Note that running more processes than logical cores is likely to
 significantly decrease performance.

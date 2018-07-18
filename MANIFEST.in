@@ -2,7 +2,5 @@ recursive-include scripts *
 recursive-include test-data *
 recursive-include extensions *
 recursive-include docs *
-include runtests.py
-include waiter.py
 include mypy_self_check.ini
 include LICENSE
