@@ -985,10 +985,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             one_reg = self.add(LoadInt(1))
 
-            assert isinstance(index, NameExpr)
-            assert isinstance(index.node, Var)
-            lvalue = self.environment.add_local_reg(index.node, self.node_type(index))
-
             condition_block = self.goto_new_block()
 
             # For compatibility with python semantics we recalculate the length
@@ -1004,7 +1000,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             target_type = self.type_to_rtype(target_list_type.args[0])
             value_box = self.add(PrimitiveOp([expr_reg, index_reg], list_get_item_op, line))
 
-            self.assign_to_target(lvalue,
+            self.assign_to_target(self.get_assignment_target(index),
                                   self.unbox_or_cast(value_box, target_type, line), line)
 
             body_insts()
@@ -1021,10 +1017,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             body_block, end_block, next_block = BasicBlock(), BasicBlock(), BasicBlock()
 
             self.push_loop_stack(next_block, end_block)
-
-            assert isinstance(index, NameExpr)
-            assert isinstance(index.node, Var)
-            lvalue = self.environment.add_local_reg(index.node, object_rprimitive)
 
             # Define registers to contain the expression, along with the iterator that will be used
             # for the for-loop.
@@ -1044,7 +1036,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # lvalue so that it can be referenced by code in the body of the loop. At the end of
             # the body, goto the label that calls the iterator's __next__ function again.
             self.activate_block(body_block)
-            self.assign_to_target(lvalue, next_reg, line)
+            self.assign_to_target(self.get_assignment_target(index), next_reg, line)
             body_insts()
             self.add(Goto(next_block))
 

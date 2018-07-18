@@ -1388,10 +1388,10 @@ def f():
     r1, r2, r3 :: int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10, x, r11 :: int
+    r8, r9, r10, r11 :: int
     r12 :: bool
     r13 :: object
-    r14, r15 :: int
+    x, r14, r15 :: int
     r16 :: bool
     r17 :: int
     r18 :: bool
@@ -1453,10 +1453,10 @@ def f():
     r1, r2, r3 :: int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10, x, r11 :: int
+    r8, r9, r10, r11 :: int
     r12 :: bool
     r13 :: object
-    r14, r15 :: int
+    x, r14, r15 :: int
     r16 :: bool
     r17 :: int
     r18 :: bool
@@ -1508,3 +1508,78 @@ L9:
     goto L1
 L10:
     return r0
+
+[case testLoopsMultipleAssign]
+from typing import List, Tuple
+def f(l: List[Tuple[int, int, int]]) -> List[int]:
+    for x, y, z in l:
+        pass
+    return [x+y+z for x, y, z in l]
+[out]
+def f(l):
+    l :: list
+    r0, r1, r2, r3 :: int
+    r4 :: bool
+    r5 :: object
+    x, y, z :: int
+    r6 :: tuple[int, int, int]
+    r7, r8, r9, r10 :: int
+    r11 :: list
+    r12, r13, r14, r15 :: int
+    r16 :: bool
+    r17 :: object
+    x0, y0, z0 :: int
+    r18 :: tuple[int, int, int]
+    r19, r20, r21, r22, r23 :: int
+    r24 :: object
+    r25 :: bool
+    r26 :: int
+L0:
+    r1 = 0
+    r0 = r1
+    r2 = 1
+L1:
+    r3 = len l :: list
+    r4 = r0 < r3 :: int
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = l[r0] :: list
+    r6 = unbox(tuple[int, int, int], r5)
+    r7 = r6[0]
+    x = r7
+    r8 = r6[1]
+    y = r8
+    r9 = r6[2]
+    z = r9
+L3:
+    r10 = r0 + r2 :: int
+    r0 = r10
+    goto L1
+L4:
+    r11 = []
+    r13 = 0
+    r12 = r13
+    r14 = 1
+L5:
+    r15 = len l :: list
+    r16 = r12 < r15 :: int
+    if r16 goto L6 else goto L8 :: bool
+L6:
+    r17 = l[r12] :: list
+    r18 = unbox(tuple[int, int, int], r17)
+    r19 = r18[0]
+    x0 = r19
+    r20 = r18[1]
+    y0 = r20
+    r21 = r18[2]
+    z0 = r21
+    r22 = x0 + y0 :: int
+    r23 = r22 + z0 :: int
+    r24 = box(int, r23)
+    r25 = r11.append(r24) :: list
+L7:
+    r26 = r12 + r14 :: int
+    r12 = r26
+    goto L5
+L8:
+    return r11

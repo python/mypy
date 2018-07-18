@@ -155,8 +155,8 @@ def increment(d: Dict[str, int]) -> Dict[str, int]:
 [out]
 def increment(d):
     d :: dict
-    k, r0, r1 :: object
-    r2 :: str
+    r0, r1 :: object
+    k, r2 :: str
     r3 :: int
     r4, r5, r6 :: object
     r7, r8 :: bool
@@ -166,14 +166,14 @@ L1:
     r1 = next r0 :: object
     if is_error(r1) goto L3 else goto L2
 L2:
-    k = r1
-    r2 = cast(str, k)
+    r2 = cast(str, r1)
+    k = r2
     r3 = 1
-    r4 = d[r2] :: dict
+    r4 = d[k] :: dict
     r5 = box(int, r3)
     r6 = r4 + r5
-    r7 = d.__setitem__(r2, r6) :: dict
+    r7 = d.__setitem__(k, r6) :: dict
     goto L1
 L3:
-    r8 = no_err_occurred 
+    r8 = no_err_occurred
     return d

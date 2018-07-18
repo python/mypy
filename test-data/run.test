@@ -1530,3 +1530,22 @@ for a in sorted(s):
 9     6   54
 9     7   63
 9     8   72
+
+[case testMultipleVarsWithLoops]
+# Test comprehensions and for loops with multiple index variables
+l = [(1, 2, 'a'), (3, 4, 'b'), (5, 6, 'c')]
+l2 = [str(a*100+b)+' '+c for a, b, c in l]
+l3 = []
+for a, b, c in l:
+    l3.append(str(a*1000+b)+' '+c)
+[file driver.py]
+from native import l, l2, l3
+for a in l2 + l3:
+    print(a)
+[out]
+102 a
+304 b
+506 c
+1002 a
+3004 b
+5006 c

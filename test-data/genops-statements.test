@@ -225,10 +225,10 @@ def f(ls: List[int]) -> int:
 [out]
 def f(ls):
     ls :: list
-    y, r0, r1, r2, r3, x, r4 :: int
+    y, r0, r1, r2, r3, r4 :: int
     r5 :: bool
     r6 :: object
-    r7, r8, r9 :: int
+    x, r7, r8, r9 :: int
 L0:
     r0 = 0
     y = r0
@@ -261,8 +261,8 @@ def f(d: Dict[int, int]) -> None:
 [out]
 def f(d):
     d :: dict
-    key, r0, r1 :: object
-    r2 :: int
+    r0, r1 :: object
+    key, r2 :: int
     r3, r4 :: object
     r5 :: int
     r6 :: bool
@@ -273,14 +273,14 @@ L1:
     r1 = next r0 :: object
     if is_error(r1) goto L3 else goto L2
 L2:
-    key = r1
-    r2 = unbox(int, key)
-    r3 = box(int, r2)
+    r2 = unbox(int, r1)
+    key = r2
+    r3 = box(int, key)
     r4 = d[r3] :: dict
     r5 = unbox(int, r4)
     goto L1
 L3:
-    r6 = no_err_occurred 
+    r6 = no_err_occurred
     r7 = None
     return r7
 
@@ -298,15 +298,14 @@ def sum_over_even_values(d: Dict[int, int]) -> int:
 def sum_over_even_values(d):
     d :: dict
     s, r0 :: int
-    key, r1, r2 :: object
-    r3 :: int
+    r1, r2 :: object
+    key, r3 :: int
     r4, r5 :: object
     r6, r7, r8, r9 :: int
     r10 :: bool
-    r11 :: int
-    r12, r13 :: object
-    r14, r15 :: int
-    r16 :: bool
+    r11, r12 :: object
+    r13, r14 :: int
+    r15 :: bool
 L0:
     r0 = 0
     s = r0
@@ -315,9 +314,9 @@ L1:
     r2 = next r1 :: object
     if is_error(r2) goto L6 else goto L2
 L2:
-    key = r2
-    r3 = unbox(int, key)
-    r4 = box(int, r3)
+    r3 = unbox(int, r2)
+    key = r3
+    r4 = box(int, key)
     r5 = d[r4] :: dict
     r6 = unbox(int, r5)
     r7 = 2
@@ -329,15 +328,14 @@ L3:
     goto L1
 L4:
 L5:
-    r11 = unbox(int, key)
-    r12 = box(int, r11)
-    r13 = d[r12] :: dict
-    r14 = unbox(int, r13)
-    r15 = s + r14 :: int
-    s = r15
+    r11 = box(int, key)
+    r12 = d[r11] :: dict
+    r13 = unbox(int, r12)
+    r14 = s + r13 :: int
+    s = r14
     goto L1
 L6:
-    r16 = no_err_occurred 
+    r15 = no_err_occurred
     return s
 
 [case testMultipleAssignment]
