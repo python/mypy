@@ -1425,3 +1425,108 @@ Traceback (most recent call last):
   File "tmp/py/native.py", line 6, in <module>
     f(y)
 TypeError: int object expected
+
+[case testComprehensions]
+# A list comprehension
+l = [str(x) + "     " + str(y) + "   " + str(x*y) for x in range(10)
+     if x != 6 if x != 5 for y in range(x) if y*x != 8]
+
+# Test short-circuiting as well
+def pred(x: int) -> bool:
+    if x > 6:
+        raise Exception()
+    return x > 3
+# If we fail to short-circuit, pred(x) will be called with x=7
+# eventually and will raise an exception.
+l2 = [x for x in range(10) if x <= 6 if pred(x)]
+
+# A dictionary comprehension
+d = {k: k*k for k in range(10) if k != 5 if k != 6}
+
+# A set comprehension
+s = {str(x) + "     " + str(y) + "   " + str(x*y) for x in range(10)
+     if x != 6 if x != 5 for y in range(x) if y*x != 8}
+
+[file driver.py]
+from native import l, l2, d, s
+for a in l:
+    print(a)
+print(tuple(l2))
+for k in sorted(d):
+    print(k, d[k])
+for a in sorted(s):
+    print(a)
+[out]
+1     0   0
+2     0   0
+2     1   2
+3     0   0
+3     1   3
+3     2   6
+4     0   0
+4     1   4
+4     3   12
+7     0   0
+7     1   7
+7     2   14
+7     3   21
+7     4   28
+7     5   35
+7     6   42
+8     0   0
+8     2   16
+8     3   24
+8     4   32
+8     5   40
+8     6   48
+8     7   56
+9     0   0
+9     1   9
+9     2   18
+9     3   27
+9     4   36
+9     5   45
+9     6   54
+9     7   63
+9     8   72
+(4, 5, 6)
+0 0
+1 1
+2 4
+3 9
+4 16
+7 49
+8 64
+9 81
+1     0   0
+2     0   0
+2     1   2
+3     0   0
+3     1   3
+3     2   6
+4     0   0
+4     1   4
+4     3   12
+7     0   0
+7     1   7
+7     2   14
+7     3   21
+7     4   28
+7     5   35
+7     6   42
+8     0   0
+8     2   16
+8     3   24
+8     4   32
+8     5   40
+8     6   48
+8     7   56
+9     0   0
+9     1   9
+9     2   18
+9     3   27
+9     4   36
+9     5   45
+9     6   54
+9     7   63
+9     8   72

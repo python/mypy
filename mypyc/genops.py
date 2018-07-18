@@ -13,7 +13,7 @@ It would be translated to something that conceptually looks like this:
    r3 = r2 + r1 :: int
    return r3
 """
-from typing import Dict, List, Tuple, Optional, Union, Sequence, Set, NoReturn, overload
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, NoReturn, overload
 from abc import abstractmethod
 import sys
 import traceback
@@ -59,9 +59,11 @@ from mypyc.ops import (
     NO_TRACEBACK_LINE_NO,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
-from mypyc.ops_list import list_len_op, list_get_item_op, list_set_item_op, new_list_op
+from mypyc.ops_list import (
+    list_append_op, list_len_op, list_get_item_op, list_set_item_op, new_list_op,
+)
+from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op
 from mypyc.ops_set import new_set_op, set_add_op
-from mypyc.ops_dict import new_dict_op, dict_get_item_op
 from mypyc.ops_misc import (
     none_op, iter_op, next_op, py_getattr_op, py_setattr_op,
     py_call_op, py_method_call_op, fast_isinstance_op, bool_op, new_slice_op,
@@ -921,37 +923,49 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.pop_loop_stack()
 
     def visit_for_stmt(self, s: ForStmt) -> None:
-        if (isinstance(s.expr, CallExpr)
-                and isinstance(s.expr.callee, RefExpr)
-                and s.expr.callee.fullname == 'builtins.range'):
+        def body() -> None:
+            self.accept(s.body)
+        self.for_loop_helper(s.index, s.expr, body, s.line)
+
+    def for_loop_helper(self, index: Lvalue, expr: Expression,
+                        body_insts: Callable[[], None], line: int) -> None:
+        """Generate IR for a loop.
+
+        "index" is the loop index Lvalue
+        "expr" is the expression to iterate over
+        "body_insts" is a function to generate the body of the loop.
+        """
+        if (isinstance(expr, CallExpr)
+                and isinstance(expr.callee, RefExpr)
+                and expr.callee.fullname == 'builtins.range'):
             body, next, top, end_block = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
 
             self.push_loop_stack(end_block, next)
 
             # Special case for x in range(...)
             # TODO: Check argument counts and kinds; check the lvalue
-            end = s.expr.args[0]
+            end = expr.args[0]
             end_reg = self.accept(end)
 
             # Initialize loop index to 0.
-            index_target = self.assign(s.index, IntExpr(0))
+            index_target = self.assign(index, IntExpr(0))
             self.add(Goto(top))
 
             # Add loop condition check.
             self.activate_block(top)
-            index_reg = self.read_from_target(index_target, s.line)
-            comparison = self.binary_op(index_reg, end_reg, '<', s.line)
+            index_reg = self.read_from_target(index_target, line)
+            comparison = self.binary_op(index_reg, end_reg, '<', line)
             self.add_bool_branch(comparison, body, next)
 
             self.activate_block(body)
-            self.accept(s.body)
+            body_insts()
 
             self.goto_and_activate(end_block)
 
             # Increment index register.
             one_reg = self.add(LoadInt(1))
             self.assign_to_target(index_target,
-                                  self.binary_op(index_reg, one_reg, '+', s.line), s.line)
+                                  self.binary_op(index_reg, one_reg, '+', line), line)
 
             # Go back to loop condition check.
             self.add(Goto(top))
@@ -959,44 +973,44 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             self.pop_loop_stack()
 
-        elif is_list_rprimitive(self.node_type(s.expr)):
+        elif is_list_rprimitive(self.node_type(expr)):
             body_block, next_block, end_block = BasicBlock(), BasicBlock(), BasicBlock()
 
             self.push_loop_stack(end_block, next_block)
 
-            expr_reg = self.accept(s.expr)
+            expr_reg = self.accept(expr)
 
             index_reg = self.alloc_temp(int_rprimitive)
             self.add(Assign(index_reg, self.add(LoadInt(0))))
 
             one_reg = self.add(LoadInt(1))
 
-            assert isinstance(s.index, NameExpr)
-            assert isinstance(s.index.node, Var)
-            lvalue = self.environment.add_local_reg(s.index.node, self.node_type(s.index))
+            assert isinstance(index, NameExpr)
+            assert isinstance(index.node, Var)
+            lvalue = self.environment.add_local_reg(index.node, self.node_type(index))
 
             condition_block = self.goto_new_block()
 
             # For compatibility with python semantics we recalculate the length
             # at every iteration.
-            len_reg = self.add(PrimitiveOp([expr_reg], list_len_op, s.line))
+            len_reg = self.add(PrimitiveOp([expr_reg], list_len_op, line))
 
-            comparison = self.binary_op(index_reg, len_reg, '<', s.line)
+            comparison = self.binary_op(index_reg, len_reg, '<', line)
             self.add_bool_branch(comparison, body_block, next_block)
 
             self.activate_block(body_block)
-            target_list_type = self.types[s.expr]
+            target_list_type = self.types[expr]
             assert isinstance(target_list_type, Instance)
             target_type = self.type_to_rtype(target_list_type.args[0])
-            value_box = self.add(PrimitiveOp([expr_reg, index_reg], list_get_item_op, s.line))
+            value_box = self.add(PrimitiveOp([expr_reg, index_reg], list_get_item_op, line))
 
             self.assign_to_target(lvalue,
-                                  self.unbox_or_cast(value_box, target_type, s.line), s.line)
+                                  self.unbox_or_cast(value_box, target_type, line), line)
 
-            self.accept(s.body)
+            body_insts()
 
             self.goto_and_activate(end_block)
-            self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', s.line)))
+            self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', line)))
             self.add(Goto(condition_block))
 
             self.activate_block(next_block)
@@ -1008,21 +1022,21 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             self.push_loop_stack(next_block, end_block)
 
-            assert isinstance(s.index, NameExpr)
-            assert isinstance(s.index.node, Var)
-            lvalue = self.environment.add_local_reg(s.index.node, object_rprimitive)
+            assert isinstance(index, NameExpr)
+            assert isinstance(index.node, Var)
+            lvalue = self.environment.add_local_reg(index.node, object_rprimitive)
 
             # Define registers to contain the expression, along with the iterator that will be used
             # for the for-loop.
-            expr_reg = self.accept(s.expr)
-            iter_reg = self.add(PrimitiveOp([expr_reg], iter_op, s.line))
+            expr_reg = self.accept(expr)
+            iter_reg = self.add(PrimitiveOp([expr_reg], iter_op, line))
 
             # Create a block for where the __next__ function will be called on the iterator and
             # checked to see if the value returned is NULL, which would signal either the end of
             # the Iterable being traversed or an exception being raised. Note that Branch.IS_ERROR
             # checks only for NULL (an exception does not necessarily have to be raised).
             self.goto_and_activate(next_block)
-            next_reg = self.add(PrimitiveOp([iter_reg], next_op, s.line))
+            next_reg = self.add(PrimitiveOp([iter_reg], next_op, line))
             self.add(Branch(next_reg, end_block, body_block, Branch.IS_ERROR))
 
             # Create a new block for the body of the loop. Set the previous branch to go here if
@@ -1030,8 +1044,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # lvalue so that it can be referenced by code in the body of the loop. At the end of
             # the body, goto the label that calls the iterator's __next__ function again.
             self.activate_block(body_block)
-            self.assign_to_target(lvalue, next_reg, s.line)
-            self.accept(s.body)
+            self.assign_to_target(lvalue, next_reg, line)
+            body_insts()
             self.add(Goto(next_block))
 
             # Create a new block for when the loop is finished. Set the branch to go here if the
@@ -1039,7 +1053,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # err_reg wil be set to True. If no_err_occurred_op returns False, then the exception
             # will be propagated using the ERR_FALSE flag.
             self.activate_block(end_block)
-            self.add(PrimitiveOp([], no_err_occurred_op, s.line))
+            self.add(PrimitiveOp([], no_err_occurred_op, line))
 
             self.pop_loop_stack()
 
@@ -1710,6 +1724,97 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr handled in CallExpr"
 
+    def visit_list_comprehension(self, o: ListComprehension) -> Value:
+        gen = o.generator
+        list_ops = self.primitive_op(new_list_op, [], o.line)
+        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+
+        def gen_inner_stmts() -> None:
+            e = self.accept(gen.left_expr)
+            self.primitive_op(list_append_op, [list_ops, e], o.line)
+
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        return list_ops
+
+    def visit_set_comprehension(self, o: SetComprehension) -> Value:
+        gen = o.generator
+        set_ops = self.primitive_op(new_set_op, [], o.line)
+        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+
+        def gen_inner_stmts() -> None:
+            e = self.accept(gen.left_expr)
+            self.primitive_op(set_add_op, [set_ops, e], o.line)
+
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        return set_ops
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> Value:
+        d = self.primitive_op(new_dict_op, [], o.line)
+        loop_params = list(zip(o.indices, o.sequences, o.condlists))
+
+        def gen_inner_stmts() -> None:
+            k = self.accept(o.key)
+            v = self.accept(o.value)
+            self.primitive_op(dict_set_item_op, [d, k, v], o.line)
+
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        return d
+
+    def comprehension_helper(self,
+                             loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
+                             gen_inner_stmts: Callable[[], None],
+                             line: int) -> None:
+        """Helper function for list comprehensions.
+
+        "loop_params" is a list of (index, expr, [conditions]) tuples defining nested loops:
+            - "index" is the Lvalue indexing that loop;
+            - "expr" is the expression for the object to be iterated over;
+            - "conditions" is a list of conditions, evaluated in order with short-circuiting,
+                that must all be true for the loop body to be executed
+        "gen_inner_stmts" is a function to generate the IR for the body of the innermost loop
+        """
+        def handle_loop(loop_params: List[Tuple[Lvalue, Expression, List[Expression]]]) -> None:
+            """Generate IR for a loop.
+
+            Given a list of (index, expression, [conditions]) tuples, generate IR
+            for the nested loops the list defines.
+            """
+            index, expr, conds = loop_params[0]
+            self.for_loop_helper(index, expr,
+                                 lambda: loop_contents(conds, loop_params[1:]),
+                                 line)
+
+        def loop_contents(
+                conds: List[Expression],
+                remaining_loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
+        ) -> None:
+            """Generate the body of the loop.
+
+            "conds" is a list of conditions to be evaluated (in order, with short circuiting)
+                to gate the body of the loop.
+            "remaining_loop_params" is the parameters for any further nested loops; if it's empty
+                we'll instead evaluate the "gen_inner_stmts" function.
+            """
+            # Check conditions, in order, short circuiting them.
+            for cond in conds:
+                cond_val = self.accept(cond)
+                cont_block, rest_block = BasicBlock(), BasicBlock()
+                # If the condition is true we'll skip the continue.
+                self.add_bool_branch(cond_val, rest_block, cont_block)
+                self.activate_block(cont_block)
+                self.nonlocal_control[-1].gen_continue(self)
+                self.goto_and_activate(rest_block)
+
+            if remaining_loop_params:
+                # There's another nested level, so the body of this loop is another loop.
+                return handle_loop(remaining_loop_params)
+            else:
+                # We finally reached the actual body of the generator.
+                # Generate the IR for the inner loop body.
+                gen_inner_stmts()
+
+        handle_loop(loop_params)
+
     # Unimplemented constructs
     # TODO: some of these are actually things that should never show up,
     # so properly sort those out.
@@ -1731,9 +1836,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_del_stmt(self, o: DelStmt) -> None:
         raise NotImplementedError
 
-    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> Value:
-        raise NotImplementedError
-
     def visit_ellipsis(self, o: EllipsisExpr) -> Value:
         raise NotImplementedError
 
@@ -1744,12 +1846,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         raise NotImplementedError
 
     def visit_generator_expr(self, o: GeneratorExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_list_comprehension(self, o: ListComprehension) -> Value:
-        raise NotImplementedError
-
-    def visit_set_comprehension(self, o: SetComprehension) -> Value:
         raise NotImplementedError
 
     def visit_namedtuple_expr(self, o: NamedTupleExpr) -> Value:

@@ -330,12 +330,23 @@ class Environment:
         self.indexes = OrderedDict()  # type: Dict[Value, int]
         self.symtable = {}  # type: Dict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
+        self.names = {}  # type: Dict[str, int]
 
     def regs(self) -> Iterable['Value']:
         return self.indexes.keys()
 
     def add(self, reg: 'Value', name: str) -> None:
-        reg.name = name
+        # Ensure uniqueness of variable names in this environment.
+        # This is needed for things like list comprehensions, which are their own scope--
+        # if we don't do this and two comprehensions use the same variable, we'd try to
+        # declare that variable twice.
+        unique_name = name
+        while unique_name in self.names:
+            unique_name = name + str(self.names[name])
+            self.names[name] += 1
+        self.names[unique_name] = 0
+        reg.name = unique_name
+
         self.indexes[reg] = len(self.indexes)
 
     def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> 'Register':

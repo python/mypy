@@ -1377,3 +1377,134 @@ L0:
     r5 = a.f(r3, r4)
     r6 = None
     return r6
+
+[case testListComprehension]
+from typing import List
+def f() -> List[int]:
+    return [x*x for x in [1,2,3] if x != 2 if x != 3]
+[out]
+def f():
+    r0 :: list
+    r1, r2, r3 :: int
+    r4, r5, r6 :: object
+    r7 :: list
+    r8, r9, r10, x, r11 :: int
+    r12 :: bool
+    r13 :: object
+    r14, r15 :: int
+    r16 :: bool
+    r17 :: int
+    r18 :: bool
+    r19 :: int
+    r20 :: object
+    r21 :: bool
+    r22 :: int
+L0:
+    r0 = []
+    r1 = 1
+    r2 = 2
+    r3 = 3
+    r4 = box(int, r1)
+    r5 = box(int, r2)
+    r6 = box(int, r3)
+    r7 = [r4, r5, r6]
+    r9 = 0
+    r8 = r9
+    r10 = 1
+L1:
+    r11 = len r7 :: list
+    r12 = r8 < r11 :: int
+    if r12 goto L2 else goto L10 :: bool
+L2:
+    r13 = r7[r8] :: list
+    r14 = unbox(int, r13)
+    x = r14
+    r15 = 2
+    r16 = x != r15 :: int
+    if r16 goto L5 else goto L3 :: bool
+L3:
+    goto L9
+L4:
+L5:
+    r17 = 3
+    r18 = x != r17 :: int
+    if r18 goto L8 else goto L6 :: bool
+L6:
+    goto L9
+L7:
+L8:
+    r19 = x * x :: int
+    r20 = box(int, r19)
+    r21 = r0.append(r20) :: list
+L9:
+    r22 = r8 + r10 :: int
+    r8 = r22
+    goto L1
+L10:
+    return r0
+
+[case testDictComprehension]
+from typing import Dict
+def f() -> Dict[int, int]:
+    return {x: x*x for x in [1,2,3] if x != 2 if x != 3}
+[out]
+def f():
+    r0 :: dict
+    r1, r2, r3 :: int
+    r4, r5, r6 :: object
+    r7 :: list
+    r8, r9, r10, x, r11 :: int
+    r12 :: bool
+    r13 :: object
+    r14, r15 :: int
+    r16 :: bool
+    r17 :: int
+    r18 :: bool
+    r19 :: int
+    r20, r21 :: object
+    r22 :: bool
+    r23 :: int
+L0:
+    r0 = {}
+    r1 = 1
+    r2 = 2
+    r3 = 3
+    r4 = box(int, r1)
+    r5 = box(int, r2)
+    r6 = box(int, r3)
+    r7 = [r4, r5, r6]
+    r9 = 0
+    r8 = r9
+    r10 = 1
+L1:
+    r11 = len r7 :: list
+    r12 = r8 < r11 :: int
+    if r12 goto L2 else goto L10 :: bool
+L2:
+    r13 = r7[r8] :: list
+    r14 = unbox(int, r13)
+    x = r14
+    r15 = 2
+    r16 = x != r15 :: int
+    if r16 goto L5 else goto L3 :: bool
+L3:
+    goto L9
+L4:
+L5:
+    r17 = 3
+    r18 = x != r17 :: int
+    if r18 goto L8 else goto L6 :: bool
+L6:
+    goto L9
+L7:
+L8:
+    r19 = x * x :: int
+    r20 = box(int, x)
+    r21 = box(int, r19)
+    r22 = r0.__setitem__(r20, r21) :: dict
+L9:
+    r23 = r8 + r10 :: int
+    r8 = r23
+    goto L1
+L10:
+    return r0
