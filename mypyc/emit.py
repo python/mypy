@@ -156,10 +156,15 @@ class Emitter:
 
     def tuple_c_declaration(self, rtuple: RTuple) -> List[str]:
         result = ['struct {} {{'.format(self.tuple_struct_name(rtuple))]
-        i = 0
-        for typ in rtuple.types:
-            result.append('    {}f{};'.format(self.ctype_spaced(typ), i))
-            i += 1
+        if len(rtuple.types) == 0:  # empty tuple
+            # The behavior of empty structs in C is compiler dependent so we add a dummy variable
+            # to avoid empty tuples being defined as empty structs.
+            result.append('int dummy_var_to_avoid_empty_struct;')
+        else:
+            i = 0
+            for typ in rtuple.types:
+                result.append('    {}f{};'.format(self.ctype_spaced(typ), i))
+                i += 1
         result.append('};')
         result.append('')
 
@@ -445,7 +450,11 @@ class Emitter:
         if not isinstance(rtype, RTuple):
             self.emit_line('if ({} == {}) {{'.format(value, self.c_error_value(rtype)))
         else:
-            self.emit_line('if ({}.f0 == {}) {{'.format(value, self.c_error_value(rtype.types[0])))
+            if len(rtype.types) == 0:
+                return  # empty tuples can't fail.
+            else:
+                self.emit_line('if ({}.f0 == {}) {{'.format(value,
+                                                            self.c_error_value(rtype.types[0])))
         self.emit_lines(failure, '}')
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:

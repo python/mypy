@@ -84,12 +84,8 @@ from distutils.core import setup, Extension
 from distutils import sysconfig
 import sys
 
-module = Extension('{package_name}',
-                   sources=['{cpath}'],
-                   extra_compile_args=['-Wno-unused-function', '-Wno-unused-label', '-Werror',
-                                       '-Wno-unreachable-code', '-Wno-unused-variables'],
-                   libraries=[{libraries}],
-                   library_dirs=[{library_dirs}])
+extra_compile_args = ['-Werror', '-Wno-unused-function', '-Wno-unused-label',
+                      '-Wno-unreachable-code', '-Wno-unused-variable']
 
 vars = sysconfig.get_config_vars()
 
@@ -103,6 +99,13 @@ if sys.platform == 'darwin':
 # library in the directory that they live in.
 elif sys.platform == 'linux':
     vars['LDSHARED'] += ' -Wl,-rpath,"$ORIGIN"'
+    extra_compile_args += ['-Wno-unused-but-set-variable']
+
+module = Extension('{package_name}',
+                   sources=['{cpath}'],
+                   extra_compile_args=extra_compile_args,
+                   libraries=[{libraries}],
+                   library_dirs=[{library_dirs}])
 
 setup(name='{package_name}',
       version='1.0',

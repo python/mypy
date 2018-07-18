@@ -151,8 +151,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         tuple_type = op.tuple_type
         self.emitter.declare_tuple_struct(tuple_type)
-        for i, item in enumerate(op.items):
-            self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(item)))
+        if len(op.items) == 0:  # empty tuple
+            self.emit_line('{}.dummy_var_to_avoid_empty_struct = 0;'.format(dest))
+        else:
+            for i, item in enumerate(op.items):
+                self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(item)))
         self.emit_inc_ref(dest, tuple_type)
 
     def visit_assign(self, op: Assign) -> None:

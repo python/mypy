@@ -199,6 +199,22 @@ print(f((1,2)))
 [out]
 (1, 2)
 
+[case testEmptyTupleFunctionWithTupleType]
+from typing import Tuple
+def f() -> Tuple[()]:
+    return ()
+[file driver.py]
+from native import f
+assert f() == ()
+
+[case testEmptyTupleFunctionWithAnyType]
+from typing import Any
+def f() -> Any:
+    return ()
+[file driver.py]
+from native import f
+assert f() == ()
+
 [case testTupleGet]
 from typing import Tuple
 def f(x: Tuple[Tuple[int, bool], int]) -> int:
