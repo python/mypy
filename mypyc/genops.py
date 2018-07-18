@@ -66,13 +66,14 @@ from mypyc.ops_list import (
 from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op
 from mypyc.ops_set import new_set_op, set_add_op
 from mypyc.ops_misc import (
-    none_op, iter_op, next_op, py_getattr_op, py_setattr_op,
+    none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op,
     py_call_op, py_method_call_op, fast_isinstance_op, bool_op, new_slice_op,
     is_none_op, type_op,
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, reraise_exception_op,
     error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
+    get_exc_info_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -1875,6 +1876,61 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             self.visit_try_except_stmt(t)
 
+    def get_sys_exc_info(self) -> List[Value]:
+        exc_info = self.primitive_op(get_exc_info_op, [], -1)
+        return [self.add(TupleGet(exc_info, i, -1)) for i in range(3)]
+
+    def visit_with(self, expr: Expression, target: Optional[Lvalue],
+                   body: GenFunc, line: int) -> None:
+
+        # This is basically a straight transcription of the Python code in PEP 343.
+        # I don't actually understand why a bunch of it is the way it is.
+        # We could probably optimize the case where the manager is compiled by us,
+        # but that is not our common case at all, so.
+        mgr = self.accept(expr)
+        typ = self.primitive_op(type_op, [mgr], line)
+        exit_ = self.py_get_attr(typ, '__exit__', line)
+        value = self.py_call(self.py_get_attr(typ, '__enter__', line), [mgr], line)
+        exc = self.alloc_temp(bool_rprimitive)
+        self.add(Assign(exc, self.primitive_op(true_op, [], -1)))
+
+        def try_body() -> None:
+            if target:
+                self.assign_to_target(self.get_assignment_target(target), value, line)
+            body()
+
+        def except_body() -> None:
+            self.add(Assign(exc, self.primitive_op(false_op, [], -1)))
+            out_block, reraise_block = BasicBlock(), BasicBlock()
+            self.add_bool_branch(self.py_call(exit_, [mgr] + self.get_sys_exc_info(), line),
+                                 out_block, reraise_block)
+            self.activate_block(reraise_block)
+            self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
+            self.add(Unreachable())
+            self.activate_block(out_block)
+
+        def finally_body() -> None:
+            out_block, exit_block = BasicBlock(), BasicBlock()
+            self.add(Branch(exc, exit_block, out_block, Branch.BOOL_EXPR))
+            self.activate_block(exit_block)
+            none = self.primitive_op(none_op, [], -1)
+            self.py_call(exit_, [mgr, none, none, none], line)
+            self.goto_and_activate(out_block)
+
+        self.visit_try_finally_stmt(
+            lambda: self.visit_try_except(try_body, [(None, None, except_body)], None, line),
+            finally_body)
+
+    def visit_with_stmt(self, o: WithStmt) -> None:
+        # Generate separate logic for each expr in it, left to right
+        def generate(i: int) -> None:
+            if i >= len(o.expr):
+                self.accept(o.body)
+            else:
+                self.visit_with(o.expr[i], o.target[i], lambda: generate(i + 1), o.line)
+
+        generate(0)
+
     def visit_lambda_expr(self, expr: LambdaExpr) -> Value:
         typ = self.types[expr]
         assert isinstance(typ, CallableType)
@@ -2089,9 +2145,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         raise NotImplementedError
 
     def visit_var(self, o: Var) -> None:
-        raise NotImplementedError
-
-    def visit_with_stmt(self, o: WithStmt) -> None:
         raise NotImplementedError
 
     def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:

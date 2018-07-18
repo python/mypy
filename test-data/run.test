@@ -843,6 +843,79 @@ out a
 out b
 wee
 
+[case testWith]
+from typing import Any
+class Thing:
+    def __init__(self, x: str) -> None:
+        self.x = x
+    def __enter__(self) -> str:
+        print('enter!', self.x)
+        if self.x == 'crash':
+            raise Exception('ohno')
+        return self.x
+    def __exit__(self, x: Any, y: Any, z: Any) -> None:
+        print('exit!', self.x, y)
+
+def foo(i: int) -> int:
+    with Thing('a') as x:
+        print("yooo?", x)
+        if i == 0:
+            return 10
+        elif i == 1:
+            raise Exception('exception!')
+    return -1
+
+def bar() -> None:
+    with Thing('a') as x, Thing('b') as y:
+        print("yooo?", x, y)
+
+def baz() -> None:
+    with Thing('a') as x, Thing('crash') as y:
+        print("yooo?", x, y)
+
+[file driver.py]
+from native import foo, bar, baz
+assert foo(0) == 10
+print('== foo ==')
+try:
+    foo(1)
+except Exception:
+    print('caught')
+assert foo(2) == -1
+
+print('== bar ==')
+bar()
+
+print('== baz ==')
+try:
+    baz()
+except Exception:
+    print('caught')
+
+[out]
+enter! a
+yooo? a
+exit! a None
+== foo ==
+enter! a
+yooo? a
+exit! a exception!
+caught
+enter! a
+yooo? a
+exit! a None
+== bar ==
+enter! a
+enter! b
+yooo? a b
+exit! b None
+exit! a None
+== baz ==
+enter! a
+enter! crash
+exit! a ohno
+caught
+
 [case testGenericEquality]
 def eq(a: object, b: object) -> bool:
     if a == b:

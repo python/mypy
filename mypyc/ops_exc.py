@@ -70,3 +70,10 @@ get_exc_value_op = custom_op(
     error_kind=ERR_NEVER,
     format_str = '{dest} = get_exc_value',
     emit=simple_emit('{dest} = CPy_GetExcValue();'))
+
+get_exc_info_op = custom_op(
+    arg_types=[],
+    result_type=exc_rtuple,
+    error_kind=ERR_NEVER,
+    format_str = '{dest} = get_exc_info',
+    emit=simple_emit('CPy_GetExcInfo(&{dest}.f0, &{dest}.f1, &{dest}.f2);'))

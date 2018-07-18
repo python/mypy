@@ -637,6 +637,20 @@ static PyObject *CPy_GetExcValue(void) {
     return exc;
 }
 
+static inline void _CPy_ToNone(PyObject **p) {
+    if (*p == NULL) {
+        Py_INCREF(Py_None);
+        *p = Py_None;
+    }
+}
+
+static void CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceback) {
+    PyErr_GetExcInfo(p_type, p_value, p_traceback);
+    _CPy_ToNone(p_type);
+    _CPy_ToNone(p_value);
+    _CPy_ToNone(p_traceback);
+}
+
 #ifdef __cplusplus
 }
 #endif
