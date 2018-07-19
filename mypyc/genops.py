@@ -67,7 +67,8 @@ from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op
 from mypyc.ops_set import new_set_op, set_add_op
 from mypyc.ops_misc import (
     none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
-    py_call_op, py_method_call_op, fast_isinstance_op, bool_op, new_slice_op,
+    py_call_op, py_call_with_kwargs_op, py_method_call_op,
+    fast_isinstance_op, bool_op, new_slice_op,
     is_none_op, type_op,
 )
 from mypyc.ops_exc import (
@@ -1205,13 +1206,52 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         key = self.load_static_unicode(attr)
         return self.add(PrimitiveOp([obj, key], py_getattr_op, line))
 
-    def py_call(self, function: Value, args: List[Value], line: int) -> Value:
-        arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
-        return self.add(PrimitiveOp([function] + arg_boxes, py_call_op, line))
+    def py_call(self,
+                function: Value,
+                arg_values: List[Value],
+                line: int,
+                arg_kinds: Optional[List[int]] = None,
+                arg_names: Optional[List[Optional[str]]] = None) -> Value:
+        """Call to non-mypyc-generated function, e.g. some python builtin functions."""
+        # Box all arguments since we are invoking a non-mypyc-generated function.
 
-    def py_method_call(self, obj: Value, method: Value, args: List[Value], line: int) -> Value:
-        arg_boxes = [self.box(arg) for arg in args]  # type: List[Value]
-        return self.add(PrimitiveOp([obj, method] + arg_boxes, py_method_call_op, line))
+        if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
+            return self.primitive_op(py_call_op, [function] + arg_values, line)
+        else:
+            assert arg_names is not None
+
+            pos_arg_values = []
+            kw_arg_key_value_pairs = []
+            for value, kind, name in zip(arg_values, arg_kinds, arg_names):
+                if kind == ARG_POS:
+                    pos_arg_values.append(value)
+                elif kind == ARG_NAMED:
+                    assert name is not None
+                    key = self.load_static_unicode(name)
+                    kw_arg_key_value_pairs.append((key, value))
+                else:
+                    raise NotImplementedError
+
+            pos_args_tuple = self.add(TupleSet(pos_arg_values, line))
+            kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
+
+            return self.primitive_op(py_call_with_kwargs_op,
+                                     [function, pos_args_tuple, kw_args_dict],
+                                     line)
+
+    def py_method_call(self,
+                       obj: Value,
+                       method_name: str,
+                       arg_values: List[Value],
+                       line: int,
+                       arg_kinds: Optional[List[int]] = None,
+                       arg_names: Optional[List[Optional[str]]] = None) -> Value:
+        if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
+            method_name_reg = self.load_static_unicode(method_name)
+            return self.primitive_op(py_method_call_op, [obj, method_name_reg] + arg_values, line)
+        else:
+            method = self.py_get_attr(obj, method_name, line)
+            return self.py_call(method, arg_values, line, arg_kinds=arg_kinds, arg_names=arg_names)
 
     def coerce_native_call_args(self,
                                 args: Sequence[Value],
@@ -1287,7 +1327,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             # Fall back to a Python call
             function = self.accept(callee)
-            return self.py_call(function, args, expr.line)
+            return self.py_call(function, args, expr.line,
+                                arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
     def get_native_signature(self, callee: RefExpr) -> Optional[CallableType]:
         """Get the signature of a native function, or return None if not available.
@@ -1324,7 +1365,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Fall back to a PyCall for non-native module calls
             function = self.accept(callee)
             args = [self.accept(arg) for arg in expr.args]
-            return self.py_call(function, args, expr.line)
+            return self.py_call(function, args, expr.line,
+                                arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
         else:
             obj = self.accept(callee.expr)
             args = [self.accept(arg) for arg in expr.args]
@@ -1354,8 +1396,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                arg_regs, expr.line))
 
             # Fall back to Python method call
-            method_name = self.load_static_unicode(callee.name)
-            return self.py_method_call(obj, method_name, args, expr.line)
+            return self.py_method_call(obj, callee.name, args, expr.line,
+                                       arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
     def get_native_method_signature(self, callee: MemberExpr) -> Optional[CallableType]:
         typ = self.types[callee.expr]
@@ -1452,17 +1494,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.add(TupleSet(items, expr.line))
 
     def visit_dict_expr(self, expr: DictExpr) -> Value:
-        dict_reg = self.add(PrimitiveOp([], new_dict_op, expr.line))
+        """First accepts all keys and values, then makes a dict out of them."""
+        key_value_pairs = []
         for key_expr, value_expr in expr.items:
-            key_reg = self.accept(key_expr)
-            value_reg = self.accept(value_expr)
-            self.translate_special_method_call(
-                dict_reg,
-                '__setitem__',
-                [key_reg, value_reg],
-                result_type=None,
-                line=expr.line)
-        return dict_reg
+            key = self.accept(key_expr)
+            value = self.accept(value_expr)
+            key_value_pairs.append((key, value))
+
+        return self.make_dict(key_value_pairs, expr.line)
 
     def visit_set_expr(self, expr: SetExpr) -> Value:
         set_reg = self.primitive_op(new_set_op, [], expr.line)
@@ -2300,6 +2339,17 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def box_expr(self, expr: Expression) -> Value:
         return self.box(self.accept(expr))
+
+    def make_dict(self, key_value_pairs: List[Tuple[Value, Value]], line: int) -> Value:
+        dict_reg = self.add(PrimitiveOp([], new_dict_op, line))
+        for key, value in key_value_pairs:
+            self.translate_special_method_call(
+                dict_reg,
+                '__setitem__',
+                [key, value],
+                result_type=None,
+                line=line)
+        return dict_reg
 
     def load_outer_env(self, base: Value, outer_env: Environment) -> Value:
         """Loads the environment class for a given base into a register.

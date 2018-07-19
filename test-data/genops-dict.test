@@ -56,24 +56,23 @@ def f(x: object) -> None:
 [out]
 def f(x):
     x :: object
-    r0 :: dict
-    r1, r2 :: int
-    r3, r4 :: object
-    r5 :: bool
-    r6 :: str
-    r7 :: bool
+    r0, r1 :: int
+    r2 :: str
+    r3 :: dict
+    r4, r5 :: object
+    r6, r7 :: bool
     d :: dict
     r8 :: None
 L0:
-    r0 = {}
-    r1 = 1
-    r2 = 2
-    r3 = box(int, r1)
-    r4 = box(int, r2)
-    r5 = r0.__setitem__(r3, r4) :: dict
-    r6 = unicode_0 :: static
-    r7 = r0.__setitem__(r6, x) :: dict
-    d = r0
+    r0 = 1
+    r1 = 2
+    r2 = unicode_0 :: static
+    r3 = {}
+    r4 = box(int, r0)
+    r5 = box(int, r1)
+    r6 = r3.__setitem__(r4, r5) :: dict
+    r7 = r3.__setitem__(r2, x) :: dict
+    d = r3
     r8 = None
     return r8
 

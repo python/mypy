@@ -22,7 +22,7 @@ class ellipsis: pass
 # Primitive types are special in generated code.
 
 class int:
-    def __init__(self, x: object) -> None: pass
+    def __init__(self, x: object, base: int = 10) -> None: pass
     def __add__(self, n: int) -> int: pass
     def __sub__(self, n: int) -> int: pass
     def __mul__(self, n: int) -> int: pass
@@ -79,6 +79,7 @@ class list(Generic[T], Iterable[T], Sized):
     def append(self, x: T) -> None: pass
     def pop(self) -> T: pass
     def extend(self, l: Iterable[T]) -> None: pass
+    def insert(self, i: int, x: T) -> None: pass
     def sort(self) -> None: pass
 
 class dict(Generic[T, S]):

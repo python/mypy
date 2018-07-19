@@ -1030,6 +1030,97 @@ L0:
     r2 = cast(float, r1)
     return r2
 
+[case testCallableTypesWithKeywordArgs]
+from typing import List
+
+def call_python_function_with_keyword_arg(x: str) -> int:
+    return int(x, base=2)
+
+def call_python_method_with_keyword_args(xs: List[int], first: int, second: int) -> List[int]:
+    xs.insert(0, x=first)
+    xs.insert(x=second, i=1)
+    return xs
+
+[out]
+def call_python_function_with_keyword_arg(x):
+    x :: str
+    r0 :: int
+    r1 :: object
+    r2 :: str
+    r3 :: object
+    r4 :: str
+    r5 :: tuple[str]
+    r6 :: dict
+    r7 :: object
+    r8 :: bool
+    r9, r10 :: object
+    r11 :: int
+L0:
+    r0 = 2
+    r1 = builtins.module :: static
+    r2 = unicode_0 :: static  ('int')
+    r3 = getattr r1, r2
+    r4 = unicode_1 :: static  ('base')
+    r5 = (x)
+    r6 = {}
+    r7 = box(int, r0)
+    r8 = r6.__setitem__(r4, r7) :: dict
+    r9 = box(tuple[str], r5)
+    r10 = py_call_with_kwargs(r3, r9, r6)
+    r11 = unbox(int, r10)
+    return r11
+def call_python_method_with_keyword_args(xs, first, second):
+    xs :: list
+    first, second, r0 :: int
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: tuple[int]
+    r5 :: dict
+    r6 :: object
+    r7 :: bool
+    r8, r9 :: object
+    r10 :: None
+    r11 :: int
+    r12 :: str
+    r13 :: object
+    r14, r15 :: str
+    r16 :: tuple[]
+    r17 :: dict
+    r18 :: object
+    r19 :: bool
+    r20 :: object
+    r21 :: bool
+    r22, r23 :: object
+    r24 :: None
+L0:
+    r0 = 0
+    r1 = unicode_2 :: static  ('insert')
+    r2 = getattr xs, r1
+    r3 = unicode_3 :: static  ('x')
+    r4 = (r0)
+    r5 = {}
+    r6 = box(int, first)
+    r7 = r5.__setitem__(r3, r6) :: dict
+    r8 = box(tuple[int], r4)
+    r9 = py_call_with_kwargs(r2, r8, r5)
+    r10 = cast(None, r9)
+    r11 = 1
+    r12 = unicode_2 :: static  ('insert')
+    r13 = getattr xs, r12
+    r14 = unicode_3 :: static  ('x')
+    r15 = unicode_4 :: static  ('i')
+    r16 = ()
+    r17 = {}
+    r18 = box(int, second)
+    r19 = r17.__setitem__(r14, r18) :: dict
+    r20 = box(int, r11)
+    r21 = r17.__setitem__(r15, r20) :: dict
+    r22 = box(tuple[], r16)
+    r23 = py_call_with_kwargs(r13, r22, r17)
+    r24 = cast(None, r23)
+    return xs
+
 [case testObjectAsBoolean]
 from typing import List
 

@@ -197,6 +197,14 @@ py_call_op = custom_op(
     format_str = '{dest} = py_call({comma_args})',
     emit=simple_emit('{dest} = PyObject_CallFunctionObjArgs({comma_args}, NULL);'))
 
+py_call_with_kwargs_op = custom_op(
+    arg_types=[object_rprimitive],
+    result_type=object_rprimitive,
+    is_var_arg=True,
+    error_kind=ERR_MAGIC,
+    format_str = '{dest} = py_call_with_kwargs({args[0]}, {args[1]}, {args[2]})',
+    emit=simple_emit('{dest} = PyObject_Call({args[0]}, {args[1]}, {args[2]});'))
+
 
 py_method_call_op = custom_op(
     arg_types=[object_rprimitive],

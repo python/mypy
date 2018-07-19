@@ -608,13 +608,13 @@ L0:
     r8 = None
     return r8
 def delDict():
-    r0 :: dict
-    r1 :: str
-    r2 :: int
-    r3 :: object
-    r4 :: bool
-    r5 :: str
-    r6 :: int
+    r0 :: str
+    r1 :: int
+    r2 :: str
+    r3 :: int
+    r4 :: dict
+    r5 :: object
+    r6 :: bool
     r7 :: object
     r8 :: bool
     d :: dict
@@ -622,16 +622,16 @@ def delDict():
     r10 :: bool
     r11 :: None
 L0:
-    r0 = {}
-    r1 = unicode_0 :: static  ('one')
-    r2 = 1
-    r3 = box(int, r2)
-    r4 = r0.__setitem__(r1, r3) :: dict
-    r5 = unicode_1 :: static  ('two')
-    r6 = 2
-    r7 = box(int, r6)
-    r8 = r0.__setitem__(r5, r7) :: dict
-    d = r0
+    r0 = unicode_0 :: static  ('one')
+    r1 = 1
+    r2 = unicode_1 :: static  ('two')
+    r3 = 2
+    r4 = {}
+    r5 = box(int, r1)
+    r6 = r4.__setitem__(r0, r5) :: dict
+    r7 = box(int, r3)
+    r8 = r4.__setitem__(r2, r7) :: dict
+    d = r4
     r9 = unicode_0 :: static  ('one')
     r10 = d.__delitem__(r9) :: object
     r11 = None
@@ -679,21 +679,21 @@ L0:
     r24 = None
     return r24
 def delDictMultiple():
-    r0 :: dict
-    r1 :: str
-    r2 :: int
-    r3 :: object
-    r4 :: bool
-    r5 :: str
-    r6 :: int
-    r7 :: object
-    r8 :: bool
-    r9 :: str
-    r10 :: int
+    r0 :: str
+    r1 :: int
+    r2 :: str
+    r3 :: int
+    r4 :: str
+    r5 :: int
+    r6 :: str
+    r7 :: int
+    r8 :: dict
+    r9 :: object
+    r10 :: bool
     r11 :: object
     r12 :: bool
-    r13 :: str
-    r14 :: int
+    r13 :: object
+    r14 :: bool
     r15 :: object
     r16 :: bool
     d :: dict
@@ -703,24 +703,24 @@ def delDictMultiple():
     r20 :: bool
     r21 :: None
 L0:
-    r0 = {}
-    r1 = unicode_0 :: static  ('one')
-    r2 = 1
-    r3 = box(int, r2)
-    r4 = r0.__setitem__(r1, r3) :: dict
-    r5 = unicode_1 :: static  ('two')
-    r6 = 2
-    r7 = box(int, r6)
-    r8 = r0.__setitem__(r5, r7) :: dict
-    r9 = unicode_2 :: static  ('three')
-    r10 = 3
-    r11 = box(int, r10)
-    r12 = r0.__setitem__(r9, r11) :: dict
-    r13 = unicode_3 :: static  ('four')
-    r14 = 4
-    r15 = box(int, r14)
-    r16 = r0.__setitem__(r13, r15) :: dict
-    d = r0
+    r0 = unicode_0 :: static  ('one')
+    r1 = 1
+    r2 = unicode_1 :: static  ('two')
+    r3 = 2
+    r4 = unicode_2 :: static  ('three')
+    r5 = 3
+    r6 = unicode_3 :: static  ('four')
+    r7 = 4
+    r8 = {}
+    r9 = box(int, r1)
+    r10 = r8.__setitem__(r0, r9) :: dict
+    r11 = box(int, r3)
+    r12 = r8.__setitem__(r2, r11) :: dict
+    r13 = box(int, r5)
+    r14 = r8.__setitem__(r4, r13) :: dict
+    r15 = box(int, r7)
+    r16 = r8.__setitem__(r6, r15) :: dict
+    d = r8
     r17 = unicode_0 :: static  ('one')
     r18 = d.__delitem__(r17) :: object
     r19 = unicode_3 :: static  ('four')

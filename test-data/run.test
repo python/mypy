@@ -514,6 +514,30 @@ assert f(l) == 1
 g(l, [11, 12])
 assert l == [11, 12]
 
+[case testMethodCallWithKeywordArgs]
+from typing import Tuple
+import testmodule
+class A:
+    def echo(self, a: int, b: int, c: int) -> Tuple[int, int, int]:
+        return a, b, c
+def test_native_method_call_with_kwargs() -> None:
+    a = A()
+    assert a.echo(1, c=3, b=2) == (1, 2, 3)
+    assert a.echo(c = 3, a = 1, b = 2) == (1, 2, 3)
+def test_module_method_call_with_kwargs() -> None:
+    a = testmodule.A()
+    assert a.echo(1, c=3, b=2) == (1, 2, 3)
+    assert a.echo(c = 3, a = 1, b = 2) == (1, 2, 3)
+[file testmodule.py]
+from typing import Tuple
+class A:
+    def echo(self, a: int, b: int, c: int) -> Tuple[int, int, int]:
+        return a, b, c
+[file driver.py]
+import native
+native.test_native_method_call_with_kwargs()
+native.test_module_method_call_with_kwargs()
+
 [case testException]
 from typing import List
 def f(x: List[int]) -> None:
@@ -1418,6 +1442,46 @@ assert c() == 5.0
 assert d == 5.0
 assert e() == 5.0
 assert f == 5.0
+
+[case testKeywordArgs]
+from typing import Tuple
+import testmodule
+
+def g(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+
+def test_call_native_function_with_keyword_args() -> None:
+    assert g(1, c = 3, b = 2) == (1, 2, 3)
+    assert g(c = 3, a = 1, b = 2) == (1, 2, 3)
+
+def test_call_module_function_with_keyword_args() -> None:
+    assert testmodule.g(1, c = 3, b = 2) == (1, 2, 3)
+    assert testmodule.g(c = 3, a = 1, b = 2) == (1, 2, 3)
+
+def test_call_python_function_with_keyword_args() -> None:
+    assert int("11", base=2) == 3
+    assert int(base=2, x="11") == 3
+
+def test_call_lambda_function_with_keyword_args() -> None:
+    g = testmodule.get_lambda_function()
+    assert g(1, c = 3, b = 2) == (1, 2, 3)
+    assert g(c = 3, a = 1, b = 2) == (1, 2, 3)
+
+[file testmodule.py]
+from typing import Tuple
+
+def g(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+
+def get_lambda_function():
+    return (lambda a, b, c: (a, b, c))
+
+[file driver.py]
+import native
+native.test_call_native_function_with_keyword_args()
+native.test_call_module_function_with_keyword_args()
+native.test_call_python_function_with_keyword_args()
+native.test_call_lambda_function_with_keyword_args()
 
 [case testArbitraryLvalues]
 from typing import List, Dict, Any
