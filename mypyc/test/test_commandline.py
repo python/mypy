@@ -3,6 +3,7 @@
 These are slow -- do not add test cases unless you have a very good reason to do so.
 """
 
+import glob
 import os
 import os.path
 import re
@@ -43,13 +44,18 @@ class TestCommandLine(MypycDataSuite):
         with open(program_path, 'w') as f:
             f.write(text)
 
-        # Compile program
-        subprocess.check_call(['%s/scripts/mypyc' % base_path] + args, cwd='tmp')
+        try:
+            # Compile program
+            subprocess.check_call(['%s/scripts/mypyc' % base_path] + args, cwd='tmp')
 
-        # Run main program
-        out = subprocess.check_output(
-            [python3_path, program],
-            cwd='tmp')
+            # Run main program
+            out = subprocess.check_output(
+                [python3_path, program],
+                cwd='tmp')
+        finally:
+            so_paths = glob.glob('tmp/**/*.so', recursive=True)
+            for path in so_paths:
+                os.remove(path)
 
         # Verify output
         actual = out.decode().splitlines()

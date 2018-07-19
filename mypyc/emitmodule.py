@@ -19,6 +19,8 @@ from mypyc.emitwrapper import (
 from mypyc.ops import FuncIR, ClassIR, ModuleIR
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
+from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
+from mypyc.namegen import exported_name
 
 
 class MarkedDeclaration:
@@ -29,6 +31,7 @@ class MarkedDeclaration:
 
 
 def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], options: Options,
+                         use_shared_lib: bool,
                          alt_lib_path: Optional[str] = None) -> str:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
     assert options.strict_optional, 'strict_optional must be turned on'
@@ -52,7 +55,7 @@ def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], op
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
-    generator = ModuleGenerator(modules, source_paths)
+    generator = ModuleGenerator(modules, source_paths, use_shared_lib)
     return generator.generate_c_for_modules()
 
 
@@ -85,11 +88,13 @@ def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
 class ModuleGenerator:
     def __init__(self,
                  modules: List[Tuple[str, ModuleIR]],
-                 source_paths: Dict[str, str]) -> None:
+                 source_paths: Dict[str, str],
+                 use_shared_lib: bool) -> None:
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext([name for name, _ in modules])
         self.names = self.context.names
+        self.use_shared_lib = use_shared_lib
 
     def generate_c_for_modules(self) -> str:
         emitter = Emitter(self.context)
@@ -181,11 +186,11 @@ class ModuleGenerator:
         # generate a shared library for the modules and shims that call into
         # the shared library, and in this case we use an internal module
         # initialized function that will be called by the shim.
-        if len(self.modules) == 1:
-            declaration = 'PyMODINIT_FUNC PyInit_{}(void)'
+        if not self.use_shared_lib:
+            declaration = 'PyMODINIT_FUNC PyInit_{}(void)'.format(module_name)
         else:
-            declaration = 'PyObject *CPyInit_{}(void)'
-        emitter.emit_lines(declaration.format(module_name),
+            declaration = 'PyObject *CPyInit_{}(void)'.format(exported_name(module_name))
+        emitter.emit_lines(declaration,
                            '{')
         module_static = self.module_static_name(module_name, emitter)
         emitter.emit_lines('if ({} != NULL) {{'.format(module_static),

@@ -27,6 +27,7 @@ from typing import List, Optional, IO
 
 from mypy.errors import CompileError
 from mypy.options import Options
+from mypy.build import BuildSource
 from mypy.main import process_options
 from mypy import build
 
@@ -45,7 +46,8 @@ def handle_build_error(err: BuildError, c_path: Optional[str]) -> None:
     sys.exit('Internal error: C compilation failed' + extra)
 
 
-def build_using_shared_lib(fobj: IO[str], ctext: str, module_names: List[str]) -> None:
+def build_using_shared_lib(fobj: IO[str], ctext: str, module_names: List[str],
+                           sources: List[BuildSource]) -> None:
     common_path = fobj.name
     fobj.write(ctext)
     fobj.flush()
@@ -54,10 +56,15 @@ def build_using_shared_lib(fobj: IO[str], ctext: str, module_names: List[str]) -
     except BuildError as err:
         handle_build_error(err, common_path)
 
-    for module in module_names:
-        so_path = '%s.so' % module
+    for source in sources:
+        module = source.module
+        module_path = module.replace('.', '/')
+        is_package = source.path is not None and os.path.split(source.path)[1] == '__init__.py'
+        if is_package:
+            module_path = os.path.join(module_path, '__init__')
+        so_path = '%s.so' % module_path
         try:
-            native_lib_path = build_c_extension_shim(module, shared_lib)
+            native_lib_path = build_c_extension_shim(module, shared_lib, is_package)
         except BuildError as err:
             handle_build_error(err, None)
         shutil.copy(native_lib_path, so_path)
@@ -91,24 +98,28 @@ def main() -> None:
     options.incremental = False
 
     module_names = [source.module for source in sources]
+    # We generate a shared lib if there are multiple modules or if any
+    # of the modules are in package. (Because I didn't want to fuss
+    # around with making the single module code handle packages.)
+    use_shared_lib = len(module_names) > 1 or any('.' in x for x in module_names)
 
     try:
         ctext = emitmodule.compile_modules_to_c(
             sources=sources,
             module_names=module_names,
-            options=options)
+            options=options,
+            use_shared_lib=use_shared_lib)
     except CompileError as e:
         for line in e.messages:
             print(line)
         sys.exit(1)
 
-    use_shared_lib = len(module_names) > 1
     with tempfile.NamedTemporaryFile(mode='w+',
                                      prefix='mypyc-tmp-',
                                      suffix='.c',
                                      dir='.') as fobj:
         if use_shared_lib:
-            build_using_shared_lib(fobj, ctext, module_names)
+            build_using_shared_lib(fobj, ctext, module_names, sources)
         else:
             build_single_module(fobj, ctext, module_names[0])
 

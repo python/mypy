@@ -75,6 +75,7 @@ class TestRun(MypycDataSuite):
                     sources=sources,
                     module_names=module_names,
                     options=options,
+                    use_shared_lib=len(module_names) > 1,
                     alt_lib_path=test_temp_dir)
             except CompileError as e:
                 for line in e.messages:

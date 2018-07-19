@@ -2,8 +2,11 @@
 --
 -- These are slow -- do not add test cases unless you have a very good reason to do so.
 
-[case testCompileTwoModules]
-# cmd: a.py b.py
+[case testCompileMypyc]
+# cmd: a.py b.py p/__init__.py p/q.py
+import os.path
+import p
+import p.q
 import a
 import b
 print('<main>', b.g(a.A()))
@@ -13,9 +16,13 @@ except TypeError:
     pass
 else:
     assert False
+for x in [a, b, p, p.q]:
+    assert os.path.splitext(x.__file__)[1] != '.py'
+[file z.py]
 
 [file a.py]
 import b
+import c
 
 print('<a>', ord('A') == 65)  # Test full builtins
 
@@ -31,21 +38,39 @@ class B:
         self.x = x
 
 print('<a>', f(5).x)
+print('<c>', c.foo())
 
 [file b.py]
 import a
+import p.q
 
 class B:
     def __init__(self, x: int) -> None:
         self.x = x
 
-def g(a: a.A) -> int:
-    return a.x
+def g(z: 'a.A') -> int:
+    return p.q.foo(z.x)
 
 print('<b>', 'here')
+
+[file c.py]
+def foo() -> int:
+    return 10
+
+[file p/__init__.py]
+
+[file p/q.py]
+import p.r
+def foo(x: int) -> int:
+    return x*p.r.foo(x)
+
+[file p/r.py]
+def foo(x: int) -> int:
+    return x
 
 [out]
 <b> here
 <a> True
 <a> 5
-<main> 4
+<c> 10
+<main> 16
