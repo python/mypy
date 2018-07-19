@@ -1,42 +1,35 @@
 """Self check mypy package"""
 import sys
 import os.path
-from typing import List, Optional, Set
+from typing import List, Set
 
 from mypy.test.helpers import Suite, run_mypy
 
 
 class TypeshedSuite(Suite):
-    def check_stubs(self, version: str, name: Optional[str] = None) -> None:
-        if name is None:
-            name = version
-        seen = {'__builtin__', }
-        modules = ['__builtin__']
+    def check_stubs(self, version: str, *directories: str) -> None:
+        if not directories:
+            directories = (version,)
         for stub_type in ['stdlib', 'third_party']:
-            stubdir = os.path.join('typeshed', stub_type, name)
-            for f in find_files(stubdir, suffix='.pyi'):
-                module = file_to_module(f[len(stubdir) + 1:])
-                if module not in seen:
-                    seen.add(module)
-                    modules.extend(['-m', module])
-        if version == "3":
-            version = "3.4"
-        if modules:
-            modules.remove('__builtin__')
-            run_mypy(['--python-version={}'.format(version)] + modules)
+            for dir in directories:
+                seen = {'__builtin__'}  # we don't want to check __builtin__, as it causes problems
+                modules = []
+                stubdir = os.path.join('typeshed', stub_type, dir)
+                for f in find_files(stubdir, suffix='.pyi'):
+                    module = file_to_module(f[len(stubdir) + 1:])
+                    if module not in seen:
+                        seen.add(module)
+                        modules.extend(['-m', module])
+
+                if modules:
+                    run_mypy(['--python-version={}'.format(version)] + modules)
 
     def test_2(self) -> None:
-        self.check_stubs("2.7", name="2")
-
-    def test_2and3_2(self) -> None:
-        self.check_stubs("2.7", name="2and3")
-
-    def test_2and3_3(self) -> None:
-        sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
-        self.check_stubs(sys_ver_str, name="2and3")
+        self.check_stubs("2.7", "2", "2and3")
 
     def test_3(self) -> None:
-        self.check_stubs("3")
+        sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
+        self.check_stubs(sys_ver_str, "3", "2and3")
 
     def test_34(self) -> None:
         self.check_stubs("3.4")
