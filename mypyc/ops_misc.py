@@ -181,6 +181,13 @@ py_setattr_op = func_op(
     emit=simple_emit('{dest} = PyObject_SetAttr({args[0]}, {args[1]}, {args[2]}) >= 0;')
 )
 
+py_delattr_op = func_op(
+    name='builtins.delattr',
+    arg_types=[object_rprimitive, object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    emit=simple_emit('{dest} = PyObject_DelAttr({args[0]}, {args[1]}) >= 0;')
+)
 
 py_call_op = custom_op(
     arg_types=[object_rprimitive],

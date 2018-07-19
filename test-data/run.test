@@ -1758,6 +1758,7 @@ for a in l2 + l3:
 1002 a
 3004 b
 5006 c
+
 [case testDel]
 from typing import List
 def printDict(dict) -> None:
@@ -1790,12 +1791,39 @@ def delDictMultiple() -> None:
     printDict(d)
     del d["two"], d["four"]
     printDict(d)
+
+class Dummy():
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+
+def delAttribute() -> None:
+    dummy = Dummy(1, 2)
+    del dummy.x
+    try:
+        print(dummy.x)
+    except AttributeError:
+        print("dummy.x successfully deleted")
+
+def delAttributeMultiple() -> None:
+    dummy = Dummy(1, 2)
+    del dummy.x, dummy.y
+    try:
+        print(dummy.x)
+    except AttributeError:
+        print("dummy.x successfully deleted")
+    try:
+        print(dummy.y)
+    except AttributeError:
+        print("dummy.y successfully deleted")
 [file driver.py]
-from native import delList, delDict, delListMultiple, delDictMultiple
+from native import delList, delDict, delListMultiple, delDictMultiple, delAttribute, delAttributeMultiple
 delList()
 delDict()
 delListMultiple()
 delDictMultiple()
+delAttribute()
+delAttributeMultiple()
 [out]
 (1, 2, 3)
 (1, 3)
@@ -1814,3 +1842,6 @@ two 2
 one 1
 three 3
 #########
+dummy.x successfully deleted
+dummy.x successfully deleted
+dummy.y successfully deleted

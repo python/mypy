@@ -66,7 +66,7 @@ from mypyc.ops_list import (
 from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op
 from mypyc.ops_set import new_set_op, set_add_op
 from mypyc.ops_misc import (
-    none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op,
+    none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_method_call_op, fast_isinstance_op, bool_op, new_slice_op,
     is_none_op, type_op,
 )
@@ -2095,6 +2095,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 result_type=None,
                 line=expr.line
             )
+        elif isinstance(expr, MemberExpr):
+            base_reg = self.accept(expr.expr)
+            key = self.load_static_unicode(expr.name)
+            self.add(PrimitiveOp([base_reg, key], py_delattr_op, expr.line))
         else:
             assert False, 'Unsupported del operation'
 
