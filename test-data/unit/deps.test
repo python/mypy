@@ -1249,3 +1249,46 @@ class C:
 <mod.C.__new__> -> <m.D.__new__>
 <mod.C.x> -> <m.D.x>
 <mod.C> -> m, m.D
+
+[case testLogicalIgnoredImport1]
+# flags: --logical-deps --ignore-missing-imports
+import foo
+def f() -> None:
+    foo.x
+[out]
+<foo.x> -> m.f
+<foo> -> m, m.f
+
+[case testLogicalIgnoredImport2]
+# flags: --logical-deps --ignore-missing-imports
+import foo.bar
+import a.b.c.d
+def f() -> None:
+    foo.bar.x
+    foo.bar.x.y
+    a.b.c.d.e
+[out]
+<a.b.c.d.e> -> m.f
+<a.b.c.d> -> m, m.f
+<a.b.c> -> m.f
+<a.b> -> m.f
+<a> -> m.f
+<foo.bar.x.y> -> m.f
+<foo.bar.x> -> m.f
+<foo.bar> -> m, m.f
+<foo> -> m.f
+
+[case testLogicalIgnoredFromImport]
+# flags: --logical-deps --ignore-missing-imports
+from foo.bar import f, C
+def g() -> None:
+    f()
+    C.ff()
+def gg(x: C) -> None:
+    z = x.y
+    z.zz
+[out]
+<foo.bar.C.ff> -> m.g
+<foo.bar.C.y> -> m.gg
+<foo.bar.C> -> <m.gg>, m, m.g, m.gg
+<foo.bar.f> -> m, m.g
