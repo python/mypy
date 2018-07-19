@@ -1383,7 +1383,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                                    module_public=module_public,
                                                    module_hidden=module_hidden), context)
         else:
-            self.add_unknown_symbol(as_id, context, is_import=True)
+            self.add_unknown_symbol(as_id, context, is_import=True, target_name=id)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         import_id = self.correct_relative_import(imp)
@@ -1455,7 +1455,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         self.add_fixture_note(fullname, imp)
             else:
                 # Missing module.
-                self.add_unknown_symbol(as_id or id, imp, is_import=True)
+                missing_name = import_id + '.' + id
+                self.add_unknown_symbol(as_id or id, imp, is_import=True, target_name=missing_name)
 
     def dereference_module_cross_ref(
             self, node: Optional[SymbolTableNode]) -> Optional[SymbolTableNode]:
@@ -1544,9 +1545,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
             pass
 
-    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False) -> None:
+    def add_unknown_symbol(self, name: str, context: Context, is_import: bool = False,
+                           target_name: Optional[str] = None) -> None:
         var = Var(name)
-        if self.type:
+        if self.options.logical_deps and target_name is not None:
+            # This makes it possible to add logical fine-grained dependencies
+            # from a missing module. We can't use this by default, since in a
+            # few places we assume that the full name points to a real
+            # definition, but this name may point to nothing.
+            var._fullname = target_name
+        elif self.type:
             var._fullname = self.type.fullname() + "." + name
         else:
             var._fullname = self.qualified_name(name)
