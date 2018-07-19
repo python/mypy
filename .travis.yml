@@ -1,27 +1,76 @@
-sudo: false
 language: python
 cache: pip
 cache:
   directories:
-    - /home/travis/python-debug
+    - $HOME/python-debug
+    - $HOME/.pyenv/versions
+    - $HOME/Library/Caches/pip
 
-python:
-  - "3.5"
-  - "3.6"
-env:
-  - PYTHON_DEBUG_BUILD=0
-  - PYTHON_DEBUG_BUILD=1
+matrix:
+  include:
+    - os: linux
+      sudo: false
+      python: "3.5"
+      env: PYTHON_DEBUG_BUILD=0
+    - os: linux
+      sudo: false
+      python: "3.6"
+      env: PYTHON_DEBUG_BUILD=0
+    - os: linux
+      sudo: false
+      python: "3.6"
+      env: PYTHON_DEBUG_BUILD=1
+    - os: osx
+      osx_image: xcode8.3
+      language: generic
+      env: PYTHONVERSION=3.6.3
+
+before_install: |
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    export PYTHONVERSION=`python --version | awk '{ print $2 }'`
+
+    if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then
+      export PYTHONDIR=~/python-debug/python-$PYTHONVERSION
+    else
+      export PYTHONDIR="/opt/python/$PYTHONVERSION"
+    fi
+
+    if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then
+      VENV=$PYTHONDIR/env
+      scripts/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
+      source $VENV/bin/activate
+    fi
+  elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    # Attempt to install, skipping if version already exists.
+    pyenv install $PYTHONVERSION -s
+    # Regenerate shims
+    pyenv rehash
+    # Manually set pyenv variables per https://pythonhosted.org/CodeChat/.travis.yml.html
+    export PYENV_VERSION=$PYTHONVERSION
+    export PATH="/Users/travis/.pyenv/shims:${PATH}"
+  fi
+
+  # Check python install
+  which python
+  python --version
+
+  # Upgrade pip, setuptools, and wheel
+  pip install -U pip setuptools wheel
 
 install:
-  - export PYTHONVERSION=`python --version | awk '{ print $2 }'`
-  - if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then export PYTHONDIR=~/python-debug/python-$PYTHONVERSION; else export PYTHONDIR="/opt/python/$PYTHONVERSION"; fi
-  - if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then VENV=$PYTHONDIR/env; scripts/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV; source $VENV/bin/activate; fi
-  - pip install -U pip setuptools wheel
   - pip install -r external/mypy/test-requirements.txt
 
-script:
-  - export PYTHONPATH=`pwd`/external/mypy
-  - export PYTHONCONFIG="$PYTHONDIR/bin/python-config"
-  - export LD_LIBRARY_PATH="$PYTHONDIR/lib"
-  - if [[ $PYTHON_DEBUG_BUILD != 1 ]]; then pytest -n4 mypyc; fi
-  - if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then pytest -n4 mypyc/test/test_run.py mypyc/test/test_external.py -k 'not test_self_type_check'; fi
+script: |
+  export PYTHONPATH=`pwd`/external/mypy
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    export PYTHONCONFIG="$PYTHONDIR/bin/python-config"
+    export LD_LIBRARY_PATH="$PYTHONDIR/lib"
+    if [[ $PYTHON_DEBUG_BUILD != 1 ]]; then
+      pytest -n4 mypyc
+    fi
+    if [[ $PYTHON_DEBUG_BUILD == 1 ]]; then
+      pytest -n4 mypyc/test/test_run.py mypyc/test/test_external.py -k 'not test_self_type_check'
+    fi
+  elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    pytest -n4 mypyc
+  fi
