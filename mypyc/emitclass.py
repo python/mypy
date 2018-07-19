@@ -4,7 +4,7 @@ import textwrap
 
 from typing import Optional, List, Tuple
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
+from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import (
@@ -60,6 +60,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     call_fn = cl.get_method('__call__')
     call_name = '{}{}'.format(PREFIX, call_fn.cname(emitter.names)) if call_fn else '0'
 
+    # TODO: Add remaining dunder methods
+    index_fn = cl.get_method('__getitem__')
+    if index_fn:
+        as_mapping_value_name = '{}_as_mapping'.format(name_prefix)
+        as_mapping_name = '&{}_as_mapping'.format(name_prefix)
+        generate_as_mapping_for_class(index_fn, as_mapping_value_name, emitter)
+    else:
+        as_mapping_name = '0'
+
     if not cl.is_trait:
         emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
         # TODO: Use RInstance
@@ -100,7 +109,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             0,                         /* tp_repr */
             0,                         /* tp_as_number */
             0,                         /* tp_as_sequence */
-            0,                         /* tp_as_mapping */
+            {as_mapping_name},         /* tp_as_mapping */
             0,                         /* tp_hash  */
             {tp_call},                 /* tp_call */
             0,                         /* tp_str */
@@ -137,6 +146,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
                     new_name=new_name,
                     methods_name=methods_name,
                     getseters_name=getseters_name,
+                    as_mapping_name=as_mapping_name,
                     init_name=init_name,
                     base_arg=base_arg,
                     ))
@@ -385,6 +395,18 @@ def generate_methods_table(cl: ClassIR,
         emitter.emit_line(' METH_VARARGS | METH_KEYWORDS, NULL},')
     emitter.emit_line('{NULL}  /* Sentinel */')
     emitter.emit_line('};')
+
+
+def generate_as_mapping_for_class(index_method: FuncIR,
+                                  name: str,
+                                  emitter: Emitter) -> str:
+    emitter.emit_line('static PyMappingMethods {} = {{'.format(name))
+    emitter.emit_line('0,        /* mp_length */')
+    emitter.emit_line('{}{},     /* mp_subscript */'.format(DUNDER_PREFIX,
+                                                            index_method.cname(emitter.names)))
+    emitter.emit_line('0,        /* mp_ass_subscript */')
+    emitter.emit_line('};')
+    return name
 
 
 def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:

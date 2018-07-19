@@ -1131,16 +1131,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.add(TupleGet(base, expr.index.value, expr.line))
 
         index_reg = self.accept(expr.index)
-        target_reg = self.translate_special_method_call(
-            base,
-            '__getitem__',
-            [index_reg],
-            self.node_type(expr),
-            expr.line)
-        if target_reg is not None:
-            return target_reg
-
-        assert False, 'Unsupported indexing operation'
+        return self.gen_method_call(self.types[expr.base],
+                                    base,
+                                    '__getitem__',
+                                    [index_reg],
+                                    self.node_type(expr),
+                                    expr.line)
 
     def visit_int_expr(self, expr: IntExpr) -> Value:
         if expr.value > MAX_SHORT_INT:
@@ -1368,41 +1364,61 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.py_call(function, args, expr.line,
                                 arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
         else:
-            obj = self.accept(callee.expr)
             args = [self.accept(arg) for arg in expr.args]
             assert callee.expr in self.types
-            receiver_rtype = self.node_type(callee.expr)
+            obj = self.accept(callee.expr)
+            return self.gen_method_call(self.types[callee.expr],
+                                        obj,
+                                        callee.name,
+                                        args,
+                                        self.node_type(expr),
+                                        expr.line,
+                                        expr.arg_kinds,
+                                        expr.arg_names)
 
-            # First try to do a special-cased method call
-            target = self.translate_special_method_call(
-                obj, callee.name, args, self.node_type(expr), expr.line)
-            if target:
-                return target
+    def gen_method_call(self,
+                        base_type: Type,
+                        base: Value,
+                        name: str,
+                        args: List[Value],
+                        return_rtype: RType,
+                        line: int,
+                        arg_kinds: Optional[List[int]] = None,
+                        arg_names: Optional[List[Optional[str]]] = None) -> Value:
 
-            # If the base type is one of ours, do a MethodCall
-            if isinstance(receiver_rtype, RInstance):
-                # Look up the declared signature of the method, since the
-                # inferred signature can have type variable substitutions which
-                # aren't valid at runtime due to type erasure.
-                signature = self.get_native_method_signature(callee)
-                if signature:
-                    args = keyword_args_to_positional(args, expr.arg_kinds, expr.arg_names,
-                                                      signature)
-                    arg_types = [self.type_to_rtype(arg_type)
-                                 for arg_type in signature.arg_types]
-                    arg_regs = self.coerce_native_call_args(args, arg_types, expr.line)
-                    target_type = self.type_to_rtype(signature.ret_type)
-                    return self.add(MethodCall(target_type, obj, callee.name,
-                                               arg_regs, expr.line))
+        # If the base type is one of ours, do a MethodCall
+        base_rtype = self.type_to_rtype(base_type)
+        if isinstance(base_rtype, RInstance):
+            # Look up the declared signature of the method, since the
+            # inferred signature can have type variable substitutions which
+            # aren't valid at runtime due to type erasure.
+            signature = self.get_native_method_signature(base_type, name)
+            if signature:
+                if arg_kinds is None:
+                    assert arg_names is None, "arg_kinds not present but arg_names is"
+                    arg_kinds = [ARG_POS for _ in args]
+                    arg_names = [None for _ in args]
+                else:
+                    assert arg_names is not None, "arg_kinds present but arg_names is not"
 
-            # Fall back to Python method call
-            return self.py_method_call(obj, callee.name, args, expr.line,
-                                       arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+                args = keyword_args_to_positional(args, arg_kinds, arg_names, signature)
+                arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
+                arg_regs = self.coerce_native_call_args(args, arg_types, base.line)
+                target_type = self.type_to_rtype(signature.ret_type)
 
-    def get_native_method_signature(self, callee: MemberExpr) -> Optional[CallableType]:
-        typ = self.types[callee.expr]
+                return self.add(MethodCall(target_type, base, name, arg_regs, line))
+
+        # Try to do a special-cased method call
+        target = self.translate_special_method_call(base, name, args, return_rtype, line)
+        if target:
+            return target
+
+        # Fall back to Python method call
+        return self.py_method_call(base, name, args, base.line, arg_kinds, arg_names)
+
+    def get_native_method_signature(self, typ: Type, name: str) -> Optional[CallableType]:
         if isinstance(typ, Instance):
-            method = typ.type.get(callee.name)
+            method = typ.type.get(name)
             if method and isinstance(method.node, FuncDef) and isinstance(method.node.type,
                                                                           CallableType):
                 return bind_self(method.node.type)

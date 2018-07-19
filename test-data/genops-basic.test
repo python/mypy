@@ -1470,6 +1470,7 @@ L0:
 
 [case testListComprehension]
 from typing import List
+
 def f() -> List[int]:
     return [x*x for x in [1,2,3] if x != 2 if x != 3]
 [out]
@@ -1673,3 +1674,29 @@ L7:
     goto L5
 L8:
     return r11
+
+[case testNativeIndex]
+from typing import List
+class A:
+    def __getitem__(self, index: int) -> int: pass
+
+def g(a: A, b: List[int], c: int) -> int:
+    return a[c] + b[c]
+[out]
+def A.__getitem__(self, index):
+    self :: A
+    index :: int
+L0:
+    unreachable
+def g(a, b, c):
+    a :: A
+    b :: list
+    c, r0 :: int
+    r1 :: object
+    r2, r3 :: int
+L0:
+    r0 = a.__getitem__(c)
+    r1 = b[c] :: list
+    r2 = unbox(int, r1)
+    r3 = r0 + r2 :: int
+    return r3

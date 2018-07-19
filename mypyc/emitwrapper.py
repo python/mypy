@@ -37,26 +37,56 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
             arg_spec, arg_ptrs),
         'return NULL;',
         '}')
+    generate_wrapper_core(fn, emitter)
+    emitter.emit_line('}')
+
+
+def dunder_wrapper_header(fn: FuncIR, emitter: Emitter) -> str:
+    input_args = ', '.join('PyObject *' for _ in fn.args)
+    return 'static PyObject *CPyDunder_{name}({input_args})'.format(
+        name=fn.cname(emitter.names),
+        input_args=input_args,
+    )
+
+
+def generate_dunder_wrapper(fn: FuncIR, emitter: Emitter) -> None:
+    """Generates a wrapper for native __dunder__ methods to be able to fit into the mapping
+    protocol slot. This specifically means that the arguments are taken as *PyObjects and returned
+    as *PyObjects.
+    """
+    input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
+    emitter.emit_line('static PyObject *CPyDunder_{name}({input_args}) {{'.format(
+        name=fn.cname(emitter.names),
+        input_args=input_args,
+    ))
+    generate_wrapper_core(fn, emitter)
+    emitter.emit_line('}')
+
+
+def generate_wrapper_core(fn: FuncIR, emitter: Emitter) -> None:
+    """Generates the core part of a wrapper function for a native function.
+    This expects each argument as a PyObject * named obj_{arg} as a precondition.
+    It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
+    makes the call, then boxes the result if necessary and returns it.
+    """
     for arg in fn.args:
         generate_arg_check(arg.name, arg.type, emitter)
     native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
-
     if fn.ret_type.is_unboxed:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
         #       Are they relevant?
-        ret_type = fn.ret_type
-        emitter.emit_line('{}retval = {}{}({});'.format(emitter.ctype_spaced(ret_type),
-                                                        NATIVE_PREFIX, fn.cname(emitter.names),
+        emitter.emit_line('{}retval = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
+                                                        NATIVE_PREFIX,
+                                                        fn.cname(emitter.names),
                                                         native_args))
-        emitter.emit_error_check('retval', ret_type, 'return NULL;')
-        emitter.emit_box('retval', 'retbox', ret_type, declare_dest=True)
-        emitter.emit_lines('return retbox;')
+        emitter.emit_error_check('retval', fn.ret_type, 'return NULL;')
+        emitter.emit_box('retval', 'retbox', fn.ret_type, declare_dest=True)
+        emitter.emit_line('return retbox;')
     else:
         emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
                                                     fn.cname(emitter.names),
                                                     native_args))
         # TODO: Tracebacks?
-    emitter.emit_line('}')
 
 
 def generate_arg_check(name: str, typ: RType, emitter: Emitter) -> None:
