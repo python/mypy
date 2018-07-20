@@ -4533,3 +4533,16 @@ def g(x: Union[int, float]) -> Union[List[int], List[float]]:
         return floats
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testOverloadsTypesAndUnions]
+from typing import overload, Type, Union
+
+class A: pass
+class B: pass
+
+@overload
+def f(x: Type[A]) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: Union[Type[A], Type[B]]) -> str: ...
+def f(x: Union[Type[A], Type[B]]) -> Union[int, str]:
+    return 1
