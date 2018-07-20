@@ -8,7 +8,7 @@ from mypy.types import (
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike,
 )
 from mypy.subtypes import (
-    is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
+    is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible, is_proper_subtype
 )
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
@@ -120,8 +120,8 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
     # If this check fails, we start checking to see if there exists a
     # *partial* overlap between types.
 
-    if (is_subtype(left, right, ignore_promotions=ignore_promotions)
-            or is_subtype(right, left, ignore_promotions=ignore_promotions)):
+    if (is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
+            or is_proper_subtype(right, left, ignore_promotions=ignore_promotions)):
         return True
 
     # See the docstring for 'get_possible_variants' for more info on what the
