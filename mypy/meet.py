@@ -95,8 +95,14 @@ def get_possible_variants(typ: Type) -> List[Type]:
         return [typ]
 
 
-def is_overlapping_types(left: Type, right: Type) -> bool:
+def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = False) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?"""
+
+    def _is_overlapping_types(left: Type, right: Type) -> bool:
+        '''Encode the kind of overlapping check to perform.
+
+        This function mostly exists so we don't have to repeat keyword arguments everywhere.'''
+        return is_overlapping_types(left, right, ignore_promotions=ignore_promotions)
 
     # We should never encounter these types, but if we do, we handle
     # them in the same way we handle 'Any'.
@@ -114,7 +120,8 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     # If this check fails, we start checking to see if there exists a
     # *partial* overlap between types.
 
-    if is_subtype(left, right) or is_subtype(right, left):
+    if (is_subtype(left, right, ignore_promotions=ignore_promotions)
+            or is_subtype(right, left, ignore_promotions=ignore_promotions)):
         return True
 
     # See the docstring for 'get_possible_variants' for more info on what the
@@ -136,7 +143,7 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     if isinstance(left, TypeVarType) or isinstance(right, TypeVarType):
         for l in left_possible:
             for r in right_possible:
-                if is_overlapping_types(l, r):
+                if _is_overlapping_types(l, r):
                     return True
         return False
 
@@ -157,14 +164,14 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     # into their 'Instance' fallbacks.
 
     if isinstance(left, TypedDictType) and isinstance(right, TypedDictType):
-        return are_typed_dicts_overlapping(left, right)
+        return are_typed_dicts_overlapping(left, right, ignore_promotions=ignore_promotions)
     elif isinstance(left, TypedDictType):
         left = left.fallback
     elif isinstance(right, TypedDictType):
         right = right.fallback
 
     if is_tuple(left) and is_tuple(right):
-        return are_tuples_overlapping(left, right)
+        return are_tuples_overlapping(left, right, ignore_promotions=ignore_promotions)
     elif isinstance(left, TupleType):
         left = left.fallback
     elif isinstance(right, TupleType):
@@ -174,14 +181,14 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     # but do require custom logic to inspect.
 
     if isinstance(left, TypeType) and isinstance(right, TypeType):
-        return is_overlapping_types(left.item, right.item)
+        return _is_overlapping_types(left.item, right.item)
     elif isinstance(left, TypeType) or isinstance(right, TypeType):
         # TODO: Can Callable[[...], T] and Type[T] be partially overlapping?
         return False
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
         return is_callable_compatible(left, right,
-                                      is_compat=is_overlapping_types,
+                                      is_compat=_is_overlapping_types,
                                       ignore_pos_arg_names=True,
                                       allow_partial_overlap=True)
     elif isinstance(left, CallableType):
@@ -198,8 +205,9 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
             return True
 
         # Two unrelated types cannot be partially overlapping: they're disjoint.
-        # We don't need to handle promotions because promotable types either
-        # are overlapping or are not -- they can't be partially overlapping.
+        # We don't need to handle promotions because they've already been handled
+        # by the calls to `is_subtype(...)` up above (and promotable types never
+        # have any generic arguments we need to recurse on).
         if left.type.has_base(right.type.fullname()):
             left = map_instance_to_supertype(left, right.type)
         elif right.type.has_base(left.type.fullname()):
@@ -209,7 +217,7 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
 
         if len(left.args) == len(right.args):
             for left_arg, right_arg in zip(left.args, right.args):
-                if is_overlapping_types(left_arg, right_arg):
+                if _is_overlapping_types(left_arg, right_arg):
                     return True
 
         return False
@@ -223,7 +231,7 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     if len(left_possible) >= 1 or len(right_possible) >= 1:
         for a in left_possible:
             for b in right_possible:
-                if is_overlapping_types(a, b):
+                if _is_overlapping_types(a, b):
                     return True
 
     # We ought to have handled every case by now: we conclude the
@@ -232,25 +240,30 @@ def is_overlapping_types(left: Type, right: Type) -> bool:
     return False
 
 
-def is_overlapping_erased_types(left: Type, right: Type) -> bool:
+def is_overlapping_erased_types(left: Type, right: Type, *,
+                                ignore_promotions: bool = False) -> bool:
     """The same as 'is_overlapping_erased_types', except the types are erased first."""
-    return is_overlapping_types(erase_type(left), erase_type(right))
+    return is_overlapping_types(erase_type(left), erase_type(right),
+                                ignore_promotions=ignore_promotions)
 
 
-def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType) -> bool:
+def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
+                                ignore_promotions: bool = False) -> bool:
     """Returns 'true' if left and right are overlapping TypeDictTypes."""
     # All required keys in left are present and overlapping with something in right
     for key in left.required_keys:
         if key not in right.items:
             return False
-        if not is_overlapping_types(left.items[key], right.items[key]):
+        if not is_overlapping_types(left.items[key], right.items[key],
+                                    ignore_promotions=ignore_promotions):
             return False
 
     # Repeat check in the other direction
     for key in right.required_keys:
         if key not in left.items:
             return False
-        if not is_overlapping_types(left.items[key], right.items[key]):
+        if not is_overlapping_types(left.items[key], right.items[key],
+                                    ignore_promotions=ignore_promotions):
             return False
 
     # The presence of any additional optional keys does not affect whether the two
@@ -259,7 +272,8 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType) -> bo
     return True
 
 
-def are_tuples_overlapping(left: Type, right: Type) -> bool:
+def are_tuples_overlapping(left: Type, right: Type, *,
+                           ignore_promotions: bool = False) -> bool:
     """Returns true if left and right are overlapping tuples.
 
     Precondition: is_tuple(left) and is_tuple(right) are both true."""
@@ -269,7 +283,8 @@ def are_tuples_overlapping(left: Type, right: Type) -> bool:
     assert isinstance(right, TupleType)
     if len(left.items) != len(right.items):
         return False
-    return all(is_overlapping_types(l, r) for l, r in zip(left.items, right.items))
+    return all(is_overlapping_types(l, r, ignore_promotions=ignore_promotions)
+               for l, r in zip(left.items, right.items))
 
 
 def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:

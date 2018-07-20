@@ -495,12 +495,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Is the overload alternative's arguments subtypes of the implementation's?
                 if not is_callable_compatible(impl, sig1,
-                                              is_compat=is_subtype,
+                                              is_compat=is_subtype_no_promote,
                                               ignore_return=True):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
                 # Is the overload alternative's return type a subtype of the implementation's?
-                if not is_subtype(sig1.ret_type, impl.ret_type):
+                if not is_subtype_no_promote(sig1.ret_type, impl.ret_type):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
@@ -3653,21 +3653,21 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    #if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
+    # if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
     #    print("in first")
 
     signature = detach_callable(signature)
     other = detach_callable(other)
 
     return (is_callable_compatible(signature, other,
-                                  is_compat=is_more_precise,
-                                  is_compat_return=lambda l, r: not is_subtype(l, r),
+                                  is_compat=is_more_precise_no_promote,
+                                  is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
                                   ignore_return=False,
                                   check_args_covariantly=True,
                                   allow_partial_overlap=True) or
             is_callable_compatible(other, signature,
-                                   is_compat=is_more_precise,
-                                   is_compat_return=lambda l, r: not is_subtype(r, l),
+                                   is_compat=is_more_precise_no_promote,
+                                   is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
                                    ignore_return=False,
                                    check_args_covariantly=False,
                                    allow_partial_overlap=True))
@@ -3686,11 +3686,11 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    #if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
+    # if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
     #    print("in second")
 
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
-        return is_more_precise(t, s) or is_overlapping_types(t, s)
+        return is_more_precise_no_promote(t, s) or is_overlapping_types_no_promote(t, s)
 
     # Try detaching callables from the containing class so that all TypeVars
     # are treated as being free.
@@ -3713,13 +3713,13 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
     # checks twice in both directions for now.
     return (is_callable_compatible(signature, other,
                                   is_compat=is_more_precise_or_partially_overlapping,
-                                  is_compat_return=lambda l, r: not is_subtype(l, r),
+                                  is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
                                   ignore_return=False,
                                   check_args_covariantly=True,
                                   allow_partial_overlap=True) or
             is_callable_compatible(other, signature,
                                    is_compat=is_more_precise_or_partially_overlapping,
-                                   is_compat_return=lambda l, r: not is_subtype(r, l),
+                                   is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
                                    ignore_return=False,
                                    check_args_covariantly=False,
                                    allow_partial_overlap=True))
@@ -3738,7 +3738,7 @@ def detach_callable(typ: CallableType) -> CallableType:
     The caller can then unify on all type variables whether or not the callable is originally
     from a class or not."""
     type_list = typ.arg_types + [typ.ret_type]
-    old_type_list = list(type_list)
+    # old_type_list = list(type_list)
 
     appear_map = {}  # type: Dict[str, List[int]]
     for i, inner_type in enumerate(type_list):
@@ -3765,7 +3765,7 @@ def detach_callable(typ: CallableType) -> CallableType:
     for var in set(all_type_vars):
         if var.fullname not in used_type_var_names:
             continue
-        #new_variables.append(var)
+        # new_variables.append(var)
         new_variables.append(TypeVarDef(
             name=var.name,
             fullname=var.fullname,
@@ -4077,3 +4077,15 @@ def is_static(func: Union[FuncBase, Decorator]) -> bool:
     elif isinstance(func, FuncBase):
         return func.is_static
     assert False, "Unexpected func type: {}".format(type(func))
+
+
+def is_subtype_no_promote(left: Type, right: Type) -> bool:
+    return is_subtype(left, right, ignore_promotions=True)
+
+
+def is_more_precise_no_promote(left: Type, right: Type) -> bool:
+    return is_more_precise(left, right, ignore_promotions=True)
+
+
+def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
+    return is_overlapping_types(left, right, ignore_promotions=True)

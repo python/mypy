@@ -1482,14 +1482,25 @@ reveal_type(f(z='', x=a, y=1))  # E: Revealed type is 'Any'
 [case testOverloadWithOverlappingItemsAndAnyArgument5]
 from typing import overload, Any, Union
 
+class A: pass
+class B(A): pass
+
 @overload
-def f(x: int) -> int: ...
+def f(x: B) -> B: ...
 @overload
-def f(x: Union[int, float]) -> float: ...
+def f(x: Union[A, B]) -> A: ...
 def f(x): pass
+
+# Note: overloads ignore promotions so we treat 'int' and 'float' as distinct types
+@overload
+def g(x: int) -> int: ...   # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def g(x: Union[int, float]) -> float: ...
+def g(x): pass
 
 a: Any
 reveal_type(f(a))  # E: Revealed type is 'Any'
+reveal_type(g(a))  # E: Revealed type is 'Any'
 
 [case testOverloadWithOverlappingItemsAndAnyArgument6]
 from typing import overload, Any
@@ -4484,3 +4495,41 @@ def g(x: str) -> int: ...
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
+
+[case testOverloadsIgnorePromotions]
+from typing import overload, List, Union, _promote
+
+class Parent: pass
+class Child(Parent): pass
+
+children: List[Child]
+parents: List[Parent]
+
+@overload
+def f(x: Child) -> List[Child]: pass    # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def f(x: Parent) -> List[Parent]: pass
+def f(x: Union[Child, Parent]) -> Union[List[Child], List[Parent]]:
+    if isinstance(x, Child):
+        reveal_type(x)      # E: Revealed type is '__main__.Child'
+        return children
+    else:
+        reveal_type(x)      # E: Revealed type is '__main__.Parent'
+        return parents
+
+ints: List[int]
+floats: List[float]
+
+@overload
+def g(x: int) -> List[int]: pass
+@overload
+def g(x: float) -> List[float]: pass
+def g(x: Union[int, float]) -> Union[List[int], List[float]]:
+    if isinstance(x, int):
+        reveal_type(x)      # E: Revealed type is 'builtins.int'
+        return ints
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.float'
+        return floats
+
+[builtins fixtures/isinstancelist.pyi]
