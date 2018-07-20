@@ -2825,6 +2825,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif (isinstance(expr.base, RefExpr) and isinstance(expr.base.node, TypeAlias) or
                 refers_to_class_or_function(expr.base)):
             # Special form -- type application (either direct or via type aliasing).
+
+            # mypy doesn't need the index to be semantically analyzed, since it analyzes
+            # it below as a type expression. External consumers of the mypy AST may need
+            # it semantically analyzed, however, if they need to treat it as an expression
+            # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
+            # in a fresh tvar scope in order to suppress any errors about using type variables.
+            with self.tvar_scope_frame(TypeVarScope()):
+                expr.index.accept(self)
+
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
             if isinstance(expr.index, TupleExpr):
