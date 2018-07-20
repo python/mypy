@@ -8,7 +8,8 @@ from mypy.types import (
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike,
 )
 from mypy.subtypes import (
-    is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible, is_proper_subtype
+    is_equivalent, is_subtype, is_protocol_implementation, is_callable_compatible,
+    is_proper_subtype,
 )
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
@@ -119,6 +120,8 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
     # We check for complete overlaps first as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
     # *partial* overlap between types.
+    #
+    # These checks will also handle the NoneTyp and UninhabitedType cases for us.
 
     if (is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
             or is_proper_subtype(right, left, ignore_promotions=ignore_promotions)):
@@ -126,21 +129,22 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
 
     # See the docstring for 'get_possible_variants' for more info on what the
     # following lines are doing.
-    #
-    # Note that we use 'left_possible' and 'right_possible' in two different
-    # locations: immediately after to handle TypeVars, and near the end of
-    # 'is_overlapping_types' to handle types like Unions or Overloads.
 
     left_possible = get_possible_variants(left)
     right_possible = get_possible_variants(right)
 
-    # We start by checking TypeVars first: this is because in some of the checks
-    # below, it's convenient to just return early in certain cases.
+    # We start by checking multi-variant types like Unions first. We also perform
+    # the same logic if either type happens to be a TypeVar.
     #
-    # If we were to defer checking TypeVars to down below, that would end up
-    # causing issues since the TypeVars would never have the opportunity to
-    # try binding to the relevant types.
-    if isinstance(left, TypeVarType) or isinstance(right, TypeVarType):
+    # Handling the TypeVars now lets us simulate having them bind to the corresponding
+    # type -- if we deferred these checks, the "return-early" logic of the other
+    # checks will prevent us from detecting certain overlaps.
+    #
+    # If both types are singleton variants (and are not TypeVars), we've hit the base case:
+    # we skip these checks to avoid infinitely recursing.
+
+    if (len(left_possible) > 1 or len(right_possible) > 1
+            or isinstance(left, TypeVarType) or isinstance(right, TypeVarType)):
         for l in left_possible:
             for r in right_possible:
                 if _is_overlapping_types(l, r):
@@ -151,6 +155,7 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
     # if one one of the types is None and we're running in strict-optional
     # mode. (We must perform this check after the TypeVar checks because
     # a TypeVar could be bound to None, for example.)
+
     if experiments.STRICT_OPTIONAL:
         if isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
             return False
@@ -179,12 +184,12 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
 
     # Next, we handle single-variant types that cannot be inherently partially overlapping,
     # but do require custom logic to inspect.
+    #
+    # As before, we degrade into 'Instance' whenever possible.
 
     if isinstance(left, TypeType) and isinstance(right, TypeType):
-        return _is_overlapping_types(left.item, right.item)
-    elif isinstance(left, TypeType) or isinstance(right, TypeType):
         # TODO: Can Callable[[...], T] and Type[T] be partially overlapping?
-        return False
+        return _is_overlapping_types(left.item, right.item)
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
         return is_callable_compatible(left, right,
@@ -196,7 +201,7 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
     elif isinstance(right, CallableType):
         right = right.fallback
 
-    # Next, we check if left and right are instances
+    # Finally, we handle the case where left and right are instances.
 
     if isinstance(left, Instance) and isinstance(right, Instance):
         if left.type.is_protocol and is_protocol_implementation(right, left):
@@ -218,20 +223,6 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
         if len(left.args) == len(right.args):
             for left_arg, right_arg in zip(left.args, right.args):
                 if _is_overlapping_types(left_arg, right_arg):
-                    return True
-
-        return False
-
-    # We handle all remaining types here: in particular, types like
-    # UnionType, Overloaded, NoneTyp, and UninhabitedType.
-    #
-    # We deliberately skip comparing two singleton variant types to avoid
-    # infinitely recursing.
-
-    if len(left_possible) >= 1 or len(right_possible) >= 1:
-        for a in left_possible:
-            for b in right_possible:
-                if _is_overlapping_types(a, b):
                     return True
 
     # We ought to have handled every case by now: we conclude the
