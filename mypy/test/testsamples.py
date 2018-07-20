@@ -6,26 +6,45 @@ from typing import List, Set
 from mypy.test.helpers import Suite, run_mypy
 
 
-class SamplesSuite(Suite):
-    def test_stubs(self) -> None:
-        # We only test each module in the one version mypy prefers to find.
-        # TODO: test stubs for other versions, especially Python 2 stubs.
-        seen = set()  # type: Set[str]
-        modules = []
-        # TODO: This should also test Python 2, and pass pyversion accordingly.
-        for version in ["2and3", "3", "3.5"]:
-            # FIX: remove 'builtins', this directory does not exist
-            for stub_type in ['builtins', 'stdlib', 'third_party']:
-                stubdir = os.path.join('typeshed', stub_type, version)
+class TypeshedSuite(Suite):
+    def check_stubs(self, version: str, *directories: str) -> None:
+        if not directories:
+            directories = (version,)
+        for stub_type in ['stdlib', 'third_party']:
+            for dir in directories:
+                seen = {'__builtin__'}  # we don't want to check __builtin__, as it causes problems
+                modules = []
+                stubdir = os.path.join('typeshed', stub_type, dir)
                 for f in find_files(stubdir, suffix='.pyi'):
                     module = file_to_module(f[len(stubdir) + 1:])
                     if module not in seen:
                         seen.add(module)
                         modules.extend(['-m', module])
-        if modules:
-            # these require at least 3.5 otherwise it will fail trying to import zipapp
-            run_mypy(['--python-version=3.5'] + modules)
 
+                if modules:
+                    run_mypy(['--python-version={}'.format(version)] + modules)
+
+    def test_2(self) -> None:
+        self.check_stubs("2.7", "2", "2and3")
+
+    def test_3(self) -> None:
+        sys_ver_str = '.'.join(map(str, sys.version_info[:2]))
+        self.check_stubs(sys_ver_str, "3", "2and3")
+
+    def test_34(self) -> None:
+        self.check_stubs("3.4")
+
+    def test_35(self) -> None:
+        self.check_stubs("3.5")
+
+    def test_36(self) -> None:
+        self.check_stubs("3.6")
+
+    def test_37(self) -> None:
+        self.check_stubs("3.7")
+
+
+class SamplesSuite(Suite):
     def test_samples(self) -> None:
         for f in find_files(os.path.join('test-data', 'samples'), suffix='.py'):
             mypy_args = ['--no-strict-optional']
