@@ -13,7 +13,7 @@ It would be translated to something that conceptually looks like this:
    r3 = r2 + r1 :: int
    return r3
 """
-from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, NoReturn, overload
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, overload
 from abc import abstractmethod
 import sys
 import traceback
@@ -78,6 +78,7 @@ from mypyc.ops_exc import (
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
+from mypyc.crash import crash_report
 
 GenFunc = Callable[[], None]
 
@@ -2353,12 +2354,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return desc.arg_types[-1]
         return desc.arg_types[n]
 
-    def crash_report(self, line: int) -> NoReturn:
-        traceback.print_exc()
-        print("{}:{}: mypyc crashed here".format(self.module_path, line))
-        sys.exit(2)
-        assert False
-
     @overload
     def accept(self, node: Expression) -> Value: ...
 
@@ -2375,7 +2370,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 node.accept(self)
                 return None
         except Exception:
-            self.crash_report(node.line)
+            crash_report(self.module_path, node.line)
 
     def alloc_temp(self, type: RType) -> Register:
         return self.environment.add_temp(type)
