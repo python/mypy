@@ -33,7 +33,7 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     """Parse a single file from suite with test case descriptions.
 
     NB: this function and DataDrivenTestCase were shared between the
-    myunit and pytest codepaths -- if something looks redundant,
+    legacy myunit and pytest codepaths -- if something looks redundant,
     that's likely the reason.
     """
     base_path = suite.base_path

@@ -99,7 +99,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, Instance, AnyType, NoneTyp, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, ForwardRef, Overloaded
+    FunctionLike, ForwardRef, Overloaded, TypeOfAny
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -205,7 +205,7 @@ class DependencyVisitor(TraverserVisitor):
         # generate dependency.
         if not o.func.is_overload and self.scope.current_function_name() is None:
             self.add_dependency(make_trigger(o.func.fullname()))
-        if self.options is not None and self.options.logical_deps:
+        if self.use_logical_deps():
             # Add logical dependencies from decorators to the function. For example,
             # if we have
             #     @dec
@@ -283,7 +283,7 @@ class DependencyVisitor(TraverserVisitor):
                                         target=make_trigger(info.fullname() + '.' + name))
         for base_info in non_trivial_bases(info):
             for name, node in base_info.names.items():
-                if self.options and self.options.logical_deps:
+                if self.use_logical_deps():
                     # Skip logical dependency if an attribute is not overridden. For example,
                     # in case of:
                     #     class Base:
@@ -400,7 +400,7 @@ class DependencyVisitor(TraverserVisitor):
             if o.type:
                 for trigger in get_type_triggers(o.type):
                     self.add_dependency(trigger)
-        if self.options and self.options.logical_deps and o.unanalyzed_type is None:
+        if self.use_logical_deps() and o.unanalyzed_type is None:
             # Special case: for definitions without an explicit type like this:
             #     x = func(...)
             # we add a logical dependency <func> -> <x>, because if `func` is not annotated,
@@ -587,6 +587,43 @@ class DependencyVisitor(TraverserVisitor):
                 return
             typ = self.type_map[e.expr]
             self.add_attribute_dependency(typ, e.name)
+            if self.use_logical_deps() and isinstance(typ, AnyType):
+                name = self.get_unimported_fullname(e, typ)
+                if name is not None:
+                    # Generate a logical dependency from an unimported
+                    # definition (which comes from a missing module).
+                    # Example:
+                    #     import missing  # "missing" not in build
+                    #
+                    #     def g() -> None:
+                    #         missing.f()  # Generate dependency from "missing.f"
+                    self.add_dependency(make_trigger(name))
+
+    def get_unimported_fullname(self, e: MemberExpr, typ: AnyType) -> Optional[str]:
+        """If e refers to an unimported definition, infer the fullname of this.
+
+        Return None if e doesn't refer to an unimported definition or if we can't
+        determine the name.
+        """
+        suffix = ''
+        # Unwrap nested member expression to handle cases like "a.b.c.d" where
+        # "a.b" is a known reference to an unimported module. Find the base
+        # reference to an unimported module (such as "a.b") and the name suffix
+        # (such as "c.d") needed to build a full name.
+        while typ.type_of_any == TypeOfAny.from_another_any and isinstance(e.expr, MemberExpr):
+            suffix = '.' + e.name + suffix
+            e = e.expr
+            if e.expr not in self.type_map:
+                return None
+            obj_type = self.type_map[e.expr]
+            if not isinstance(obj_type, AnyType):
+                # Can't find the base reference to the unimported module.
+                return None
+            typ = obj_type
+        if typ.type_of_any == TypeOfAny.from_unimported_type and typ.missing_import_name:
+            # Infer the full name of the unimported definition.
+            return typ.missing_import_name + '.' + e.name + suffix
+        return None
 
     def visit_super_expr(self, e: SuperExpr) -> None:
         super().visit_super_expr(e)
@@ -767,6 +804,9 @@ class DependencyVisitor(TraverserVisitor):
         typ = self.type_map.get(node)
         if typ:
             self.add_attribute_dependency(typ, '__iter__')
+
+    def use_logical_deps(self) -> bool:
+        return self.options is not None and self.options.logical_deps
 
 
 def get_type_triggers(typ: Type) -> List[str]:

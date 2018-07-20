@@ -16,6 +16,6 @@ install:
   - pip install .
 
 script:
-  - python runtests.py -j12 -x lint -x self-check
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.5.1' ]]; then python runtests.py package; fi
+  - pytest -n12
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then flake8 -j12; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.5.1' ]]; then python3 -m mypy --config-file mypy_self_check.ini -p mypy; fi
