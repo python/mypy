@@ -53,7 +53,7 @@ from mypyc.ops import (
     bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
     str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
     exc_rtuple,
-    PrimitiveOp, ControlOp,
+    PrimitiveOp, ControlOp, LoadErrorValue,
     ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
     VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue,
@@ -584,6 +584,24 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                       cls.name, self.module_name,
                       FuncSignature(rt_args, ret_type), blocks, env)
 
+    def gen_arg_default(self) -> None:
+        """Generate blocks for arguments that have default values.
+
+        If the passed value is an error value, then assign the default value to the argument.
+        """
+        fitem = self.fn_info.fitem
+        for arg in fitem.arguments:
+            if arg.initializer:
+                target = self.environment.lookup(arg.variable)
+                assert isinstance(target, AssignmentTargetRegister)
+                error_block, body_block = BasicBlock(), BasicBlock()
+                self.add(Branch(target.register, error_block, body_block, Branch.IS_ERROR))
+                self.activate_block(error_block)
+                reg = self.accept(arg.initializer)
+                self.add(Assign(target.register, reg))
+                self.add(Goto(body_block))
+                self.activate_block(body_block)
+
     def gen_func_def(self, fitem: FuncItem, name: str, sig: FuncSignature,
                      class_name: Optional[str] = None) -> Tuple[FuncIR, Optional[Value]]:
         """Generates and returns the FuncIR for a given FuncDef.
@@ -617,9 +635,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         | c_obj |   --------------------------+
         +-------+
         """
-        assert all(arg.initializer is None for arg in fitem.arguments), (
-            "Default args unimplemented")
-
         self.enter(FuncInfo(fitem, name, self.gen_func_ns()))
 
         # The top-most environment is for the module top level.
@@ -632,6 +647,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.setup_env_class()
 
         self.load_env_registers()
+        self.gen_arg_default()
 
         if self.fn_info.contains_nested:
             self.finalize_env_class()
@@ -1288,7 +1304,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         signature = self.get_native_signature(callee)
         if signature is not None:
             # Normalize keyword args to positionals.
-            args = keyword_args_to_positional(args, expr.arg_kinds, expr.arg_names, signature)
+            pos_args = keyword_args_to_positional(args, expr.arg_kinds, expr.arg_names, signature)
+            args = self.missing_args_to_error_values(pos_args, signature.arg_types)
 
         fullname = callee.fullname
         if fullname == 'builtins.len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
@@ -1325,6 +1342,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             function = self.accept(callee)
             return self.py_call(function, args, expr.line,
                                 arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+
+    def missing_args_to_error_values(self,
+                                     args: List[Optional[Value]],
+                                     types: List[Type]) -> List[Value]:
+        """Generate LoadErrorValues for missing arguments."""
+        ret_args = []  # type: List[Value]
+        for reg, arg_type in zip(args, types):
+            if reg is None:
+                reg = LoadErrorValue(self.type_to_rtype(arg_type))
+                reg.is_borrowed = True
+                self.add(reg)
+            ret_args.append(reg)
+        return ret_args
 
     def get_native_signature(self, callee: RefExpr) -> Optional[CallableType]:
         """Get the signature of a native function, or return None if not available.
@@ -1401,7 +1431,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 else:
                     assert arg_names is not None, "arg_kinds present but arg_names is not"
 
-                args = keyword_args_to_positional(args, arg_kinds, arg_names, signature)
+                pos_args = keyword_args_to_positional(args, arg_kinds, arg_names, signature)
+                args = self.missing_args_to_error_values(pos_args, signature.arg_types)
                 arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
                 arg_regs = self.coerce_native_call_args(args, arg_types, base.line)
                 target_type = self.type_to_rtype(signature.ret_type)
@@ -2653,12 +2684,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 def keyword_args_to_positional(args: List[Value],
                                arg_kinds: List[int],
                                arg_names: List[Optional[str]],
-                               signature: CallableType) -> List[Value]:
+                               signature: CallableType) -> List[Optional[Value]]:
     # NOTE: This doesn't support default argument values, *args or **kwargs.
     formal_to_actual = map_actuals_to_formals(arg_kinds,
                                               arg_names,
                                               signature.arg_kinds,
                                               signature.arg_names,
                                               lambda n: AnyType(TypeOfAny.special_form))
-    assert all(len(lst) == 1 for lst in formal_to_actual)
-    return [args[formal_to_actual[i][0]] for i in range(len(args))]
+    assert all(len(lst) <= 1 for lst in formal_to_actual)
+    return [None if len(lst) == 0 else args[lst[0]] for lst in formal_to_actual]
