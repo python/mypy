@@ -1978,3 +1978,35 @@ internal_index_into()
 2 * 3 + 1 2 * 3 + 1
 7
 2 * 3 + 1
+
+[case testTypeAlias]
+from typing import Tuple, List, Dict, NewType, NamedTuple
+class A:
+    pass
+
+T = List[A]
+U = List[Tuple[int, str]]
+Z = List[List[int]]
+D = Dict[int, List[int]]
+N = NewType('N', int)
+G = Tuple[int, str]
+def foo(x: N) -> int:
+    return x
+foo(N(10))
+z = N(10)
+Lol = NamedTuple('Lol', (('a', int), ('b', T)))
+x = Lol(1, [])
+def take_lol(x: Lol) -> int:
+    return x.a
+
+[file driver.py]
+from native import *
+print(T, U, Z, D)
+print(x)
+print(z)
+print(take_lol(x))
+[out]
+typing.List[native.A] typing.List[typing.Tuple[int, str]] typing.List[typing.List[int]] typing.Dict[int, typing.List[int]]
+Lol(a=1, b=[])
+10
+1
