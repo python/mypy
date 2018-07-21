@@ -607,17 +607,28 @@ L0:
     return r0
 
 [case testPyMethodCall]
-from typing import List
-def g(x: List[int], y: List[int]) -> None:
-    x.extend(y)
+def g(x: str) -> int:
+    return int(x, base=2)
 [out]
 L0:
-    r0 = unicode_0 :: static  ('extend')
-    r1 = py_method_call(x, r0, y)
-    r2 = cast(None, r1)
-    dec_ref r2
-    r3 = None
-    return r3
+    r0 = 2
+    r1 = builtins.module :: static
+    r2 = unicode_0 :: static  ('int')
+    r3 = getattr r1, r2
+    r4 = unicode_1 :: static  ('base')
+    r5 = (x)
+    r6 = {}
+    r7 = box(int, r0)
+    r8 = r6.__setitem__(r4, r7) :: dict
+    dec_ref r7
+    r9 = box(tuple[str], r5)
+    r10 = py_call_with_kwargs(r3, r9, r6)
+    dec_ref r3
+    dec_ref r9
+    dec_ref r6
+    r11 = unbox(int, r10)
+    dec_ref r10
+    return r11
 
 [case testListAppend]
 from typing import List

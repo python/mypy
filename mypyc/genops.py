@@ -30,7 +30,7 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr,
     TypeApplication, TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr,
-    GDEF, ARG_POS, ARG_NAMED
+    GDEF, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2
 )
 import mypy.nodes
 from mypy.types import (
@@ -61,9 +61,10 @@ from mypyc.ops import (
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import (
-    list_append_op, list_len_op, list_get_item_op, list_set_item_op, new_list_op,
+    list_append_op, list_extend_op, list_len_op, list_get_item_op, list_set_item_op, new_list_op,
 )
-from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op
+from mypyc.ops_tuple import list_tuple_op
+from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_op
 from mypyc.ops_set import new_set_op, set_add_op
 from mypyc.ops_misc import (
     none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
@@ -1238,32 +1239,51 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 line: int,
                 arg_kinds: Optional[List[int]] = None,
                 arg_names: Optional[List[Optional[str]]] = None) -> Value:
-        """Call to non-mypyc-generated function, e.g. some python builtin functions."""
-        # Box all arguments since we are invoking a non-mypyc-generated function.
-
+        """Use py_call_op or py_call_with_kwargs_op for function call."""
+        # If all arguments are positional, we can use py_call_op.
         if (arg_kinds is None) or all(kind == ARG_POS for kind in arg_kinds):
             return self.primitive_op(py_call_op, [function] + arg_values, line)
-        else:
-            assert arg_names is not None
 
-            pos_arg_values = []
-            kw_arg_key_value_pairs = []
-            for value, kind, name in zip(arg_values, arg_kinds, arg_names):
-                if kind == ARG_POS:
-                    pos_arg_values.append(value)
-                elif kind == ARG_NAMED:
-                    assert name is not None
-                    key = self.load_static_unicode(name)
-                    kw_arg_key_value_pairs.append((key, value))
-                else:
-                    raise NotImplementedError
+        # Otherwise fallback to py_call_with_kwargs_op.
+        assert arg_names is not None
 
+        pos_arg_values = []
+        kw_arg_key_value_pairs = []
+        star_arg_values = []
+        star2_arg_values = []
+        for value, kind, name in zip(arg_values, arg_kinds, arg_names):
+            if kind == ARG_POS:
+                pos_arg_values.append(value)
+            elif kind == ARG_NAMED:
+                assert name is not None
+                key = self.load_static_unicode(name)
+                kw_arg_key_value_pairs.append((key, value))
+            elif kind == ARG_STAR:
+                star_arg_values.append(value)
+            elif kind == ARG_STAR2:
+                star2_arg_values.append(value)
+            else:
+                assert False, ("Argument kind should not be possible:", kind)
+
+        if len(star_arg_values) == 0:
+            # We can directly construct a tuple if there are no star args.
             pos_args_tuple = self.add(TupleSet(pos_arg_values, line))
-            kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
+        else:
+            # Otherwise we construct a list and call extend it with the star args, since tuples
+            # don't have an extend method.
+            pos_args_list = self.primitive_op(new_list_op, pos_arg_values, line)
+            for star_arg_value in star_arg_values:
+                self.primitive_op(list_extend_op, [pos_args_list, star_arg_value], line)
+            pos_args_tuple = self.primitive_op(list_tuple_op, [pos_args_list], line)
 
-            return self.primitive_op(py_call_with_kwargs_op,
-                                     [function, pos_args_tuple, kw_args_dict],
-                                     line)
+        kw_args_dict = self.make_dict(kw_arg_key_value_pairs, line)
+        # NOTE: mypy currently only supports a single ** arg, but python supports multiple.
+        # This code supports multiple primarily to make the logic easier to follow.
+        for star2_arg_value in star2_arg_values:
+            self.primitive_op(dict_update_op, [kw_args_dict, star2_arg_value], line)
+
+        return self.primitive_op(
+            py_call_with_kwargs_op, [function, pos_args_tuple, kw_args_dict], line)
 
     def py_method_call(self,
                        obj: Value,
@@ -1296,9 +1316,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
             callee = callee.analyzed.expr  # Unwrap type application
 
-        assert all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds), (
-            "Only positional and keyword arguments implemented")
-
         if isinstance(callee, MemberExpr):
             return self.translate_method_call(expr, callee)
         else:
@@ -1308,59 +1325,74 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """Translate a non-method call."""
         assert isinstance(callee, RefExpr)  # TODO: Allow arbitrary callees
 
-        # Gen the args
-        args = [self.accept(arg) for arg in expr.args]
+        # Gen the argument values
+        arg_values = [self.accept(arg) for arg in expr.args]
 
-        # Don't rely on the inferred callee type, since it may have type
-        # variable substitutions that aren't valid at runtime (due to type
-        # erasure). Instead pick the declared signature of the native function
-        # as the true signature.
-        signature = self.get_native_signature(callee)
-        if signature is not None:
-            # Normalize keyword args to positionals.
-            pos_args = keyword_args_to_positional(args, expr.arg_kinds, expr.arg_names, signature)
-            args = self.missing_args_to_error_values(pos_args, signature.arg_types)
+        # TODO: Allow special cases to have default args or named args. Currently they don't since
+        # they check that everything in arg_kinds is ARG_POS.
 
-        fullname = callee.fullname
-        if fullname == 'builtins.len' and len(expr.args) == 1 and expr.arg_kinds == [ARG_POS]:
-            expr_rtype = args[0].type
+        # Special case builtins.len
+        if (callee.fullname == 'builtins.len'
+                and len(expr.args) == 1
+                and expr.arg_kinds == [ARG_POS]):
+            expr_rtype = arg_values[0].type
             if isinstance(expr_rtype, RTuple):
                 # len() of fixed-length tuple can be trivially determined statically.
                 return self.add(LoadInt(len(expr_rtype.types)))
-        if (fullname == 'builtins.isinstance'
+
+        # Special case builtins.isinstance
+        if (callee.fullname == 'builtins.isinstance'
                 and len(expr.args) == 2
                 and expr.arg_kinds == [ARG_POS, ARG_POS]
                 and isinstance(expr.args[1], RefExpr)
                 and isinstance(expr.args[1].node, TypeInfo)
                 and self.is_native_module_ref_expr(expr.args[1])):
             # Special case native isinstance() checks as this makes them much faster.
-            return self.primitive_op(fast_isinstance_op, args, expr.line)
+            return self.primitive_op(fast_isinstance_op, arg_values, expr.line)
 
         # Handle data-driven special-cased primitive call ops.
-        if fullname is not None and expr.arg_kinds == [ARG_POS] * len(args):
-            ops = func_ops.get(fullname, [])
-            target = self.matching_primitive_op(ops, args, expr.line)
+        if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
+            ops = func_ops.get(callee.fullname, [])
+            target = self.matching_primitive_op(ops, arg_values, expr.line)
             if target:
                 return target
 
-        fn = callee.fullname
-        # Try to generate a native call.
-        if signature and fn:
-            # Native call
+        # Don't rely on the inferred callee type, since it may have type
+        # variable substitutions that aren't valid at runtime (due to type
+        # erasure). Instead pick the declared signature of the native function
+        # as the true signature.
+        signature = self.get_native_signature(callee)
+
+        # Standard native call if signature and fullname are good and all arguments are positional
+        # or named.
+        if (signature is not None
+                and callee.fullname is not None
+                and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)):
+            # Normalize keyword args to positionals.
+            arg_values_with_nones = self.keyword_args_to_positional(
+                arg_values, expr.arg_kinds, expr.arg_names, signature)
+            # Put in errors for missing args, potentially to be filled in with default args later.
+            arg_values = self.missing_args_to_error_values(arg_values_with_nones,
+                                                           signature.arg_types)
+
             arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
-            args = self.coerce_native_call_args(args, arg_types, expr.line)
+            arg_values = self.coerce_native_call_args(arg_values, arg_types, expr.line)
             ret_type = self.type_to_rtype(signature.ret_type)
-            return self.add(Call(ret_type, fn, args, expr.line))
-        else:
-            # Fall back to a Python call
-            function = self.accept(callee)
-            return self.py_call(function, args, expr.line,
-                                arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+            return self.add(Call(ret_type, callee.fullname, arg_values, expr.line))
+
+        # Fall back to a Python call
+        function = self.accept(callee)
+        return self.py_call(function, arg_values, expr.line,
+                            arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
     def missing_args_to_error_values(self,
                                      args: List[Optional[Value]],
                                      types: List[Type]) -> List[Value]:
-        """Generate LoadErrorValues for missing arguments."""
+        """Generate LoadErrorValues for missing arguments.
+
+        These get resolved to default values if they exist for the function in question. See
+        gen_arg_default.
+        """
         ret_args = []  # type: List[Value]
         for reg, arg_type in zip(args, types):
             if reg is None:
@@ -1427,11 +1459,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                         base_type: Type,
                         base: Value,
                         name: str,
-                        args: List[Value],
+                        arg_values: List[Value],
                         return_rtype: RType,
                         line: int,
                         arg_kinds: Optional[List[int]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
+        # If arg_kinds contains values other than arg_pos and arg_named, then fallback to
+        # Python method call.
+        if (arg_kinds is not None
+                and not all(kind in (ARG_POS, ARG_NAMED) for kind in arg_kinds)):
+            return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
         base_rtype = self.type_to_rtype(base_type)
@@ -1443,26 +1480,30 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if signature:
                 if arg_kinds is None:
                     assert arg_names is None, "arg_kinds not present but arg_names is"
-                    arg_kinds = [ARG_POS for _ in args]
-                    arg_names = [None for _ in args]
+                    arg_kinds = [ARG_POS for _ in arg_values]
+                    arg_names = [None for _ in arg_values]
                 else:
                     assert arg_names is not None, "arg_kinds present but arg_names is not"
 
-                pos_args = keyword_args_to_positional(args, arg_kinds, arg_names, signature)
-                args = self.missing_args_to_error_values(pos_args, signature.arg_types)
+                # Normalize keyword args to positionals.
+                arg_values_with_nones = self.keyword_args_to_positional(
+                    arg_values, arg_kinds, arg_names, signature)
+                arg_values = self.missing_args_to_error_values(arg_values_with_nones,
+                                                               signature.arg_types)
+
                 arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
-                arg_regs = self.coerce_native_call_args(args, arg_types, base.line)
+                arg_values = self.coerce_native_call_args(arg_values, arg_types, base.line)
                 target_type = self.type_to_rtype(signature.ret_type)
 
-                return self.add(MethodCall(target_type, base, name, arg_regs, line))
+                return self.add(MethodCall(target_type, base, name, arg_values, line))
 
         # Try to do a special-cased method call
-        target = self.translate_special_method_call(base, name, args, return_rtype, line)
+        target = self.translate_special_method_call(base, name, arg_values, return_rtype, line)
         if target:
             return target
 
         # Fall back to Python method call
-        return self.py_method_call(base, name, args, base.line, arg_kinds, arg_names)
+        return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
     def get_native_method_signature(self, typ: Type, name: str) -> Optional[CallableType]:
         if isinstance(typ, Instance):
@@ -2186,7 +2227,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_del_stmt(self, o: DelStmt) -> None:
         if isinstance(o.expr, TupleExpr):
             for expr_item in o.expr.items:
-                    self.visit_del_item(expr_item)
+                self.visit_del_item(expr_item)
         else:
             self.visit_del_item(o.expr)
 
@@ -2697,16 +2738,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.unbox_or_cast(src, target_type, line)
         return src
 
-
-def keyword_args_to_positional(args: List[Value],
-                               arg_kinds: List[int],
-                               arg_names: List[Optional[str]],
-                               signature: CallableType) -> List[Optional[Value]]:
-    # NOTE: This doesn't support default argument values, *args or **kwargs.
-    formal_to_actual = map_actuals_to_formals(arg_kinds,
-                                              arg_names,
-                                              signature.arg_kinds,
-                                              signature.arg_names,
-                                              lambda n: AnyType(TypeOfAny.special_form))
-    assert all(len(lst) <= 1 for lst in formal_to_actual)
-    return [None if len(lst) == 0 else args[lst[0]] for lst in formal_to_actual]
+    def keyword_args_to_positional(self,
+                                   args: List[Value],
+                                   arg_kinds: List[int],
+                                   arg_names: List[Optional[str]],
+                                   signature: CallableType) -> List[Optional[Value]]:
+        # NOTE: This doesn't support default argument values, *args or **kwargs.
+        formal_to_actual = map_actuals_to_formals(arg_kinds,
+                                                  arg_names,
+                                                  signature.arg_kinds,
+                                                  signature.arg_names,
+                                                  lambda n: AnyType(TypeOfAny.special_form))
+        assert all(len(lst) <= 1 for lst in formal_to_actual)
+        return [None if len(lst) == 0 else args[lst[0]] for lst in formal_to_actual]

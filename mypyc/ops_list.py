@@ -51,6 +51,13 @@ list_append_op = method_op(
     error_kind=ERR_FALSE,
     emit=simple_emit('{dest} = PyList_Append({args[0]}, {args[1]}) != -1;'))
 
+list_extend_op = method_op(
+    name='extend',
+    arg_types=[list_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = _PyList_Extend((PyListObject *) {args[0]}, {args[1]});'))
+
 
 def emit_multiply_helper(emitter: EmitterInterface, dest: str, lst: str, num: str) -> None:
     temp = emitter.temp_name()

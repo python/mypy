@@ -1468,6 +1468,181 @@ L0:
     r6 = None
     return r6
 
+[case testStarArgs]
+from typing import Tuple
+def f(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+def g() -> Tuple[int, int, int]:
+    return f(*(1, 2, 3))
+def h() -> Tuple[int, int, int]:
+    return f(1, *(2, 3))
+[out]
+def f(a, b, c):
+    a, b, c :: int
+    r0 :: tuple[int, int, int]
+L0:
+    r0 = (a, b, c)
+    return r0
+def g():
+    r0, r1, r2 :: int
+    r3 :: tuple[int, int, int]
+    r4 :: object
+    r5 :: str
+    r6 :: object
+    r7 :: list
+    r8, r9 :: object
+    r10 :: tuple
+    r11 :: dict
+    r12 :: object
+    r13 :: tuple[int, int, int]
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = (r0, r1, r2)
+    r4 = __main__.globals :: static
+    r5 = unicode_0 :: static  ('f')
+    r6 = r4[r5] :: dict
+    r7 = []
+    r8 = box(tuple[int, int, int], r3)
+    r9 = r7.extend(r8) :: list
+    r10 = tuple r7 :: list
+    r11 = {}
+    r12 = py_call_with_kwargs(r6, r10, r11)
+    r13 = unbox(tuple[int, int, int], r12)
+    return r13
+def h():
+    r0, r1, r2 :: int
+    r3 :: tuple[int, int]
+    r4 :: object
+    r5 :: str
+    r6, r7 :: object
+    r8 :: list
+    r9, r10 :: object
+    r11 :: tuple
+    r12 :: dict
+    r13 :: object
+    r14 :: tuple[int, int, int]
+L0:
+    r0 = 1
+    r1 = 2
+    r2 = 3
+    r3 = (r1, r2)
+    r4 = __main__.globals :: static
+    r5 = unicode_0 :: static  ('f')
+    r6 = r4[r5] :: dict
+    r7 = box(int, r0)
+    r8 = [r7]
+    r9 = box(tuple[int, int], r3)
+    r10 = r8.extend(r9) :: list
+    r11 = tuple r8 :: list
+    r12 = {}
+    r13 = py_call_with_kwargs(r6, r11, r12)
+    r14 = unbox(tuple[int, int, int], r13)
+    return r14
+
+[case testStar2Args]
+from typing import Tuple
+def f(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+def g() -> Tuple[int, int, int]:
+    return f(**{'a': 1, 'b': 2, 'c': 3})
+def h() -> Tuple[int, int, int]:
+    return f(1, **{'b': 2, 'c': 3})
+[out]
+def f(a, b, c):
+    a, b, c :: int
+    r0 :: tuple[int, int, int]
+L0:
+    r0 = (a, b, c)
+    return r0
+def g():
+    r0 :: str
+    r1 :: int
+    r2 :: str
+    r3 :: int
+    r4 :: str
+    r5 :: int
+    r6 :: dict
+    r7 :: object
+    r8 :: bool
+    r9 :: object
+    r10 :: bool
+    r11 :: object
+    r12 :: bool
+    r13 :: object
+    r14 :: str
+    r15 :: object
+    r16 :: tuple[]
+    r17 :: dict
+    r18 :: bool
+    r19, r20 :: object
+    r21 :: tuple[int, int, int]
+L0:
+    r0 = unicode_0 :: static  ('a')
+    r1 = 1
+    r2 = unicode_1 :: static  ('b')
+    r3 = 2
+    r4 = unicode_2 :: static  ('c')
+    r5 = 3
+    r6 = {}
+    r7 = box(int, r1)
+    r8 = r6.__setitem__(r0, r7) :: dict
+    r9 = box(int, r3)
+    r10 = r6.__setitem__(r2, r9) :: dict
+    r11 = box(int, r5)
+    r12 = r6.__setitem__(r4, r11) :: dict
+    r13 = __main__.globals :: static
+    r14 = unicode_3 :: static  ('f')
+    r15 = r13[r14] :: dict
+    r16 = ()
+    r17 = {}
+    r18 = r17.update(r6) :: dict
+    r19 = box(tuple[], r16)
+    r20 = py_call_with_kwargs(r15, r19, r17)
+    r21 = unbox(tuple[int, int, int], r20)
+    return r21
+def h():
+    r0 :: int
+    r1 :: str
+    r2 :: int
+    r3 :: str
+    r4 :: int
+    r5 :: dict
+    r6 :: object
+    r7 :: bool
+    r8 :: object
+    r9 :: bool
+    r10 :: object
+    r11 :: str
+    r12 :: object
+    r13 :: tuple[int]
+    r14 :: dict
+    r15 :: bool
+    r16, r17 :: object
+    r18 :: tuple[int, int, int]
+L0:
+    r0 = 1
+    r1 = unicode_1 :: static  ('b')
+    r2 = 2
+    r3 = unicode_2 :: static  ('c')
+    r4 = 3
+    r5 = {}
+    r6 = box(int, r2)
+    r7 = r5.__setitem__(r1, r6) :: dict
+    r8 = box(int, r4)
+    r9 = r5.__setitem__(r3, r8) :: dict
+    r10 = __main__.globals :: static
+    r11 = unicode_3 :: static  ('f')
+    r12 = r10[r11] :: dict
+    r13 = (r0)
+    r14 = {}
+    r15 = r14.update(r5) :: dict
+    r16 = box(tuple[int], r13)
+    r17 = py_call_with_kwargs(r12, r16, r14)
+    r18 = unbox(tuple[int, int, int], r17)
+    return r18
+
 [case testFunctionCallWithDefaultArgs]
 def f(x: int, y: int = 3, z: str = "test") -> None:
     return None

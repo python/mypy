@@ -1516,6 +1516,78 @@ native.test_call_module_function_with_keyword_args()
 native.test_call_python_function_with_keyword_args()
 native.test_call_lambda_function_with_keyword_args()
 
+[case testStarArgs]
+from typing import Tuple
+
+def g(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+
+def test_star_args() -> None:
+    assert g(*[1, 2, 3]) == (1, 2, 3)
+    assert g(*(1, 2, 3)) == (1, 2, 3)
+    assert g(*(1,), *[2, 3]) == (1, 2, 3)
+    assert g(*(), *(1,), *(), *(2,), *(3,), *()) == (1, 2, 3)
+    assert g(*range(3)) == (0, 1, 2)
+
+[file driver.py]
+import native
+native.test_star_args()
+
+[case testStar2Args]
+from typing import Tuple
+
+def g(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+
+def test_star2_args() -> None:
+    assert g(**{'a': 1, 'b': 2, 'c': 3}) == (1, 2, 3)
+    assert g(**{'c': 3, 'a': 1, 'b': 2}) == (1, 2, 3)
+    assert g(b=2, **{'a': 1, 'c': 3}) == (1, 2, 3)
+
+[file driver.py]
+import native
+native.test_star2_args()
+
+[case testStarAndStar2Args]
+from typing import Tuple
+def g(a: int, b: int, c: int) -> Tuple[int, int, int]:
+    return a, b, c
+
+class C:
+    def g(self, a: int, b: int, c: int) -> Tuple[int, int, int]:
+        return a, b, c
+
+def test_star_and_star2_args() -> None:
+    assert g(1, *(2,), **{'c': 3}) == (1, 2, 3)
+    assert g(*[1], **{'b': 2, 'c': 3}) == (1, 2, 3)
+    c = C()
+    assert c.g(1, *(2,), **{'c': 3}) == (1, 2, 3)
+    assert c.g(*[1], **{'b': 2, 'c': 3}) == (1, 2, 3)
+
+[file driver.py]
+import native
+native.test_star_and_star2_args()
+
+[case testAllTheArgCombinations]
+from typing import Tuple
+def g(a: int, b: int, c: int, d: int = -1) -> Tuple[int, int, int, int]:
+    return a, b, c, d
+
+class C:
+    def g(self, a: int, b: int, c: int, d: int = -1) -> Tuple[int, int, int, int]:
+        return a, b, c, d
+
+def test_all_the_arg_combinations() -> None:
+    assert g(1, *(2,), **{'c': 3}) == (1, 2, 3, -1)
+    assert g(*[1], **{'b': 2, 'c': 3, 'd': 4}) == (1, 2, 3, 4)
+    c = C()
+    assert c.g(1, *(2,), **{'c': 3}) == (1, 2, 3, -1)
+    assert c.g(*[1], **{'b': 2, 'c': 3, 'd': 4}) == (1, 2, 3, 4)
+
+[file driver.py]
+import native
+native.test_all_the_arg_combinations()
+
 [case testArbitraryLvalues]
 from typing import List, Dict, Any
 
