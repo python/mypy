@@ -74,3 +74,16 @@ def foo(x: int) -> int:
 <a> 5
 <c> 10
 <main> 16
+
+-- This test is here so we can turn it on when we get nervous about
+-- this case, but is disabled for speed reasons.
+[case testCompileMypycOne-skip]
+# cmd: a.py
+import os.path
+import a
+assert os.path.splitext(a.__file__)[1] != '.py'
+assert a.f(10) == 100
+
+[file a.py]
+def f(x: int) -> int:
+    return x*x

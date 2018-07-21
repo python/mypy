@@ -2,6 +2,7 @@
 
 import os.path
 import subprocess
+import sys
 from typing import List
 
 from mypy import build
@@ -50,6 +51,9 @@ class TestRun(MypycDataSuite):
             options.python_version = (3, 6)
             options.export_types = True
 
+            workdir = 'build'
+            os.mkdir(workdir)
+
             os.mkdir('tmp/py')
             source_path = 'tmp/py/native.py'
             with open(source_path, 'w') as f:
@@ -88,25 +92,26 @@ class TestRun(MypycDataSuite):
             use_shared_lib = len(module_names) > 1
 
             if use_shared_lib:
-                common_path = os.path.join(test_temp_dir, '__shared_stuff.c')
+                common_path = os.path.abspath(os.path.join(test_temp_dir, '__shared_stuff.c'))
                 with open(common_path, 'w') as f:
                     f.write(ctext)
                 try:
-                    shared_lib = buildc.build_shared_lib_for_modules(common_path, module_names)
+                    shared_lib = buildc.build_shared_lib_for_modules(common_path, module_names,
+                                                                     workdir)
                 except buildc.BuildError as err:
                     show_c_error(common_path, err.output)
                     raise
 
             for mod in module_names:
-                cpath = os.path.join(test_temp_dir, '%s.c' % mod)
+                cpath = os.path.abspath(os.path.join(test_temp_dir, '%s.c' % mod))
                 with open(cpath, 'w') as f:
                     f.write(ctext)
 
                 try:
                     if use_shared_lib:
-                        native_lib_path = buildc.build_c_extension_shim(mod, shared_lib)
+                        native_lib_path = buildc.build_c_extension_shim(mod, shared_lib, workdir)
                     else:
-                        native_lib_path = buildc.build_c_extension(cpath, mod, preserve_setup=True)
+                        native_lib_path = buildc.build_c_extension(cpath, mod, workdir)
                 except buildc.BuildError as err:
                     show_c_error(cpath, err.output)
                     raise
@@ -122,7 +127,8 @@ class TestRun(MypycDataSuite):
             path = [os.path.dirname(native_lib_path), os.path.join(PREFIX, 'extensions')]
             env['PYTHONPATH'] = ':'.join(path)
             env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
-            env['LD_LIBRARY_PATH'] = os.getcwd()
+            lib_env = 'DYLD_LIBRARY_PATH' if sys.platform == 'darwin' else 'LD_LIBRARY_PATH'
+            env[lib_env] = workdir
 
             proc = subprocess.Popen(['python', driver_path], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, env=env)

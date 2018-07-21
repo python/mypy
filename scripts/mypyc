@@ -46,13 +46,11 @@ def handle_build_error(err: BuildError, c_path: Optional[str]) -> None:
     sys.exit('Internal error: C compilation failed' + extra)
 
 
-def build_using_shared_lib(fobj: IO[str], ctext: str, module_names: List[str],
+def build_using_shared_lib(dirname: str, common_path: str, module_names: List[str],
                            sources: List[BuildSource]) -> None:
-    common_path = fobj.name
-    fobj.write(ctext)
-    fobj.flush()
     try:
-        shared_lib = build_shared_lib_for_modules(common_path, module_names)
+        shared_lib_path = build_shared_lib_for_modules(common_path, module_names, dirname)
+        shutil.copy(shared_lib_path, os.path.basename(shared_lib_path))
     except BuildError as err:
         handle_build_error(err, common_path)
 
@@ -64,21 +62,17 @@ def build_using_shared_lib(fobj: IO[str], ctext: str, module_names: List[str],
             module_path = os.path.join(module_path, '__init__')
         so_path = '%s.so' % module_path
         try:
-            native_lib_path = build_c_extension_shim(module, shared_lib, is_package)
+            native_lib_path = build_c_extension_shim(module, shared_lib_path, dirname, is_package)
         except BuildError as err:
             handle_build_error(err, None)
         shutil.copy(native_lib_path, so_path)
 
 
-def build_single_module(fobj: IO[str], ctext: str, module: str) -> None:
-    c_path = fobj.name
+def build_single_module(dirname: str, c_path: str, module: str) -> None:
     so_path = '%s.so' % module
 
-    with open(c_path, 'w') as f:
-        f.write(ctext)
-
     try:
-        native_lib_path = build_c_extension(c_path, module)
+        native_lib_path = build_c_extension(c_path, module, dirname)
     except BuildError as err:
         handle_build_error(err, c_path)
 
@@ -114,14 +108,29 @@ def main() -> None:
             print(line)
         sys.exit(1)
 
-    with tempfile.NamedTemporaryFile(mode='w+',
-                                     prefix='mypyc-tmp-',
-                                     suffix='.c',
-                                     dir='.') as fobj:
+    # XXX: This is not the right way to pass in command line args
+    save_dir = os.getenv("MYPYC_DIR", None)
+    if save_dir:
+        try:
+            os.mkdir(save_dir)
+        except FileExistsError:
+            pass
+        dir = os.path.abspath(save_dir)
+    else:
+        dir = tempfile.mkdtemp(prefix='mypyc-')
+
+    try:
+        cfile = os.path.join(dir, '__native.c')
+        with open(cfile, 'w') as f:
+            f.write(ctext)
+
         if use_shared_lib:
-            build_using_shared_lib(fobj, ctext, module_names, sources)
+            build_using_shared_lib(dir, cfile, module_names, sources)
         else:
-            build_single_module(fobj, ctext, module_names[0])
+            build_single_module(dir, cfile, module_names[0])
+    finally:
+        if not save_dir:
+            shutil.rmtree(dir)
 
 
 if __name__ == '__main__':
