@@ -1947,6 +1947,315 @@ L7:
 L8:
     return r11
 
+[case testProperty]
+class PropertyHolder:
+    @property
+    def value(self) -> int:
+        return self.left + self.right if self.is_add else self.left - self.right
+    def __init__(self, left: int, right: int, is_add: bool) -> None:
+        self.left = left
+        self.right = right
+        self.is_add = is_add
+    def twice_value(self) -> int:
+        return 2 * self.value
+[out]
+def PropertyHolder.__init__(self, left, right, is_add):
+    self :: PropertyHolder
+    left, right :: int
+    is_add, r0, r1, r2 :: bool
+    r3 :: None
+L0:
+    self.left = left; r0 = is_error
+    self.right = right; r1 = is_error
+    self.is_add = is_add; r2 = is_error
+    r3 = None
+    return r3
+def PropertyHolder.twice_value(self):
+    self :: PropertyHolder
+    r0, r1, r2 :: int
+L0:
+    r0 = 2
+    r1 = self.value
+    r2 = r0 * r1 :: int
+    return r2
+def PropertyHolder.value(self):
+    self :: PropertyHolder
+    r0 :: bool
+    r1, r2, r3, r4, r5, r6, r7 :: int
+L0:
+    r0 = self.is_add
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r2 = self.left
+    r3 = self.right
+    r4 = r2 + r3 :: int
+    r1 = r4
+    goto L3
+L2:
+    r5 = self.left
+    r6 = self.right
+    r7 = r5 - r6 :: int
+    r1 = r7
+L3:
+    return r1
+
+[case testPropertyDerivedGen]
+from typing import Callable
+class BaseProperty:
+    @property
+    def value(self) -> object:
+        return self._incrementer
+
+    @property
+    def bad_value(self) -> object:
+        return self._incrementer
+
+    @property
+    def next(self) -> BaseProperty:
+        return BaseProperty(self._incrementer + 1)
+
+    def __init__(self, value: int) -> None:
+        self._incrementer = value
+
+class DerivedProperty(BaseProperty):
+    @property
+    def value(self) -> int:
+        return self._incrementer
+
+    @property
+    def bad_value(self) -> object:
+        return self._incrementer
+
+    @property
+    def next(self) -> DerivedProperty:
+        return DerivedProperty(self._incr_func, self._incr_func(self.value))
+
+    def __init__(self, incr_func: Callable[[int], int], value: int) -> None:
+        BaseProperty.__init__(self, value)
+        self._incr_func = incr_func
+
+
+class AgainProperty(DerivedProperty):
+    @property
+    def next(self) -> AgainProperty:
+        return AgainProperty(self._incr_func, self._incr_func(self._incr_func(self.value)))
+
+    @property
+    def bad_value(self) -> int:
+        return self._incrementer
+[out]
+def BaseProperty.__init__(self, value):
+    self :: BaseProperty
+    value :: int
+    r0 :: bool
+    r1 :: None
+L0:
+    self._incrementer = value; r0 = is_error
+    r1 = None
+    return r1
+def BaseProperty.bad_value(self):
+    self :: BaseProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self._incrementer
+    r1 = box(int, r0)
+    return r1
+def BaseProperty.next(self):
+    self :: BaseProperty
+    r0, r1, r2 :: int
+    r3 :: BaseProperty
+L0:
+    r0 = self._incrementer
+    r1 = 1
+    r2 = r0 + r1 :: int
+    r3 = BaseProperty(r2)
+    return r3
+def BaseProperty.value(self):
+    self :: BaseProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self._incrementer
+    r1 = box(int, r0)
+    return r1
+def DerivedProperty.__init__(self, incr_func, value):
+    self :: DerivedProperty
+    incr_func :: object
+    value :: int
+    r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4 :: None
+    r5 :: bool
+    r6 :: None
+L0:
+    r0 = __main__.BaseProperty :: type
+    r1 = unicode_0 :: static  ('__init__')
+    r2 = box(int, value)
+    r3 = py_method_call(r0, r1, self, r2)
+    r4 = cast(None, r3)
+    self._incr_func = incr_func; r5 = is_error
+    r6 = None
+    return r6
+def DerivedProperty.bad_value(self):
+    self :: DerivedProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self._incrementer
+    r1 = box(int, r0)
+    return r1
+def DerivedProperty.next(self):
+    self :: DerivedProperty
+    r0 :: object
+    r1 :: int
+    r2 :: str
+    r3, r4 :: object
+    r5 :: int
+    r6 :: DerivedProperty
+L0:
+    r0 = self._incr_func
+    r1 = self.value
+    r2 = unicode_1 :: static  ('_incr_func')
+    r3 = box(int, r1)
+    r4 = py_method_call(self, r2, r3)
+    r5 = unbox(int, r4)
+    r6 = DerivedProperty(r0, r5)
+    return r6
+def DerivedProperty.next__BaseProperty_glue(self):
+    self, r0 :: DerivedProperty
+L0:
+    r0 = self.next
+    return r0
+def DerivedProperty.value(self):
+    self :: DerivedProperty
+    r0 :: int
+L0:
+    r0 = self._incrementer
+    return r0
+def DerivedProperty.value__BaseProperty_glue(self):
+    self :: DerivedProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self.value
+    r1 = box(int, r0)
+    return r1
+def AgainProperty.bad_value(self):
+    self :: AgainProperty
+    r0 :: int
+L0:
+    r0 = self._incrementer
+    return r0
+def AgainProperty.bad_value__DerivedProperty_glue(self):
+    self :: AgainProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self.bad_value
+    r1 = box(int, r0)
+    return r1
+def AgainProperty.bad_value__BaseProperty_glue(self):
+    self :: AgainProperty
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self.bad_value
+    r1 = box(int, r0)
+    return r1
+def AgainProperty.next(self):
+    self :: AgainProperty
+    r0 :: object
+    r1 :: int
+    r2 :: str
+    r3, r4 :: object
+    r5 :: int
+    r6 :: str
+    r7, r8 :: object
+    r9 :: int
+    r10 :: AgainProperty
+L0:
+    r0 = self._incr_func
+    r1 = self.value
+    r2 = unicode_1 :: static  ('_incr_func')
+    r3 = box(int, r1)
+    r4 = py_method_call(self, r2, r3)
+    r5 = unbox(int, r4)
+    r6 = unicode_1 :: static  ('_incr_func')
+    r7 = box(int, r5)
+    r8 = py_method_call(self, r6, r7)
+    r9 = unbox(int, r8)
+    r10 = AgainProperty(r0, r9)
+    return r10
+def AgainProperty.next__DerivedProperty_glue(self):
+    self, r0 :: AgainProperty
+L0:
+    r0 = self.next
+    return r0
+def AgainProperty.next__BaseProperty_glue(self):
+    self, r0 :: AgainProperty
+L0:
+    r0 = self.next
+    return r0
+
+[case testPropertyTraitSubclassing]
+from mypy_extensions import trait
+@trait
+class SubclassedTrait:
+    @property
+    def this(self) -> SubclassedTrait:
+        return self
+
+    @property
+    def boxed(self) -> object:
+        return 3
+
+class DerivingObject(SubclassedTrait):
+    @property
+    def this(self) -> DerivingObject:
+        return self
+
+    @property
+    def boxed(self) -> int:
+        return 5
+[out]
+def SubclassedTrait.boxed(self):
+    self :: SubclassedTrait
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = 3
+    r1 = box(int, r0)
+    return r1
+def SubclassedTrait.this(self):
+    self :: SubclassedTrait
+L0:
+    return self
+def DerivingObject.boxed(self):
+    self :: DerivingObject
+    r0 :: int
+L0:
+    r0 = 5
+    return r0
+def DerivingObject.boxed__SubclassedTrait_glue(self):
+    self :: DerivingObject
+    r0 :: int
+    r1 :: object
+L0:
+    r0 = self.boxed
+    r1 = box(int, r0)
+    return r1
+def DerivingObject.this(self):
+    self :: DerivingObject
+L0:
+    return self
+def DerivingObject.this__SubclassedTrait_glue(self):
+    self, r0 :: DerivingObject
+L0:
+    r0 = self.this
+    return r0
+
 [case testNativeIndex]
 from typing import List
 class A:

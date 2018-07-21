@@ -3,7 +3,7 @@
 
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Sized, Dict, Optional, Tuple, Any,
-    overload, Mapping, Union
+    overload, Mapping, Union, Callable
 )
 
 T = TypeVar('T')
@@ -51,7 +51,7 @@ class float:
     def __add__(self, n: float) -> float: pass
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
-    def __div__(self, n: float) -> float: pass
+    def __truediv__(self, n: float) -> float: pass
 
 class bytes:
     def __init__(self, x: object) -> None: pass
@@ -107,6 +107,21 @@ class set(Generic[T]):
 
 class slice: pass
 
+class property:
+    def __init__(self, fget: Optional[Callable[[Any], Any]] = ...,
+                 fset: Optional[Callable[[Any, Any], None]] = ...,
+                 fdel: Optional[Callable[[Any], None]] = ...,
+                 doc: Optional[str] = ...) -> None: ...
+    def getter(self, fget: Callable[[Any], Any]) -> property: ...
+    def setter(self, fset: Callable[[Any, Any], None]) -> property: ...
+    def deleter(self, fdel: Callable[[Any], None]) -> property: ...
+    def __get__(self, obj: Any, type: Optional[type] = ...) -> Any: ...
+    def __set__(self, obj: Any, value: Any) -> None: ...
+    def __delete__(self, obj: Any) -> None: ...
+    def fget(self) -> Any: ...
+    def fset(self, value: Any) -> None: ...
+    def fdel(self) -> None: ...
+
 class BaseException: pass
 
 class Exception(BaseException):
@@ -119,6 +134,10 @@ class LookupError(Exception): pass
 class KeyError(LookupError): pass
 
 class IndexError(LookupError): pass
+
+class RuntimeError(Exception): pass
+
+class NotImplementedError(RuntimeError): pass
 
 
 def id(o: object) -> int: pass

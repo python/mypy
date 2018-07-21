@@ -1304,6 +1304,14 @@ class ClassIR:
         self.name = name
         self.module_name = module_name
         self.is_trait = is_trait
+        # Properties are accessed like attributes, but have behaivor like method calls.
+        # They don't belong in the methods dictionary, since we don't want to expose them to
+        # Python's method API. But we want to put them into our own vtable as methods, so that
+        # they are properly handled and overridden.
+        self.properties = OrderedDict()  # type: OrderedDict[str, FuncIR]
+        # We generate these in prepare_class_def so that we have access to them when generating
+        # other methods and properties that rely on these types.
+        self.property_types = OrderedDict()  # type: OrderedDict[str, RType]
         self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
@@ -1341,6 +1349,8 @@ class ClassIR:
         for ir in self.mro:
             if name in ir.attributes:
                 return ir.attributes[name]
+            if name in ir.property_types:
+                return ir.property_types[name]
         assert False, '%r has no attribute %r' % (self.name, name)
 
     def method_sig(self, name: str) -> FuncSignature:
@@ -1359,6 +1369,8 @@ class ClassIR:
         for ir in self.mro:
             if name in ir.methods:
                 return ir.methods[name]
+            if name in ir.properties:
+                return ir.properties[name]
         return None
 
 

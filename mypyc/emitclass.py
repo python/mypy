@@ -25,16 +25,16 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fullname = '{}.{}'.format(module, name)
 
     setup_name = new_name = clear_name = dealloc_name = '0'
-    traverse_name = getseters_name = vtable_name = '0'
+    traverse_name = vtable_name = '0'
     if not cl.is_trait:
         setup_name = '{}_setup'.format(name_prefix)
         new_name = '{}_new'.format(name_prefix)
         traverse_name = '{}_traverse'.format(name_prefix)
         clear_name = '{}_clear'.format(name_prefix)
         dealloc_name = '{}_dealloc'.format(name_prefix)
-        getseters_name = '{}_getseters'.format(name_prefix)
         vtable_name = '{}_vtable'.format(name_prefix)
 
+    getseters_name = '{}_getseters'.format(name_prefix)
     methods_name = '{}_methods'.format(name_prefix)
     base_arg = "&{}".format(
         emitter.type_struct_name(cl.base)) if cl.base and not cl.traits else "0"
@@ -88,10 +88,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         generate_native_getters_and_setters(cl, emitter)
         vtable_name = generate_vtables(cl, vtable_name, emitter)
         emit_line()
-        generate_getseter_declarations(cl, emitter)
-        emit_line()
-        generate_getseters_table(cl, getseters_name, emitter)
-        emit_line()
+    generate_getseter_declarations(cl, emitter)
+    emit_line()
+    generate_getseters_table(cl, getseters_name, emitter)
+    emit_line()
     generate_methods_table(cl, methods_name, emitter)
     emit_line()
 
@@ -156,7 +156,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emitter.emit_line()
         generate_constructor_for_class(cl, ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
-        generate_getseters(cl, emitter)
+    generate_getseters(cl, emitter)
 
 
 def getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
@@ -410,14 +410,20 @@ def generate_as_mapping_for_class(index_method: FuncIR,
 
 
 def generate_getseter_declarations(cl: ClassIR, emitter: Emitter) -> None:
-    for attr in cl.attributes:
+    if not cl.is_trait:
+        for attr in cl.attributes:
+            emitter.emit_line('static PyObject *')
+            emitter.emit_line('{}({} *self, void *closure);'.format(
+                getter_name(cl, attr, emitter.names),
+                cl.struct_name(emitter.names)))
+            emitter.emit_line('static int')
+            emitter.emit_line('{}({} *self, PyObject *value, void *closure);'.format(
+                setter_name(cl, attr, emitter.names),
+                cl.struct_name(emitter.names)))
+    for prop in cl.properties:
         emitter.emit_line('static PyObject *')
         emitter.emit_line('{}({} *self, void *closure);'.format(
-            getter_name(cl, attr, emitter.names),
-            cl.struct_name(emitter.names)))
-        emitter.emit_line('static int')
-        emitter.emit_line('{}({} *self, PyObject *value, void *closure);'.format(
-            setter_name(cl, attr, emitter.names),
+            getter_name(cl, prop, emitter.names),
             cl.struct_name(emitter.names)))
 
 
@@ -426,22 +432,32 @@ def generate_getseters_table(cl: ClassIR,
                              emitter: Emitter) -> None:
 
     emitter.emit_line('static PyGetSetDef {}[] = {{'.format(name))
-    for attr in cl.attributes:
-        emitter.emit_line('{{"{}",'.format(attr))
-        emitter.emit_line(' (getter){}, (setter){},'.format(getter_name(cl, attr, emitter.names),
-                                                            setter_name(cl, attr, emitter.names)))
-        emitter.emit_line(' NULL, NULL},')
+    if not cl.is_trait:
+        for attr in cl.attributes:
+            emitter.emit_line('{{"{}",'.format(attr))
+            emitter.emit_line(' (getter){}, (setter){},'.format(
+                getter_name(cl, attr, emitter.names), setter_name(cl, attr, emitter.names)))
+            emitter.emit_line(' NULL, NULL},')
+    for prop in cl.properties:
+        emitter.emit_line('{{"{}",'.format(prop))
+        emitter.emit_line(' (getter){},'.format(getter_name(cl, prop, emitter.names)))
+        emitter.emit_line('NULL, NULL, NULL},')
     emitter.emit_line('{NULL}  /* Sentinel */')
     emitter.emit_line('};')
 
 
 def generate_getseters(cl: ClassIR, emitter: Emitter) -> None:
-    for i, (attr, rtype) in enumerate(cl.attributes.items()):
-        generate_getter(cl, attr, rtype, emitter)
-        emitter.emit_line('')
-        generate_setter(cl, attr, rtype, emitter)
-        if i < len(cl.attributes) - 1:
+    if not cl.is_trait:
+        for i, (attr, rtype) in enumerate(cl.attributes.items()):
+            generate_getter(cl, attr, rtype, emitter)
             emitter.emit_line('')
+            generate_setter(cl, attr, rtype, emitter)
+            if i < len(cl.attributes) - 1:
+                emitter.emit_line('')
+    for prop, func_ir in cl.properties.items():
+        rtype = func_ir.sig.ret_type
+        emitter.emit_line('')
+        generate_readonly_getter(cl, prop, rtype, func_ir, emitter)
 
 
 def generate_getter(cl: ClassIR,
@@ -491,4 +507,24 @@ def generate_setter(cl: ClassIR,
     emitter.emit_line('} else')
     emitter.emit_line('    self->{} = {};'.format(attr, emitter.c_undefined_value(rtype)))
     emitter.emit_line('return 0;')
+    emitter.emit_line('}')
+
+
+def generate_readonly_getter(cl: ClassIR,
+                             attr: str,
+                             rtype: RType,
+                             func_ir: FuncIR,
+                             emitter: Emitter) -> None:
+    emitter.emit_line('static PyObject *')
+    emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl, attr, emitter.names),
+                                                           cl.struct_name(emitter.names)))
+    emitter.emit_line('{')
+    if rtype.is_unboxed:
+        emitter.emit_line('{}retval = {}{}((PyObject *) self);'.format(
+            emitter.ctype_spaced(rtype), NATIVE_PREFIX, func_ir.cname(emitter.names)))
+        emitter.emit_box('retval', 'retbox', rtype, declare_dest=True)
+        emitter.emit_line('return retbox;')
+    else:
+        emitter.emit_line('return {}{}((PyObject *) self);'.format(NATIVE_PREFIX,
+                                                                   func_ir.cname(emitter.names)))
     emitter.emit_line('}')

@@ -17,6 +17,7 @@ from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, 
 from abc import abstractmethod
 import sys
 import traceback
+import itertools
 
 from mypy.nodes import (
     Node, MypyFile, SymbolNode, Statement, FuncItem, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
@@ -145,11 +146,16 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
     for entry in parent.vtable_entries:
         if isinstance(entry, VTableMethod):
             method = entry.method
+            child_method = None
             if method.name in cls.methods:
+                child_method = cls.methods[method.name]
+            elif method.name in cls.properties:
+                child_method = cls.properties[method.name]
+            if child_method is not None:
                 # TODO: emit a wrapper for __init__ that raises or something
-                if (is_same_method_signature(method.sig, cls.methods[method.name].sig)
+                if (is_same_method_signature(method.sig, child_method.sig)
                         or method.name == '__init__'):
-                    entry = VTableMethod(cls, entry.name, cls.methods[method.name])
+                    entry = VTableMethod(cls, entry.name, child_method)
                 else:
                     entry = VTableMethod(cls, entry.name,
                                          cls.glue_methods[(entry.cls, method.name)])
@@ -162,7 +168,6 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
             if parent.is_trait:
                 assert cls.vtable is not None
                 entry = cls.vtable_entries[cls.vtable[entry.name] + int(entry.is_setter)]
-
         updated.append(entry)
     return updated
 
@@ -195,7 +200,7 @@ def compute_vtable(cls: ClassIR) -> None:
         entries.append(VTableAttr(cls, attr, is_setter=True))
 
     for t in [cls] + cls.traits:
-        for fn in t.methods.values():
+        for fn in itertools.chain(t.properties.values(), t.methods.values()):
             # TODO: don't generate a new entry when we overload without changing the type
             if fn == cls.get_method(fn.name):
                 cls.vtable[fn.name] = len(entries)
@@ -310,6 +315,18 @@ def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
             ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, FuncDef):
             ir.method_types[name] = mapper.fdef_to_sig(node.node)
+        elif isinstance(node.node, Decorator):
+            # meaningful decorators (@property, @abstractmethod) are removed from this list by mypy
+            assert node.node.decorators == []
+            # TODO: do something about abstract methods here. Currently, they are handled just like
+            # normal methods.
+            if node.node.func.is_property:
+                assert node.node.func.type
+                sig = mapper.fdef_to_sig(node.node.func)
+                ir.method_types[name] = sig
+                ir.property_types[name] = sig.ret_type
+            else:
+                ir.method_types[name] = mapper.fdef_to_sig(node.node.func)
 
     # Set up the parent class
     assert all(base.type in mapper.type_to_ir for base in info.bases
@@ -493,24 +510,39 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_class_def(self, cdef: ClassDef) -> None:
         class_ir = self.mapper.type_to_ir[cdef.info]
         for name, node in sorted(cdef.info.names.items(), key=lambda x: x[0]):
+            fdef = None
             if isinstance(node.node, FuncDef):
                 fdef = node.node
-                func_ir, _ = self.gen_func_def(fdef, fdef.name(), class_ir.method_sig(fdef.name()),
-                                               cdef.name)
+            if isinstance(node.node, Decorator):
+                fdef = node.node.func
 
-                self.functions.append(func_ir)
+            if fdef is None:
+                continue
+
+            func_ir, _ = self.gen_func_def(fdef, fdef.name(), class_ir.method_sig(fdef.name()),
+                                           cdef.name)
+
+            self.functions.append(func_ir)
+
+            if fdef.is_property:
+                class_ir.properties[fdef.name()] = func_ir
+            else:
                 class_ir.methods[fdef.name()] = func_ir
 
-                # If this overrides a parent class method with a different type, we need
-                # to generate a glue method to mediate between them.
-                for cls in class_ir.mro[1:]:
-                    if (name in cls.method_types and name != '__init__'
-                            and not is_same_method_signature(class_ir.method_types[name],
-                                                             cls.method_types[name])):
+            # If this overrides a parent class method with a different type, we need
+            # to generate a glue method to mediate between them.
+            for cls in class_ir.mro[1:]:
+                if (name in cls.method_types and name != '__init__'
+                        and not is_same_method_signature(class_ir.method_types[name],
+                                                         cls.method_types[name])):
+                    if fdef.is_property:
+                        f = self.gen_glue_property(cls.method_types[name], func_ir, class_ir, cls,
+                                                   fdef.line)
+                    else:
                         f = self.gen_glue_method(cls.method_types[name], func_ir, class_ir, cls,
                                                  fdef.line)
-                        class_ir.glue_methods[(cls, name)] = f
-                        self.functions.append(f)
+                    class_ir.glue_methods[(cls, name)] = f
+                    self.functions.append(f)
 
     def visit_import(self, node: Import) -> None:
         if node.is_unreachable or node.is_mypy_only:
@@ -592,6 +624,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                       cls.name, self.module_name,
                       FuncSignature(rt_args, ret_type), blocks, env)
 
+    def gen_glue_property(self, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR,
+                          line: int) -> FuncIR:
+        """Similarly to methods, properties of derived types can be covariantly subtyped. Thus,
+        properties also require glue. However, this only requires the return type to change.
+        Further, instead of a method call, an attribute get is performed."""
+        self.enter(FuncInfo())
+
+        rt_arg = RuntimeArg('self', RInstance(cls))
+        arg = self.read_from_target(self.environment.add_local_reg(Var('self'), RInstance(cls),
+                                                                   is_arg=True), line)
+        self.ret_types[-1] = sig.ret_type
+
+        retval = self.add(GetAttr(arg, target.name, line))
+        retbox = self.coerce(retval, sig.ret_type, line)
+        self.add(Return(retbox))
+
+        blocks, env, return_type, _ = self.leave()
+        return FuncIR(target.name + '__' + base.name + '_glue',
+                      cls.name, self.module_name,
+                      FuncSignature([rt_arg], return_type), blocks, env)
+
     def gen_arg_default(self) -> None:
         """Generate blocks for arguments that have default values.
 
@@ -612,6 +665,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def gen_func_def(self, fitem: FuncItem, name: str, sig: FuncSignature,
                      class_name: Optional[str] = None) -> Tuple[FuncIR, Optional[Value]]:
+        # TODO: do something about abstract methods.
+
         """Generates and returns the FuncIR for a given FuncDef.
 
         If the given FuncItem is a nested function, then we generate a callable class representing
