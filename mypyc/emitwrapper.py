@@ -2,8 +2,9 @@
 
 from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
-from mypyc.ops import FuncIR, RType, is_object_rprimitive
+from mypyc.ops import FuncIR, RType, RuntimeArg, is_object_rprimitive
 from mypyc.namegen import NameGenerator
+from typing import List
 
 
 def wrapper_function_header(fn: FuncIR, names: NameGenerator) -> str:
@@ -26,18 +27,22 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
         arg = real_args.pop(0)
         emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
 
+    optional_args = [arg for arg in fn.args if arg.optional]
+
     arg_names = ''.join('"{}", '.format(arg.name) for arg in real_args)
     emitter.emit_line('static char *kwlist[] = {{{}0}};'.format(arg_names))
     for arg in real_args:
-        emitter.emit_line('PyObject *obj_{};'.format(arg.name))
-    arg_spec = 'O' * len(real_args)
+        emitter.emit_line('PyObject *obj_{}{};'.format(
+                          arg.name, ' = NULL' if arg.optional else ''))
+    arg_format = '{}{}:f'.format('O' * (len(real_args) - len(optional_args)),
+        '|' + 'O' * len(optional_args) if len(optional_args) > 0 else '')
     arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in real_args)
     emitter.emit_lines(
-        'if (!PyArg_ParseTupleAndKeywords(args, kw, "{}:f", kwlist{})) {{'.format(
-            arg_spec, arg_ptrs),
+        'if (!PyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(
+            arg_format, arg_ptrs),
         'return NULL;',
         '}')
-    generate_wrapper_core(fn, emitter)
+    generate_wrapper_core(fn, emitter, optional_args)
     emitter.emit_line('}')
 
 
@@ -63,14 +68,15 @@ def generate_dunder_wrapper(fn: FuncIR, emitter: Emitter) -> None:
     emitter.emit_line('}')
 
 
-def generate_wrapper_core(fn: FuncIR, emitter: Emitter) -> None:
+def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
+                          optional_args: List[RuntimeArg] = []) -> None:
     """Generates the core part of a wrapper function for a native function.
     This expects each argument as a PyObject * named obj_{arg} as a precondition.
     It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
     makes the call, then boxes the result if necessary and returns it.
     """
     for arg in fn.args:
-        generate_arg_check(arg.name, arg.type, emitter)
+        generate_arg_check(arg.name, arg.type, emitter, arg in optional_args)
     native_args = ', '.join('arg_{}'.format(arg.name) for arg in fn.args)
     if fn.ret_type.is_unboxed:
         # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
@@ -89,7 +95,7 @@ def generate_wrapper_core(fn: FuncIR, emitter: Emitter) -> None:
         # TODO: Tracebacks?
 
 
-def generate_arg_check(name: str, typ: RType, emitter: Emitter) -> None:
+def generate_arg_check(name: str, typ: RType, emitter: Emitter, optional: bool = False) -> None:
     """Insert a runtime check for argument and unbox if necessary.
 
     The object is named PyObject *obj_{}. This is expected to generate
@@ -99,11 +105,21 @@ def generate_arg_check(name: str, typ: RType, emitter: Emitter) -> None:
     if typ.is_unboxed:
         # Borrow when unboxing to avoid reference count manipulation.
         emitter.emit_unbox('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                           'return NULL;', declare_dest=True, borrow=True)
+                           'return NULL;', declare_dest=True, borrow=True, optional=optional)
     elif is_object_rprimitive(typ):
         # Trivial, since any object is valid.
-        emitter.emit_line('PyObject *arg_{} = obj_{};'.format(name, name))
+        if optional:
+            emitter.emit_line('PyObject *arg_{};'.format(name))
+            emitter.emit_line('if (obj_{} == NULL) {{'.format(name))
+            emitter.emit_line('arg_{} = {};'.format(name, emitter.c_error_value(typ)))
+            emitter.emit_lines('} else {', 'arg_{} = obj_{}; '.format(name, name), '}')
+        else:
+            emitter.emit_line('PyObject *arg_{} = obj_{};'.format(name, name))
     else:
         emitter.emit_cast('obj_{}'.format(name), 'arg_{}'.format(name), typ,
-                          declare_dest=True)
-        emitter.emit_line('if (arg_{} == NULL) return NULL;'.format(name))
+                          declare_dest=True, optional=optional)
+        if optional:
+            emitter.emit_line('if (obj_{} != NULL && arg_{} == NULL) return NULL;'.format(
+                              name, name))
+        else:
+            emitter.emit_line('if (arg_{} == NULL) return NULL;'.format(name, name))

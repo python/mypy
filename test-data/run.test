@@ -297,8 +297,10 @@ def g() -> None:
     assert f(2) == (5, "test")
     assert f(s = "123", x = -2) == (1, "123")
 [file driver.py]
-from native import g
+from native import f, g
 g()
+assert f(2) == (5, "test")
+assert f(s = "123", x = -2) == (1, "123")
 
 [case testMethodCallWithDefaultArgs]
 from typing import Tuple, List
@@ -312,8 +314,11 @@ def g() -> None:
     assert a.f(2) == (5, "test")
     assert a.f(s = "123", x = -2) == (1, "123")
 [file driver.py]
-from native import g
+from native import A, g
 g()
+a = A()
+assert a.f(2) == (5, "test")
+assert a.f(s = "123", x = -2) == (1, "123")
 
 [case testPycall]
 import testmodule

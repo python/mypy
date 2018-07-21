@@ -30,11 +30,21 @@ class TestArgCheck(unittest.TestCase):
     def test_check_int(self) -> None:
         emitter = Emitter(self.context)
         generate_arg_check('x', int_rprimitive, emitter)
+        generate_arg_check('y', int_rprimitive, emitter, True)
         lines = emitter.fragments
         self.assert_lines([
             'CPyTagged arg_x;',
             'if (PyLong_Check(obj_x))',
             '    arg_x = CPyTagged_BorrowFromObject(obj_x);',
+            'else {',
+            '    PyErr_SetString(PyExc_TypeError, "int object expected");',
+            '    return NULL;',
+            '}',
+            'CPyTagged arg_y;',
+            'if (obj_y == NULL) {',
+            '    arg_y = CPY_INT_TAG;',
+            '} else if (PyLong_Check(obj_y))',
+            '    arg_y = CPyTagged_BorrowFromObject(obj_y);',
             'else {',
             '    PyErr_SetString(PyExc_TypeError, "int object expected");',
             '    return NULL;',

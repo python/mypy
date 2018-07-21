@@ -1173,12 +1173,13 @@ class RaiseStandardError(RegisterOp):
 
 
 class RuntimeArg:
-    def __init__(self, name: str, typ: RType) -> None:
+    def __init__(self, name: str, typ: RType, optional: bool = False) -> None:
         self.name = name
         self.type = typ
+        self.optional = optional
 
     def __repr__(self) -> str:
-        return 'RuntimeArg(name=%s, type=%s)' % (self.name, self.type)
+        return 'RuntimeArg(name=%s, type=%s, optional=%r)' % (self.name, self.type, self.optional)
 
 
 class FuncSignature:

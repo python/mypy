@@ -235,7 +235,7 @@ class Emitter:
         return short_name(pretty_name)
 
     def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
-                  custom_message: Optional[str] = None) -> None:
+                  custom_message: Optional[str] = None, optional: bool = False) -> None:
         """Emit code for casting a value of given type.
 
         Somewhat strangely, this supports unboxed types but only
@@ -280,8 +280,8 @@ class Emitter:
                 prefix = 'PyBool'
             else:
                 assert False, prefix
+            self.emit_arg_check(src, dest, typ, '({}_Check({}))'.format(prefix, src), optional)
             self.emit_lines(
-                'if ({}_Check({}))'.format(prefix, src),
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
@@ -290,8 +290,8 @@ class Emitter:
         elif is_tuple_rprimitive(typ):
             if declare_dest:
                 self.emit_line('{} {};'.format(self.ctype(typ), dest))
+            self.emit_arg_check(src, dest, typ, '(PyTuple_Check({}))'.format(src), optional)
             self.emit_lines(
-                'if (PyTuple_Check({}))'.format(src),
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
@@ -300,10 +300,9 @@ class Emitter:
         elif isinstance(typ, RInstance):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
+            self.emit_arg_check(src, dest, typ, '(PyObject_TypeCheck({}, &{}))'.format(src,
+                    self.type_struct_name(typ.class_ir)), optional)
             self.emit_lines(
-                'if (PyObject_TypeCheck({}, &{}))'.format(
-                    src,
-                    self.type_struct_name(typ.class_ir)),
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
@@ -312,8 +311,8 @@ class Emitter:
         elif is_none_rprimitive(typ):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
+            self.emit_arg_check(src, dest, typ, '({} == Py_None)'.format(src), optional)
             self.emit_lines(
-                'if ({} == Py_None)'.format(src),
                 '    {} = {};'.format(dest, src),
                 'else {',
                 err,
@@ -322,12 +321,15 @@ class Emitter:
         elif is_object_rprimitive(typ):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
+            self.emit_arg_check(src, dest, typ, '', optional)
             self.emit_line('{} = {};'.format(dest, src))
+            if optional:
+                self.emit_line('}')
         elif isinstance(typ, ROptional):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
+            self.emit_arg_check(src, dest, typ, '({} == Py_None)'.format(src), optional)
             self.emit_lines(
-                'if ({} == Py_None)'.format(src),
                 '    {} = {};'.format(dest, src),
                 'else {')
             self.emit_cast(src, dest, typ.value_type, custom_message=err)
@@ -335,8 +337,18 @@ class Emitter:
         else:
             assert False, 'Cast not implemented: %s' % typ
 
+    def emit_arg_check(self, src: str, dest: str, typ: RType, check: str, optional: bool) -> None:
+        if optional:
+            self.emit_line('if ({} == NULL) {{'.format(src))
+            self.emit_line('{} = {};'.format(dest, self.c_error_value(typ)))
+        if check != '':
+            self.emit_line('{}if {}'.format('} else ' if optional else '', check))
+        elif optional:
+            self.emit_line('else {')
+
     def emit_unbox(self, src: str, dest: str, typ: RType, custom_failure: Optional[str] = None,
-                   declare_dest: bool = False, borrow: bool = False) -> None:
+                   declare_dest: bool = False, borrow: bool = False,
+                   optional: bool = False) -> None:
         """Emit code for unboxing a value of given type (from PyObject *).
 
         Evaluate C code in 'failure' if the value has an incompatible type.
@@ -364,7 +376,7 @@ class Emitter:
         if is_int_rprimitive(typ):
             if declare_dest:
                 self.emit_line('CPyTagged {};'.format(dest))
-            self.emit_line('if (PyLong_Check({}))'.format(src))
+            self.emit_arg_check(src, dest, typ, '(PyLong_Check({}))'.format(src), optional)
             if borrow:
                 self.emit_line('    {} = CPyTagged_BorrowFromObject({});'.format(dest, src))
             else:
@@ -376,7 +388,7 @@ class Emitter:
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line('char {};'.format(dest))
-            self.emit_line('if (!PyBool_Check(%s)) {' % src)
+            self.emit_arg_check(src, dest, typ, '(!PyBool_Check({})) {{'.format(src), optional)
             self.emit_lines(*failure)
             self.emit_line('} else')
             conversion = 'PyObject_IsTrue({})'.format(src)
@@ -385,9 +397,9 @@ class Emitter:
             self.declare_tuple_struct(typ)
             if declare_dest:
                 self.emit_line('{} {};'.format(self.ctype(typ), dest))
-            self.emit_line(
-                'if (!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(src, src,
-                                                                              len(typ.types)))
+            self.emit_arg_check(src, dest, typ,
+                '(!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(
+                    src, src, len(typ.types)), optional)
             self.emit_lines(*failure)  # TODO: Decrease refcount?
             self.emit_line('} else {')
             for i, item_type in enumerate(typ.types):
