@@ -140,8 +140,9 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
 
     # We must check for TupleTypes before Instances, since Tuple[A, ...]
     # is an Instance
-    if is_overlapping_tuples(t, s, use_promotions):
-        return True
+    tup_overlap = is_overlapping_tuples(t, s, use_promotions)
+    if tup_overlap is not None:
+        return tup_overlap
 
     if isinstance(t, Instance):
         if isinstance(s, Instance):
@@ -193,10 +194,10 @@ def is_overlapping_tuples(t: Type, s: Type, use_promotions: bool) -> Optional[bo
                 if all(is_overlapping_types(ti, si, use_promotions)
                        for ti, si in zip(t.items, s.items)):
                     return True
+        # TupleType and non-tuples do not overlap
         return False
-    # TupleType and non-tuples are handled later
-    # Otherwise, no tuples are involved
-    return False
+    # No tuples are involved here
+    return None
 
 
 def adjust_tuple(left: Type, r: Type) -> Optional[TupleType]:
