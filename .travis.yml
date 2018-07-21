@@ -26,6 +26,7 @@ matrix:
       env: PYTHONVERSION=3.6.3
 
 before_install: |
+  set -e
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     export PYTHONVERSION=`python --version | awk '{ print $2 }'`
 
@@ -61,6 +62,7 @@ install:
   - pip install -r external/mypy/test-requirements.txt
 
 script: |
+  set -e
   export PYTHONPATH=`pwd`/external/mypy
   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
     export PYTHONCONFIG="$PYTHONDIR/bin/python-config"
