@@ -282,3 +282,13 @@ L26:
 L27:
     dec_ref r6
     goto L18
+
+[case testDocstring1]
+def lol() -> None:
+    """Hello"""
+    pass
+[out]
+L0:
+    r0 = unicode_0 :: static  ('Hello')
+    r1 = None
+    return r1

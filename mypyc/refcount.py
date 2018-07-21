@@ -101,7 +101,7 @@ def transform_block(block: BasicBlock,
                 # Decrement source that won't be live afterwards.
                 if src not in post_live[key] and src not in pre_borrow[key]:
                     maybe_append_dec_ref(ops, src)
-            if not op.is_void and op not in post_live[key]:
+            if not op.is_void and op not in post_live[key] and not op.is_borrowed:
                 maybe_append_dec_ref(ops, op)
         elif isinstance(op, Return) and op.reg in pre_borrow[key]:
             # The return op returns a new reference.
