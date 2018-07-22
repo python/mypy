@@ -7,7 +7,7 @@ from mypy.types import (
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike
 )
-from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation
+from mypy.subtypes import is_equivalent, is_subtype, is_protocol_implementation, is_proper_subtype
 
 from mypy import experiments
 
@@ -118,6 +118,8 @@ def is_overlapping_types(t: Type, s: Type, use_promotions: bool = False) -> bool
             isinstance(s, Instance) and s.type.fullname() == 'builtins.object'):
         return True
 
+    if is_proper_subtype(t, s) or is_proper_subtype(s, t):
+        return True
     # Since we are effectively working with the erased types, we only
     # need to handle occurrences of TypeVarType at the top level.
     if isinstance(t, TypeVarType):
@@ -338,7 +340,8 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return TupleType(items, t.fallback)
         # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
         elif (isinstance(self.s, Instance) and
-              self.s.type.fullname() == 'builtins.tuple' and self.s.args):
+              (self.s.type.fullname() == 'builtins.tuple' or is_proper_subtype(t, self.s))
+              and self.s.args):
             return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
         elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
             # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
