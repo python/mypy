@@ -13,7 +13,7 @@ static PyObject *int_from_str(const char *str) {
 
 static std::string str_from_object(PyObject *x) {
     PyObject *str = PyObject_Str(x);
-    char *utf8 = PyUnicode_AsUTF8(str);
+    const char *utf8 = PyUnicode_AsUTF8(str);
     return std::string(utf8);
 }
 
