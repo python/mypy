@@ -281,6 +281,7 @@ L2:
     goto L1
 L3:
     r6 = no_err_occurred
+L4:
     r7 = None
     return r7
 
@@ -336,6 +337,7 @@ L5:
     goto L1
 L6:
     r15 = no_err_occurred
+L7:
     return s
 
 [case testMultipleAssignment]

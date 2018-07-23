@@ -656,7 +656,7 @@ L0:
     r0 = iter d :: object
 L1:
     r1 = next r0 :: object
-    if is_error(r1) goto L4 else goto L2
+    if is_error(r1) goto L5 else goto L2
 L2:
     r2 = unbox(int, r1)
     dec_ref r1
@@ -670,8 +670,9 @@ L2:
     goto L1
 L3:
     r6 = no_err_occurred
+L4:
     r7 = None
     return r7
-L4:
+L5:
     dec_ref r0
     goto L3

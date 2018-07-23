@@ -176,4 +176,5 @@ L2:
     goto L1
 L3:
     r8 = no_err_occurred
+L4:
     return d

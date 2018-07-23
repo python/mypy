@@ -67,6 +67,105 @@ list_iter(list(reversed(range(5))))
 1
 0
 
+[case testLoopElse]
+from typing import Iterator
+def run_for_range(n: int) -> None:
+    for i in range(n):
+        if i == 3:
+            break
+        print(i)
+    else:
+        print(n+1)
+
+def run_for_list(n: int) -> None:
+    for i in list(range(n)):
+        if i == 3:
+            break
+        print(i)
+    else:
+        print(n+1)
+
+def run_for_iter(n: int) -> None:
+    def identity(x: Iterator[int]) -> Iterator[int]:
+        return x
+    for i in identity(range(n)):
+        if i == 3:
+            break
+        print(i)
+    else:
+        print(n+1)
+
+def count(n: int) -> int:
+    i = 1
+    while i <= n:
+        i = i + 1
+        if i == 5:
+            break
+    else:
+        i *= -1
+    return i
+
+def nested_while() -> int:
+    while True:
+        while False:
+            pass
+        else:
+            break
+    else:
+        return -1
+    return 0
+
+def nested_for() -> int:
+    for x in range(1000):
+        for y in [1,2,3]:
+            pass
+        else:
+            break
+    else:
+        return -1
+    return 0
+
+[file driver.py]
+from native import run_for_range, run_for_list, run_for_iter, count, nested_while, nested_for
+assert nested_while() == 0
+assert nested_for() == 0
+assert count(0) == -1
+assert count(1) == -2
+assert count(5) == 5
+assert count(6) == 5
+run_for_range(3)
+run_for_range(5)
+print('==')
+run_for_list(3)
+run_for_list(5)
+print('==')
+run_for_iter(3)
+run_for_iter(5)
+[out]
+0
+1
+2
+4
+0
+1
+2
+==
+0
+1
+2
+4
+0
+1
+2
+==
+0
+1
+2
+4
+0
+1
+2
+
 [case testRecursiveFibonacci]
 def fib(n: int) -> int:
     if n <= 1:
