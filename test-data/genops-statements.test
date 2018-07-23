@@ -46,12 +46,9 @@ L0:
 L1:
     r1 = 5
     r2 = n < r1 :: int
-    if r2 goto L2 else goto L4 :: bool
+    if r2 goto L2 else goto L3 :: bool
 L2:
-    goto L4
 L3:
-    goto L1
-L4:
     r3 = None
     return r3
 
@@ -71,16 +68,15 @@ L0:
     n = r1
 L1:
     r2 = n < r0 :: int
-    if r2 goto L2 else goto L5 :: bool
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    goto L5
+    goto L4
 L3:
-L4:
     r3 = 1
     r4 = n + r3 :: int
     n = r4
     goto L1
-L5:
+L4:
     r5 = None
     return r5
 
@@ -104,21 +100,15 @@ L0:
 L1:
     r1 = 5
     r2 = n < r1 :: int
-    if r2 goto L2 else goto L8 :: bool
+    if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
     r3 = 4
     r4 = n < r3 :: int
-    if r4 goto L4 else goto L6 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
-    goto L6
 L5:
-    goto L3
 L6:
-    goto L8
-L7:
-    goto L1
-L8:
     r5 = None
     return r5
 
@@ -138,12 +128,10 @@ L0:
 L1:
     r1 = 5
     r2 = n < r1 :: int
-    if r2 goto L2 else goto L4 :: bool
+    if r2 goto L2 else goto L3 :: bool
 L2:
     goto L1
 L3:
-    goto L1
-L4:
     r3 = None
     return r3
 
@@ -163,16 +151,14 @@ L0:
     n = r1
 L1:
     r2 = n < r0 :: int
-    if r2 goto L2 else goto L5 :: bool
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    goto L4
 L3:
-L4:
     r3 = 1
     r4 = n + r3 :: int
     n = r4
     goto L1
-L5:
+L4:
     r5 = None
     return r5
 
@@ -196,21 +182,17 @@ L0:
 L1:
     r1 = 5
     r2 = n < r1 :: int
-    if r2 goto L2 else goto L8 :: bool
+    if r2 goto L2 else goto L6 :: bool
 L2:
 L3:
     r3 = 4
     r4 = n < r3 :: int
-    if r4 goto L4 else goto L6 :: bool
+    if r4 goto L4 else goto L5 :: bool
 L4:
     goto L3
 L5:
-    goto L3
+    goto L1
 L6:
-    goto L1
-L7:
-    goto L1
-L8:
     r5 = None
     return r5
 
@@ -313,7 +295,7 @@ L0:
     r1 = iter d :: object
 L1:
     r2 = next r1 :: object
-    if is_error(r2) goto L6 else goto L2
+    if is_error(r2) goto L5 else goto L2
 L2:
     r3 = unbox(int, r2)
     key = r3
@@ -324,20 +306,19 @@ L2:
     r8 = r6 % r7 :: int
     r9 = 0
     r10 = r8 != r9 :: int
-    if r10 goto L3 else goto L5 :: bool
+    if r10 goto L3 else goto L4 :: bool
 L3:
     goto L1
 L4:
-L5:
     r11 = box(int, key)
     r12 = d[r11] :: dict
     r13 = unbox(int, r12)
     r14 = s + r13 :: int
     s = r14
     goto L1
-L6:
+L5:
     r15 = no_err_occurred
-L7:
+L6:
     return s
 
 [case testMultipleAssignment]

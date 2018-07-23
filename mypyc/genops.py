@@ -660,7 +660,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.activate_block(error_block)
                 reg = self.accept(arg.initializer)
                 self.add(Assign(target.register, reg))
-                self.add(Goto(body_block))
+                self.goto(body_block)
                 self.activate_block(body_block)
 
     def gen_func_def(self, fitem: FuncItem, name: str, sig: FuncSignature,
@@ -957,16 +957,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.process_conditional(stmt.expr[0], if_body, else_body)
         self.activate_block(if_body)
         self.accept(stmt.body[0])
-        self.add_leave(next)
+        self.goto(next)
         if stmt.else_body:
             self.activate_block(else_body)
             self.accept(stmt.else_body)
-            self.add_leave(next)
+            self.goto(next)
         self.activate_block(next)
-
-    def add_leave(self, target: BasicBlock) -> None:
-        if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], ControlOp):
-            self.add(Goto(target))
 
     class LoopNonlocalControl(NonlocalControl):
         def __init__(self, outer: NonlocalControl,
@@ -977,11 +973,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         def gen_break(self, builder: 'IRBuilder') -> None:
             builder.add(Goto(self.break_block))
-            builder.new_block()
 
         def gen_continue(self, builder: 'IRBuilder') -> None:
             builder.add(Goto(self.continue_block))
-            builder.new_block()
 
         def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
             self.outer.gen_return(builder, value)
@@ -1006,14 +1000,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.activate_block(body)
         self.accept(s.body)
         # Add branch to the top at the end of the body.
-        self.add(Goto(top))
+        self.goto(top)
 
         self.pop_loop_stack()
 
         if s.else_body is not None:
             self.activate_block(else_block)
             self.accept(s.else_body)
-            self.add_leave(next)
+            self.goto(next)
 
         self.activate_block(next)
 
@@ -1055,7 +1049,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             # Initialize loop index to 0.
             index_target = self.assign(index, IntExpr(0))
-            self.add(Goto(condition_block))
+            self.goto(condition_block)
 
             # Add loop condition check.
             self.activate_block(condition_block)
@@ -1074,7 +1068,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                   self.binary_op(index_reg, one_reg, '+', line), line)
 
             # Go back to loop condition check.
-            self.add(Goto(condition_block))
+            self.goto(condition_block)
 
             self.pop_loop_stack()
 
@@ -1110,7 +1104,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             self.goto_and_activate(increment_block)
             self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', line)))
-            self.add(Goto(condition_block))
+            self.goto(condition_block)
 
             self.pop_loop_stack()
 
@@ -1139,7 +1133,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.activate_block(body_block)
             self.assign_to_target(self.get_assignment_target(index), next_reg, line)
             body_insts()
-            self.add(Goto(increment_block))
+            self.goto(increment_block)
 
             # Create a new block for when the loop is finished. Set the branch to go here if the
             # conditional evaluates to true. If an exception was raised during the loop, then
@@ -1147,14 +1141,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # will be propagated using the ERR_FALSE flag.
             self.activate_block(error_check_block)
             self.add(PrimitiveOp([], no_err_occurred_op, line))
-            self.add(Goto(normal_loop_exit))
+            self.goto(normal_loop_exit)
 
             self.pop_loop_stack()
 
         if else_insts is not None:
             self.activate_block(else_block)
             else_insts()
-            self.add_leave(exit_block)
+            self.goto(exit_block)
         self.activate_block(exit_block)
 
     def visit_break_stmt(self, node: BreakStmt) -> None:
@@ -1605,13 +1599,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.activate_block(left_body)
         left_coerced = self.coerce(left_value, expr_type, expr.line)
         self.add(Assign(target, left_coerced))
-        self.add(Goto(next))
+        self.goto(next)
 
         self.activate_block(right_body)
         right_value = self.accept(expr.right)
         right_coerced = self.coerce(right_value, expr_type, expr.line)
         self.add(Assign(target, right_coerced))
-        self.add(Goto(next))
+        self.goto(next)
 
         self.activate_block(next)
         return target
@@ -1628,13 +1622,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         true_value = self.accept(expr.if_expr)
         true_value = self.coerce(true_value, expr_type, expr.line)
         self.add(Assign(target, true_value))
-        self.add(Goto(next))
+        self.goto(next)
 
         self.activate_block(else_body)
         false_value = self.accept(expr.else_expr)
         false_value = self.coerce(false_value, expr_type, expr.line)
         self.add(Assign(target, false_value))
-        self.add(Goto(next))
+        self.goto(next)
 
         self.activate_block(next)
 
@@ -1844,7 +1838,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.error_handlers.append(except_entry)
         self.goto_and_activate(BasicBlock())
         body()
-        self.add_leave(else_block)
+        self.goto(else_block)
         self.error_handlers.pop()
 
         # The error handler catches the error and then checks it
@@ -1873,7 +1867,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.assign_to_target(
                     target, self.primitive_op(get_exc_value_op, [], var.line), var.line)
             handler_body()
-            self.add_leave(cleanup_block)
+            self.goto(cleanup_block)
             if next_block:
                 self.activate_block(next_block)
 
@@ -1892,13 +1886,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.activate_block(cleanup_block)
         self.primitive_op(restore_exc_info_op, [old_exc], line)
         self.primitive_op(no_err_occurred_op, [], NO_TRACEBACK_LINE_NO)
-        self.add(Goto(exit_block))
+        self.goto(exit_block)
 
         # If present, compile the else body in the obvious way
         if else_body:
             self.activate_block(else_block)
             else_body()
-            self.add(Goto(exit_block))
+            self.goto(exit_block)
 
         self.activate_block(exit_block)
 
@@ -1970,7 +1964,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.nonlocal_control.append(control)
         self.goto_and_activate(BasicBlock())
         try_body()
-        self.add_leave(main_entry)
+        self.goto(main_entry)
         self.nonlocal_control.pop()
         self.error_handlers.pop()
 
@@ -1986,18 +1980,18 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.activate_block(main_entry)
         if ret_reg:
             self.add(Assign(ret_reg, self.add(LoadErrorValue(self.ret_types[-1]))))
-        self.add(Goto(return_entry))
+        self.goto(return_entry)
 
         self.activate_block(return_entry)
         self.add(Assign(old_exc, self.add(LoadErrorValue(exc_rtuple))))
-        self.add(Goto(finally_block))
+        self.goto(finally_block)
 
         # Entry block for errors
         self.activate_block(err_handler)
         if ret_reg:
             self.add(Assign(ret_reg, self.add(LoadErrorValue(self.ret_types[-1]))))
         self.add(Assign(old_exc, self.primitive_op(error_catch_op, [], -1)))
-        self.add(Goto(finally_block))
+        self.goto(finally_block)
 
         return old_exc
 
@@ -2045,7 +2039,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # TODO: handle break/continue
         self.activate_block(rest)
         out_block = BasicBlock()
-        self.add(Goto(out_block))
+        self.goto(out_block)
 
         # If there was an exception, restore again
         self.activate_block(cleanup_block)
@@ -2419,7 +2413,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.blocks[-1].append(block)
 
     def goto_and_activate(self, block: BasicBlock) -> None:
-        self.add(Goto(block))
+        self.goto(block)
         self.activate_block(block)
 
     def new_block(self) -> BasicBlock:
@@ -2452,6 +2446,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if isinstance(op, RegisterOp):
             self.environment.add_op(op)
         return op
+
+    def goto(self, target: BasicBlock) -> None:
+        if not self.blocks[-1][-1].ops or not isinstance(self.blocks[-1][-1].ops[-1], ControlOp):
+            self.add(Goto(target))
 
     def primitive_op(self, desc: OpDescription, args: List[Value], line: int) -> Value:
         assert desc.result_type is not None

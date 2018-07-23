@@ -1777,33 +1777,31 @@ L0:
 L1:
     r11 = len r7 :: list
     r12 = r8 < r11 :: int
-    if r12 goto L2 else goto L10 :: bool
+    if r12 goto L2 else goto L8 :: bool
 L2:
     r13 = r7[r8] :: list
     r14 = unbox(int, r13)
     x = r14
     r15 = 2
     r16 = x != r15 :: int
-    if r16 goto L5 else goto L3 :: bool
+    if r16 goto L4 else goto L3 :: bool
 L3:
-    goto L9
+    goto L7
 L4:
-L5:
     r17 = 3
     r18 = x != r17 :: int
-    if r18 goto L8 else goto L6 :: bool
+    if r18 goto L6 else goto L5 :: bool
+L5:
+    goto L7
 L6:
-    goto L9
-L7:
-L8:
     r19 = x * x :: int
     r20 = box(int, r19)
     r21 = r0.append(r20) :: list
-L9:
+L7:
     r22 = r8 + r10 :: int
     r8 = r22
     goto L1
-L10:
+L8:
     return r0
 
 [case testDictComprehension]
@@ -1842,34 +1840,32 @@ L0:
 L1:
     r11 = len r7 :: list
     r12 = r8 < r11 :: int
-    if r12 goto L2 else goto L10 :: bool
+    if r12 goto L2 else goto L8 :: bool
 L2:
     r13 = r7[r8] :: list
     r14 = unbox(int, r13)
     x = r14
     r15 = 2
     r16 = x != r15 :: int
-    if r16 goto L5 else goto L3 :: bool
+    if r16 goto L4 else goto L3 :: bool
 L3:
-    goto L9
+    goto L7
 L4:
-L5:
     r17 = 3
     r18 = x != r17 :: int
-    if r18 goto L8 else goto L6 :: bool
+    if r18 goto L6 else goto L5 :: bool
+L5:
+    goto L7
 L6:
-    goto L9
-L7:
-L8:
     r19 = x * x :: int
     r20 = box(int, x)
     r21 = box(int, r19)
     r22 = r0.__setitem__(r20, r21) :: dict
-L9:
+L7:
     r23 = r8 + r10 :: int
     r8 = r23
     goto L1
-L10:
+L8:
     return r0
 
 [case testLoopsMultipleAssign]
