@@ -2261,3 +2261,28 @@ typing.List[native.A] typing.List[typing.Tuple[int, str]] typing.List[typing.Lis
 Lol(a=1, b=[])
 10
 1
+
+[case testTupleAttr]
+from typing import Tuple
+class C:
+    b: Tuple[Tuple[Tuple[int, int], int], int, str, object]
+def f() -> None:
+    c = C()
+    c.b = (((1, 2), 2), 1, 'hi', 'hi2')
+    print(c.b)
+
+def g() -> None:
+    try:
+        h()
+    except Exception:
+        print('caught the exception')
+
+def h() -> Tuple[Tuple[Tuple[int, int], int], int, str, object]:
+    raise Exception('Intentional exception')
+[file driver.py]
+from native import f, g
+f()
+g()
+[out]
+(((1, 2), 2), 1, 'hi', 'hi2')
+caught the exception

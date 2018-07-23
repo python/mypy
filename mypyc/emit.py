@@ -1,14 +1,15 @@
 """Utilities for emitting C code."""
 
 from collections import OrderedDict
-from typing import List, Set, Dict, Optional
+from typing import List, Set, Dict, Optional, List, Callable
 
 from mypyc.common import REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX
 from mypyc.ops import (
     Any, AssignmentTarget, Environment, BasicBlock, Value, Register, RType, RTuple, RInstance,
     ROptional, RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
-    is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR, FuncIR
+    is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
+    FuncIR, int_rprimitive
 )
 from mypyc.namegen import NameGenerator
 
@@ -170,17 +171,47 @@ class Emitter:
 
         return result
 
+    def tuple_undefined_check_cond(
+            self, rtuple: RTuple, tuple_expr_in_c: str,
+            c_type_compare_val: Callable[[RType], str], compare: str) -> str:
+        item_type = rtuple.types[0]
+        if not isinstance(item_type, RTuple):
+            return '{}.f0 {} {}'.format(
+                tuple_expr_in_c, compare, c_type_compare_val(item_type))
+        elif isinstance(item_type, RTuple) and len(item_type.types) == 0:
+            # empty tuple
+            return '{}.dummy_var_to_avoid_empty_struct {} {}'.format(
+                tuple_expr_in_c, compare, c_type_compare_val(int_rprimitive))
+        else:
+            return self.tuple_undefined_check_cond(
+                item_type, tuple_expr_in_c + '.f0', c_type_compare_val, compare)
+
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         context = self.context
         id = self.tuple_unique_id(rtuple)
         name = 'tuple_undefined_' + id
         if name not in context.statics:
             struct_name = self.tuple_struct_name(rtuple)
-            values = ', '.join(self.c_undefined_value(item)
-                               for item in rtuple.types)
-            init = 'struct {} {} = {{ {} }};'.format(struct_name, name, values)
+            values = self.tuple_undefined_value_helper(rtuple)
+            init = 'struct {} {} = {{ {} }};'.format(struct_name, name, ''.join(values))
             context.statics[name] = init
         return name
+
+    def tuple_undefined_value_helper(self, rtuple: RTuple) -> List[str]:
+        res = []
+        # see tuple_c_declaration()
+        if len(rtuple.types) == 0:
+            return [self.c_undefined_value(int_rprimitive)]
+        for item in rtuple.types:
+            if not isinstance(item, RTuple):
+                res.append(self.c_undefined_value(item))
+            else:
+                sub_list = self.tuple_undefined_value_helper(item)
+                res.append('{ ')
+                res.extend(sub_list)
+                res.append(' }')
+            res.append(', ')
+        return res[:-1]
 
     # Higher-level operations
 
@@ -465,8 +496,8 @@ class Emitter:
             if len(rtype.types) == 0:
                 return  # empty tuples can't fail.
             else:
-                self.emit_line('if ({}.f0 == {}) {{'.format(value,
-                                                            self.c_error_value(rtype.types[0])))
+                cond = self.tuple_undefined_check_cond(rtype, value, self.c_error_value, '==')
+                self.emit_line('if ({}) {{'.format(cond))
         self.emit_lines(failure, '}')
 
     def emit_gc_visit(self, target: str, rtype: RType) -> None:
