@@ -68,8 +68,37 @@ class can be used:
 For more information see `official docs <https://docs.python.org/3/library/dataclasses.html>`_
 and `PEP 557 <https://www.python.org/dev/peps/pep-0557/>`_.
 
-**Note:** Some functions in the ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
+Caveats/Known Issues
+====================
+
+Some functions in the ``dataclasses`` module, such as ``replace()`` and ``asdict()``,
 have imprecise (too permissive) types. This will be fixed in future releases.
+
+Mypy does not yet recognize aliases of ``dataclasses.dataclass``, and will
+probably never recognize dynamically computed decorators. The following examples
+do **not** work:
+
+.. code-block:: python
+
+    from dataclasses import dataclass
+
+    dataclass_alias = dataclass
+    dataclass_alias2 = dataclass(order=False)
+    def dataclass_wrapper(cls):
+      return dataclass(cls)
+
+    @dataclass_alias
+    class BadlyDecoratedClass1: arg1: int
+
+    @dataclass_alias2
+    class BadlyDecoratedClass2: arg1: int
+
+    @dataclass_wrapper
+    class BadlyDecoratedClass3: arg1: int
+
+    BadlyDecoratedClass1(arg1=1) # error: Unexpected keyword argument
+    BadlyDecoratedClass2(arg1=1) # error: Unexpected keyword argument
+    BadlyDecoratedClass3(arg1=1) # error: Unexpected keyword argument
 
 .. _attrs_package:
 
