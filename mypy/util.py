@@ -1,4 +1,5 @@
 """Utility functions with no non-trivial dependencies."""
+import inspect
 import genericpath  # type: ignore  # no stub files yet
 import os
 import pathlib
@@ -6,7 +7,7 @@ import re
 import subprocess
 import sys
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Type
 
 
 T = TypeVar('T')
@@ -189,24 +190,39 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
+FIELDS_CACHE = {}  # type: Dict[Type[object], List[str]]
+
+
 def replace_object_state(new: object, old: object) -> None:
     """Copy state of old node to the new node.
 
-    This handles cases where there is __slots__ and/or __dict__.
+    This handles cases where there is __dict__ and/or attribute descriptors
+    (either from slots or because the type is defined in a C extension module).
 
     Assume that both objects have the same __class__.
     """
     if hasattr(old, '__dict__'):
         new.__dict__ = old.__dict__
-    if hasattr(old, '__slots__'):
-        # Use __mro__ since some classes override 'mro' with something different.
-        for base in type(old).__mro__:
-            if '__slots__' in base.__dict__:
-                for attr in getattr(base, '__slots__'):
-                    if hasattr(old, attr):
-                        setattr(new, attr, getattr(old, attr))
-                    elif hasattr(new, attr):
-                        delattr(new, attr)
+
+    cls = old.__class__
+    # Maintain a cache of type -> attributes
+    if cls not in FIELDS_CACHE:
+        members = inspect.getmembers(
+            cls,
+            lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o))
+        FIELDS_CACHE[cls] = [x for x, y in members if x != '__weakref__']
+    for attr in FIELDS_CACHE[cls]:
+        try:
+            if hasattr(old, attr):
+                setattr(new, attr, getattr(old, attr))
+            elif hasattr(new, attr):
+                delattr(new, attr)
+        # There is no way to distinguish getsetdescriptors that allow
+        # writes from ones that don't (I think?), so we just ignore
+        # AttributeErrors if we need to.
+        # TODO: What about getsetdescriptors that act like properties???
+        except AttributeError:
+            pass
 
 
 def is_sub_path(path1: str, path2: str) -> bool:
