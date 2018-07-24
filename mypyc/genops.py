@@ -546,7 +546,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_import(self, node: Import) -> None:
         if node.is_unreachable or node.is_mypy_only:
-            pass
+            return
         if not node.is_top_level:
             assert False, "non-toplevel imports not supported"
 
@@ -555,7 +555,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_import_from(self, node: ImportFrom) -> None:
         if node.is_unreachable or node.is_mypy_only:
-            pass
+            return
 
         # TODO support these?
         assert not node.relative
@@ -569,7 +569,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def visit_import_all(self, node: ImportAll) -> None:
         if node.is_unreachable or node.is_mypy_only:
-            pass
+            return
         if not node.is_top_level:
             assert False, "non-toplevel imports not supported"
 

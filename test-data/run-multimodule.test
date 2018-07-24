@@ -376,3 +376,76 @@ print('>', other.x)
 -
 > 1
 > 2
+
+[case testMultiModuleCycleIfMypy1]
+from other import foo, bar
+
+class Foo:
+    def foo(self) -> None:
+        foo(self)
+class Bar:
+    def bar(self) -> None:
+        bar(self)
+
+[file other.py]
+from typing import TYPE_CHECKING
+MYPY = False
+if MYPY:
+    from native import Foo
+if TYPE_CHECKING:
+    from native import Bar
+
+def foo(x: 'Foo') -> None:
+    pass
+def bar(x: 'Bar') -> None:
+    pass
+
+[file driver.py]
+from native import Foo, Bar
+Foo().foo()
+Bar().bar()
+
+[case testMultiModuleCycleIfMypy2]
+MYPY = False
+if MYPY:
+    from other import C
+
+class D:
+    def __init__(self) -> None:
+        self.y = 1
+
+def f(c: 'C') -> int:
+    return c.x
+
+[file other.py]
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from native import D
+
+class C:
+    def __init__(self) -> None:
+        self.x = 2
+
+def g(d: 'D') -> int:
+    return d.y
+
+[file driver.py]
+from native import f, D
+from other import g, C
+
+assert f(C()) == 2
+assert g(D()) == 1
+
+try:
+    f(D())
+except TypeError:
+    pass
+else:
+    assert False
+
+try:
+    g(C())
+except TypeError:
+    pass
+else:
+    assert False
