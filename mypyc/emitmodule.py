@@ -11,7 +11,7 @@ from mypyc import genops
 from mypyc.common import PREFIX, TOP_LEVEL_NAME
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
-from mypyc.emitclass import generate_class
+from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header, generate_dunder_wrapper,
     dunder_wrapper_header
@@ -119,6 +119,8 @@ class ModuleGenerator:
             classes.extend([(module_name, cl) for cl in module.classes])
         # We must topo sort so that base classes are generated first.
         classes = sort_classes(classes)
+        for module_name, cl in classes:
+            generate_class_type_decl(cl, emitter)
         for module_name, cl in classes:
             generate_class(cl, module_name, emitter)
 

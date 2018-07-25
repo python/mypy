@@ -22,6 +22,9 @@ True
 class C:
     x: int
     y: int
+    z: 'D'
+class D:
+    pass
 [file driver.py]
 from native import C
 
