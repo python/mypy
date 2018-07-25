@@ -1,9 +1,12 @@
 #!/bin/bash -eux
 
 # Build a debug build of python, install it, and create a venv for it
-# This is mainly intended for use in our travis builds but there's no
-# reason it couldn't be used locally.
+# This is mainly intended for use in our travis builds but it can work
+# locally. (Though it unfortunately uses brew on OS X to deal with openssl
+# nonsense.)
 # Usage: build-debug-python.sh <version> <install prefix> <venv location>
+#
+# Running it locally might look something like: mkdir -p ~/src/cpython && cd ~/src/cpython && ~/src/mypyc/scripts/build-debug-python.sh 3.6.6 ~/src/cpython ~/src/mypyc/env-debug
 
 VERSION=$1
 PREFIX=$2
@@ -12,10 +15,18 @@ if [[ -f $PREFIX/bin/python3 ]]; then
     exit
 fi
 
-wget https://www.python.org/ftp/python/$VERSION/Python-$VERSION.tgz
+CPPFLAGS=""
+LDFLAGS=""
+if [[ $(uname) == Darwin ]]; then
+    brew install openssl xz
+    CPPFLAGS="-I$(brew --prefix openssl)/include"
+    LDFLAGS="-L$(brew --prefix openssl)/lib"
+fi
+
+curl -O https://www.python.org/ftp/python/$VERSION/Python-$VERSION.tgz
 tar zxf Python-$VERSION.tgz
 cd Python-$VERSION
-./configure CFLAGS='-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG' --with-pydebug --prefix=$PREFIX
+CPPFLAGS="$CPPFLAGS" LDFLAGS="$LDFLAGS" ./configure CFLAGS="-DPy_DEBUG -DPy_TRACE_REFS -DPYMALLOC_DEBUG" --with-pydebug --prefix=$PREFIX
 make -j4
 make install
 $PREFIX/bin/pip3 install virtualenv
