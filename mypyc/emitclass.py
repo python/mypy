@@ -16,7 +16,7 @@ from mypyc.namegen import NameGenerator
 
 
 def generate_class_type_decl(cl: ClassIR, emitter: Emitter) -> None:
-    emitter.emit_line('static PyTypeObject {};'.format(emitter.type_struct_name(cl)))
+    emitter.emit_line('static PyTypeObject *{};'.format(emitter.type_struct_name(cl)))
 
 
 def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
