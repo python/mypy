@@ -527,42 +527,53 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, self.module_name, sig), blocks, env)
         self.functions.append(func_ir)
 
-    def visit_class_def(self, cdef: ClassDef) -> None:
+    def visit_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
+        name = fdef.name()
         class_ir = self.mapper.type_to_ir[cdef.info]
-        for name, node in sorted(cdef.info.names.items(), key=lambda x: x[0]):
-            fdef = None
-            if isinstance(node.node, FuncDef):
-                fdef = node.node
-            if isinstance(node.node, Decorator):
-                fdef = node.node.func
 
-            if fdef is None:
+        func_ir, _ = self.gen_func_def(fdef, fdef.name(), class_ir.method_sig(fdef.name()),
+                                       cdef.name)
+
+        self.functions.append(func_ir)
+
+        if fdef.is_property:
+            class_ir.properties[name] = func_ir
+        else:
+            class_ir.methods[name] = func_ir
+
+        # If this overrides a parent class method with a different type, we need
+        # to generate a glue method to mediate between them.
+        for cls in class_ir.mro[1:]:
+            if (name in cls.method_decls and name != '__init__'
+                    and not is_same_method_signature(class_ir.method_decls[name].sig,
+                                                     cls.method_decls[name].sig)):
+                if fdef.is_property:
+                    f = self.gen_glue_property(cls.method_decls[name].sig, func_ir, class_ir,
+                                               cls, fdef.line)
+                else:
+                    f = self.gen_glue_method(cls.method_decls[name].sig, func_ir, class_ir,
+                                             cls, fdef.line)
+                class_ir.glue_methods[(cls, name)] = f
+                self.functions.append(f)
+
+    def visit_class_def(self, cdef: ClassDef) -> None:
+        for stmt in cdef.defs.body:
+            if isinstance(stmt, FuncDef):
+                self.visit_method(cdef, stmt)
+            elif isinstance(stmt, Decorator):
+                self.visit_method(cdef, stmt.func)
+            elif isinstance(stmt, PassStmt):
                 continue
-
-            func_ir, _ = self.gen_func_def(fdef, fdef.name(), class_ir.method_sig(fdef.name()),
-                                           cdef.name)
-
-            self.functions.append(func_ir)
-
-            if fdef.is_property:
-                class_ir.properties[fdef.name()] = func_ir
+            elif isinstance(stmt, AssignmentStmt):
+                # Variable declaration with no body
+                if isinstance(stmt.rvalue, TempNode):
+                    continue
+                assert False, "Class variables not supported yet"
+            elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
+                # Docstring. Ignore
+                pass
             else:
-                class_ir.methods[fdef.name()] = func_ir
-
-            # If this overrides a parent class method with a different type, we need
-            # to generate a glue method to mediate between them.
-            for cls in class_ir.mro[1:]:
-                if (name in cls.method_decls and name != '__init__'
-                        and not is_same_method_signature(class_ir.method_decls[name].sig,
-                                                         cls.method_decls[name].sig)):
-                    if fdef.is_property:
-                        f = self.gen_glue_property(cls.method_decls[name].sig, func_ir, class_ir,
-                                                   cls, fdef.line)
-                    else:
-                        f = self.gen_glue_method(cls.method_decls[name].sig, func_ir, class_ir,
-                                                 cls, fdef.line)
-                    class_ir.glue_methods[(cls, name)] = f
-                    self.functions.append(f)
+                assert False, "Unsupported statement in class body"
 
     def visit_import(self, node: Import) -> None:
         if node.is_unreachable or node.is_mypy_only:
