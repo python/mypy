@@ -8,7 +8,7 @@ from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import (
-    ClassIR, FuncIR, RType, RTuple, Environment, object_rprimitive, FuncSignature,
+    ClassIR, FuncIR, FuncDecl, RType, RTuple, Environment, object_rprimitive, FuncSignature,
     VTableMethod, VTableAttr, VTableEntries
 )
 from mypyc.sametype import is_same_type
@@ -51,11 +51,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     init_fn = cl.get_method('__init__')
     if init_fn:
         init_name = '{}_init'.format(name_prefix)
-        init_args = init_fn.args[1:]
         generate_init_for_class(cl, init_name, init_fn, emitter)
     else:
         init_name = '0'
-        init_args = []
 
     call_fn = cl.get_method('__call__')
     call_name = '{}{}'.format(PREFIX, call_fn.cname(emitter.names)) if call_fn else '0'
@@ -72,9 +70,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if not cl.is_trait:
         emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
         # TODO: Use RInstance
-        ctor = FuncIR(cl.name, None, module, FuncSignature(init_args, object_rprimitive),
-                      [], Environment())
-        emitter.emit_line(native_function_header(ctor, emitter) + ';')
+        assert cl.ctor is not None
+        emitter.emit_line(native_function_header(cl.ctor, emitter) + ';')
 
         emit_line()
         generate_new_for_class(cl, new_name, vtable_name, setup_name, emitter)
@@ -154,7 +151,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if not cl.is_trait:
         generate_setup_for_class(cl, setup_name, vtable_name, emitter)
         emitter.emit_line()
-        generate_constructor_for_class(cl, ctor, init_fn, setup_name, vtable_name, emitter)
+        generate_constructor_for_class(cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
     generate_getseters(cl, emitter)
 
@@ -290,7 +287,7 @@ def generate_setup_for_class(cl: ClassIR,
 
 
 def generate_constructor_for_class(cl: ClassIR,
-                                   fn: FuncIR,
+                                   fn: FuncDecl,
                                    init_fn: Optional[FuncIR],
                                    setup_name: str,
                                    vtable_name: str,
@@ -302,7 +299,7 @@ def generate_constructor_for_class(cl: ClassIR,
     emitter.emit_line('if (self == NULL)')
     emitter.emit_line('    return NULL;')
     if init_fn is not None:
-        args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.args])
+        args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
         emitter.emit_line('{}{}({});'.format(NATIVE_PREFIX, init_fn.cname(emitter.names), args))
     emitter.emit_line('return self;')
     emitter.emit_line('}')

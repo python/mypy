@@ -40,7 +40,6 @@ from mypy.types import (
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.subtypes import is_named_instance
-from mypy.checkmember import bind_self
 from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.common import ENV_ATTR_NAME, MAX_SHORT_INT, TOP_LEVEL_NAME
@@ -59,6 +58,7 @@ from mypyc.ops import (
     VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue,
     NO_TRACEBACK_LINE_NO,
+    FuncDecl,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import (
@@ -103,8 +103,14 @@ def build_ir(modules: List[MypyFile],
         mapper.type_to_ir[cdef.info] = class_ir
 
     # Populate structural information in class IR.
-    for _, cdef in classes:
-        prepare_class_def(cdef, mapper)
+    for module_name, cdef in classes:
+        prepare_class_def(module_name, cdef, mapper)
+
+    # Collect all the functions also
+    for module in modules:
+        for node in module.defs:
+            if isinstance(node, FuncDef):  # TODO: what else??
+                prepare_func_def(module.fullname(), None, node, mapper)
 
     # Generate IR for all modules.
     module_names = [mod.fullname() for mod in modules]
@@ -222,6 +228,7 @@ class Mapper:
 
     def __init__(self) -> None:
         self.type_to_ir = {}  # type: Dict[TypeInfo, ClassIR]
+        self.func_to_decl = {}  # type: Dict[SymbolNode, FuncDecl]
         # Maps integer, float, and unicode literals to a static name
         self.literals = {}  # type: LiteralsMap
 
@@ -284,7 +291,7 @@ class Mapper:
     def fdef_to_sig(self, fdef: FuncDef) -> FuncSignature:
         assert isinstance(fdef.type, CallableType)
         args = [RuntimeArg(arg.variable.name(), self.type_to_rtype(fdef.type.arg_types[i]),
-                arg.initializer is not None)
+                arg.kind)
                 for i, arg in enumerate(fdef.arguments)]
         ret = self.type_to_rtype(fdef.type.ret_type)
         return FuncSignature(args, ret)
@@ -306,7 +313,14 @@ class Mapper:
         return self.literals[key]
 
 
-def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
+def prepare_func_def(module_name: str, class_name: Optional[str],
+                     fdef: FuncDef, mapper: Mapper) -> FuncDecl:
+    decl = FuncDecl(fdef.name(), class_name, module_name, mapper.fdef_to_sig(fdef))
+    mapper.func_to_decl[fdef] = decl
+    return decl
+
+
+def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
     for name, node in info.names.items():
@@ -314,19 +328,25 @@ def prepare_class_def(cdef: ClassDef, mapper: Mapper) -> None:
             assert node.node.type, "Class member missing type"
             ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, FuncDef):
-            ir.method_types[name] = mapper.fdef_to_sig(node.node)
+            ir.method_decls[name] = prepare_func_def(module_name, cdef.name, node.node, mapper)
         elif isinstance(node.node, Decorator):
             # meaningful decorators (@property, @abstractmethod) are removed from this list by mypy
             assert node.node.decorators == []
             # TODO: do something about abstract methods here. Currently, they are handled just like
             # normal methods.
+            decl = prepare_func_def(module_name, cdef.name, node.node.func, mapper)
+            ir.method_decls[name] = decl
             if node.node.func.is_property:
                 assert node.node.func.type
-                sig = mapper.fdef_to_sig(node.node.func)
-                ir.method_types[name] = sig
-                ir.property_types[name] = sig.ret_type
-            else:
-                ir.method_types[name] = mapper.fdef_to_sig(node.node.func)
+                ir.property_types[name] = decl.sig.ret_type
+
+    # Set up a constructor decl
+    init_node = cdef.info['__init__'].node
+    if not ir.is_trait and isinstance(init_node, FuncDef):
+        init_sig = mapper.fdef_to_sig(init_node)
+        ctor_sig = FuncSignature(init_sig.args[1:], RInstance(ir))
+        ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
+        mapper.func_to_decl[cdef.info] = ir.ctor
 
     # Set up the parent class
     assert all(base.type in mapper.type_to_ir for base in info.bases
@@ -504,7 +524,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Generate special function representing module top level.
         blocks, env, ret_type, _ = self.leave()
         sig = FuncSignature([], none_rprimitive)
-        func_ir = FuncIR(TOP_LEVEL_NAME, None, self.module_name, sig, blocks, env)
+        func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, self.module_name, sig), blocks, env)
         self.functions.append(func_ir)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
@@ -532,15 +552,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # If this overrides a parent class method with a different type, we need
             # to generate a glue method to mediate between them.
             for cls in class_ir.mro[1:]:
-                if (name in cls.method_types and name != '__init__'
-                        and not is_same_method_signature(class_ir.method_types[name],
-                                                         cls.method_types[name])):
+                if (name in cls.method_decls and name != '__init__'
+                        and not is_same_method_signature(class_ir.method_decls[name].sig,
+                                                         cls.method_decls[name].sig)):
                     if fdef.is_property:
-                        f = self.gen_glue_property(cls.method_types[name], func_ir, class_ir, cls,
-                                                   fdef.line)
+                        f = self.gen_glue_property(cls.method_decls[name].sig, func_ir, class_ir,
+                                                   cls, fdef.line)
                     else:
-                        f = self.gen_glue_method(cls.method_types[name], func_ir, class_ir, cls,
-                                                 fdef.line)
+                        f = self.gen_glue_method(cls.method_decls[name].sig, func_ir, class_ir,
+                                                 cls, fdef.line)
                     class_ir.glue_methods[(cls, name)] = f
                     self.functions.append(f)
 
@@ -609,20 +629,17 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 for var, type in fake_vars]  # type: List[Value]
         self.ret_types[-1] = sig.ret_type
 
-        arg_types = [arg.type for arg in target.sig.args]
-        args = self.coerce_native_call_args(args, arg_types, line)
-        retval = self.add(MethodCall(target.ret_type,
-                                     args[0],
-                                     target.name,
-                                     args[1:],
-                                     line))
+        args = self.coerce_native_call_args(args, target.sig, line)
+        retval = self.add(MethodCall(args[0], target.name, args[1:], line))
         retval = self.coerce(retval, sig.ret_type, line)
         self.add(Return(retval))
 
         blocks, env, ret_type, _ = self.leave()
-        return FuncIR(target.name + '__' + base.name + '_glue',
-                      cls.name, self.module_name,
-                      FuncSignature(rt_args, ret_type), blocks, env)
+        return FuncIR(
+            FuncDecl(target.name + '__' + base.name + '_glue',
+                     cls.name, self.module_name,
+                     FuncSignature(rt_args, ret_type)),
+            blocks, env)
 
     def gen_glue_property(self, sig: FuncSignature, target: FuncIR, cls: ClassIR, base: ClassIR,
                           line: int) -> FuncIR:
@@ -641,9 +658,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add(Return(retbox))
 
         blocks, env, return_type, _ = self.leave()
-        return FuncIR(target.name + '__' + base.name + '_glue',
-                      cls.name, self.module_name,
-                      FuncSignature([rt_arg], return_type), blocks, env)
+        return FuncIR(
+            FuncDecl(target.name + '__' + base.name + '_glue',
+                     cls.name, self.module_name, FuncSignature([rt_arg], return_type)),
+            blocks, env)
 
     def gen_arg_default(self) -> None:
         """Generate blocks for arguments that have default values.
@@ -726,7 +744,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             func_ir = self.add_call_to_callable_class(blocks, sig, env, fn_info)
             func_reg = self.instantiate_callable_class(fn_info)  # type: Optional[Value]
         else:
-            func_ir = FuncIR(fn_info.name, class_name, self.module_name, sig, blocks, env)
+            assert isinstance(fitem, FuncDef)
+            func_ir = FuncIR(self.mapper.func_to_decl[fitem], blocks, env)
             func_reg = None
 
         return (func_ir, func_reg)
@@ -1223,14 +1242,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.add(TupleGet(base, expr.index.value, expr.line))
 
         index_reg = self.accept(expr.index)
-        # Index exprs can be type applications, in which case the type
-        # is missing from the table. Handle that by getting an Any.
-        return self.gen_method_call(self.types.get(expr.base, AnyType(TypeOfAny.special_form)),
-                                    base,
-                                    '__getitem__',
-                                    [index_reg],
-                                    self.node_type(expr),
-                                    expr.line)
+        return self.gen_method_call(
+            base, '__getitem__', [index_reg], self.node_type(expr), expr.line)
 
     def visit_int_expr(self, expr: IntExpr) -> Value:
         if expr.value > MAX_SHORT_INT:
@@ -1368,11 +1381,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def coerce_native_call_args(self,
                                 args: Sequence[Value],
-                                arg_types: Sequence[RType],
+                                sig: FuncSignature,
                                 line: int) -> List[Value]:
         coerced_arg_regs = []
-        for reg, arg_type in zip(args, arg_types):
-            coerced_arg_regs.append(self.coerce(reg, arg_type, line))
+        for reg, arg in zip(args, sig.args):
+            coerced_arg_regs.append(self.coerce(reg, arg.type, line))
         return coerced_arg_regs
 
     def visit_call_expr(self, expr: CallExpr) -> Value:
@@ -1424,28 +1437,22 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if target:
                 return target
 
-        # Don't rely on the inferred callee type, since it may have type
-        # variable substitutions that aren't valid at runtime (due to type
-        # erasure). Instead pick the declared signature of the native function
-        # as the true signature.
-        signature = self.get_native_signature(callee)
-
         # Standard native call if signature and fullname are good and all arguments are positional
         # or named.
-        if (signature is not None
+        if (callee.node is not None
                 and callee.fullname is not None
+                and callee.node in self.mapper.func_to_decl
                 and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)):
+            decl = self.mapper.func_to_decl[callee.node]
+
             # Normalize keyword args to positionals.
             arg_values_with_nones = self.keyword_args_to_positional(
-                arg_values, expr.arg_kinds, expr.arg_names, signature)
+                arg_values, expr.arg_kinds, expr.arg_names, decl.sig)
             # Put in errors for missing args, potentially to be filled in with default args later.
-            arg_values = self.missing_args_to_error_values(arg_values_with_nones,
-                                                           signature.arg_types)
+            arg_values = self.missing_args_to_error_values(arg_values_with_nones, decl.sig)
 
-            arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
-            arg_values = self.coerce_native_call_args(arg_values, arg_types, expr.line)
-            ret_type = self.type_to_rtype(signature.ret_type)
-            return self.add(Call(ret_type, callee.fullname, arg_values, expr.line))
+            arg_values = self.coerce_native_call_args(arg_values, decl.sig, expr.line)
+            return self.add(Call(decl, arg_values, expr.line))
 
         # Fall back to a Python call
         function = self.accept(callee)
@@ -1454,46 +1461,20 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def missing_args_to_error_values(self,
                                      args: List[Optional[Value]],
-                                     types: List[Type]) -> List[Value]:
+                                     sig: FuncSignature) -> List[Value]:
         """Generate LoadErrorValues for missing arguments.
 
         These get resolved to default values if they exist for the function in question. See
         gen_arg_default.
         """
         ret_args = []  # type: List[Value]
-        for reg, arg_type in zip(args, types):
+        for reg, arg in zip(args, sig.args):
             if reg is None:
-                reg = LoadErrorValue(self.type_to_rtype(arg_type))
+                reg = LoadErrorValue(arg.type)
                 reg.is_borrowed = True
                 self.add(reg)
             ret_args.append(reg)
         return ret_args
-
-    def get_native_signature(self, callee: RefExpr) -> Optional[CallableType]:
-        """Get the signature of a native function, or return None if not available.
-
-        This only works for normal functions, not methods.
-        """
-        signature = None
-        if self.is_native_module_ref_expr(callee):
-            node = callee.node
-            if isinstance(node, TypeInfo):
-                # NamedTuples and NewTypes don't get constructors generated by us
-                if self.is_synthetic_type(node):
-                    return None
-                node = node['__init__'].node
-                if isinstance(node, FuncDef) and isinstance(node.type, CallableType):
-                    signature = bind_self(node.type)
-                    # "__init__" has None return, but the type object returns
-                    # in instance.  Take the instance return type from the
-                    # inferred callee type, which we can trust since it can't
-                    # be erased from a type variable.
-                    inferred_sig = self.types[callee]
-                    assert isinstance(inferred_sig, CallableType)
-                    signature = signature.copy_modified(ret_type=inferred_sig.ret_type)
-            elif isinstance(node, FuncDef) and isinstance(node.type, CallableType):
-                signature = node.type
-        return signature
 
     def translate_method_call(self, expr: CallExpr, callee: MemberExpr) -> Value:
         """Generate IR for an arbitrary call of form e.m(...).
@@ -1513,8 +1494,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             args = [self.accept(arg) for arg in expr.args]
             assert callee.expr in self.types
             obj = self.accept(callee.expr)
-            return self.gen_method_call(self.types[callee.expr],
-                                        obj,
+            return self.gen_method_call(obj,
                                         callee.name,
                                         args,
                                         self.node_type(expr),
@@ -1523,7 +1503,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                         expr.arg_names)
 
     def gen_method_call(self,
-                        base_type: Type,
                         base: Value,
                         name: str,
                         arg_values: List[Value],
@@ -1538,13 +1517,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
-        base_rtype = self.type_to_rtype(base_type)
-        if isinstance(base_rtype, RInstance):
-            # Look up the declared signature of the method, since the
-            # inferred signature can have type variable substitutions which
-            # aren't valid at runtime due to type erasure.
-            signature = self.get_native_method_signature(base_type, name)
-            if signature:
+        if isinstance(base.type, RInstance):
+            if base.type.class_ir.has_method(name):
+                decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
                     assert arg_names is None, "arg_kinds not present but arg_names is"
                     arg_kinds = [ARG_POS for _ in arg_values]
@@ -1553,16 +1528,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     assert arg_names is not None, "arg_kinds present but arg_names is not"
 
                 # Normalize keyword args to positionals.
+                assert decl.bound_sig
                 arg_values_with_nones = self.keyword_args_to_positional(
-                    arg_values, arg_kinds, arg_names, signature)
+                    arg_values, arg_kinds, arg_names, decl.bound_sig)
                 arg_values = self.missing_args_to_error_values(arg_values_with_nones,
-                                                               signature.arg_types)
+                                                               decl.bound_sig)
+                arg_values = self.coerce_native_call_args(arg_values, decl.bound_sig, base.line)
 
-                arg_types = [self.type_to_rtype(arg_type) for arg_type in signature.arg_types]
-                arg_values = self.coerce_native_call_args(arg_values, arg_types, base.line)
-                target_type = self.type_to_rtype(signature.ret_type)
-
-                return self.add(MethodCall(target_type, base, name, arg_values, line))
+                return self.add(MethodCall(base, name, arg_values, line))
 
         # Try to do a special-cased method call
         target = self.translate_special_method_call(base, name, arg_values, return_rtype, line)
@@ -1571,14 +1544,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # Fall back to Python method call
         return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
-
-    def get_native_method_signature(self, typ: Type, name: str) -> Optional[CallableType]:
-        if isinstance(typ, Instance):
-            method = typ.type.get(name)
-            if method and isinstance(method.node, FuncDef) and isinstance(method.node.type,
-                                                                          CallableType):
-                return bind_self(method.node.type)
-        return None
 
     def translate_cast_expr(self, expr: CastExpr) -> Value:
         src = self.accept(expr.expr)
@@ -2665,7 +2630,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         function becomes a class method.
         """
         sig = FuncSignature((RuntimeArg('self', object_rprimitive),) + sig.args, sig.ret_type)
-        call = FuncIR('__call__', fn_info.callable_class.name, self.module_name, sig, blocks, env)
+        call = FuncIR(FuncDecl('__call__', fn_info.callable_class.name, self.module_name, sig),
+                      blocks, env)
         fn_info.callable_class.methods['__call__'] = call
         return call
 
@@ -2673,8 +2639,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """Assigns a callable class to a register named after the given function definition."""
         fitem = fn_info.fitem
 
-        fullname = '{}.{}'.format(self.module_name, fn_info.callable_class.name)
-        func_reg = self.add(Call(RInstance(fn_info.callable_class), fullname, [], fitem.line))
+        func_reg = self.add(Call(fn_info.callable_class.ctor, [], fitem.line))
 
         # Set the callable class' environment attribute to point at the environment class
         # defined in the callable class' immediate outer scope.
@@ -2717,8 +2682,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def instantiate_env_class(self) -> Value:
         """Assigns an environment class to a register named after the given function definition."""
-        fullname = '{}.{}'.format(self.module_name, self.fn_info.env_class.name)
-        self.fn_info.env_reg = self.add(Call(RInstance(self.fn_info.env_class), fullname, [],
+        self.fn_info.env_reg = self.add(Call(self.fn_info.env_class.ctor, [],
                                              self.fn_info.fitem.line))
 
         if self.fn_info.is_nested:
@@ -2813,12 +2777,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                    args: List[Value],
                                    arg_kinds: List[int],
                                    arg_names: List[Optional[str]],
-                                   signature: CallableType) -> List[Optional[Value]]:
+                                   sig: FuncSignature) -> List[Optional[Value]]:
         # NOTE: This doesn't support default argument values, *args or **kwargs.
+        sig_arg_kinds = [arg.kind for arg in sig.args]
+        sig_arg_names = [arg.name for arg in sig.args]
         formal_to_actual = map_actuals_to_formals(arg_kinds,
                                                   arg_names,
-                                                  signature.arg_kinds,
-                                                  signature.arg_names,
+                                                  sig_arg_kinds,
+                                                  sig_arg_names,
                                                   lambda n: AnyType(TypeOfAny.special_form))
         assert all(len(lst) <= 1 for lst in formal_to_actual)
         return [None if len(lst) == 0 else args[lst[0]] for lst in formal_to_actual]

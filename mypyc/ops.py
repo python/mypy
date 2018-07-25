@@ -18,7 +18,7 @@ from typing import (
 )
 from collections import OrderedDict
 
-from mypy.nodes import Block, SymbolNode, Var, FuncDef
+from mypy.nodes import Block, SymbolNode, Var, FuncDef, ARG_POS, ARG_OPT, ARG_NAMED_OPT
 
 from mypyc.namegen import NameGenerator
 from mypyc.common import TOP_LEVEL_NAME
@@ -725,16 +725,16 @@ class Call(RegisterOp):
     error_kind = ERR_MAGIC
 
     # TODO: take a FuncIR and extract the ret type
-    def __init__(self, ret_type: RType, fn: str, args: Sequence[Value], line: int) -> None:
+    def __init__(self, fn: 'FuncDecl', args: Sequence[Value], line: int) -> None:
         super().__init__(line)
         self.fn = fn
         self.args = list(args)
-        self.type = ret_type
+        self.type = fn.sig.ret_type
 
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
         # TODO: Display long name?
-        short_name = self.fn.rpartition('.')[2]
+        short_name = self.fn.name
         s = '%s(%s)' % (short_name, args)
         if not self.is_void:
             s = env.format('%r = ', self) + s
@@ -754,7 +754,6 @@ class MethodCall(RegisterOp):
 
     # TODO: extract the ret type from the receiver
     def __init__(self,
-                 ret_type: RType,
                  obj: Value,
                  method: str,
                  args: List[Value],
@@ -765,7 +764,10 @@ class MethodCall(RegisterOp):
         self.args = args
         assert isinstance(obj.type, RInstance), "Methods can only be called on instances"
         self.receiver_type = obj.type
-        self.type = ret_type
+        method_ir = self.receiver_type.class_ir.method_sig(method)
+        assert method_ir is not None, "{} doesn't have method {}".format(
+            self.receiver_type.name, method)
+        self.type = method_ir.ret_type
 
     def to_str(self, env: Environment) -> str:
         args = ', '.join(env.format('%r', arg) for arg in self.args)
@@ -1173,10 +1175,14 @@ class RaiseStandardError(RegisterOp):
 
 
 class RuntimeArg:
-    def __init__(self, name: str, typ: RType, optional: bool = False) -> None:
+    def __init__(self, name: str, typ: RType, kind: int = ARG_POS) -> None:
         self.name = name
         self.type = typ
-        self.optional = optional
+        self.kind = kind
+
+    @property
+    def optional(self) -> bool:
+        return self.kind == ARG_OPT or self.kind == ARG_NAMED_OPT
 
     def __repr__(self) -> str:
         return 'RuntimeArg(name=%s, type=%s, optional=%r)' % (self.name, self.type, self.optional)
@@ -1192,36 +1198,61 @@ class FuncSignature:
         return 'FuncSignature(args=%r, ret=%r)' % (self.args, self.ret_type)
 
 
-class FuncIR:
-    """Intermediate representation of a function with contextual information."""
-
+class FuncDecl:
     def __init__(self,
                  name: str,
                  class_name: Optional[str],
                  module_name: str,
-                 sig: FuncSignature,
-                 blocks: List[BasicBlock],
-                 env: Environment) -> None:
+                 sig: FuncSignature) -> None:
         self.name = name
         self.class_name = class_name
         self.module_name = module_name
-        self.blocks = blocks
-        self.env = env
         self.sig = sig
-
-    @property
-    def args(self) -> Sequence[RuntimeArg]:
-        return self.sig.args
-
-    @property
-    def ret_type(self) -> RType:
-        return self.sig.ret_type
+        if class_name is None:
+            self.bound_sig = None  # type: Optional[FuncSignature]
+        else:
+            self.bound_sig = FuncSignature(sig.args[1:], sig.ret_type)
 
     def cname(self, names: NameGenerator) -> str:
         name = self.name
         if self.class_name:
             name += '_' + self.class_name
         return names.private_name(self.module_name, name)
+
+
+class FuncIR:
+    """Intermediate representation of a function with contextual information."""
+
+    def __init__(self,
+                 decl: FuncDecl,
+                 blocks: List[BasicBlock],
+                 env: Environment) -> None:
+        self.decl = decl
+        self.blocks = blocks
+        self.env = env
+
+    @property
+    def args(self) -> Sequence[RuntimeArg]:
+        return self.decl.sig.args
+
+    @property
+    def ret_type(self) -> RType:
+        return self.decl.sig.ret_type
+
+    @property
+    def class_name(self) -> Optional[str]:
+        return self.decl.class_name
+
+    @property
+    def sig(self) -> FuncSignature:
+        return self.decl.sig
+
+    @property
+    def name(self) -> str:
+        return self.decl.name
+
+    def cname(self, names: NameGenerator) -> str:
+        return self.decl.cname(names)
 
     def __str__(self) -> str:
         return '\n'.join(format_func(self))
@@ -1304,6 +1335,8 @@ class ClassIR:
         self.name = name
         self.module_name = module_name
         self.is_trait = is_trait
+        # Default empty ctor
+        self.ctor = FuncDecl(name, None, module_name, FuncSignature([], RInstance(self)))
         # Properties are accessed like attributes, but have behaivor like method calls.
         # They don't belong in the methods dictionary, since we don't want to expose them to
         # Python's method API. But we want to put them into our own vtable as methods, so that
@@ -1315,7 +1348,7 @@ class ClassIR:
         self.attributes = OrderedDict()  # type: OrderedDict[str, RType]
         # We populate method_types with the signatures of every method before
         # we generate methods, and we rely on this information being present.
-        self.method_types = OrderedDict()  # type: OrderedDict[str, FuncSignature]
+        self.method_decls = OrderedDict()  # type: OrderedDict[str, FuncDecl]
         self.methods = OrderedDict()  # type: OrderedDict[str, FuncIR]
         # Glue methods for boxing/unboxing when a class changes the type
         # while overriding a method. Maps from (parent class overrided, method)
@@ -1351,13 +1384,23 @@ class ClassIR:
                 return ir.attributes[name]
             if name in ir.property_types:
                 return ir.property_types[name]
-        assert False, '%r has no attribute %r' % (self.name, name)
+        raise KeyError('%r has no attribute %r' % (self.name, name))
+
+    def method_decl(self, name: str) -> FuncDecl:
+        for ir in self.mro:
+            if name in ir.method_decls:
+                return ir.method_decls[name]
+        raise KeyError('%r has no attribute %r' % (self.name, name))
 
     def method_sig(self, name: str) -> FuncSignature:
-        for ir in self.mro:
-            if name in ir.method_types:
-                return ir.method_types[name]
-        assert False, '%r has no method %r' % (self.name, name)
+        return self.method_decl(name).sig
+
+    def has_method(self, name: str) -> bool:
+        try:
+            self.method_decl(name)
+        except KeyError:
+            return False
+        return True
 
     def name_prefix(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.name)

@@ -9,7 +9,7 @@ from mypyc.ops import (
     ROptional, RPrimitive, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
-    FuncIR, int_rprimitive
+    FuncIR, FuncDecl, int_rprimitive
 )
 from mypyc.namegen import NameGenerator
 
@@ -135,7 +135,7 @@ class Emitter:
     def c_error_value(self, rtype: RType) -> str:
         return self.c_undefined_value(rtype)
 
-    def native_function_name(self, fn: FuncIR) -> str:
+    def native_function_name(self, fn: FuncDecl) -> str:
         return '{}{}'.format(NATIVE_PREFIX, fn.cname(self.names))
 
     def tuple_ctype(self, rtuple: RTuple) -> str:

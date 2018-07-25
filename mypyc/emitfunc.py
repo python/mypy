@@ -9,7 +9,7 @@ from mypyc.ops import (
     LoadStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, Register, RType, RTuple, MethodCall, PrimitiveOp,
     EmitterInterface, Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
-    RaiseStandardError,
+    RaiseStandardError, FuncDecl,
 )
 from mypyc.namegen import NameGenerator
 
@@ -20,13 +20,13 @@ def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
     return '{} (*)({})'.format(ret, args)
 
 
-def native_function_header(fn: FuncIR, emitter: Emitter) -> str:
+def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
     args = []
-    for arg in fn.args:
+    for arg in fn.sig.args:
         args.append('{}{}{}'.format(emitter.ctype_spaced(arg.type), REG_PREFIX, arg.name))
 
     return 'static {ret_type}{name}({args})'.format(
-        ret_type=emitter.ctype_spaced(fn.ret_type),
+        ret_type=emitter.ctype_spaced(fn.sig.ret_type),
         name=emitter.native_function_name(fn),
         args=', '.join(args) or 'void')
 
@@ -39,7 +39,7 @@ def generate_native_function(fn: FuncIR,
     body = Emitter(emitter.context, fn.env)
     visitor = FunctionEmitterVisitor(body, declarations, fn.name, source_path, module_name)
 
-    declarations.emit_line('{} {{'.format(native_function_header(fn, emitter)))
+    declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
     body.indent()
 
     for r, i in fn.env.indexes.items():
@@ -239,8 +239,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_call(self, op: Call) -> None:
         dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
-        module_name, name = op.fn.rsplit('.', 1)
-        cname = self.names.private_name(module_name, name)
+        cname = op.fn.cname(self.names)
         self.emit_line('%s%s%s(%s);' % (dest, NATIVE_PREFIX, cname, args))
 
     def visit_method_call(self, op: MethodCall) -> None:

@@ -8,7 +8,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ops import (
     Environment, BasicBlock, FuncIR, RuntimeArg, RType, Goto, Return, LoadInt, Assign,
     IncRef, DecRef, Branch, Call, Unbox, Box, RTuple, TupleGet, GetAttr, PrimitiveOp,
-    RegisterOp,
+    RegisterOp, FuncDecl,
     ClassIR, RInstance, SetAttr, Op, Value, int_rprimitive, bool_rprimitive,
     list_rprimitive, dict_rprimitive, object_rprimitive, FuncSignature,
 )
@@ -132,11 +132,17 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """)
 
     def test_call(self) -> None:
-        self.assert_emit(Call(int_rprimitive, 'mod.myfn', [self.m], 55),
+        decl = FuncDecl('myfn', None, 'mod',
+                        FuncSignature([RuntimeArg('m', int_rprimitive)], int_rprimitive))
+        self.assert_emit(Call(decl, [self.m], 55),
                          "cpy_r_r0 = CPyDef_myfn(cpy_r_m);")
 
     def test_call_two_args(self) -> None:
-        self.assert_emit(Call(int_rprimitive, 'mod.myfn', [self.m, self.k], 55),
+        decl = FuncDecl('myfn', None, 'mod',
+                        FuncSignature([RuntimeArg('m', int_rprimitive),
+                                       RuntimeArg('n', int_rprimitive)],
+                                      int_rprimitive))
+        self.assert_emit(Call(decl, [self.m, self.k], 55),
                          "cpy_r_r0 = CPyDef_myfn(cpy_r_m, cpy_r_k);")
 
     def test_inc_ref(self) -> None:
@@ -273,7 +279,7 @@ class TestGenerateFunction(unittest.TestCase):
 
     def test_simple(self) -> None:
         self.block.ops.append(Return(self.reg))
-        fn = FuncIR('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive),
+        fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], int_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(['mod']))
         generate_native_function(fn, emitter, 'prog.py', 'prog')
@@ -292,7 +298,7 @@ class TestGenerateFunction(unittest.TestCase):
         op = LoadInt(5)
         self.block.ops.append(op)
         self.env.add_op(op)
-        fn = FuncIR('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive),
+        fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.block], self.env)
         emitter = Emitter(EmitterContext(['mod']))
         generate_native_function(fn, emitter, 'prog.py', 'prog')

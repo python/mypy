@@ -63,7 +63,7 @@ dunder_methods_to_generate = ['__getitem__']
 
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
-    emitter.emit_line('{};'.format(native_function_header(fn, emitter)))
+    emitter.emit_line('{};'.format(native_function_header(fn.decl, emitter)))
     if fn.name != TOP_LEVEL_NAME:
         emitter.emit_line('{};'.format(wrapper_function_header(fn, emitter.names)))
         if fn.name in dunder_methods_to_generate:
@@ -275,7 +275,7 @@ class ModuleGenerator:
         for fn in reversed(module.functions):
             if fn.name == TOP_LEVEL_NAME:
                 emitter.emit_lines(
-                    'PyObject *result = {}();'.format(emitter.native_function_name(fn)),
+                    'PyObject *result = {}();'.format(emitter.native_function_name(fn.decl)),
                     'if (result == NULL)',
                     '    return NULL;',
                     'Py_DECREF(result);'
