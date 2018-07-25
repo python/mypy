@@ -331,7 +331,7 @@ class Emitter:
         elif isinstance(typ, RInstance):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
-            self.emit_arg_check(src, dest, typ, '(PyObject_TypeCheck({}, &{}))'.format(src,
+            self.emit_arg_check(src, dest, typ, '(PyObject_TypeCheck({}, {}))'.format(src,
                     self.type_struct_name(typ.class_ir)), optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),

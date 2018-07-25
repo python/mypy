@@ -36,8 +36,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     getseters_name = '{}_getseters'.format(name_prefix)
     methods_name = '{}_methods'.format(name_prefix)
-    base_arg = "&{}".format(
-        emitter.type_struct_name(cl.base)) if cl.base and not cl.traits else "0"
 
     def emit_line() -> None:
         emitter.emit_line()
@@ -93,8 +91,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emit_line()
 
     emitter.emit_line(textwrap.dedent("""\
-        static PyTypeObject {type_struct} = {{
-            PyVarObject_HEAD_INIT(NULL, 0)
+        static PyTypeObject {type_struct}_template = {{
+            PyVarObject_HEAD_INIT(&PyType_Type, 0)
             "{fullname}",              /* tp_name */
             sizeof({struct_name}),     /* tp_basicsize */
             0,                         /* tp_itemsize */
@@ -124,7 +122,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             {methods_name},            /* tp_methods */
             0,                         /* tp_members */
             {getseters_name},          /* tp_getset */
-            {base_arg},                /* tp_base */
+            0,                         /* tp_base */
             0,                         /* tp_dict */
             0,                         /* tp_descr_get */
             0,                         /* tp_descr_set */
@@ -132,7 +130,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             {init_name},               /* tp_init */
             0,                         /* tp_alloc */
             {new_name},                /* tp_new */
-        }};\
+        }};
+        static PyTypeObject *{type_struct} = &{type_struct}_template;\
         """).format(type_struct=emitter.type_struct_name(cl),
                     struct_name=cl.struct_name(emitter.names),
                     fullname=fullname,
@@ -145,7 +144,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
                     getseters_name=getseters_name,
                     as_mapping_name=as_mapping_name,
                     init_name=init_name,
-                    base_arg=base_arg,
                     ))
     emitter.emit_line()
     if not cl.is_trait:
@@ -249,6 +247,9 @@ def generate_vtable(entries: VTableEntries,
     if subtables:
         emitter.emit_line('/* Array of trait vtables */')
         for trait, table in subtables:
+            # N.B: C only lets us store constant values. We do a nasty hack of
+            # storing a pointer to the location, which we will then dynamically
+            # patch up on module load in CPy_FixupTraitVtable.
             emitter.emit_line('(CPyVTableItem)&{}, (CPyVTableItem){},'.format(
                 emitter.type_struct_name(trait), table))
         emitter.emit_line('/* Start of real vtable */')
@@ -273,7 +274,7 @@ def generate_setup_for_class(cl: ClassIR,
     emitter.emit_line('{}(void)'.format(func_name))
     emitter.emit_line('{')
     emitter.emit_line('{} *self;'.format(cl.struct_name(emitter.names)))
-    emitter.emit_line('self = ({struct} *){type_struct}.tp_alloc(&{type_struct}, 0);'.format(
+    emitter.emit_line('self = ({struct} *){type_struct}->tp_alloc({type_struct}, 0);'.format(
         struct=cl.struct_name(emitter.names),
         type_struct=emitter.type_struct_name(cl)))
     emitter.emit_line('if (self == NULL)')

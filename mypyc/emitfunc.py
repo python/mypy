@@ -182,7 +182,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         obj = self.reg(op.obj)
         rtype = op.class_type
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('%s = CPY_GET_ATTR%s(%s, &%s, %d, %s, %s);' % (
+        self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s);' % (
             dest,
             version,
             obj,
@@ -198,7 +198,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         rtype = op.class_type
         # TODO: Track errors
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('%s = CPY_SET_ATTR%s(%s, &%s, %d, %s, %s, %s);' % (
+        self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s);' % (
             dest,
             version,
             obj,
@@ -218,7 +218,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         prefix = self.PREFIX_MAP[op.namespace]
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
-            name = '(PyObject *)&%s' % name
+            name = '(PyObject *)%s' % name
         if is_int_rprimitive(op.type):
             self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, name))
         else:
@@ -253,7 +253,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         assert method is not None
         mtype = native_function_type(method, self.emitter)
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('{}CPY_GET_METHOD{}({}, &{}, {}, {}, {})({});'.format(
+        self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({});'.format(
             dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
             method_idx, rtype.struct_name(self.names), mtype, args))
 

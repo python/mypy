@@ -293,15 +293,15 @@ class Base1:
     def __init__(self) -> None:
         self.x = 1
 
-class Deriv2(native.Base2):
-    pass
+def make_2() -> native.Base2:
+    return native.Base2()
 
 [file driver.py]
 from native import Deriv1
-from other import Deriv2
+from other import make_2
 a = Deriv1()
 assert a.x == 1
-b = Deriv2()
+b = make_2()
 assert b.y == 2
 
 [case testMultiModuleTraitInheritance]

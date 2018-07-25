@@ -58,6 +58,15 @@ static inline CPyVTableItem *CPy_FindTraitVtable(PyTypeObject *trait, CPyVTableI
     }
 }
 
+// At load time, we need to patch up trait vtables to contain actual pointers
+// to the type objects of the trait, rather than an indirection.
+static inline void CPy_FixupTraitVtable(CPyVTableItem *vtable, int count) {
+    int i;
+    for (i = 0; i < count; i++) {
+        vtable[i*2] = *(CPyVTableItem *)vtable[i*2];
+    }
+}
+
 // Get attribute value using vtable (may return an undefined value)
 #define CPY_GET_ATTR(obj, type, vtable_index, object_type, attr_type)    \
     ((attr_type (*)(object_type *))((object_type *)obj)->vtable[vtable_index])((object_type *)obj)

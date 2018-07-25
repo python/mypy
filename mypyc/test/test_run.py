@@ -130,6 +130,11 @@ class TestRun(MypycDataSuite):
             lib_env = 'DYLD_LIBRARY_PATH' if sys.platform == 'darwin' else 'LD_LIBRARY_PATH'
             env[lib_env] = workdir
 
+            # XXX: This is an ugly hack.
+            if 'MYPYC_RUN_GDB' in os.environ:
+                subprocess.check_call(['gdb', '--args', 'python', driver_path], env=env)
+                assert False, "Test can't pass in gdb mode. (And remember to pass -s to pytest)"
+
             proc = subprocess.Popen(['python', driver_path], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, env=env)
             output, _ = proc.communicate()
