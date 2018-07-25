@@ -130,6 +130,44 @@ class Signal(Generic[T]):
 plugins=<ROOT>/test-data/unit/plugins/type_anal_hook.py
 [builtins fixtures/dict.pyi]
 
+[case testFunctionPluginHookForClass]
+# flags: --config-file tmp/mypy.ini
+import mod
+from mod import AttrInt
+
+Alias = AttrInt
+AnotherAlias = mod.Attr
+
+class C:
+    x = Alias()
+    y = mod.AttrInt(required=True)
+    z = AnotherAlias(int, required=False)
+
+c = C()
+reveal_type(c.x)  # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(c.y)  # E: Revealed type is 'builtins.int*'
+reveal_type(c.z)  # E: Revealed type is 'Union[builtins.int*, None]'
+
+[file mod.py]
+from typing import Generic, TypeVar, Type
+T = TypeVar('T')
+
+class Attr(Generic[T]):
+    def __init__(self, tp: Type[T], required: bool = False) -> None:
+        pass
+    def __get__(self, instance: object, owner: type) -> T:
+        pass
+
+class AttrInt(Attr[int]):
+    def __init__(self, required: bool = False) -> None:
+        pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_callable.py
+[builtins fixtures/bool.pyi]
+[out]
+
 [case testFunctionPluginHookForReturnedCallable]
 # flags: --config-file tmp/mypy.ini
 from m import decorator1, decorator2

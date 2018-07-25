@@ -284,6 +284,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             fullname = None
         else:
             fullname = e.callee.fullname
+            if (isinstance(e.callee.node, TypeAlias) and
+                    isinstance(e.callee.node.target, Instance)):
+                fullname = e.callee.node.target.type.fullname()
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
                     and isinstance(callee_type, FunctionLike)):
@@ -575,6 +578,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(callee, CallableType):
             if callable_name is None and callee.name:
                 callable_name = callee.name
+            if callee.is_type_obj() and isinstance(callee.ret_type, Instance):
+                callable_name = callee.ret_type.type.fullname()
             if (isinstance(callable_node, RefExpr)
                 and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
                                                'enum.Flag', 'enum.IntFlag')):
