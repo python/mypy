@@ -26,7 +26,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     """
     name = cl.name
     name_prefix = cl.name_prefix(emitter.names)
-    fullname = '{}.{}'.format(module, name)
 
     setup_name = new_name = clear_name = dealloc_name = '0'
     traverse_name = vtable_name = '0'
@@ -97,7 +96,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emitter.emit_line(textwrap.dedent("""\
         static PyTypeObject {type_struct}_template = {{
             PyVarObject_HEAD_INIT(&PyType_Type, 0)
-            "{fullname}",              /* tp_name */
+            "{name}",                  /* tp_name */
             sizeof({struct_name}),     /* tp_basicsize */
             0,                         /* tp_itemsize */
             (destructor){dealloc_name},  /* tp_dealloc */
@@ -115,7 +114,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             0,                         /* tp_getattro */
             0,                         /* tp_setattro */
             0,                         /* tp_as_buffer */
-            Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC, /* tp_flags */
+            Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_GC | Py_TPFLAGS_HEAPTYPE, /* tp_flags */
             0,                         /* tp_doc */
             (traverseproc){traverse_name}, /* tp_traverse */
             (inquiry){clear_name},     /* tp_clear */
@@ -134,11 +133,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             {init_name},               /* tp_init */
             0,                         /* tp_alloc */
             {new_name},                /* tp_new */
-        }};
-        static PyTypeObject *{type_struct} = &{type_struct}_template;\
+        }};\
         """).format(type_struct=emitter.type_struct_name(cl),
                     struct_name=cl.struct_name(emitter.names),
-                    fullname=fullname,
+                    name=name,
                     traverse_name=traverse_name,
                     clear_name=clear_name,
                     dealloc_name=dealloc_name,

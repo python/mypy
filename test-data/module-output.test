@@ -38,6 +38,7 @@ PyMODINIT_FUNC PyInit_prog(void)
     CPyStatic_module = PyModule_Create(&module);
     if (CPyStatic_module == NULL)
         return NULL;
+    PyObject *modname = PyObject_GetAttrString((PyObject *)CPyStatic_module, "__name__");
     CPyStatic_globals = PyModule_GetDict(CPyStatic_module);
     if (CPyStatic_globals == NULL)
         return NULL;
@@ -50,6 +51,7 @@ PyMODINIT_FUNC PyInit_prog(void)
     if (result == NULL)
         return NULL;
     Py_DECREF(result);
+    Py_DECREF(modname);
     return CPyStatic_module;
 }
 

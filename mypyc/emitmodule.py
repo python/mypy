@@ -182,7 +182,6 @@ class ModuleGenerator:
                            '{}module_methods'.format(module_prefix),
                            '};')
         emitter.emit_line()
-
         # Emit module init function. If we are compiling just one module, this
         # will be the C API init function. If we are compiling 2+ modules, we
         # generate a shared library for the modules and shims that call into
@@ -203,6 +202,10 @@ class ModuleGenerator:
         emitter.emit_lines('{} = PyModule_Create(&{}module);'.format(module_static, module_prefix),
                            'if ({} == NULL)'.format(module_static),
                            '    return NULL;')
+        emitter.emit_line(
+            'PyObject *modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
+                module_static))
+
         module_globals = emitter.static_name('globals', module_name)
         emitter.emit_lines('{} = PyModule_GetDict({});'.format(module_globals, module_static),
                            'if ({} == NULL)'.format(module_globals),
@@ -221,19 +224,20 @@ class ModuleGenerator:
             real_base = cl.real_base()
             if real_base or cl.traits:
                 bases = ([real_base] if real_base else []) + cl.traits
-                emitter.emit_lines('{}->tp_bases = PyTuple_Pack({}, {});'.format(
+                emitter.emit_lines('{}_template.tp_bases = PyTuple_Pack({}, {});'.format(
                     type_struct,
                     len(bases),
                     ', '.join('{}'.format(emitter.type_struct_name(b)) for b in bases)))
 
-        for cl in module.classes:
+            emitter.emit_lines('{t} = CPyType_FromTemplate(&{t}_template, modname);'.format(
+                t=type_struct))
+            emitter.emit_lines('if (!{})'.format(type_struct),
+                               '    return NULL;')
+
             type_struct = emitter.type_struct_name(cl)
             if cl.trait_vtables and not cl.is_trait:
                 emitter.emit_lines('CPy_FixupTraitVtable({}_vtable, {});'.format(
                     cl.name_prefix(emitter.names), len(cl.trait_vtables)))
-
-            emitter.emit_lines('if (PyType_Ready({}) < 0)'.format(type_struct),
-                               '    return NULL;')
 
         for (_, literal), identifier in module.literals.items():
             symbol = emitter.static_name(identifier, None)
@@ -273,6 +277,8 @@ class ModuleGenerator:
                                                                        type_struct))
 
         self.generate_top_level_call(module, emitter)
+
+        emitter.emit_lines('Py_DECREF(modname);')
 
         emitter.emit_line('return {};'.format(module_static))
         emitter.emit_line('}')
