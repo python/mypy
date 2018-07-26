@@ -358,3 +358,37 @@ L0:
     self.y = y; r1 = is_error
     r2 = None
     return r2
+
+[case testClassVariable]
+class A:
+    x = 10
+
+def f() -> int:
+    return A.x
+[out]
+def f():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: int
+L0:
+    r0 = __main__.A :: type
+    r1 = unicode_0 :: static  ('x')
+    r2 = getattr r0, r1
+    r3 = unbox(int, r2)
+    return r3
+def __top_level__():
+    r0 :: object
+    r1 :: int
+    r2 :: str
+    r3 :: object
+    r4 :: bool
+    r5 :: None
+L0:
+    r0 = __main__.A :: type
+    r1 = 10
+    r2 = unicode_0 :: static  ('x')
+    r3 = box(int, r1)
+    r4 = setattr r0, r2, r3
+    r5 = None
+    return r5

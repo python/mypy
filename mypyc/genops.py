@@ -568,7 +568,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 # Variable declaration with no body
                 if isinstance(stmt.rvalue, TempNode):
                     continue
-                assert False, "Class variables not supported yet"
+                assert len(stmt.lvalues) == 1
+                lvalue = stmt.lvalues[0]
+                assert isinstance(lvalue, NameExpr)
+
+                typ = self.load_native_type_object(cdef.fullname)
+                value = self.accept(stmt.rvalue)
+                self.primitive_op(
+                    py_setattr_op, [typ, self.load_static_unicode(lvalue.name), value], stmt.line)
             elif isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, StrExpr):
                 # Docstring. Ignore
                 pass
@@ -813,8 +820,22 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             retval = self.add(PrimitiveOp([], none_op, line=-1))
         self.nonlocal_control[-1].gen_return(self, retval)
 
+    def disallow_class_assignments(self, lvalues: List[Lvalue]) -> None:
+        # Some best-effort attempts to disallow assigning to class
+        # variables that aren't marked ClassVar, since we blatantly
+        # miscompile the interaction between instance and class
+        # variables.
+        for lvalue in lvalues:
+            if (isinstance(lvalue, MemberExpr)
+                    and isinstance(lvalue.expr, RefExpr)
+                    and isinstance(lvalue.expr.node, TypeInfo)):
+                var = lvalue.expr.node[lvalue.name].node
+                assert not isinstance(var, Var) or var.is_classvar, (
+                    "mypyc only supports assignment to classvars defined as ClassVar")
+
     def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
         assert len(stmt.lvalues) >= 1
+        self.disallow_class_assignments(stmt.lvalues)
         if isinstance(stmt.rvalue, CallExpr) and isinstance(stmt.rvalue.analyzed, TypeVarExpr):
             # Just ignore type variable declarations -- they are a compile-time only thing.
             # TODO: It would be nice to actually construct TypeVar objects to match Python
@@ -835,6 +856,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.assign_to_target(target, rvalue_reg, line)
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
+        self.disallow_class_assignments([stmt.lvalue])
         target = self.get_assignment_target(stmt.lvalue)
         rreg = self.accept(stmt.rvalue)
         res = self.read_from_target(target, stmt.line)
