@@ -222,7 +222,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         if is_int_rprimitive(op.type):
             self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, name))
         else:
-            self.emit_line('%s = %s;' % (dest, name))
+            ann = ' /* %s */' % repr(op.ann) if op.ann else ''
+            self.emit_line('%s = %s;%s' % (dest, name, ann))
 
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)
