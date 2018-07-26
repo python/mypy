@@ -38,8 +38,7 @@ class SymbolNode(Node):
 
 class FuncBase(Node):
     def __init__(self) -> None:
-        #super().__init__()
-        # you know whatever
+        super().__init__()
         self.is_static = False
 
 class Block(Statement):
@@ -62,8 +61,7 @@ class FuncItem(FuncBase):
 
 class FuncDef(FuncItem, SymbolNode, Statement):
     def __init__(self, name: str, body: Block) -> None:
-        #super().__init__(body)
-        FuncItem.__init__(self, body)
+        super().__init__(body)
         self._name = name
     def accept(self, visitor: visitor.StatementVisitor[T]) -> T:
         return visitor.visit_func_def(self)

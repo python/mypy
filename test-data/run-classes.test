@@ -412,3 +412,36 @@ Traceback (most recent call last):
   File "tmp/driver.py", line 4, in <module>
     A().x
 AttributeError: attribute 'x' of 'X' undefined
+
+[case testSuper]
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class B(A):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y = y
+class C(B):
+    def __init__(self, x: int, y: int) -> None:
+        init = super(C, self).__init__
+        init(x, y+1)
+
+class X:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class Y(X):
+    pass
+class Z(Y):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(x)
+        self.y = y
+
+[file driver.py]
+import traceback
+from native import *
+b = B(10, 20)
+assert b.x == 10 and b.y == 20
+c = C(10, 20)
+assert c.x == 10 and c.y == 21
+z = Z(10, 20)
+assert z.x == 10 and z.y == 20

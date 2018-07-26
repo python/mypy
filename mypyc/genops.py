@@ -1409,13 +1409,23 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         if isinstance(callee, MemberExpr):
             return self.translate_method_call(expr, callee)
+        elif isinstance(callee, SuperExpr):
+            return self.translate_super_method_call(expr, callee)
         else:
             return self.translate_call(expr, callee)
 
     def translate_call(self, expr: CallExpr, callee: Expression) -> Value:
-        """Translate a non-method call."""
-        assert isinstance(callee, RefExpr)  # TODO: Allow arbitrary callees
+        # The common case of calls is refexprs
+        if isinstance(callee, RefExpr):
+            return self.translate_refexpr_call(expr, callee)
 
+        function = self.accept(callee)
+        args = [self.accept(arg) for arg in expr.args]
+        return self.py_call(function, args, expr.line,
+                            arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+
+    def translate_refexpr_call(self, expr: CallExpr, callee: RefExpr) -> Value:
+        """Translate a non-method call."""
         # Gen the argument values
         arg_values = [self.accept(arg) for arg in expr.args]
 
@@ -1512,6 +1522,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                         expr.line,
                                         expr.arg_kinds,
                                         expr.arg_names)
+
+    def translate_super_method_call(self, expr: CallExpr, callee: SuperExpr) -> Value:
+        if callee.info is None or callee.call.args:
+            return self.translate_call(expr, callee)
+        ir = self.mapper.type_to_ir[callee.info]
+        if not ir or ir.base is None or not ir.base.has_method(callee.name):
+            return self.translate_call(expr, callee)
+
+        decl = ir.base.method_decl(callee.name)
+        vself = next(iter(self.environment.indexes))  # grab first argument
+        arg_values = [vself] + [self.accept(arg) for arg in expr.args]
+        arg_values = self.coerce_native_call_args(arg_values, decl.sig, expr.line)
+        return self.add(Call(decl, arg_values, expr.line))
 
     def gen_method_call(self,
                         base: Value,
@@ -2292,6 +2315,18 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             assert False, 'Unsupported del operation'
 
+    def visit_super_expr(self, o: SuperExpr) -> Value:
+        sup_val = self.load_module_attr_by_fullname('builtins.super', o.line)
+        if o.call.args:
+            args = [self.accept(arg) for arg in o.call.args]
+        else:
+            assert o.info is not None
+            typ = self.load_native_type_object(o.info.fullname())
+            vself = next(iter(self.environment.indexes))  # grab first argument
+            args = [typ, vself]
+        res = self.py_call(sup_val, args, o.line)
+        return self.py_get_attr(res, o.name, o.line)
+
     # Unimplemented constructs
     # TODO: some of these are actually things that should never show up,
     # so properly sort those out.
@@ -2339,9 +2374,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         raise NotImplementedError
 
     def visit_star_expr(self, o: StarExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_super_expr(self, o: SuperExpr) -> Value:
         raise NotImplementedError
 
     def visit_temp_node(self, o: TempNode) -> Value:

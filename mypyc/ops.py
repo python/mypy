@@ -735,6 +735,8 @@ class Call(RegisterOp):
         args = ', '.join(env.format('%r', arg) for arg in self.args)
         # TODO: Display long name?
         short_name = self.fn.name
+        if self.fn.class_name:
+            short_name = self.fn.class_name + '.' + short_name
         s = '%s(%s)' % (short_name, args)
         if not self.is_void:
             s = env.format('%r = ', self) + s

@@ -278,7 +278,8 @@ else:
 import other
 
 class Deriv1(other.Base1):
-    pass
+    def __init__(self) -> None:
+        super().__init__()
 
 class Base2:
     y: int
