@@ -12,6 +12,7 @@ from mypyc.ops import (
     FuncIR, FuncDecl, int_rprimitive
 )
 from mypyc.namegen import NameGenerator
+from mypyc.sametype import is_same_type
 
 
 class HeaderDeclaration:
@@ -266,7 +267,8 @@ class Emitter:
         return short_name(pretty_name)
 
     def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
-                  custom_message: Optional[str] = None, optional: bool = False) -> None:
+                  custom_message: Optional[str] = None, optional: bool = False,
+                  src_type: Optional[RType] = None) -> None:
         """Emit code for casting a value of given type.
 
         Somewhat strangely, this supports unboxed types but only
@@ -289,8 +291,22 @@ class Emitter:
         else:
             err = 'PyErr_SetString(PyExc_TypeError, "{} object expected");'.format(
                 self.pretty_name(typ))
+
+        # Special case casting *from* optional
+        if (src_type and isinstance(src_type, ROptional) and not is_object_rprimitive(typ)
+                and is_same_type(src_type.value_type, typ)):
+            if declare_dest:
+                self.emit_line('PyObject *{};'.format(dest))
+            self.emit_arg_check(src, dest, typ, '({} != Py_None)'.format(src), optional)
+            self.emit_lines(
+                '    {} = {};'.format(dest, src),
+                'else {',
+                err,
+                '{} = NULL;'.format(dest),
+                '}')
+
         # TODO: Verify refcount handling.
-        if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ) or
+        elif (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ) or
                 is_float_rprimitive(typ) or is_str_rprimitive(typ) or is_int_rprimitive(typ) or
                 is_bool_rprimitive(typ)):
             if declare_dest:

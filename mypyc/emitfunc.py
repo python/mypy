@@ -270,7 +270,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type)
 
     def visit_cast(self, op: Cast) -> None:
-        self.emitter.emit_cast(self.reg(op.src), self.reg(op), op.type)
+        self.emitter.emit_cast(self.reg(op.src), self.reg(op), op.type,
+                               src_type=op.src.type)
 
     def visit_unbox(self, op: Unbox) -> None:
         self.emitter.emit_unbox(self.reg(op.src), self.reg(op), op.type)
