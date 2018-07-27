@@ -1,6 +1,7 @@
 """Test cases for building an C extension and running it."""
 
 import os.path
+import platform
 import subprocess
 import sys
 from typing import List
@@ -132,8 +133,16 @@ class TestRun(MypycDataSuite):
 
             # XXX: This is an ugly hack.
             if 'MYPYC_RUN_GDB' in os.environ:
-                subprocess.check_call(['gdb', '--args', 'python', driver_path], env=env)
-                assert False, "Test can't pass in gdb mode. (And remember to pass -s to pytest)"
+                if platform.system() == 'Darwin':
+                    subprocess.check_call(['lldb', '--', 'python', driver_path], env=env)
+                    assert False, ("Test can't pass in lldb mode. (And remember to pass -s to "
+                                   "pytest)")
+                elif platform.system() == 'Linux':
+                    subprocess.check_call(['gdb', '--args', 'python', driver_path], env=env)
+                    assert False, ("Test can't pass in gdb mode. (And remember to pass -s to "
+                                   "pytest)")
+                else:
+                    assert False, 'Unsupported OS'
 
             proc = subprocess.Popen(['python', driver_path], stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, env=env)
