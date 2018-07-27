@@ -1561,10 +1561,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if callee.info is None or callee.call.args:
             return self.translate_call(expr, callee)
         ir = self.mapper.type_to_ir[callee.info]
-        if not ir or ir.base is None or not ir.base.has_method(callee.name):
+        # Search for the method in the mro, skipping ourselves.
+        for base in ir.mro[1:]:
+            if callee.name in base.method_decls:
+                break
+        else:
             return self.translate_call(expr, callee)
 
-        decl = ir.base.method_decl(callee.name)
+        decl = base.method_decl(callee.name)
         vself = next(iter(self.environment.indexes))  # grab first argument
         arg_values = [vself] + [self.accept(arg) for arg in expr.args]
         return self.call(decl, arg_values, expr.line)

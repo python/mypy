@@ -414,6 +414,9 @@ Traceback (most recent call last):
 AttributeError: attribute 'x' of 'X' undefined
 
 [case testSuper]
+from mypy_extensions import trait
+from typing import List
+
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
@@ -436,6 +439,21 @@ class Z(Y):
         super().__init__(x)
         self.y = y
 
+@trait
+class T:
+    def v_int(self, x: int) -> None: pass
+    def v_list(self, x: List[int]) -> None:
+        if x:
+            self.v_int(x[0])
+            self.v_list(x[1:])
+
+class PrintList(T):
+    def v_int(self, x: int) -> None:
+        print(x)
+    def v_list(self, x: List[int]) -> None:
+        print('yo!')
+        super().v_list(x)
+
 [file driver.py]
 import traceback
 from native import *
@@ -445,6 +463,16 @@ c = C(10, 20)
 assert c.x == 10 and c.y == 21
 z = Z(10, 20)
 assert z.x == 10 and z.y == 20
+
+PrintList().v_list([1,2,3])
+[out]
+yo!
+1
+yo!
+2
+yo!
+3
+yo!
 
 [case testClassVariable]
 from typing import ClassVar

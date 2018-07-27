@@ -359,7 +359,7 @@ L0:
     r2 = None
     return r2
 
-[case testSuper]
+[case testSuper1]
 class A:
     def __init__(self, x: int) -> None:
         self.x = x
@@ -388,6 +388,30 @@ L0:
     self.y = y; r1 = is_error
     r2 = None
     return r2
+
+[case testSuper2]
+from mypy_extensions import trait
+@trait
+class T:
+    def foo(self) -> None: pass
+
+class X(T):
+    def foo(self) -> None:
+        super().foo()
+[out]
+def T.foo(self):
+    self :: T
+    r0 :: None
+L0:
+    r0 = None
+    return r0
+def X.foo(self):
+    self :: X
+    r0, r1 :: None
+L0:
+    r0 = T.foo(self)
+    r1 = None
+    return r1
 
 [case testClassVariable]
 class A:

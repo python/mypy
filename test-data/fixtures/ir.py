@@ -71,7 +71,10 @@ class function: pass
 
 class list(Generic[T], Iterable[T], Sized):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
-    def __getitem__(self, i: int) -> T: pass
+    @overload
+    def __getitem__(self, i: int) -> T: ...
+    @overload
+    def __getitem__(self, s: slice) -> List[T]: ...
     def __setitem__(self, i: int, o: T) -> None: pass
     def __delitem__(self, i: int) -> None: pass
     def __mul__(self, i: int) -> List[T]: pass

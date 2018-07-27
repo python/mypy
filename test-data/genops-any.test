@@ -100,30 +100,27 @@ def f2(a, n, l):
     a :: object
     n :: int
     l :: list
-    r0, r1, r2 :: object
-    r3 :: int
-    r4, r5 :: object
-    r6 :: bool
-    r7 :: object
-    r8, r9 :: bool
-    r10 :: object
-    r11 :: list
-    r12 :: None
+    r0, r1, r2, r3, r4 :: object
+    r5 :: bool
+    r6 :: object
+    r7, r8 :: bool
+    r9 :: object
+    r10 :: list
+    r11 :: None
 L0:
     r0 = box(int, n)
     r1 = a[r0] :: object
     r2 = l[a] :: object
-    r3 = unbox(int, r2)
+    r3 = box(int, n)
     r4 = box(int, n)
-    r5 = box(int, n)
-    r6 = a.__setitem__(r4, r5) :: object
-    r7 = box(int, n)
-    r8 = l.__setitem__(a, r7) :: object
-    r9 = l.__setitem__(n, a) :: list
-    r10 = box(int, n)
-    r11 = [a, r10]
-    r12 = None
-    return r12
+    r5 = a.__setitem__(r3, r4) :: object
+    r6 = box(int, n)
+    r7 = l.__setitem__(a, r6) :: object
+    r8 = l.__setitem__(n, a) :: list
+    r9 = box(int, n)
+    r10 = [a, r9]
+    r11 = None
+    return r11
 def f3(a, n):
     a :: object
     n :: int
