@@ -329,6 +329,36 @@ L2:
     r3 = B()
     return r3
 
+[case testFakeSuper]
+class A:
+    def __init__(self, x: int) -> None:
+        self.x = x
+class B(A):
+    def __init__(self, x: int, y: int) -> None:
+        A.__init__(self, x)
+        self.y = y
+[out]
+def A.__init__(self, x):
+    self :: A
+    x :: int
+    r0 :: bool
+    r1 :: None
+L0:
+    self.x = x; r0 = is_error
+    r1 = None
+    return r1
+def B.__init__(self, x, y):
+    self :: B
+    x, y :: int
+    r0 :: None
+    r1 :: bool
+    r2 :: None
+L0:
+    r0 = A.__init__(self, x)
+    self.y = y; r1 = is_error
+    r2 = None
+    return r2
+
 [case testSuper]
 class A:
     def __init__(self, x: int) -> None:

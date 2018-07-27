@@ -1421,6 +1421,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             coerced_arg_regs.append(self.coerce(reg, arg.type, line))
         return coerced_arg_regs
 
+    def call(self, decl: FuncDecl, args: Sequence[Value], line: int) -> Value:
+        args = self.coerce_native_call_args(args, decl.sig, line)
+        return self.add(Call(decl, args, line))
+
     def visit_call_expr(self, expr: CallExpr) -> Value:
         if isinstance(expr.analyzed, CastExpr):
             return self.translate_cast_expr(expr.analyzed)
@@ -1494,8 +1498,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # Put in errors for missing args, potentially to be filled in with default args later.
             arg_values = self.missing_args_to_error_values(arg_values_with_nones, decl.sig)
 
-            arg_values = self.coerce_native_call_args(arg_values, decl.sig, expr.line)
-            return self.add(Call(decl, arg_values, expr.line))
+            return self.call(decl, arg_values, expr.line)
 
         # Fall back to a Python call
         function = self.accept(callee)
@@ -1527,6 +1530,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if self.is_native_ref_expr(callee):
             # Call to module-level native function or such
             return self.translate_call(expr, callee)
+        elif isinstance(callee.expr, RefExpr) and callee.expr.node in self.mapper.type_to_ir:
+            # Call a method via the *class*
+            assert isinstance(callee.expr.node, TypeInfo)
+            ir = self.mapper.type_to_ir[callee.expr.node]
+            decl = ir.method_decl(callee.name)
+            args = [self.accept(arg) for arg in expr.args]
+
+            return self.call(decl, args, expr.line)
+
         elif self.is_module_member_expr(callee):
             # Fall back to a PyCall for non-native module calls
             function = self.accept(callee)
@@ -1555,8 +1567,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         decl = ir.base.method_decl(callee.name)
         vself = next(iter(self.environment.indexes))  # grab first argument
         arg_values = [vself] + [self.accept(arg) for arg in expr.args]
-        arg_values = self.coerce_native_call_args(arg_values, decl.sig, expr.line)
-        return self.add(Call(decl, arg_values, expr.line))
+        return self.call(decl, arg_values, expr.line)
 
     def gen_method_call(self,
                         base: Value,

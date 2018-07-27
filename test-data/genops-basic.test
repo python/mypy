@@ -2123,21 +2123,14 @@ def DerivedProperty.__init__(self, incr_func, value):
     self :: DerivedProperty
     incr_func :: object
     value :: int
-    r0 :: object
-    r1 :: str
-    r2, r3 :: object
-    r4 :: None
-    r5 :: bool
-    r6 :: None
+    r0 :: None
+    r1 :: bool
+    r2 :: None
 L0:
-    r0 = __main__.BaseProperty :: type
-    r1 = unicode_1 :: static  ('__init__')
-    r2 = box(int, value)
-    r3 = py_method_call(r0, r1, self, r2)
-    r4 = cast(None, r3)
-    self._incr_func = incr_func; r5 = is_error
-    r6 = None
-    return r6
+    r0 = BaseProperty.__init__(self, value)
+    self._incr_func = incr_func; r1 = is_error
+    r2 = None
+    return r2
 def AgainProperty.next(self):
     self :: AgainProperty
     r0 :: object
