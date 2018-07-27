@@ -25,11 +25,11 @@ we use it in most examples.
 .. code-block:: python
 
    # This is how you declare the type of a variable type in Python 3.6
-   x: int = 1
+   age: int = 1
 
    # In Python 3.5 and earlier you can use a type comment instead
    # (equivalent to the previous definition)
-   x = 1  # type: int
+   age = 1  # type: int
 
    # You don't need to initialize a variable to annotate it
    a: int  # Ok (no value at runtime until assigned)
