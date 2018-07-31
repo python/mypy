@@ -47,6 +47,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     generate_object_struct(cl, emitter)
     emit_line()
 
+    defaults_fn = cl.get_method('__mypyc_defaults_setup')
+
     # If there is a __init__ method, generate a function for tp_init and
     # extract the args (which we'll use for the native constructor)
     init_fn = cl.get_method('__init__')
@@ -149,9 +151,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
                     ))
     emitter.emit_line()
     if not cl.is_trait:
-        generate_setup_for_class(cl, setup_name, vtable_name, emitter)
+        generate_setup_for_class(cl, setup_name, defaults_fn, vtable_name, emitter)
         emitter.emit_line()
-        generate_constructor_for_class(cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
+        generate_constructor_for_class(
+            cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
     generate_getseters(cl, emitter)
 
@@ -269,6 +272,7 @@ def generate_vtable(entries: VTableEntries,
 
 def generate_setup_for_class(cl: ClassIR,
                              func_name: str,
+                             defaults_fn: Optional[FuncIR],
                              vtable_name: str,
                              emitter: Emitter) -> None:
     """Generate a native function that allocates an instance of a class."""
@@ -285,6 +289,15 @@ def generate_setup_for_class(cl: ClassIR,
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_line('self->{} = {};'.format(attr, emitter.c_undefined_value(rtype)))
+
+    if defaults_fn is not None:
+        emitter.emit_lines(
+            'if ({}{}((PyObject *)self) == 0) {{'.format(
+                NATIVE_PREFIX, defaults_fn.cname(emitter.names)),
+            'Py_DECREF(self);',
+            'return NULL;',
+            '}')
+
     emitter.emit_line('return (PyObject *)self;')
     emitter.emit_line('}')
 

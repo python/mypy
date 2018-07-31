@@ -414,8 +414,9 @@ L0:
     return r1
 
 [case testClassVariable]
+from typing import ClassVar
 class A:
-    x = 10
+    x = 10  # type: ClassVar[int]
 
 def f() -> int:
     return A.x
@@ -446,3 +447,75 @@ L0:
     r4 = setattr r0, r2, r3
     r5 = None
     return r5
+
+[case testDefaultVars]
+from typing import ClassVar, Optional
+class A:
+    x = 10
+    def lol(self) -> None:
+        self.x = 100
+
+LOL = 'lol'
+class B(A):
+    y = LOL
+    z: Optional[str] = None
+    b = True
+    bogus = None  # type: int
+[out]
+def A.lol(self):
+    self :: A
+    r0 :: int
+    r1 :: bool
+    r2 :: None
+L0:
+    r0 = 100
+    self.x = r0; r1 = is_error
+    r2 = None
+    return r2
+def A.__mypyc_defaults_setup(self):
+    self :: A
+    r0 :: int
+    r1, r2 :: bool
+L0:
+    r0 = 10
+    self.x = r0; r1 = is_error
+    r2 = True
+    return r2
+def B.__mypyc_defaults_setup(self):
+    self :: B
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: bool
+    r5 :: None
+    r6, r7, r8 :: bool
+    r9 :: int
+    r10, r11 :: bool
+L0:
+    r0 = __main__.globals :: static
+    r1 = unicode_1 :: static  ('LOL')
+    r2 = r0[r1] :: dict
+    r3 = cast(str, r2)
+    self.y = r3; r4 = is_error
+    r5 = None
+    self.z = r5; r6 = is_error
+    r7 = True
+    self.b = r7; r8 = is_error
+    r9 = 10
+    self.x = r9; r10 = is_error
+    r11 = True
+    return r11
+def __top_level__():
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3 :: bool
+    r4 :: None
+L0:
+    r0 = unicode_0 :: static  ('lol')
+    r1 = __main__.globals :: static
+    r2 = unicode_1 :: static  ('LOL')
+    r3 = r1.__setitem__(r2, r0) :: object
+    r4 = None
+    return r4

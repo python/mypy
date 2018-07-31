@@ -488,3 +488,49 @@ from native import A, f
 assert f() == 10
 A.x = 200
 assert f() == 200
+
+[case testDefaultVars]
+from typing import ClassVar, Optional
+class A:
+    x = 10
+    def lol(self) -> None:
+        self.x = 100
+
+LOL = 'lol'
+class B(A):
+    y = LOL
+    z = None  # type: Optional[str]
+    b = True
+    bogus = None  # type: int
+
+def g() -> None:
+    a = A()
+    assert a.x == 10
+    a.x = 20
+    assert a.x == 20
+    b = B()
+    assert b.x == 10
+    b.x = 20
+    assert b.x == 20
+    assert b.y == 'lol'
+    b.y = 'rofl'
+    assert b.y == 'rofl'
+    assert b.z is None
+[file driver.py]
+from native import *
+g()
+
+a = A()
+assert a.x == 10
+a.x = 20
+assert a.x == 20
+b = B()
+assert b.x == 10
+b.x = 20
+assert b.x == 20
+assert b.y == 'lol'
+b.y = 'rofl'
+assert b.y == 'rofl'
+assert b.z is None
+# N.B: this doesn't match cpython
+assert not hasattr(b, 'bogus')

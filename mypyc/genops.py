@@ -31,7 +31,7 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr,
     TypeApplication, TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr,
-    GDEF, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2
+    GDEF, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var
 )
 import mypy.nodes
 from mypy.types import (
@@ -326,7 +326,8 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
     for name, node in info.names.items():
         if isinstance(node.node, Var):
             assert node.node.type, "Class member missing type"
-            ir.attributes[name] = mapper.type_to_rtype(node.node.type)
+            if not node.node.is_classvar:
+                ir.attributes[name] = mapper.type_to_rtype(node.node.type)
         elif isinstance(node.node, FuncDef):
             ir.method_decls[name] = prepare_func_def(module_name, cdef.name, node.node, mapper)
         elif isinstance(node.node, Decorator):
@@ -556,6 +557,75 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 class_ir.glue_methods[(cls, name)] = f
                 self.functions.append(f)
 
+    def is_approximately_constant(self, e: Expression) -> bool:
+        """Check whether we allow an expression to appear as a default value.
+
+        We don't currently properly support storing the evaluated values for default
+        arguments and default attribute values, so we restrict what expressions we allow.
+        We allow literals of primitives types, None, and references to global variables
+        whose names are in all caps (as an unsound and very hacky proxy for whether they
+        are a constant).
+        """
+        return (isinstance(e, (StrExpr, BytesExpr, IntExpr, FloatExpr))
+                or (isinstance(e, UnaryExpr) and e.op == '-'
+                    and isinstance(e.expr, (IntExpr, FloatExpr)))
+                or (isinstance(e, RefExpr) and e.kind == GDEF
+                    and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
+                         or (e.node is not None and e.node.name().upper() == e.node.name()))))
+
+    def generate_attr_defaults(self, cdef: ClassDef) -> None:
+        """Generate an initialization method for default attr values (from class vars)"""
+        cls = self.mapper.type_to_ir[cdef.info]
+
+        # Pull out all assignments in classes in the mro so we can initialize them
+        default_assignments = [
+            stmt
+            for info in cdef.info.mro
+            if info in self.mapper.type_to_ir
+            for stmt in info.defn.defs.body
+            if isinstance(stmt, AssignmentStmt)
+            if isinstance(stmt.lvalues[0], NameExpr)
+            if not is_class_var(stmt.lvalues[0])
+            if not isinstance(stmt.rvalue, TempNode)
+        ]
+        if not default_assignments:
+            return
+
+        self.enter(FuncInfo())
+        self.ret_types[-1] = bool_rprimitive
+
+        rt_args = (RuntimeArg('self', RInstance(cls)),)
+        self_var = self.read_from_target(
+            self.environment.add_local_reg(Var('self'), RInstance(cls), is_arg=True), -1)
+
+        for stmt in default_assignments:
+            lvalue = stmt.lvalues[0]
+            assert isinstance(lvalue, NameExpr)
+            assert self.is_approximately_constant(stmt.rvalue), (
+                "Unsupported default attribute value")
+
+            # If the attribute is initialized to None and type isn't optional,
+            # don't initialize it to anything.
+            if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
+                attr_type = cls.attr_type(lvalue.name)
+                if (not isinstance(attr_type, ROptional) and not is_object_rprimitive(attr_type)
+                        and not is_none_rprimitive(attr_type)):
+                    continue
+
+            val = self.accept(stmt.rvalue)
+            self.add(SetAttr(self_var, lvalue.name, val, -1))
+
+        self.add(Return(self.primitive_op(true_op, [], -1)))
+
+        blocks, env, ret_type, _ = self.leave()
+        ir = FuncIR(
+            FuncDecl('__mypyc_defaults_setup',
+                     cls.name, self.module_name,
+                     FuncSignature(rt_args, ret_type)),
+            blocks, env)
+        self.functions.append(ir)
+        cls.methods[ir.name] = ir
+
     def visit_class_def(self, cdef: ClassDef) -> None:
         for stmt in cdef.defs.body:
             if isinstance(stmt, FuncDef):
@@ -571,6 +641,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 assert len(stmt.lvalues) == 1
                 lvalue = stmt.lvalues[0]
                 assert isinstance(lvalue, NameExpr)
+                # Only treat marked class variables as class variables.
+                if not is_class_var(lvalue):
+                    continue
 
                 typ = self.load_native_type_object(cdef.fullname)
                 value = self.accept(stmt.rvalue)
@@ -581,6 +654,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 pass
             else:
                 assert False, "Unsupported statement in class body"
+
+        self.generate_attr_defaults(cdef)
 
     def visit_import(self, node: Import) -> None:
         if node.is_unreachable or node.is_mypy_only:
@@ -689,6 +764,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         fitem = self.fn_info.fitem
         for arg in fitem.arguments:
             if arg.initializer:
+                assert self.is_approximately_constant(arg.initializer), (
+                    "Unsupported default argument")
                 target = self.environment.lookup(arg.variable)
                 assert isinstance(target, AssignmentTargetRegister)
                 error_block, body_block = BasicBlock(), BasicBlock()
