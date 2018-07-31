@@ -47,6 +47,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     generate_object_struct(cl, emitter)
     emit_line()
 
+    # If the class has a method to initialize default attribute
+    # values, we need to call it during initialization.
     defaults_fn = cl.get_method('__mypyc_defaults_setup')
 
     # If there is a __init__ method, generate a function for tp_init and
@@ -290,6 +292,7 @@ def generate_setup_for_class(cl: ClassIR,
         for attr, rtype in base.attributes.items():
             emitter.emit_line('self->{} = {};'.format(attr, emitter.c_undefined_value(rtype)))
 
+    # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
         emitter.emit_lines(
             'if ({}{}((PyObject *)self) == 0) {{'.format(

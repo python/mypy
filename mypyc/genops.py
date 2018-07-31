@@ -566,6 +566,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         whose names are in all caps (as an unsound and very hacky proxy for whether they
         are a constant).
         """
+        # TODO: This is a hack, #336
         return (isinstance(e, (StrExpr, BytesExpr, IntExpr, FloatExpr))
                 or (isinstance(e, UnaryExpr) and e.op == '-'
                     and isinstance(e.expr, (IntExpr, FloatExpr)))
@@ -578,16 +579,18 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         cls = self.mapper.type_to_ir[cdef.info]
 
         # Pull out all assignments in classes in the mro so we can initialize them
-        default_assignments = [
-            stmt
-            for info in cdef.info.mro
-            if info in self.mapper.type_to_ir
-            for stmt in info.defn.defs.body
-            if isinstance(stmt, AssignmentStmt)
-            if isinstance(stmt.lvalues[0], NameExpr)
-            if not is_class_var(stmt.lvalues[0])
-            if not isinstance(stmt.rvalue, TempNode)
-        ]
+        # TODO: Support nested statements
+        default_assignments = []
+        for info in cdef.info.mro:
+            if info not in self.mapper.type_to_ir:
+                continue
+            for stmt in info.defn.defs.body:
+                if (isinstance(stmt, AssignmentStmt)
+                        and isinstance(stmt.lvalues[0], NameExpr)
+                        and not is_class_var(stmt.lvalues[0])
+                        and not isinstance(stmt.rvalue, TempNode)):
+                    default_assignments.append(stmt)
+
         if not default_assignments:
             return
 
