@@ -359,6 +359,42 @@ L0:
     r2 = None
     return r2
 
+[case testClassMethod]
+class C:
+    @staticmethod
+    def foo(x: int) -> int: return 10 + x
+    @classmethod
+    def bar(cls, x: int) -> int: return 10 + x
+
+def lol() -> int:
+    return C.foo(1) + C.bar(2)
+[out]
+def C.foo(x):
+    x, r0, r1 :: int
+L0:
+    r0 = 10
+    r1 = r0 + x :: int
+    return r1
+def C.bar(cls, x):
+    cls :: object
+    x, r0, r1 :: int
+L0:
+    r0 = 10
+    r1 = r0 + x :: int
+    return r1
+def lol():
+    r0, r1 :: int
+    r2 :: object
+    r3, r4, r5 :: int
+L0:
+    r0 = 1
+    r1 = C.foo(r0)
+    r2 = __main__.C :: type
+    r3 = 2
+    r4 = C.bar(r2, r3)
+    r5 = r1 + r4 :: int
+    return r5
+
 [case testSuper1]
 class A:
     def __init__(self, x: int) -> None:

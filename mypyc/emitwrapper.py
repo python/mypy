@@ -2,7 +2,7 @@
 
 from mypyc.common import PREFIX, NATIVE_PREFIX
 from mypyc.emit import Emitter
-from mypyc.ops import FuncIR, RType, RuntimeArg, is_object_rprimitive
+from mypyc.ops import FuncIR, RType, RuntimeArg, is_object_rprimitive, FUNC_STATICMETHOD
 from mypyc.namegen import NameGenerator
 from typing import List
 
@@ -23,7 +23,7 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
 
     # If fn is a method, then the first argument is a self param
     real_args = list(fn.args)
-    if fn.class_name:
+    if fn.class_name and not fn.decl.kind == FUNC_STATICMETHOD:
         arg = real_args.pop(0)
         emitter.emit_line('PyObject *obj_{} = self;'.format(arg.name))
 
@@ -34,8 +34,11 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     for arg in real_args:
         emitter.emit_line('PyObject *obj_{}{};'.format(
                           arg.name, ' = NULL' if arg.optional else ''))
-    arg_format = '{}{}:f'.format('O' * (len(real_args) - len(optional_args)),
-        '|' + 'O' * len(optional_args) if len(optional_args) > 0 else '')
+    arg_format = '{}{}:{}'.format(
+        'O' * (len(real_args) - len(optional_args)),
+        '|' + 'O' * len(optional_args) if len(optional_args) > 0 else '',
+        fn.name,
+    )
     arg_ptrs = ''.join(', &obj_{}'.format(arg.name) for arg in real_args)
     emitter.emit_lines(
         'if (!PyArg_ParseTupleAndKeywords(args, kw, "{}", kwlist{})) {{'.format(

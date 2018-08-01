@@ -148,3 +148,7 @@ def len(o: Sized) -> int: pass
 def print(*object) -> None: pass
 def range(x: int) -> Iterator[int]: pass
 def isinstance(x: object, t: object) -> bool: pass
+
+# Dummy definitions.
+class classmethod: pass
+class staticmethod: pass

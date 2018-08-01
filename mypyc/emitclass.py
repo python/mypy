@@ -9,7 +9,8 @@ from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.ops import (
     ClassIR, FuncIR, FuncDecl, RType, RTuple, Environment, object_rprimitive, FuncSignature,
-    VTableMethod, VTableAttr, VTableEntries
+    VTableMethod, VTableAttr, VTableEntries,
+    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
@@ -406,7 +407,13 @@ def generate_methods_table(cl: ClassIR,
     for fn in cl.methods.values():
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
-        emitter.emit_line(' METH_VARARGS | METH_KEYWORDS, NULL},')
+        flags = ['METH_VARARGS', 'METH_KEYWORDS']
+        if fn.decl.kind == FUNC_STATICMETHOD:
+            flags.append('METH_STATIC')
+        elif fn.decl.kind == FUNC_CLASSMETHOD:
+            flags.append('METH_CLASS')
+
+        emitter.emit_line(' {}, NULL}},'.format(' | '.join(flags)))
     emitter.emit_line('{NULL}  /* Sentinel */')
     emitter.emit_line('};')
 

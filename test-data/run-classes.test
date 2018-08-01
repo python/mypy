@@ -413,6 +413,31 @@ Traceback (most recent call last):
     A().x
 AttributeError: attribute 'x' of 'X' undefined
 
+[case testClassMethods]
+from typing import ClassVar
+class C:
+    lurr: ClassVar[int] = 9
+    @staticmethod
+    def foo(x: int) -> int: return 10 + x
+    @classmethod
+    def bar(cls, x: int) -> int: return cls.lurr + x
+
+def test1() -> int:
+    return C.foo(1) + C.bar(2)
+def test2() -> int:
+    c = C()
+    return c.foo(1) + c.bar(2)
+[file driver.py]
+from native import *
+assert C.foo(10) == 20
+assert C.bar(10) == 19
+c = C()
+assert c.foo(10) == 20
+assert c.bar(10) == 19
+
+assert test1() == 22
+assert test2() == 22
+
 [case testSuper]
 from mypy_extensions import trait
 from typing import List

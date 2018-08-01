@@ -58,7 +58,7 @@ from mypyc.ops import (
     VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue,
     NO_TRACEBACK_LINE_NO,
-    FuncDecl,
+    FuncDecl, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import (
@@ -315,7 +315,9 @@ class Mapper:
 
 def prepare_func_def(module_name: str, class_name: Optional[str],
                      fdef: FuncDef, mapper: Mapper) -> FuncDecl:
-    decl = FuncDecl(fdef.name(), class_name, module_name, mapper.fdef_to_sig(fdef))
+    kind = FUNC_STATICMETHOD if fdef.is_static else (
+        FUNC_CLASSMETHOD if fdef.is_class else FUNC_NORMAL)
+    decl = FuncDecl(fdef.name(), class_name, module_name, mapper.fdef_to_sig(fdef), kind)
     mapper.func_to_decl[fdef] = decl
     return decl
 
@@ -1615,7 +1617,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             assert isinstance(callee.expr.node, TypeInfo)
             ir = self.mapper.type_to_ir[callee.expr.node]
             decl = ir.method_decl(callee.name)
-            args = [self.accept(arg) for arg in expr.args]
+            args = []
+            if decl.kind == FUNC_CLASSMETHOD:  # Add the class argument for class methods
+                args.append(self.load_native_type_object(callee.expr.node.fullname()))
+            args += [self.accept(arg) for arg in expr.args]
 
             return self.call(decl, args, expr.line)
 

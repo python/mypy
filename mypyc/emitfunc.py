@@ -10,6 +10,7 @@ from mypyc.ops import (
     BasicBlock, Value, Register, RType, RTuple, MethodCall, PrimitiveOp,
     EmitterInterface, Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
     RaiseStandardError, FuncDecl,
+    FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
 from mypyc.namegen import NameGenerator
 
@@ -249,9 +250,16 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
         rtype = op.receiver_type
         method_idx = rtype.method_index(op.method)
-        args = ', '.join([obj] + [self.reg(arg) for arg in op.args])
         method = rtype.class_ir.get_method(op.method)
         assert method is not None
+
+        # The first argument gets omitted for static methods and
+        # turned into the class for class methods
+        obj_args = (
+            [] if method.decl.kind == FUNC_STATICMETHOD else
+            ['(PyObject *)Py_TYPE({})'.format(obj)] if method.decl.kind == FUNC_CLASSMETHOD else
+            [obj])
+        args = ', '.join(obj_args + [self.reg(arg) for arg in op.args])
         mtype = native_function_type(method, self.emitter)
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
         self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({});'.format(
