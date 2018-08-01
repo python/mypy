@@ -1592,7 +1592,6 @@ def test_call_module_function_with_keyword_args() -> None:
 
 def test_call_python_function_with_keyword_args() -> None:
     assert int("11", base=2) == 3
-    assert int(base=2, x="11") == 3
 
 def test_call_lambda_function_with_keyword_args() -> None:
     g = testmodule.get_lambda_function()
