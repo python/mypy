@@ -100,11 +100,11 @@ class Attribute:
                 if types:
                     args = UnionType.make_simplified_union(types)
                     init_type = ctx.api.anal_type(args)
+
             if self.converter.is_attr_converters_optional and init_type:
                 # If the converter was attr.converter.optional(type) then add None to
                 # the allowed init_type.
-                args = UnionType.make_simplified_union([init_type, NoneTyp()])
-                init_type = ctx.api.anal_type(args)
+                init_type = UnionType.make_simplified_union([init_type, NoneTyp()])
 
             if not init_type:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
