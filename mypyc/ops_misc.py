@@ -82,6 +82,25 @@ for op, funcname in [('+', 'PyNumber_Add'),
               emit=simple_emit('{dest} = %s({args[0]}, {args[1]});' % funcname),
               priority=0)
 
+for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
+                     ('-=', 'PyNumber_InPlaceSubtract'),
+                     ('*=', 'PyNumber_InPlaceMultiply'),
+                     ('@=', 'PyNumber_InPlaceMatrixMultiply'),
+                     ('//=', 'PyNumber_InPlaceFloorDivide'),
+                     ('/=', 'PyNumber_InPlaceTrueDivide'),
+                     ('%=', 'PyNumber_InPlaceRemainder'),
+                     ('<<=', 'PyNumber_InPlaceLshift'),
+                     ('>>=', 'PyNumber_InPlaceRshift'),
+                     ('&=', 'PyNumber_InPlaceAnd'),
+                     ('^=', 'PyNumber_InPlaceXor'),
+                     ('|=', 'PyNumber_InPlaceOr')]:
+    binary_op(op=op,
+              arg_types=[object_rprimitive, object_rprimitive],
+              result_type=object_rprimitive,
+              error_kind=ERR_MAGIC,
+              emit=simple_emit('{dest} = %s({args[0]}, {args[1]});' % funcname),
+              priority=0)
+
 binary_op(op='**',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=object_rprimitive,

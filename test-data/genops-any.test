@@ -129,10 +129,10 @@ def f3(a, n):
     r5 :: None
 L0:
     r0 = box(int, n)
-    r1 = a + r0
+    r1 = a += r0
     a = r1
     r2 = box(int, n)
-    r3 = r2 + a
+    r3 = r2 += a
     r4 = unbox(int, r3)
     n = r4
     r5 = None

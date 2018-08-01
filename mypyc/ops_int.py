@@ -26,6 +26,15 @@ int_binary_op('*', 'CPyTagged_Multiply')
 int_binary_op('//', 'CPyTagged_FloorDivide')
 int_binary_op('%', 'CPyTagged_Remainder')
 
+# this should work because assignment operators are parsed differently
+# and the code in genops that handles it does the assignment
+# regardless of whether or not the operator works in place anyway
+int_binary_op('+=', 'CPyTagged_Add')
+int_binary_op('-=', 'CPyTagged_Subtract')
+int_binary_op('*=', 'CPyTagged_Multiply')
+int_binary_op('//=', 'CPyTagged_FloorDivide')
+int_binary_op('%=', 'CPyTagged_Remainder')
+
 int_compare_op('==', 'CPyTagged_IsEq')
 int_compare_op('!=', 'CPyTagged_IsNe')
 int_compare_op('<', 'CPyTagged_IsLt')

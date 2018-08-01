@@ -939,11 +939,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.assign(target, rvalue_reg, line)
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
+        """Operator assignment statement such as x += 1"""
         self.disallow_class_assignments([stmt.lvalue])
         target = self.get_assignment_target(stmt.lvalue)
+        target_value = self.read(target, stmt.line)
         rreg = self.accept(stmt.rvalue)
-        res = self.read(target, stmt.line)
-        res = self.binary_op(res, rreg, stmt.op, stmt.line)
+        # the Python parser strips the '=' from operator assignment statements, so re-add it
+        op = stmt.op + '='
+        res = self.binary_op(target_value, rreg, op, stmt.line)
+        # usually operator assignments are done in-place
+        # but when target doesn't support that we need to manually assign
         self.assign(target, res, res.line)
 
     def get_assignment_target(self, lvalue: Lvalue) -> AssignmentTarget:

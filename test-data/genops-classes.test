@@ -202,9 +202,9 @@ def increment(o):
     r0, r1, r2 :: int
     r3 :: bool
 L0:
-    r0 = 1
-    r1 = o.x
-    r2 = r1 + r0 :: int
+    r0 = o.x
+    r1 = 1
+    r2 = r0 += r1 :: int
     o.x = r2; r3 = is_error
     return o
 

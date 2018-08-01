@@ -185,6 +185,17 @@ print(fib(6))
 2
 13
 
+[case testListPlusEquals]
+from typing import Any
+def append(x: Any) -> None:
+    x += [1]
+
+[file driver.py]
+from native import append
+x = []
+append(x)
+assert x == [1]
+
 [case testListSum]
 from typing import List
 def sum(a: List[int], l: int) -> int:

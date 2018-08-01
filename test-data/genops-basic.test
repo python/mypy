@@ -483,7 +483,7 @@ L0:
     r0 = 0
     x = r0
     r1 = 1
-    r2 = x + r1 :: int
+    r2 = x += r1 :: int
     x = r2
     return x
 

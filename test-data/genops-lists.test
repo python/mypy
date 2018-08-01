@@ -173,8 +173,9 @@ def increment(l):
     l :: list
     r0, i, r1 :: int
     r2 :: bool
-    r3 :: int
-    r4, r5, r6 :: object
+    r3 :: object
+    r4 :: int
+    r5, r6 :: object
     r7 :: bool
     r8, r9 :: int
 L0:
@@ -185,10 +186,10 @@ L1:
     r2 = i < r0 :: int
     if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = 1
-    r4 = l[i] :: list
-    r5 = box(int, r3)
-    r6 = r4 + r5
+    r3 = l[i] :: list
+    r4 = 1
+    r5 = box(int, r4)
+    r6 = r3 += r5
     r7 = l.__setitem__(i, r6) :: list
 L3:
     r8 = 1

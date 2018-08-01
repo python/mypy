@@ -157,8 +157,9 @@ def increment(d):
     d :: dict
     r0, r1 :: object
     k, r2 :: str
-    r3 :: int
-    r4, r5, r6 :: object
+    r3 :: object
+    r4 :: int
+    r5, r6 :: object
     r7, r8 :: bool
 L0:
     r0 = iter d :: object
@@ -168,10 +169,10 @@ L1:
 L2:
     r2 = cast(str, r1)
     k = r2
-    r3 = 1
-    r4 = d[k] :: dict
-    r5 = box(int, r3)
-    r6 = r4 + r5
+    r3 = d[k] :: dict
+    r4 = 1
+    r5 = box(int, r4)
+    r6 = r3 += r5
     r7 = d.__setitem__(k, r6) :: dict
     goto L1
 L3:

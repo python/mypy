@@ -328,9 +328,9 @@ L0:
     r0 = self.__mypyc_env__
     r1 = b_a_env()
     r1.__mypyc_env__ = r0; r2 = is_error
-    r3 = 1
-    r4 = r0.x
-    r5 = r4 + r3 :: int
+    r3 = r0.x
+    r4 = 1
+    r5 = r3 += r4 :: int
     r0.x = r5; r6 = is_error
     r7 = c_a_b_obj()
     r7.__mypyc_env__ = r1; r8 = is_error
