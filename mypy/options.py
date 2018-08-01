@@ -28,6 +28,7 @@ class Options:
         "disallow_any_expr",
         "disallow_any_generics",
         "disallow_any_unimported",
+        "disallow_incomplete_defs",
         "disallow_subclassing_any",
         "disallow_untyped_calls",
         "disallow_untyped_decorators",

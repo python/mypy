@@ -219,6 +219,10 @@ overridden by the pattern sections matching the module name.
 - ``disallow_any_generics`` (Boolean, default false) disallows usage of generic types that
   do not specify explicit type parameters.
 
+- ``disallow_incomplete_defs`` (Boolean, default false) disallow defining
+  functions with incomplete type annotations.  See
+  :ref:`--disallow-incomplete-defs <disallow-incomplete-defs>` option.
+
 - ``disallow_subclassing_any`` (Boolean, default False) disallows
   subclassing a value of type ``Any``.  See
   :ref:`--disallow-subclassing-any <disallow-subclassing-any>` option.
