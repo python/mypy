@@ -224,19 +224,7 @@ example we use the same type variable in two generic functions:
        return seq[-1]
 
 A variable cannot have a type variable in its type unless the type
-variable is bound in a containing generic class or function:
-
-.. code-block:: python
-
-    from typing import TypeVar
-
-    T = TypeVar('T')      # Declare type variable
-
-    def bad_function() -> T:
-        return 1
-
-    x = bad_function()  # Error! There is no containing class or function binding T.
-                        # x has type T, which cannot be replaced with a non-generic type.
+variable is bound in a containing generic class or function.
 
 .. _generic-methods-and-generic-self:
 
