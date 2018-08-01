@@ -289,10 +289,17 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_raise_standard_error(self, op: RaiseStandardError) -> None:
         # TODO: Better escaping of backspaces and such
-        if op.message is not None:
-            message = op.message.replace('"', '\\"')
-            self.emitter.emit_line(
-                'PyErr_SetString(PyExc_{}, "{}");'.format(op.class_name, message))
+        if op.value is not None:
+            if isinstance(op.value, str):
+                message = op.value.replace('"', '\\"')
+                self.emitter.emit_line(
+                    'PyErr_SetString(PyExc_{}, "{}");'.format(op.class_name, message))
+            elif isinstance(op.value, Value):
+                self.emitter.emit_line(
+                    'PyErr_SetObject(PyExc_{}, {}{});'.format(op.class_name, REG_PREFIX,
+                                                              op.value.name))
+            else:
+                assert False, 'op value type must be either str or Value'
         else:
             self.emitter.emit_line('PyErr_SetNone(PyExc_{});'.format(op.class_name))
         self.emitter.emit_line('{} = 0;'.format(self.reg(op)))

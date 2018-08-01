@@ -29,9 +29,9 @@ from mypy.nodes import (
     ComplexExpr, Decorator, DelStmt, DictionaryComprehension, EllipsisExpr, EnumCallExpr, ExecStmt,
     FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
-    RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr,
-    TypeApplication, TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr,
-    GDEF, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var
+    RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
+    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
+    ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var
 )
 import mypy.nodes
 from mypy.types import (
@@ -42,23 +42,23 @@ from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.subtypes import is_named_instance
 from mypy.checkexpr import map_actuals_to_formals
 
-from mypyc.common import ENV_ATTR_NAME, MAX_SHORT_INT, TOP_LEVEL_NAME
+from mypyc.common import (
+    ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, TEMP_ATTR_NAME, LAMBDA_NAME,
+    MAX_SHORT_INT, TOP_LEVEL_NAME
+)
 from mypyc.freevariables import FreeVariablesVisitor
 from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
     Return, FuncIR, Assign, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable,
     TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, ROptional,
-    MethodCall, INVALID_VALUE, INVALID_CLASS, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive,
-    bool_rprimitive, list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive,
-    str_rprimitive, tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive,
-    exc_rtuple,
-    PrimitiveOp, ControlOp, LoadErrorValue,
-    ERR_FALSE, OpDescription, RegisterOp, is_object_rprimitive, LiteralsMap, FuncSignature,
-    VTableAttr, VTableMethod, VTableEntries,
-    NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue,
-    NO_TRACEBACK_LINE_NO,
-    FuncDecl, FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
+    MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive, bool_rprimitive,
+    list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive, str_rprimitive,
+    tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, exc_rtuple,
+    PrimitiveOp, ControlOp, LoadErrorValue, ERR_FALSE, OpDescription, RegisterOp,
+    is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
+    NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
+    FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import (
@@ -380,31 +380,167 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
 
 class FuncInfo(object):
     """Contains information about functions as they are generated."""
-    def __init__(self, fitem: FuncItem = INVALID_FUNC_DEF, name: str = '',
-                 namespace: str = '') -> None:
+    def __init__(self,
+                 fitem: FuncItem = INVALID_FUNC_DEF,
+                 name: str = '',
+                 namespace: str = '',
+                 is_nested: bool = False,
+                 contains_nested: bool = False) -> None:
         self.fitem = fitem
         self.name = name
         self.ns = namespace
-        # Callable classes are ClassIR instances implementing the '__call__' method, used to
-        # represent functions that are nested inside of other functions.
-        self.callable_class = INVALID_CLASS
+        # Callable classes implement the '__call__' method, and are used to represent functions
+        # that are nested inside of other functions.
+        self._callable_class = None  # type: Optional[CallableClass]
         # Environment classes are ClassIR instances that contain attributes representing the
         # variables in the environment of the function they correspond to. Environment classes are
         # generated for functions that contain nested functions.
-        self.env_class = INVALID_CLASS
-        # The register associated with the 'self' instance for function classes.
-        self.self_reg = INVALID_VALUE  # type: Value
+        self._env_class = None  # type: Optional[ClassIR]
+        # Generator classes implement the '__next__' method, and are used to represent generators
+        # returned by generator functions.
+        self._generator_class = None  # type: Optional[GeneratorClass]
         # Environment class registers are the local registers associated with instances of an
-        # environment class, used for getting and setting attributes. env_reg is the register
-        # associated with the current environment, and prev_env_reg is the self.__mypyc_env__ field
-        # associated with the previous environment.
-        self.env_reg = INVALID_VALUE  # type: Value
-        self.prev_env_reg = INVALID_VALUE  # type: Value
+        # environment class, used for getting and setting attributes. curr_env_reg is the register
+        # associated with the current environment.
+        self._curr_env_reg = None  # type: Optional[Value]
         # These are flags denoting whether a given function is nested or contains a nested
         # function.
-        self.is_nested = False
-        self.contains_nested = False
+        self._is_nested = is_nested
+        self._contains_nested = contains_nested
+
         # TODO: add field for ret_type: RType = none_rprimitive
+
+    @property
+    def is_generator(self) -> bool:
+        return self.fitem.is_generator
+
+    @property
+    def is_nested(self) -> bool:
+        return self._is_nested
+
+    @property
+    def contains_nested(self) -> bool:
+        return self._contains_nested
+
+    @property
+    def callable_class(self) -> 'CallableClass':
+        assert self._callable_class is not None
+        return self._callable_class
+
+    @callable_class.setter
+    def callable_class(self, cls: 'CallableClass') -> None:
+        self._callable_class = cls
+
+    @property
+    def env_class(self) -> ClassIR:
+        assert self._env_class is not None
+        return self._env_class
+
+    @env_class.setter
+    def env_class(self, ir: ClassIR) -> None:
+        self._env_class = ir
+
+    @property
+    def generator_class(self) -> 'GeneratorClass':
+        assert self._generator_class is not None
+        return self._generator_class
+
+    @generator_class.setter
+    def generator_class(self, cls: 'GeneratorClass') -> None:
+        self._generator_class = cls
+
+    @property
+    def curr_env_reg(self) -> Value:
+        """Returns the register containing the instance of the environment class. Note that this
+        returns either the Value in the FuncInfo class or the Value in CallableClass depending on
+        whether the function is nested. The setter for curr_env_reg is not implemented because of
+        possible ambiguity.
+        """
+        if self._is_nested:
+            return self.callable_class.curr_env_reg
+        assert self._curr_env_reg is not None
+        return self._curr_env_reg
+
+
+class ImplicitClass(object):
+    """Contains information regarding classes that are generated as a result of nested functions or
+    generated functions, but not explicitly defined in the source code.
+    """
+    def __init__(self, ir: ClassIR) -> None:
+        # The ClassIR instance associated with this class.
+        self.ir = ir
+        # The register associated with the 'self' instance for this generator class.
+        self._self_reg = None  # type: Optional[Value]
+        # Environment class registers are the local registers associated with instances of an
+        # environment class, used for getting and setting attributes. curr_env_reg is the register
+        # associated with the current environment.
+        self._curr_env_reg = None  # type: Optional[Value]
+
+    @property
+    def self_reg(self) -> Value:
+        assert self._self_reg is not None
+        return self._self_reg
+
+    @self_reg.setter
+    def self_reg(self, reg: Value) -> None:
+        self._self_reg = reg
+
+    @property
+    def curr_env_reg(self) -> Value:
+        assert self._curr_env_reg is not None
+        return self._curr_env_reg
+
+    @curr_env_reg.setter
+    def curr_env_reg(self, reg: Value) -> None:
+        self._curr_env_reg = reg
+
+
+class CallableClass(ImplicitClass):
+    def __init__(self, ir: ClassIR) -> None:
+        super().__init__(ir)
+        # Environment class registers are the local registers associated with instances of an
+        # environment class, used for getting and setting attributes. prev_env_reg is the
+        # self.__mypyc_env__ field associated with the previous environment.
+        self._prev_env_reg = None  # type: Optional[Value]
+
+    @property
+    def prev_env_reg(self) -> Value:
+        assert self._prev_env_reg is not None
+        return self._prev_env_reg
+
+    @prev_env_reg.setter
+    def prev_env_reg(self, reg: Value) -> None:
+        self._prev_env_reg = reg
+
+
+class GeneratorClass(ImplicitClass):
+    def __init__(self, ir: ClassIR) -> None:
+        super().__init__(ir)
+        # This register holds the label number that the '__next__' function should go to the next
+        # time it is called.
+        self._next_label_reg = None  # type: Optional[Value]
+        self._next_label_target = None  # type: Optional[AssignmentTarget]
+
+        self.switch_block = BasicBlock()
+        self.blocks = []  # type: List[BasicBlock]
+
+    @property
+    def next_label_reg(self) -> Value:
+        assert self._next_label_reg is not None
+        return self._next_label_reg
+
+    @next_label_reg.setter
+    def next_label_reg(self, reg: Value) -> None:
+        self._next_label_reg = reg
+
+    @property
+    def next_label_target(self) -> AssignmentTarget:
+        assert self._next_label_target is not None
+        return self._next_label_target
+
+    @next_label_target.setter
+    def next_label_target(self, target: AssignmentTarget) -> None:
+        self._next_label_target = target
 
 
 class NonlocalControl:
@@ -460,6 +596,24 @@ class CleanupNonlocalControl(NonlocalControl):
         self.outer.gen_return(builder, value)
 
 
+class GeneratorNonlocalControl(BaseNonlocalControl):
+    def gen_return(self, builder: 'IRBuilder', value: Value) -> None:
+        # Assign an invalid next label number so that the next time __next__ is called, we jump to
+        # the case in which StopIteration is raised.
+        builder.assign(builder.fn_info.generator_class.next_label_target,
+                       builder.add(LoadInt(-1)),
+                       builder.fn_info.fitem.line)
+        # Raise a StopIteration containing a field for the value that should be returned. Before
+        # doing so, create a new block without an error handler set so that the implicitly thrown
+        # StopIteration isn't caught by except blocks inside of the generator function.
+        builder.error_handlers.append(None)
+        builder.goto_new_block()
+        builder.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, value,
+                                       builder.fn_info.fitem.line))
+        builder.add(Unreachable())
+        builder.error_handlers.pop()
+
+
 class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def __init__(self,
                  types: Dict[Expression, Type],
@@ -476,8 +630,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.modules = set(modules)
         self.callable_class_names = set()  # type: Set[str]
 
+        # These variables keep track of the number of lambdas, implicit indices, and implicit
+        # iterators instantiated so we avoid name conflicts. The indices and iterators are
+        # instantiated from for-loops.
         self.lambda_counter = 0
+        self.temp_counter = 0
 
+        # These variables are populated from the first-pass FreeVariablesVisitor.
         self.free_variables = fvv.free_variables
         self.encapsulating_fitems = fvv.encapsulating_funcs
         self.nested_fitems = fvv.nested_funcs
@@ -533,12 +692,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
         name = fdef.name()
         class_ir = self.mapper.type_to_ir[cdef.info]
-
-        func_ir, _ = self.gen_func_def(fdef, fdef.name(), class_ir.method_sig(fdef.name()),
-                                       cdef.name)
-
+        func_ir, _ = self.gen_func_item(fdef, fdef.name(), class_ir.method_sig(fdef.name()),
+                                        cdef.name)
         self.functions.append(func_ir)
-
         if fdef.is_property:
             class_ir.properties[name] = func_ir
         else:
@@ -782,8 +938,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.goto(body_block)
                 self.activate_block(body_block)
 
-    def gen_func_def(self, fitem: FuncItem, name: str, sig: FuncSignature,
-                     class_name: Optional[str] = None) -> Tuple[FuncIR, Optional[Value]]:
+    def gen_func_item(self, fitem: FuncItem, name: str, sig: FuncSignature,
+                      class_name: Optional[str] = None) -> Tuple[FuncIR, Optional[Value]]:
         # TODO: do something about abstract methods.
 
         """Generates and returns the FuncIR for a given FuncDef.
@@ -817,18 +973,35 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         | c_obj |   --------------------------+
         +-------+
         """
-        self.enter(FuncInfo(fitem, name, self.gen_func_ns()))
+        func_reg = None  # type: Optional[Value]
 
-        # The top-most environment is for the module top level.
-        self.fn_info.is_nested = fitem in self.nested_fitems
-        self.fn_info.contains_nested = fitem in self.encapsulating_fitems
+        is_nested = fitem in self.nested_fitems
+        contains_nested = fitem in self.encapsulating_fitems
+        self.enter(FuncInfo(fitem, name, self.gen_func_ns(), is_nested, contains_nested))
 
         if self.fn_info.is_nested:
             self.setup_callable_class()
-        if self.fn_info.contains_nested:
+
+        # Functions that contain nested functions need an environment class to store variables that
+        # are free in their nested functions. Generator functions need an environment class to
+        # store a variable denoting the next instruction to be executed when the __next__ function
+        # is called, along with all the variables inside the function itself.
+        if self.fn_info.contains_nested or self.fn_info.is_generator:
             self.setup_env_class()
 
-        self.load_env_registers()
+        if self.fn_info.is_generator:
+            # Do a first-pass and generate a function that just returns a generator object.
+            self.gen_generator_func()
+            blocks, env, ret_type, fn_info = self.leave()
+            func_ir, func_reg = self.gen_func_ir(blocks, sig, env, fn_info, class_name)
+            self.functions.append(func_ir)
+
+            # Re-enter the FuncItem and visit the body of the function this time.
+            self.enter(fn_info)
+            self.setup_env_for_generator_class()
+
+        if not self.fn_info.is_generator:
+            self.load_env_registers()
         self.gen_arg_default()
 
         if self.fn_info.contains_nested:
@@ -839,16 +1012,36 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.accept(fitem.body)
         self.maybe_add_implicit_return()
 
+        if self.fn_info.is_generator:
+            self.create_switch_for_generator_class()
+
         blocks, env, ret_type, fn_info = self.leave()
 
+        if fn_info.is_generator:
+            func_ir = self.add_next_to_generator_class(blocks, sig, env, fn_info)
+            self.functions.append(self.add_iter_to_generator_class(fn_info))
+        else:
+            func_ir, func_reg = self.gen_func_ir(blocks, sig, env, fn_info, class_name)
+
+        return (func_ir, func_reg)
+
+    def gen_func_ir(self,
+                    blocks: List[BasicBlock],
+                    sig: FuncSignature,
+                    env: Environment,
+                    fn_info: FuncInfo,
+                    class_name: Optional[str]) -> Tuple[FuncIR, Optional[Value]]:
+        """Generates the FuncIR for a function given the blocks, environment, and function info of
+        a particular function and returns it. If the function is nested, also returns the register
+        containing the instance of the corresponding callable class.
+        """
+        func_reg = None  # type: Optional[Value]
         if fn_info.is_nested:
             func_ir = self.add_call_to_callable_class(blocks, sig, env, fn_info)
-            func_reg = self.instantiate_callable_class(fn_info)  # type: Optional[Value]
+            func_reg = self.instantiate_callable_class(fn_info)
         else:
-            assert isinstance(fitem, FuncDef)
-            func_ir = FuncIR(self.mapper.func_to_decl[fitem], blocks, env)
-            func_reg = None
-
+            assert isinstance(fn_info.fitem, FuncDef)
+            func_ir = FuncIR(self.mapper.func_to_decl[fn_info.fitem], blocks, env)
         return (func_ir, func_reg)
 
     def maybe_add_implicit_return(self) -> None:
@@ -859,7 +1052,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add_implicit_unreachable()
 
     def visit_func_def(self, fdef: FuncDef) -> None:
-        func_ir, func_reg = self.gen_func_def(fdef, fdef.name(), self.mapper.fdef_to_sig(fdef))
+        func_ir, func_reg = self.gen_func_item(fdef, fdef.name(), self.mapper.fdef_to_sig(fdef))
 
         # If the function that was visited was a nested function, then either look it up in our
         # current environment or define it if it was not already defined.
@@ -881,7 +1074,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], ControlOp):
             retval = self.add(PrimitiveOp([], none_op, line=-1))
-            self.add(Return(retval))
+            self.nonlocal_control[-1].gen_return(self, retval)
 
     def add_implicit_unreachable(self) -> None:
         block = self.blocks[-1][-1]
@@ -959,14 +1152,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if lvalue.kind == LDEF:
                 if symbol not in self.environment.symtable:
                     # If the function contains a nested function and the symbol is a free symbol,
-                    # then first define a new variable in the current function's environment class.
-                    # Next, define a target that refers to the newly defined variable in that
-                    # environment class. Add the target to the table containing class environment
-                    # variables, as well as the current environment.
+                    # or if the function is a generator function, then first define a new variable
+                    # in the current function's environment class. Next, define a target that
+                    # refers to the newly defined variable in that environment class. Add the
+                    # target to the table containing class environment variables, as well as the
+                    # current environment.
+                    if self.fn_info.is_generator:
+                        return self.add_var_to_env_class(symbol, self.node_type(lvalue),
+                                                         self.fn_info.generator_class,
+                                                         reassign=False)
+
                     if self.fn_info.contains_nested and self.is_free_variable(symbol):
-                        self.fn_info.env_class.attributes[symbol.name()] = self.node_type(lvalue)
-                        target = AssignmentTargetAttr(self.fn_info.env_reg, symbol.name())
-                        return self.environment.add_target(symbol, target)
+                        return self.add_var_to_env_class(symbol, self.node_type(lvalue),
+                                                         self.fn_info, reassign=False)
 
                     # Otherwise define a new local variable.
                     return self.environment.add_local_reg(symbol, self.node_type(lvalue))
@@ -996,7 +1194,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
-    def read(self, target: AssignmentTarget, line: int) -> Value:
+    def read(self, target: Union[Value, AssignmentTarget], line: int) -> Value:
+        if isinstance(target, Value):
+            return target
         if isinstance(target, AssignmentTargetRegister):
             return target.register
         if isinstance(target, AssignmentTargetIndex):
@@ -1016,8 +1216,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         assert False, 'Unsupported lvalue: %r' % target
 
-    def assign(self, target: AssignmentTarget, rvalue_reg: Value, line: int) -> None:
-        if isinstance(target, AssignmentTargetRegister):
+    def assign(self, target: Union[Register, AssignmentTarget],
+               rvalue_reg: Value, line: int) -> None:
+        if isinstance(target, Register):
+            self.add(Assign(target, rvalue_reg))
+        elif isinstance(target, AssignmentTargetRegister):
             rvalue_reg = self.coerce(rvalue_reg, target.type, line)
             self.add(Assign(target.register, rvalue_reg))
         elif isinstance(target, AssignmentTargetAttr):
@@ -1150,6 +1353,43 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.for_loop_helper(s.index, s.expr, body, else_block if s.else_body else None, s.line)
 
+    def spill(self, value: Value, line: int) -> AssignmentTarget:
+        """Moves a given Value instance into the generator class' environment class."""
+        name = '{}{}'.format(TEMP_ATTR_NAME, self.temp_counter)
+        self.temp_counter += 1
+        target = self.add_var_to_env_class(Var(name), value.type, self.fn_info.generator_class)
+        self.assign(target, value, line)
+        return target
+
+    def maybe_spill(self, value: Value, line: int) -> Union[Value, AssignmentTarget]:
+        """
+        Moves a given Value instance into the environment class for generator functions. For
+        non-generator functions, leaves the Value instance as it is.
+
+        Returns an AssignmentTarget associated with the Value for generator functions and the
+        original Value itself for non-generator functions.
+        """
+        if self.fn_info.is_generator:
+            return self.spill(value, line)
+        return value
+
+    def maybe_spill_assignable(self, value: Value,
+                               line: int) -> Union[Register, AssignmentTarget]:
+        """
+        Moves a given Value instance into the environment class for generator functions. For
+        non-generator functions, allocate a temporary Register.
+
+        Returns an AssignmentTarget associated with the Value for generator functions and an
+        assignable Register for non-generator functions.
+        """
+        if self.fn_info.is_generator:
+            return self.spill(value, line)
+
+        # Allocate a temporary register for the assignable value.
+        reg = self.alloc_temp(value.type)
+        self.assign(reg, value, line)
+        return reg
+
     def for_loop_helper(self, index: Lvalue, expr: Expression,
                         body_insts: GenFunc, else_insts: Optional[GenFunc], line: int) -> None:
         """Generate IR for a loop.
@@ -1168,6 +1408,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if (isinstance(expr, CallExpr)
                 and isinstance(expr.callee, RefExpr)
                 and expr.callee.fullname == 'builtins.range'):
+
             condition_block = BasicBlock()
             self.push_loop_stack(increment_block, exit_block)
 
@@ -1175,16 +1416,18 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # TODO: Check argument counts and kinds; check the lvalue
             end = expr.args[0]
             end_reg = self.accept(end)
+            end_target = self.maybe_spill(end_reg, line)
 
-            # Initialize loop index to 0.
-            index_target = self.get_assignment_target(index)
-            self.assign(index_target, self.accept(IntExpr(0)), line)
+            # Initialize loop index to 0. Assert that the index target is assignable.
+            index_target = self.get_assignment_target(
+                index)  # type: Union[Register, AssignmentTarget]
+            self.assign(index_target, self.add(LoadInt(0)), line)
             self.goto(condition_block)
 
             # Add loop condition check.
             self.activate_block(condition_block)
-            index_reg = self.read(index_target, line)
-            comparison = self.binary_op(index_reg, end_reg, '<', line)
+            comparison = self.binary_op(self.read(index_target, line),
+                                        self.read(end_target, line), '<', line)
             self.add_bool_branch(comparison, body_block, normal_loop_exit)
 
             self.activate_block(body_block)
@@ -1193,8 +1436,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.goto_and_activate(increment_block)
 
             # Increment index register.
-            one_reg = self.add(LoadInt(1))
-            self.assign(index_target, self.binary_op(index_reg, one_reg, '+', line), line)
+            self.assign(index_target, self.binary_op(self.read(index_target, line),
+                                                     self.add(LoadInt(1)), '+', line), line)
 
             # Go back to loop condition check.
             self.goto(condition_block)
@@ -1204,27 +1447,30 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         elif is_list_rprimitive(self.node_type(expr)):
             self.push_loop_stack(increment_block, exit_block)
 
+            # Define targets to contain the expression, along with the index that will be used
+            # for the for-loop. If we are inside of a generator function, spill these into the
+            # environment class.
             expr_reg = self.accept(expr)
-
-            index_reg = self.alloc_temp(int_rprimitive)
-            self.add(Assign(index_reg, self.add(LoadInt(0))))
-
-            one_reg = self.add(LoadInt(1))
+            index_reg = self.add(LoadInt(0))
+            expr_target = self.maybe_spill(expr_reg, line)
+            index_target = self.maybe_spill_assignable(index_reg, line)
 
             condition_block = self.goto_new_block()
 
             # For compatibility with python semantics we recalculate the length
             # at every iteration.
-            len_reg = self.add(PrimitiveOp([expr_reg], list_len_op, line))
-
-            comparison = self.binary_op(index_reg, len_reg, '<', line)
+            len_reg = self.add(PrimitiveOp([self.read(expr_target, line)], list_len_op, line))
+            comparison = self.binary_op(self.read(index_target, line), len_reg, '<', line)
             self.add_bool_branch(comparison, body_block, normal_loop_exit)
 
             self.activate_block(body_block)
             target_list_type = self.types[expr]
             assert isinstance(target_list_type, Instance)
             target_type = self.type_to_rtype(target_list_type.args[0])
-            value_box = self.add(PrimitiveOp([expr_reg, index_reg], list_get_item_op, line))
+
+            value_box = self.add(PrimitiveOp([self.read(expr_target, line),
+                                              self.read(index_target, line)],
+                                             list_get_item_op, line))
 
             self.assign(self.get_assignment_target(index),
                         self.unbox_or_cast(value_box, target_type, line), line)
@@ -1232,7 +1478,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             body_insts()
 
             self.goto_and_activate(increment_block)
-            self.add(Assign(index_reg, self.binary_op(index_reg, one_reg, '+', line)))
+            self.assign(index_target, self.binary_op(self.read(index_target, line),
+                                                     self.add(LoadInt(1)), '+', line), line)
             self.goto(condition_block)
 
             self.pop_loop_stack()
@@ -1242,17 +1489,20 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             self.push_loop_stack(increment_block, exit_block)
 
-            # Define registers to contain the expression, along with the iterator that will be used
-            # for the for-loop.
+            # Define targets to contain the expression, along with the iterator that will be used
+            # for the for-loop. If we are inside of a generator function, spill these into the
+            # environment class.
             expr_reg = self.accept(expr)
             iter_reg = self.add(PrimitiveOp([expr_reg], iter_op, line))
+            expr_target = self.maybe_spill(expr_reg, line)
+            iter_target = self.maybe_spill(iter_reg, line)
 
             # Create a block for where the __next__ function will be called on the iterator and
             # checked to see if the value returned is NULL, which would signal either the end of
             # the Iterable being traversed or an exception being raised. Note that Branch.IS_ERROR
             # checks only for NULL (an exception does not necessarily have to be raised).
             self.goto_and_activate(increment_block)
-            next_reg = self.add(PrimitiveOp([iter_reg], next_op, line))
+            next_reg = self.add(PrimitiveOp([self.read(iter_target, line)], next_op, line))
             self.add(Branch(next_reg, error_check_block, body_block, Branch.IS_ERROR))
 
             # Create a new block for the body of the loop. Set the previous branch to go here if
@@ -2277,8 +2527,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         fsig = FuncSignature(runtime_args, ret_type)
 
-        fname = '__mypyc_lambda_{}__'.format(self.lambda_counter)
-        func_ir, func_reg = self.gen_func_def(expr, fname, fsig)
+        fname = '{}{}'.format(LAMBDA_NAME, self.lambda_counter)
+        func_ir, func_reg = self.gen_func_item(expr, fname, fsig)
         assert func_reg is not None
 
         self.functions.append(func_ir)
@@ -2443,6 +2693,29 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         res = self.py_call(sup_val, args, o.line)
         return self.py_get_attr(res, o.name, o.line)
 
+    def visit_yield_expr(self, expr: YieldExpr) -> Value:
+        self.goto_new_block()
+        if expr.expr:
+            retval = self.accept(expr.expr)
+            retval = self.coerce(retval, self.ret_types[-1], expr.line)
+        else:
+            retval = self.add(PrimitiveOp([], none_op, line=-1))
+
+        generator_class = self.fn_info.generator_class
+        # Create a new block for the instructions immediately following the yield expression, and
+        # set the next label so that the next time '__next__' is called on the generator object,
+        # the function continues at the new block.
+        next_block = BasicBlock()
+        next_label = len(generator_class.blocks)
+        generator_class.blocks.append(next_block)
+        self.assign(generator_class.next_label_target, self.add(LoadInt(next_label)), expr.line)
+        self.add(Return(retval))
+        self.activate_block(next_block)
+
+        # TODO: Replace this value with the value that is sent into the generator when we support
+        #       the 'send' function.
+        return PrimitiveOp([], none_op, line=-1)
+
     # Unimplemented constructs
     # TODO: some of these are actually things that should never show up,
     # so properly sort those out.
@@ -2516,9 +2789,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_yield_from_expr(self, o: YieldFromExpr) -> Value:
         raise NotImplementedError
 
-    def visit_yield_expr(self, o: YieldExpr) -> Value:
-        raise NotImplementedError
-
     # Helpers
 
     def enter(self, fn_info: FuncInfo) -> None:
@@ -2528,7 +2798,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.fn_infos.append(self.fn_info)
         self.ret_types.append(none_rprimitive)
         self.error_handlers.append(None)
-        self.nonlocal_control.append(BaseNonlocalControl())
+        if fn_info.is_generator:
+            self.nonlocal_control.append(GeneratorNonlocalControl())
+        else:
+            self.nonlocal_control.append(BaseNonlocalControl())
         self.blocks.append([])
         self.new_block()
 
@@ -2679,60 +2952,94 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """
         self.add_args_to_env(local=True)
 
-        if self.fn_info.is_nested:
+        fn_info = self.fn_info
+        if fn_info.is_nested:
             index = len(self.environments) - 2
 
             # Load the first outer environment. This one is special because it gets saved in the
             # FuncInfo instance's prev_env_reg field.
             if index > 1:
                 outer_env = self.environments[index]
-                self.fn_info.prev_env_reg = self.load_outer_env(self.fn_info.self_reg, outer_env)
+                prev_env_reg = self.load_outer_env(fn_info.callable_class.self_reg, outer_env)
+                fn_info.callable_class.prev_env_reg = prev_env_reg
                 index -= 1
 
             # Load the remaining outer environments into registers.
-            env_reg = self.fn_info.prev_env_reg
+            curr_env_reg = fn_info.callable_class.prev_env_reg
             while index > 1:
                 outer_env = self.environments[index]
-                env_reg = self.load_outer_env(env_reg, outer_env)
+                curr_env_reg = self.load_outer_env(curr_env_reg, outer_env)
                 index -= 1
 
-    def add_args_to_env(self, local: bool = True) -> None:
+    def add_var_to_env_class(self,
+                             var: SymbolNode,
+                             rtype: RType,
+                             base: Union[FuncInfo, ImplicitClass],
+                             reassign: bool = False) -> AssignmentTarget:
+        # First, define the variable name as an attribute of the environment class, and then
+        # construct a target for that attribute.
+        self.fn_info.env_class.attributes[var.name()] = rtype
+        attr_target = AssignmentTargetAttr(base.curr_env_reg, var.name())
+
+        if reassign:
+            # Read the local definition of the variable, and set the corresponding attribute of
+            # the environment class' variable to be that value.
+            reg = self.read(self.environment.lookup(var), self.fn_info.fitem.line)
+            self.add(SetAttr(base.curr_env_reg, var.name(), reg, self.fn_info.fitem.line))
+
+        # Override the local definition of the variable to instead point at the variable in
+        # the environment class.
+        return self.environment.add_target(var, attr_target)
+
+    def setup_env_for_generator_class(self) -> None:
+        """Populates the environment for a generator class."""
         fitem = self.fn_info.fitem
+        generator_class = self.fn_info.generator_class
+
+        # First add the self register to the generator class.
+        self_target = self.environment.add_local_reg(Var('self'),
+                                                     RInstance(self.fn_info.generator_class.ir),
+                                                     is_arg=True)
+        generator_class.self_reg = self.read(self_target, fitem.line)
+        generator_class.curr_env_reg = self.load_outer_env(generator_class.self_reg,
+                                                           self.environment)
+
+        # Define a variable representing the label to go to the next time the '__next__' function
+        # of the generator is called, and add it as an attribute to the environment class.
+        generator_class.next_label_target = self.add_var_to_env_class(Var(NEXT_LABEL_ATTR_NAME),
+                                                                      int_rprimitive,
+                                                                      generator_class,
+                                                                      reassign=False)
+
+        generator_class.next_label_reg = self.read(generator_class.next_label_target, fitem.line)
+
+        self.add(Goto(generator_class.switch_block))
+        generator_class.blocks.append(self.new_block())
+
+    def add_args_to_env(self, local: bool = True) -> None:
+        fn_info = self.fn_info
         if local:
-            for arg in fitem.arguments:
+            for arg in fn_info.fitem.arguments:
                 assert arg.variable.type, "Function argument missing type"
                 rtype = self.type_to_rtype(arg.variable.type)
                 self.environment.add_local_reg(arg.variable, rtype, is_arg=True)
         else:
-            for arg in fitem.arguments:
+            for arg in fn_info.fitem.arguments:
                 assert arg.variable.type, "Function argument missing type"
-
-                # If the variable is not a free symbol, then we keep it in a local register.
-                # Otherwise, we load them into environment classes below.
-                if not self.is_free_variable(arg.variable):
-                    continue
-
-                # First, define the variable name as an attribute of the environment class, and
-                # then construct a target for that attribute.
-                rtype = self.type_to_rtype(arg.variable.type)
-                self.fn_info.env_class.attributes[arg.variable.name()] = rtype
-                attr_target = AssignmentTargetAttr(self.fn_info.env_reg, arg.variable.name())
-
-                # Read the local definition of the variable, and set the corresponding attribute of
-                # the environment class' variable to be that value.
-                var = self.read(self.environment.lookup(arg.variable), fitem.line)
-                self.add(SetAttr(self.fn_info.env_reg, arg.variable.name(), var, fitem.line))
-
-                # Override the local definition of the variable to instead point at the variable in
-                # the environment class.
-                self.environment.add_target(arg.variable, attr_target)
+                if self.is_free_variable(arg.variable) or fn_info.is_generator:
+                    rtype = self.type_to_rtype(arg.variable.type)
+                    if fn_info.is_nested:
+                        self.add_var_to_env_class(arg.variable, rtype, fn_info.callable_class,
+                                                  reassign=True)
+                    else:
+                        self.add_var_to_env_class(arg.variable, rtype, fn_info, reassign=True)
 
     def gen_func_ns(self) -> str:
         """Generates a namespace for a nested function using its outer function names."""
         return '_'.join(env.name for env in self.environments
                         if env.name and env.name != '<top level>')
 
-    def setup_callable_class(self) -> ClassIR:
+    def setup_callable_class(self) -> None:
         """Generates a callable class representing a nested function and sets up the 'self'
         variable for that class.
 
@@ -2749,10 +3056,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Check to see that the name has not already been taken. If so, rename the class. We allow
         # multiple uses of the same function name because this is valid in if-else blocks. Example:
         #     if True:
-        #         def foo():
+        #         def foo():          ---->    foo_obj()
         #             return True
         #     else:
-        #         def foo():
+        #         def foo():          ---->    foo_obj_0()
         #             return False
         name = '{}_{}_obj'.format(self.fn_info.name, self.fn_info.ns)
         count = 0
@@ -2762,19 +3069,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # Define the actual callable class ClassIR, and set its environment to point at the
         # previously defined environment class.
-        callable_class = ClassIR(name, self.module_name)
-        callable_class.attributes[ENV_ATTR_NAME] = RInstance(self.fn_infos[-2].env_class)
-        callable_class.mro = [callable_class]
-        self.fn_info.callable_class = callable_class
-        self.classes.append(callable_class)
+        callable_class_ir = ClassIR(name, self.module_name)
+        callable_class_ir.attributes[ENV_ATTR_NAME] = RInstance(self.fn_infos[-2].env_class)
+        callable_class_ir.mro = [callable_class_ir]
+        self.fn_info.callable_class = CallableClass(callable_class_ir)
+        self.classes.append(callable_class_ir)
 
         # Add a 'self' variable to the callable class' environment, and store that variable in a
         # register to be accessed later.
         self_target = self.environment.add_local_reg(Var('self'),
-                                                     RInstance(callable_class),
+                                                     RInstance(callable_class_ir),
                                                      is_arg=True)
-        self.fn_info.self_reg = self.read(self_target, self.fn_info.fitem.line)
-        return callable_class
+
+        self.fn_info.callable_class.self_reg = self.read(self_target, self.fn_info.fitem.line)
 
     def add_call_to_callable_class(self,
                                    blocks: List[BasicBlock],
@@ -2789,20 +3096,24 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         function becomes a class method.
         """
         sig = FuncSignature((RuntimeArg('self', object_rprimitive),) + sig.args, sig.ret_type)
-        call = FuncIR(FuncDecl('__call__', fn_info.callable_class.name, self.module_name, sig),
-                      blocks, env)
-        fn_info.callable_class.methods['__call__'] = call
-        return call
+        call_fn_decl = FuncDecl('__call__', fn_info.callable_class.ir.name, self.module_name, sig)
+        call_fn_ir = FuncIR(call_fn_decl, blocks, env)
+        fn_info.callable_class.ir.methods['__call__'] = call_fn_ir
+        return call_fn_ir
 
     def instantiate_callable_class(self, fn_info: FuncInfo) -> Value:
-        """Assigns a callable class to a register named after the given function definition."""
+        """
+        Assigns a callable class to a register named after the given function definition. Note
+        that fn_info refers to the function being assigned, whereas self.fn_info refers to the
+        function encapsulating the function being turned into a callable class.
+        """
         fitem = fn_info.fitem
 
-        func_reg = self.add(Call(fn_info.callable_class.ctor, [], fitem.line))
+        func_reg = self.add(Call(fn_info.callable_class.ir.ctor, [], fitem.line))
 
         # Set the callable class' environment attribute to point at the environment class
         # defined in the callable class' immediate outer scope.
-        self.add(SetAttr(func_reg, ENV_ATTR_NAME, self.fn_info.env_reg, fitem.line))
+        self.add(SetAttr(func_reg, ENV_ATTR_NAME, self.fn_info.curr_env_reg, fitem.line))
         return func_reg
 
     def setup_env_class(self) -> ClassIR:
@@ -2821,7 +3132,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                             self.module_name)
         env_class.attributes['self'] = RInstance(env_class)
         if self.fn_info.is_nested:
-            # If the function is nested, its environment class must contain and environment
+            # If the function is nested, its environment class must contain an environment
             # attribute pointing to its encapsulating functions' environment class.
             env_class.attributes[ENV_ATTR_NAME] = RInstance(self.fn_infos[-2].env_class)
         env_class.mro = [env_class]
@@ -2841,14 +3152,92 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def instantiate_env_class(self) -> Value:
         """Assigns an environment class to a register named after the given function definition."""
-        self.fn_info.env_reg = self.add(Call(self.fn_info.env_class.ctor, [],
-                                             self.fn_info.fitem.line))
+        curr_env_reg = self.add(Call(self.fn_info.env_class.ctor, [], self.fn_info.fitem.line))
 
         if self.fn_info.is_nested:
-            self.add(SetAttr(self.fn_info.env_reg, ENV_ATTR_NAME, self.fn_info.prev_env_reg,
+            self.fn_info.callable_class._curr_env_reg = curr_env_reg
+            self.add(SetAttr(curr_env_reg,
+                             ENV_ATTR_NAME,
+                             self.fn_info.callable_class.prev_env_reg,
                              self.fn_info.fitem.line))
+        else:
+            self.fn_info._curr_env_reg = curr_env_reg
 
-        return self.fn_info.env_reg
+        return curr_env_reg
+
+    def gen_generator_func(self) -> None:
+        self.setup_generator_class()
+        self.load_env_registers()
+        self.finalize_env_class()
+        self.add(Return(self.instantiate_generator_class()))
+
+    def setup_generator_class(self) -> ClassIR:
+        name = '{}_{}_gen'.format(self.fn_info.name, self.fn_info.ns)
+
+        generator_class_ir = ClassIR(name, self.module_name)
+        generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(self.fn_info.env_class)
+        generator_class_ir.mro = [generator_class_ir]
+
+        self.classes.append(generator_class_ir)
+        self.fn_info.generator_class = GeneratorClass(generator_class_ir)
+        return generator_class_ir
+
+    def add_iter_to_generator_class(self, fn_info: FuncInfo) -> FuncIR:
+        # First, generate the body of the '__iter__' function.
+        self.enter(fn_info)
+        self_target = self.environment.add_local_reg(Var('self'),
+                                                     RInstance(fn_info.generator_class.ir),
+                                                     is_arg=True)
+        self.add(Return(self.read(self_target, fn_info.fitem.line)))
+        blocks, env, _, fn_info = self.leave()
+
+        # Next, add the actual function as a method of the generator class.
+        sig = FuncSignature((RuntimeArg('self', object_rprimitive),), object_rprimitive)
+        iter_fn_decl = FuncDecl('__iter__', fn_info.generator_class.ir.name, self.module_name, sig)
+        iter_fn_ir = FuncIR(iter_fn_decl, blocks, env)
+        fn_info.generator_class.ir.methods['__iter__'] = iter_fn_ir
+        return iter_fn_ir
+
+    def add_next_to_generator_class(self,
+                                    blocks: List[BasicBlock],
+                                    sig: FuncSignature,
+                                    env: Environment,
+                                    fn_info: FuncInfo) -> FuncIR:
+        sig = FuncSignature((RuntimeArg('self', object_rprimitive),), sig.ret_type)
+        next_fn_decl = FuncDecl('__next__', fn_info.generator_class.ir.name, self.module_name, sig)
+        next_fn_ir = FuncIR(next_fn_decl, blocks, env)
+        fn_info.generator_class.ir.methods['__next__'] = next_fn_ir
+        return next_fn_ir
+
+    def create_switch_for_generator_class(self) -> None:
+        generator_class = self.fn_info.generator_class
+        line = self.fn_info.fitem.line
+
+        self.activate_block(generator_class.switch_block)
+        for label, true_block in enumerate(generator_class.blocks):
+            false_block = BasicBlock()
+            comparison = self.binary_op(generator_class.next_label_reg, self.add(LoadInt(label)),
+                                        '==', line)
+            self.add_bool_branch(comparison, true_block, false_block)
+            self.activate_block(false_block)
+
+        self.add(RaiseStandardError(RaiseStandardError.STOP_ITERATION, None, line))
+        self.add(Unreachable())
+
+    def instantiate_generator_class(self) -> Value:
+        fitem = self.fn_info.fitem
+        generator_reg = self.add(Call(self.fn_info.generator_class.ir.ctor, [], fitem.line))
+        curr_env_reg = self.fn_info.curr_env_reg
+
+        # Set the generator class' environment attribute to point at the environment class
+        # defined in the current scope.
+        self.add(SetAttr(generator_reg, ENV_ATTR_NAME, curr_env_reg, fitem.line))
+
+        # Set the generator class' environment class' NEXT_LABEL_ATTR_NAME attribute to 0.
+        zero_reg = self.add(LoadInt(0))
+        self.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero_reg, fitem.line))
+
+        return generator_reg
 
     def is_builtin_ref_expr(self, expr: RefExpr) -> bool:
         assert expr.node, "RefExpr not resolved"

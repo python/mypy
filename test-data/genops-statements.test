@@ -207,29 +207,29 @@ def f(ls: List[int]) -> int:
 [out]
 def f(ls):
     ls :: list
-    r0, y, r1, r2, r3, r4 :: int
-    r5 :: bool
-    r6 :: object
-    x, r7, r8, r9 :: int
+    r0, y, r1, r2, r3 :: int
+    r4 :: bool
+    r5 :: object
+    x, r6, r7, r8, r9 :: int
 L0:
     r0 = 0
     y = r0
-    r2 = 0
-    r1 = r2
-    r3 = 1
+    r1 = 0
+    r2 = r1
 L1:
-    r4 = len ls :: list
-    r5 = r1 < r4 :: int
-    if r5 goto L2 else goto L4 :: bool
+    r3 = len ls :: list
+    r4 = r2 < r3 :: int
+    if r4 goto L2 else goto L4 :: bool
 L2:
-    r6 = ls[r1] :: list
-    r7 = unbox(int, r6)
-    x = r7
-    r8 = y + x :: int
-    y = r8
+    r5 = ls[r2] :: list
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = y + x :: int
+    y = r7
 L3:
-    r9 = r1 + r3 :: int
-    r1 = r9
+    r8 = 1
+    r9 = r2 + r8 :: int
+    r2 = r9
     goto L1
 L4:
     return y

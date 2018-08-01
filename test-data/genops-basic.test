@@ -1751,17 +1751,17 @@ def f():
     r1, r2, r3 :: int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10, r11 :: int
-    r12 :: bool
-    r13 :: object
-    x, r14, r15 :: int
-    r16 :: bool
-    r17 :: int
-    r18 :: bool
-    r19 :: int
-    r20 :: object
-    r21 :: bool
-    r22 :: int
+    r8, r9, r10 :: int
+    r11 :: bool
+    r12 :: object
+    x, r13, r14 :: int
+    r15 :: bool
+    r16 :: int
+    r17 :: bool
+    r18 :: int
+    r19 :: object
+    r20 :: bool
+    r21, r22 :: int
 L0:
     r0 = []
     r1 = 1
@@ -1771,35 +1771,35 @@ L0:
     r5 = box(int, r2)
     r6 = box(int, r3)
     r7 = [r4, r5, r6]
-    r9 = 0
-    r8 = r9
-    r10 = 1
+    r8 = 0
+    r9 = r8
 L1:
-    r11 = len r7 :: list
-    r12 = r8 < r11 :: int
-    if r12 goto L2 else goto L8 :: bool
+    r10 = len r7 :: list
+    r11 = r9 < r10 :: int
+    if r11 goto L2 else goto L8 :: bool
 L2:
-    r13 = r7[r8] :: list
-    r14 = unbox(int, r13)
-    x = r14
-    r15 = 2
-    r16 = x != r15 :: int
-    if r16 goto L4 else goto L3 :: bool
+    r12 = r7[r9] :: list
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = 2
+    r15 = x != r14 :: int
+    if r15 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r17 = 3
-    r18 = x != r17 :: int
-    if r18 goto L6 else goto L5 :: bool
+    r16 = 3
+    r17 = x != r16 :: int
+    if r17 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r19 = x * x :: int
-    r20 = box(int, r19)
-    r21 = r0.append(r20) :: list
+    r18 = x * x :: int
+    r19 = box(int, r18)
+    r20 = r0.append(r19) :: list
 L7:
-    r22 = r8 + r10 :: int
-    r8 = r22
+    r21 = 1
+    r22 = r9 + r21 :: int
+    r9 = r22
     goto L1
 L8:
     return r0
@@ -1814,17 +1814,17 @@ def f():
     r1, r2, r3 :: int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10, r11 :: int
-    r12 :: bool
-    r13 :: object
-    x, r14, r15 :: int
-    r16 :: bool
-    r17 :: int
-    r18 :: bool
-    r19 :: int
-    r20, r21 :: object
-    r22 :: bool
-    r23 :: int
+    r8, r9, r10 :: int
+    r11 :: bool
+    r12 :: object
+    x, r13, r14 :: int
+    r15 :: bool
+    r16 :: int
+    r17 :: bool
+    r18 :: int
+    r19, r20 :: object
+    r21 :: bool
+    r22, r23 :: int
 L0:
     r0 = {}
     r1 = 1
@@ -1834,36 +1834,36 @@ L0:
     r5 = box(int, r2)
     r6 = box(int, r3)
     r7 = [r4, r5, r6]
-    r9 = 0
-    r8 = r9
-    r10 = 1
+    r8 = 0
+    r9 = r8
 L1:
-    r11 = len r7 :: list
-    r12 = r8 < r11 :: int
-    if r12 goto L2 else goto L8 :: bool
+    r10 = len r7 :: list
+    r11 = r9 < r10 :: int
+    if r11 goto L2 else goto L8 :: bool
 L2:
-    r13 = r7[r8] :: list
-    r14 = unbox(int, r13)
-    x = r14
-    r15 = 2
-    r16 = x != r15 :: int
-    if r16 goto L4 else goto L3 :: bool
+    r12 = r7[r9] :: list
+    r13 = unbox(int, r12)
+    x = r13
+    r14 = 2
+    r15 = x != r14 :: int
+    if r15 goto L4 else goto L3 :: bool
 L3:
     goto L7
 L4:
-    r17 = 3
-    r18 = x != r17 :: int
-    if r18 goto L6 else goto L5 :: bool
+    r16 = 3
+    r17 = x != r16 :: int
+    if r17 goto L6 else goto L5 :: bool
 L5:
     goto L7
 L6:
-    r19 = x * x :: int
-    r20 = box(int, x)
-    r21 = box(int, r19)
-    r22 = r0.__setitem__(r20, r21) :: dict
+    r18 = x * x :: int
+    r19 = box(int, x)
+    r20 = box(int, r18)
+    r21 = r0.__setitem__(r19, r20) :: dict
 L7:
-    r23 = r8 + r10 :: int
-    r8 = r23
+    r22 = 1
+    r23 = r9 + r22 :: int
+    r9 = r23
     goto L1
 L8:
     return r0
@@ -1877,68 +1877,68 @@ def f(l: List[Tuple[int, int, int]]) -> List[int]:
 [out]
 def f(l):
     l :: list
-    r0, r1, r2, r3 :: int
-    r4 :: bool
-    r5 :: object
+    r0, r1, r2 :: int
+    r3 :: bool
+    r4 :: object
     x, y, z :: int
-    r6 :: tuple[int, int, int]
-    r7, r8, r9, r10 :: int
+    r5 :: tuple[int, int, int]
+    r6, r7, r8, r9, r10 :: int
     r11 :: list
-    r12, r13, r14, r15 :: int
-    r16 :: bool
-    r17 :: object
+    r12, r13, r14 :: int
+    r15 :: bool
+    r16 :: object
     x0, y0, z0 :: int
-    r18 :: tuple[int, int, int]
-    r19, r20, r21, r22, r23 :: int
-    r24 :: object
-    r25 :: bool
-    r26 :: int
+    r17 :: tuple[int, int, int]
+    r18, r19, r20, r21, r22 :: int
+    r23 :: object
+    r24 :: bool
+    r25, r26 :: int
 L0:
-    r1 = 0
-    r0 = r1
-    r2 = 1
+    r0 = 0
+    r1 = r0
 L1:
-    r3 = len l :: list
-    r4 = r0 < r3 :: int
-    if r4 goto L2 else goto L4 :: bool
+    r2 = len l :: list
+    r3 = r1 < r2 :: int
+    if r3 goto L2 else goto L4 :: bool
 L2:
-    r5 = l[r0] :: list
-    r6 = unbox(tuple[int, int, int], r5)
-    r7 = r6[0]
-    x = r7
-    r8 = r6[1]
-    y = r8
-    r9 = r6[2]
-    z = r9
+    r4 = l[r1] :: list
+    r5 = unbox(tuple[int, int, int], r4)
+    r6 = r5[0]
+    x = r6
+    r7 = r5[1]
+    y = r7
+    r8 = r5[2]
+    z = r8
 L3:
-    r10 = r0 + r2 :: int
-    r0 = r10
+    r9 = 1
+    r10 = r1 + r9 :: int
+    r1 = r10
     goto L1
 L4:
     r11 = []
-    r13 = 0
-    r12 = r13
-    r14 = 1
+    r12 = 0
+    r13 = r12
 L5:
-    r15 = len l :: list
-    r16 = r12 < r15 :: int
-    if r16 goto L6 else goto L8 :: bool
+    r14 = len l :: list
+    r15 = r13 < r14 :: int
+    if r15 goto L6 else goto L8 :: bool
 L6:
-    r17 = l[r12] :: list
-    r18 = unbox(tuple[int, int, int], r17)
-    r19 = r18[0]
-    x0 = r19
-    r20 = r18[1]
-    y0 = r20
-    r21 = r18[2]
-    z0 = r21
-    r22 = x0 + y0 :: int
-    r23 = r22 + z0 :: int
-    r24 = box(int, r23)
-    r25 = r11.append(r24) :: list
+    r16 = l[r13] :: list
+    r17 = unbox(tuple[int, int, int], r16)
+    r18 = r17[0]
+    x0 = r18
+    r19 = r17[1]
+    y0 = r19
+    r20 = r17[2]
+    z0 = r20
+    r21 = x0 + y0 :: int
+    r22 = r21 + z0 :: int
+    r23 = box(int, r22)
+    r24 = r11.append(r23) :: list
 L7:
-    r26 = r12 + r14 :: int
-    r12 = r26
+    r25 = 1
+    r26 = r13 + r25 :: int
+    r13 = r26
     goto L5
 L8:
     return r11

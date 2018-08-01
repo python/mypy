@@ -2395,3 +2395,144 @@ g()
 [out]
 (((1, 2), 2), 1, 'hi', 'hi2')
 caught the exception
+
+[case testYield]
+from typing import Generator, Iterable, Union
+def yield_three_times() -> Iterable[int]:
+    yield 1
+    yield 2
+    yield 3
+
+def yield_twice_and_return() -> Generator[int, None, int]:
+    yield 1
+    yield 2
+    return 4
+    yield 3
+
+def yield_while_loop() -> Generator[int, None, int]:
+    i = 0
+    while i < 5:
+        if i == 3:
+            return i
+        yield i
+        i += 1
+    return -1
+
+def yield_for_loop() -> Iterable[int]:
+    l = [i for i in range(3)]
+    for i in l:
+        yield i
+
+    d = {k: None for k in range(3)}
+    for k in d:
+        yield k
+
+    for i in range(3):
+        yield i
+
+    for i in range(three()):
+        yield i
+
+def yield_with_except() -> Generator[int, None, None]:
+    yield 10
+    try:
+        return
+    except:
+        print('Caught exception inside generator function')
+
+def complex_yield(a: int, b: str, c: float) -> Generator[Union[str, int], None, float]:
+    x = 2
+    while x < a:
+        if x % 2 == 0:
+            dummy_var = 1
+            yield str(x) + ' ' + b
+            dummy_var = 1
+        else:
+            dummy_var = 1
+            yield x
+            dummy_var = 1
+        x += 1
+    return c
+
+def three() -> int:
+    return 3
+
+[file driver.py]
+from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield
+
+generator = yield_three_times()
+assert next(generator) == 1
+assert next(generator) == 2
+assert next(generator) == 3
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value is None
+
+generator = yield_twice_and_return()
+assert next(generator) == 1
+assert next(generator) == 2
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value == 4
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value is None
+
+generator = yield_while_loop()
+assert next(generator) == 0
+assert next(generator) == 1
+assert next(generator) == 2
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value == 3
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value is None
+
+generator = yield_for_loop()
+for i in range(4):
+    assert next(generator) == 0
+    assert next(generator) == 1
+    assert next(generator) == 2
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value is None
+
+generator = yield_with_except()
+assert next(generator) == 10
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value is None
+
+generator = complex_yield(5, 'foo', 1.0)
+assert next(generator) == '2 foo'
+assert next(generator) == 3
+assert next(generator) == '4 foo'
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value == 1.0
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value is None
+
+for i in yield_twice_and_return():
+    print(i)
+
+for i in yield_while_loop():
+    print(i)
+
+[out]
+1
+2
+0
+1
+2

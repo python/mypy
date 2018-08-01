@@ -1,0 +1,620 @@
+[case testYieldBasic]
+from typing import Iterable
+
+def yield_three_times() -> Iterable:
+    yield 1
+    yield 2
+    yield 3
+
+[out]
+def yield_three_times():
+    r0 :: yield_three_times__env
+    r1 :: yield_three_times__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_three_times__env()
+    r1 = yield_three_times__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
+def yield_three_times__gen.__iter__(self):
+    self :: yield_three_times__gen
+L0:
+    return self
+def yield_three_times__gen.__next__(self):
+    self :: yield_three_times__gen
+    r0 :: yield_three_times__env
+    r1, r2 :: int
+    r3 :: object
+    r4 :: int
+    r5 :: bool
+    r6 :: int
+    r7 :: object
+    r8 :: int
+    r9 :: bool
+    r10 :: int
+    r11 :: object
+    r12 :: int
+    r13 :: bool
+    r14 :: None
+    r15 :: int
+    r16, r17 :: bool
+    r18 :: int
+    r19 :: bool
+    r20 :: int
+    r21 :: bool
+    r22 :: int
+    r23 :: bool
+    r24 :: int
+    r25, r26 :: bool
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L9
+L1:
+L2:
+    r2 = 1
+    r3 = box(int, r2)
+    r4 = 1
+    r0.__mypyc_next_label__ = r4; r5 = is_error
+    return r3
+L3:
+L4:
+    r6 = 2
+    r7 = box(int, r6)
+    r8 = 2
+    r0.__mypyc_next_label__ = r8; r9 = is_error
+    return r7
+L5:
+L6:
+    r10 = 3
+    r11 = box(int, r10)
+    r12 = 3
+    r0.__mypyc_next_label__ = r12; r13 = is_error
+    return r11
+L7:
+    r14 = None
+    r15 = -1
+    r0.__mypyc_next_label__ = r15; r16 = is_error
+L8:
+    raise StopIteration(r14)
+    unreachable
+L9:
+    r18 = 0
+    r19 = r1 == r18 :: int
+    if r19 goto L1 else goto L10 :: bool
+L10:
+    r20 = 1
+    r21 = r1 == r20 :: int
+    if r21 goto L3 else goto L11 :: bool
+L11:
+    r22 = 2
+    r23 = r1 == r22 :: int
+    if r23 goto L5 else goto L12 :: bool
+L12:
+    r24 = 3
+    r25 = r1 == r24 :: int
+    if r25 goto L7 else goto L13 :: bool
+L13:
+    raise StopIteration
+    unreachable
+
+[case testYieldWhileLoop]
+from typing import Generator
+
+def yield_while_loop() -> Generator:
+    i = 0
+    while i < 5:
+        yield i
+        i += 1
+
+[out]
+def yield_while_loop():
+    r0 :: yield_while_loop__env
+    r1 :: yield_while_loop__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_while_loop__env()
+    r1 = yield_while_loop__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
+def yield_while_loop__gen.__iter__(self):
+    self :: yield_while_loop__gen
+L0:
+    return self
+def yield_while_loop__gen.__next__(self):
+    self :: yield_while_loop__gen
+    r0 :: yield_while_loop__env
+    r1, r2 :: int
+    r3 :: bool
+    r4, r5 :: int
+    r6 :: bool
+    r7 :: int
+    r8 :: object
+    r9 :: int
+    r10 :: bool
+    r11, r12, r13 :: int
+    r14 :: bool
+    r15 :: None
+    r16 :: int
+    r17, r18 :: bool
+    r19 :: int
+    r20 :: bool
+    r21 :: int
+    r22, r23 :: bool
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L8
+L1:
+    r2 = 0
+    r0.i = r2; r3 = is_error
+L2:
+    r4 = r0.i
+    r5 = 5
+    r6 = r4 < r5 :: int
+    if r6 goto L3 else goto L6 :: bool
+L3:
+L4:
+    r7 = r0.i
+    r8 = box(int, r7)
+    r9 = 1
+    r0.__mypyc_next_label__ = r9; r10 = is_error
+    return r8
+L5:
+    r11 = r0.i
+    r12 = 1
+    r13 = r11 += r12 :: int
+    r0.i = r13; r14 = is_error
+    goto L2
+L6:
+    r15 = None
+    r16 = -1
+    r0.__mypyc_next_label__ = r16; r17 = is_error
+L7:
+    raise StopIteration(r15)
+    unreachable
+L8:
+    r19 = 0
+    r20 = r1 == r19 :: int
+    if r20 goto L1 else goto L9 :: bool
+L9:
+    r21 = 1
+    r22 = r1 == r21 :: int
+    if r22 goto L5 else goto L10 :: bool
+L10:
+    raise StopIteration
+    unreachable
+
+[case testYieldForLoops]
+from typing import Iterable
+
+def yield_for_loop_list() -> Iterable:
+    l = [range(5)]
+    for i in l:
+        yield i
+
+def yield_for_loop_dict() -> Iterable:
+    d = {i: None for i in range(5)}
+    for i in d:
+        yield i
+
+def yield_for_loop_range() -> Iterable:
+    for i in range(5):
+        yield i
+
+[out]
+def yield_for_loop_list():
+    r0 :: yield_for_loop_list__env
+    r1 :: yield_for_loop_list__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_for_loop_list__env()
+    r1 = yield_for_loop_list__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
+def yield_for_loop_list__gen.__iter__(self):
+    self :: yield_for_loop_list__gen
+L0:
+    return self
+def yield_for_loop_list__gen.__next__(self):
+    self :: yield_for_loop_list__gen
+    r0 :: yield_for_loop_list__env
+    r1, r2 :: int
+    r3 :: object
+    r4 :: str
+    r5, r6, r7 :: object
+    r8 :: list
+    r9 :: bool
+    r10 :: list
+    r11 :: int
+    r12, r13 :: bool
+    r14 :: list
+    r15, r16 :: int
+    r17 :: bool
+    r18 :: list
+    r19 :: int
+    r20, r21 :: object
+    r22 :: bool
+    r23 :: object
+    r24 :: int
+    r25 :: bool
+    r26, r27, r28 :: int
+    r29 :: bool
+    r30 :: None
+    r31 :: int
+    r32, r33 :: bool
+    r34 :: int
+    r35 :: bool
+    r36 :: int
+    r37, r38 :: bool
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L9
+L1:
+    r2 = 5
+    r3 = builtins.module :: static
+    r4 = unicode_0 :: static  ('range')
+    r5 = getattr r3, r4
+    r6 = box(int, r2)
+    r7 = py_call(r5, r6)
+    r8 = [r7]
+    r0.l = r8; r9 = is_error
+    r10 = r0.l
+    r11 = 0
+    r0.__mypyc_temp__0 = r10; r12 = is_error
+    r0.__mypyc_temp__1 = r11; r13 = is_error
+L2:
+    r14 = r0.__mypyc_temp__0
+    r15 = len r14 :: list
+    r16 = r0.__mypyc_temp__1
+    r17 = r16 < r15 :: int
+    if r17 goto L3 else goto L7 :: bool
+L3:
+    r18 = r0.__mypyc_temp__0
+    r19 = r0.__mypyc_temp__1
+    r20 = r18[r19] :: list
+    r21 = cast(object, r20)
+    r0.i = r21; r22 = is_error
+L4:
+    r23 = r0.i
+    r24 = 1
+    r0.__mypyc_next_label__ = r24; r25 = is_error
+    return r23
+L5:
+L6:
+    r26 = r0.__mypyc_temp__1
+    r27 = 1
+    r28 = r26 + r27 :: int
+    r0.__mypyc_temp__1 = r28; r29 = is_error
+    goto L2
+L7:
+    r30 = None
+    r31 = -1
+    r0.__mypyc_next_label__ = r31; r32 = is_error
+L8:
+    raise StopIteration(r30)
+    unreachable
+L9:
+    r34 = 0
+    r35 = r1 == r34 :: int
+    if r35 goto L1 else goto L10 :: bool
+L10:
+    r36 = 1
+    r37 = r1 == r36 :: int
+    if r37 goto L5 else goto L11 :: bool
+L11:
+    raise StopIteration
+    unreachable
+def yield_for_loop_dict():
+    r0 :: yield_for_loop_dict__env
+    r1 :: yield_for_loop_dict__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_for_loop_dict__env()
+    r1 = yield_for_loop_dict__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
+def yield_for_loop_dict__gen.__iter__(self):
+    self :: yield_for_loop_dict__gen
+L0:
+    return self
+def yield_for_loop_dict__gen.__next__(self):
+    self :: yield_for_loop_dict__gen
+    r0 :: yield_for_loop_dict__env
+    r1 :: int
+    r2 :: dict
+    r3 :: int
+    r4 :: bool
+    r5 :: int
+    r6 :: bool
+    r7, r8 :: int
+    r9 :: bool
+    r10 :: int
+    r11 :: None
+    r12 :: object
+    r13 :: bool
+    r14, r15, r16 :: int
+    r17, r18 :: bool
+    r19 :: dict
+    r20 :: object
+    r21, r22 :: bool
+    r23, r24 :: object
+    r25 :: int
+    r26 :: bool
+    r27 :: int
+    r28 :: object
+    r29 :: int
+    r30, r31 :: bool
+    r32 :: None
+    r33 :: int
+    r34, r35 :: bool
+    r36 :: int
+    r37 :: bool
+    r38 :: int
+    r39, r40 :: bool
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L13
+L1:
+    r2 = {}
+    r3 = 5
+    r0.__mypyc_temp__2 = r3; r4 = is_error
+    r5 = 0
+    r0.i = r5; r6 = is_error
+L2:
+    r7 = r0.i
+    r8 = r0.__mypyc_temp__2
+    r9 = r7 < r8 :: int
+    if r9 goto L3 else goto L5 :: bool
+L3:
+    r10 = r0.i
+    r11 = None
+    r12 = box(int, r10)
+    r13 = r2.__setitem__(r12, r11) :: dict
+L4:
+    r14 = r0.i
+    r15 = 1
+    r16 = r14 + r15 :: int
+    r0.i = r16; r17 = is_error
+    goto L2
+L5:
+    r0.d = r2; r18 = is_error
+    r19 = r0.d
+    r20 = iter r19 :: object
+    r0.__mypyc_temp__3 = r19; r21 = is_error
+    r0.__mypyc_temp__4 = r20; r22 = is_error
+L6:
+    r23 = r0.__mypyc_temp__4
+    r24 = next r23 :: object
+    if is_error(r24) goto L10 else goto L7
+L7:
+    r25 = unbox(int, r24)
+    r0.i = r25; r26 = is_error
+L8:
+    r27 = r0.i
+    r28 = box(int, r27)
+    r29 = 1
+    r0.__mypyc_next_label__ = r29; r30 = is_error
+    return r28
+L9:
+    goto L6
+L10:
+    r31 = no_err_occurred
+L11:
+    r32 = None
+    r33 = -1
+    r0.__mypyc_next_label__ = r33; r34 = is_error
+L12:
+    raise StopIteration(r32)
+    unreachable
+L13:
+    r36 = 0
+    r37 = r1 == r36 :: int
+    if r37 goto L1 else goto L14 :: bool
+L14:
+    r38 = 1
+    r39 = r1 == r38 :: int
+    if r39 goto L9 else goto L15 :: bool
+L15:
+    raise StopIteration
+    unreachable
+def yield_for_loop_range():
+    r0 :: yield_for_loop_range__env
+    r1 :: yield_for_loop_range__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_for_loop_range__env()
+    r1 = yield_for_loop_range__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
+def yield_for_loop_range__gen.__iter__(self):
+    self :: yield_for_loop_range__gen
+L0:
+    return self
+def yield_for_loop_range__gen.__next__(self):
+    self :: yield_for_loop_range__gen
+    r0 :: yield_for_loop_range__env
+    r1, r2 :: int
+    r3 :: bool
+    r4 :: int
+    r5 :: bool
+    r6, r7 :: int
+    r8 :: bool
+    r9 :: int
+    r10 :: object
+    r11 :: int
+    r12 :: bool
+    r13, r14, r15 :: int
+    r16 :: bool
+    r17 :: None
+    r18 :: int
+    r19, r20 :: bool
+    r21 :: int
+    r22 :: bool
+    r23 :: int
+    r24, r25 :: bool
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L9
+L1:
+    r2 = 5
+    r0.__mypyc_temp__5 = r2; r3 = is_error
+    r4 = 0
+    r0.i = r4; r5 = is_error
+L2:
+    r6 = r0.i
+    r7 = r0.__mypyc_temp__5
+    r8 = r6 < r7 :: int
+    if r8 goto L3 else goto L7 :: bool
+L3:
+L4:
+    r9 = r0.i
+    r10 = box(int, r9)
+    r11 = 1
+    r0.__mypyc_next_label__ = r11; r12 = is_error
+    return r10
+L5:
+L6:
+    r13 = r0.i
+    r14 = 1
+    r15 = r13 + r14 :: int
+    r0.i = r15; r16 = is_error
+    goto L2
+L7:
+    r17 = None
+    r18 = -1
+    r0.__mypyc_next_label__ = r18; r19 = is_error
+L8:
+    raise StopIteration(r17)
+    unreachable
+L9:
+    r21 = 0
+    r22 = r1 == r21 :: int
+    if r22 goto L1 else goto L10 :: bool
+L10:
+    r23 = 1
+    r24 = r1 == r23 :: int
+    if r24 goto L5 else goto L11 :: bool
+L11:
+    raise StopIteration
+    unreachable
+
+[case testYieldComplex]
+from typing import Generator
+
+def yield_with_vars(a: int, b: float) -> Generator[int, None, float]:
+    x = 2
+    while x < a:
+        yield x
+        x += 1
+    return b
+
+[out]
+def yield_with_vars(a, b):
+    a :: int
+    b :: float
+    r0 :: yield_with_vars__env
+    r1, r2 :: bool
+    r3 :: yield_with_vars__gen
+    r4 :: bool
+    r5 :: int
+    r6 :: bool
+L0:
+    r0 = yield_with_vars__env()
+    r0.a = a; r1 = is_error
+    r0.b = b; r2 = is_error
+    r3 = yield_with_vars__gen()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    r5 = 0
+    r0.__mypyc_next_label__ = r5; r6 = is_error
+    return r3
+def yield_with_vars__gen.__iter__(self):
+    self :: yield_with_vars__gen
+L0:
+    return self
+def yield_with_vars__gen.__next__(self):
+    self :: yield_with_vars__gen
+    r0 :: yield_with_vars__env
+    r1, r2 :: int
+    r3 :: bool
+    r4, r5 :: int
+    r6 :: bool
+    r7 :: int
+    r8 :: object
+    r9 :: int
+    r10 :: bool
+    r11, r12, r13 :: int
+    r14 :: bool
+    r15 :: float
+    r16 :: int
+    r17, r18 :: bool
+    r19 :: int
+    r20 :: bool
+    r21 :: int
+    r22, r23 :: bool
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L8
+L1:
+    r2 = 2
+    r0.x = r2; r3 = is_error
+L2:
+    r4 = r0.x
+    r5 = r0.a
+    r6 = r4 < r5 :: int
+    if r6 goto L3 else goto L6 :: bool
+L3:
+L4:
+    r7 = r0.x
+    r8 = box(int, r7)
+    r9 = 1
+    r0.__mypyc_next_label__ = r9; r10 = is_error
+    return r8
+L5:
+    r11 = r0.x
+    r12 = 1
+    r13 = r11 += r12 :: int
+    r0.x = r13; r14 = is_error
+    goto L2
+L6:
+    r15 = r0.b
+    r16 = -1
+    r0.__mypyc_next_label__ = r16; r17 = is_error
+L7:
+    raise StopIteration(r15)
+    unreachable
+L8:
+    r19 = 0
+    r20 = r1 == r19 :: int
+    if r20 goto L1 else goto L9 :: bool
+L9:
+    r21 = 1
+    r22 = r1 == r21 :: int
+    if r22 goto L5 else goto L10 :: bool
+L10:
+    raise StopIteration
+    unreachable

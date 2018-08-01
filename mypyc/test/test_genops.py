@@ -25,6 +25,7 @@ files = [
     'genops-dict.test',
     'genops-statements.test',
     'genops-nested.test',
+    'genops-generators.test',
     'genops-classes.test',
     'genops-optional.test',
     'genops-tuple.test',
