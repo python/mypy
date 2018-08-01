@@ -37,17 +37,27 @@ attr_attrib_makers = {
 }
 
 
+class Converter:
+    """Holds information about a `converter=` argument"""
+
+    def __init__(self,
+                 name: Optional[str] = None,
+                 is_attr_converters_optional: bool = False) -> None:
+        self.name = name
+        self.is_attr_converters_optional = is_attr_converters_optional
+
+
 class Attribute:
     """The value of an attr.ib() call."""
 
     def __init__(self, name: str, info: TypeInfo,
-                 has_default: bool, init: bool, converter_name: Optional[str],
+                 has_default: bool, init: bool, converter: Converter,
                  context: Context) -> None:
         self.name = name
         self.info = info
         self.has_default = has_default
         self.init = init
-        self.converter_name = converter_name
+        self.converter = converter
         self.context = context
 
     def argument(self, ctx: 'mypy.plugin.ClassDefContext') -> Argument:
@@ -55,13 +65,13 @@ class Attribute:
         assert self.init
         init_type = self.info[self.name].type
 
-        if self.converter_name:
+        if self.converter.name:
             # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
-            converter = lookup_qualified_stnode(ctx.api.modules, self.converter_name, True)
+            converter = lookup_qualified_stnode(ctx.api.modules, self.converter.name, True)
             if not converter:
                 # The converter may be a local variable. Check there too.
-                converter = ctx.api.lookup_qualified(self.converter_name, self.info, True)
+                converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
 
             # Get the type of the converter.
             converter_type = None
@@ -90,10 +100,16 @@ class Attribute:
                 if types:
                     args = UnionType.make_simplified_union(types)
                     init_type = ctx.api.anal_type(args)
+            if self.converter.is_attr_converters_optional and init_type:
+                # If the converter was attr.converter.optional(type) then add None to
+                # the allowed init_type.
+                args = UnionType.make_simplified_union([init_type, NoneTyp()])
+                init_type = ctx.api.anal_type(args)
+
             if not init_type:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
-        elif self.converter_name == '':
+        elif self.converter.name == '':
             # This means we had a converter but it's not of a type we can infer.
             # Error was shown in _get_converter_name
             init_type = AnyType(TypeOfAny.from_error)
@@ -122,7 +138,8 @@ class Attribute:
             'name': self.name,
             'has_default': self.has_default,
             'init': self.init,
-            'converter_name': self.converter_name,
+            'converter_name': self.converter.name,
+            'converter_is_attr_converters_optional': self.converter.is_attr_converters_optional,
             'context_line': self.context.line,
             'context_column': self.context.column,
         }
@@ -135,7 +152,7 @@ class Attribute:
             info,
             data['has_default'],
             data['init'],
-            data['converter_name'],
+            Converter(data['converter_name'], data['converter_is_attr_converters_optional']),
             Context(line=data['context_line'], column=data['context_column'])
         )
 
@@ -318,7 +335,7 @@ def _attribute_from_auto_attrib(ctx: 'mypy.plugin.ClassDefContext',
     """Return an Attribute for a new type assignment."""
     # `x: int` (without equal sign) assigns rvalue to TempNode(AnyType())
     has_rhs = not isinstance(rvalue, TempNode)
-    return Attribute(lhs.name, ctx.cls.info, has_rhs, True, None, stmt)
+    return Attribute(lhs.name, ctx.cls.info, has_rhs, True, Converter(), stmt)
 
 
 def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
@@ -373,31 +390,42 @@ def _attribute_from_attrib_maker(ctx: 'mypy.plugin.ClassDefContext',
     elif convert:
         ctx.api.fail("convert is deprecated, use converter", rvalue)
         converter = convert
-    converter_name = _get_converter_name(ctx, converter)
+    converter_info = _parse_converter(ctx, converter)
 
-    return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, converter_name, stmt)
+    return Attribute(lhs.name, ctx.cls.info, attr_has_default, init, converter_info, stmt)
 
 
-def _get_converter_name(ctx: 'mypy.plugin.ClassDefContext',
-                        converter: Optional[Expression]) -> Optional[str]:
-    """Return the full name of the converter if it exists and is a simple function."""
+def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
+                     converter: Optional[Expression]) -> Converter:
+    """Return the Converter object from an Expression."""
     # TODO: Support complex converters, e.g. lambdas, calls, etc.
     if converter:
         if isinstance(converter, RefExpr) and converter.node:
             if (isinstance(converter.node, FuncBase)
                     and converter.node.type
                     and isinstance(converter.node.type, FunctionLike)):
-                return converter.node.fullname()
+                return Converter(converter.node.fullname())
             elif isinstance(converter.node, TypeInfo):
-                return converter.node.fullname()
+                return Converter(converter.node.fullname())
+
+        if (isinstance(converter, CallExpr)
+                and isinstance(converter.callee, RefExpr)
+                and converter.callee.fullname == "attr.converters.optional"
+                and converter.args
+                and converter.args[0]):
+            # Special handling for attr.converters.optional(type)
+            # We extract the type and add make the init_args Optional in Attribute.argument
+            argument = _parse_converter(ctx, converter.args[0])
+            argument.is_attr_converters_optional = True
+            return argument
 
         # Signal that we have an unsupported converter.
         ctx.api.fail(
             "Unsupported converter, only named functions and types are currently supported",
             converter
         )
-        return ''
-    return None
+        return Converter('')
+    return Converter(None)
 
 
 def _parse_assignments(
