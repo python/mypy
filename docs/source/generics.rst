@@ -228,6 +228,9 @@ example we use the same type variable in two generic functions:
    def last(seq: Sequence[T]) -> T:
        return seq[-1]
 
+A variable cannot have a type variable in its type unless the type
+variable is bound in a containing generic class or function.
+
 .. _generic-methods-and-generic-self:
 
 Generic methods and generic self
