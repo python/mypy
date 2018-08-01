@@ -600,8 +600,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.ret_types[-1] = bool_rprimitive
 
         rt_args = (RuntimeArg('self', RInstance(cls)),)
-        self_var = self.read_from_target(
-            self.environment.add_local_reg(Var('self'), RInstance(cls), is_arg=True), -1)
+        self_var = self.read(self.environment.add_local_reg(Var('self'),
+                                                            RInstance(cls),
+                                                            is_arg=True), -1)
 
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
@@ -723,7 +724,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # The environment operates on Vars, so we make some up
         fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-        args = [self.read_from_target(self.environment.add_local_reg(var, type, is_arg=True), line)
+        args = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
                 for var, type in fake_vars]  # type: List[Value]
         self.ret_types[-1] = sig.ret_type
 
@@ -747,8 +748,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.enter(FuncInfo())
 
         rt_arg = RuntimeArg('self', RInstance(cls))
-        arg = self.read_from_target(self.environment.add_local_reg(Var('self'), RInstance(cls),
-                                                                   is_arg=True), line)
+        arg = self.read(self.environment.add_local_reg(Var('self'), RInstance(cls), is_arg=True),
+                        line)
         self.ret_types[-1] = sig.ret_type
 
         retval = self.add(GetAttr(arg, target.name, line))
@@ -872,7 +873,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 # blocks will generate different callable classes, so the callable class that gets
                 # instantiated must be generic.
                 func_target = self.environment.add_local_reg(fdef, object_rprimitive)
-            self.assign_to_target(func_target, func_reg, fdef.line)
+            self.assign(func_target, func_reg, fdef.line)
 
         self.functions.append(func_ir)
 
@@ -935,15 +936,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         rvalue_reg = self.accept(stmt.rvalue)
         for lvalue in stmt.lvalues:
             target = self.get_assignment_target(lvalue)
-            self.assign_to_target(target, rvalue_reg, line)
+            self.assign(target, rvalue_reg, line)
 
     def visit_operator_assignment_stmt(self, stmt: OperatorAssignmentStmt) -> None:
         self.disallow_class_assignments([stmt.lvalue])
         target = self.get_assignment_target(stmt.lvalue)
         rreg = self.accept(stmt.rvalue)
-        res = self.read_from_target(target, stmt.line)
+        res = self.read(target, stmt.line)
         res = self.binary_op(res, rreg, stmt.op, stmt.line)
-        self.assign_to_target(target, res, res.line)
+        self.assign(target, res, res.line)
 
     def get_assignment_target(self, lvalue: Lvalue) -> AssignmentTarget:
         if isinstance(lvalue, NameExpr):
@@ -990,7 +991,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
-    def read_from_target(self, target: AssignmentTarget, line: int) -> Value:
+    def read(self, target: AssignmentTarget, line: int) -> Value:
         if isinstance(target, AssignmentTargetRegister):
             return target.register
         if isinstance(target, AssignmentTargetIndex):
@@ -1010,10 +1011,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         assert False, 'Unsupported lvalue: %r' % target
 
-    def assign_to_target(self,
-                         target: AssignmentTarget,
-                         rvalue_reg: Value,
-                         line: int) -> None:
+    def assign(self, target: AssignmentTarget, rvalue_reg: Value, line: int) -> None:
         if isinstance(target, AssignmentTargetRegister):
             rvalue_reg = self.coerce(rvalue_reg, target.type, line)
             self.add(Assign(target.register, rvalue_reg))
@@ -1039,7 +1037,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 assert len(rtypes) == len(target.items)
                 for i in range(len(rtypes)):
                     item_value = self.add(TupleGet(rvalue_reg, i, line))
-                    self.assign_to_target(target.items[i], item_value, line)
+                    self.assign(target.items[i], item_value, line)
             else:
                 self.process_iterator_tuple_assignment(target, rvalue_reg, line)
         else:
@@ -1061,7 +1059,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Unreachable())
 
             self.activate_block(ok_block)
-            self.assign_to_target(litem, ritem, line)
+            self.assign(litem, ritem, line)
         extra = self.primitive_op(next_op, [iterator], line)
         error_block, ok_block = BasicBlock(), BasicBlock()
         self.add(Branch(extra, ok_block, error_block, Branch.IS_ERROR))
@@ -1072,14 +1070,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add(Unreachable())
 
         self.activate_block(ok_block)
-
-    def assign(self,
-               lvalue: Lvalue,
-               rvalue: Expression) -> AssignmentTarget:
-        target = self.get_assignment_target(lvalue)
-        rvalue_reg = self.accept(rvalue)
-        self.assign_to_target(target, rvalue_reg, rvalue.line)
-        return target
 
     def visit_if_stmt(self, stmt: IfStmt) -> None:
         if_body, next = BasicBlock(), BasicBlock()
@@ -1182,12 +1172,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             end_reg = self.accept(end)
 
             # Initialize loop index to 0.
-            index_target = self.assign(index, IntExpr(0))
+            index_target = self.get_assignment_target(index)
+            self.assign(index_target, self.accept(IntExpr(0)), line)
             self.goto(condition_block)
 
             # Add loop condition check.
             self.activate_block(condition_block)
-            index_reg = self.read_from_target(index_target, line)
+            index_reg = self.read(index_target, line)
             comparison = self.binary_op(index_reg, end_reg, '<', line)
             self.add_bool_branch(comparison, body_block, normal_loop_exit)
 
@@ -1198,8 +1189,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             # Increment index register.
             one_reg = self.add(LoadInt(1))
-            self.assign_to_target(index_target,
-                                  self.binary_op(index_reg, one_reg, '+', line), line)
+            self.assign(index_target, self.binary_op(index_reg, one_reg, '+', line), line)
 
             # Go back to loop condition check.
             self.goto(condition_block)
@@ -1231,8 +1221,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             target_type = self.type_to_rtype(target_list_type.args[0])
             value_box = self.add(PrimitiveOp([expr_reg, index_reg], list_get_item_op, line))
 
-            self.assign_to_target(self.get_assignment_target(index),
-                                  self.unbox_or_cast(value_box, target_type, line), line)
+            self.assign(self.get_assignment_target(index),
+                        self.unbox_or_cast(value_box, target_type, line), line)
 
             body_insts()
 
@@ -1265,7 +1255,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # lvalue so that it can be referenced by code in the body of the loop. At the end of
             # the body, goto the label that calls the iterator's __next__ function again.
             self.activate_block(body_block)
-            self.assign_to_target(self.get_assignment_target(index), next_reg, line)
+            self.assign(self.get_assignment_target(index), next_reg, line)
             body_insts()
             self.goto(increment_block)
 
@@ -1403,11 +1393,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # TODO: Behavior currently only defined for Var and FuncDef node types.
         if expr.kind == LDEF:
             try:
-                return self.read_from_target(self.environment.lookup(expr.node), expr.line)
+                return self.read(self.environment.lookup(expr.node), expr.line)
             except KeyError:
                 # If there is a KeyError, then the target could not be found in the current scope.
                 # Search environment stack to see if the target was defined in an outer scope.
-                return self.read_from_target(self.get_assignment_target(expr), expr.line)
+                return self.read(self.get_assignment_target(expr), expr.line)
         else:
             return self.load_global(expr)
 
@@ -1985,8 +1975,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.activate_block(body_block)
             if var:
                 target = self.get_assignment_target(var)
-                self.assign_to_target(
-                    target, self.primitive_op(get_exc_value_op, [], var.line), var.line)
+                self.assign(target, self.primitive_op(get_exc_value_op, [], var.line), var.line)
             handler_body()
             self.goto(cleanup_block)
             if next_block:
@@ -2236,7 +2225,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         def try_body() -> None:
             if target:
-                self.assign_to_target(self.get_assignment_target(target), value, line)
+                self.assign(self.get_assignment_target(target), value, line)
             body()
 
         def except_body() -> None:
@@ -2726,7 +2715,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
                 # Read the local definition of the variable, and set the corresponding attribute of
                 # the environment class' variable to be that value.
-                var = self.read_from_target(self.environment.lookup(arg.variable), fitem.line)
+                var = self.read(self.environment.lookup(arg.variable), fitem.line)
                 self.add(SetAttr(self.fn_info.env_reg, arg.variable.name(), var, fitem.line))
 
                 # Override the local definition of the variable to instead point at the variable in
@@ -2779,7 +2768,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self_target = self.environment.add_local_reg(Var('self'),
                                                      RInstance(callable_class),
                                                      is_arg=True)
-        self.fn_info.self_reg = self.read_from_target(self_target, self.fn_info.fitem.line)
+        self.fn_info.self_reg = self.read(self_target, self.fn_info.fitem.line)
         return callable_class
 
     def add_call_to_callable_class(self,
