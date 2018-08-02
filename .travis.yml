@@ -8,7 +8,7 @@ sudo: required
 
 env:
   TOXENV=py
-  EXTRA_ARGS=-n 12
+  EXTRA_ARGS="-n 12"
 
 jobs:
   include:
@@ -30,6 +30,7 @@ jobs:
     - EXTRA_ARGS=
 
 install:
+- pip install -U pip setuptools
 - pip install -U tox
 - tox --notest
 
