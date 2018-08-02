@@ -83,22 +83,27 @@ do **not** work:
     from dataclasses import dataclass
 
     dataclass_alias = dataclass
-    dataclass_alias2 = dataclass(order=False)
     def dataclass_wrapper(cls):
       return dataclass(cls)
 
     @dataclass_alias
-    class BadlyDecoratedClass1: arg1: int
-
-    @dataclass_alias2
-    class BadlyDecoratedClass2: arg1: int
+    class AliasDecorated:
+      """
+      Mypy doesn't recognize this as a dataclass because it is decorated by an
+      alias of `dataclass` rather than by `dataclass` itself.
+      """
+      arg1: int
 
     @dataclass_wrapper
-    class BadlyDecoratedClass3: arg1: int
+    class DynamicallyDecoarted:
+      """
+      Mypy doesn't recognize this as a dataclass because it is decorated by a
+      function returning `dataclass` rather than by `dataclass` itself.
+      """
+      arg1: int
 
-    BadlyDecoratedClass1(arg1=1) # error: Unexpected keyword argument
-    BadlyDecoratedClass2(arg1=1) # error: Unexpected keyword argument
-    BadlyDecoratedClass3(arg1=1) # error: Unexpected keyword argument
+    AliasDecorated(arg1=1) # error: Unexpected keyword argument
+    DynamicallyDecoarted(arg1=1) # error: Unexpected keyword argument
 
 .. _attrs_package:
 
