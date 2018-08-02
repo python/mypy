@@ -122,10 +122,10 @@ class Node:
 [out]
 def Node.length(self):
     self :: Node
-    r0 :: optional[Node]
+    r0 :: union[Node, None]
     r1, r2 :: bool
     r3 :: int
-    r4 :: optional[Node]
+    r4 :: union[Node, None]
     r5 :: Node
     r6, r7, r8 :: int
 L0:

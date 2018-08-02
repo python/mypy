@@ -516,7 +516,7 @@ L2:
     r2 = 2
     return r2
 def complex_msg(x, s):
-    x :: optional[str]
+    x :: union[str, None]
     s :: str
     r0 :: None
     r1 :: bool

@@ -1,7 +1,7 @@
 """Subtype check for RTypes."""
 
 from mypyc.ops import (
-    RType, ROptional, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor,
+    RType, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RUnion,
     is_bool_rprimitive, is_int_rprimitive, is_tuple_rprimitive, none_rprimitive,
     is_object_rprimitive
 )
@@ -10,9 +10,16 @@ from mypyc.ops import (
 def is_subtype(left: RType, right: RType) -> bool:
     if is_object_rprimitive(right):
         return True
-    elif isinstance(right, ROptional):
-        if is_subtype(left, none_rprimitive) or is_subtype(left, right.value_type):
+    elif isinstance(right, RUnion):
+        if isinstance(left, RUnion):
+            for left_item in left.items:
+                if not any(is_subtype(left_item, right_item)
+                           for right_item in right.items):
+                    return False
             return True
+        else:
+            return any(is_subtype(left, item)
+                       for item in right.items)
     return left.accept(SubtypeVisitor(right))
 
 
@@ -29,9 +36,9 @@ class SubtypeVisitor(RTypeVisitor[bool]):
     def visit_rinstance(self, left: RInstance) -> bool:
         return isinstance(self.right, RInstance) and self.right.class_ir in left.class_ir.mro
 
-    def visit_roptional(self, left: ROptional) -> bool:
-        return isinstance(self.right, ROptional) and is_subtype(left.value_type,
-                                                                self.right.value_type)
+    def visit_runion(self, left: RUnion) -> bool:
+        return all(is_subtype(item, self.right)
+                   for item in left.items)
 
     def visit_rprimitive(self, left: RPrimitive) -> bool:
         if is_bool_rprimitive(left) and is_int_rprimitive(self.right):

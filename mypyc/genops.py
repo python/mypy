@@ -51,7 +51,7 @@ from mypyc.ops import (
     BasicBlock, AssignmentTarget, AssignmentTargetRegister, AssignmentTargetIndex,
     AssignmentTargetAttr, AssignmentTargetTuple, Environment, Op, LoadInt, RType, Value, Register,
     Return, FuncIR, Assign, Branch, Goto, RuntimeArg, Call, Box, Unbox, Cast, RTuple, Unreachable,
-    TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic, ROptional,
+    TupleGet, TupleSet, ClassIR, RInstance, ModuleIR, GetAttr, SetAttr, LoadStatic,
     MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive, bool_rprimitive,
     list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive, str_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, exc_rtuple,
@@ -59,6 +59,7 @@ from mypyc.ops import (
     is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
     FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
+    RUnion, is_optional_type, optional_value_type
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_list import (
@@ -266,12 +267,8 @@ class Mapper:
         elif isinstance(typ, NoneTyp):
             return none_rprimitive
         elif isinstance(typ, UnionType):
-            assert len(typ.items) == 2 and any(isinstance(it, NoneTyp) for it in typ.items)
-            if isinstance(typ.items[0], NoneTyp):
-                value_type = typ.items[1]
-            else:
-                value_type = typ.items[0]
-            return ROptional(self.type_to_rtype(value_type))
+            return RUnion([self.type_to_rtype(item)
+                           for item in typ.items])
         elif isinstance(typ, AnyType):
             return object_rprimitive
         elif isinstance(typ, TypeType):
@@ -770,7 +767,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # don't initialize it to anything.
             if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
                 attr_type = cls.attr_type(lvalue.name)
-                if (not isinstance(attr_type, ROptional) and not is_object_rprimitive(attr_type)
+                if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
                         and not is_none_rprimitive(attr_type)):
                     continue
 
@@ -1664,10 +1661,93 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.load_module_attr(expr)
         else:
             obj = self.accept(expr.expr)
-            if isinstance(obj.type, RInstance):
-                return self.add(GetAttr(obj, expr.name, expr.line))
+            return self.get_attr(obj, expr.name, self.node_type(expr), expr.line)
+
+    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
+        if isinstance(obj.type, RInstance):
+            return self.add(GetAttr(obj, attr, line))
+        elif isinstance(obj.type, RUnion):
+            return self.union_get_attr(obj, obj.type, attr, result_type, line)
+        else:
+            return self.py_get_attr(obj, attr, line)
+
+    def union_get_attr(self,
+                       obj: Value,
+                       rtype: RUnion,
+                       attr: str,
+                       result_type: RType,
+                       line: int) -> Value:
+        def get_item_attr(value: Value) -> Value:
+            return self.get_attr(value, attr, result_type, line)
+
+        return self.decompose_union_helper(obj, rtype, result_type, get_item_attr, line)
+
+    def decompose_union_helper(self,
+                               obj: Value,
+                               rtype: RUnion,
+                               result_type: RType,
+                               process_item: Callable[[Value], Value],
+                               line: int) -> Value:
+        """Generate isinstance() + specialized operations for union items.
+
+        Say, for Union[A, B] generate ops resembling this (pseudocode):
+
+            if isinstance(obj, A):
+                result = <result of process_item(cast(A, obj)>
             else:
-                return self.py_get_attr(obj, expr.name, expr.line)
+                result = <result of process_item(cast(B, obj)>
+
+        Args:
+            obj: value with a union type
+            rtype: the union type
+            result_type: result of the operation
+            process_item: callback to generate op for a single union item (arg is coerced
+                to union item type)
+            line: line number
+        """
+        # TODO: Optimize cases where a single operation can handle multiple union items
+        #     (say a method is implemented in a common base class)
+        fast_items = []
+        rest_items = []
+        for item in rtype.items:
+            if isinstance(item, RInstance):
+                fast_items.append(item)
+            else:
+                # For everything but RInstance we fall back to C API
+                rest_items.append(item)
+        exit_block = BasicBlock()
+        result = self.alloc_temp(result_type)
+        for i, item in enumerate(fast_items):
+            more_types = i < len(fast_items) - 1 or rest_items
+            if more_types:
+                # We are not at the final item so we need one more branch
+                op = self.isinstance(obj, item, line)
+                true_block, false_block = BasicBlock(), BasicBlock()
+                self.add_bool_branch(op, true_block, false_block)
+                self.activate_block(true_block)
+            coerced = self.coerce(obj, item, line)
+            temp = process_item(coerced)
+            temp2 = self.coerce(temp, result_type, line)
+            self.add(Assign(result, temp2))
+            self.goto(exit_block)
+            if more_types:
+                self.activate_block(false_block)
+        if rest_items:
+            # For everything else we use generic operation. Use force=True to drop the
+            # union type.
+            coerced = self.coerce(obj, object_rprimitive, line, force=True)
+            temp = process_item(coerced)
+            temp2 = self.coerce(temp, result_type, line)
+            self.add(Assign(result, temp2))
+            self.goto(exit_block)
+        self.activate_block(exit_block)
+        return result
+
+    def isinstance(self, obj: Value, rtype: RInstance, line: int) -> Value:
+        class_ir = rtype.class_ir
+        fullname = '%s.%s' % (class_ir.module_name, class_ir.name)
+        type_obj = self.load_native_type_object(fullname)
+        return self.primitive_op(fast_isinstance_op, [obj, type_obj], line)
 
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         key = self.load_static_unicode(attr)
@@ -1937,6 +2017,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 arg_values = self.coerce_native_call_args(arg_values, decl.bound_sig, base.line)
 
                 return self.add(MethodCall(base, name, arg_values, line))
+        elif isinstance(base.type, RUnion):
+            return self.union_method_call(base, base.type, name, arg_values, return_rtype, line,
+                                          arg_kinds, arg_names)
 
         # Try to do a special-cased method call
         target = self.translate_special_method_call(base, name, arg_values, return_rtype, line)
@@ -1945,6 +2028,21 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # Fall back to Python method call
         return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
+
+    def union_method_call(self,
+                          base: Value,
+                          obj_type: RUnion,
+                          name: str,
+                          arg_values: List[Value],
+                          return_rtype: RType,
+                          line: int,
+                          arg_kinds: Optional[List[int]],
+                          arg_names: Optional[List[Optional[str]]]) -> Value:
+        def call_union_item(value: Value) -> Value:
+            return self.gen_method_call(value, name, arg_values, return_rtype, line,
+                                        arg_kinds, arg_names)
+
+        return self.decompose_union_helper(base, obj_type, return_rtype, call_union_item, line)
 
     def translate_cast_expr(self, expr: CastExpr) -> Value:
         src = self.accept(expr.expr)
@@ -2109,26 +2207,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             length = self.primitive_op(list_len_op, [value], value.line)
             zero = self.add(LoadInt(0))
             value = self.binary_op(length, zero, '!=', value.line)
-        elif isinstance(value.type, ROptional):
-            is_none = self.binary_op(value, self.add(PrimitiveOp([], none_op, value.line)),
-                                     'is not', value.line)
-            branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
-            self.add(branch)
-            value_type = value.type.value_type
-            if isinstance(value_type, RInstance):
-                # Optional[X] where X is always truthy
-                # TODO: Support __bool__
-                pass
-            else:
-                # Optional[X] where X may be falsey and requires a check
-                branch.true = self.new_block()
-                # unbox_or_cast instead of coerce because we want the
-                # type to change even if it is a subtype.
-                remaining = self.unbox_or_cast(value, value.type.value_type, value.line)
-                self.add_bool_branch(remaining, true, false)
-            return
-        elif not is_same_type(value.type, bool_rprimitive):
-            value = self.primitive_op(bool_op, [value], value.line)
+        else:
+            value_type = optional_value_type(value.type)
+            if value_type is not None:
+                is_none = self.binary_op(value, self.add(PrimitiveOp([], none_op, value.line)),
+                                         'is not', value.line)
+                branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
+                self.add(branch)
+                if isinstance(value_type, RInstance):
+                    # Optional[X] where X is always truthy
+                    # TODO: Support __bool__
+                    pass
+                else:
+                    # Optional[X] where X may be falsey and requires a check
+                    branch.true = self.new_block()
+                    # unbox_or_cast instead of coerce because we want the
+                    # type to change even if it is a subtype.
+                    remaining = self.unbox_or_cast(value, value_type, value.line)
+                    self.add_bool_branch(remaining, true, false)
+                return
+            elif not is_same_type(value.type, bool_rprimitive):
+                value = self.primitive_op(bool_op, [value], value.line)
         self.add(Branch(value, true, false, Branch.BOOL_EXPR))
 
     def visit_nonlocal_decl(self, o: NonlocalDecl) -> None:
@@ -3300,11 +3399,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         module, name = fullname.rsplit('.', 1)
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
-    def coerce(self, src: Value, target_type: RType, line: int) -> Value:
+    def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
         """Generate a coercion/cast from one type to other (only if needed).
 
         For example, int -> object boxes the source int; int -> int emits nothing;
         object -> int unboxes the object. All conversions preserve object value.
+
+        If force is true, always generate an op (even if it is just an assingment) so
+        that the result will have exactly target_type as the type.
 
         Returns the register with the converted value (may be same as src).
         """
@@ -3319,6 +3421,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if ((not src.type.is_unboxed and target_type.is_unboxed)
                 or not is_subtype(src.type, target_type)):
             return self.unbox_or_cast(src, target_type, line)
+        elif force:
+            tmp = self.alloc_temp(target_type)
+            self.add(Assign(tmp, src))
+            return tmp
         return src
 
     def keyword_args_to_positional(self,

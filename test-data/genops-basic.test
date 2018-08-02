@@ -807,7 +807,7 @@ def f(o: Optional[A], n: int, t: Tuple[int, ...]) -> None:
     t = tt
 [out]
 def f(o, n, t):
-    o :: optional[A]
+    o :: union[A, None]
     n :: int
     t :: tuple
     r0, a :: A
@@ -852,7 +852,7 @@ def f(o: object,
 [out]
 def f(o, p, n, b, t, s, a, l, d):
     o :: object
-    p :: optional[A]
+    p :: union[A, None]
     n :: int
     b :: bool
     t :: tuple
@@ -1216,7 +1216,7 @@ def opt_o(x: Optional[object]) -> int:
         return 0
 [out]
 def opt_int(x):
-    x :: optional[int]
+    x :: union[int, None]
     r0 :: None
     r1 :: bool
     r2, r3 :: int
@@ -1240,7 +1240,7 @@ L3:
 L4:
     unreachable
 def opt_a(x):
-    x :: optional[A]
+    x :: union[A, None]
     r0 :: None
     r1 :: bool
     r2, r3 :: int
@@ -1257,7 +1257,7 @@ L2:
 L3:
     unreachable
 def opt_o(x):
-    x :: optional[object]
+    x :: union[object, None]
     r0 :: None
     r1 :: bool
     r2 :: object
