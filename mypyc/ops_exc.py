@@ -35,6 +35,13 @@ no_err_occurred_op = custom_op(
     format_str = '{dest} = no_err_occurred',
     emit=simple_emit('{dest} = (PyErr_Occurred() == NULL);'))
 
+keep_propagating_op = custom_op(
+    arg_types=[],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    format_str = '{dest} = keep_propagating',
+    emit=simple_emit('{dest} = 0;'))
+
 # Catches a propagating exception and makes it the "currently
 # handled exception" (by sticking it into sys.exc_info()). Returns the
 # exception that was previously being handled, which must be restored

@@ -812,6 +812,12 @@ def l() -> None:
         except KeyError as e:
             print("key! --", e)
 
+def m(x: object) -> int:
+    try:
+        st = id(x)
+    except Exception:
+        return -1
+    return st + 1
 
 [file wrapsys.py]
 # This is a gross hack around some limitations of the test system/mypyc.
@@ -823,7 +829,7 @@ def exc_info() -> Any:
 [file driver.py]
 import traceback
 import sys
-from native import g, f, h, i, j, k, l
+from native import g, f, h, i, j, k, l, m
 print("== i ==")
 try:
     i()
@@ -858,6 +864,8 @@ except:
 
 print("== l ==")
 l()
+
+m('lol')
 [out]
 == i ==
 <class 'IndexError'>

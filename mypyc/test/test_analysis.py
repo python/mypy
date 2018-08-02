@@ -14,6 +14,7 @@ from mypy import experiments
 
 from mypyc import analysis
 from mypyc import genops
+from mypyc import exceptions
 from mypyc.ops import format_func, Register, Value
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
@@ -59,6 +60,7 @@ class TestAnalysis(MypycDataSuite):
                     assert len(module.functions) == 2, (
                         "Only 1 function definition expected per test case")
                     fn = module.functions[0]
+                    exceptions.insert_exception_handling(fn)
                     actual = format_func(fn)
                     actual = actual[actual.index('L0:'):]
                     cfg = analysis.get_cfg(fn.blocks)

@@ -23,7 +23,7 @@ L1:
     r1 = unicode_0 :: static  ('object')
     r2 = getattr r0, r1
     r3 = py_call(r2)
-    goto L4
+    goto L5
 L2: (handler for L1)
     r4 = error_catch
     r5 = unicode_1 :: static  ('weeee')
@@ -32,10 +32,14 @@ L2: (handler for L1)
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
     r10 = cast(None, r9)
-L3: (handler for L2)
+L3:
     restore_exc_info r4
-    r11 = no_err_occurred
-L4:
+    goto L5
+L4: (handler for L2)
+    restore_exc_info r4
+    r11 = keep_propagating
+    unreachable
+L5:
     r12 = None
     return r12
 
@@ -76,7 +80,7 @@ L3:
     r4 = unicode_1 :: static  ('hi')
     r5 = str r4 :: object
 L4:
-    goto L7
+    goto L8
 L5: (handler for L1, L2, L3, L4)
     r6 = error_catch
     r7 = unicode_2 :: static  ('weeee')
@@ -85,10 +89,14 @@ L5: (handler for L1, L2, L3, L4)
     r10 = getattr r8, r9
     r11 = py_call(r10, r7)
     r12 = cast(None, r11)
-L6: (handler for L5)
+L6:
     restore_exc_info r6
-    r13 = no_err_occurred
-L7:
+    goto L8
+L7: (handler for L5)
+    restore_exc_info r6
+    r13 = keep_propagating
+    unreachable
+L8:
     r14 = None
     return r14
 
@@ -145,7 +153,7 @@ L2:
     r7 = unicode_2 :: static  ('object')
     r8 = getattr r6, r7
     r9 = py_call(r8)
-    goto L7
+    goto L8
 L3: (handler for L2)
     r10 = error_catch
     r11 = builtins.module :: static
@@ -166,12 +174,16 @@ L4:
 L5:
     reraise_exc; r22 = 0
     unreachable
-L6: (handler for L3, L4, L5)
+L6:
     restore_exc_info r10
-    r23 = no_err_occurred
-L7:
-    goto L10
-L8: (handler for L1, L6, L7)
+    goto L8
+L7: (handler for L3, L4, L5)
+    restore_exc_info r10
+    r23 = keep_propagating
+    unreachable
+L8:
+    goto L12
+L9: (handler for L1, L6, L7, L8)
     r24 = error_catch
     r25 = unicode_5 :: static  ('weeee')
     r26 = builtins.module :: static
@@ -179,10 +191,14 @@ L8: (handler for L1, L6, L7)
     r28 = getattr r26, r27
     r29 = py_call(r28, r25)
     r30 = cast(None, r29)
-L9: (handler for L8)
-    restore_exc_info r24
-    r31 = no_err_occurred
 L10:
+    restore_exc_info r24
+    goto L12
+L11: (handler for L9)
+    restore_exc_info r24
+    r31 = keep_propagating
+    unreachable
+L12:
     r32 = None
     return r32
 
@@ -219,7 +235,7 @@ def g():
     r23 :: None
 L0:
 L1:
-    goto L8
+    goto L9
 L2: (handler for L1)
     r0 = error_catch
     r1 = builtins.module :: static
@@ -252,10 +268,14 @@ L5:
 L6:
     reraise_exc; r21 = 0
     unreachable
-L7: (handler for L2, L3, L4, L5, L6)
+L7:
     restore_exc_info r0
-    r22 = no_err_occurred
-L8:
+    goto L9
+L8: (handler for L2, L3, L4, L5, L6)
+    restore_exc_info r0
+    r22 = keep_propagating
+    unreachable
+L9:
     r23 = None
     return r23
 
@@ -321,7 +341,7 @@ L10: (handler for L7, L8)
 L11:
     restore_exc_info r7
 L12:
-    r17 = no_err_occurred
+    r17 = keep_propagating
     unreachable
 L13:
     r18 = None
@@ -375,7 +395,7 @@ L2:
     r12 = getattr r10, r11
     r13 = py_call(r12, r9)
     r14 = cast(None, r13)
-    goto L7
+    goto L8
 L3: (handler for L2)
     r15 = error_catch
     r16 = False
@@ -391,37 +411,41 @@ L4:
     reraise_exc; r23 = 0
     unreachable
 L5:
-L6: (handler for L3, L4, L5)
+L6:
     restore_exc_info r15
-    r24 = no_err_occurred
-L7:
+    goto L8
+L7: (handler for L3, L4, L5)
+    restore_exc_info r15
+    r24 = keep_propagating
+    unreachable
 L8:
 L9:
+L10:
     r26 = <error> :: tuple[object, object, object]
     r25 = r26
-    goto L11
-L10: (handler for L1, L6, L7)
+    goto L12
+L11: (handler for L1, L6, L7, L8)
     r27 = error_catch
     r25 = r27
-L11:
-    if r7 goto L12 else goto L13 :: bool
 L12:
+    if r7 goto L13 else goto L14 :: bool
+L13:
     r28 = None
     r29 = py_call(r3, r0, r28, r28, r28)
-L13:
-    if is_error(r25) goto L15 else goto L14
 L14:
+    if is_error(r25) goto L16 else goto L15
+L15:
     reraise_exc; r30 = 0
     unreachable
-L15:
-    goto L19
-L16: (handler for L11, L12, L13, L14)
-    if is_error(r25) goto L18 else goto L17
-L17:
-    restore_exc_info r25
+L16:
+    goto L20
+L17: (handler for L12, L13, L14, L15)
+    if is_error(r25) goto L19 else goto L18
 L18:
-    r31 = no_err_occurred
-    unreachable
+    restore_exc_info r25
 L19:
+    r31 = keep_propagating
+    unreachable
+L20:
     r32 = None
     return r32

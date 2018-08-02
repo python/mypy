@@ -77,7 +77,7 @@ from mypyc.ops_misc import (
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, reraise_exception_op,
     error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
-    get_exc_info_op,
+    get_exc_info_op, keep_propagating_op,
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -2296,6 +2296,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         assert handlers, "try needs except"
 
         except_entry, exit_block, cleanup_block = BasicBlock(), BasicBlock(), BasicBlock()
+        double_except_block = BasicBlock()
         # If there is an else block, jump there after the try, otherwise just leave
         else_block = BasicBlock() if else_body else exit_block
 
@@ -2312,7 +2313,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # the *old* exc_info if an exception occurs.
         # The exception chaining will be done automatically when the
         # exception is raised, based on the exception in exc_info.
-        self.error_handlers.append(cleanup_block)
+        self.error_handlers.append(double_except_block)
         self.activate_block(except_entry)
         old_exc = self.primitive_op(error_catch_op, [], line)
         # Compile the except blocks with the nonlocal control flow overridden to clear exc_info
@@ -2343,14 +2344,20 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.nonlocal_control.pop()
         self.error_handlers.pop()
 
-        # Cleanup for if we leave except through normal control flow
-        # or a raised exception: restore the saved exc_info
-        # information and continue propagating the exception if it
-        # exists.
+        # Cleanup for if we leave except through normal control flow:
+        # restore the saved exc_info information and continue propagating
+        # the exception if it exists.
         self.activate_block(cleanup_block)
         self.primitive_op(restore_exc_info_op, [old_exc], line)
-        self.primitive_op(no_err_occurred_op, [], NO_TRACEBACK_LINE_NO)
         self.goto(exit_block)
+
+        # Cleanup for if we leave except through a raised exception:
+        # restore the saved exc_info information and continue propagating
+        # the exception.
+        self.activate_block(double_except_block)
+        self.primitive_op(restore_exc_info_op, [old_exc], line)
+        self.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
+        self.add(Unreachable())
 
         # If present, compile the else body in the obvious way
         if else_body:
@@ -2508,7 +2515,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # If there was an exception, restore again
         self.activate_block(cleanup_block)
         finally_control.gen_cleanup(self)
-        self.primitive_op(no_err_occurred_op, [], NO_TRACEBACK_LINE_NO)  # HACK always raises
+        self.primitive_op(keep_propagating_op, [], NO_TRACEBACK_LINE_NO)
         self.add(Unreachable())
 
         return out_block
