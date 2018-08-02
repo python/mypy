@@ -849,6 +849,92 @@ A() + '' # E: No overload variant of "__add__" of "A" matches argument type "str
          # N:     def __add__(self, A) -> int \
          # N:     def __add__(self, int) -> int
 
+[case testOverrideOverloadSwapped]
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+class Parent:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+class Child(Parent):
+    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
+                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    def f(self, x: str) -> str: ...
+    @overload
+    def f(self, x: int) -> int: ...
+
+[case testOverrideOverloadSwappedWithExtraVariants]
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+class bool: pass
+
+class Parent:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+class Child1(Parent):
+    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
+                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    def f(self, x: bool) -> bool: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    @overload
+    def f(self, x: int) -> int: ...
+class Child2(Parent):
+    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
+                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    def f(self, x: str) -> str: ...
+    @overload
+    def f(self, x: bool) -> bool: ...
+    @overload
+    def f(self, x: int) -> int: ...
+class Child3(Parent):
+    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
+                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    def f(self, x: str) -> str: ...
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: bool) -> bool: ...
+
+[case testOverrideOverloadSwappedWithAdjustedVariants]
+from foo import *
+[file foo.pyi]
+from typing import overload
+
+class A: pass
+class B(A): pass
+class C(B): pass
+
+class Parent:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: B) -> B: ...
+class Child1(Parent):
+    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
+                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    def f(self, x: A) -> B: ...
+    @overload
+    def f(self, x: int) -> int: ...
+class Child2(Parent):
+    @overload                           # E: Signature of "f" incompatible with supertype "Parent" \
+                                        # N: Overload variants must be defined in the same order as they are in "Parent"
+    def f(self, x: B) -> C: ...
+    @overload
+    def f(self, x: int) -> int: ...
+class Child3(Parent):
+    @overload                           # E: Signature of "f" incompatible with supertype "Parent"
+    def f(self, x: B) -> A: ...
+    @overload
+    def f(self, x: int) -> int: ...
+
 [case testOverrideOverloadedMethodWithMoreGeneralArgumentTypes]
 from foo import *
 [file foo.pyi]

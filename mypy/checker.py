@@ -1349,6 +1349,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.return_type_incompatible_with_supertype(
                         name, name_in_super, supertype, node)
                     emitted_msg = True
+            elif isinstance(override, Overloaded) and isinstance(original, Overloaded):
+                # Give a more detailed message in the case where the user is trying to
+                # override an overload, and the subclass's overload is plausible, except
+                # that the order of the variants are wrong.
+                #
+                # For example, if the parent defines the overload f(int) -> int and f(str) -> str
+                # (in that order), and if the child swaps the two and does f(str) -> str and
+                # f(int) -> int
+                order = []
+                for child_variant in override.items():
+                    for i, parent_variant in enumerate(original.items()):
+                        if is_subtype(child_variant, parent_variant):
+                            order.append(i)
+                            break
+
+                if len(order) == len(original.items()) and order != sorted(order):
+                    self.msg.overload_signature_incompatible_with_supertype(
+                        name, name_in_super, supertype, override, node)
+                    emitted_msg = True
 
             if not emitted_msg:
                 # Fall back to generic incompatibility message.
