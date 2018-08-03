@@ -278,9 +278,8 @@ would be added to the module search path instead, and the module name
 assumed is just ``baz``.
 
 If a script (a file not ending in ``.py[i]``) is processed, the module
-name assumed is always ``__main__`` (matching the behavior of the
-Python interpreter).
-
+name assumed is ``__main__`` (matching the behavior of the
+Python interpreter), unless ``--scripts-are-modules`` is passed.
 
 
 .. _finding-imports:
