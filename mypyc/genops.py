@@ -721,14 +721,19 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         We allow literals of primitives types, None, and references to global variables
         whose names are in all caps (as an unsound and very hacky proxy for whether they
         are a constant).
+        Additionally in a totally defensely hack we whitelist some other names.
         """
         # TODO: This is a hack, #336
+        ALLOWED_NAMES = ('_dummy',)
         return (isinstance(e, (StrExpr, BytesExpr, IntExpr, FloatExpr))
                 or (isinstance(e, UnaryExpr) and e.op == '-'
                     and isinstance(e.expr, (IntExpr, FloatExpr)))
+                or (isinstance(e, TupleExpr)
+                    and all(self.is_approximately_constant(e) for e in e.items))
                 or (isinstance(e, RefExpr) and e.kind == GDEF
                     and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
-                         or (e.node is not None and e.node.name().upper() == e.node.name()))))
+                         or (e.node is not None and (e.node.name().upper() == e.node.name()
+                                                     or e.node.name() in ALLOWED_NAMES)))))
 
     def generate_attr_defaults(self, cdef: ClassDef) -> None:
         """Generate an initialization method for default attr values (from class vars)"""
