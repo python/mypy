@@ -471,6 +471,23 @@ if z:  # E: Condition must be a boolean
 [builtins fixtures/bool.pyi]
 
 
+[case testPerFileIncompleteDefsBasic]
+# flags: --config-file tmp/mypy.ini
+import standard, incomplete
+
+[file standard.py]
+def incomplete(x) -> int:
+    return 0
+[file incomplete.py]
+def incomplete(x) -> int:  # E: Function is missing a type annotation for one or more arguments
+    return 0
+[file mypy.ini]
+[[mypy]
+disallow_incomplete_defs = False
+[[mypy-incomplete]
+disallow_incomplete_defs = True
+
+
 [case testPerFileStrictOptionalBasic]
 # flags: --config-file tmp/mypy.ini
 import standard, optional
