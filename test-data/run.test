@@ -2652,7 +2652,7 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 def run_generator(gen: Generator[T, None, U],
-                  p: bool = False) -> Tuple[Sequence[T], Union[U, BaseException]]:
+                  p: bool = False) -> Tuple[Sequence[T], Union[U, str]]:
     res = []
     while True:
         try:
@@ -2660,7 +2660,7 @@ def run_generator(gen: Generator[T, None, U],
         except StopIteration as e:
             return (tuple(res), e.value)
         except BaseException as e:
-            return (tuple(res), e)
+            return (tuple(res), str(e))
         if p:
             print(val)
         res.append(val)
@@ -2683,4 +2683,4 @@ enter! a
 1
 yooo? a
 exit! a exception!
-((1,), Exception('exception!',))
+((1,), 'exception!')
