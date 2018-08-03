@@ -55,3 +55,5 @@ class float: pass
 class BaseException: pass
 
 def __print(a1=None, a2=None, a3=None, a4=None): pass
+
+class ellipsis: pass

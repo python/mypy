@@ -231,8 +231,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
         if e.analyzed:
+            if isinstance(e.analyzed, NamedTupleExpr) and not e.analyzed.is_typed:
+                # Type check the arguments, but ignore the results. This relies
+                # on the typeshed stubs to type check the arguments.
+                self.visit_call_expr_inner(e)
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed, self.type_context[-1])
+        return self.visit_call_expr_inner(e, allow_none_return=allow_none_return)
+
+    def visit_call_expr_inner(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
             # Use named fallback for better error messages.
