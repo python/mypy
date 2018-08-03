@@ -239,6 +239,8 @@ definitions or calls.
     This flag reports an error whenever it encounters a function definition
     without type annotations.
 
+.. _disallow-incomplete-defs:
+
 ``--disallow-incomplete-defs`` 
     This flag reports an error whenever it encounters a partly annotated
     function definition.
