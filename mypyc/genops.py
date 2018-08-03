@@ -991,7 +991,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.gen_generator_func()
             blocks, env, ret_type, fn_info = self.leave()
             func_ir, func_reg = self.gen_func_ir(blocks, sig, env, fn_info, class_name)
-            self.functions.append(func_ir)
 
             # Re-enter the FuncItem and visit the body of the function this time.
             self.enter(fn_info)
@@ -1015,7 +1014,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         blocks, env, ret_type, fn_info = self.leave()
 
         if fn_info.is_generator:
-            func_ir = self.add_next_to_generator_class(blocks, sig, env, fn_info)
+            self.functions.append(self.add_next_to_generator_class(blocks, sig, env, fn_info))
             self.functions.append(self.add_iter_to_generator_class(fn_info))
         else:
             func_ir, func_reg = self.gen_func_ir(blocks, sig, env, fn_info, class_name)

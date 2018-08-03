@@ -7,23 +7,6 @@ def yield_three_times() -> Iterable:
     yield 3
 
 [out]
-def yield_three_times():
-    r0 :: yield_three_times__env
-    r1 :: yield_three_times__gen
-    r2 :: bool
-    r3 :: int
-    r4 :: bool
-L0:
-    r0 = yield_three_times__env()
-    r1 = yield_three_times__gen()
-    r1.__mypyc_env__ = r0; r2 = is_error
-    r3 = 0
-    r0.__mypyc_next_label__ = r3; r4 = is_error
-    return r1
-def yield_three_times__gen.__iter__(self):
-    self :: yield_three_times__gen
-L0:
-    return self
 def yield_three_times__gen.__next__(self):
     self :: yield_three_times__gen
     r0 :: yield_three_times__env
@@ -101,6 +84,23 @@ L12:
 L13:
     raise StopIteration
     unreachable
+def yield_three_times__gen.__iter__(self):
+    self :: yield_three_times__gen
+L0:
+    return self
+def yield_three_times():
+    r0 :: yield_three_times__env
+    r1 :: yield_three_times__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_three_times__env()
+    r1 = yield_three_times__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
 
 [case testYieldWhileLoop]
 from typing import Generator
@@ -112,23 +112,6 @@ def yield_while_loop() -> Generator:
         i += 1
 
 [out]
-def yield_while_loop():
-    r0 :: yield_while_loop__env
-    r1 :: yield_while_loop__gen
-    r2 :: bool
-    r3 :: int
-    r4 :: bool
-L0:
-    r0 = yield_while_loop__env()
-    r1 = yield_while_loop__gen()
-    r1.__mypyc_env__ = r0; r2 = is_error
-    r3 = 0
-    r0.__mypyc_next_label__ = r3; r4 = is_error
-    return r1
-def yield_while_loop__gen.__iter__(self):
-    self :: yield_while_loop__gen
-L0:
-    return self
 def yield_while_loop__gen.__next__(self):
     self :: yield_while_loop__gen
     r0 :: yield_while_loop__env
@@ -192,6 +175,23 @@ L9:
 L10:
     raise StopIteration
     unreachable
+def yield_while_loop__gen.__iter__(self):
+    self :: yield_while_loop__gen
+L0:
+    return self
+def yield_while_loop():
+    r0 :: yield_while_loop__env
+    r1 :: yield_while_loop__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_while_loop__env()
+    r1 = yield_while_loop__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
 
 [case testYieldForLoops]
 from typing import Iterable
@@ -211,23 +211,6 @@ def yield_for_loop_range() -> Iterable:
         yield i
 
 [out]
-def yield_for_loop_list():
-    r0 :: yield_for_loop_list__env
-    r1 :: yield_for_loop_list__gen
-    r2 :: bool
-    r3 :: int
-    r4 :: bool
-L0:
-    r0 = yield_for_loop_list__env()
-    r1 = yield_for_loop_list__gen()
-    r1.__mypyc_env__ = r0; r2 = is_error
-    r3 = 0
-    r0.__mypyc_next_label__ = r3; r4 = is_error
-    return r1
-def yield_for_loop_list__gen.__iter__(self):
-    self :: yield_for_loop_list__gen
-L0:
-    return self
 def yield_for_loop_list__gen.__next__(self):
     self :: yield_for_loop_list__gen
     r0 :: yield_for_loop_list__env
@@ -318,23 +301,23 @@ L10:
 L11:
     raise StopIteration
     unreachable
-def yield_for_loop_dict():
-    r0 :: yield_for_loop_dict__env
-    r1 :: yield_for_loop_dict__gen
+def yield_for_loop_list__gen.__iter__(self):
+    self :: yield_for_loop_list__gen
+L0:
+    return self
+def yield_for_loop_list():
+    r0 :: yield_for_loop_list__env
+    r1 :: yield_for_loop_list__gen
     r2 :: bool
     r3 :: int
     r4 :: bool
 L0:
-    r0 = yield_for_loop_dict__env()
-    r1 = yield_for_loop_dict__gen()
+    r0 = yield_for_loop_list__env()
+    r1 = yield_for_loop_list__gen()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = 0
     r0.__mypyc_next_label__ = r3; r4 = is_error
     return r1
-def yield_for_loop_dict__gen.__iter__(self):
-    self :: yield_for_loop_dict__gen
-L0:
-    return self
 def yield_for_loop_dict__gen.__next__(self):
     self :: yield_for_loop_dict__gen
     r0 :: yield_for_loop_dict__env
@@ -436,23 +419,23 @@ L14:
 L15:
     raise StopIteration
     unreachable
-def yield_for_loop_range():
-    r0 :: yield_for_loop_range__env
-    r1 :: yield_for_loop_range__gen
+def yield_for_loop_dict__gen.__iter__(self):
+    self :: yield_for_loop_dict__gen
+L0:
+    return self
+def yield_for_loop_dict():
+    r0 :: yield_for_loop_dict__env
+    r1 :: yield_for_loop_dict__gen
     r2 :: bool
     r3 :: int
     r4 :: bool
 L0:
-    r0 = yield_for_loop_range__env()
-    r1 = yield_for_loop_range__gen()
+    r0 = yield_for_loop_dict__env()
+    r1 = yield_for_loop_dict__gen()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = 0
     r0.__mypyc_next_label__ = r3; r4 = is_error
     return r1
-def yield_for_loop_range__gen.__iter__(self):
-    self :: yield_for_loop_range__gen
-L0:
-    return self
 def yield_for_loop_range__gen.__next__(self):
     self :: yield_for_loop_range__gen
     r0 :: yield_for_loop_range__env
@@ -521,6 +504,23 @@ L10:
 L11:
     raise StopIteration
     unreachable
+def yield_for_loop_range__gen.__iter__(self):
+    self :: yield_for_loop_range__gen
+L0:
+    return self
+def yield_for_loop_range():
+    r0 :: yield_for_loop_range__env
+    r1 :: yield_for_loop_range__gen
+    r2 :: bool
+    r3 :: int
+    r4 :: bool
+L0:
+    r0 = yield_for_loop_range__env()
+    r1 = yield_for_loop_range__gen()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = 0
+    r0.__mypyc_next_label__ = r3; r4 = is_error
+    return r1
 
 [case testYieldComplex]
 from typing import Generator
@@ -533,28 +533,6 @@ def yield_with_vars(a: int, b: float) -> Generator[int, None, float]:
     return b
 
 [out]
-def yield_with_vars(a, b):
-    a :: int
-    b :: float
-    r0 :: yield_with_vars__env
-    r1, r2 :: bool
-    r3 :: yield_with_vars__gen
-    r4 :: bool
-    r5 :: int
-    r6 :: bool
-L0:
-    r0 = yield_with_vars__env()
-    r0.a = a; r1 = is_error
-    r0.b = b; r2 = is_error
-    r3 = yield_with_vars__gen()
-    r3.__mypyc_env__ = r0; r4 = is_error
-    r5 = 0
-    r0.__mypyc_next_label__ = r5; r6 = is_error
-    return r3
-def yield_with_vars__gen.__iter__(self):
-    self :: yield_with_vars__gen
-L0:
-    return self
 def yield_with_vars__gen.__next__(self):
     self :: yield_with_vars__gen
     r0 :: yield_with_vars__env
@@ -618,3 +596,97 @@ L9:
 L10:
     raise StopIteration
     unreachable
+def yield_with_vars__gen.__iter__(self):
+    self :: yield_with_vars__gen
+L0:
+    return self
+def yield_with_vars(a, b):
+    a :: int
+    b :: float
+    r0 :: yield_with_vars__env
+    r1, r2 :: bool
+    r3 :: yield_with_vars__gen
+    r4 :: bool
+    r5 :: int
+    r6 :: bool
+L0:
+    r0 = yield_with_vars__env()
+    r0.a = a; r1 = is_error
+    r0.b = b; r2 = is_error
+    r3 = yield_with_vars__gen()
+    r3.__mypyc_env__ = r0; r4 = is_error
+    r5 = 0
+    r0.__mypyc_next_label__ = r5; r6 = is_error
+    return r3
+
+[case testYieldInsideMethod]
+from typing import Iterable
+
+class A(object):
+    def generator(self) -> Iterable[int]:
+        yield 0
+
+[out]
+def generator__gen.__next__(self):
+    self :: generator__gen
+    r0 :: generator__env
+    r1, r2 :: int
+    r3 :: object
+    r4 :: int
+    r5 :: bool
+    r6 :: None
+    r7 :: int
+    r8, r9 :: bool
+    r10 :: int
+    r11 :: bool
+    r12 :: int
+    r13, r14 :: bool
+L0:
+    r0 = self.__mypyc_env__
+    r1 = r0.__mypyc_next_label__
+    goto L5
+L1:
+L2:
+    r2 = 0
+    r3 = box(int, r2)
+    r4 = 1
+    r0.__mypyc_next_label__ = r4; r5 = is_error
+    return r3
+L3:
+    r6 = None
+    r7 = -1
+    r0.__mypyc_next_label__ = r7; r8 = is_error
+L4:
+    raise StopIteration(r6)
+    unreachable
+L5:
+    r10 = 0
+    r11 = r1 == r10 :: int
+    if r11 goto L1 else goto L6 :: bool
+L6:
+    r12 = 1
+    r13 = r1 == r12 :: int
+    if r13 goto L3 else goto L7 :: bool
+L7:
+    raise StopIteration
+    unreachable
+def generator__gen.__iter__(self):
+    self :: generator__gen
+L0:
+    return self
+def A.generator(self):
+    self :: A
+    r0 :: generator__env
+    r1 :: bool
+    r2 :: generator__gen
+    r3 :: bool
+    r4 :: int
+    r5 :: bool
+L0:
+    r0 = generator__env()
+    r0.self = self; r1 = is_error
+    r2 = generator__gen()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    r4 = 0
+    r0.__mypyc_next_label__ = r4; r5 = is_error
+    return r2

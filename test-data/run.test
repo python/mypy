@@ -2515,8 +2515,15 @@ def complex_yield(a: int, b: str, c: float) -> Generator[Union[str, int], None, 
 def three() -> int:
     return 3
 
+class A(object):
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+    def generator(self) -> Iterable[int]:
+        yield self.x
+
 [file driver.py]
-from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield
+from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield, A
 
 generator = yield_three_times()
 assert next(generator) == 1
@@ -2577,6 +2584,13 @@ try:
     next(generator)
 except StopIteration as e:
     assert e.value == 1.0
+try:
+    next(generator)
+except StopIteration as e:
+    assert e.value is None
+
+generator = A(0).generator()
+assert next(generator) == 0
 try:
     next(generator)
 except StopIteration as e:
