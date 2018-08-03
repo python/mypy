@@ -384,8 +384,8 @@ L0:
     r4 = unicode_1 :: static  ('__enter__')
     r5 = getattr r1, r4
     r6 = py_call(r5, r0)
-    r8 = True
-    r7 = r8
+    r7 = True
+    r8 = r7
 L1:
 L2:
     y = r6
@@ -399,7 +399,7 @@ L2:
 L3: (handler for L2)
     r15 = error_catch
     r16 = False
-    r7 = r16
+    r8 = r16
     r17 = get_exc_info
     r18 = r17[0]
     r19 = r17[1]
@@ -428,7 +428,7 @@ L11: (handler for L1, L6, L7, L8)
     r27 = error_catch
     r25 = r27
 L12:
-    if r7 goto L13 else goto L14 :: bool
+    if r8 goto L13 else goto L14 :: bool
 L13:
     r28 = None
     r29 = py_call(r3, r0, r28, r28, r28)

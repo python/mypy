@@ -2608,3 +2608,79 @@ for i in yield_while_loop():
 0
 1
 2
+
+[case testYieldTryFinallyWith]
+from typing import Generator, Any
+
+class Thing:
+    def __init__(self, x: str) -> None:
+        self.x = x
+    def __enter__(self) -> str:
+        print('enter!', self.x)
+        if self.x == 'crash':
+            raise Exception('ohno')
+        return self.x
+    def __exit__(self, x: Any, y: Any, z: Any) -> None:
+        print('exit!', self.x, y)
+
+def yield_try_finally() -> Generator[int, None, str]:
+    try:
+        yield 1
+        yield 2
+        return 'lol'
+    except Exception:
+        raise
+    finally:
+        print('goodbye!')
+
+def yield_with(i: int) -> Generator[int, None, int]:
+    with Thing('a') as x:
+        yield 1
+        print("yooo?", x)
+        if i == 0:
+            yield 2
+            return 10
+        elif i == 1:
+            raise Exception('exception!')
+    return -1
+
+[file driver.py]
+from typing import Generator, Tuple, TypeVar, Sequence, Union
+from native import yield_try_finally, yield_with
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def run_generator(gen: Generator[T, None, U],
+                  p: bool = False) -> Tuple[Sequence[T], Union[U, BaseException]]:
+    res = []
+    while True:
+        try:
+            val = next(gen)
+        except StopIteration as e:
+            return (tuple(res), e.value)
+        except BaseException as e:
+            return (tuple(res), e)
+        if p:
+            print(val)
+        res.append(val)
+
+print(run_generator(yield_try_finally(), True))
+print(run_generator(yield_with(0), True))
+print(run_generator(yield_with(1), True))
+[out]
+1
+2
+goodbye!
+((1, 2), 'lol')
+enter! a
+1
+yooo? a
+2
+exit! a None
+((1, 2), 10)
+enter! a
+1
+yooo? a
+exit! a exception!
+((1,), Exception('exception!',))

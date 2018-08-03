@@ -1190,7 +1190,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
-    def read(self, target: Union[Value, AssignmentTarget], line: int) -> Value:
+    def read(self, target: Union[Value, AssignmentTarget], line: int = -1) -> Value:
         if isinstance(target, Value):
             return target
         if isinstance(target, AssignmentTargetRegister):
@@ -1349,15 +1349,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.for_loop_helper(s.index, s.expr, body, else_block if s.else_body else None, s.line)
 
-    def spill(self, value: Value, line: int) -> AssignmentTarget:
+    def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
         name = '{}{}'.format(TEMP_ATTR_NAME, self.temp_counter)
         self.temp_counter += 1
         target = self.add_var_to_env_class(Var(name), value.type, self.fn_info.generator_class)
-        self.assign(target, value, line)
+        # Shouldn't be able to fail, so -1 for line
+        self.assign(target, value, -1)
         return target
 
-    def maybe_spill(self, value: Value, line: int) -> Union[Value, AssignmentTarget]:
+    def maybe_spill(self, value: Value) -> Union[Value, AssignmentTarget]:
         """
         Moves a given Value instance into the environment class for generator functions. For
         non-generator functions, leaves the Value instance as it is.
@@ -1366,11 +1367,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         original Value itself for non-generator functions.
         """
         if self.fn_info.is_generator:
-            return self.spill(value, line)
+            return self.spill(value)
         return value
 
-    def maybe_spill_assignable(self, value: Value,
-                               line: int) -> Union[Register, AssignmentTarget]:
+    def maybe_spill_assignable(self, value: Value) -> Union[Register, AssignmentTarget]:
         """
         Moves a given Value instance into the environment class for generator functions. For
         non-generator functions, allocate a temporary Register.
@@ -1379,11 +1379,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         assignable Register for non-generator functions.
         """
         if self.fn_info.is_generator:
-            return self.spill(value, line)
+            return self.spill(value)
+
+        if isinstance(value, Register):
+            return value
 
         # Allocate a temporary register for the assignable value.
         reg = self.alloc_temp(value.type)
-        self.assign(reg, value, line)
+        self.assign(reg, value, -1)
         return reg
 
     def for_loop_helper(self, index: Lvalue, expr: Expression,
@@ -1412,7 +1415,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # TODO: Check argument counts and kinds; check the lvalue
             end = expr.args[0]
             end_reg = self.accept(end)
-            end_target = self.maybe_spill(end_reg, line)
+            end_target = self.maybe_spill(end_reg)
 
             # Initialize loop index to 0. Assert that the index target is assignable.
             index_target = self.get_assignment_target(
@@ -1448,8 +1451,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # environment class.
             expr_reg = self.accept(expr)
             index_reg = self.add(LoadInt(0))
-            expr_target = self.maybe_spill(expr_reg, line)
-            index_target = self.maybe_spill_assignable(index_reg, line)
+            expr_target = self.maybe_spill(expr_reg)
+            index_target = self.maybe_spill_assignable(index_reg)
 
             condition_block = self.goto_new_block()
 
@@ -1490,8 +1493,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # environment class.
             expr_reg = self.accept(expr)
             iter_reg = self.add(PrimitiveOp([expr_reg], iter_op, line))
-            expr_target = self.maybe_spill(expr_reg, line)
-            iter_target = self.maybe_spill(iter_reg, line)
+            expr_target = self.maybe_spill(expr_reg)
+            iter_target = self.maybe_spill(iter_reg)
 
             # Create a block for where the __next__ function will be called on the iterator and
             # checked to see if the value returned is NULL, which would signal either the end of
@@ -2576,12 +2579,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # I don't actually understand why a bunch of it is the way it is.
         # We could probably optimize the case where the manager is compiled by us,
         # but that is not our common case at all, so.
-        mgr = self.accept(expr)
-        typ = self.primitive_op(type_op, [mgr], line)
-        exit_ = self.py_get_attr(typ, '__exit__', line)
-        value = self.py_call(self.py_get_attr(typ, '__enter__', line), [mgr], line)
-        exc = self.alloc_temp(bool_rprimitive)
-        self.add(Assign(exc, self.primitive_op(true_op, [], -1)))
+        mgr_v = self.accept(expr)
+        typ = self.primitive_op(type_op, [mgr_v], line)
+        exit_ = self.maybe_spill(self.py_get_attr(typ, '__exit__', line))
+        value = self.py_call(self.py_get_attr(typ, '__enter__', line), [mgr_v], line)
+        mgr = self.maybe_spill(mgr_v)
+        exc = self.maybe_spill_assignable(self.primitive_op(true_op, [], -1))
 
         def try_body() -> None:
             if target:
@@ -2589,9 +2592,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             body()
 
         def except_body() -> None:
-            self.add(Assign(exc, self.primitive_op(false_op, [], -1)))
+            self.assign(exc, self.primitive_op(false_op, [], -1), line)
             out_block, reraise_block = BasicBlock(), BasicBlock()
-            self.add_bool_branch(self.py_call(exit_, [mgr] + self.get_sys_exc_info(), line),
+            self.add_bool_branch(self.py_call(self.read(exit_),
+                                              [self.read(mgr)] + self.get_sys_exc_info(), line),
                                  out_block, reraise_block)
             self.activate_block(reraise_block)
             self.primitive_op(reraise_exception_op, [], NO_TRACEBACK_LINE_NO)
@@ -2600,10 +2604,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         def finally_body() -> None:
             out_block, exit_block = BasicBlock(), BasicBlock()
-            self.add(Branch(exc, exit_block, out_block, Branch.BOOL_EXPR))
+            self.add(Branch(self.read(exc), exit_block, out_block, Branch.BOOL_EXPR))
             self.activate_block(exit_block)
             none = self.primitive_op(none_op, [], -1)
-            self.py_call(exit_, [mgr, none, none, none], line)
+            self.py_call(self.read(exit_), [self.read(mgr), none, none, none], line)
             self.goto_and_activate(out_block)
 
         self.visit_try_finally_stmt(
