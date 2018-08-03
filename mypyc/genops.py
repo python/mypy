@@ -750,6 +750,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                         and isinstance(stmt.lvalues[0], NameExpr)
                         and not is_class_var(stmt.lvalues[0])
                         and not isinstance(stmt.rvalue, TempNode)):
+                    if stmt.lvalues[0].name == '__slots__':
+                        continue
+
                     default_assignments.append(stmt)
 
         if not default_assignments:
