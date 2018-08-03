@@ -158,6 +158,8 @@ class NamedTupleAnalyzer:
             name += '@' + str(call.line)
         if num_defaults > 0:
             default_items = {
+                # We don't have the actual argument expressions any more, so we
+                # just use Ellipsis for all defaults.
                 arg_name: EllipsisExpr()
                 for arg_name in items[-num_defaults:]
             }
@@ -191,7 +193,7 @@ class NamedTupleAnalyzer:
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if fullname == 'typing.NamedTuple':
-                return self.fail_namedtuple_arg("Too many arguments for namedtuple()", call)
+                return self.fail_namedtuple_arg("Too many arguments for NamedTuple()", call)
             for i, arg_name in enumerate(call.arg_names[2:], 2):
                 if arg_name == 'defaults':
                     arg = args[i]
