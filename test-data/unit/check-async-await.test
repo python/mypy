@@ -215,9 +215,9 @@ async def dictcomp(obj: Iterable[Tuple[int, str]]):
 
 async def generatorexp(obj: Iterable[int]):
     lst = (i async for i in asyncify(obj))
-    reveal_type(lst)  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*]'
+    reveal_type(lst)  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, None]'
     lst2 = (i async for i in asyncify(obj) for i in obj)
-    reveal_type(lst2)  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*]'
+    reveal_type(lst2)  # E: Revealed type is 'typing.AsyncGenerator[builtins.int*, None]'
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]

@@ -1348,7 +1348,7 @@ l = [x for x in a if isinstance(x, int)]
 g = (x for x in a if isinstance(x, int))
 d = {0: x for x in a if isinstance(x, int)}
 reveal_type(l) # E: Revealed type is 'builtins.list[builtins.int*]'
-reveal_type(g) # E: Revealed type is 'typing.Generator[builtins.int*]'
+reveal_type(g) # E: Revealed type is 'typing.Generator[builtins.int*, builtins.None, builtins.None]'
 reveal_type(d) # E: Revealed type is 'builtins.dict[builtins.int*, builtins.int*]'
 [builtins fixtures/isinstancelist.pyi]
 
