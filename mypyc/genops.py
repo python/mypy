@@ -13,7 +13,7 @@ It would be translated to something that conceptually looks like this:
    r3 = r2 + r1 :: int
    return r3
 """
-from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, overload
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, overload
 from abc import abstractmethod
 import sys
 import traceback
@@ -81,7 +81,7 @@ from mypyc.ops_exc import (
 )
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
-from mypyc.crash import crash_report
+from mypyc.crash import catch_errors
 
 GenFunc = Callable[[], None]
 
@@ -95,17 +95,18 @@ def build_ir(modules: List[MypyFile],
     classes = []
     for module in modules:
         module_classes = [node for node in module.defs if isinstance(node, ClassDef)]
-        classes.extend([(module.fullname(), cdef) for cdef in module_classes])
+        classes.extend([(module, cdef) for cdef in module_classes])
 
     # Collect all class mappings so that we can bind arbitrary class name
     # references even if there are import cycles.
-    for module_name, cdef in classes:
-        class_ir = ClassIR(cdef.name, module_name, is_trait(cdef))
+    for module, cdef in classes:
+        class_ir = ClassIR(cdef.name, module.fullname(), is_trait(cdef))
         mapper.type_to_ir[cdef.info] = class_ir
 
     # Populate structural information in class IR.
-    for module_name, cdef in classes:
-        prepare_class_def(module_name, cdef, mapper)
+    for module, cdef in classes:
+        with catch_errors(module.path, cdef.line):
+            prepare_class_def(module.fullname(), cdef, mapper)
 
     # Collect all the functions also
     for module in modules:
@@ -760,8 +761,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            assert self.is_approximately_constant(stmt.rvalue), (
-                "Unsupported default attribute value")
+            with self.catch_errors(stmt.line):
+                assert self.is_approximately_constant(stmt.rvalue), (
+                    "Unsupported default attribute value")
 
             # If the attribute is initialized to None and type isn't optional,
             # don't initialize it to anything.
@@ -788,9 +790,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_class_def(self, cdef: ClassDef) -> None:
         for stmt in cdef.defs.body:
             if isinstance(stmt, FuncDef):
-                self.visit_method(cdef, stmt)
+                with self.catch_errors(stmt.line):
+                    self.visit_method(cdef, stmt)
             elif isinstance(stmt, Decorator):
-                self.visit_method(cdef, stmt.func)
+                with self.catch_errors(stmt.line):
+                    self.visit_method(cdef, stmt.func)
             elif isinstance(stmt, PassStmt):
                 continue
             elif isinstance(stmt, AssignmentStmt):
@@ -812,7 +816,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 # Docstring. Ignore
                 pass
             else:
-                assert False, "Unsupported statement in class body"
+                with self.catch_errors(stmt.line):
+                    assert False, "Unsupported statement in class body"
 
         self.generate_attr_defaults(cdef)
 
@@ -923,8 +928,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         fitem = self.fn_info.fitem
         for arg in fitem.arguments:
             if arg.initializer:
-                assert self.is_approximately_constant(arg.initializer), (
-                    "Unsupported default argument")
+                with self.catch_errors(arg.initializer.line):
+                    assert self.is_approximately_constant(arg.initializer), (
+                        "Unsupported default argument")
                 target = self.environment.lookup(arg.variable)
                 assert isinstance(target, AssignmentTargetRegister)
                 error_block, body_block = BasicBlock(), BasicBlock()
@@ -2979,7 +2985,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def accept(self, node: Statement) -> None: ...
 
     def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
-        try:
+        with self.catch_errors(node.line):
             if isinstance(node, Expression):
                 res = node.accept(self)
                 res = self.coerce(res, self.node_type(node), node.line)
@@ -2987,8 +2993,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             else:
                 node.accept(self)
                 return None
-        except Exception:
-            crash_report(self.module_path, node.line)
 
     def alloc_temp(self, type: RType) -> Register:
         return self.environment.add_temp(type)
@@ -3454,3 +3458,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                                   lambda n: AnyType(TypeOfAny.special_form))
         assert all(len(lst) <= 1 for lst in formal_to_actual)
         return [None if len(lst) == 0 else args[lst[0]] for lst in formal_to_actual]
+
+    # Lacks a good type because there wasn't a reasonable type in 3.5 :(
+    def catch_errors(self, line: int) -> Any:
+        return catch_errors(self.module_path, line)
