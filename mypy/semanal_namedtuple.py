@@ -158,8 +158,6 @@ class NamedTupleAnalyzer:
             name += '@' + str(call.line)
         if len(defaults) > 0:
             default_items = {
-                # We don't have the actual argument expressions any more, so we
-                # just use Ellipsis for all defaults.
                 arg_name: default
                 for arg_name, default in zip(items[-len(defaults):], defaults)
             }
@@ -174,8 +172,8 @@ class NamedTupleAnalyzer:
         call.analyzed.set_line(call.line, call.column)
         return info
 
-    def parse_namedtuple_args(self, call: CallExpr,
-                              fullname: str) -> Tuple[List[str], List[Type], List[Expression], bool]:
+    def parse_namedtuple_args(self, call: CallExpr, fullname: str
+                              ) -> Tuple[List[str], List[Type], List[Expression], bool]:
         """Parse a namedtuple() call into data needed to construct a type.
 
         Returns a 4-tuple:
@@ -246,9 +244,9 @@ class NamedTupleAnalyzer:
             defaults = defaults[:len(items)]
         return items, types, defaults, ok
 
-    def parse_namedtuple_fields_with_types(
-        self, nodes: List[Expression], context: Context
-    ) -> Tuple[List[str], List[Type], int, bool]:
+    def parse_namedtuple_fields_with_types(self, nodes: List[Expression], context: Context
+                                           ) -> Tuple[List[str], List[Type], List[Expression],
+                                                      bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for item in nodes:
@@ -268,12 +266,12 @@ class NamedTupleAnalyzer:
                 types.append(self.api.anal_type(type))
             else:
                 return self.fail_namedtuple_arg("Tuple expected as NamedTuple() field", item)
-        return items, types, 0, True
+        return items, types, [], True
 
-    def fail_namedtuple_arg(self, message: str,
-                            context: Context) -> Tuple[List[str], List[Type], int, bool]:
+    def fail_namedtuple_arg(self, message: str, context: Context
+                            ) -> Tuple[List[str], List[Type], List[Expression], bool]:
         self.fail(message, context)
-        return [], [], 0, False
+        return [], [], [], False
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
                                   default_items: Mapping[str, Expression]) -> TypeInfo:
