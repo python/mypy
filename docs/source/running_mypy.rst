@@ -53,7 +53,7 @@ different ways.
     find where modules and imports are located on the file system.
     For more details, see :ref:`finding-imports`. 
 
-3.  Third, you can the ``-p`` (long form: ``--package``) flag to
+3.  Third, you can use the ``-p`` (long form: ``--package``) flag to
     specify a package to be (recursively) type checked. This flag
     is almost identical to the ``-m`` flag except that if you give it
     a package name, mypy will recursively type check all submodules
