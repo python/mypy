@@ -3,6 +3,7 @@ if: tag IS present OR type = pull_request OR (branch = master AND type = push)  
 language: python
 # cache package wheels (1 cache per python version)
 cache: pip
+# newer python versions are available only on xenial (while some older only on trusty) Ubuntu distribution
 dist: xenial
 sudo: required
 
@@ -12,19 +13,26 @@ env:
 
 jobs:
   include:
-  - python: 3.4
+  - name: "run test suite with python 3.4"
+    python: 3.4
     dist: trusty
   # Specifically request 3.5.1 because we need to be compatible with that.
-  - python: 3.5.1
+  - name: "run test suite with python 3.5.1"
+    python: 3.5.1
     dist: trusty
-  - python: 3.6    # 3.6.3  pip  9.0.1
-  - python: 3.7    # 3.7.0  pip 10.0.1
-  - python: 3.8-dev
-  - python: 3.7
+  - name: "run test suite with python 3.6"
+    python: 3.6    # 3.6.3  pip  9.0.1
+  - name: "run test suite with python 3.7"
+    python: 3.7    # 3.7.0  pip 10.0.1
+  - name: "run test suite with python 3.8-dev"
+    python: 3.8-dev
+  - name: "type check our own code"
+    python: 3.7
     env:
     - TOXENV=type
     - EXTRA_ARGS=
-  - python: 3.7
+  - name: "check code style with flake8"
+    python: 3.7
     env:
     - TOXENV=lint
     - EXTRA_ARGS=
