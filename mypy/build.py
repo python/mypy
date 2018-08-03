@@ -580,12 +580,12 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
     custom_plugins = []  # type: List[Plugin]
     errors.set_file(options.config_file, None)
     for plugin_path in options.plugins:
-        # Plugin paths are relative to the config file location.
         func_name = 'plugin'
         plugin_dir = None  # type: Optional[str]
         if ':' in os.path.basename(plugin_path):
             plugin_path, func_name = plugin_path.rsplit(':', 1)
         if plugin_path.endswith('.py'):
+            # Plugin paths can be relative to the config file location.
             plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
             if not os.path.isfile(plugin_path):
                 plugin_error("Can't find plugin '{}'".format(plugin_path))
@@ -593,7 +593,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
             fnam = os.path.basename(plugin_path)
             module_name = fnam[:-3]
             sys.path.insert(0, plugin_dir)
-        elif re.search(r'\/', plugin_path):
+        elif re.search(r'[\\/]', plugin_path):
             fnam = os.path.basename(plugin_path)
             plugin_error("Plugin '{}' does not have a .py extension".format(fnam))
         else:
