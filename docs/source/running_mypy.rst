@@ -213,7 +213,7 @@ accident.
 
 If you are planning on adding type hints to a large, existing code base,
 we recommend you start by trying to make your entire codebase (including
-files that do not use type hints) pass under ``--follow-options=normal``.
+files that do not use type hints) pass under ``--follow-imports=normal``.
 This is usually not too difficult to do: mypy is designed to report as
 few error messages as possible when it is looking at unannotated code.
 
