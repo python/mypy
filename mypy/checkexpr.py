@@ -2234,7 +2234,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if any(e.is_async):
             typ = 'typing.AsyncGenerator'
             # received type is always None in async generator expressions
-            additional_args = [NoneTyp()]
+            additional_args = [NoneTyp()]  # type: List[Type]
         else:
             typ = 'typing.Generator'
             # received type and returned type are None
@@ -2253,12 +2253,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
             tvdef = TypeVarDef('T', 'T', -1, [], self.object_type())
-            tv = TypeVarType(tvdef)
+            tv_list = [TypeVarType(tvdef)]  # type: List[Type]
             constructor = CallableType(
-                [tv],
+                tv_list,
                 [nodes.ARG_POS],
                 [None],
-                self.chk.named_generic_type(type_name, [tv] + additional_args),
+                self.chk.named_generic_type(type_name, tv_list + additional_args),
                 self.chk.named_type('builtins.function'),
                 name=id_for_messages,
                 variables=[tvdef])
