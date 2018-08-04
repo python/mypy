@@ -14,25 +14,27 @@ def yield_three_times__gen.__next__(self):
     r3 :: object
     r4 :: int
     r5 :: bool
-    r6 :: int
-    r7 :: object
-    r8 :: int
-    r9 :: bool
-    r10 :: int
-    r11 :: object
+    r6 :: None
+    r7 :: int
+    r8 :: object
+    r9 :: int
+    r10 :: bool
+    r11 :: None
     r12 :: int
-    r13 :: bool
-    r14 :: None
-    r15 :: int
-    r16, r17 :: bool
+    r13 :: object
+    r14 :: int
+    r15 :: bool
+    r16, r17 :: None
     r18 :: int
-    r19 :: bool
-    r20 :: int
-    r21 :: bool
-    r22 :: int
-    r23 :: bool
-    r24 :: int
-    r25, r26 :: bool
+    r19, r20 :: bool
+    r21 :: int
+    r22 :: bool
+    r23 :: int
+    r24 :: bool
+    r25 :: int
+    r26 :: bool
+    r27 :: int
+    r28, r29 :: bool
 L0:
     r0 = self.__mypyc_env__
     r1 = r0.__mypyc_next_label__
@@ -45,42 +47,45 @@ L2:
     r0.__mypyc_next_label__ = r4; r5 = is_error
     return r3
 L3:
+    r6 = None
 L4:
-    r6 = 2
-    r7 = box(int, r6)
-    r8 = 2
-    r0.__mypyc_next_label__ = r8; r9 = is_error
-    return r7
+    r7 = 2
+    r8 = box(int, r7)
+    r9 = 2
+    r0.__mypyc_next_label__ = r9; r10 = is_error
+    return r8
 L5:
+    r11 = None
 L6:
-    r10 = 3
-    r11 = box(int, r10)
     r12 = 3
-    r0.__mypyc_next_label__ = r12; r13 = is_error
-    return r11
+    r13 = box(int, r12)
+    r14 = 3
+    r0.__mypyc_next_label__ = r14; r15 = is_error
+    return r13
 L7:
-    r14 = None
-    r15 = -1
-    r0.__mypyc_next_label__ = r15; r16 = is_error
+    r16 = None
+    r17 = None
+    r18 = -1
+    r0.__mypyc_next_label__ = r18; r19 = is_error
 L8:
-    raise StopIteration(r14)
+    raise StopIteration(r17)
     unreachable
 L9:
-    r18 = 0
-    r19 = r1 == r18 :: int
-    if r19 goto L1 else goto L10 :: bool
+    r21 = 0
+    r22 = r1 == r21 :: int
+    if r22 goto L1 else goto L10 :: bool
 L10:
-    r20 = 1
-    r21 = r1 == r20 :: int
-    if r21 goto L3 else goto L11 :: bool
+    r23 = 1
+    r24 = r1 == r23 :: int
+    if r24 goto L3 else goto L11 :: bool
 L11:
-    r22 = 2
-    r23 = r1 == r22 :: int
-    if r23 goto L5 else goto L12 :: bool
+    r25 = 2
+    r26 = r1 == r25 :: int
+    if r26 goto L5 else goto L12 :: bool
 L12:
-    r24 = 3
-    r25 = r1 == r24 :: int
-    if r25 goto L7 else goto L13 :: bool
+    r27 = 3
+    r28 = r1 == r27 :: int
+    if r28 goto L7 else goto L13 :: bool
 L13:
     raise StopIteration
     unreachable
@@ -123,15 +128,16 @@ def yield_while_loop__gen.__next__(self):
     r8 :: object
     r9 :: int
     r10 :: bool
-    r11, r12, r13 :: int
-    r14 :: bool
-    r15 :: None
-    r16 :: int
-    r17, r18 :: bool
-    r19 :: int
-    r20 :: bool
-    r21 :: int
-    r22, r23 :: bool
+    r11 :: None
+    r12, r13, r14 :: int
+    r15 :: bool
+    r16 :: None
+    r17 :: int
+    r18, r19 :: bool
+    r20 :: int
+    r21 :: bool
+    r22 :: int
+    r23, r24 :: bool
 L0:
     r0 = self.__mypyc_env__
     r1 = r0.__mypyc_next_label__
@@ -152,26 +158,27 @@ L4:
     r0.__mypyc_next_label__ = r9; r10 = is_error
     return r8
 L5:
-    r11 = r0.i
-    r12 = 1
-    r13 = r11 += r12 :: int
-    r0.i = r13; r14 = is_error
+    r11 = None
+    r12 = r0.i
+    r13 = 1
+    r14 = r12 += r13 :: int
+    r0.i = r14; r15 = is_error
     goto L2
 L6:
-    r15 = None
-    r16 = -1
-    r0.__mypyc_next_label__ = r16; r17 = is_error
+    r16 = None
+    r17 = -1
+    r0.__mypyc_next_label__ = r17; r18 = is_error
 L7:
-    raise StopIteration(r15)
+    raise StopIteration(r16)
     unreachable
 L8:
-    r19 = 0
-    r20 = r1 == r19 :: int
-    if r20 goto L1 else goto L9 :: bool
+    r20 = 0
+    r21 = r1 == r20 :: int
+    if r21 goto L1 else goto L9 :: bool
 L9:
-    r21 = 1
-    r22 = r1 == r21 :: int
-    if r22 goto L5 else goto L10 :: bool
+    r22 = 1
+    r23 = r1 == r22 :: int
+    if r23 goto L5 else goto L10 :: bool
 L10:
     raise StopIteration
     unreachable
@@ -233,15 +240,16 @@ def yield_for_loop_list__gen.__next__(self):
     r23 :: object
     r24 :: int
     r25 :: bool
-    r26, r27, r28 :: int
-    r29 :: bool
-    r30 :: None
-    r31 :: int
-    r32, r33 :: bool
-    r34 :: int
-    r35 :: bool
-    r36 :: int
-    r37, r38 :: bool
+    r26 :: None
+    r27, r28, r29 :: int
+    r30 :: bool
+    r31 :: None
+    r32 :: int
+    r33, r34 :: bool
+    r35 :: int
+    r36 :: bool
+    r37 :: int
+    r38, r39 :: bool
 L0:
     r0 = self.__mypyc_env__
     r1 = r0.__mypyc_next_label__
@@ -277,27 +285,28 @@ L4:
     r0.__mypyc_next_label__ = r24; r25 = is_error
     return r23
 L5:
+    r26 = None
 L6:
-    r26 = r0.__mypyc_temp__1
-    r27 = 1
-    r28 = r26 + r27 :: int
-    r0.__mypyc_temp__1 = r28; r29 = is_error
+    r27 = r0.__mypyc_temp__1
+    r28 = 1
+    r29 = r27 + r28 :: int
+    r0.__mypyc_temp__1 = r29; r30 = is_error
     goto L2
 L7:
-    r30 = None
-    r31 = -1
-    r0.__mypyc_next_label__ = r31; r32 = is_error
+    r31 = None
+    r32 = -1
+    r0.__mypyc_next_label__ = r32; r33 = is_error
 L8:
-    raise StopIteration(r30)
+    raise StopIteration(r31)
     unreachable
 L9:
-    r34 = 0
-    r35 = r1 == r34 :: int
-    if r35 goto L1 else goto L10 :: bool
+    r35 = 0
+    r36 = r1 == r35 :: int
+    if r36 goto L1 else goto L10 :: bool
 L10:
-    r36 = 1
-    r37 = r1 == r36 :: int
-    if r37 goto L5 else goto L11 :: bool
+    r37 = 1
+    r38 = r1 == r37 :: int
+    if r38 goto L5 else goto L11 :: bool
 L11:
     raise StopIteration
     unreachable
@@ -344,14 +353,16 @@ def yield_for_loop_dict__gen.__next__(self):
     r27 :: int
     r28 :: object
     r29 :: int
-    r30, r31 :: bool
-    r32 :: None
-    r33 :: int
-    r34, r35 :: bool
-    r36 :: int
-    r37 :: bool
-    r38 :: int
-    r39, r40 :: bool
+    r30 :: bool
+    r31 :: None
+    r32 :: bool
+    r33 :: None
+    r34 :: int
+    r35, r36 :: bool
+    r37 :: int
+    r38 :: bool
+    r39 :: int
+    r40, r41 :: bool
 L0:
     r0 = self.__mypyc_env__
     r1 = r0.__mypyc_next_label__
@@ -398,24 +409,25 @@ L8:
     r0.__mypyc_next_label__ = r29; r30 = is_error
     return r28
 L9:
+    r31 = None
     goto L6
 L10:
-    r31 = no_err_occurred
+    r32 = no_err_occurred
 L11:
-    r32 = None
-    r33 = -1
-    r0.__mypyc_next_label__ = r33; r34 = is_error
+    r33 = None
+    r34 = -1
+    r0.__mypyc_next_label__ = r34; r35 = is_error
 L12:
-    raise StopIteration(r32)
+    raise StopIteration(r33)
     unreachable
 L13:
-    r36 = 0
-    r37 = r1 == r36 :: int
-    if r37 goto L1 else goto L14 :: bool
+    r37 = 0
+    r38 = r1 == r37 :: int
+    if r38 goto L1 else goto L14 :: bool
 L14:
-    r38 = 1
-    r39 = r1 == r38 :: int
-    if r39 goto L9 else goto L15 :: bool
+    r39 = 1
+    r40 = r1 == r39 :: int
+    if r40 goto L9 else goto L15 :: bool
 L15:
     raise StopIteration
     unreachable
@@ -449,15 +461,16 @@ def yield_for_loop_range__gen.__next__(self):
     r10 :: object
     r11 :: int
     r12 :: bool
-    r13, r14, r15 :: int
-    r16 :: bool
-    r17 :: None
-    r18 :: int
-    r19, r20 :: bool
-    r21 :: int
-    r22 :: bool
-    r23 :: int
-    r24, r25 :: bool
+    r13 :: None
+    r14, r15, r16 :: int
+    r17 :: bool
+    r18 :: None
+    r19 :: int
+    r20, r21 :: bool
+    r22 :: int
+    r23 :: bool
+    r24 :: int
+    r25, r26 :: bool
 L0:
     r0 = self.__mypyc_env__
     r1 = r0.__mypyc_next_label__
@@ -480,27 +493,28 @@ L4:
     r0.__mypyc_next_label__ = r11; r12 = is_error
     return r10
 L5:
+    r13 = None
 L6:
-    r13 = r0.i
-    r14 = 1
-    r15 = r13 + r14 :: int
-    r0.i = r15; r16 = is_error
+    r14 = r0.i
+    r15 = 1
+    r16 = r14 + r15 :: int
+    r0.i = r16; r17 = is_error
     goto L2
 L7:
-    r17 = None
-    r18 = -1
-    r0.__mypyc_next_label__ = r18; r19 = is_error
+    r18 = None
+    r19 = -1
+    r0.__mypyc_next_label__ = r19; r20 = is_error
 L8:
-    raise StopIteration(r17)
+    raise StopIteration(r18)
     unreachable
 L9:
-    r21 = 0
-    r22 = r1 == r21 :: int
-    if r22 goto L1 else goto L10 :: bool
+    r22 = 0
+    r23 = r1 == r22 :: int
+    if r23 goto L1 else goto L10 :: bool
 L10:
-    r23 = 1
-    r24 = r1 == r23 :: int
-    if r24 goto L5 else goto L11 :: bool
+    r24 = 1
+    r25 = r1 == r24 :: int
+    if r25 goto L5 else goto L11 :: bool
 L11:
     raise StopIteration
     unreachable
@@ -544,15 +558,16 @@ def yield_with_vars__gen.__next__(self):
     r8 :: object
     r9 :: int
     r10 :: bool
-    r11, r12, r13 :: int
-    r14 :: bool
-    r15 :: float
-    r16 :: int
-    r17, r18 :: bool
-    r19 :: int
-    r20 :: bool
-    r21 :: int
-    r22, r23 :: bool
+    r11 :: None
+    r12, r13, r14 :: int
+    r15 :: bool
+    r16 :: float
+    r17 :: int
+    r18, r19 :: bool
+    r20 :: int
+    r21 :: bool
+    r22 :: int
+    r23, r24 :: bool
 L0:
     r0 = self.__mypyc_env__
     r1 = r0.__mypyc_next_label__
@@ -573,26 +588,27 @@ L4:
     r0.__mypyc_next_label__ = r9; r10 = is_error
     return r8
 L5:
-    r11 = r0.x
-    r12 = 1
-    r13 = r11 += r12 :: int
-    r0.x = r13; r14 = is_error
+    r11 = None
+    r12 = r0.x
+    r13 = 1
+    r14 = r12 += r13 :: int
+    r0.x = r14; r15 = is_error
     goto L2
 L6:
-    r15 = r0.b
-    r16 = -1
-    r0.__mypyc_next_label__ = r16; r17 = is_error
+    r16 = r0.b
+    r17 = -1
+    r0.__mypyc_next_label__ = r17; r18 = is_error
 L7:
-    raise StopIteration(r15)
+    raise StopIteration(r16)
     unreachable
 L8:
-    r19 = 0
-    r20 = r1 == r19 :: int
-    if r20 goto L1 else goto L9 :: bool
+    r20 = 0
+    r21 = r1 == r20 :: int
+    if r21 goto L1 else goto L9 :: bool
 L9:
-    r21 = 1
-    r22 = r1 == r21 :: int
-    if r22 goto L5 else goto L10 :: bool
+    r22 = 1
+    r23 = r1 == r22 :: int
+    if r23 goto L5 else goto L10 :: bool
 L10:
     raise StopIteration
     unreachable
@@ -634,13 +650,13 @@ def generator__gen.__next__(self):
     r3 :: object
     r4 :: int
     r5 :: bool
-    r6 :: None
-    r7 :: int
-    r8, r9 :: bool
-    r10 :: int
-    r11 :: bool
-    r12 :: int
-    r13, r14 :: bool
+    r6, r7 :: None
+    r8 :: int
+    r9, r10 :: bool
+    r11 :: int
+    r12 :: bool
+    r13 :: int
+    r14, r15 :: bool
 L0:
     r0 = self.__mypyc_env__
     r1 = r0.__mypyc_next_label__
@@ -654,19 +670,20 @@ L2:
     return r3
 L3:
     r6 = None
-    r7 = -1
-    r0.__mypyc_next_label__ = r7; r8 = is_error
+    r7 = None
+    r8 = -1
+    r0.__mypyc_next_label__ = r8; r9 = is_error
 L4:
-    raise StopIteration(r6)
+    raise StopIteration(r7)
     unreachable
 L5:
-    r10 = 0
-    r11 = r1 == r10 :: int
-    if r11 goto L1 else goto L6 :: bool
+    r11 = 0
+    r12 = r1 == r11 :: int
+    if r12 goto L1 else goto L6 :: bool
 L6:
-    r12 = 1
-    r13 = r1 == r12 :: int
-    if r13 goto L3 else goto L7 :: bool
+    r13 = 1
+    r14 = r1 == r13 :: int
+    if r14 goto L3 else goto L7 :: bool
 L7:
     raise StopIteration
     unreachable

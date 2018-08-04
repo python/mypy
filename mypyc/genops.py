@@ -1069,7 +1069,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], ControlOp):
-            retval = self.add(PrimitiveOp([], none_op, line=-1))
+            retval = self.none()
             self.nonlocal_control[-1].gen_return(self, retval)
 
     def add_implicit_unreachable(self) -> None:
@@ -1089,7 +1089,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             retval = self.accept(stmt.expr)
             retval = self.coerce(retval, self.ret_types[-1], stmt.line)
         else:
-            retval = self.add(PrimitiveOp([], none_op, line=-1))
+            retval = self.none()
         self.nonlocal_control[-1].gen_return(self, retval)
 
     def disallow_class_assignments(self, lvalues: List[Lvalue]) -> None:
@@ -1568,7 +1568,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 if is_none_rprimitive(result_type):
                     # Special case None return. The actual result may actually be a bool
                     # and so we can't just coerce it.
-                    target = self.add(PrimitiveOp([], none_op, line))
+                    target = self.none()
                 else:
                     target = self.coerce(target, result_type, line)
             return target
@@ -2212,8 +2212,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
-                is_none = self.binary_op(value, self.add(PrimitiveOp([], none_op, value.line)),
-                                         'is not', value.line)
+                is_none = self.binary_op(value, self.none(), 'is not', value.line)
                 branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
                 self.add(branch)
                 if isinstance(value_type, RInstance):
@@ -2238,7 +2237,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_slice_expr(self, expr: SliceExpr) -> Value:
         def get_arg(arg: Optional[Expression]) -> Value:
             if arg is None:
-                return self.primitive_op(none_op, [], expr.line)
+                return self.none()
             else:
                 return self.accept(arg)
 
@@ -2606,7 +2605,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             out_block, exit_block = BasicBlock(), BasicBlock()
             self.add(Branch(self.read(exc), exit_block, out_block, Branch.BOOL_EXPR))
             self.activate_block(exit_block)
-            none = self.primitive_op(none_op, [], -1)
+            none = self.none()
             self.py_call(self.read(exit_), [self.read(mgr), none, none, none], line)
             self.goto_and_activate(out_block)
 
@@ -2808,7 +2807,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             retval = self.accept(expr.expr)
             retval = self.coerce(retval, self.ret_types[-1], expr.line)
         else:
-            retval = self.add(PrimitiveOp([], none_op, line=-1))
+            retval = self.none()
 
         generator_class = self.fn_info.generator_class
         # Create a new block for the instructions immediately following the yield expression, and
@@ -2823,7 +2822,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # TODO: Replace this value with the value that is sent into the generator when we support
         #       the 'send' function.
-        return PrimitiveOp([], none_op, line=-1)
+        return self.none()
 
     # Unimplemented constructs
     # TODO: some of these are actually things that should never show up,
@@ -3031,6 +3030,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 result_type=None,
                 line=line)
         return dict_reg
+
+    def none(self) -> Value:
+        return self.add(PrimitiveOp([], none_op, line=-1))
 
     def load_outer_env(self, base: Value, outer_env: Environment) -> Value:
         """Loads the environment class for a given base into a register.
