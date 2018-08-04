@@ -69,10 +69,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(TupleGet(self.t, 1, 0), 'cpy_r_r0 = cpy_r_t.f1;')
 
     def test_load_None(self) -> None:
-        self.assert_emit(PrimitiveOp([], none_op, 0),
-                         """cpy_r_r0 = Py_None;
-                            Py_INCREF(cpy_r_r0);
-                         """)
+        self.assert_emit(PrimitiveOp([], none_op, 0), "cpy_r_r0 = Py_None;")
 
     def test_load_True(self) -> None:
         self.assert_emit(PrimitiveOp([], true_op, 0), "cpy_r_r0 = 1;")

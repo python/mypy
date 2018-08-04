@@ -309,6 +309,7 @@ L0:
     x = r2
     dec_ref x :: int
     r3 = None
+    inc_ref r3
     return r3
 
 [case testAdd1]
@@ -326,6 +327,7 @@ L0:
     x = r2
     dec_ref x :: int
     r3 = None
+    inc_ref r3
     return r3
 
 [case testAdd2]
@@ -375,6 +377,7 @@ L0:
     z = r2
     dec_ref z :: int
     r3 = None
+    inc_ref r3
     return r3
 
 [case testAdd5]
@@ -394,6 +397,7 @@ L0:
     x = r2
     dec_ref x :: int
     r3 = None
+    inc_ref r3
     return r3
 
 [case testReturnInMiddleOfFunction]
@@ -530,6 +534,7 @@ L0:
     dec_ref r3 :: int
     dec_ref r4
     r6 = None
+    inc_ref r6
     return r6
 
 [case testTupleRefcount]
@@ -558,6 +563,7 @@ L0:
     dec_ref c
     dec_ref r1
     r3 = None
+    inc_ref r3
     return r3
 
 [case testCastRefCount]
@@ -580,6 +586,7 @@ L0:
     d = r4
     dec_ref d
     r5 = None
+    inc_ref r5
     return r5
 
 [case testUnaryBranchSpecialCase]
@@ -641,8 +648,8 @@ L0:
     r1 = a.append(r0) :: list
     dec_ref r0
     r2 = None
-    dec_ref r2
     r3 = None
+    inc_ref r3
     return r3
 
 [case testForDict]
@@ -672,6 +679,7 @@ L3:
     r6 = no_err_occurred
 L4:
     r7 = None
+    inc_ref r7
     return r7
 L5:
     dec_ref r0

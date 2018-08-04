@@ -36,7 +36,6 @@ L0:
     if not r1 goto L3 (error at f:3) else goto L1 :: bool
 L1:
     r2 = None
-    dec_ref r2
     inc_ref z :: int
     r3 = box(int, z)
     r4 = x.__setitem__(y, r3) :: list
@@ -44,6 +43,7 @@ L1:
     if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
     r5 = None
+    inc_ref r5
     return r5
 L3:
     r6 = <error> :: None
@@ -62,29 +62,31 @@ def f(x: Optional[A]) -> int:
     return 3
 [out]
 L0:
-    r0 = x is None
-    if r0 goto L1 else goto L2 :: bool
+    r0 = None
+    r1 = x is r0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r1 = 1
-    return r1
+    r2 = 1
+    return r2
 L2:
     inc_ref x
-    r2 = cast(A, x)
-    if is_error(r2) goto L6 (error at f:8) else goto L3
+    r3 = cast(A, x)
+    if is_error(r3) goto L6 (error at f:8) else goto L3
 L3:
-    r3 = r2 is None
-    dec_ref r2
-    r4 = !r3
-    if r4 goto L4 else goto L5 :: bool
+    r4 = None
+    r5 = r3 is r4
+    dec_ref r3
+    r6 = !r5
+    if r6 goto L4 else goto L5 :: bool
 L4:
-    r5 = 2
-    return r5
-L5:
-    r6 = 3
-    return r6
-L6:
-    r7 = <error> :: int
+    r7 = 2
     return r7
+L5:
+    r8 = 3
+    return r8
+L6:
+    r9 = <error> :: int
+    return r9
 
 [case testListSum]
 from typing import List
@@ -182,6 +184,7 @@ L10:
     unreachable
 L11:
     r12 = None
+    inc_ref r12
     return r12
 L12:
     r13 = <error> :: None
@@ -296,6 +299,7 @@ def lol() -> None:
 L0:
     r0 = unicode_0 :: static  ('Hello')
     r1 = None
+    inc_ref r1
     return r1
 
 [case testExceptUndefined]

@@ -856,6 +856,12 @@ class PrimitiveOp(RegisterOp):
         else:
             self.type = desc.result_type
 
+        # This is a kind of awful hack: none_op produces a borrowed
+        # value. There are basically zero other primitive ops where we
+        # want a borrowed value, so we just special case it.
+        if desc is mypyc.ops_misc.none_op:
+            self.is_borrowed = True
+
     def sources(self) -> List[Value]:
         return list(self.args)
 

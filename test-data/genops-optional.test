@@ -10,17 +10,19 @@ def f(x: Optional[A]) -> int:
 [out]
 def f(x):
     x :: union[A, None]
-    r0 :: bool
-    r1, r2 :: int
+    r0 :: None
+    r1 :: bool
+    r2, r3 :: int
 L0:
-    r0 = x is None
-    if r0 goto L1 else goto L2 :: bool
+    r0 = None
+    r1 = x is r0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r1 = 1
-    return r1
-L2:
-    r2 = 2
+    r2 = 1
     return r2
+L2:
+    r3 = 2
+    return r3
 
 [case testIsNotNone]
 from typing import Optional
@@ -34,18 +36,20 @@ def f(x: Optional[A]) -> int:
 [out]
 def f(x):
     x :: union[A, None]
-    r0, r1 :: bool
-    r2, r3 :: int
+    r0 :: None
+    r1, r2 :: bool
+    r3, r4 :: int
 L0:
-    r0 = x is None
-    r1 = !r0
-    if r1 goto L1 else goto L2 :: bool
+    r0 = None
+    r1 = x is r0
+    r2 = !r1
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = 1
-    return r2
-L2:
-    r3 = 2
+    r3 = 1
     return r3
+L2:
+    r4 = 2
+    return r4
 
 [case testAssignToOptional]
 from typing import Optional
@@ -137,19 +141,21 @@ def f(x: Optional[A]) -> A:
 def f(x):
     x :: union[A, None]
     r0, y :: A
-    r1, r2 :: bool
-    r3, r4 :: A
+    r1 :: None
+    r2, r3 :: bool
+    r4, r5 :: A
 L0:
     r0 = A()
     y = r0
-    r1 = x is None
-    r2 = !r1
-    if r2 goto L1 else goto L2 :: bool
+    r1 = None
+    r2 = x is r1
+    r3 = !r2
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r3 = cast(A, x)
-    y = r3
     r4 = cast(A, x)
-    return r4
+    y = r4
+    r5 = cast(A, x)
+    return r5
 L2:
     return y
 
@@ -168,9 +174,10 @@ def f(y):
     r1 :: int
     r2 :: bool
     r3 :: object
-    r4, r5 :: bool
-    r6 :: int
-    r7 :: None
+    r4 :: None
+    r5, r6 :: bool
+    r7 :: int
+    r8 :: None
 L0:
     r0 = None
     x = r0
@@ -181,15 +188,16 @@ L1:
     r3 = box(int, y)
     x = r3
 L2:
-    r4 = x is None
-    r5 = !r4
-    if r5 goto L3 else goto L4 :: bool
+    r4 = None
+    r5 = x is r4
+    r6 = !r5
+    if r6 goto L3 else goto L4 :: bool
 L3:
-    r6 = unbox(int, x)
-    y = r6
+    r7 = unbox(int, x)
+    y = r7
 L4:
-    r7 = None
-    return r7
+    r8 = None
+    return r8
 
 [case testUnionType]
 from typing import Union

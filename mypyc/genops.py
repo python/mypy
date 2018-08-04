@@ -72,7 +72,7 @@ from mypyc.ops_misc import (
     none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
-    is_none_op, type_op,
+    type_op,
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, reraise_exception_op,
@@ -2200,16 +2200,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         elif op == 'not in':
             op, negate = 'in', True
 
-        rhs = e.operands[1]
-        if (op == 'is' and isinstance(rhs, NameExpr) and rhs.node
-                and rhs.node.fullname() == 'builtins.None'):
-            # Special case 'is None' checks.
-            left = self.accept(e.operands[0])
-            target = self.add(PrimitiveOp([left], is_none_op, e.line))
-        else:
-            left = self.accept(e.operands[0])
-            right = self.accept(e.operands[1])
-            target = self.binary_op(left, right, op, e.line)
+        left = self.accept(e.operands[0])
+        right = self.accept(e.operands[1])
+        target = self.binary_op(left, right, op, e.line)
 
         if negate:
             target = self.unary_op(target, 'not', e.line)

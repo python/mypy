@@ -123,26 +123,28 @@ class Node:
 def Node.length(self):
     self :: Node
     r0 :: union[Node, None]
-    r1, r2 :: bool
-    r3 :: int
-    r4 :: union[Node, None]
-    r5 :: Node
-    r6, r7, r8 :: int
+    r1 :: None
+    r2, r3 :: bool
+    r4 :: int
+    r5 :: union[Node, None]
+    r6 :: Node
+    r7, r8, r9 :: int
 L0:
     r0 = self.next
-    r1 = r0 is None
-    r2 = !r1
-    if r2 goto L1 else goto L2 :: bool
+    r1 = None
+    r2 = r0 is r1
+    r3 = !r2
+    if r3 goto L1 else goto L2 :: bool
 L1:
-    r3 = 1
-    r4 = self.next
-    r5 = cast(Node, r4)
-    r6 = r5.length()
-    r7 = r3 + r6 :: int
-    return r7
-L2:
-    r8 = 1
+    r4 = 1
+    r5 = self.next
+    r6 = cast(Node, r5)
+    r7 = r6.length()
+    r8 = r4 + r7 :: int
     return r8
+L2:
+    r9 = 1
+    return r9
 
 [case testSubclass]
 class A:

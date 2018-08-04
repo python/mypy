@@ -12,15 +12,11 @@ from mypyc.ops_primitive import (
 )
 
 
-def emit_none(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    emitter.emit_lines('{} = Py_None;'.format(dest),
-                       'Py_INCREF({});'.format(dest))
-
-
+# N.B: none_op is special cased as borrowed by PrimitiveOp
 none_op = name_ref_op('builtins.None',
                       result_type=none_rprimitive,
                       error_kind=ERR_NEVER,
-                      emit=emit_none)
+                      emit=simple_emit('{dest} = Py_None;'))
 
 true_op = name_ref_op('builtins.True',
                       result_type=bool_rprimitive,
@@ -128,14 +124,6 @@ binary_op('is not',
           error_kind=ERR_NEVER,
           emit=negative_int_emit('{dest} = {args[0]} != {args[1]};'),
           priority=0)
-
-is_none_op = custom_op(
-    arg_types=[object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_NEVER,
-    format_str = '{dest} = {args[0]} is None',
-    emit=simple_emit('{dest} = {args[0]} == Py_None;'))
-
 
 for op, funcname in [('-', 'PyNumber_Negative'),
                      ('+', 'PyNumber_Positive'),

@@ -86,7 +86,7 @@ static PyObject *CPyDef___top_level__(void) {
     PyObject *cpy_r_r0;
 CPyL0: ;
     cpy_r_r0 = Py_None;
-    Py_INCREF(cpy_r_r0);
+    CPy_INCREF(cpy_r_r0);
     return cpy_r_r0;
 }
 [case testError]
