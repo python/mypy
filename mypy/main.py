@@ -396,17 +396,17 @@ def process_options(args: List[str],
     # https://github.com/python/mypy/wiki/Documentation-Conventions
 
     general_group = parser.add_argument_group(
-            title='Optional arguments')
+        title='Optional arguments')
     general_group.add_argument(
-            '-h', '--help', action='help',
-            help="Show this help message and exit")
+        '-h', '--help', action='help',
+        help="Show this help message and exit")
     general_group.add_argument(
-            '-v', '--verbose', action='count', dest='verbosity',
-            help="More verbose messages")
+        '-v', '--verbose', action='count', dest='verbosity',
+        help="More verbose messages")
     general_group.add_argument(
-            '-V', '--version', action='version',
-            version='%(prog)s ' + __version__,
-            help="Show program's version number and exit")
+        '-V', '--version', action='version',
+        version='%(prog)s ' + __version__,
+        help="Show program's version number and exit")
 
     config_group = parser.add_argument_group(
         title='Config file',
@@ -716,22 +716,26 @@ def process_options(args: List[str],
                         help=argparse.SUPPRESS)
 
     code_group = parser.add_argument_group(
-            title="Running code",
-            description="Specify the code you want to type check. For more details, see "
-                        "mypy.readthedocs.io/en/latest/running_mypy.html#running-mypy")
-    code_group.add_argument('-m', '--module', action='append', metavar='MODULE',
-                            default=[],
-                            dest='special-opts:modules',
-                            help="Type-check module; can repeat for more modules")
-    code_group.add_argument('-p', '--package', action='append', metavar='PACKAGE',
-                            default=[],
-                            dest='special-opts:packages',
-                            help="Type-check package recursively; can be repeated")
-    code_group.add_argument('-c', '--command', action='append', metavar='PROGRAM_TEXT',
-                            dest='special-opts:command',
-                            help="Type-check program passed in as string")
-    code_group.add_argument(metavar='files', nargs='*', dest='special-opts:files',
-                            help="Type-check given files or directories")
+        title="Running code",
+        description="Specify the code you want to type check. For more details, see "
+                    "mypy.readthedocs.io/en/latest/running_mypy.html#running-mypy")
+    code_group.add_argument(
+        '-m', '--module', action='append', metavar='MODULE',
+        default=[],
+        dest='special-opts:modules',
+        help="Type-check module; can repeat for more modules")
+    code_group.add_argument(
+        '-p', '--package', action='append', metavar='PACKAGE',
+        default=[],
+        dest='special-opts:packages',
+        help="Type-check package recursively; can be repeated")
+    code_group.add_argument(
+        '-c', '--command', action='append', metavar='PROGRAM_TEXT',
+        dest='special-opts:command',
+        help="Type-check program passed in as string")
+    code_group.add_argument(
+        metavar='files', nargs='*', dest='special-opts:files',
+        help="Type-check given files or directories")
 
     # Parse arguments once into a dummy namespace so we can get the
     # filename for the config file and know if the user requested all strict options.
