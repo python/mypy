@@ -3,13 +3,21 @@
 -- Note: Plugins used by tests live under test-data/unit/plugins. Defining
 --       plugin files in test cases does not work reliably.
 
-[case testFunctionPlugin]
+[case testFunctionPluginFile]
 # flags: --config-file tmp/mypy.ini
 def f() -> str: ...
 reveal_type(f())  # E: Revealed type is 'builtins.int'
 [file mypy.ini]
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py
+
+[case testFunctionPlugin]
+# flags: --config-file tmp/mypy.ini
+def f() -> str: ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+[file mypy.ini]
+[[mypy]
+plugins=fnplugin
 
 [case testFunctionPluginFullnameIsNotNone]
 # flags: --config-file tmp/mypy.ini
@@ -35,13 +43,34 @@ reveal_type(h())  # E: Revealed type is 'Any'
 plugins=<ROOT>/test-data/unit/plugins/fnplugin.py,
   <ROOT>/test-data/unit/plugins/plugin2.py
 
-[case testMissingPlugin]
+[case testTwoPluginsMixedType]
+# flags: --config-file tmp/mypy.ini
+def f(): ...
+def g(): ...
+def h(): ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+reveal_type(g())  # E: Revealed type is 'builtins.str'
+reveal_type(h())  # E: Revealed type is 'Any'
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fnplugin.py, plugin2
+
+[case testMissingPluginFile]
 # flags: --config-file tmp/mypy.ini
 [file mypy.ini]
 [[mypy]
 plugins=missing.py
 [out]
 tmp/mypy.ini:2: error: Can't find plugin 'tmp/missing.py'
+--' (work around syntax highlighting)
+
+[case testMissingPlugin]
+# flags: --config-file tmp/mypy.ini
+[file mypy.ini]
+[[mypy]
+plugins=missing
+[out]
+tmp/mypy.ini:2: error: Error importing plugin 'missing'
 --' (work around syntax highlighting)
 
 [case testMultipleSectionsDefinePlugin]
@@ -73,6 +102,22 @@ tmp/mypy.ini:2: error: Plugin 'badext.pyi' does not have a .py extension
  plugins = <ROOT>/test-data/unit/plugins/noentry.py
 [out]
 tmp/mypy.ini:2: error: Plugin '<ROOT>/test-data/unit/plugins/noentry.py' does not define entry point function "plugin"
+
+[case testCustomPluginEntryPointFile]
+# flags: --config-file tmp/mypy.ini
+def f() -> str: ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/customentry.py:register
+
+[case testCustomPluginEntryPoint]
+# flags: --config-file tmp/mypy.ini
+def f() -> str: ...
+reveal_type(f())  # E: Revealed type is 'builtins.int'
+[file mypy.ini]
+[[mypy]
+plugins=customentry:register
 
 [case testInvalidPluginEntryPointReturnValue]
 # flags: --config-file tmp/mypy.ini
@@ -129,6 +174,44 @@ class Signal(Generic[T]):
 [[mypy]
 plugins=<ROOT>/test-data/unit/plugins/type_anal_hook.py
 [builtins fixtures/dict.pyi]
+
+[case testFunctionPluginHookForClass]
+# flags: --config-file tmp/mypy.ini
+import mod
+from mod import AttrInt
+
+Alias = AttrInt
+AnotherAlias = mod.Attr
+
+class C:
+    x = Alias()
+    y = mod.AttrInt(required=True)
+    z = AnotherAlias(int, required=False)
+
+c = C()
+reveal_type(c.x)  # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(c.y)  # E: Revealed type is 'builtins.int*'
+reveal_type(c.z)  # E: Revealed type is 'Union[builtins.int*, None]'
+
+[file mod.py]
+from typing import Generic, TypeVar, Type
+T = TypeVar('T')
+
+class Attr(Generic[T]):
+    def __init__(self, tp: Type[T], required: bool = False) -> None:
+        pass
+    def __get__(self, instance: object, owner: type) -> T:
+        pass
+
+class AttrInt(Attr[int]):
+    def __init__(self, required: bool = False) -> None:
+        pass
+
+[file mypy.ini]
+[[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_callable.py
+[builtins fixtures/bool.pyi]
+[out]
 
 [case testFunctionPluginHookForReturnedCallable]
 # flags: --config-file tmp/mypy.ini

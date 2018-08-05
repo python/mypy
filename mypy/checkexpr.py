@@ -231,8 +231,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_call_expr(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         """Type check a call expression."""
         if e.analyzed:
+            if isinstance(e.analyzed, NamedTupleExpr) and not e.analyzed.is_typed:
+                # Type check the arguments, but ignore the results. This relies
+                # on the typeshed stubs to type check the arguments.
+                self.visit_call_expr_inner(e)
             # It's really a special form that only looks like a call.
             return self.accept(e.analyzed, self.type_context[-1])
+        return self.visit_call_expr_inner(e, allow_none_return=allow_none_return)
+
+    def visit_call_expr_inner(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         if isinstance(e.callee, NameExpr) and isinstance(e.callee.node, TypeInfo) and \
                 e.callee.node.typeddict_type is not None:
             # Use named fallback for better error messages.
@@ -284,6 +291,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             fullname = None
         else:
             fullname = e.callee.fullname
+            if (isinstance(e.callee.node, TypeAlias) and
+                    isinstance(e.callee.node.target, Instance)):
+                fullname = e.callee.node.target.type.fullname()
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
                     and isinstance(callee_type, FunctionLike)):
@@ -575,6 +585,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(callee, CallableType):
             if callable_name is None and callee.name:
                 callable_name = callee.name
+            if callee.is_type_obj() and isinstance(callee.ret_type, Instance):
+                callable_name = callee.ret_type.type.fullname()
             if (isinstance(callable_node, RefExpr)
                 and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
                                                'enum.Flag', 'enum.IntFlag')):
@@ -711,16 +723,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = self.analyze_type_type_callee(item.upper_bound,
                                                    context)  # type: Optional[Type]
             if isinstance(callee, CallableType):
-                if callee.is_generic():
-                    callee = None
-                else:
-                    callee = callee.copy_modified(ret_type=item)
+                callee = callee.copy_modified(ret_type=item)
             elif isinstance(callee, Overloaded):
-                if callee.items()[0].is_generic():
-                    callee = None
-                else:
-                    callee = Overloaded([c.copy_modified(ret_type=item)
-                                         for c in callee.items()])
+                callee = Overloaded([c.copy_modified(ret_type=item)
+                                     for c in callee.items()])
             if callee:
                 return callee
 

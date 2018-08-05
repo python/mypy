@@ -889,3 +889,23 @@ class C:
    e = attr.ib()  # E: Non-default attributes not allowed after default attributes.
 
 [builtins fixtures/bool.pyi]
+
+[case testAttrsOptionalConverter]
+# flags: --strict-optional
+import attr
+from attr.converters import optional
+from typing import Optional
+
+def converter(s:int) -> str:
+    return 'hello'
+
+
+@attr.s
+class A:
+    y: Optional[int] = attr.ib(converter=optional(int))
+    z: Optional[str] = attr.ib(converter=optional(converter))
+
+
+A(None, None)
+
+[builtins fixtures/attr.pyi]

@@ -1666,6 +1666,7 @@ class C(A):
     def __add__(self, x: 'A') -> 'A': pass
 [out]
 tmp/foo.pyi:8: error: Signature of "__add__" incompatible with supertype "A"
+tmp/foo.pyi:8: note: Overload variants must be defined in the same order as they are in "A"
 tmp/foo.pyi:11: error: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 
 [case testReverseOperatorMethodArgumentType]

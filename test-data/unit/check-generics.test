@@ -1778,6 +1778,16 @@ def f(c: Type[T]) -> T: ...
 x: Any
 reveal_type(f(x))  # E: Revealed type is 'Any'
 
+[case testCallTypeTWithGenericBound]
+from typing import Generic, TypeVar, Type
+T = TypeVar('T')
+S = TypeVar('S', bound='A')
+
+class A(Generic[T]): pass
+
+def f(cls: Type[S]) -> None:
+    cls()
+
 [case testQualifiedTypeVariableName]
 import b
 def f(x: b.T) -> b.T: return x

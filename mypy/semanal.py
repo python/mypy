@@ -946,6 +946,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         removed = []  # type: List[int]
         declared_tvars = []  # type: TypeVarList
         for i, base_expr in enumerate(defn.base_type_exprs):
+            self.analyze_type_expr(base_expr)
+
             try:
                 base = expr_to_unanalyzed_type(base_expr)
             except TypeTranslationError:
@@ -2826,13 +2828,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 refers_to_class_or_function(expr.base)):
             # Special form -- type application (either direct or via type aliasing).
 
-            # mypy doesn't need the index to be semantically analyzed, since it analyzes
-            # it below as a type expression. External consumers of the mypy AST may need
-            # it semantically analyzed, however, if they need to treat it as an expression
-            # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
-            # in a fresh tvar scope in order to suppress any errors about using type variables.
-            with self.tvar_scope_frame(TypeVarScope()):
-                expr.index.accept(self)
+            self.analyze_type_expr(expr.index)
 
             # Translate index to an unanalyzed type.
             types = []  # type: List[Type]
@@ -3362,6 +3358,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             node.accept(self)
         except Exception as err:
             report_internal_error(err, self.errors.file, node.line, self.errors, self.options)
+
+    def analyze_type_expr(self, expr: Expression) -> None:
+        # There are certain expressions that mypy does not need to semantically analyze,
+        # since they analyzed solely as type. (For example, indexes in type alias definitions
+        # and base classes in class defs). External consumers of the mypy AST may need
+        # them semantically analyzed, however, if they need to treat it as an expression
+        # and not a type. (Which is to say, mypyc needs to do this.) Do the analysis
+        # in a fresh tvar scope in order to suppress any errors about using type variables.
+        with self.tvar_scope_frame(TypeVarScope()):
+            expr.accept(self)
 
     def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
         if self.locals[-1] is not None:

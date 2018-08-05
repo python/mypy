@@ -96,9 +96,9 @@ class C: pass
 <m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B> -> m.B
-<m.C> -> m.B, m.C
+<m.C> -> m, m.B, m.C
 <m.T> -> m.A
 
 [case testGenericBaseClass2]
@@ -112,9 +112,9 @@ class B(A[T]): pass
 <m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__init__> -> <m.B.__init__>
 <m.A.__new__> -> <m.B.__new__>
-<m.A> -> m.A, m.B
+<m.A> -> m, m.A, m.B
 <m.B> -> m.B
-<m.T> -> m.A, m.B
+<m.T> -> m, m.A, m.B
 
 [case testTypeVarBound]
 from typing import TypeVar, Tuple

@@ -1243,6 +1243,9 @@ def g(ii: Iterable[int]):
     pass
 f(N)
 g(N)
+reveal_type(list(N))
+[out]
+_testIntEnumIterable.py:11: error: Revealed type is 'builtins.list[_testIntEnumIterable.N*]'
 
 [case testDerivedEnumIterable]
 from enum import Enum
