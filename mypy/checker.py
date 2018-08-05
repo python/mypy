@@ -775,7 +775,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                            self.msg, context=fdef)
 
                 if name:  # Special method names
-                    if name in nodes.reverse_op_method_set:
+                    if defn.info and name in nodes.reverse_op_method_set:
                         self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ('__getattr__', '__getattribute__'):
                         self.check_getattr_method(typ, defn, name)
