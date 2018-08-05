@@ -976,6 +976,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
 
+        assert defn.info is not None
+
         # First check for a valid signature
         method_type = CallableType([AnyType(TypeOfAny.special_form),
                                     AnyType(TypeOfAny.special_form)],
