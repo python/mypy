@@ -1,23 +1,17 @@
 """Test runner for data-flow analysis test cases."""
 
 import os.path
-import re
-import shutil
-from typing import List, Set
 
-from mypy import build
-from mypy.test.data import parse_test_cases, DataDrivenTestCase
+from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
-from mypy.options import Options
-from mypy import experiments
 
 from mypyc import analysis
-from mypyc import genops
 from mypyc import exceptions
-from mypyc.ops import format_func, Register, Value
+from mypyc.ops import format_func, is_empty_module_top_level
 from mypyc.test.testutil import (
-    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output
+    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
+    assert_test_output, remove_comment_lines
 )
 
 files = [
@@ -34,35 +28,18 @@ class TestAnalysis(MypycDataSuite):
         """Perform a data-flow analysis test case."""
 
         with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
-            program_text = '\n'.join(testcase.input)
-
-            options = Options()
-            options.use_builtins_fixtures = True
-            options.show_traceback = True
-            options.python_version = (3, 6)
-            options.export_types = True
-
-            source = build.BuildSource('main', '__main__', program_text)
             try:
-                # Construct input as a single single.
-                # Parse and type check the input program.
-                result = build.build(sources=[source],
-                                     options=options,
-                                     alt_lib_path=test_temp_dir)
+                ir = build_ir_for_single_file(testcase.input)
             except CompileError as e:
                 actual = e.messages
             else:
-                if result.errors:
-                    actual = result.errors
-                else:
-                    modules = genops.build_ir([result.files['__main__']], result.types)
-                    module = modules[0][1]
-                    assert len(module.functions) == 2, (
-                        "Only 1 function definition expected per test case")
-                    fn = module.functions[0]
+                actual = []
+                for fn in ir:
+                    if is_empty_module_top_level(fn):
+                        # Skip trivial module top levels that only return.
+                        continue
                     exceptions.insert_exception_handling(fn)
-                    actual = format_func(fn)
-                    actual = actual[actual.index('L0:'):]
+                    actual.extend(format_func(fn))
                     cfg = analysis.get_cfg(fn.blocks)
 
                     args = set(reg for reg, i in fn.env.indexes.items() if i < len(fn.args))
@@ -85,7 +62,6 @@ class TestAnalysis(MypycDataSuite):
                     else:
                         assert False, 'No recognized _AnalysisName suffix in test case'
 
-                    actual.append('')
                     for key in sorted(analysis_result.before.keys(),
                                       key=lambda x: (x[0].label, x[1])):
                         pre = ', '.join(sorted(reg.name

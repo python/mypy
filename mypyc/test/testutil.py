@@ -2,6 +2,7 @@
 
 import contextlib
 import os.path
+import re
 import shutil
 from typing import List, Callable, Iterator, Optional
 
@@ -134,6 +135,29 @@ def assert_test_output(testcase: DataDrivenTestCase, actual: List[str],
     assert_string_arrays_equal(
         expected_output, actual,
         '{} ({}, line {})'.format(message, testcase.file, testcase.line))
+
+
+def get_func_names(expected: List[str]) -> List[str]:
+    res = []
+    for s in expected:
+        m = re.match(r'def ([_a-zA-Z0-9.*$]+)\(', s)
+        if m:
+            res.append(m.group(1))
+    return res
+
+
+def remove_comment_lines(a: List[str]) -> List[str]:
+    """Return a copy of array with comments removed.
+
+    Lines starting with '--' (but not with '---') are removed.
+    """
+    r = []
+    for s in a:
+        if s.strip().startswith('--') and not s.strip().startswith('---'):
+            pass
+        else:
+            r.append(s)
+    return r
 
 
 def print_with_line_numbers(s: str) -> None:

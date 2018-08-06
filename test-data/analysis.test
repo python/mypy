@@ -8,6 +8,11 @@ def f(a: int) -> None:
     else:
         z = 1
 [out]
+def f(a):
+    a, r0, x :: int
+    r1 :: bool
+    r2, y, r3, z :: int
+    r4 :: None
 L0:
     r0 = 1
     x = r0
@@ -23,7 +28,6 @@ L2:
 L3:
     r4 = None
     return r4
-
 (0, 0)   {a}                     {a, r0}
 (0, 1)   {a, r0}                 {a, r0, x}
 (0, 2)   {a, r0, x}              {a, r0, r1, x}
@@ -45,6 +49,9 @@ def f(a: int) -> int:
     else:
         return x
 [out]
+def f(a):
+    a, r0, x, r1 :: int
+    r2 :: bool
 L0:
     r0 = 1
     x = r0
@@ -57,7 +64,6 @@ L2:
     return x
 L3:
     unreachable
-
 (0, 0)   {a}                     {a, r0}
 (0, 1)   {a, r0}                 {a, x}
 (0, 2)   {a, x}                  {a, r1, x}
@@ -74,6 +80,8 @@ def f() -> int:
     x = 2
     return x
 [out]
+def f():
+    r0, x, r1, y, r2 :: int
 L0:
     r0 = 1
     x = r0
@@ -82,7 +90,6 @@ L0:
     r2 = 2
     x = r2
     return x
-
 (0, 0)   {}                      {r0}
 (0, 1)   {r0}                    {}
 (0, 2)   {}                      {r1}
@@ -98,6 +105,8 @@ def f(a: int) -> int:
     a = 3
     return a
 [out]
+def f(a):
+    a, r0, r1, r2 :: int
 L0:
     r0 = 1
     a = r0
@@ -106,7 +115,6 @@ L0:
     r2 = 3
     a = r2
     return a
-
 (0, 0)   {}                      {r0}
 (0, 1)   {r0}                    {}
 (0, 2)   {}                      {r1}
@@ -123,6 +131,11 @@ def f(a: int) -> None:
     else:
         x = 2
 [out]
+def f(a):
+    a, r0 :: int
+    r1 :: bool
+    r2, y, r3, x, r4 :: int
+    r5 :: None
 L0:
     r0 = 1
     r1 = a == r0 :: int
@@ -139,7 +152,6 @@ L2:
 L3:
     r5 = None
     return r5
-
 (0, 0)   {a}                     {a, r0}
 (0, 1)   {a, r0}                 {a, r0, r1}
 (0, 2)   {a, r0, r1}             {a, r0, r1}
@@ -158,9 +170,10 @@ L3:
 def f(x: int, y: int) -> int:
     return x
 [out]
+def f(x, y):
+    x, y :: int
 L0:
     return x
-
 (0, 0)   {x, y}                  {x, y}
 
 [case testLoop_MustDefined]
@@ -169,6 +182,11 @@ def f(n: int) -> None:
         n = n + 1
         m = n
 [out]
+def f(n):
+    n, r0 :: int
+    r1 :: bool
+    r2, r3, m :: int
+    r4 :: None
 L0:
 L1:
     r0 = 5
@@ -183,7 +201,6 @@ L2:
 L3:
     r4 = None
     return r4
-
 (0, 0)   {n}                     {n}
 (1, 0)   {n}                     {n, r0}
 (1, 1)   {n, r0}                 {n, r0, r1}
@@ -206,6 +223,13 @@ def f(n: int) -> None:
             n = 1
             n = x
 [out]
+def f(n):
+    n, r0, x, r1, y, r2 :: int
+    r3 :: bool
+    r4 :: int
+    r5 :: bool
+    r6 :: int
+    r7 :: None
 L0:
     r0 = 1
     x = r0
@@ -231,7 +255,6 @@ L5:
 L6:
     r7 = None
     return r7
-
 (0, 0)   {n}                     {n, r0}
 (0, 1)   {n, r0}                 {n, x}
 (0, 2)   {n, x}                  {n, r1, x}
@@ -258,6 +281,8 @@ def f(x: int) -> int:
     a = f(1)
     return f(a) + a
 [out]
+def f(x):
+    x, r0, r1, a, r2, r3, r4 :: int
 L0:
     r0 = 1
     r1 = f(r0)
@@ -272,7 +297,6 @@ L2:
 L3:
     r4 = <error> :: int
     return r4
-
 (0, 0)   {}                      {r0}
 (0, 1)   {r0}                    {r1}
 (0, 2)   {r1}                    {r1}
@@ -291,6 +315,11 @@ def f(a: int) -> None:
             y = a
         x = a
 [out]
+def f(a):
+    a :: int
+    r0, r1 :: bool
+    y, x :: int
+    r2 :: None
 L0:
 L1:
     r0 = a < a :: int
@@ -308,7 +337,6 @@ L5:
 L6:
     r2 = None
     return r2
-
 (0, 0)   {a}                     {a}
 (1, 0)   {a, r0, r1, x, y}       {a, r0, r1, x, y}
 (1, 1)   {a, r0, r1, x, y}       {a, r0, r1, x, y}
@@ -326,9 +354,10 @@ L6:
 def f(a: int, b: int) -> int:
     return b
 [out]
+def f(a, b):
+    a, b :: int
 L0:
     return b
-
 (0, 0)   {a, b}                  {a, b}
 
 [case testSimple_BorrowedArgument]
@@ -337,12 +366,13 @@ def f(a: int) -> int:
     a = 1
     return a
 [out]
+def f(a):
+    a, b, r0 :: int
 L0:
     b = a
     r0 = 1
     a = r0
     return a
-
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
 (0, 2)   {a}                     {}
@@ -357,6 +387,10 @@ def f(a: int) -> int:
         x = 1
     return x
 [out]
+def f(a):
+    a :: int
+    r0 :: bool
+    r1, x, r2, r3 :: int
 L0:
     r0 = a == a :: int
     if r0 goto L1 else goto L2 :: bool
@@ -371,7 +405,6 @@ L2:
     x = r3
 L3:
     return x
-
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
 (1, 0)   {a}                     {a}
@@ -393,6 +426,10 @@ def f(a: int) -> int:
         i = i + 1
     return sum
 [out]
+def f(a):
+    a, r0, sum, r1, i :: int
+    r2 :: bool
+    r3, r4, r5 :: int
 L0:
     r0 = 0
     sum = r0
@@ -410,7 +447,6 @@ L2:
     goto L1
 L3:
     return sum
-
 (0, 0)   {a}                     {a}
 (0, 1)   {a}                     {a}
 (0, 2)   {a}                     {a}
@@ -437,6 +473,19 @@ def lol(x: object) -> int:
         return -1
     return st + 1
 [out]
+def lol(x):
+    x, r0 :: object
+    r1 :: str
+    r2, r3 :: object
+    r4, st :: int
+    r5 :: tuple[object, object, object]
+    r6 :: object
+    r7 :: str
+    r8 :: object
+    r9 :: bool
+    r10, r11 :: int
+    r12, r13 :: bool
+    r14, r15, r16 :: int
 L0:
 L1:
     r0 = builtins.module :: static
@@ -487,7 +536,6 @@ L13:
 L14:
     r16 = <error> :: int
     return r16
-
 (0, 0)   {x}                     {x}
 (1, 0)   {x}                     {r0, x}
 (1, 1)   {r0, x}                 {r0, r1, x}
