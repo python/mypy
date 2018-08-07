@@ -7330,3 +7330,29 @@ class A: pass
 [out]
 ==
 main:4: error: Name 'm.A' is not defined
+
+[case testIdLikeDecoForwardCrash]
+import b
+[file b.py]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F_BadName', bound=Callable[..., Any])  # type: ignore
+def deco(func: F) -> F:  # type: ignore
+    pass
+
+@deco
+def test(x: int, y: int) -> str:
+    pass
+[file b.py.2]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F_BadName', bound=Callable[..., Any])  # type: ignore
+def deco(func: F) -> F:  # type: ignore
+    pass
+
+@deco
+def test(x: int, y: int) -> str:
+    pass
+x = 1
+[out]
+==

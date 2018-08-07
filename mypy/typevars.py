@@ -3,7 +3,6 @@ from typing import Union, List
 from mypy.nodes import TypeInfo
 
 from mypy.erasetype import erase_typevars
-from mypy.sametypes import is_same_type
 from mypy.types import Instance, TypeVarType, TupleType, Type
 
 
@@ -22,4 +21,4 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
 
 
 def has_no_typevars(typ: Type) -> bool:
-    return is_same_type(typ, erase_typevars(typ))
+    return typ == erase_typevars(typ)
