@@ -7356,3 +7356,31 @@ def test(x: int, y: int) -> str:
 x = 1
 [out]
 ==
+
+[case testIdLikeDecoForwardCrashAlias]
+import b
+[file b.py]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F', bound=Func)
+def deco(func: F) -> F:
+    pass
+
+@deco
+def test(x: int, y: int) -> str:
+    pass
+Func = Callable[..., Any]
+[file b.py.2]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F', bound=Func)
+def deco(func: F) -> F:
+    pass
+
+@deco
+def test(x: int, y: int) -> str:
+    pass
+x = 1
+Func = Callable[..., Any]
+[out]
+==

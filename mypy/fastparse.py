@@ -396,6 +396,9 @@ class ASTConverter(ast3.NodeTransformer):
                        args,
                        self.as_required_block(n.body, n.lineno),
                        func_type)
+        if isinstance(func_def.type, CallableType):
+            # semanal.py does some in-place modifications we want to avoid
+            func_def.unanalyzed_type = func_def.type.copy_modified()
         if is_coroutine:
             func_def.is_coroutine = True
         if func_type is not None:
