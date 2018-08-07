@@ -25,7 +25,9 @@ Here is an overview of how to create a stub file:
     $ export MYPYPATH=~/work/myproject/stubs
 
 Use the normal Python file name conventions for modules, e.g. ``csv.pyi``
-for module ``csv``. Use a subdirectory with ``__init__.pyi`` for packages.
+for module ``csv``. Use a subdirectory with ``__init__.pyi`` for packages. Note
+that PEP 561 stub-only packages must be installed, and may not be pointed at
+through the ``MYPYPATH``.
 
 If a directory contains both a ``.py`` and a ``.pyi`` file for the
 same module, the ``.pyi`` file takes precedence. This way you can
