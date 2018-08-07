@@ -421,12 +421,20 @@ class C:
     def foo(x: int) -> int: return 10 + x
     @classmethod
     def bar(cls, x: int) -> int: return cls.lurr + x
+    @staticmethod
+    def baz(x: int, y: int = 10) -> int: return y - x
+    @classmethod
+    def quux(cls, x: int, y: int = 10) -> int: return y - x
+
+class D(C):
+    def f(self) -> int:
+        return super().foo(1) + super().bar(2) + super().baz(10) + super().quux(10)
 
 def test1() -> int:
-    return C.foo(1) + C.bar(2)
+    return C.foo(1) + C.bar(2) + C.baz(10) + C.quux(10) + C.quux(y=10, x=9)
 def test2() -> int:
     c = C()
-    return c.foo(1) + c.bar(2)
+    return c.foo(1) + c.bar(2) + c.baz(10)
 [file driver.py]
 from native import *
 assert C.foo(10) == 20
@@ -435,8 +443,11 @@ c = C()
 assert c.foo(10) == 20
 assert c.bar(10) == 19
 
-assert test1() == 22
+assert test1() == 23
 assert test2() == 22
+
+d = D()
+assert d.f() == 22
 
 [case testSuper]
 from mypy_extensions import trait

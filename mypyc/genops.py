@@ -1844,7 +1844,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             coerced_arg_regs.append(self.coerce(reg, arg.type, line))
         return coerced_arg_regs
 
-    def call(self, decl: FuncDecl, args: Sequence[Value], line: int) -> Value:
+    def call(self, decl: FuncDecl, args: Sequence[Value],
+             arg_kinds: List[int],
+             arg_names: List[Optional[str]],
+             line: int) -> Value:
+        # Normalize keyword args to positionals.
+        arg_values_with_nones = self.keyword_args_to_positional(
+            args, arg_kinds, arg_names, decl.sig)
+        # Put in errors for missing args
+        args = self.missing_args_to_error_values(arg_values_with_nones, decl.sig)
+
         args = self.coerce_native_call_args(args, decl.sig, line)
         return self.add(Call(decl, args, line))
 
@@ -1915,13 +1924,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 and all(kind in (ARG_POS, ARG_NAMED) for kind in expr.arg_kinds)):
             decl = self.mapper.func_to_decl[callee.node]
 
-            # Normalize keyword args to positionals.
-            arg_values_with_nones = self.keyword_args_to_positional(
-                arg_values, expr.arg_kinds, expr.arg_names, decl.sig)
-            # Put in errors for missing args, potentially to be filled in with default args later.
-            arg_values = self.missing_args_to_error_values(arg_values_with_nones, decl.sig)
-
-            return self.call(decl, arg_values, expr.line)
+            return self.call(decl, arg_values, expr.arg_kinds, expr.arg_names, expr.line)
 
         # Fall back to a Python call
         function = self.accept(callee)
@@ -1959,11 +1962,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             ir = self.mapper.type_to_ir[callee.expr.node]
             decl = ir.method_decl(callee.name)
             args = []
+            arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
             if decl.kind == FUNC_CLASSMETHOD:  # Add the class argument for class methods
                 args.append(self.load_native_type_object(callee.expr.node.fullname()))
+                arg_kinds.insert(0, ARG_POS)
+                arg_names.insert(0, None)
             args += [self.accept(arg) for arg in expr.args]
 
-            return self.call(decl, args, expr.line)
+            return self.call(decl, args, arg_kinds, arg_names, expr.line)
 
         elif self.is_module_member_expr(callee):
             # Fall back to a PyCall for non-native module calls
@@ -1995,9 +2001,18 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.translate_call(expr, callee)
 
         decl = base.method_decl(callee.name)
-        vself = next(iter(self.environment.indexes))  # grab first argument
-        arg_values = [vself] + [self.accept(arg) for arg in expr.args]
-        return self.call(decl, arg_values, expr.line)
+        arg_values = [self.accept(arg) for arg in expr.args]
+        arg_kinds, arg_names = expr.arg_kinds[:], expr.arg_names[:]
+
+        if decl.kind != FUNC_STATICMETHOD:
+            vself = next(iter(self.environment.indexes))  # grab first argument
+            if decl.kind == FUNC_CLASSMETHOD:
+                vself = self.primitive_op(type_op, [vself], expr.line)
+            arg_values.insert(0, vself)
+            arg_kinds.insert(0, ARG_POS)
+            arg_names.insert(0, None)
+
+        return self.call(decl, arg_values, arg_kinds, arg_names, expr.line)
 
     def gen_method_call(self,
                         base: Value,
@@ -3492,7 +3507,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return src
 
     def keyword_args_to_positional(self,
-                                   args: List[Value],
+                                   args: Sequence[Value],
                                    arg_kinds: List[int],
                                    arg_names: List[Optional[str]],
                                    sig: FuncSignature) -> List[Optional[Value]]:
