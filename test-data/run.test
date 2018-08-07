@@ -1804,6 +1804,9 @@ def foo() -> object:
 def bar() -> object:
     print('bar')
     return 'bar'
+def t(x: int) -> int:
+    print(x)
+    return x
 
 def f(b: bool) -> Tuple[object, object, object]:
     x = foo() if b else bar()
@@ -1817,8 +1820,14 @@ def nand(p: bool, q: bool) -> bool:
     if not (p and q):
         return True
     return False
+
+def chained(x: int, y: int, z: int) -> bool:
+    return t(x) < t(y) > t(z)
+
+def chained2(x: int, y: int, z: int, w: int) -> bool:
+    return t(x) < t(y) < t(z) < t(w)
 [file driver.py]
-from native import f, g, nand
+from native import f, g, nand, chained, chained2
 assert f(True) == ('foo', True, 'foo')
 print()
 assert f(False) == ('bar', 'foo', False)
@@ -1829,6 +1838,19 @@ assert nand(True, True) == False
 assert nand(True, False) == True
 assert nand(False, True) == True
 assert nand(False, False) == True
+
+print()
+assert chained(10, 20, 15) == True
+print()
+assert chained(10, 20, 30) == False
+print()
+assert chained(21, 20, 30) == False
+print()
+assert chained2(1, 2, 3, 4) == True
+print()
+assert chained2(1, 0, 3, 4) == False
+print()
+assert chained2(1, 2, 0, 4) == False
 [out]
 foo
 foo
@@ -1839,6 +1861,29 @@ foo
 foo
 foo
 bar
+
+10
+20
+15
+
+10
+20
+30
+
+21
+20
+
+1
+2
+3
+4
+
+1
+0
+
+1
+2
+0
 
 [case testMultipleAssignment]
 from typing import Tuple, List, Any

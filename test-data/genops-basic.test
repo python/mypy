@@ -2402,3 +2402,33 @@ L0:
     r67 = r65.__setitem__(r66, r64) :: object
     r68 = None
     return r68
+
+[case testChainedConditional]
+def g(x: int) -> int:
+    return x
+def f(x: int, y: int, z: int) -> bool:
+    return g(x) < g(y) > g(z)
+[out]
+def g(x):
+    x :: int
+L0:
+    return x
+def f(x, y, z):
+    x, y, z, r0, r1 :: int
+    r2, r3 :: bool
+    r4 :: int
+    r5 :: bool
+L0:
+    r0 = g(x)
+    r1 = g(y)
+    r3 = r0 < r1 :: int
+    if r3 goto L2 else goto L1 :: bool
+L1:
+    r2 = r3
+    goto L3
+L2:
+    r4 = g(z)
+    r5 = r1 > r4 :: int
+    r2 = r5
+L3:
+    return r2

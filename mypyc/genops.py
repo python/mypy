@@ -2065,30 +2065,44 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         target_type = self.type_to_rtype(expr.type)
         return self.coerce(src, target_type, expr.line)
 
-    def shortcircuit_expr(self, expr: OpExpr) -> Value:
-        expr_type = self.node_type(expr)
+    def shortcircuit_helper(self, op: str,
+                            expr_type: RType,
+                            left: Callable[[], Value],
+                            right: Callable[[], Value], line: int) -> Value:
         # Having actual Phi nodes would be really nice here!
         target = self.alloc_temp(expr_type)
+        # left_body takes the value of the left side, right_body the right
         left_body, right_body, next = BasicBlock(), BasicBlock(), BasicBlock()
+        # true_body is taken if the left is true, false_body if it is false.
+        # For 'and' the value is the right side if the left is true, and for 'or'
+        # it is the right side if the left is false.
         true_body, false_body = (
-            (right_body, left_body) if expr.op == 'and' else (left_body, right_body))
+            (right_body, left_body) if op == 'and' else (left_body, right_body))
 
-        left_value = self.accept(expr.left)
+        left_value = left()
         self.add_bool_branch(left_value, true_body, false_body)
 
         self.activate_block(left_body)
-        left_coerced = self.coerce(left_value, expr_type, expr.line)
+        left_coerced = self.coerce(left_value, expr_type, line)
         self.add(Assign(target, left_coerced))
         self.goto(next)
 
         self.activate_block(right_body)
-        right_value = self.accept(expr.right)
-        right_coerced = self.coerce(right_value, expr_type, expr.line)
+        right_value = right()
+        right_coerced = self.coerce(right_value, expr_type, line)
         self.add(Assign(target, right_coerced))
         self.goto(next)
 
         self.activate_block(next)
         return target
+
+    def shortcircuit_expr(self, expr: OpExpr) -> Value:
+        return self.shortcircuit_helper(
+            expr.op, self.node_type(expr),
+            lambda: self.accept(expr.left),
+            lambda: self.accept(expr.right),
+            expr.line
+        )
 
     def visit_conditional_expr(self, expr: ConditionalExpr) -> Value:
         if_body, else_body, next = BasicBlock(), BasicBlock(), BasicBlock()
@@ -2191,22 +2205,43 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             reg = self.accept(e)
             self.add_bool_branch(reg, true, false)
 
-    def visit_comparison_expr(self, e: ComparisonExpr) -> Value:
-        assert len(e.operators) == 1, 'more than 1 operator not supported'
-        op = e.operators[0]
+    def visit_basic_comparison(self, op: str, left: Value, right: Value, line: int) -> Value:
         negate = False
         if op == 'is not':
             op, negate = 'is', True
         elif op == 'not in':
             op, negate = 'in', True
 
-        left = self.accept(e.operands[0])
-        right = self.accept(e.operands[1])
-        target = self.binary_op(left, right, op, e.line)
+        target = self.binary_op(left, right, op, line)
 
         if negate:
-            target = self.unary_op(target, 'not', e.line)
+            target = self.unary_op(target, 'not', line)
         return target
+
+    def visit_comparison_expr(self, e: ComparisonExpr) -> Value:
+        # TODO: Don't produce an expression when used in conditional context
+
+        # All of the trickiness here is due to support for chained conditionals
+        # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
+        # `e1 < e2 and e2 > e3` except that `e2` is only evaluated once.
+        expr_type = self.node_type(e)
+
+        # go(i, prev) generates code for `ei opi e{i+1} op{i+1} ... en`,
+        # assuming that prev contains the value of `ei`.
+        def go(i: int, prev: Value) -> Value:
+            if i == len(e.operators) - 1:
+                return self.visit_basic_comparison(
+                    e.operators[i], prev, self.accept(e.operands[i + 1]), e.line)
+
+            next = self.accept(e.operands[i + 1])
+            return self.shortcircuit_helper(
+                'and', expr_type,
+                lambda: self.visit_basic_comparison(
+                    e.operators[i], prev, next, e.line),
+                lambda: go(i + 1, next),
+                e.line)
+
+        return go(0, self.accept(e.operands[0]))
 
     def add_bool_branch(self, value: Value, true: BasicBlock, false: BasicBlock) -> None:
         if is_same_type(value.type, int_rprimitive):
