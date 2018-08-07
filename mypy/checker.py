@@ -391,10 +391,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # valid overloads.
             return None
         if len(defn.items) == 1:
-            # don't report this error for duplicate decorated functions
-            if (isinstance(defn.items[0], Decorator) and
-                    any(refers_to_fullname(d, 'typing.overload') for d in defn.items[0].decorators)):
-                self.fail('Single overload definition, multiple required', defn)
+            self.fail('Single overload definition, multiple required', defn)
 
         if defn.is_property:
             # HACK: Infer the type of the property.

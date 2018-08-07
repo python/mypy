@@ -7355,12 +7355,10 @@ def bar(x: T) -> T:
 x = 1
 [out]
 a.py:1: error: Name 'TypeVar' is not defined
-a.py:7: error: Invalid type "a.T"
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Invalid type "a.T"
 ==
 a.py:1: error: Name 'TypeVar' is not defined
-a.py:7: error: Invalid type "a.T"
 a.py:10: error: Name 'bar' already defined on line 6
 a.py:11: error: Invalid type "a.T"
 

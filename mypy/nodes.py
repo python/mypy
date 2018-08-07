@@ -427,12 +427,14 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """
 
     items = None  # type: List[OverloadPart]
+    unanalyzed_items = None  # type: List[OverloadPart]
     impl = None  # type: Optional[OverloadPart]
 
     def __init__(self, items: List['OverloadPart']) -> None:
         super().__init__()
         assert len(items) > 0
         self.items = items
+        self.unanalyzed_items = items.copy()
         self.impl = None
         self.set_line(items[0].line)
 

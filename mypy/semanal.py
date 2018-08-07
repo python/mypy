@@ -555,11 +555,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         self.name_already_defined(defn.name(), defn.items[idx], first_item)
                     if defn.impl:
                         self.name_already_defined(defn.name(), defn.impl, first_item)
-                # Remove the non-overloads, if there were at least one overload
-                # (otherwise this is just a duplicate definition)
-                if len(non_overload_indexes) < len(defn.items) - 1:
-                    for idx in reversed(non_overload_indexes):
-                        del defn.items[idx]
+                # Remove the non-overloads
+                for idx in reversed(non_overload_indexes):
+                    del defn.items[idx]
             # If we found an implementation, remove it from the overloads to
             # consider.
             if defn.impl is not None:
