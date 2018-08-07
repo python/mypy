@@ -419,8 +419,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            # TODO: This may be unnecessary?
-            new.__dict__ = node.__dict__
             return cast(SN, new)
         return node
 
