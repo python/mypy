@@ -7260,6 +7260,26 @@ x = []  # type: List
 [out]
 ==
 
+[case testNamedTupleFallbackModule]
+import b
+[file b.py]
+from a import A
+def f(a: A):
+    pass
+[file b.py.2]
+from a import A
+def f(a: A):
+    reveal_type(a)
+[file a.py]
+from typing import NamedTuple
+
+F = [('x', int)]
+A = NamedTuple('A', F)  # type: ignore
+[builtins fixtures/list.pyi]
+[out]
+==
+b.py:3: error: Revealed type is 'Tuple[, fallback=a.A]'
+
 [case testImportOnTopOfAlias1]
 from a import A
 x: A
