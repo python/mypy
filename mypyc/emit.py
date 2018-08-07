@@ -397,13 +397,18 @@ class Emitter:
         if declare_dest:
             self.emit_line('PyObject *{};'.format(dest))
         good_label = self.new_label()
+        if optional:
+            self.emit_line('if ({} == NULL) {{'.format(src))
+            self.emit_line('{} = {};'.format(dest, self.c_error_value(typ)))
+            self.emit_line('goto {};'.format(good_label))
+            self.emit_line('}')
         for item in typ.items:
             self.emit_cast(src,
                            dest,
                            item,
                            declare_dest=False,
                            custom_message='',
-                           optional=optional)
+                           optional=False)
             self.emit_line('if ({} != NULL) goto {};'.format(dest, good_label))
         # Handle cast failure.
         self.emit_line(err)

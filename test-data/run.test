@@ -398,7 +398,7 @@ print(f((1,2,3,4)))
 2
 
 [case testFunctionCallWithDefaultArgs]
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 def f(x: int, y: int = 3, s: str = "test", z: object = 5) -> Tuple[int, str]:
     def inner() -> int:
         return x + y
@@ -406,11 +406,17 @@ def f(x: int, y: int = 3, s: str = "test", z: object = 5) -> Tuple[int, str]:
 def g() -> None:
     assert f(2) == (5, "test")
     assert f(s = "123", x = -2) == (1, "123")
+def h(a: Optional[object] = None, b: Optional[str] = None) -> Tuple[object, Optional[str]]:
+    return (a, b)
 [file driver.py]
-from native import f, g
+from native import f, g, h
 g()
 assert f(2) == (5, "test")
 assert f(s = "123", x = -2) == (1, "123")
+assert h() == (None, None)
+assert h(10) == (10, None)
+assert h(b='a') == (None, 'a')
+assert h(10, 'a') == (10, 'a')
 
 [case testMethodCallWithDefaultArgs]
 from typing import Tuple, List
