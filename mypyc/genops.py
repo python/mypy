@@ -2716,6 +2716,21 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
         return d
 
+    def visit_generator_expr(self, o: GeneratorExpr) -> Value:
+        print('{}:{}: Warning: treating generator comprehension as list'.format(
+            self.module_path, o.line))
+
+        gen = o
+        list_ops = self.primitive_op(new_list_op, [], o.line)
+        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+
+        def gen_inner_stmts() -> None:
+            e = self.accept(gen.left_expr)
+            self.primitive_op(list_append_op, [list_ops, e], o.line)
+
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        return list_ops
+
     def comprehension_helper(self,
                              loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
                              gen_inner_stmts: Callable[[], None],
@@ -2857,9 +2872,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         raise NotImplementedError
 
     def visit_exec_stmt(self, o: ExecStmt) -> None:
-        raise NotImplementedError
-
-    def visit_generator_expr(self, o: GeneratorExpr) -> Value:
         raise NotImplementedError
 
     def visit_namedtuple_expr(self, o: NamedTupleExpr) -> Value:
