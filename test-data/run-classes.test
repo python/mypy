@@ -529,6 +529,7 @@ assert f() == 200
 from typing import ClassVar, Optional
 class A:
     x = 10
+    w: object = 10
     def lol(self) -> None:
         self.x = 100
 

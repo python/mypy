@@ -399,7 +399,7 @@ print(f((1,2,3,4)))
 
 [case testFunctionCallWithDefaultArgs]
 from typing import Tuple, List
-def f(x: int, y: int = 3, s: str = "test") -> Tuple[int, str]:
+def f(x: int, y: int = 3, s: str = "test", z: object = 5) -> Tuple[int, str]:
     def inner() -> int:
         return x + y
     return inner(), s

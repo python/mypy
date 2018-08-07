@@ -775,13 +775,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
             # If the attribute is initialized to None and type isn't optional,
             # don't initialize it to anything.
+            attr_type = cls.attr_type(lvalue.name)
             if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
-                attr_type = cls.attr_type(lvalue.name)
                 if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
                         and not is_none_rprimitive(attr_type)):
                     continue
 
-            val = self.accept(stmt.rvalue)
+            val = self.coerce(self.accept(stmt.rvalue), attr_type, stmt.line)
             self.add(SetAttr(self_var, lvalue.name, val, -1))
 
         self.add(Return(self.primitive_op(true_op, [], -1)))
@@ -945,7 +945,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 self.add(Branch(target.register, error_block, body_block, Branch.IS_ERROR))
                 self.activate_block(error_block)
                 reg = self.accept(arg.initializer)
-                self.add(Assign(target.register, reg))
+                self.add(Assign(target.register,
+                                self.coerce(reg, target.register.type, arg.initializer.line)))
                 self.goto(body_block)
                 self.activate_block(body_block)
 
@@ -3484,7 +3485,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         For example, int -> object boxes the source int; int -> int emits nothing;
         object -> int unboxes the object. All conversions preserve object value.
 
-        If force is true, always generate an op (even if it is just an assingment) so
+        If force is true, always generate an op (even if it is just an assignment) so
         that the result will have exactly target_type as the type.
 
         Returns the register with the converted value (may be same as src).
@@ -3511,7 +3512,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                    arg_kinds: List[int],
                                    arg_names: List[Optional[str]],
                                    sig: FuncSignature) -> List[Optional[Value]]:
-        # NOTE: This doesn't support default argument values, *args or **kwargs.
+        # NOTE: This doesn't support *args or **kwargs.
         sig_arg_kinds = [arg.kind for arg in sig.args]
         sig_arg_names = [arg.name for arg in sig.args]
         formal_to_actual = map_actuals_to_formals(arg_kinds,
