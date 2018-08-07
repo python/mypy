@@ -105,7 +105,7 @@ import sys
 import os
 
 extra_compile_args = ['-Werror', '-Wno-unused-function', '-Wno-unused-label',
-                      '-Wno-unreachable-code', '-Wno-unused-variable']
+                      '-Wno-unreachable-code', '-Wno-unused-variable', '-Wno-trigraphs']
 
 vars = sysconfig.get_config_vars()
 
