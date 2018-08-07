@@ -153,7 +153,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         tuple_type = op.tuple_type
         self.emitter.declare_tuple_struct(tuple_type)
         if len(op.items) == 0:  # empty tuple
-            self.emit_line('{}.dummy_var_to_avoid_empty_struct = 0;'.format(dest))
+            self.emit_line('{}.empty_struct_error_flag = 0;'.format(dest))
         else:
             for i, item in enumerate(op.items):
                 self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(item)))

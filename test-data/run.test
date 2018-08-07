@@ -2383,6 +2383,7 @@ Lol(a=1, b=[])
 from typing import Tuple
 class C:
     b: Tuple[Tuple[Tuple[int, int], int], int, str, object]
+    c: Tuple[()]
 def f() -> None:
     c = C()
     c.b = (((1, 2), 2), 1, 'hi', 'hi2')
@@ -2397,9 +2398,10 @@ def g() -> None:
 def h() -> Tuple[Tuple[Tuple[int, int], int], int, str, object]:
     raise Exception('Intentional exception')
 [file driver.py]
-from native import f, g
+from native import f, g, C
 f()
 g()
+assert not hasattr(C(), 'c')
 [out]
 (((1, 2), 2), 1, 'hi', 'hi2')
 caught the exception
