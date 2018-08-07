@@ -7300,6 +7300,70 @@ def A(x: str) -> str: pass
 ==
 a.py:4: error: Incompatible import of "A" (imported name has type "Callable[[str], str]", local name has type "Type[List[Any]]")
 
+[case testFakeOverloadCrash]
+import b
+[file a.py]
+def dec(fun):
+    pass
+a = 1
+[file a.py.2]
+def dec(fun):
+    pass
+a = 2
+[file b.py]
+from a import dec
+@dec
+def a():
+    pass
+@dec
+def a():
+    pass
+[out]
+b.py:5: error: Name 'a' already defined on line 2
+==
+b.py:5: error: Name 'a' already defined on line 2
+
+[case testFakeOverloadCrash2]
+# this test just should not crash
+import a
+[file a.py]
+T = TypeVar("T")
+
+def foo(func):
+    return func
+
+@foo
+def bar(x: T) -> T:
+    pass
+
+@foo
+def bar(x: T) -> T:
+    pass
+[file a.py.2]
+T = TypeVar("T")
+
+def foo(func):
+    return func
+
+@foo
+def bar(x: T) -> T:
+    pass
+
+@foo
+def bar(x: T) -> T:
+    pass
+x = 1
+[out]
+a.py:1: error: Name 'TypeVar' is not defined
+a.py:7: error: Invalid type "a.T"
+a.py:10: error: Name 'bar' already defined on line 6
+a.py:11: error: Invalid type "a.T"
+==
+a.py:1: error: Name 'TypeVar' is not defined
+a.py:7: error: Invalid type "a.T"
+a.py:10: error: Name 'bar' already defined on line 6
+a.py:11: error: Invalid type "a.T"
+
 [case testRefreshForWithTypeComment1]
 [file a.py]
 from typing import List

@@ -437,7 +437,12 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.set_line(items[0].line)
 
     def name(self) -> str:
-        return self.items[0].name()
+        if self.items:
+            return self.items[0].name()
+        else:
+            # This may happen for malformed overload
+            assert self.impl is not None
+            return self.impl.name()
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
