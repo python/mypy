@@ -7384,3 +7384,67 @@ x = 1
 Func = Callable[..., Any]
 [out]
 ==
+
+[case testIdLikeDecoForwardCrash_python2]
+# flags: --py2
+import b
+[file b.py]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F_BadName', bound=Callable[..., Any])  # type: ignore
+def deco(func):  # type: ignore
+    # type: (F) -> F
+    pass
+
+@deco
+def test(x, y):
+    # type: (int, int) -> str
+    pass
+[file b.py.2]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F_BadName', bound=Callable[..., Any])  # type: ignore
+def deco(func):  # type: ignore
+    # type: (F) -> F
+    pass
+
+@deco
+def test(x, y):
+    # type: (int, int) -> str
+    pass
+x = 1
+[out]
+==
+
+[case testIdLikeDecoForwardCrashAlias_python2]
+# flags: --py2
+import b
+[file b.py]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F', bound=Func)
+def deco(func):
+    # type: (F) -> F
+    pass
+
+@deco
+def test(x, y):
+    # type: (int, int) -> str
+    pass
+Func = Callable[..., Any]
+[file b.py.2]
+from typing import Callable, Any, TypeVar
+
+F = TypeVar('F', bound=Func)
+def deco(func):
+    # type: (F) -> F
+    pass
+
+@deco
+def test(x, y):
+    # type: (int, int) -> str
+    pass
+x = 1
+Func = Callable[..., Any]
+[out]
+==
