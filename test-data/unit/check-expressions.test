@@ -664,7 +664,7 @@ A() + cast(Any, 1)
 class C:
     def __gt__(self, x: 'A') -> object: pass
 class A:
-    def __lt__(self, x: C) -> int: pass
+    def __lt__(self, x: C) -> int: pass  # E: Signatures of "__lt__" of "A" and "__gt__" of "C" are unsafely overlapping
 class B:
     def __gt__(self, x: A) -> str: pass
 s = None  # type: str

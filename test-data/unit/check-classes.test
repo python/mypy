@@ -1599,6 +1599,45 @@ class A:
 class B(A):
     def __add__(self, x): pass
 
+[case testOperatorMethodAgainstSameType]
+class A:
+    def __add__(self, x: int) -> 'A':
+        if isinstance(x, int):
+            return A()
+        else:
+            return NotImplemented
+
+    def __radd__(self, x: 'A') -> 'A':
+        if isinstance(x, A):
+            return A()
+        else:
+            return NotImplemented
+
+class B(A): pass
+
+# Note: This is actually a runtime error. If we run x.__add__(y)
+# where x and y are *not* the same type, Python will not try
+# calling __radd__.
+#
+# It is, however, difficult to detect this statically -- for example,
+# if we have a variable of type A, that doesn't mean that variable is
+# *exactly* an instance of A. It could be a subclass, for example.
+#
+# We also can't really print a warning when checking the definition
+# of A.__add__ and A.__radd__ -- the user might intentionally be defining
+# those two methods to have non-conventional semantics.
+#
+# As a result, we don't try and handle this case and pretend that
+# Python actually *will* call `__radd__` even when the types are
+# the same.
+reveal_type(A() + A())  # E: Revealed type is '__main__.A'
+
+# Here, Python *will* call __radd__(...) so the revealed type
+# and the runtime behavior match.
+reveal_type(B() + A())  # E: Revealed type is '__main__.A'
+reveal_type(A() + B())  # E: Revealed type is '__main__.A'
+[builtins fixtures/isinstance.pyi]
+
 [case testOperatorMethodOverrideWithIdenticalOverloadedType]
 from foo import *
 [file foo.pyi]
@@ -1755,20 +1794,51 @@ class B:
     def __radd__(*self) -> int: pass
     def __rsub__(*self: 'B') -> int: pass
 
-[case testReverseOperatorTypeVar]
+[case testReverseOperatorTypeVar1]
+from typing import TypeVar, Any
+T = TypeVar("T", bound='Real')
+class Real:
+    def __add__(self, other: Any) -> str: ...
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...  # E: Signatures "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+
+reveal_type(Real() + Fraction())      # E: Revealed type is 'builtins.str'
+reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
+
+[case testReverseOperatorTypeVar2]
 from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
-    def __add__(self, other) -> str: ...
+    def __add__(self, other: Fraction) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+
+reveal_type(Real() + Fraction())      # E: Revealed type is 'builtins.str'
+reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
+
+[case testReverseOperatorTypeVar3]
+from typing import TypeVar, Any
+T = TypeVar("T", bound='Real')
+class Real:
+    def __add__(self, other: FractionChild) -> str: ...
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+class FractionChild(Fraction): pass
+
+reveal_type(Real() + Fraction())                # E: Revealed type is '__main__.Real*'
+reveal_type(FractionChild() + Fraction())       # E: Revealed type is '__main__.FractionChild*'
+reveal_type(FractionChild() + FractionChild())  # E: Revealed type is 'builtins.str'
+
+# Technically not correct
+reveal_type(Fraction() + Fraction())       # E: Revealed type is '__main__.Fraction*'
 
 [case testReverseOperatorTypeType]
 from typing import TypeVar, Type
 class Real(type):
-    def __add__(self, other) -> str: ...
+    def __add__(self, other: FractionChild) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: Type['A']) -> Real: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "Type[A]" are unsafely overlapping
+class FractionChild(Fraction): pass
 
 class A(metaclass=Real): pass
 
@@ -1811,7 +1881,7 @@ class B:
     @overload
     def __radd__(self, x: A) -> str: pass   # Error
 class X:
-    def __add__(self, x): pass
+    def __add__(self, x: B) -> int: pass
 [out]
 tmp/foo.pyi:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
