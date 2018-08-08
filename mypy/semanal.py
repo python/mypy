@@ -518,7 +518,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     # The first item was already visited
                     item.is_overload = True
                     item.accept(self)
-                # TODO support decorated overloaded functions properly
+                # TODO: support decorated overloaded functions properly
                 if isinstance(item, Decorator):
                     callable = function_type(item.func, self.builtin_type('builtins.function'))
                     assert isinstance(callable, CallableType)

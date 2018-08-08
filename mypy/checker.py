@@ -778,7 +778,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                            self.msg, context=fdef)
 
                 if name:  # Special method names
-                    if name in nodes.reverse_op_method_set:
+                    if defn.info and name in nodes.reverse_op_method_set:
                         self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ('__getattr__', '__getattribute__'):
                         self.check_getattr_method(typ, defn, name)
@@ -978,6 +978,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # This used to check for some very obscure scenario.  It now
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
+
+        assert defn.info is not None
 
         # First check for a valid signature
         method_type = CallableType([AnyType(TypeOfAny.special_form),
