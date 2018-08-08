@@ -4498,3 +4498,26 @@ from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
+
+[case testForwardInstanceWithWrongArgCount]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int, int]]  # E: "G" expects 1 type argument, but 2 given
+B = G
+[out]
+
+[case testForwardInstanceWithNoArgs]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B]
+reveal_type(x)  # E: Revealed type is '__main__.G[__main__.G[Any]]'
+B = G
+[out]
