@@ -1800,7 +1800,7 @@ T = TypeVar("T", bound='Real')
 class Real:
     def __add__(self, other: Any) -> str: ...
 class Fraction(Real):
-    def __radd__(self, other: T) -> T: ...  # E: Signatures "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
 
 reveal_type(Real() + Fraction())      # E: Revealed type is 'builtins.str'
 reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
