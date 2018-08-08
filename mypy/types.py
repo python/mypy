@@ -1915,6 +1915,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def __init__(self, strategy: Callable[[Iterable[T]], T]) -> None:
         self.strategy = strategy
+        self.seen = []  # type: List[Type]
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -1984,8 +1985,17 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         """Perform a query for a list of types.
 
         Use the strategy to combine the results.
+        Skip types already visited types to avoid infinite recursion.
+        Note: types can be recursive until they are fully analyzed and "unentangled"
+        in patches after the semantic analysis.
         """
-        return self.strategy(t.accept(self) for t in types)
+        res = []  # type: List[T]
+        for t in types:
+            if any(t is s for s in self.seen):
+                continue
+            self.seen.append(t)
+            res.append(t.accept(self))
+        return self.strategy(res)
 
 
 def strip_type(typ: Type) -> Type:
