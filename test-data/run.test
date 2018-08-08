@@ -1617,6 +1617,7 @@ def test_call_module_function_with_keyword_args() -> None:
 
 def test_call_python_function_with_keyword_args() -> None:
     assert int("11", base=2) == 3
+    assert int(base=2, x="11") == 3
 
 def test_call_lambda_function_with_keyword_args() -> None:
     g = testmodule.get_lambda_function()
@@ -2565,6 +2566,10 @@ def complex_yield(a: int, b: str, c: float) -> Generator[Union[str, int], None, 
         x += 1
     return c
 
+def yield_with_default(x: bool = False) -> Iterable[int]:
+    if x:
+        yield 0
+
 def three() -> int:
     return 3
 
@@ -2576,78 +2581,29 @@ class A(object):
         yield self.x
 
 [file driver.py]
-from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield, A
+from typing import Generator, Tuple, TypeVar, Sequence, Union
+from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield, yield_with_default, A
 
-generator = yield_three_times()
-assert next(generator) == 1
-assert next(generator) == 2
-assert next(generator) == 3
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value is None
+T = TypeVar('T')
+U = TypeVar('U')
 
-generator = yield_twice_and_return()
-assert next(generator) == 1
-assert next(generator) == 2
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value == 4
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value is None
+def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], Union[U, str]]:
+    res = []
+    while True:
+        try:
+            val = next(gen)
+        except StopIteration as e:
+            return (tuple(res), e.value)
+        res.append(val)
 
-generator = yield_while_loop()
-assert next(generator) == 0
-assert next(generator) == 1
-assert next(generator) == 2
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value == 3
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value is None
-
-generator = yield_for_loop()
-for i in range(4):
-    assert next(generator) == 0
-    assert next(generator) == 1
-    assert next(generator) == 2
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value is None
-
-generator = yield_with_except()
-assert next(generator) == 10
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value is None
-
-generator = complex_yield(5, 'foo', 1.0)
-assert next(generator) == '2 foo'
-assert next(generator) == 3
-assert next(generator) == '4 foo'
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value == 1.0
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value is None
-
-generator = A(0).generator()
-assert next(generator) == 0
-try:
-    next(generator)
-except StopIteration as e:
-    assert e.value is None
+assert run_generator(yield_three_times()) == ((1, 2, 3), None)
+assert run_generator(yield_twice_and_return()) == ((1, 2), 4)
+assert run_generator(yield_while_loop()) == ((0, 1, 2), 3)
+assert run_generator(yield_for_loop()) == (tuple(4 * [i for i in range(3)]), None)
+assert run_generator(yield_with_except()) == ((10,), None)
+assert run_generator(complex_yield(5, 'foo', 1.0)) == (('2 foo', 3, '4 foo'), 1.0)
+assert run_generator(yield_with_default()) == ((), None)
+assert run_generator(A(0).generator()) == ((0,), None)
 
 for i in yield_twice_and_return():
     print(i)
@@ -2737,3 +2693,60 @@ enter! a
 yooo? a
 exit! a exception!
 ((1,), 'exception!')
+
+[case testYieldNested]
+from typing import Callable, Generator
+
+def normal(a: int, b: float) -> Callable:
+    def generator(x: int, y: str) -> Generator:
+        yield a
+        yield b
+        yield x
+        yield y
+    return generator
+
+def generator(a: int) -> Generator:
+    def normal(x: int) -> int:
+        return a + x
+    for i in range(3):
+        yield normal(i)
+
+def triple() -> Callable:
+    def generator() -> Generator:
+        x = 0
+        def inner() -> int:
+            x += 1
+            return x
+        while x < 3:
+            yield inner()
+    return generator
+
+def another_triple() -> Callable:
+    def generator() -> Generator:
+        x = 0
+        def inner_generator() -> Generator:
+            x += 1
+            yield x
+        yield next(inner_generator())
+    return generator
+
+[file driver.py]
+from typing import Generator, Tuple, TypeVar, Sequence
+from native import normal, generator, triple, another_triple
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], U, str]:
+    res = []
+    while True:
+        try:
+            val = next(gen)
+        except StopIteration as e:
+            return (tuple(res), e.value)
+        res.append(val)
+
+assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
+assert run_generator(generator(1)) == ((1, 2, 3), None)
+assert run_generator(triple()()) == ((1, 2, 3), None)
+assert run_generator(another_triple()()) == ((1,), None)
