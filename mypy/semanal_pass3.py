@@ -700,7 +700,7 @@ class TypeVariableChecker(TypeTranslator):
                 self.fail('Type argument "{}" of "{}" must be '
                           'a subtype of "{}"'.format(
                               arg, info.name(), tvar.upper_bound), t)
-        return t
+        return super().visit_instance(t)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:

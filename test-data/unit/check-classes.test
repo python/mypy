@@ -4521,3 +4521,16 @@ x: A[B]
 reveal_type(x)  # E: Revealed type is '__main__.G[__main__.G[Any]]'
 B = G
 [out]
+
+[case testForwardInstanceWithBound]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', bound=str)
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int]]
+B = G
+[out]
+main:7: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
+main:7: error: Type argument "__main__.G[builtins.int]" of "G" must be a subtype of "builtins.str"
