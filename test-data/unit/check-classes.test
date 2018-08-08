@@ -4498,3 +4498,54 @@ from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
+
+[case testForwardInstanceWithWrongArgCount]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int, int]]  # E: "G" expects 1 type argument, but 2 given
+B = G
+[out]
+
+[case testForwardInstanceWithNoArgs]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B]
+reveal_type(x)  # E: Revealed type is '__main__.G[__main__.G[Any]]'
+B = G
+[out]
+
+[case testForwardInstanceWithBound]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', bound=str)
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int]]
+B = G
+[out]
+main:7: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
+main:7: error: Type argument "__main__.G[builtins.int]" of "G" must be a subtype of "builtins.str"
+
+[case testExtremeForwardReferencing]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class B(Generic[T]): ...
+
+y: A
+z: A[int]
+x = [y, z]
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.B*[Any]]'
+
+A = B
+[builtins fixtures/list.pyi]
+[out]

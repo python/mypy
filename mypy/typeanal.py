@@ -708,28 +708,7 @@ class TypeAnalyserPass3(TypeVisitor[None]):
             self.indicator['synthetic'] = True
         # Check type argument count.
         if len(t.args) != len(info.type_vars):
-            if len(t.args) == 0:
-                any_type = AnyType(TypeOfAny.from_omitted_generics,
-                                   line=t.line, column=t.column)
-                t.args = [any_type] * len(info.type_vars)
-                return
-            # Invalid number of type parameters.
-            n = len(info.type_vars)
-            s = '{} type arguments'.format(n)
-            if n == 0:
-                s = 'no type arguments'
-            elif n == 1:
-                s = '1 type argument'
-            act = str(len(t.args))
-            if act == '0':
-                act = 'none'
-            self.fail('"{}" expects {}, but {} given'.format(
-                info.name(), s, act), t)
-            # Construct the correct number of type arguments, as
-            # otherwise the type checker may crash as it expects
-            # things to be right.
-            t.args = [AnyType(TypeOfAny.from_error) for _ in info.type_vars]
-            t.invalid = True
+            fix_instance(t, self.fail)
         elif info.defn.type_vars:
             # Check type argument values. This is postponed to the end of semantic analysis
             # since we need full MROs and resolved forward references.
@@ -808,6 +787,8 @@ class TypeAnalyserPass3(TypeVisitor[None]):
         if t.resolved is None:
             resolved = self.anal_type(t.unbound)
             t.resolve(resolved)
+            assert t.resolved is not None
+            t.resolved.accept(self)
 
     def anal_type(self, tp: UnboundType) -> Type:
         tpan = TypeAnalyser(self.api,
@@ -822,6 +803,35 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
 
 TypeVarList = List[Tuple[str, TypeVarExpr]]
+
+
+def fix_instance(t: Instance, fail: Callable[[str, Context], None]) -> None:
+    """Fix a malformed instance by replacing all type arguments with Any.
+
+    Also emit a suitable error if this is not due to implicit Any's.
+    """
+    if len(t.args) == 0:
+        any_type = AnyType(TypeOfAny.from_omitted_generics,
+                           line=t.line, column=t.column)
+        t.args = [any_type] * len(t.type.type_vars)
+        return
+    # Invalid number of type parameters.
+    n = len(t.type.type_vars)
+    s = '{} type arguments'.format(n)
+    if n == 0:
+        s = 'no type arguments'
+    elif n == 1:
+        s = '1 type argument'
+    act = str(len(t.args))
+    if act == '0':
+        act = 'none'
+    fail('"{}" expects {}, but {} given'.format(
+        t.type.name(), s, act), t)
+    # Construct the correct number of type arguments, as
+    # otherwise the type checker may crash as it expects
+    # things to be right.
+    t.args = [AnyType(TypeOfAny.from_error) for _ in t.type.type_vars]
+    t.invalid = True
 
 
 def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
