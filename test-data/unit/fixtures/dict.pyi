@@ -46,5 +46,5 @@ class float: pass
 class bool: pass
 
 class ellipsis: pass
-def isinstance(x: object, t: Union[type, Tuple]) -> bool: pass
+def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
