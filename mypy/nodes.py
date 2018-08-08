@@ -427,17 +427,24 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
     """
 
     items = None  # type: List[OverloadPart]
+    unanalyzed_items = None  # type: List[OverloadPart]
     impl = None  # type: Optional[OverloadPart]
 
     def __init__(self, items: List['OverloadPart']) -> None:
         super().__init__()
         assert len(items) > 0
         self.items = items
+        self.unanalyzed_items = items.copy()
         self.impl = None
         self.set_line(items[0].line)
 
     def name(self) -> str:
-        return self.items[0].name()
+        if self.items:
+            return self.items[0].name()
+        else:
+            # This may happen for malformed overload
+            assert self.impl is not None
+            return self.impl.name()
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_overloaded_func_def(self)
