@@ -30,8 +30,10 @@ imports, namespace packages, and custom import hooks.
 If you do not want to use typed packages, use the ``--no-site-packages`` flag
 to disable searching.
 
-Note that stub-only packages cannot be used with ``MYPYPATH``. If you want mypy
-to find the package, it must be installed.
+Note that stub-only packages (defined in
+`PEP 561 <https://www.python.org/dev/peps/pep-0561/#stub-only-packages>`_)
+cannot be used with ``MYPYPATH``. If you want mypy to find the package, it must
+be installed.
 
 Making PEP 561 compatible packages
 **********************************
