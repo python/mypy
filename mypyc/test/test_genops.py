@@ -6,7 +6,8 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
-from mypyc.ops import format_func, is_empty_module_top_level
+from mypyc.common import TOP_LEVEL_NAME
+from mypyc.ops import format_func
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
     assert_test_output, remove_comment_lines
@@ -46,8 +47,8 @@ class TestGenOps(MypycDataSuite):
             else:
                 actual = []
                 for fn in ir:
-                    if is_empty_module_top_level(fn):
-                        # Skip trivial module top levels that only return.
+                    if (fn.name == TOP_LEVEL_NAME
+                            and not testcase.name.endswith('_toplevel')):
                         continue
                     actual.extend(format_func(fn))
 

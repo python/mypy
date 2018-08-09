@@ -5,6 +5,7 @@
 #include <Python.h>
 #include <frameobject.h>
 #include <assert.h>
+#include "pythonsupport.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,24 +70,118 @@ static inline void CPy_FixupTraitVtable(CPyVTableItem *vtable, int count) {
 
 // Create a heap type based on a template non-heap type.
 // This is super hacky and maybe we should suck it up and use PyType_FromSpec instead.
-static inline PyTypeObject *CPyType_FromTemplate(PyTypeObject *template_,
-                                                 PyObject *modname) {
-    PyHeapTypeObject *t = (PyHeapTypeObject*)PyType_GenericAlloc(&PyType_Type, 0);
+// We allow bases to be NULL to represent just inheriting from object.
+// We don't support NULL bases and a non-type metaclass.
+static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
+                                             PyObject *orig_bases,
+                                             PyObject *modname) {
+    PyHeapTypeObject *t = NULL;
+    PyTypeObject *dummy_class = NULL;
+    PyObject *name = NULL;
+    PyObject *bases = NULL;
+
+    PyTypeObject *metaclass = Py_TYPE(template_);
+
+    if (orig_bases) {
+        bases = update_bases(orig_bases);
+        // update_bases doesn't increment the refcount if nothing changes,
+        // so we do it to make sure we have distinct "references" to both
+        if (bases == orig_bases)
+            Py_INCREF(bases);
+
+        // Find the appropriate metaclass from our base classes. We
+        // care about this because Generic uses a metaclass prior to
+        // Python 3.7.
+        metaclass = _PyType_CalculateMetaclass(metaclass, bases);
+        if (!metaclass)
+            goto error;
+    }
+
+    name = PyUnicode_FromString(template_->tp_name);
+    if (!name)
+        goto error;
+
+    // If there is a metaclass other than type, we would like to call
+    // its __new__ function. Unfortunately there doesn't seem to be a
+    // good way to mix a C extension class and creating it via a
+    // metaclass. We need to do it anyways, though, in order to
+    // support subclassing Generic[T] prior to Python 3.7.
+    //
+    // We solve this with a kind of atrocious hack: create a parallel
+    // class using the metaclass, determine the bases of the real
+    // class by pulling them out of the parallel class, creating the
+    // real class, and then merging its dict back into the original
+    // class. There are lots of cases where this won't really work,
+    // but for the case of GenericMeta setting a bunch of properties
+    // on the class we should be fine.
+    if (metaclass != &PyType_Type) {
+        assert(bases && "non-type metaclasses require non-NULL bases");
+
+        PyObject *ns = PyDict_New();
+        if (!ns)
+            goto error;
+
+        dummy_class = (PyTypeObject *)PyObject_CallFunctionObjArgs(
+            (PyObject *)metaclass, name, bases, ns, NULL);
+        Py_DECREF(ns);
+        if (!dummy_class)
+            goto error;
+
+        Py_DECREF(bases);
+        bases = dummy_class->tp_bases;
+        Py_INCREF(bases);
+    }
+
+    // Allocate the type and then copy the main stuff in.
+    t = (PyHeapTypeObject*)PyType_GenericAlloc(metaclass, 0);
+    if (!t)
+        goto error;
     memcpy((char *)t + sizeof(PyVarObject),
            (char *)template_ + sizeof(PyVarObject),
            sizeof(PyTypeObject) - sizeof(PyVarObject));
 
-    PyObject *name = PyUnicode_FromString(template_->tp_name);
+    if (bases != orig_bases) {
+        if (PyObject_SetAttrString((PyObject *)t, "__orig_bases__", orig_bases) < 0)
+            goto error;
+    }
+
     t->ht_name = name;
     Py_INCREF(name);
     t->ht_qualname = name;
+    t->ht_type.tp_bases = bases;
+    // references stolen so NULL these out
+    bases = name = NULL;
 
     if (PyType_Ready((PyTypeObject *)t) < 0)
-        return NULL;
+        goto error;
 
-    PyObject_SetAttrString((PyObject *)t, "__module__", modname);
+    if (dummy_class) {
+        if (PyDict_Merge(t->ht_type.tp_dict, dummy_class->tp_dict, 0) != 0)
+            goto error;
+        // This is the *really* tasteless bit. GenericMeta's __new__
+        // in certain versions of typing sets _gorg to point back to
+        // the class. We need to override it to keep it from pointing
+        // to the proxy.
+        if (PyDict_SetItemString(t->ht_type.tp_dict, "_gorg", (PyObject *)t) < 0)
+            goto error;
+    }
 
-    return (PyTypeObject *)t;
+    if (PyObject_SetAttrString((PyObject *)t, "__module__", modname) < 0)
+        goto error;
+
+    if (init_subclass((PyTypeObject *)t, NULL))
+        goto error;
+
+    Py_XDECREF(dummy_class);
+
+    return (PyObject *)t;
+
+error:
+    Py_XDECREF(t);
+    Py_XDECREF(bases);
+    Py_XDECREF(dummy_class);
+    Py_XDECREF(name);
+    return NULL;
 }
 
 // Get attribute value using vtable (may return an undefined value)

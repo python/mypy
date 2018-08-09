@@ -62,7 +62,7 @@ L0:
     a = r4
     r5 = unbox(int, a)
     n = r5
-    r6 = unicode_0 :: static  ('a')
+    r6 = unicode_2 :: static  ('a')
     r7 = box(int, n)
     r8 = setattr a, r6, r7
     r9 = None

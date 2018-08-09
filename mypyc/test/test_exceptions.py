@@ -9,7 +9,8 @@ from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
-from mypyc.ops import format_func, is_empty_module_top_level
+from mypyc.common import TOP_LEVEL_NAME
+from mypyc.ops import format_func
 from mypyc.exceptions import insert_exception_handling
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.test.testutil import (
@@ -38,8 +39,8 @@ class TestExceptionTransform(MypycDataSuite):
             else:
                 actual = []
                 for fn in ir:
-                    if is_empty_module_top_level(fn):
-                        # Skip trivial module top levels that only return.
+                    if (fn.name == TOP_LEVEL_NAME
+                            and not testcase.name.endswith('_toplevel')):
                         continue
                     insert_exception_handling(fn)
                     insert_ref_count_opcodes(fn)

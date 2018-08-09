@@ -91,7 +91,7 @@ def g(a):
     r3 :: None
 L0:
     r0 = 1
-    r1 = unicode_0 :: static  ('hi')
+    r1 = unicode_2 :: static  ('hi')
     r2 = a.f(r0, r1)
     r3 = None
     return r3
@@ -260,7 +260,7 @@ def C.foo(self, x):
     r4 :: int
 L0:
     r0 = builtins.module :: static
-    r1 = unicode_0 :: static  ('id')
+    r1 = unicode_4 :: static  ('id')
     r2 = getattr r0, r1
     r3 = py_call(r2, x)
     r4 = unbox(int, r3)
@@ -305,6 +305,111 @@ def use_c(x, y):
 L0:
     r0 = x.foo(y)
     return r0
+
+[case testSubclass_toplevel]
+from typing import TypeVar, Generic
+from mypy_extensions import trait
+T = TypeVar('T')
+class C:
+    pass
+
+@trait
+class S:
+    pass
+
+class D(C, S, Generic[T]):
+    pass
+
+[out]
+def __top_level__():
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3, r4, r5 :: object
+    r6 :: str
+    r7 :: bool
+    r8 :: object
+    r9 :: str
+    r10, r11 :: object
+    r12 :: bool
+    r13 :: object
+    r14 :: str
+    r15 :: dict
+    r16 :: bool
+    r17 :: object
+    r18 :: str
+    r19, r20 :: object
+    r21 :: bool
+    r22 :: object
+    r23 :: str
+    r24 :: dict
+    r25 :: bool
+    r26, r27, r28 :: object
+    r29 :: str
+    r30, r31 :: object
+    r32 :: str
+    r33, r34 :: object
+    r35 :: tuple[object, object, object]
+    r36 :: object
+    r37 :: str
+    r38, r39 :: object
+    r40 :: bool
+    r41 :: object
+    r42 :: str
+    r43 :: dict
+    r44 :: bool
+    r45 :: None
+L0:
+    r0 = unicode_0 :: static  ('T')
+    r1 = __main__.globals :: static
+    r2 = unicode_1 :: static  ('TypeVar')
+    r3 = r1[r2] :: dict
+    r4 = py_call(r3, r0)
+    r5 = __main__.globals :: static
+    r6 = unicode_0 :: static  ('T')
+    r7 = r5.__setitem__(r6, r4) :: object
+    r8 = <error> :: object
+    r9 = unicode_2 :: static  ('__main__')
+    r10 = __main__.C_template :: type
+    r11 = pytype_from_template(r10, r8, r9)
+    r12 = C_trait_vtable_setup()
+    __main__.C = r11 :: type
+    r13 = __main__.globals :: static
+    r14 = unicode_3 :: static  ('C')
+    r15 = cast(dict, r13)
+    r16 = r15.__setitem__(r14, r11) :: dict
+    r17 = <error> :: object
+    r18 = unicode_2 :: static  ('__main__')
+    r19 = __main__.S_template :: type
+    r20 = pytype_from_template(r19, r17, r18)
+    r21 = S_trait_vtable_setup()
+    __main__.S = r20 :: type
+    r22 = __main__.globals :: static
+    r23 = unicode_4 :: static  ('S')
+    r24 = cast(dict, r22)
+    r25 = r24.__setitem__(r23, r20) :: dict
+    r26 = __main__.C :: type
+    r27 = __main__.S :: type
+    r28 = __main__.globals :: static
+    r29 = unicode_5 :: static  ('Generic')
+    r30 = r28[r29] :: dict
+    r31 = __main__.globals :: static
+    r32 = unicode_0 :: static  ('T')
+    r33 = r31[r32] :: dict
+    r34 = r30[r33] :: object
+    r35 = (r26, r27, r34)
+    r36 = box(tuple[object, object, object], r35)
+    r37 = unicode_2 :: static  ('__main__')
+    r38 = __main__.D_template :: type
+    r39 = pytype_from_template(r38, r36, r37)
+    r40 = D_trait_vtable_setup()
+    __main__.D = r39 :: type
+    r41 = __main__.globals :: static
+    r42 = unicode_6 :: static  ('D')
+    r43 = cast(dict, r41)
+    r44 = r43.__setitem__(r42, r39) :: dict
+    r45 = None
+    return r45
 
 [case testIsInstance]
 class A: pass
@@ -466,25 +571,10 @@ def f():
     r3 :: int
 L0:
     r0 = __main__.A :: type
-    r1 = unicode_0 :: static  ('x')
+    r1 = unicode_2 :: static  ('x')
     r2 = getattr r0, r1
     r3 = unbox(int, r2)
     return r3
-def __top_level__():
-    r0 :: object
-    r1 :: int
-    r2 :: str
-    r3 :: object
-    r4 :: bool
-    r5 :: None
-L0:
-    r0 = __main__.A :: type
-    r1 = 10
-    r2 = unicode_0 :: static  ('x')
-    r3 = box(int, r1)
-    r4 = setattr r0, r2, r3
-    r5 = None
-    return r5
 
 [case testDefaultVars]
 from typing import ClassVar, Optional
@@ -532,7 +622,7 @@ def B.__mypyc_defaults_setup(self):
     r10, r11 :: bool
 L0:
     r0 = __main__.globals :: static
-    r1 = unicode_1 :: static  ('LOL')
+    r1 = unicode_3 :: static  ('LOL')
     r2 = r0[r1] :: dict
     r3 = cast(str, r2)
     self.y = r3; r4 = is_error
@@ -544,16 +634,3 @@ L0:
     self.x = r9; r10 = is_error
     r11 = True
     return r11
-def __top_level__():
-    r0 :: str
-    r1 :: object
-    r2 :: str
-    r3 :: bool
-    r4 :: None
-L0:
-    r0 = unicode_0 :: static  ('lol')
-    r1 = __main__.globals :: static
-    r2 = unicode_1 :: static  ('LOL')
-    r3 = r1.__setitem__(r2, r0) :: object
-    r4 = None
-    return r4

@@ -79,7 +79,7 @@ if os.environ.get('MYPYC_RUN_BENCH') == '1':
 
 [case testBenchmarkVisitorTree]
 from mypy_extensions import trait
-from typing import cast, Generic, TypeVar
+from typing import cast, Generic, TypeVar, Any
 
 T = TypeVar('T')
 class Tree:
@@ -144,11 +144,18 @@ def bench_equal_tree(x: Tree, y: Tree) -> None:
 
 [file driver.py]
 from typing import Optional
-import native
 import interpreted
+import native
 from timeit import timeit
 from time import time
 import os
+
+# Side test: some stuff about MROs and generics
+print(tuple(x.__name__ for x in interpreted.SumVisitor.mro()))
+print(tuple(x.__name__ for x in native.SumVisitor.mro()))
+print(native.TreeVisitor.__name__)
+print(native.SumVisitor.__name__)
+print(native.TreeVisitor[native.T])
 
 def dumb_time(f):
     t0 = time()
@@ -163,6 +170,9 @@ def basic_test(m):
     assert m.sum_tree(tree) == 57
     assert m.equal(tree, tree)
     assert not m.equal(tree, tree2)
+
+    assert isinstance(native.SumVisitor(), native.TreeVisitor)
+
     return tree
 
 def test(m):
@@ -181,3 +191,9 @@ if os.environ.get('MYPYC_RUN_BENCH') == '1':
     print(nfsum)
     print("Sum speedup:", ifsum/nfsum)
     print("Equal speedup:", ifeq/nfeq)
+[out]
+('SumVisitor', 'TreeVisitor', 'Generic', 'object')
+('SumVisitor', 'TreeVisitor', 'Generic', 'object')
+TreeVisitor
+SumVisitor
+native.TreeVisitor[~T]

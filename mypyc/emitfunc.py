@@ -6,7 +6,7 @@ from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, 
 from mypyc.emit import Emitter
 from mypyc.ops import (
     FuncIR, OpVisitor, Goto, Branch, Return, Assign, LoadInt, LoadErrorValue, GetAttr, SetAttr,
-    LoadStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
+    LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, Register, RType, RTuple, MethodCall, PrimitiveOp,
     EmitterInterface, Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
     RaiseStandardError, FuncDecl,
@@ -225,6 +225,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         else:
             ann = ' /* %s */' % repr(op.ann) if op.ann else ''
             self.emit_line('%s = %s;%s' % (dest, name, ann))
+
+    def visit_init_static(self, op: InitStatic) -> None:
+        value = self.reg(op.value)
+        prefix = self.PREFIX_MAP[op.namespace]
+        name = self.emitter.static_name(op.identifier, op.module_name, prefix)
+        self.emit_line('Py_INCREF(%s);' % value)
+        if op.namespace == NAMESPACE_TYPE:
+            value = '(PyTypeObject *)%s' % value
+        self.emit_line('%s = %s;' % (name, value))
 
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)

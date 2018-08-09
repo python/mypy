@@ -731,7 +731,7 @@ L0:
     r1 = 2
     r2 = Dummy(r0, r1)
     dummy = r2
-    r3 = unicode_4 :: static  ('x')
+    r3 = unicode_6 :: static  ('x')
     r4 = delattr dummy, r3
     r5 = None
     return r5
@@ -748,9 +748,9 @@ L0:
     r1 = 2
     r2 = Dummy(r0, r1)
     dummy = r2
-    r3 = unicode_4 :: static  ('x')
+    r3 = unicode_6 :: static  ('x')
     r4 = delattr dummy, r3
-    r5 = unicode_5 :: static  ('y')
+    r5 = unicode_7 :: static  ('y')
     r6 = delattr dummy, r5
     r7 = None
     return r7

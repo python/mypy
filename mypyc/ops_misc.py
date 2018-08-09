@@ -3,8 +3,9 @@
 from typing import List
 
 from mypyc.ops import (
-    EmitterInterface, PrimitiveOp, none_rprimitive, bool_rprimitive, object_rprimitive, ERR_NEVER,
-    ERR_MAGIC, ERR_FALSE
+    EmitterInterface, PrimitiveOp,
+    none_rprimitive, bool_rprimitive, object_rprimitive, tuple_rprimitive, str_rprimitive,
+    ERR_NEVER, ERR_MAGIC, ERR_FALSE
 )
 from mypyc.ops_primitive import (
     name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op, custom_op,
@@ -258,3 +259,11 @@ type_op = func_op(
     result_type=object_rprimitive,
     error_kind=ERR_NEVER,
     emit=simple_emit('{dest} = PyObject_Type({args[0]});'))
+
+pytype_from_template_op = custom_op(
+    arg_types=[object_rprimitive, object_rprimitive, str_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    format_str='{dest} = pytype_from_template({comma_args})',
+    emit=simple_emit(
+        '{dest} = CPyType_FromTemplate((PyTypeObject *){args[0]}, {args[1]}, {args[2]});'))

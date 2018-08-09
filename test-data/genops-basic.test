@@ -1313,7 +1313,7 @@ L0:
     raise_exception(r2, r3); r4 = 0
     unreachable
 
-[case testModuleTopLevel]
+[case testModuleTopLevel_toplevel]
 x = 1
 print(x)
 
@@ -1459,11 +1459,11 @@ def g(a):
     r4 :: str
     r5, r6 :: None
 L0:
-    r0 = unicode_0 :: static  ('a')
+    r0 = unicode_2 :: static  ('a')
     r1 = 0
     r2 = a.f(r1, r0)
     r3 = 1
-    r4 = unicode_1 :: static  ('b')
+    r4 = unicode_3 :: static  ('b')
     r5 = a.f(r3, r4)
     r6 = None
     return r6
@@ -1713,7 +1713,7 @@ L1:
 L2:
     if is_error(z) goto L3 else goto L4
 L3:
-    r1 = unicode_0 :: static  ('test')
+    r1 = unicode_2 :: static  ('test')
     z = r1
 L4:
     r2 = None
@@ -2108,7 +2108,7 @@ def DerivedProperty.next(self):
 L0:
     r0 = self._incr_func
     r1 = self.value
-    r2 = unicode_0 :: static  ('_incr_func')
+    r2 = unicode_3 :: static  ('_incr_func')
     r3 = box(int, r1)
     r4 = py_method_call(self, r2, r3)
     r5 = unbox(int, r4)
@@ -2145,11 +2145,11 @@ def AgainProperty.next(self):
 L0:
     r0 = self._incr_func
     r1 = self.value
-    r2 = unicode_0 :: static  ('_incr_func')
+    r2 = unicode_3 :: static  ('_incr_func')
     r3 = box(int, r1)
     r4 = py_method_call(self, r2, r3)
     r5 = unbox(int, r4)
-    r6 = unicode_0 :: static  ('_incr_func')
+    r6 = unicode_3 :: static  ('_incr_func')
     r7 = box(int, r5)
     r8 = py_method_call(self, r6, r7)
     r9 = unbox(int, r8)
@@ -2271,7 +2271,7 @@ L0:
     r3 = r0 + r2 :: int
     return r3
 
-[case testTypeAlias]
+[case testTypeAlias_toplevel]
 from typing import List, NewType, NamedTuple
 Lol = NamedTuple('Lol', (('a', int), ('b', str)))
 x = Lol(1, '')

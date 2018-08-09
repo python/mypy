@@ -218,26 +218,15 @@ class ModuleGenerator:
             emitter,
         )
 
+        # HACK: Manually instantiate generated classes here
         for cl in module.classes:
-            type_struct = emitter.type_struct_name(cl)
-            # FIXME: This ought to be driven by emitclass, maybe?
-            real_base = cl.real_base()
-            if real_base or cl.traits:
-                bases = ([real_base] if real_base else []) + cl.traits
-                emitter.emit_lines('{}_template.tp_bases = PyTuple_Pack({}, {});'.format(
-                    type_struct,
-                    len(bases),
-                    ', '.join('{}'.format(emitter.type_struct_name(b)) for b in bases)))
-
-            emitter.emit_lines('{t} = CPyType_FromTemplate(&{t}_template, modname);'.format(
-                t=type_struct))
-            emitter.emit_lines('if (!{})'.format(type_struct),
-                               '    return NULL;')
-
-            type_struct = emitter.type_struct_name(cl)
-            if cl.trait_vtables and not cl.is_trait:
-                emitter.emit_lines('CPy_FixupTraitVtable({}_vtable, {});'.format(
-                    cl.name_prefix(emitter.names), len(cl.trait_vtables)))
+            if cl.is_generated:
+                type_struct = emitter.type_struct_name(cl)
+                emitter.emit_lines(
+                    '{t} = (PyTypeObject *)CPyType_FromTemplate({t}_template, NULL, modname);'.
+                    format(t=type_struct))
+                emitter.emit_lines('if (!{})'.format(type_struct),
+                                   '    return NULL;')
 
         for (_, literal), identifier in module.literals.items():
             symbol = emitter.static_name(identifier, None)
@@ -267,14 +256,6 @@ class ModuleGenerator:
             else:
                 assert False, ('Literals must be integers, floating point numbers, or strings,',
                                'but the provided literal is of type {}'.format(type(literal)))
-
-        for cl in module.classes:
-            name = cl.name
-            type_struct = emitter.type_struct_name(cl)
-            emitter.emit_lines(
-                'Py_INCREF({});'.format(type_struct),
-                'PyModule_AddObject({}, "{}", (PyObject *){});'.format(module_static, name,
-                                                                       type_struct))
 
         self.generate_top_level_call(module, emitter)
 

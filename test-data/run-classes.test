@@ -510,6 +510,70 @@ yo!
 3
 yo!
 
+-- broken - we need to handle the layout conflicts for it to work
+[case testSubclassException-skip]
+class Failure(Exception):
+    pass
+
+def foo() -> None:
+    raise Failure
+
+[file driver.py]
+import native
+native.Failure()
+native.foo()
+
+[case testSubclassPy]
+from b import B, V
+class A(B):
+    def __init__(self, x: int, y: int) -> None:
+        super().__init__(y)
+        self.x = x
+
+    def foo(self, x: int) -> int:
+        print("hi", x)
+        return x+1
+
+class C(V[int]):
+    def f(self) -> int: return 10
+
+assert isinstance(C(), V)
+
+def f(x: A) -> None:
+    print(x.x)
+    print(x.y)
+    print(x.foo(20))
+
+[file b.py]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class B:
+    def __init__(self, y: int) -> None:
+        self.y = y
+    def foo(self, x: int) -> int:
+        print("parent!")
+        return x + self.y
+    def bar(self) -> None:
+        print("hello!", self.y)
+
+class V(Generic[T]):
+    def f(self) -> T:
+        raise Exception('unimplemented')
+[file driver.py]
+import native
+a = native.A(10, 20)
+a.foo(10)
+a.bar()
+native.f(a)
+[out]
+hi 10
+hello! 20
+10
+20
+hi 20
+21
+
 [case testClassVariable]
 from typing import ClassVar
 class A:
