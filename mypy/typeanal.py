@@ -867,7 +867,12 @@ def expand_type_alias(target: Type, alias_tvars: List[str], args: List[Type],
              % (exp_len, act_len), ctx)
         return set_any_tvars(target, alias_tvars or [],
                              ctx.line, ctx.column, implicit=False)
-    return replace_alias_tvars(target, alias_tvars, args, ctx.line, ctx.column)
+    typ = replace_alias_tvars(target, alias_tvars, args, ctx.line, ctx.column)
+    # HACK: Implement FlexibleAlias[T, typ] by expanding it to typ here.
+    if (isinstance(typ, Instance)
+            and typ.type.fullname() == 'mypy_extensions.FlexibleAlias'):
+        typ = typ.args[-1]
+    return typ
 
 
 def replace_alias_tvars(tp: Type, vars: List[str], subs: List[Type],
