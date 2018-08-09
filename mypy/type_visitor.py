@@ -7,7 +7,7 @@ mypyc-extension classes can extend interpreted classes but not the
 other way around. Separating them out, then, allows us to compile
 types before we can compile everything that uses a TypeVisitor.
 
-The visitors are all re-exported from mypyc.types and that is how
+The visitors are all re-exported from mypy.types and that is how
 other modules refer to them.
 """
 
