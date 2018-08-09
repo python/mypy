@@ -1994,7 +1994,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                 arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
         else:
             args = [self.accept(arg) for arg in expr.args]
-            assert callee.expr in self.types
             obj = self.accept(callee.expr)
             return self.gen_method_call(obj,
                                         callee.name,
