@@ -402,6 +402,12 @@ def generate_new_for_class(cl: ClassIR,
         '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
     emitter.emit_line('{')
     # TODO: Check and unbox arguments
+    emitter.emit_line('if (type != {}) {{'.format(emitter.type_struct_name(cl)))
+    emitter.emit_line(
+        'PyErr_SetString(PyExc_TypeError, "interpreted classes cannot inherit from compiled");')
+    emitter.emit_line('return NULL;')
+    emitter.emit_line('}')
+
     emitter.emit_line('return {}();'.format(setup_name))
     emitter.emit_line('}')
 

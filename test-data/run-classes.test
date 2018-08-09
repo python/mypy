@@ -574,6 +574,29 @@ hello! 20
 hi 20
 21
 
+[case testDisallowSubclassFromPy]
+# We'll want to allow this at some point but right now we need to
+# disallow it because it doesn't work.
+class A:
+    pass
+[file b.py]
+from native import A
+
+# It would be better if we disallowed it at class decl time but it is
+# really easy to do in __new__
+
+class B(A):
+    pass
+
+[file driver.py]
+from b import B
+try:
+    B()
+except TypeError:
+    pass
+else:
+    assert False, "instantiating was supposed to fail"
+
 [case testClassVariable]
 from typing import ClassVar
 class A:
