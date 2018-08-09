@@ -2,12 +2,13 @@
 
 import textwrap
 
-from typing import Optional, List, Tuple, Dict
+from typing import Optional, List, Tuple, Dict, Callable, Mapping
 from collections import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
+from mypyc.emitwrapper import generate_dunder_wrapper
 from mypyc.ops import (
     ClassIR, FuncIR, FuncDecl, RType, RTuple, Environment, object_rprimitive, FuncSignature,
     VTableMethod, VTableAttr, VTableEntries,
@@ -15,6 +16,38 @@ from mypyc.ops import (
 )
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
+
+
+def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    return '{}{}'.format(NATIVE_PREFIX, fn.cname(emitter.names))
+
+
+def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    return '{}{}'.format(PREFIX, fn.cname(emitter.names))
+
+
+# We maintain a table from dunder function names to struct slots they
+# correspond to and functions that generate a wrapper (if necessary)
+# and return the function name to stick in the slot.
+SlotGenerator = Callable[[ClassIR, FuncIR, Emitter], str]
+SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
+
+SLOT_DEFS = {
+    '__init__': ('tp_init', lambda c, t, e: generate_init_for_class(c, t, e)),
+    '__call__': ('tp_call', wrapper_slot),
+    '__next__': ('tp_iternext', native_slot),
+    '__iter__': ('tp_iter', native_slot),
+}
+
+
+def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
+    fields = OrderedDict()  # type: Dict[str, str]
+    for method in cl.methods.values():
+        if method.name in table:
+            slot, generator = table[method.name]
+            fields[slot] = generator(cl, method, emitter)
+
+    return fields
 
 
 def generate_class_type_decl(cl: ClassIR, emitter: Emitter) -> None:
@@ -61,29 +94,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # values, we need to call it during initialization.
     defaults_fn = cl.get_method('__mypyc_defaults_setup')
 
-    # If there is a __init__ method, generate a function for tp_init and
-    # extract the args (which we'll use for the native constructor)
+    # If there is a __init__ method, we'll use it in the native constructor.
     init_fn = cl.get_method('__init__')
-    if init_fn:
-        init_name = '{}_init'.format(name_prefix)
-        generate_init_for_class(cl, init_name, init_fn, emitter)
-        fields['tp_init'] = init_name
 
-    call_fn = cl.get_method('__call__')
-    if call_fn:
-        fields['tp_call'] = '{}{}'.format(PREFIX, call_fn.cname(emitter.names))
-    next_fn = cl.get_method('__next__')
-    if next_fn:
-        fields['tp_iternext'] = '{}{}'.format(NATIVE_PREFIX, next_fn.cname(emitter.names))
-    iter_fn = cl.get_method('__iter__')
-    if iter_fn:
-        fields['tp_iter'] = '{}{}'.format(NATIVE_PREFIX, iter_fn.cname(emitter.names))
-
+    # Fill out slots in the type object from dunder methods.
     # TODO: Add remaining dunder methods
-    index_fn = cl.get_method('__getitem__')
-    if index_fn:
-        as_mapping_name = '{}_as_mapping'.format(name_prefix)
-        generate_as_mapping_for_class(index_fn, as_mapping_name, emitter)
+    fields.update(generate_slots(cl, SLOT_DEFS, emitter))
+
+    as_mapping_name = generate_as_mapping_for_class(cl, emitter)
+    if as_mapping_name:
         fields['tp_as_mapping'] = '&{}'.format(as_mapping_name)
 
     # If the class inherits from python, make space for a __dict__
@@ -101,7 +120,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     if not cl.is_trait:
         emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
-        # TODO: Use RInstance
         assert cl.ctor is not None
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ';')
 
@@ -329,15 +347,16 @@ def generate_constructor_for_class(cl: ClassIR,
 
 
 def generate_init_for_class(cl: ClassIR,
-                            func_name: str,
                             init_fn: FuncIR,
-                            emitter: Emitter) -> None:
+                            emitter: Emitter) -> str:
     """Generate an init function suitable for use as tp_init.
 
     tp_init needs to be a function that returns an int, and our
     __init__ methods return a PyObject. Translate NULL to -1,
     everything else to 0.
     """
+    func_name = '{}_init'.format(cl.name_prefix(emitter.names))
+
     emitter.emit_line('static int')
     emitter.emit_line(
         '{}(PyObject *self, PyObject *args, PyObject *kwds)'.format(func_name))
@@ -345,6 +364,8 @@ def generate_init_for_class(cl: ClassIR,
     emitter.emit_line('return {}{}(self, args, kwds) != NULL ? 0 : -1;'.format(
         PREFIX, init_fn.cname(emitter.names)))
     emitter.emit_line('}')
+
+    return func_name
 
 
 def generate_new_for_class(cl: ClassIR,
@@ -427,15 +448,21 @@ def generate_methods_table(cl: ClassIR,
     emitter.emit_line('};')
 
 
-def generate_as_mapping_for_class(index_method: FuncIR,
-                                  name: str,
-                                  emitter: Emitter) -> str:
+AS_MAPPING_SLOT_DEFS = {
+    '__getitem__': ('mp_subscript', generate_dunder_wrapper),
+}
+
+
+def generate_as_mapping_for_class(cl: ClassIR,
+                                  emitter: Emitter) -> Optional[str]:
+    slots = generate_slots(cl, AS_MAPPING_SLOT_DEFS, emitter)
+    if not slots:
+        return None
+    name = '{}_as_mapping'.format(cl.name_prefix(emitter.names))
     emitter.emit_line('static PyMappingMethods {} = {{'.format(name))
-    emitter.emit_line('0,        /* mp_length */')
-    emitter.emit_line('{}{},     /* mp_subscript */'.format(DUNDER_PREFIX,
-                                                            index_method.cname(emitter.names)))
-    emitter.emit_line('0,        /* mp_ass_subscript */')
-    emitter.emit_line('};')
+    for field, value in slots.items():
+        emitter.emit_line(".{} = {},".format(field, value))
+    emitter.emit_line("};")
     return name
 
 

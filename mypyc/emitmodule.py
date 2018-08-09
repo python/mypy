@@ -13,8 +13,7 @@ from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (
-    generate_wrapper_function, wrapper_function_header, generate_dunder_wrapper,
-    dunder_wrapper_header
+    generate_wrapper_function, wrapper_function_header,
 )
 from mypyc.ops import FuncIR, ClassIR, ModuleIR
 from mypyc.refcount import insert_ref_count_opcodes
@@ -59,15 +58,10 @@ def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], op
     return generator.generate_c_for_modules()
 
 
-dunder_methods_to_generate = ['__getitem__']
-
-
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     emitter.emit_line('{};'.format(native_function_header(fn.decl, emitter)))
     if fn.name != TOP_LEVEL_NAME:
         emitter.emit_line('{};'.format(wrapper_function_header(fn, emitter.names)))
-        if fn.name in dunder_methods_to_generate:
-            emitter.emit_line('{};'.format(dunder_wrapper_header(fn, emitter)))
 
 
 def encode_as_c_string(s: str) -> Tuple[str, int]:
@@ -137,9 +131,6 @@ class ModuleGenerator:
                 if fn.name != TOP_LEVEL_NAME:
                     emitter.emit_line()
                     generate_wrapper_function(fn, emitter)
-                    if fn.name in dunder_methods_to_generate:
-                        emitter.emit_line()
-                        generate_dunder_wrapper(fn, emitter)
 
         declarations = Emitter(self.context)
         declarations.emit_line('#include <Python.h>')

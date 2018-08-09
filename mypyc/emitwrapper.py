@@ -1,8 +1,8 @@
 """Generate CPython API wrapper function for a native function."""
 
-from mypyc.common import PREFIX, NATIVE_PREFIX
+from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
-from mypyc.ops import FuncIR, RType, RuntimeArg, is_object_rprimitive, FUNC_STATICMETHOD
+from mypyc.ops import ClassIR, FuncIR, RType, RuntimeArg, is_object_rprimitive, FUNC_STATICMETHOD
 from mypyc.namegen import NameGenerator
 from typing import List
 
@@ -49,26 +49,21 @@ def generate_wrapper_function(fn: FuncIR, emitter: Emitter) -> None:
     emitter.emit_line('}')
 
 
-def dunder_wrapper_header(fn: FuncIR, emitter: Emitter) -> str:
-    input_args = ', '.join('PyObject *' for _ in fn.args)
-    return 'static PyObject *CPyDunder_{name}({input_args})'.format(
-        name=fn.cname(emitter.names),
-        input_args=input_args,
-    )
-
-
-def generate_dunder_wrapper(fn: FuncIR, emitter: Emitter) -> None:
+def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __dunder__ methods to be able to fit into the mapping
     protocol slot. This specifically means that the arguments are taken as *PyObjects and returned
     as *PyObjects.
     """
     input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
-    emitter.emit_line('static PyObject *CPyDunder_{name}({input_args}) {{'.format(
-        name=fn.cname(emitter.names),
+    name = '{}_{}'.format(DUNDER_PREFIX, fn.cname(emitter.names))
+    emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
+        name=name,
         input_args=input_args,
     ))
     generate_wrapper_core(fn, emitter)
     emitter.emit_line('}')
+
+    return name
 
 
 def generate_wrapper_core(fn: FuncIR, emitter: Emitter,
