@@ -1547,7 +1547,7 @@ class ForwardRef(Type):
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
 if not MYPY:
-    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator
+    from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator  # noqa
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
