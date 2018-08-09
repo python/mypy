@@ -15,6 +15,8 @@ import mypy.strconv
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 
+from mypy.bogus_type import Bogus
+
 
 class Context:
     """Base type for objects that are valid as error message locations."""
@@ -174,10 +176,10 @@ class SymbolNode(Node):
     # TODO do not use methods for these
 
     @abstractmethod
-    def name(self) -> str: pass
+    def name(self) -> Bogus[str]: pass
 
     @abstractmethod
-    def fullname(self) -> str: pass
+    def fullname(self) -> Bogus[str]: pass
 
     @abstractmethod
     def serialize(self) -> JsonDict: pass
@@ -195,9 +197,9 @@ class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
     # Module name ('__main__' for initial file)
-    _name = None      # type: str
+    _name = None      # type: Bogus[str]
     # Fully qualified module name
-    _fullname = None  # type: str
+    _fullname = None  # type: Bogus[str]
     # Path to the file (None if not known)
     path = ''
     # Top-level definitions and statements
@@ -236,10 +238,10 @@ class MypyFile(SymbolNode):
         else:
             self.ignored_lines = set()
 
-    def name(self) -> str:
+    def name(self) -> Bogus[str]:
         return self._name
 
-    def fullname(self) -> str:
+    def fullname(self) -> Bogus[str]:
         return self._fullname
 
     def accept(self, visitor: NodeVisitor[T]) -> T:
@@ -404,12 +406,12 @@ class FuncBase(Node):
         self.is_static = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
-        self._fullname = cast(str, None)
+        self._fullname = cast(Bogus[str], None)
 
     @abstractmethod
     def name(self) -> str: pass
 
-    def fullname(self) -> str:
+    def fullname(self) -> Bogus[str]:
         return self._fullname
 
 
@@ -660,7 +662,7 @@ class Decorator(SymbolNode, Statement):
     def name(self) -> str:
         return self.func.name()
 
-    def fullname(self) -> str:
+    def fullname(self) -> Bogus[str]:
         return self.func.fullname()
 
     @property
@@ -725,7 +727,7 @@ class Var(SymbolNode):
         super().__init__()
         self._name = name   # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast(str, None)  # Name with module prefix
+        self._fullname = cast(Bogus[str], None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = cast(TypeInfo, None)  # Defining class (for member variables)
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
@@ -748,7 +750,7 @@ class Var(SymbolNode):
     def name(self) -> str:
         return self._name
 
-    def fullname(self) -> str:
+    def fullname(self) -> Bogus[str]:
         return self._fullname
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
@@ -780,7 +782,7 @@ class ClassDef(Statement):
     """Class definition"""
 
     name = None  # type: str       # Name of the class without module prefix
-    fullname = None  # type: str   # Fully qualified name of the class
+    fullname = None  # type: Bogus[str]   # Fully qualified name of the class
     defs = None  # type: Block
     type_vars = None  # type: List[mypy.types.TypeVarDef]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
@@ -2054,7 +2056,7 @@ class TypeInfo(SymbolNode):
     the appropriate number of arguments.
     """
 
-    _fullname = None  # type: str          # Fully qualified name
+    _fullname = None  # type: Bogus[str]          # Fully qualified name
     # Fully qualified name for the module this type was defined in. This
     # information is also in the fullname, but is harder to extract in the
     # case of nested class definitions.
@@ -2195,7 +2197,7 @@ class TypeInfo(SymbolNode):
         """Short name."""
         return self.defn.name
 
-    def fullname(self) -> str:
+    def fullname(self) -> Bogus[str]:
         return self._fullname
 
     def is_generic(self) -> bool:
