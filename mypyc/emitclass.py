@@ -2,7 +2,8 @@
 
 import textwrap
 
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict
+from collections import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
@@ -28,19 +29,26 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     name = cl.name
     name_prefix = cl.name_prefix(emitter.names)
 
-    setup_name = new_name = clear_name = dealloc_name = '0'
-    traverse_name = vtable_name = '0'
-    if not cl.is_trait:
-        setup_name = '{}_setup'.format(name_prefix)
-        new_name = '{}_new'.format(name_prefix)
-        traverse_name = '{}_traverse'.format(name_prefix)
-        clear_name = '{}_clear'.format(name_prefix)
-        dealloc_name = '{}_dealloc'.format(name_prefix)
-        vtable_name = '{}_vtable'.format(name_prefix)
-
+    setup_name = '{}_setup'.format(name_prefix)
+    new_name = '{}_new'.format(name_prefix)
     getseters_name = '{}_getseters'.format(name_prefix)
+    vtable_name = '{}_vtable'.format(name_prefix)
+    traverse_name = '{}_traverse'.format(name_prefix)
+    clear_name = '{}_clear'.format(name_prefix)
+    dealloc_name = '{}_dealloc'.format(name_prefix)
     methods_name = '{}_methods'.format(name_prefix)
     vtable_setup_name = '{}_trait_vtable_setup'.format(name_prefix)
+
+    fields = OrderedDict()  # type: Dict[str, str]
+    fields['tp_name'] = '"{}"'.format(name)
+
+    if not cl.is_trait:
+        fields['tp_new'] = new_name
+        fields['tp_dealloc'] = '(destructor){}_dealloc'.format(name_prefix)
+        fields['tp_traverse'] = '(traverseproc){}_traverse'.format(name_prefix)
+        fields['tp_clear'] = '(inquiry){}_clear'.format(name_prefix)
+    fields['tp_getset'] = getseters_name
+    fields['tp_methods'] = methods_name
 
     def emit_line() -> None:
         emitter.emit_line()
@@ -59,24 +67,24 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     if init_fn:
         init_name = '{}_init'.format(name_prefix)
         generate_init_for_class(cl, init_name, init_fn, emitter)
-    else:
-        init_name = '0'
+        fields['tp_init'] = init_name
 
     call_fn = cl.get_method('__call__')
-    call_name = '{}{}'.format(PREFIX, call_fn.cname(emitter.names)) if call_fn else '0'
+    if call_fn:
+        fields['tp_call'] = '{}{}'.format(PREFIX, call_fn.cname(emitter.names))
     next_fn = cl.get_method('__next__')
-    next_name = '{}{}'.format(NATIVE_PREFIX, next_fn.cname(emitter.names)) if next_fn else '0'
+    if next_fn:
+        fields['tp_iternext'] = '{}{}'.format(NATIVE_PREFIX, next_fn.cname(emitter.names))
     iter_fn = cl.get_method('__iter__')
-    iter_name = '{}{}'.format(NATIVE_PREFIX, iter_fn.cname(emitter.names)) if iter_fn else '0'
+    if iter_fn:
+        fields['tp_iter'] = '{}{}'.format(NATIVE_PREFIX, iter_fn.cname(emitter.names))
 
     # TODO: Add remaining dunder methods
     index_fn = cl.get_method('__getitem__')
     if index_fn:
-        as_mapping_value_name = '{}_as_mapping'.format(name_prefix)
-        as_mapping_name = '&{}_as_mapping'.format(name_prefix)
-        generate_as_mapping_for_class(index_fn, as_mapping_value_name, emitter)
-    else:
-        as_mapping_name = '0'
+        as_mapping_name = '{}_as_mapping'.format(name_prefix)
+        generate_as_mapping_for_class(index_fn, as_mapping_name, emitter)
+        fields['tp_as_mapping'] = '&{}'.format(as_mapping_name)
 
     # If the class inherits from python, make space for a __dict__
     struct_name = cl.struct_name(emitter.names)
@@ -85,12 +93,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     else:
         base_size = 'sizeof({})'.format(struct_name)
     if cl.inherits_python:
-        tp_basicsize = '{} + 2*sizeof(PyObject *)'.format(base_size)
-        tp_dictoffset = base_size
-        tp_weaklistoffset = '{} + sizeof(PyObject *)'.format(base_size)
+        fields['tp_basicsize'] = '{} + 2*sizeof(PyObject *)'.format(base_size)
+        fields['tp_dictoffset'] = base_size
+        fields['tp_weaklistoffset'] = '{} + sizeof(PyObject *)'.format(base_size)
     else:
-        tp_basicsize = base_size
-        tp_weaklistoffset = tp_dictoffset = '0'
+        fields['tp_basicsize'] = base_size
 
     if not cl.is_trait:
         emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
@@ -119,68 +126,16 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HAVE_GC', 'Py_TPFLAGS_HEAPTYPE',
              'Py_TPFLAGS_BASETYPE']
-    tp_flags = ' | '.join(flags)
+    fields['tp_flags'] = ' | '.join(flags)
 
-    emitter.emit_line(textwrap.dedent("""\
-        static PyTypeObject {type_struct}_template_ = {{
-            PyVarObject_HEAD_INIT(&PyType_Type, 0)
-            "{name}",                  /* tp_name */
-            {tp_basicsize},            /* tp_basicsize */
-            0,                         /* tp_itemsize */
-            (destructor){dealloc_name},  /* tp_dealloc */
-            0,                         /* tp_print */
-            0,                         /* tp_getattr */
-            0,                         /* tp_setattr */
-            0,                         /* tp_reserved */
-            0,                         /* tp_repr */
-            0,                         /* tp_as_number */
-            0,                         /* tp_as_sequence */
-            {as_mapping_name},         /* tp_as_mapping */
-            0,                         /* tp_hash  */
-            {tp_call},                 /* tp_call */
-            0,                         /* tp_str */
-            0,                         /* tp_getattro */
-            0,                         /* tp_setattro */
-            0,                         /* tp_as_buffer */
-            {tp_flags},                /* tp_flags */
-            0,                         /* tp_doc */
-            (traverseproc){traverse_name}, /* tp_traverse */
-            (inquiry){clear_name},     /* tp_clear */
-            0,                         /* tp_richcompare */
-            {tp_weaklistoffset},       /* tp_weaklistoffset */
-            {iter_name},               /* tp_iter */
-            {next_name},               /* tp_iternext */
-            {methods_name},            /* tp_methods */
-            0,                         /* tp_members */
-            {getseters_name},          /* tp_getset */
-            0,                         /* tp_base */
-            0,                         /* tp_dict */
-            0,                         /* tp_descr_get */
-            0,                         /* tp_descr_set */
-            {tp_dictoffset},           /* tp_dictoffset */
-            {init_name},               /* tp_init */
-            0,                         /* tp_alloc */
-            {new_name},                /* tp_new */
-        }};
-        static PyTypeObject *{type_struct}_template = &{type_struct}_template_;\
-        """).format(type_struct=emitter.type_struct_name(cl),
-                    name=name,
-                    traverse_name=traverse_name,
-                    clear_name=clear_name,
-                    dealloc_name=dealloc_name,
-                    tp_call=call_name,
-                    new_name=new_name,
-                    iter_name=iter_name,
-                    next_name=next_name,
-                    methods_name=methods_name,
-                    getseters_name=getseters_name,
-                    as_mapping_name=as_mapping_name,
-                    init_name=init_name,
-                    tp_flags=tp_flags,
-                    tp_basicsize=tp_basicsize,
-                    tp_dictoffset=tp_dictoffset,
-                    tp_weaklistoffset=tp_weaklistoffset,
-                    ))
+    emitter.emit_line("static PyTypeObject {}_template_ = {{".format(emitter.type_struct_name(cl)))
+    emitter.emit_line("PyVarObject_HEAD_INIT(&PyType_Type, 0)")
+    for field, value in fields.items():
+        emitter.emit_line(".{} = {},".format(field, value))
+    emitter.emit_line("};")
+    emitter.emit_line("static PyTypeObject *{t}_template = &{t}_template_;".format(
+        t=emitter.type_struct_name(cl)))
+
     emitter.emit_line()
     generate_trait_vtable_setup(cl, vtable_setup_name, vtable_name, emitter)
     if not cl.is_trait:
