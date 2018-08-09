@@ -157,5 +157,3 @@ class _FlexibleAliasCls:
 
 
 FlexibleAlias = _FlexibleAliasCls()
-
-Id = _FlexibleAliasCls()
