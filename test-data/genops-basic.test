@@ -2432,3 +2432,27 @@ L2:
     r2 = r5
 L3:
     return r2
+
+[case testEq]
+class A:
+    def __eq__(self, x: object) -> bool:
+        return NotImplemented
+[out]
+def A.__eq__(self, x):
+    self :: A
+    x, r0 :: object
+    r1 :: str
+    r2 :: object
+L0:
+    r0 = builtins.module :: static
+    r1 = unicode_2 :: static  ('NotImplemented')
+    r2 = getattr r0, r1
+    return r2
+def A.__ne__(self, rhs):
+    self :: A
+    rhs, r0 :: object
+    r1 :: bool
+L0:
+    r0 = self.__eq__(rhs)
+    r1 = not r0
+    return r1

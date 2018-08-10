@@ -160,3 +160,5 @@ def hash(o: object) -> int: ...
 # Dummy definitions.
 class classmethod: pass
 class staticmethod: pass
+
+NotImplemented = ...  # type: Any

@@ -292,6 +292,11 @@ class Mapper:
                 arg.kind)
                 for i, arg in enumerate(fdef.arguments)]
         ret = self.type_to_rtype(fdef.type.ret_type)
+        # We force certain dunder methods to return objects to support letting them
+        # return NotImplemented. It also avoids some pointless boxing and unboxing,
+        # since tp_richcompare needs an object anyways.
+        if fdef.name() in ('__eq__', '__ne__', '__lt__', '__gt__', '__le__', '__ge__'):
+            ret = object_rprimitive
         return FuncSignature(args, ret)
 
     def literal_static_name(self, value: Union[int, float, str, bytes]) -> str:
