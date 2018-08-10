@@ -816,6 +816,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                     assert False, "Unsupported statement in class body"
 
         self.generate_attr_defaults(cdef)
+        self.create_ne_from_eq(cdef)
 
     def allocate_class(self, cdef: ClassDef) -> None:
         # OK AND NOW THE FUN PART
@@ -942,6 +943,36 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             FuncDecl(target.name + '__' + base.name + '_glue',
                      cls.name, self.module_name, FuncSignature([rt_arg], return_type)),
             blocks, env)
+
+    def gen_glue_ne_method(self, cls: ClassIR, line: int) -> FuncIR:
+        """Generate a __ne__ method from a __eq__ method. """
+        self.enter(FuncInfo())
+
+        rt_args = (RuntimeArg("self", RInstance(cls)), RuntimeArg("rhs", object_rprimitive))
+
+        # The environment operates on Vars, so we make some up
+        fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
+        args = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
+                for var, type in fake_vars]  # type: List[Value]
+        self.ret_types[-1] = bool_rprimitive
+
+        retval = self.add(MethodCall(args[0], '__eq__', [args[1]], line))
+        retval = self.unary_op(retval, 'not', line)
+        self.add(Return(retval))
+
+        blocks, env, ret_type, _ = self.leave()
+        return FuncIR(
+            FuncDecl('__ne__', cls.name, self.module_name,
+                     FuncSignature(rt_args, ret_type)),
+            blocks, env)
+
+    def create_ne_from_eq(self, cdef: ClassDef) -> None:
+        cls = self.mapper.type_to_ir[cdef.info]
+        if cls.has_method('__eq__') and not cls.has_method('__ne__'):
+            f = self.gen_glue_ne_method(cls, cdef.line)
+            cls.method_decls['__ne__'] = f.decl
+            cls.methods['__ne__'] = f
+            self.functions.append(f)
 
     def gen_arg_default(self) -> None:
         """Generate blocks for arguments that have default values.

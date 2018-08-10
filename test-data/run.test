@@ -2366,6 +2366,13 @@ class Item:
     def __hash__(self) -> int:
         return hash(self.value)
 
+    def __eq__(self, rhs: object) -> bool:
+        return isinstance(rhs, Item) and self.value == rhs.value
+
+    def __lt__(self, x: 'Item') -> bool:
+        return self.value < x.value
+
+
 class NonBoxedThing:
     def __getitem__(self, index: Item) -> Item:
         return Item("2 * " + index.value + " + 1")
@@ -2394,7 +2401,17 @@ z = NonBoxedThing()
 w = Item("3")
 print(z[w].value, index_into(z, w).value)
 
-assert hash(Item('lolol')) == hash(Item('lol' + 'ol'))
+i1 = Item('lolol')
+i2 = Item('lol' + 'ol')
+i3 = Item('xyzzy')
+assert hash(i1) == hash(i2)
+
+assert i1 == i2
+assert not i1 != i2
+assert not i1 == i3
+assert i1 != i3
+assert i2 < i3
+assert not i1 < i2
 
 internal_index_into()
 [out]

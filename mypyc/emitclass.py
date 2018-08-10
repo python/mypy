@@ -8,7 +8,9 @@ from collections import OrderedDict
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
-from mypyc.emitwrapper import generate_dunder_wrapper, generate_hash_wrapper
+from mypyc.emitwrapper import (
+    generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
+)
 from mypyc.ops import (
     ClassIR, FuncIR, FuncDecl, RType, RTuple, Environment, object_rprimitive, FuncSignature,
     VTableMethod, VTableAttr, VTableEntries,
@@ -43,9 +45,9 @@ SLOT_DEFS = {
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
     fields = OrderedDict()  # type: Dict[str, str]
-    for method in cl.methods.values():
-        if method.name in table:
-            slot, generator = table[method.name]
+    for name, (slot, generator) in table.items():
+        method = cl.get_method(name)
+        if method:
             fields[slot] = generator(cl, method, emitter)
 
     return fields
@@ -105,6 +107,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     as_mapping_name = generate_as_mapping_for_class(cl, emitter)
     if as_mapping_name:
         fields['tp_as_mapping'] = '&{}'.format(as_mapping_name)
+
+    richcompare_name = generate_richcompare_wrapper(cl, emitter)
+    if richcompare_name:
+        fields['tp_richcompare'] = richcompare_name
 
     # If the class inherits from python, make space for a __dict__
     struct_name = cl.struct_name(emitter.names)

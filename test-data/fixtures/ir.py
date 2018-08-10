@@ -44,6 +44,10 @@ class str:
     def __add__(self, x: str) -> str: pass
     def __eq__(self, x: object) -> bool: pass
     def __ne__(self, x: object) -> bool: pass
+    def __lt__(self, x: str) -> bool: ...
+    def __le__(self, x: str) -> bool: ...
+    def __gt__(self, x: str) -> bool: ...
+    def __ge__(self, x: str) -> bool: ...
     def join(self, x: Iterable[str]) -> str: pass
 
 class float:
@@ -129,6 +133,8 @@ class BaseException: pass
 
 class Exception(BaseException):
     def __init__(self, message: Optional[str] = None) -> None: pass
+
+class TypeError(Exception): pass
 
 class AttributeError(Exception): pass
 
