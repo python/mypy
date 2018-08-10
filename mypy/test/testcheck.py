@@ -143,7 +143,7 @@ class TypeCheckSuite(DataSuite):
         else:
             options.incremental = False
             # Don't waste time writing cache unless we are specifically looking for it
-            if 'writescache' not in testcase.name.lower():
+            if not testcase.writescache:
                 options.cache_dir = os.devnull
 
         sources = []
