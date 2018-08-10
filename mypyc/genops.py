@@ -1943,6 +1943,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # TODO: Allow special cases to have default args or named args. Currently they don't since
         # they check that everything in arg_kinds is ARG_POS.
 
+        # TODO: Generalize special cases
+
         # Special case builtins.len
         if (callee.fullname == 'builtins.len'
                 and len(expr.args) == 1
@@ -1961,6 +1963,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 and self.is_native_module_ref_expr(expr.args[1])):
             # Special case native isinstance() checks as this makes them much faster.
             return self.primitive_op(fast_isinstance_op, arg_values, expr.line)
+
+        # Special case builtins.globals
+        if (callee.fullname == 'builtins.globals'
+                and len(expr.args) == 0):
+            return self.load_globals_dict()
 
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):

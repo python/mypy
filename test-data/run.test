@@ -453,10 +453,14 @@ print(f(5))
 [out]
 120
 
-[case testPrint]
-import builtins
+[case testBuiltins]
+y = 10
 def f(x: int) -> None:
-    builtins.print(5)
+    print(5)
+    d = globals()
+    assert d['y'] == 10
+    d['y'] = 20
+    assert y == 20
 [file driver.py]
 from native import f
 f(5)
