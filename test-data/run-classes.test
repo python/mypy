@@ -115,6 +115,7 @@ class C:
     a: List[int]
     b: bool
     c: C
+    d: object
 
 def setattrs(o: C, a: List[int], b: bool, c: C) -> None:
     o.a = a
@@ -133,6 +134,10 @@ a, b, c = getattrs(c1)
 assert a is aa
 assert b is True
 assert c is c2
+
+o = object()
+c1.d = o
+assert c1.d is o
 
 [case testConstructClassWithDefaultConstructor]
 class C:
