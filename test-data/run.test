@@ -2357,11 +2357,14 @@ Represents a sequence of values. Updates itself by next, which is a new value.
 3
 3
 
-[case testNativeIndex]
+[case testDunders]
 from typing import Any
 class Item:
     def __init__(self, value: str) -> None:
         self.value = value
+
+    def __hash__(self) -> int:
+        return hash(self.value)
 
 class NonBoxedThing:
     def __getitem__(self, index: Item) -> Item:
@@ -2390,6 +2393,8 @@ print(x[y], index_into(x, y))
 z = NonBoxedThing()
 w = Item("3")
 print(z[w].value, index_into(z, w).value)
+
+assert hash(Item('lolol')) == hash(Item('lol' + 'ol'))
 
 internal_index_into()
 [out]

@@ -8,7 +8,7 @@ from collections import OrderedDict
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
-from mypyc.emitwrapper import generate_dunder_wrapper
+from mypyc.emitwrapper import generate_dunder_wrapper, generate_hash_wrapper
 from mypyc.ops import (
     ClassIR, FuncIR, FuncDecl, RType, RTuple, Environment, object_rprimitive, FuncSignature,
     VTableMethod, VTableAttr, VTableEntries,
@@ -37,6 +37,7 @@ SLOT_DEFS = {
     '__call__': ('tp_call', wrapper_slot),
     '__next__': ('tp_iternext', native_slot),
     '__iter__': ('tp_iter', native_slot),
+    '__hash__': ('tp_hash', generate_hash_wrapper),
 }
 
 
