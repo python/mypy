@@ -14,6 +14,7 @@ if MYPY:
 import mypy.strconv
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
+from mypy.mypyc_hacks import SymbolTable
 
 
 class Context:
@@ -2736,49 +2737,6 @@ class SymbolTableNode:
         if 'implicit' in data:
             stnode.implicit = data['implicit']
         return stnode
-
-
-class SymbolTable(Dict[str, SymbolTableNode]):
-    def __str__(self) -> str:
-        a = []  # type: List[str]
-        for key, value in self.items():
-            # Filter out the implicit import of builtins.
-            if isinstance(value, SymbolTableNode):
-                if (value.fullname != 'builtins' and
-                        (value.fullname or '').split('.')[-1] not in
-                        implicit_module_attrs):
-                    a.append('  ' + str(key) + ' : ' + str(value))
-            else:
-                a.append('  <invalid item>')
-        a = sorted(a)
-        a.insert(0, 'SymbolTable(')
-        a[-1] += ')'
-        return '\n'.join(a)
-
-    def copy(self) -> 'SymbolTable':
-        return SymbolTable((key, node.copy())
-                           for key, node in self.items())
-
-    def serialize(self, fullname: str) -> JsonDict:
-        data = {'.class': 'SymbolTable'}  # type: JsonDict
-        for key, value in self.items():
-            # Skip __builtins__: it's a reference to the builtins
-            # module that gets added to every module by
-            # SemanticAnalyzerPass2.visit_file(), but it shouldn't be
-            # accessed by users of the module.
-            if key == '__builtins__' or value.no_serialize:
-                continue
-            data[key] = value.serialize(fullname, key)
-        return data
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'SymbolTable':
-        assert data['.class'] == 'SymbolTable'
-        st = SymbolTable()
-        for key, value in data.items():
-            if key != '.class':
-                st[key] = SymbolTableNode.deserialize(value)
-        return st
 
 
 def get_flags(node: Node, names: List[str]) -> List[str]:
