@@ -41,12 +41,9 @@ binary_op(op='in',
           emit=negative_int_emit('{dest} = PyDict_Contains({args[1]}, {args[0]});'))
 
 
-# NOTE: PyDict_Update is technically not equivalent to update, but the cases where it
-# differs (when the second argument has no keys) should never typecheck for us, so the
-# difference is irrelevant.
 dict_update_op = method_op(
     name='update',
-    arg_types=[dict_rprimitive, object_rprimitive],
+    arg_types=[dict_rprimitive, dict_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
     emit=simple_emit('{dest} = PyDict_Update({args[0]}, {args[1]}) != -1;'))
