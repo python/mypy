@@ -15,7 +15,7 @@ from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
-from mypyc.ops import FuncIR, ClassIR, ModuleIR
+from mypyc.ops import FuncIR, ClassIR, ModuleIR, format_func
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
@@ -31,7 +31,8 @@ class MarkedDeclaration:
 
 def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], options: Options,
                          use_shared_lib: bool,
-                         alt_lib_path: Optional[str] = None) -> str:
+                         alt_lib_path: Optional[str] = None,
+                         ops: Optional[List[str]] = None) -> str:
     """Compile Python module(s) to C that can be used from Python C extension modules."""
     assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,
@@ -51,6 +52,12 @@ def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], op
     for _, module in modules:
         for fn in module.functions:
             insert_ref_count_opcodes(fn)
+    # Format ops for debugging
+    if ops is not None:
+        for _, module in modules:
+            for fn in module.functions:
+                ops.extend(format_func(fn))
+                ops.append('')
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}

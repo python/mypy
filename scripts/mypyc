@@ -97,24 +97,34 @@ def main() -> None:
     # around with making the single module code handle packages.)
     use_shared_lib = len(module_names) > 1 or any('.' in x for x in module_names)
 
+    # XXX: This is not the right way to pass in command line args
+    save_dir = os.getenv("MYPYC_DIR", None)
+
+    ops = [] if save_dir else None
+
     try:
         ctext = emitmodule.compile_modules_to_c(
             sources=sources,
             module_names=module_names,
             options=options,
-            use_shared_lib=use_shared_lib)
+            use_shared_lib=use_shared_lib,
+            ops=ops)
     except CompileError as e:
         for line in e.messages:
             print(line)
         sys.exit(1)
 
-    # XXX: This is not the right way to pass in command line args
-    save_dir = os.getenv("MYPYC_DIR", None)
+    print("C generated!")
+
     if save_dir:
         try:
             os.mkdir(save_dir)
         except FileExistsError:
             pass
+        if ops:
+            with open(os.path.join(save_dir, 'ops.txt'), 'w') as f:
+                f.write('\n'.join(ops))
+
         dir = os.path.abspath(save_dir)
     else:
         dir = tempfile.mkdtemp(prefix='mypyc-')
