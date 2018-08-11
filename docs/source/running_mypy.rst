@@ -131,7 +131,7 @@ Missing imports
 When you import a module, mypy may report that it is unable to
 follow the import.
 
-This could happen if the code is importing a non-existant module
+This could happen if the code is importing a non-existent module
 or if the code is importing a library that does not use type hints.
 Specifically, the library is neither declared to be a 
 :ref:`PEP 561 compliant package <installed-packages>` nor has registered
