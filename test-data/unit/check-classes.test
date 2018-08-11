@@ -1802,10 +1802,14 @@ class Real:
 class Fraction(Real):
     def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
 
-reveal_type(Real() + Fraction())      # E: Revealed type is 'builtins.str'
+# Note: When doing A + B and if B is a subtype of A, we will always call B.__radd__(A) first
+# and only try A.__add__(B) second if necessary.
+reveal_type(Real() + Fraction())      # E: Revealed type is '__main__.Real*'
+
+# Note: When doing A + A, we only ever call A.__add__(A), never A.__radd__(A).
 reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
 
-[case testReverseOperatorTypeVar2]
+[case testReverseOperatorTypeVar2a]
 from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
@@ -1813,7 +1817,19 @@ class Real:
 class Fraction(Real):
     def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
 
-reveal_type(Real() + Fraction())      # E: Revealed type is 'builtins.str'
+reveal_type(Real() + Fraction())      # E: Revealed type is '__main__.Real*'
+reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
+
+
+[case testReverseOperatorTypeVar2b]
+from typing import TypeVar
+T = TypeVar("T", Real, Fraction)
+class Real:
+    def __add__(self, other: Fraction) -> str: ...
+class Fraction:
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+
+reveal_type(Real() + Fraction())      # E: Revealed type is '__main__.Real*'
 reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
 
 [case testReverseOperatorTypeVar3]

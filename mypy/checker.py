@@ -1022,6 +1022,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 opt_meta = item.type.metaclass_type
                 if opt_meta is not None:
                     forward_inst = opt_meta
+        #if (isinstance(forward_inst, (Instance, UnionType))
+        #        and not forward_inst.has_readable_member(forward_name)):
+        #    self.msg
+        if isinstance(forward_inst, Instance) and forward_inst.type.fullname() == defn.info.fullname() and not forward_inst.has_readable_member(forward_name):
+            self.msg.object_with_reverse_operator_missing_forward_operator(forward_name, forward_inst.type, reverse_name, defn)
+            return
         if not (isinstance(forward_inst, (Instance, UnionType))
                 and forward_inst.has_readable_member(forward_name)):
             return
@@ -1085,12 +1091,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         forward_base, forward_name, context)
             elif isinstance(forward_item, Overloaded):
                 for item in forward_item.items():
-                    if not self.is_unsafe_overlapping_op(item, forward_base, reverse_type):
-                        return
-                self.msg.operator_method_signatures_overlap(
-                    reverse_class, reverse_name,
-                    forward_base, forward_name,
-                    context)
+                    if self.is_unsafe_overlapping_op(item, forward_base, reverse_type):
+                        self.msg.operator_method_signatures_overlap(
+                            reverse_class, reverse_name,
+                            forward_base, forward_name,
+                            context)
             elif not isinstance(forward_item, AnyType):
                 self.msg.forward_operator_not_callable(forward_name, context)
 
@@ -1125,8 +1130,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             arg_names=[None] * 2,
         )
 
-        return is_unsafe_partially_overlapping_overload_signatures(
-                forward_tweaked, reverse_tweaked)
+        reverse_base_erased = reverse_type.arg_types[1]
+        if isinstance(reverse_base_erased, TypeVarType):
+            reverse_base_erased = erase_to_bound(reverse_base_erased)
+
+        if is_same_type(reverse_base_erased, forward_base_erased):
+            return False
+        elif is_proper_subtype(reverse_base_erased, forward_base_erased):
+            first = reverse_tweaked
+            second = forward_tweaked
+        else:
+            first = forward_tweaked
+            second = reverse_tweaked
+
+        return is_unsafe_partially_overlapping_overload_signatures(first, second)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.

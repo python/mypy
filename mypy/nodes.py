@@ -2240,6 +2240,15 @@ class TypeInfo(SymbolNode):
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
 
+    def get_definition_mro_name(self, name: str) -> Optional[str]:
+        if self.mro is None:
+            return None
+
+        for cls in self.mro:
+            if cls.names.get(name):
+                return cls.fullname()
+        return None
+
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
 

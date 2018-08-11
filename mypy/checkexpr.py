@@ -42,7 +42,9 @@ from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import is_subtype, is_equivalent, find_member, non_method_protocol_members
+from mypy.subtypes import (
+    is_subtype, is_proper_subtype, is_equivalent, find_member, non_method_protocol_members,
+)
 from mypy import applytype
 from mypy import erasetype
 from mypy.checkmember import analyze_member_access, type_object_type, bind_self
@@ -1904,6 +1906,112 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                context, arg_messages=local_errors,
                                callable_name=callable_name, object_type=object_type)
 
+    def check_op_reversible(self,
+                            op_name: str,
+                            left_type: Type,
+                            left_expr: Expression,
+                            right_type: Type,
+                            right_expr: Expression,
+                            context: Context) -> Tuple[Type, Type]:
+        def lookup_operator(op_name: str, base_type: Type) -> Optional[CallableType]:
+            if not self.has_member(base_type, op_name):
+                return None
+            local_errors = self.msg.clean_copy()
+            local_errors.disable_count = 0
+            method = analyze_member_access(
+                name=op_name,
+                typ=base_type,
+                node=context,
+                is_lvalue=False,
+                is_super=False,
+                is_operator=True,
+                builtin_type=self.named_type,
+                not_ready_callback=self.not_ready_callback,
+                msg=local_errors,
+                original_type=base_type,
+                chk=self.chk,
+            )
+            if local_errors.is_errors():
+                return None
+            elif isinstance(method, CallableType):
+                return method
+            else:
+                return None
+
+        if isinstance(left_type, AnyType):
+            # If either side is Any, we can't necessarily conclude anything.
+            any_type = AnyType(TypeOfAny.from_another_any, source_any=left_type)
+            return any_type, any_type
+        if isinstance(right_type, AnyType):
+            any_type = AnyType(TypeOfAny.from_another_any, source_any=right_type)
+            return any_type, any_type
+
+        rev_op_name = self.get_reverse_op_method(op_name)
+
+        # Stage 1: Get all variants
+        variants_raw = []  # type: List[Tuple[Optional[CallableType], Type, Expression]]
+
+        left_op = lookup_operator(op_name, left_type)
+        right_op = lookup_operator(rev_op_name, right_type)
+
+        bias_right = is_proper_subtype(right_type, left_type)
+
+        #if is_same_type(left_type, right_type):
+        #    variants_raw.append((left_op, left_type, right_expr))
+        #'''
+        if (is_proper_subtype(right_type, left_type)
+                and isinstance(left_type, Instance)
+                and isinstance(right_type, Instance)
+                and left_type.type.get_definition_mro_name(op_name) != right_type.type.get_definition_mro_name(rev_op_name)):
+            variants_raw.append((right_op, right_type, left_expr))
+            variants_raw.append((left_op, left_type, right_expr))
+        else:
+            variants_raw.append((left_op, left_type, right_expr))
+            variants_raw.append((right_op, right_type, left_expr))
+
+        is_python_2 = self.chk.options.python_version[0] == 2
+        if is_python_2 and op_name in nodes.ops_falling_back_to_cmp:
+            cmp_method = nodes.comparison_fallback_method
+            left_cmp_op = lookup_operator(cmp_method, left_type)
+            right_cmp_op = lookup_operator(cmp_method, right_type)
+
+            if bias_right:
+                variants_raw.append((right_cmp_op, right_type, left_expr))
+                variants_raw.append((left_cmp_op, left_type, right_expr))
+            else:
+                variants_raw.append((left_cmp_op, left_type, right_expr))
+                variants_raw.append((right_cmp_op, right_type, left_expr))
+
+        variants = [(op, obj, arg) for (op, obj, arg) in variants_raw if op is not None]
+
+        results = []
+        errors = []
+        for method, obj, arg in variants:
+            local_errors = self.msg.clean_copy()
+            local_errors.disable_count = 0
+
+            if isinstance(obj, Instance):
+                # TODO: Find out in which class the method was defined originally?
+                # TODO: Support non-Instance types.
+                callable_name = '{}.{}'.format(obj.type.fullname(), method)  # type: Optional[str]
+            else:
+                callable_name = None
+            result = self.check_call(method, [arg], [nodes.ARG_POS],
+                                   context, arg_messages=local_errors,
+                                   callable_name=callable_name, object_type=obj)
+            if local_errors.is_errors():
+                results.append(result)
+                errors.append(local_errors)
+            else:
+                return result
+
+        if len(errors) > 0:
+            self.msg.add_errors(errors[0])
+            return results[0]
+        else:
+            return self.check_op_local(op_name, left_type, right_expr, context,
+                                       self.msg)
+
     def check_op(self, method: str, base_type: Type, arg: Expression,
                  context: Context,
                  allow_reverse: bool = False) -> Tuple[Type, Type]:
@@ -1911,6 +2019,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         Return tuple (result type, inferred operator method type).
         """
+
+        if allow_reverse:
+            return self.check_op_reversible(method, base_type, TempNode(base_type), self.accept(arg), arg, context)
+
+
         # Use a local error storage for errors related to invalid argument
         # type (but NOT other errors). This error may need to be suppressed
         # for operators which support __rX methods.
