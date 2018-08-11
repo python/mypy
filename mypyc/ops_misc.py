@@ -149,7 +149,7 @@ unary_op(op='not',
          result_type=bool_rprimitive,
          error_kind=ERR_NEVER,
          format_str='{dest} = !{args[0]}',
-         emit=negative_int_emit('{dest} = !{args[0]};'),
+         emit=simple_emit('{dest} = !{args[0]};'),
          priority=1)
 
 method_op('__getitem__',
