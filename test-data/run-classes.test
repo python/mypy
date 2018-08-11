@@ -360,6 +360,7 @@ C
 C
 
 [case testIsInstance]
+from typing import Optional
 class X: pass
 class A(X): pass
 class B(A): pass
@@ -374,6 +375,10 @@ def islist(x: object) -> bool:
     return isinstance(x, list)
 def ist(x: object, t: object) -> bool:  # TODO: Second argument should be 'type'
     return isinstance(x, t)
+def pointless(x: Optional[X]) -> str:
+    if isinstance(x, A):
+        return str(x)
+    return ''
 [file driver.py]
 from native import X, A, B, isa, isint, isstr, islist, ist
 assert isa(1) == False

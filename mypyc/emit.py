@@ -315,9 +315,10 @@ class Emitter:
                     err,
                     '{} = NULL;'.format(dest),
                     '}')
+                return
 
         # TODO: Verify refcount handling.
-        elif (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ) or
+        if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ) or
                 is_float_rprimitive(typ) or is_str_rprimitive(typ) or is_int_rprimitive(typ) or
                 is_bool_rprimitive(typ)):
             if declare_dest:
