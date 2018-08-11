@@ -59,7 +59,7 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     as *PyObjects.
     """
     input_args = ', '.join('PyObject *obj_{}'.format(arg.name) for arg in fn.args)
-    name = '{}_{}'.format(DUNDER_PREFIX, fn.cname(emitter.names))
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
     emitter.emit_line('static PyObject *{name}({input_args}) {{'.format(
         name=name,
         input_args=input_args,
@@ -86,7 +86,7 @@ def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> Optional[str]
     if not matches:
         return None
 
-    name = '{}RichCompare_{}'.format(DUNDER_PREFIX, cl.name_prefix(emitter.names))
+    name = '{}_RichCompare_{}'.format(DUNDER_PREFIX, cl.name_prefix(emitter.names))
     emitter.emit_line(
         'static PyObject *{name}(PyObject *obj_lhs, PyObject *obj_rhs, int op) {{'.format(
             name=name)
@@ -110,7 +110,7 @@ def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> Optional[str]
 
 def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __hash__ methods."""
-    name = '{}_{}'.format(DUNDER_PREFIX, fn.cname(emitter.names))
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
     emitter.emit_line('static Py_ssize_t {name}(PyObject *self) {{'.format(
         name=name
     ))

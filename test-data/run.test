@@ -2376,6 +2376,8 @@ class Item:
     def __lt__(self, x: 'Item') -> bool:
         return self.value < x.value
 
+class Subclass1(Item):
+    pass
 
 class NonBoxedThing:
     def __getitem__(self, index: Item) -> Item:
@@ -2384,6 +2386,9 @@ class NonBoxedThing:
 class BoxedThing:
     def __getitem__(self, index: int) -> int:
         return 2 * index + 1
+
+class Subclass2(BoxedThing):
+    pass
 
 def index_into(x : Any, y : Any) -> Any:
     return x[y]
@@ -2396,8 +2401,12 @@ def internal_index_into() -> None:
     print(y[z].value)
 
 [file driver.py]
-from native import Item, BoxedThing, NonBoxedThing, index_into, internal_index_into
+from native import *
 x = BoxedThing()
+y = 3
+print(x[y], index_into(x, y))
+
+x = Subclass2()
 y = 3
 print(x[y], index_into(x, y))
 
@@ -2416,9 +2425,11 @@ assert not i1 == i3
 assert i1 != i3
 assert i2 < i3
 assert not i1 < i2
+assert i1 == Subclass1('lolol')
 
 internal_index_into()
 [out]
+7 7
 7 7
 2 * 3 + 1 2 * 3 + 1
 7
