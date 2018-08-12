@@ -2268,3 +2268,16 @@ def func(caller: Caller) -> None:
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[Union[int, str]], Union[int, str]]"; expected "Caller"
 [out]
+
+[case testCallableImplementsProtocolExtraNote]
+from typing import Protocol
+
+class Caller(Protocol):
+    def __call__(self, x: str, *args: int) -> None: ...
+
+def bad(x: int, *args: str) -> None:
+    pass
+
+cb: Caller = bad  # E: Incompatible types in assignment (expression has type "Callable[[int, VarArg(str)], None]", variable has type "Caller") \
+                  # N: "Caller.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
+[out]
