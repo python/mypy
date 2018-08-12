@@ -214,6 +214,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
                                   ignore_pos_arg_names=self.ignore_pos_arg_names)
                        for item in right.items())
         elif isinstance(right, Instance):
+            if right.type.is_protocol and right.type.protocol_members == ['__call__']:
+                # OK, a callable can implement a protocol with a single `__call__` member.
+                # TODO: we should probably explicitly exclude self-types in this case.
+                call = find_member('__call__', right, left)
+                assert call is not None
+                if is_subtype(left, call):
+                    return True
             return is_subtype(left.fallback, right,
                               ignore_pos_arg_names=self.ignore_pos_arg_names)
         elif isinstance(right, TypeType):
@@ -281,6 +288,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
         if isinstance(right, Instance):
+            if right.type.is_protocol and right.type.protocol_members == ['__call__']:
+                # same as for CallableType
+                call = find_member('__call__', right, left)
+                assert call is not None
+                if is_subtype(left, call):
+                    return True
             return is_subtype(left.fallback, right)
         elif isinstance(right, CallableType):
             for item in left.items():

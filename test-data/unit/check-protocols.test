@@ -2187,3 +2187,84 @@ else:
     reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
 [builtins fixtures/isinstance.pyi]
 [out]
+
+[case testCallableImplementsProtocol]
+from typing import Protocol
+
+class Caller(Protocol):
+    def __call__(self, x: str, *args: int) -> None: ...
+
+def call(x: str, *args: int) -> None:
+    pass
+def bad(x: int, *args: str) -> None:
+    pass
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int, VarArg(str)], None]"; expected "Caller"
+[out]
+
+[case testCallableImplementsProtocolGeneric]
+from typing import Protocol, TypeVar, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Caller(Protocol[T, S]):
+    def __call__(self, x: T, y: S) -> Tuple[T, S]: ...
+
+def call(x: int, y: str) -> Tuple[int, str]: ...
+
+def func(caller: Caller[T, S]) -> Tuple[T, S]:
+    pass
+
+reveal_type(func(call))  # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testCallableImplementsProtocolGenericTight]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+
+class Caller(Protocol):
+    def __call__(self, x: T) -> T: ...
+
+def call(x: T) -> T: ...
+def bad(x: int) -> int: ...
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int], int]"; expected "Caller"
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testCallableImplementsProtocolOverload]
+from typing import Protocol, overload, Union
+
+class Caller(Protocol):
+    @overload
+    def __call__(self, x: int) -> int: ...
+    @overload
+    def __call__(self, x: str) -> str: ...
+
+@overload
+def call(x: int) -> int: ...
+@overload
+def call(x: str) -> str: ...
+def call(x: Union[int, str]) -> Union[int, str]:
+    pass
+
+def bad(x: Union[int, str]) -> Union[int, str]:
+    pass
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[Union[int, str]], Union[int, str]]"; expected "Caller"
+[out]
