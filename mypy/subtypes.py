@@ -141,6 +141,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_instance(self, left: Instance) -> bool:
         if left.type.fallback_to_any:
+            if isinstance(self.right, NoneTyp):
+                return False
             return True
         right = self.right
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
