@@ -308,8 +308,7 @@ def analyze_descriptor_access(instance_type: Type, descriptor_type: Type,
                               builtin_type: Callable[[str], Instance],
                               msg: MessageBuilder,
                               context: Context, *,
-                              chk: 'mypy.checker.TypeChecker',
-                              ) -> Type:
+                              chk: 'mypy.checker.TypeChecker') -> Type:
     """Type check descriptor access.
 
     Arguments:
