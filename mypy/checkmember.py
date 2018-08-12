@@ -9,7 +9,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, Context, MypyFile, TypeVarExpr,
-    ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias
+    ARG_POS, ARG_STAR, ARG_STAR2, Decorator, OverloadedFuncDef, TypeAlias, TempNode
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -82,7 +82,7 @@ def analyze_member_access(name: str,
                 assert isinstance(method, OverloadedFuncDef)
                 first_item = cast(Decorator, method.items[0])
                 return analyze_var(name, first_item.var, typ, info, node, is_lvalue, msg,
-                                   original_type, not_ready_callback, chk=chk)
+                                   original_type, builtin_type, not_ready_callback, chk=chk)
             if is_lvalue:
                 msg.cant_assign_to_method(node)
             signature = function_type(method, builtin_type('builtins.function'))
@@ -155,7 +155,7 @@ def analyze_member_access(name: str,
                 # See https://github.com/python/mypy/pull/1787 for more info.
                 result = analyze_class_attribute_access(ret_type, name, node, is_lvalue,
                                                         builtin_type, not_ready_callback, msg,
-                                                        original_type=original_type)
+                                                        original_type=original_type, chk=chk)
                 if result:
                     return result
             # Look up from the 'type' type.
@@ -203,7 +203,7 @@ def analyze_member_access(name: str,
             # See comment above for why operators are skipped
             result = analyze_class_attribute_access(item, name, node, is_lvalue,
                                                     builtin_type, not_ready_callback, msg,
-                                                    original_type=original_type)
+                                                    original_type=original_type, chk=chk)
             if result:
                 if not (isinstance(result, AnyType) and item.type.fallback_to_any):
                     return result
@@ -262,7 +262,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
     if isinstance(v, Var):
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
-                           original_type, not_ready_callback, chk=chk)
+                           original_type, builtin_type, not_ready_callback, chk=chk)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
@@ -302,6 +302,73 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         return msg.has_no_attr(original_type, itype, name, node)
 
 
+def analyze_descriptor_access(instance_type: Type, descriptor_type: Type,
+                              builtin_type: Callable[[str], Instance],
+                              msg: MessageBuilder,
+                              context: Context, *,
+                              chk: 'mypy.checker.TypeChecker',
+                              ) -> Type:
+    """Type check descriptor access.
+
+    Arguments:
+        instance_type: The type of the instance on which the descriptor
+            attribute is being accessed (the type of ``a`` in ``a.f`` when
+            ``f`` is a descriptor).
+        descriptor_type: The type of the descriptor attribute being accessed
+            (the type of ``f`` in ``a.f`` when ``f`` is a descriptor).
+        context: The node defining the context of this inference.
+    Return:
+        The return type of the appropriate ``__get__`` overload for the descriptor.
+    """
+    if isinstance(descriptor_type, UnionType):
+        # Map the access over union types
+        return UnionType.make_simplified_union([
+            analyze_descriptor_access(instance_type, typ, builtin_type,
+                                      msg, context, chk=chk)
+            for typ in descriptor_type.items
+        ])
+    elif not isinstance(descriptor_type, Instance):
+        return descriptor_type
+
+    if not descriptor_type.type.has_readable_member('__get__'):
+        return descriptor_type
+
+    dunder_get = descriptor_type.type.get_method('__get__')
+
+    if dunder_get is None:
+        msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
+        return AnyType(TypeOfAny.from_error)
+
+    function = function_type(dunder_get, builtin_type('builtins.function'))
+    bound_method = bind_self(function, descriptor_type)
+    typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
+    dunder_get_type = expand_type_by_instance(bound_method, typ)
+
+    if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
+        owner_type = instance_type.items()[0].ret_type
+        instance_type = NoneTyp()
+    elif isinstance(instance_type, TypeType):
+        owner_type = instance_type.item
+        instance_type = NoneTyp()
+    else:
+        owner_type = instance_type
+
+    _, inferred_dunder_get_type = chk.expr_checker.check_call(
+        dunder_get_type,
+        [TempNode(instance_type), TempNode(TypeType.make_normalized(owner_type))],
+        [ARG_POS, ARG_POS], context)
+
+    if isinstance(inferred_dunder_get_type, AnyType):
+        # check_call failed, and will have reported an error
+        return inferred_dunder_get_type
+
+    if not isinstance(inferred_dunder_get_type, CallableType):
+        msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
+        return AnyType(TypeOfAny.from_error)
+
+    return inferred_dunder_get_type.ret_type
+
+
 def instance_alias_type(alias: TypeAlias,
                         builtin_type: Callable[[str], Instance]) -> Type:
     """Type of a type alias node targeting an instance, when appears in runtime context.
@@ -317,6 +384,7 @@ def instance_alias_type(alias: TypeAlias,
 
 def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Context,
                 is_lvalue: bool, msg: MessageBuilder, original_type: Type,
+                builtin_type: Callable[[str], Instance],
                 not_ready_callback: Callable[[str, Context], None], *,
                 chk: 'mypy.checker.TypeChecker') -> Type:
     """Analyze access to an attribute via a Var node.
@@ -374,6 +442,9 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         result = AnyType(TypeOfAny.special_form)
     fullname = '{}.{}'.format(var.info.fullname(), name)
     hook = chk.plugin.get_attribute_hook(fullname)
+    if result and not is_lvalue:
+        result = analyze_descriptor_access(original_type, result, builtin_type,
+                                           msg, node, chk=chk)
     if hook:
         result = hook(AttributeContext(original_type, result, node, chk))
     return result
@@ -445,7 +516,8 @@ def analyze_class_attribute_access(itype: Instance,
                                    builtin_type: Callable[[str], Instance],
                                    not_ready_callback: Callable[[str, Context], None],
                                    msg: MessageBuilder,
-                                   original_type: Type) -> Optional[Type]:
+                                   original_type: Type,
+                                   chk: 'mypy.checker.TypeChecker') -> Optional[Type]:
     """original_type is the type of E in the expression E.var"""
     node = itype.type.get(name)
     if not node:
@@ -474,7 +546,11 @@ def analyze_class_attribute_access(itype: Instance,
             msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
-        return add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
+        result = add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
+        if not (is_lvalue or is_method):
+            result = analyze_descriptor_access(original_type, result, builtin_type,
+                                               msg, context, chk=chk)
+        return result
     elif isinstance(node.node, Var):
         not_ready_callback(name, context)
         return AnyType(TypeOfAny.special_form)

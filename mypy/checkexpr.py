@@ -1657,71 +1657,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 e.name, original_type, e, is_lvalue, False, False,
                 self.named_type, self.not_ready_callback, self.msg,
                 original_type=original_type, chk=self.chk)
-            if is_lvalue:
-                return member_type
-            else:
-                return self.analyze_descriptor_access(original_type, member_type, e)
-
-    def analyze_descriptor_access(self, instance_type: Type, descriptor_type: Type,
-                                  context: Context) -> Type:
-        """Type check descriptor access.
-
-        Arguments:
-            instance_type: The type of the instance on which the descriptor
-                attribute is being accessed (the type of ``a`` in ``a.f`` when
-                ``f`` is a descriptor).
-            descriptor_type: The type of the descriptor attribute being accessed
-                (the type of ``f`` in ``a.f`` when ``f`` is a descriptor).
-            context: The node defining the context of this inference.
-        Return:
-            The return type of the appropriate ``__get__`` overload for the descriptor.
-        """
-        if isinstance(descriptor_type, UnionType):
-            # Map the access over union types
-            return UnionType.make_simplified_union([
-                self.analyze_descriptor_access(instance_type, typ, context)
-                for typ in descriptor_type.items
-            ])
-        elif not isinstance(descriptor_type, Instance):
-            return descriptor_type
-
-        if not descriptor_type.type.has_readable_member('__get__'):
-            return descriptor_type
-
-        dunder_get = descriptor_type.type.get_method('__get__')
-
-        if dunder_get is None:
-            self.msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
-            return AnyType(TypeOfAny.from_error)
-
-        function = function_type(dunder_get, self.named_type('builtins.function'))
-        bound_method = bind_self(function, descriptor_type)
-        typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
-        dunder_get_type = expand_type_by_instance(bound_method, typ)
-
-        if isinstance(instance_type, FunctionLike) and instance_type.is_type_obj():
-            owner_type = instance_type.items()[0].ret_type
-            instance_type = NoneTyp()
-        elif isinstance(instance_type, TypeType):
-            owner_type = instance_type.item
-            instance_type = NoneTyp()
-        else:
-            owner_type = instance_type
-
-        _, inferred_dunder_get_type = self.check_call(
-            dunder_get_type,
-            [TempNode(instance_type), TempNode(TypeType.make_normalized(owner_type))],
-            [nodes.ARG_POS, nodes.ARG_POS], context)
-
-        if isinstance(inferred_dunder_get_type, AnyType):
-            # check_call failed, and will have reported an error
-            return inferred_dunder_get_type
-
-        if not isinstance(inferred_dunder_get_type, CallableType):
-            self.msg.fail("{}.__get__ is not callable".format(descriptor_type), context)
-            return AnyType(TypeOfAny.from_error)
-
-        return inferred_dunder_get_type.ret_type
+            return member_type
 
     def analyze_external_member_access(self, member: str, base_type: Type,
                                        context: Context) -> Type:
