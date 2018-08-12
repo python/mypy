@@ -261,8 +261,10 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         v.info = info
 
     if isinstance(v, Var):
+        implicit = info[name].implicit
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
-                           original_type, builtin_type, not_ready_callback, chk=chk)
+                           original_type, builtin_type, not_ready_callback,
+                           chk=chk, implicit=implicit)
     elif isinstance(v, FuncDef):
         assert False, "Did not expect a function"
     elif not v and name not in ['__getattr__', '__setattr__', '__getattribute__']:
@@ -386,13 +388,14 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
                 is_lvalue: bool, msg: MessageBuilder, original_type: Type,
                 builtin_type: Callable[[str], Instance],
                 not_ready_callback: Callable[[str, Context], None], *,
-                chk: 'mypy.checker.TypeChecker') -> Type:
+                chk: 'mypy.checker.TypeChecker', implicit: bool = False) -> Type:
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
 
     itype is the class object in which var is defined
     original_type is the type of E in the expression E.var
+    if implicit is True, the original Var was created as an assignment to self
     """
     # Found a member variable.
     itype = map_instance_to_supertype(itype, var.info)
@@ -442,7 +445,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
         result = AnyType(TypeOfAny.special_form)
     fullname = '{}.{}'.format(var.info.fullname(), name)
     hook = chk.plugin.get_attribute_hook(fullname)
-    if result and not is_lvalue:
+    if result and not is_lvalue and not implicit:
         result = analyze_descriptor_access(original_type, result, builtin_type,
                                            msg, node, chk=chk)
     if hook:

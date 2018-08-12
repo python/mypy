@@ -4521,7 +4521,17 @@ D.dynamic  # E: "Type[D]" has no attribute "dynamic"
 [out]
 
 [case testSelfDescriptorAssign]
+from typing import Any
 
+class Descr:
+    def __get__(self, inst: Any, owner: Any) -> int: ...
+
+class C:
+    def __init__(self, x: Descr) -> None:
+        self.x = x
+
+c = C(Descr())
+reveal_type(c.x)  # E: Revealed type is '__main__.Descr'
 [out]
 
 [case testForwardInstanceWithWrongArgCount]
