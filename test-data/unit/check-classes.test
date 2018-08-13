@@ -4499,6 +4499,41 @@ def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
 
+[case testGetAttrDescriptor]
+from typing import TypeVar, Generic, Any
+
+T = TypeVar('T')
+class C(Generic[T]):
+    normal: T
+    def __getattr__(self, attr: str) -> T: ...
+
+class Descr:
+    def __get__(self, inst: Any, owner: Any) -> int: ...
+
+class D(C[Descr]):
+    other: Descr
+
+d: D
+reveal_type(d.normal)  # E: Revealed type is 'builtins.int'
+reveal_type(d.dynamic)  # E: Revealed type is '__main__.Descr*'
+reveal_type(D.other)  # E: Revealed type is 'builtins.int'
+D.dynamic  # E: "Type[D]" has no attribute "dynamic"
+[out]
+
+[case testSelfDescriptorAssign]
+from typing import Any
+
+class Descr:
+    def __get__(self, inst: Any, owner: Any) -> int: ...
+
+class C:
+    def __init__(self, x: Descr) -> None:
+        self.x = x
+
+c = C(Descr())
+reveal_type(c.x)  # E: Revealed type is '__main__.Descr'
+[out]
+
 [case testForwardInstanceWithWrongArgCount]
 from typing import TypeVar, Generic
 
