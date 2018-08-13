@@ -141,6 +141,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_instance(self, left: Instance) -> bool:
         if left.type.fallback_to_any:
+            if isinstance(self.right, NoneTyp):
+                # NOTE: `None` is a *non-subclassable* singleton, therefore no class
+                # can by a subtype of it, even with an `Any` fallback.
+                # This special case is needed to treat descriptors in classes with
+                # dynamic base classes correctly, see #5456.
+                return False
             return True
         right = self.right
         if isinstance(right, TupleType) and right.fallback.type.is_enum:

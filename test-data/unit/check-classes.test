@@ -4584,3 +4584,35 @@ reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.B*[Any]]'
 A = B
 [builtins fixtures/list.pyi]
 [out]
+
+[case testNoneAnyFallback]
+from typing import Any
+dynamic: Any
+class C(dynamic): pass
+x: None = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "None")
+[out]
+
+[case testNoneAnyFallbackDescriptor]
+from typing import Any
+from d import Descr
+
+dynamic: Any
+class C(dynamic):
+    id = Descr(int)
+    name = Descr(str)
+
+c: C
+reveal_type(c.id)  # E: Revealed type is 'builtins.int*'
+reveal_type(C.name)  # E: Revealed type is 'd.Descr[builtins.str*]'
+
+[file d.pyi]
+from typing import Any, overload, Generic, TypeVar, Type
+
+T = TypeVar('T')
+class Descr(Generic[T]):
+    def __init__(self, tp: Type[T]) -> None: ...
+    @overload
+    def __get__(self, inst: None, owner: Any) -> Descr[T]: ...
+    @overload
+    def __get__(self, inst: object, owner: Any) -> T: ...
+[out]
