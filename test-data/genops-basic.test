@@ -1646,6 +1646,7 @@ L0:
 [case testFunctionCallWithDefaultArgs]
 def f(x: int, y: int = 3, z: str = "test") -> None:
     return None
+
 def g() -> None:
     f(2)
     f(y = 3, x = 6)

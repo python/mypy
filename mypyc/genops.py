@@ -13,7 +13,7 @@ It would be translated to something that conceptually looks like this:
    r3 = r2 + r1 :: int
    return r3
 """
-from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, overload
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast, overload
 from abc import abstractmethod
 import sys
 import traceback
@@ -31,7 +31,7 @@ from mypy.nodes import (
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
     TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, GDEF, ARG_POS,
-    ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var
+    ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, is_class_var
 )
 import mypy.nodes
 from mypy.types import (
@@ -75,7 +75,7 @@ from mypyc.ops_misc import (
     type_op, pytype_from_template_op,
 )
 from mypyc.ops_exc import (
-    no_err_occurred_op, raise_exception_op, reraise_exception_op,
+    no_err_occurred_op, raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
     error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
     get_exc_info_op, keep_propagating_op,
 )
@@ -516,6 +516,12 @@ class GeneratorClass(ImplicitClass):
         self._next_label_reg = None  # type: Optional[Value]
         self._next_label_target = None  # type: Optional[AssignmentTarget]
 
+        # These registers hold the error values for the generator object for the case that the
+        # 'throw' function is called.
+        self.exc_regs = None  # type: Optional[Tuple[Value, Value, Value]]
+
+        # The switch block is used to decide which instruction to go using the value held in the
+        # next-label register.
         self.switch_block = BasicBlock()
         self.blocks = []  # type: List[BasicBlock]
 
@@ -759,9 +765,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.ret_types[-1] = bool_rprimitive
 
         rt_args = (RuntimeArg('self', RInstance(cls)),)
-        self_var = self.read(self.environment.add_local_reg(Var('self'),
-                                                            RInstance(cls),
-                                                            is_arg=True), -1)
+        self_var = self.read(self.add_self_to_env(cls), -1)
 
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
@@ -941,8 +945,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.enter(FuncInfo())
 
         rt_arg = RuntimeArg('self', RInstance(cls))
-        arg = self.read(self.environment.add_local_reg(Var('self'), RInstance(cls), is_arg=True),
-                        line)
+        arg = self.read(self.add_self_to_env(cls), line)
         self.ret_types[-1] = sig.ret_type
 
         retval = self.add(GetAttr(arg, target.name, line))
@@ -954,6 +957,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             FuncDecl(target.name + '__' + base.name + '_glue',
                      cls.name, self.module_name, FuncSignature([rt_arg], return_type)),
             blocks, env)
+
+    def assign_if_null(self, target: AssignmentTargetRegister,
+                       get_val: Callable[[], Value], line: int) -> None:
+        """Generate blocks for registers that NULL values."""
+        error_block, body_block = BasicBlock(), BasicBlock()
+        self.add(Branch(target.register, error_block, body_block, Branch.IS_ERROR))
+        self.activate_block(error_block)
+        self.add(Assign(target.register, self.coerce(get_val(), target.register.type, line)))
+        self.goto(body_block)
+        self.activate_block(body_block)
 
     def gen_glue_ne_method(self, cls: ClassIR, line: int) -> FuncIR:
         """Generate a __ne__ method from a __eq__ method. """
@@ -998,14 +1011,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                         "Unsupported default argument")
                 target = self.environment.lookup(arg.variable)
                 assert isinstance(target, AssignmentTargetRegister)
-                error_block, body_block = BasicBlock(), BasicBlock()
-                self.add(Branch(target.register, error_block, body_block, Branch.IS_ERROR))
-                self.activate_block(error_block)
-                reg = self.accept(arg.initializer)
-                self.add(Assign(target.register,
-                                self.coerce(reg, target.register.type, arg.initializer.line)))
-                self.goto(body_block)
-                self.activate_block(body_block)
+                self.assign_if_null(target,
+                                    lambda: self.accept(cast(Expression, arg.initializer)),
+                                    arg.initializer.line)
 
     def gen_func_item(self, fitem: FuncItem, name: str, sig: FuncSignature,
                       class_name: Optional[str] = None) -> Tuple[FuncIR, Optional[Value]]:
@@ -1069,6 +1077,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.setup_env_for_generator_class()
             self.load_outer_envs(self.fn_info.generator_class)
             self.create_switch_for_generator_class()
+            self.add_raise_exception_blocks_to_generator_class(fitem.line)
         else:
             self.load_env_registers()
             self.gen_arg_default()
@@ -1087,8 +1096,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         blocks, env, ret_type, fn_info = self.leave()
 
         if fn_info.is_generator:
-            self.functions.append(self.add_next_to_generator_class(blocks, sig, env, fn_info))
-            self.functions.append(self.add_iter_to_generator_class(fn_info))
+            helper_fn_decl = self.add_helper_to_generator_class(blocks, sig, env, fn_info)
+            self.add_next_to_generator_class(fn_info, helper_fn_decl, sig)
+            self.add_iter_to_generator_class(fn_info)
+            self.add_throw_to_generator_class(fn_info, helper_fn_decl, sig)
         else:
             func_ir, func_reg = self.gen_func_ir(blocks, sig, env, fn_info, class_name)
 
@@ -2943,16 +2954,18 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             retval = self.none()
 
-        generator_class = self.fn_info.generator_class
+        cls = self.fn_info.generator_class
         # Create a new block for the instructions immediately following the yield expression, and
         # set the next label so that the next time '__next__' is called on the generator object,
         # the function continues at the new block.
         next_block = BasicBlock()
-        next_label = len(generator_class.blocks)
-        generator_class.blocks.append(next_block)
-        self.assign(generator_class.next_label_target, self.add(LoadInt(next_label)), expr.line)
+        next_label = len(cls.blocks)
+        cls.blocks.append(next_block)
+        self.assign(cls.next_label_target, self.add(LoadInt(next_label)), expr.line)
         self.add(Return(retval))
         self.activate_block(next_block)
+
+        self.add_raise_exception_blocks_to_generator_class(expr.line)
 
         # TODO: Replace this value with the value that is sent into the generator when we support
         #       the 'send' function.
@@ -3239,29 +3252,32 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def setup_env_for_generator_class(self) -> None:
         """Populates the environment for a generator class."""
         fitem = self.fn_info.fitem
-        generator_class = self.fn_info.generator_class
+        cls = self.fn_info.generator_class
+        self_target = self.add_self_to_env(cls.ir)
 
-        # First add the self register to the generator class, and load the current environment
-        # register.
-        self_target = self.environment.add_local_reg(Var('self'),
-                                                     RInstance(self.fn_info.generator_class.ir),
-                                                     is_arg=True)
-        generator_class.self_reg = self.read(self_target, fitem.line)
-        generator_class.curr_env_reg = self.load_outer_env(generator_class.self_reg,
-                                                           self.environment)
+        # Add the type, value, and traceback variables to the environment.
+
+        exc_type = self.environment.add_local(Var('type'), object_rprimitive, is_arg=True)
+        exc_val = self.environment.add_local(Var('value'), object_rprimitive, is_arg=True)
+        exc_tb = self.environment.add_local(Var('traceback'), object_rprimitive, is_arg=True)
+
+        cls.exc_regs = (exc_type, exc_val, exc_tb)
+
+        cls.self_reg = self.read(self_target, fitem.line)
+        cls.curr_env_reg = self.load_outer_env(cls.self_reg, self.environment)
 
         # Define a variable representing the label to go to the next time the '__next__' function
         # of the generator is called, and add it as an attribute to the environment class.
-        generator_class.next_label_target = self.add_var_to_env_class(Var(NEXT_LABEL_ATTR_NAME),
-                                                                      int_rprimitive,
-                                                                      generator_class,
-                                                                      reassign=False)
+        cls.next_label_target = self.add_var_to_env_class(Var(NEXT_LABEL_ATTR_NAME),
+                                                          int_rprimitive,
+                                                          cls,
+                                                          reassign=False)
 
         # Add arguments from the original generator function to the generator class' environment.
-        self.add_args_to_env(local=False, base=generator_class, reassign=False)
+        self.add_args_to_env(local=False, base=cls, reassign=False)
 
         # Set the next label register for the generator class.
-        generator_class.next_label_reg = self.read(generator_class.next_label_target, fitem.line)
+        cls.next_label_reg = self.read(cls.next_label_target, fitem.line)
 
     def add_args_to_env(self, local: bool = True,
                         base: Optional[Union[FuncInfo, ImplicitClass]] = None,
@@ -3323,10 +3339,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # Add a 'self' variable to the callable class' environment, and store that variable in a
         # register to be accessed later.
-        self_target = self.environment.add_local_reg(Var('self'),
-                                                     RInstance(callable_class_ir),
-                                                     is_arg=True)
-
+        self_target = self.add_self_to_env(callable_class_ir)
         self.fn_info.callable_class.self_reg = self.read(self_target, self.fn_info.fitem.line)
 
     def add_call_to_callable_class(self,
@@ -3444,12 +3457,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.fn_info.generator_class = GeneratorClass(generator_class_ir)
         return generator_class_ir
 
-    def add_iter_to_generator_class(self, fn_info: FuncInfo) -> FuncIR:
-        # First, generate the body of the '__iter__' function.
+    def add_helper_to_generator_class(self,
+                                      blocks: List[BasicBlock],
+                                      sig: FuncSignature,
+                                      env: Environment,
+                                      fn_info: FuncInfo) -> FuncDecl:
+        """Generates a helper method for a generator class, called by '__next__' and 'throw'."""
+        sig = FuncSignature((RuntimeArg('self', object_rprimitive),
+                             RuntimeArg('type', object_rprimitive),
+                             RuntimeArg('value', object_rprimitive),
+                             RuntimeArg('traceback', object_rprimitive)), sig.ret_type)
+        helper_fn_decl = FuncDecl('__mypyc_generator_helper__', fn_info.generator_class.ir.name,
+                                  self.module_name, sig)
+        helper_fn_ir = FuncIR(helper_fn_decl, blocks, env)
+        fn_info.generator_class.ir.methods['__mypyc_generator_helper__'] = helper_fn_ir
+        self.functions.append(helper_fn_ir)
+        return helper_fn_decl
+
+    def add_iter_to_generator_class(self, fn_info: FuncInfo) -> None:
+        """Generates the '__iter__' method for a generator class."""
         self.enter(fn_info)
-        self_target = self.environment.add_local_reg(Var('self'),
-                                                     RInstance(fn_info.generator_class.ir),
-                                                     is_arg=True)
+        self_target = self.add_self_to_env(fn_info.generator_class.ir)
         self.add(Return(self.read(self_target, fn_info.fitem.line)))
         blocks, env, _, fn_info = self.leave()
 
@@ -3458,32 +3486,80 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         iter_fn_decl = FuncDecl('__iter__', fn_info.generator_class.ir.name, self.module_name, sig)
         iter_fn_ir = FuncIR(iter_fn_decl, blocks, env)
         fn_info.generator_class.ir.methods['__iter__'] = iter_fn_ir
-        return iter_fn_ir
+        self.functions.append(iter_fn_ir)
 
     def add_next_to_generator_class(self,
-                                    blocks: List[BasicBlock],
-                                    sig: FuncSignature,
-                                    env: Environment,
-                                    fn_info: FuncInfo) -> FuncIR:
+                                    fn_info: FuncInfo,
+                                    fn_decl: FuncDecl,
+                                    sig: FuncSignature) -> None:
+        """Generates the '__next__' method for a generator class."""
+        self.enter(fn_info)
+        self_reg = self.read(self.add_self_to_env(fn_info.generator_class.ir))
+        none_reg = self.none()
+
+        # Call the helper function with error flags set to Py_None, and return that result.
+        result = self.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg],
+                               fn_info.fitem.line))
+        self.add(Return(result))
+        blocks, env, _, fn_info = self.leave()
+
         sig = FuncSignature((RuntimeArg('self', object_rprimitive),), sig.ret_type)
         next_fn_decl = FuncDecl('__next__', fn_info.generator_class.ir.name, self.module_name, sig)
         next_fn_ir = FuncIR(next_fn_decl, blocks, env)
         fn_info.generator_class.ir.methods['__next__'] = next_fn_ir
-        return next_fn_ir
+        self.functions.append(next_fn_ir)
+
+    def add_throw_to_generator_class(self,
+                                     fn_info: FuncInfo,
+                                     fn_decl: FuncDecl,
+                                     sig: FuncSignature) -> None:
+        """Generates the 'throw' method for a generator class."""
+        self.enter(fn_info)
+        self_reg = self.read(self.add_self_to_env(fn_info.generator_class.ir))
+
+        # Add the type, value, and traceback variables to the environment.
+        typ = self.environment.add_local_reg(Var('type'), object_rprimitive, True)
+        val = self.environment.add_local_reg(Var('value'), object_rprimitive, True)
+        tb = self.environment.add_local_reg(Var('traceback'), object_rprimitive, True)
+
+        # Because the value and traceback arguments are optional and hence can be NULL if not
+        # passed in, we have to assign them Py_None if they are not passed in.
+        none_reg = self.none()
+        self.assign_if_null(val, lambda: none_reg, self.fn_info.fitem.line)
+        self.assign_if_null(tb, lambda: none_reg, self.fn_info.fitem.line)
+
+        # Call the helper function using the arguments passed in, and return that result.
+        result = self.add(Call(fn_decl, [self_reg, self.read(typ), self.read(val), self.read(tb)],
+                               fn_info.fitem.line))
+        self.add(Return(result))
+        blocks, env, _, fn_info = self.leave()
+
+        # Create the FuncSignature for the throw function. NOte that the value and traceback fields
+        # are optional, and are assigned to if they are not passed in inside the body of the throw
+        # function.
+        sig = FuncSignature((RuntimeArg('self', object_rprimitive),
+                             RuntimeArg('type', object_rprimitive),
+                             RuntimeArg('value', object_rprimitive, ARG_OPT),
+                             RuntimeArg('traceback', object_rprimitive, ARG_OPT)),
+                            sig.ret_type)
+
+        throw_fn_decl = FuncDecl('throw', fn_info.generator_class.ir.name, self.module_name, sig)
+        throw_fn_ir = FuncIR(throw_fn_decl, blocks, env)
+        fn_info.generator_class.ir.methods['throw'] = throw_fn_ir
+        self.functions.append(throw_fn_ir)
 
     def create_switch_for_generator_class(self) -> None:
         self.add(Goto(self.fn_info.generator_class.switch_block))
         self.fn_info.generator_class.blocks.append(self.new_block())
 
     def populate_switch_for_generator_class(self) -> None:
-        generator_class = self.fn_info.generator_class
+        cls = self.fn_info.generator_class
         line = self.fn_info.fitem.line
 
-        self.activate_block(generator_class.switch_block)
-        for label, true_block in enumerate(generator_class.blocks):
+        self.activate_block(cls.switch_block)
+        for label, true_block in enumerate(cls.blocks):
             false_block = BasicBlock()
-            comparison = self.binary_op(generator_class.next_label_reg, self.add(LoadInt(label)),
-                                        '==', line)
+            comparison = self.binary_op(cls.next_label_reg, self.add(LoadInt(label)), '==', line)
             self.add_bool_branch(comparison, true_block, false_block)
             self.activate_block(false_block)
 
@@ -3511,6 +3587,31 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         zero_reg = self.add(LoadInt(0))
         self.add(SetAttr(curr_env_reg, NEXT_LABEL_ATTR_NAME, zero_reg, fitem.line))
         return generator_reg
+
+    def add_raise_exception_blocks_to_generator_class(self, line: int) -> None:
+        """
+        Generates blocks to check if error flags are set while calling the helper method for
+        generator functions, and raises an exception if those flags are set.
+        """
+        cls = self.fn_info.generator_class
+        assert cls.exc_regs is not None
+        exc_type, exc_val, exc_tb = cls.exc_regs
+
+        # Check to see if an exception was raised.
+        error_block = BasicBlock()
+        ok_block = BasicBlock()
+        comparison = self.binary_op(exc_type, self.none(), 'is not', line)
+        self.add_bool_branch(comparison, error_block, ok_block)
+
+        self.activate_block(error_block)
+        self.primitive_op(raise_exception_with_tb_op, [exc_type, exc_val, exc_tb], line)
+        self.add(Unreachable())
+        self.goto_and_activate(ok_block)
+
+    def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
+        return self.environment.add_local_reg(Var('self'),
+                                              RInstance(cls),
+                                              is_arg=True)
 
     def is_builtin_ref_expr(self, expr: RefExpr) -> bool:
         assert expr.node, "RefExpr not resolved"

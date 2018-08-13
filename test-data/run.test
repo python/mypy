@@ -2626,13 +2626,13 @@ class A(object):
         yield self.x
 
 [file driver.py]
-from typing import Generator, Tuple, TypeVar, Sequence, Union
+from typing import Generator, Tuple, TypeVar, Sequence
 from native import yield_three_times, yield_twice_and_return, yield_while_loop, yield_for_loop, yield_with_except, complex_yield, yield_with_default, A
 
 T = TypeVar('T')
 U = TypeVar('U')
 
-def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], Union[U, str]]:
+def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], U]:
     res = []
     while True:
         try:
@@ -2782,7 +2782,7 @@ from native import normal, generator, triple, another_triple
 T = TypeVar('T')
 U = TypeVar('U')
 
-def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], U, str]:
+def run_generator(gen: Generator[T, None, U]) -> Tuple[Sequence[T], U]:
     res = []
     while True:
         try:
@@ -2795,3 +2795,94 @@ assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
 assert run_generator(generator(1)) == ((1, 2, 3), None)
 assert run_generator(triple()()) == ((1, 2, 3), None)
 assert run_generator(another_triple()()) == ((1,), None)
+
+[case testYieldThrow]
+from typing import Generator, Iterable
+from traceback import print_tb
+from contextlib import contextmanager
+import wrapsys
+
+def generator() -> Iterable[int]:
+    try:
+        yield 1
+        yield 2
+        yield 3
+    except Exception as e:
+        print_tb(wrapsys.exc_info()[2])
+        s = str(e)
+        if s:
+            print('caught exception with value ' + s)
+        else:
+            print('caught exception without value')
+        return 0
+
+def foo() -> Generator[int, None, None]:
+    try:
+        yield 1
+    except Exception as e:
+        print(str(e))
+    finally:
+        print('goodbye')
+
+ctx_manager = contextmanager(foo)
+
+[file wrapsys.py]
+# This is a gross hack around some limitations of the test system/mypyc.
+from typing import Any
+import sys
+def exc_info() -> Any:
+    return sys.exc_info()  # type: ignore
+
+[file driver.py]
+import sys
+from typing import Generator, Tuple, TypeVar, Sequence
+from native import generator, ctx_manager
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def run_generator_and_throw(gen: Generator[T, None, U], 
+                            num_times: int,
+                            value: object = None,
+                            traceback: object = None) -> Tuple[Sequence[T], U]:
+    res = []
+    for i in range(num_times):
+        res.append(next(gen))
+    try:
+        if value is not None and traceback is not None:
+            gen.throw(Exception, value, traceback)
+        elif value is not None:
+            gen.throw(Exception, value)
+        else:
+            gen.throw(Exception)
+    except StopIteration as e:
+        return (tuple(res), e.value)
+    except Exception as e:
+        return (tuple(res), str(e))
+
+assert run_generator_and_throw(generator(), 0, 'hello') == ((), 'hello')
+assert run_generator_and_throw(generator(), 3) == ((1, 2, 3), 0)
+assert run_generator_and_throw(generator(), 2, 'some string') == ((1, 2), 0)
+try:
+    raise Exception
+except Exception as e:
+    tb = sys.exc_info()[2]
+    assert run_generator_and_throw(generator(), 1, 'some other string', tb) == ((1,), 0)
+
+with ctx_manager() as c:
+    raise Exception('exception')
+
+[out]
+  File "tmp/py/native.py", line 10, in __mypyc_generator_helper__
+    yield 3
+  File "tmp/py/native.py", line 9, in __mypyc_generator_helper__
+    yield 2
+  File "tmp/py/native.py", line 8, in __mypyc_generator_helper__
+    yield 1
+  File "tmp/driver.py", line 31, in <module>
+    raise Exception
+caught exception without value
+caught exception with value some string
+caught exception with value some other string
+exception
+goodbye

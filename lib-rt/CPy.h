@@ -743,6 +743,17 @@ static void CPy_Reraise(void) {
     PyErr_Restore(p_type, p_value, p_traceback);
 }
 
+static void CPyErr_SetObjectAndTraceback(PyObject *type, PyObject *value, PyObject *traceback) {
+    // Set the value and traceback of an error. Because calling
+    // PyErr_Restore takes away a reference to each object passed in
+    // as an argument, we manually increase the reference count of
+    // each argument before calling it.
+    Py_INCREF(type);
+    Py_INCREF(value);
+    Py_INCREF(traceback);
+    PyErr_Restore(type, value, traceback);
+}
+
 // We want to avoid the public PyErr_GetExcInfo API for these because
 // it requires a bunch of spurious refcount traffic on the parts of
 // the triple we don't care about. Unfortunately the layout of the
