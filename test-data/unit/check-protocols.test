@@ -2281,3 +2281,29 @@ def bad(x: int, *args: str) -> None:
 cb: Caller = bad  # E: Incompatible types in assignment (expression has type "Callable[[int, VarArg(str)], None]", variable has type "Caller") \
                   # N: "Caller.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
 [out]
+
+[case testCallableImplementsProtocolArgName]
+from typing import Protocol
+
+class Caller(Protocol):
+    def __call__(self, x: str) -> None: ...
+
+class CallerAnon(Protocol):
+    def __call__(self, __x: str) -> None: ...
+
+def call(x: str) -> None:
+    pass
+def bad(y: str) -> None:
+    pass
+
+def func(caller: Caller) -> None:
+    pass
+
+def anon(caller: CallerAnon) -> None:
+    pass
+
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[str], None]"; expected "Caller"
+anon(bad)
+[out]
