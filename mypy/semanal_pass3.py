@@ -251,7 +251,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         if (isinstance(s.lvalues[0], NameExpr) and s.lvalues[0].kind == MDEF
                 and isinstance(s.lvalues[0].node, Var)):
             var = s.lvalues[0].node
-            if var.info is not None and var.is_inferred and not var.is_classvar:
+            if var.info and var.is_inferred and not var.is_classvar:
                 for base in var.info.mro[1:]:
                     tnode = base.names.get(var.name())
                     if (tnode is not None and isinstance(tnode.node, Var)

@@ -1070,7 +1070,7 @@ def target_from_node(module: str,
             return None
         return module
     elif isinstance(node, (OverloadedFuncDef, FuncDef)):
-        if node.info is not None:
+        if node.info:
             return '%s.%s' % (node.info.fullname(), node.name())
         else:
             return '%s.%s' % (module, node.name())

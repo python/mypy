@@ -398,10 +398,10 @@ class FuncBase(Node):
         self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
         # If method, reference to TypeInfo
         # TODO: Type should be Optional[TypeInfo]
-        self.info = cast(TypeInfo, None)
-        self.is_property = False
-        self.is_class = False
-        self.is_static = False
+        self.info = FUNC_NO_INFO  # type: TypeInfo
+        self.is_property = False  # type: bool
+        self.is_class = False  # type: bool
+        self.is_static = False  # type: bool
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(str, None)
@@ -727,7 +727,7 @@ class Var(SymbolNode):
         # TODO: Should be Optional[str]
         self._fullname = cast(str, None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
-        self.info = cast(TypeInfo, None)  # Defining class (for member variables)
+        self.info = VAR_NO_INFO  # type: TypeInfo
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
@@ -807,6 +807,7 @@ class ClassDef(Statement):
         self.type_vars = type_vars or []
         self.base_type_exprs = base_type_exprs or []
         self.removed_base_type_exprs = []
+        self.info = CLASSDEF_NO_INFO
         self.metaclass = metaclass
         self.decorators = []
         self.keywords = OrderedDict(keywords or [])
@@ -1414,7 +1415,7 @@ class IndexExpr(Expression):
     base = None  # type: Expression
     index = None  # type: Expression
     # Inferred __getitem__ method type
-    method_type = None  # type: mypy.types.Type
+    method_type = None  # type: Optional[mypy.types.Type]
     # If not None, this is actually semantically a type application
     # Class[type, ...] or a type alias initializer.
     analyzed = None  # type: Union[TypeApplication, TypeAliasExpr, None]
@@ -2184,6 +2185,7 @@ class TypeInfo(SymbolNode):
         self.assuming_proper = []
         self.inferring = []
         self.add_type_vars()
+        self.replaced = TYPEINFO_NO_REPLACED
         self.metadata = {}
 
     def add_type_vars(self) -> None:
@@ -2416,11 +2418,28 @@ class FakeInfo(TypeInfo):
     #    pass cleanly.
     # 2. If NOT_READY value is accidentally used somewhere, it will be obvious where the value
     #    is from, whereas a 'None' value could come from anywhere.
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        pass
+    #
+    # Additionally, this serves as a more general-purpose placeholder
+    # for missing TypeInfos in a number of places where the excuses
+    # for not being Optional are a little weaker.
+    #
+    # It defines a __bool__ method so that it can be conveniently
+    # tested against in the same way that it would be if things were
+    # properly optional.
+    def __init__(self, msg: str) -> None:
+        self.msg = msg
+
+    def __bool__(self) -> bool:
+        return False
 
     def __getattribute__(self, attr: str) -> None:
-        raise AssertionError('De-serialization failure: TypeInfo not fixed')
+        raise AssertionError(object.__getattribute__(self, 'msg'))
+
+
+VAR_NO_INFO = FakeInfo('Var is lacking info')
+CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')
+FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')
+TYPEINFO_NO_REPLACED = FakeInfo('TypeInfo is lacking replaced')
 
 
 class TypeAlias(SymbolNode):
@@ -2660,8 +2679,10 @@ class SymbolTableNode:
     @property
     def type(self) -> 'Optional[mypy.types.Type]':
         node = self.node
-        if ((isinstance(node, Var) or isinstance(node, FuncBase))
-                and node.type is not None):
+        if (isinstance(node, Var) and node.type is not None):
+            return node.type
+        # mypy thinks this branch is unreachable but it is wrong
+        elif (isinstance(node, FuncBase) and node.type is not None):
             return node.type
         elif isinstance(node, Decorator):
             return node.var.type
@@ -2809,7 +2830,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in globals().items()
-    if isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
+    if type(obj) is not FakeInfo and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
 }
 
 
