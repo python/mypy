@@ -100,7 +100,7 @@ def main() -> None:
     # XXX: This is not the right way to pass in command line args
     save_dir = os.getenv("MYPYC_DIR", None)
 
-    ops = [] if save_dir else None
+    ops = [] if save_dir else None  # type: Optional[List[str]]
 
     try:
         ctext = emitmodule.compile_modules_to_c(
