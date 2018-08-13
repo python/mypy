@@ -2149,7 +2149,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
         class_def.info = info
         mro = basetype_or_fallback.type.mro
-        if mro is None:
+        if not mro:
             # Forward reference, MRO should be recalculated in third pass.
             mro = [basetype_or_fallback.type, self.object_type().type]
         info.mro = [info] + mro
@@ -3068,7 +3068,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        if n.node.mro is None:
+                        if not n.node.mro:
                             # We haven't yet analyzed the class `n.node`.  Fall back to direct
                             # lookup in the names declared directly under it, without its base
                             # classes.  This can happen when we have a forward reference to a
