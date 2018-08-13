@@ -1022,12 +1022,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 opt_meta = item.type.metaclass_type
                 if opt_meta is not None:
                     forward_inst = opt_meta
-        #if (isinstance(forward_inst, (Instance, UnionType))
-        #        and not forward_inst.has_readable_member(forward_name)):
-        #    self.msg
-        if isinstance(forward_inst, Instance) and forward_inst.type.fullname() == defn.info.fullname() and not forward_inst.has_readable_member(forward_name):
-            self.msg.object_with_reverse_operator_missing_forward_operator(forward_name, forward_inst.type, reverse_name, defn)
-            return
         if not (isinstance(forward_inst, (Instance, UnionType))
                 and forward_inst.has_readable_member(forward_name)):
             return
@@ -1130,13 +1124,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             arg_names=[None] * 2,
         )
 
-        reverse_base_erased = reverse_type.arg_types[1]
+        reverse_base_erased = reverse_type.arg_types[0]
         if isinstance(reverse_base_erased, TypeVarType):
             reverse_base_erased = erase_to_bound(reverse_base_erased)
 
         if is_same_type(reverse_base_erased, forward_base_erased):
             return False
-        elif is_proper_subtype(reverse_base_erased, forward_base_erased):
+        elif is_subtype(reverse_base_erased, forward_base_erased):
             first = reverse_tweaked
             second = forward_tweaked
         else:

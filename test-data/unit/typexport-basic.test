@@ -147,8 +147,6 @@ class type: pass
 class function: pass
 class str: pass
 [out]
-tmp/builtins.py:5: error: Signatures of "__lt__" of "int" and "__gt__" of "int" are unsafely overlapping
-tmp/builtins.py:6: error: Signatures of "__gt__" of "int" and "__lt__" of "int" are unsafely overlapping
 ComparisonExpr(3) : builtins.bool
 ComparisonExpr(4) : builtins.bool
 ComparisonExpr(5) : builtins.bool

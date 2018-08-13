@@ -537,9 +537,9 @@ class B:
     def __gt__(self, o: 'B') -> bool: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:3: error: Unsupported operand types for > ("A" and "A")
-main:5: error: Unsupported operand types for > ("A" and "A")
+main:3: error: Unsupported operand types for < ("A" and "A")
 main:5: error: Unsupported operand types for < ("A" and "A")
+main:5: error: Unsupported operand types for > ("A" and "A")
 
 
 [case testChainedCompBoolRes]

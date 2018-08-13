@@ -1615,25 +1615,13 @@ class A:
 
 class B(A): pass
 
-# Note: This is actually a runtime error. If we run x.__add__(y)
+# Note: This is a runtime error. If we run x.__add__(y)
 # where x and y are *not* the same type, Python will not try
 # calling __radd__.
-#
-# It is, however, difficult to detect this statically -- for example,
-# if we have a variable of type A, that doesn't mean that variable is
-# *exactly* an instance of A. It could be a subclass, for example.
-#
-# We also can't really print a warning when checking the definition
-# of A.__add__ and A.__radd__ -- the user might intentionally be defining
-# those two methods to have non-conventional semantics.
-#
-# As a result, we don't try and handle this case and pretend that
-# Python actually *will* call `__radd__` even when the types are
-# the same.
-reveal_type(A() + A())  # E: Revealed type is '__main__.A'
+A() + A()               # E: Unsupported operand types for + ("A" and "A") \
+                        # N: __radd__ will not be called when running 'A + A': must define __add__
 
-# Here, Python *will* call __radd__(...) so the revealed type
-# and the runtime behavior match.
+# Here, Python *will* call __radd__(...)
 reveal_type(B() + A())  # E: Revealed type is '__main__.A'
 reveal_type(A() + B())  # E: Revealed type is '__main__.A'
 [builtins fixtures/isinstance.pyi]
@@ -1826,8 +1814,8 @@ from typing import TypeVar
 T = TypeVar("T", Real, Fraction)
 class Real:
     def __add__(self, other: Fraction) -> str: ...
-class Fraction:
-    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
 
 reveal_type(Real() + Fraction())      # E: Revealed type is '__main__.Real*'
 reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
@@ -1845,8 +1833,10 @@ reveal_type(Real() + Fraction())                # E: Revealed type is '__main__.
 reveal_type(FractionChild() + Fraction())       # E: Revealed type is '__main__.FractionChild*'
 reveal_type(FractionChild() + FractionChild())  # E: Revealed type is 'builtins.str'
 
-# Technically not correct
-reveal_type(Fraction() + Fraction())       # E: Revealed type is '__main__.Fraction*'
+# Runtime error: we try calling __add__, it doesn't match, and we don't try __radd__ since
+# the LHS and the RHS are not the same.
+Fraction() + Fraction()                         # E: Unsupported operand types for + ("Fraction" and "Fraction") \
+                                                # N: __radd__ will not be called when running 'Fraction + Fraction': must define __add__
 
 [case testReverseOperatorTypeType]
 from typing import TypeVar, Type

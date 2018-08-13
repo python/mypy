@@ -1913,12 +1913,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             right_type: Type,
                             right_expr: Expression,
                             context: Context) -> Tuple[Type, Type]:
-        def lookup_operator(op_name: str, base_type: Type) -> Optional[CallableType]:
-            if not self.has_member(base_type, op_name):
-                return None
+        # TODO: Document this kludge
+        unions_present = isinstance(left_type, UnionType)
+
+        def make_local_errors() -> MessageBuilder:
             local_errors = self.msg.clean_copy()
             local_errors.disable_count = 0
-            method = analyze_member_access(
+            if unions_present:
+                local_errors.disable_type_names += 1
+            return local_errors
+
+        def lookup_operator(op_name: str, base_type: Type) -> Optional[Type]:
+            if not self.has_member(base_type, op_name):
+                return None
+            local_errors = make_local_errors()
+            member = analyze_member_access(
                 name=op_name,
                 typ=base_type,
                 node=context,
@@ -1933,10 +1942,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             if local_errors.is_errors():
                 return None
-            elif isinstance(method, CallableType):
-                return method
             else:
-                return None
+                return member
 
         if isinstance(left_type, AnyType):
             # If either side is Any, we can't necessarily conclude anything.
@@ -1954,12 +1961,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         left_op = lookup_operator(op_name, left_type)
         right_op = lookup_operator(rev_op_name, right_type)
 
+        warn_about_uncalled_reverse_operator = False
         bias_right = is_proper_subtype(right_type, left_type)
 
-        #if is_same_type(left_type, right_type):
-        #    variants_raw.append((left_op, left_type, right_expr))
-        #'''
-        if (is_proper_subtype(right_type, left_type)
+        if op_name in nodes.op_methods_that_shortcut and is_same_type(left_type, right_type):
+            variants_raw.append((left_op, left_type, right_expr))
+            if right_op is not None:
+                warn_about_uncalled_reverse_operator = True
+        elif (is_subtype(right_type, left_type)
                 and isinstance(left_type, Instance)
                 and isinstance(right_type, Instance)
                 and left_type.type.get_definition_mro_name(op_name) != right_type.type.get_definition_mro_name(rev_op_name)):
@@ -1984,33 +1993,44 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         variants = [(op, obj, arg) for (op, obj, arg) in variants_raw if op is not None]
 
-        results = []
         errors = []
         for method, obj, arg in variants:
-            local_errors = self.msg.clean_copy()
-            local_errors.disable_count = 0
+            local_errors = make_local_errors()
 
             if isinstance(obj, Instance):
                 # TODO: Find out in which class the method was defined originally?
                 # TODO: Support non-Instance types.
-                callable_name = '{}.{}'.format(obj.type.fullname(), method)  # type: Optional[str]
+                callable_name = '{}.{}'.format(obj.type.fullname(), op_name)  # type: Optional[str]
             else:
                 callable_name = None
             result = self.check_call(method, [arg], [nodes.ARG_POS],
                                    context, arg_messages=local_errors,
                                    callable_name=callable_name, object_type=obj)
             if local_errors.is_errors():
-                results.append(result)
                 errors.append(local_errors)
             else:
                 return result
 
-        if len(errors) > 0:
-            self.msg.add_errors(errors[0])
-            return results[0]
-        else:
-            return self.check_op_local(op_name, left_type, right_expr, context,
-                                       self.msg)
+        if len(errors) == 0:
+            local_errors = make_local_errors()
+            result = self.check_op_local(op_name, left_type, right_expr, context, local_errors)
+
+            if local_errors.is_errors():
+                errors.append(local_errors)
+            else:
+                return result
+
+        self.msg.add_errors(errors[0])
+        if warn_about_uncalled_reverse_operator:
+            self.msg.reverse_operator_method_never_called(
+                nodes.op_methods_to_symbols[op_name],
+                op_name,
+                right_type,
+                rev_op_name,
+                context,
+            )
+        error_any = AnyType(TypeOfAny.from_error)
+        return error_any, error_any
 
     def check_op(self, method: str, base_type: Type, arg: Expression,
                  context: Context,

@@ -1000,14 +1000,21 @@ class MessageBuilder:
         self.fail('Overloaded function implementation cannot produce return type '
                   'of signature {}'.format(index), context)
 
-    def object_with_reverse_operator_missing_forward_operator(self,
-                                                              forward_method: str,
-                                                              reverse_class: TypeInfo,
-                                                              reverse_method: str,
-                                                              context: Context) -> None:
-        self.fail("Cannot define a reverse operator method {} that accepts an instance of "
-                  "the containing class {} without also defining the corresponding forward"
-                  "operator method {}".format(reverse_method, reverse_class.name(), forward_method), context)
+    def reverse_operator_method_never_called(self,
+                                             op: str,
+                                             forward_method: str,
+                                             reverse_type: Type,
+                                             reverse_method: str,
+                                             context: Context) -> None:
+        msg = "{rfunc} will not be called when running '{cls} {op} {cls}': must define {ffunc}"
+        self.note(
+            msg.format(
+                op=op,
+                ffunc=forward_method,
+                rfunc=reverse_method,
+                cls=self.format_bare(reverse_type),
+            ),
+            context=context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
