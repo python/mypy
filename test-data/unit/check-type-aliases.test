@@ -426,3 +426,95 @@ reveal_type(D.meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int]'
 reveal_type(D().meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int]'
 [builtins fixtures/classmethod.pyi]
 [out]
+
+[case testFlexibleAlias1]
+from typing import TypeVar, List, Tuple
+from mypy_extensions import FlexibleAlias
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+AnInt = FlexibleAlias[T, int]
+
+x: AnInt[str]
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+TwoArgs = FlexibleAlias[Tuple[T, U], bool]
+TwoArgs2 = FlexibleAlias[Tuple[T, U], List[U]]
+
+def welp(x: TwoArgs[str, int]) -> None:
+    reveal_type(x)  # E: Revealed type is 'builtins.bool'
+
+def welp2(x: TwoArgs2[str, int]) -> None:
+    reveal_type(x)  # E: Revealed type is 'builtins.list[builtins.int]'
+
+
+Id = FlexibleAlias[T, T]
+
+def take_id(x: Id[int]) -> None:
+    reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+def id(x: Id[T]) -> T:
+    return x
+
+# TODO: This doesn't work and maybe it should?
+# Indirection = AnInt[T]
+# y: Indirection[str]
+# reveal_type(y)  # E : Revealed type is 'builtins.int'
+
+# But this does
+Indirection2 = FlexibleAlias[T, AnInt[T]]
+z: Indirection2[str]
+reveal_type(z)  # E: Revealed type is 'builtins.int'
+
+Indirection3 = FlexibleAlias[Tuple[T, U], AnInt[T]]
+w: Indirection3[str, int]
+reveal_type(w)  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/dict.pyi]
+
+[case testFlexibleAlias2]
+# flags: --always-true=BOGUS
+from typing import TypeVar, Any
+from mypy_extensions import FlexibleAlias
+
+T = TypeVar('T')
+
+BOGUS = True
+if BOGUS:
+    Bogus = FlexibleAlias[T, Any]
+else:
+    Bogus = FlexibleAlias[T, T]
+
+class A:
+    x: Bogus[str]
+
+reveal_type(A().x)  # E: Revealed type is 'Any'
+
+def foo(x: Bogus[int]) -> None:
+    reveal_type(x)  # E: Revealed type is 'Any'
+
+[builtins fixtures/dict.pyi]
+
+[case testFlexibleAlias3]
+# flags: --always-false=BOGUS
+from typing import TypeVar, Any
+from mypy_extensions import FlexibleAlias
+
+T = TypeVar('T')
+
+BOGUS = True
+if BOGUS:
+    Bogus = FlexibleAlias[T, Any]
+else:
+    Bogus = FlexibleAlias[T, T]
+
+class A:
+    x: Bogus[str]
+
+reveal_type(A().x)  # E: Revealed type is 'builtins.str'
+
+def foo(x: Bogus[int]) -> None:
+    reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+[builtins fixtures/dict.pyi]

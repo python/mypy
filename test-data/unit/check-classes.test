@@ -4574,3 +4574,121 @@ from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
 [out]
+
+[case testGetAttrDescriptor]
+from typing import TypeVar, Generic, Any
+
+T = TypeVar('T')
+class C(Generic[T]):
+    normal: T
+    def __getattr__(self, attr: str) -> T: ...
+
+class Descr:
+    def __get__(self, inst: Any, owner: Any) -> int: ...
+
+class D(C[Descr]):
+    other: Descr
+
+d: D
+reveal_type(d.normal)  # E: Revealed type is 'builtins.int'
+reveal_type(d.dynamic)  # E: Revealed type is '__main__.Descr*'
+reveal_type(D.other)  # E: Revealed type is 'builtins.int'
+D.dynamic  # E: "Type[D]" has no attribute "dynamic"
+[out]
+
+[case testSelfDescriptorAssign]
+from typing import Any
+
+class Descr:
+    def __get__(self, inst: Any, owner: Any) -> int: ...
+
+class C:
+    def __init__(self, x: Descr) -> None:
+        self.x = x
+
+c = C(Descr())
+reveal_type(c.x)  # E: Revealed type is '__main__.Descr'
+[out]
+
+[case testForwardInstanceWithWrongArgCount]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int, int]]  # E: "G" expects 1 type argument, but 2 given
+B = G
+[out]
+
+[case testForwardInstanceWithNoArgs]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B]
+reveal_type(x)  # E: Revealed type is '__main__.G[__main__.G[Any]]'
+B = G
+[out]
+
+[case testForwardInstanceWithBound]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', bound=str)
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int]]
+B = G
+[out]
+main:7: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
+main:7: error: Type argument "__main__.G[builtins.int]" of "G" must be a subtype of "builtins.str"
+
+[case testExtremeForwardReferencing]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class B(Generic[T]): ...
+
+y: A
+z: A[int]
+x = [y, z]
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.B*[Any]]'
+
+A = B
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoneAnyFallback]
+from typing import Any
+dynamic: Any
+class C(dynamic): pass
+x: None = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "None")
+[out]
+
+[case testNoneAnyFallbackDescriptor]
+from typing import Any
+from d import Descr
+
+dynamic: Any
+class C(dynamic):
+    id = Descr(int)
+    name = Descr(str)
+
+c: C
+reveal_type(c.id)  # E: Revealed type is 'builtins.int*'
+reveal_type(C.name)  # E: Revealed type is 'd.Descr[builtins.str*]'
+
+[file d.pyi]
+from typing import Any, overload, Generic, TypeVar, Type
+
+T = TypeVar('T')
+class Descr(Generic[T]):
+    def __init__(self, tp: Type[T]) -> None: ...
+    @overload
+    def __get__(self, inst: None, owner: Any) -> Descr[T]: ...
+    @overload
+    def __get__(self, inst: object, owner: Any) -> T: ...
+[out]

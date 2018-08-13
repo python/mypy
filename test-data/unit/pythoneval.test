@@ -1306,3 +1306,14 @@ def print_custom_table() -> None:
         reveal_type(row)
 [out]
 _testLoadsOfOverloads.py:24: error: Revealed type is 'builtins.str*'
+
+[case testReduceWithAnyInstance]
+from typing import Iterable
+from functools import reduce
+M = Iterable
+def f(m1: M, m2):
+    ...
+def g(ms: 'T[M]') -> None:
+    reduce(f, ms)
+T = Iterable
+[out]

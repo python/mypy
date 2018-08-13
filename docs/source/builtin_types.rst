@@ -35,6 +35,6 @@ strings and and ``Dict[Any, Any]`` is a dictionary of dynamically typed
 correspond to Python protocols. For example, a ``str`` object or a
 ``List[str]`` object is valid
 when ``Iterable[str]`` or ``Sequence[str]`` is expected. Note that even though
-they are similar to abstract base classes defined in ``abc.collections``
+they are similar to abstract base classes defined in ``collections.abc``
 (formerly ``collections``), they are not identical, since the built-in
 collection type objects do not support indexing.
