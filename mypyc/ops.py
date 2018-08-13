@@ -1431,6 +1431,9 @@ class ClassIR:
         # base_mro is the chain of concrete (non-trait) ancestors
         self.base_mro = [self]  # type: List[ClassIR]
 
+        # Does this class or any subclass have a __bool__method
+        self.has_bool = False
+
     def real_base(self) -> Optional['ClassIR']:
         """Return the actual concrete base class, if there is one."""
         if len(self.mro) > 1 and not self.mro[1].is_trait:

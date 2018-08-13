@@ -24,6 +24,49 @@ L2:
     r3 = 2
     return r3
 
+[case testIsTruthyOverride]
+from typing import Optional
+
+class A: pass
+
+class B(A):
+    def __bool__(self) -> bool:
+        return False
+
+
+def f(x: Optional[A]) -> int:
+    if x:
+        return 1
+    return 2
+[out]
+def B.__bool__(self):
+    self :: B
+    r0 :: bool
+L0:
+    r0 = False
+    return r0
+def f(x):
+    x :: union[A, None]
+    r0 :: None
+    r1 :: bool
+    r2 :: A
+    r3 :: bool
+    r4, r5 :: int
+L0:
+    r0 = None
+    r1 = x is not r0
+    if r1 goto L1 else goto L3 :: bool
+L1:
+    r2 = cast(A, x)
+    r3 = bool r2 :: object
+    if r3 goto L2 else goto L3 :: bool
+L2:
+    r4 = 1
+    return r4
+L3:
+    r5 = 2
+    return r5
+
 [case testIsNotNone]
 from typing import Optional
 

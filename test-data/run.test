@@ -2377,7 +2377,8 @@ class Item:
         return self.value < x.value
 
 class Subclass1(Item):
-    pass
+    def __bool__(self) -> bool:
+        return bool(self.value)
 
 class NonBoxedThing:
     def __getitem__(self, index: Item) -> Item:
@@ -2399,6 +2400,9 @@ def internal_index_into() -> None:
     y = NonBoxedThing()
     z = Item("3")
     print(y[z].value)
+
+def is_truthy(x: Item) -> bool:
+    return True if x else False
 
 [file driver.py]
 from native import *
@@ -2426,6 +2430,11 @@ assert i1 != i3
 assert i2 < i3
 assert not i1 < i2
 assert i1 == Subclass1('lolol')
+
+assert is_truthy(Item(''))
+assert is_truthy(Item('a'))
+assert not is_truthy(Subclass1(''))
+assert is_truthy(Subclass1('a'))
 
 internal_index_into()
 [out]

@@ -10,6 +10,7 @@ from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
+    generate_bool_wrapper,
 )
 from mypyc.ops import (
     ClassIR, FuncIR, FuncDecl, RType, RTuple, Environment, object_rprimitive, FuncSignature,
@@ -31,6 +32,7 @@ def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 # We maintain a table from dunder function names to struct slots they
 # correspond to and functions that generate a wrapper (if necessary)
 # and return the function name to stick in the slot.
+# TODO: Add remaining dunder methods
 SlotGenerator = Callable[[ClassIR, FuncIR, Emitter], str]
 SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 
@@ -43,6 +45,19 @@ SLOT_DEFS = {
     '__iter__': ('tp_iter', native_slot),
     '__hash__': ('tp_hash', generate_hash_wrapper),
 }
+
+AS_MAPPING_SLOT_DEFS = {
+    '__getitem__': ('mp_subscript', generate_dunder_wrapper),
+}
+
+AS_NUMBER_SLOT_DEFS = {
+    '__bool__': ('nb_bool', generate_bool_wrapper),
+}
+
+SIDE_TABLES = [
+    ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),
+    ('as_number', 'PyNumberMethods', AS_NUMBER_SLOT_DEFS),
+]
 
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
@@ -103,12 +118,14 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     init_fn = cl.get_method('__init__')
 
     # Fill out slots in the type object from dunder methods.
-    # TODO: Add remaining dunder methods
     fields.update(generate_slots(cl, SLOT_DEFS, emitter))
 
-    as_mapping_name = generate_as_mapping_for_class(cl, emitter)
-    if as_mapping_name:
-        fields['tp_as_mapping'] = '&{}'.format(as_mapping_name)
+    # Fill out dunder methods that live in tables hanging off the side.
+    for table_name, type, slot_defs in SIDE_TABLES:
+        slots = generate_slots(cl, slot_defs, emitter)
+        if slots:
+            table_struct_name = generate_side_table_for_class(cl, table_name, type, slots, emitter)
+            fields['tp_{}'.format(table_name)] = '&{}'.format(table_struct_name)
 
     richcompare_name = generate_richcompare_wrapper(cl, emitter)
     if richcompare_name:
@@ -457,18 +474,13 @@ def generate_methods_table(cl: ClassIR,
     emitter.emit_line('};')
 
 
-AS_MAPPING_SLOT_DEFS = {
-    '__getitem__': ('mp_subscript', generate_dunder_wrapper),
-}
-
-
-def generate_as_mapping_for_class(cl: ClassIR,
+def generate_side_table_for_class(cl: ClassIR,
+                                  name: str,
+                                  type: str,
+                                  slots: Dict[str, str],
                                   emitter: Emitter) -> Optional[str]:
-    slots = generate_slots(cl, AS_MAPPING_SLOT_DEFS, emitter)
-    if not slots:
-        return None
-    name = '{}_as_mapping'.format(cl.name_prefix(emitter.names))
-    emitter.emit_line('static PyMappingMethods {} = {{'.format(name))
+    name = '{}_{}'.format(cl.name_prefix(emitter.names), name)
+    emitter.emit_line('static {} {} = {{'.format(type, name))
     for field, value in slots.items():
         emitter.emit_line(".{} = {},".format(field, value))
     emitter.emit_line("};")

@@ -64,7 +64,9 @@ class bytes:
     def __ne__(self, x: object) -> bool: pass
     def join(self, x: Iterable[object]) -> bytes: pass
 
-class bool: pass
+class bool:
+    def __init__(self, o: object = ...) -> None: ...
+
 
 class tuple(Generic[T], Sized):
     def __init__(self, i: Iterable[T]) -> None: pass

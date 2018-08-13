@@ -380,6 +380,12 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
     ir.mro = mro
     ir.base_mro = base_mro
 
+    # We need to know whether any children of a class have a __bool__
+    # method in order to know whether we can assume it is always true.
+    if ir.has_method('__bool__'):
+        for base in ir.mro:
+            base.has_bool = True
+
 
 class FuncInfo(object):
     """Contains information about functions as they are generated."""
@@ -2329,9 +2335,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 is_none = self.binary_op(value, self.none(), 'is not', value.line)
                 branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
                 self.add(branch)
-                if isinstance(value_type, RInstance):
+                if isinstance(value_type, RInstance) and not value_type.class_ir.has_bool:
                     # Optional[X] where X is always truthy
-                    # TODO: Support __bool__
                     pass
                 else:
                     # Optional[X] where X may be falsey and requires a check
