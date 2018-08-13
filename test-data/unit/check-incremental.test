@@ -4790,3 +4790,97 @@ tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-impor
 [out2]
 tmp/c.py:1: error: Cannot find module named 'a.b.c'
 tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testAddedMissingStubs]
+# flags: --ignore-missing-imports
+from missing import f
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackage]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackageFrom]
+# flags: --ignore-missing-imports
+from package import missing
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackagePartial]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackagePartialGetAttr]
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnore]
+from missing import f  # type: ignore
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnorePackage]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnorePackageFrom]
+from package import missing  # type: ignore
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnorePackagePartial]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
