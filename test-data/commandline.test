@@ -23,6 +23,7 @@ for x in [a, b, p, p.q]:
 [file a.py]
 import b
 import c
+from p import s
 
 print('<a>', ord('A') == 65)  # Test full builtins
 
@@ -39,6 +40,7 @@ class B:
 
 print('<a>', f(5).x)
 print('<c>', c.foo())
+assert s.bar(10) == 20
 
 [file b.py]
 import a
@@ -67,6 +69,10 @@ def foo(x: int) -> int:
 [file p/r.py]
 def foo(x: int) -> int:
     return x
+
+[file p/s.py]
+def bar(x: int) -> int:
+    return x*2
 
 [out]
 <b> here

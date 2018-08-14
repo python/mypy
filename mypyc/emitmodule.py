@@ -43,7 +43,7 @@ def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], op
 
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
-    modules = genops.build_ir(file_nodes, result.types)
+    modules = genops.build_ir(file_nodes, result.graph, result.types)
     # Insert exception handling.
     for _, module in modules:
         for fn in module.functions:
@@ -192,7 +192,7 @@ class ModuleGenerator:
         emitter.emit_lines(declaration,
                            '{')
         module_static = self.module_static_name(module_name, emitter)
-        emitter.emit_lines('if ({} != NULL) {{'.format(module_static),
+        emitter.emit_lines('if ({} != Py_None) {{'.format(module_static),
                            'Py_INCREF({});'.format(module_static),
                            'return {};'.format(module_static),
                            '}')
@@ -208,13 +208,6 @@ class ModuleGenerator:
         emitter.emit_lines('{} = PyModule_GetDict({});'.format(module_globals, module_static),
                            'if ({} == NULL)'.format(module_globals),
                            '    return NULL;')
-        self.generate_imports_init_section(module.imports, emitter)
-        self.generate_from_imports_init_section(
-            module_static,
-            module.imports,
-            module.from_imports,
-            emitter,
-        )
 
         # HACK: Manually instantiate generated classes here
         for cl in module.classes:
@@ -305,12 +298,14 @@ class ModuleGenerator:
 
         return result
 
-    def declare_global(self, type_spaced: str, name: str, static: bool=True) -> None:
+    def declare_global(self, type_spaced: str, name: str, static: bool=True,
+                       initializer: Optional[str] = None) -> None:
+        initializer_body = '' if not initializer else ' = {}'.format(initializer)
         static_str = 'static ' if static else ''
         if name not in self.context.declarations:
             self.context.declarations[name] = HeaderDeclaration(
                 set(),
-                ['{}{}{};'.format(static_str, type_spaced, name)],
+                ['{}{}{}{};'.format(static_str, type_spaced, name, initializer_body)],
             )
 
     def declare_internal_globals(self, module_name: str, emitter: Emitter) -> None:
@@ -322,7 +317,7 @@ class ModuleGenerator:
 
     def declare_module(self, module_name: str, emitter: Emitter) -> None:
         static_name = self.module_static_name(module_name, emitter)
-        self.declare_global('CPyModule *', static_name)
+        self.declare_global('CPyModule *', static_name, initializer='Py_None')
 
     def declare_imports(self, imps: Iterable[str], emitter: Emitter) -> None:
         for imp in imps:
@@ -331,61 +326,6 @@ class ModuleGenerator:
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
         symbol = emitter.static_name(identifier, None)
         self.declare_global('PyObject *', symbol)
-
-    def generate_imports_init_section(self, imps: List[str], emitter: Emitter) -> None:
-        for imp in imps:
-            # Check for NULL to avoid importing twice (to keep ref counts in sync).
-            self.generate_import(imp, emitter, check_for_null=True)
-
-    def generate_import(self, imp: str, emitter: Emitter, check_for_null: bool) -> None:
-        c_name = self.module_static_name(imp, emitter)
-        if check_for_null:
-            emitter.emit_line('if ({} == NULL) {{'.format(c_name))
-        emitter.emit_line('{} = PyImport_ImportModule("{}");'.format(c_name, imp))
-        emitter.emit_line('if ({} == NULL)'.format(c_name))
-        emitter.emit_line('    return NULL;')
-        if check_for_null:
-            emitter.emit_line('}')
-
-    def generate_from_imports_init_section(self,
-            module_static: str,
-            imps: List[str],
-            from_imps: Dict[str, List[Tuple[str, str]]],
-            emitter: Emitter) -> None:
-        for imp, import_names in from_imps.items():
-            # Only import it again if we haven't imported it from the main
-            # imports section
-            if imp not in imps:
-                c_name = self.module_static_name(imp, emitter)
-                emitter.emit_line('CPyModule *{};'.format(c_name))
-                self.generate_import(imp, emitter, check_for_null=False)
-
-            for original_name, as_name in import_names:
-                # Obtain a reference to the original object
-                object_temp_name = emitter.temp_name()
-                c_name = self.module_static_name(imp, emitter)
-                emitter.emit_line('PyObject *{} = PyObject_GetAttrString({}, "{}");'.format(
-                    object_temp_name,
-                    c_name,
-                    original_name,
-                ))
-                emitter.emit_lines(
-                    'if ({} == NULL)'.format(object_temp_name),
-                    '    return NULL;',
-                )
-                # and add it to the namespace of the current module, which eats the ref
-                emitter.emit_line('if (PyModule_AddObject({}, "{}", {}) < 0)'.format(
-                    module_static,
-                    as_name,
-                    object_temp_name,
-                ))
-                emitter.emit_line('   return NULL;')
-
-            # This particular import isn't saved as a global so we should decref it
-            # and not keep it around
-            if imp not in imps:
-                c_name = self.module_static_name(imp, emitter)
-                emitter.emit_line('Py_DECREF({});'.format(c_name))
 
 
 def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]]:

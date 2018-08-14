@@ -1499,18 +1499,13 @@ class ModuleIR:
 
     def __init__(self,
             imports: List[str],
-            from_imports: Dict[str, List[Tuple[str, str]]],
             literals: LiteralsMap,
             functions: List[FuncIR],
             classes: List[ClassIR]) -> None:
         self.imports = imports[:]
-        self.from_imports = from_imports
         self.literals = literals
         self.functions = functions
         self.classes = classes
-
-        if 'builtins' not in self.imports:
-            self.imports.insert(0, 'builtins')
 
 
 class OpVisitor(Generic[T]):

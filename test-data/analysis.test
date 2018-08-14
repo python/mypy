@@ -489,7 +489,7 @@ def lol(x):
 L0:
 L1:
     r0 = builtins.module :: static
-    r1 = unicode_0 :: static  ('id')
+    r1 = unicode_1 :: static  ('id')
     r2 = getattr r0, r1
     if is_error(r2) goto L5 (error at lol:3) else goto L2
 L2:
@@ -504,7 +504,7 @@ L4:
 L5:
     r5 = error_catch
     r6 = builtins.module :: static
-    r7 = unicode_1 :: static  ('Exception')
+    r7 = unicode_2 :: static  ('Exception')
     r8 = getattr r6, r7
     if is_error(r8) goto L11 (error at lol:4) else goto L6
 L6:

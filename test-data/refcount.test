@@ -711,7 +711,7 @@ def f() -> str:
 def f():
     r0 :: str
 L0:
-    r0 = unicode_0 :: static  ('some string')
+    r0 = unicode_1 :: static  ('some string')
     inc_ref r0
     return r0
 
@@ -735,9 +735,9 @@ def g(x):
 L0:
     r0 = 2
     r1 = builtins.module :: static
-    r2 = unicode_0 :: static  ('int')
+    r2 = unicode_1 :: static  ('int')
     r3 = getattr r1, r2
-    r4 = unicode_1 :: static  ('base')
+    r4 = unicode_2 :: static  ('base')
     r5 = (x)
     r6 = {}
     r7 = box(int, r0)

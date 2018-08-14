@@ -8,9 +8,10 @@ def f(x: int) -> int:
 #include <Python.h>
 #include <CPy.h>
 
-static CPyModule *CPyStatic_module;
+static CPyModule *CPyStatic_module = Py_None;
 static PyObject *CPyStatic_globals;
-static CPyModule *CPyStatic_builtins_module;
+static CPyModule *CPyStatic_builtins_module = Py_None;
+static PyObject *CPyStatic_unicode_0;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
 static PyObject *CPyDef___top_level__(void);
@@ -31,7 +32,7 @@ static struct PyModuleDef module = {
 
 PyMODINIT_FUNC PyInit_prog(void)
 {
-    if (CPyStatic_module != NULL) {
+    if (CPyStatic_module != Py_None) {
         Py_INCREF(CPyStatic_module);
         return CPyStatic_module;
     }
@@ -42,11 +43,9 @@ PyMODINIT_FUNC PyInit_prog(void)
     CPyStatic_globals = PyModule_GetDict(CPyStatic_module);
     if (CPyStatic_globals == NULL)
         return NULL;
-    if (CPyStatic_builtins_module == NULL) {
-        CPyStatic_builtins_module = PyImport_ImportModule("builtins");
-        if (CPyStatic_builtins_module == NULL)
-            return NULL;
-    }
+    CPyStatic_unicode_0 = PyUnicode_FromStringAndSize("builtins", 8);
+    if (CPyStatic_unicode_0 == NULL)
+        return NULL;
     PyObject *result = CPyDef___top_level__();
     if (result == NULL)
         return NULL;
@@ -84,10 +83,44 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
 
 static PyObject *CPyDef___top_level__(void) {
     PyObject *cpy_r_r0;
+    PyObject *cpy_r_r1;
+    char cpy_r_r2;
+    PyObject *cpy_r_r3;
+    PyObject *cpy_r_r4;
+    PyObject *cpy_r_r5;
+    PyObject *cpy_r_r6;
 CPyL0: ;
-    cpy_r_r0 = Py_None;
-    CPy_INCREF(cpy_r_r0);
-    return cpy_r_r0;
+    cpy_r_r0 = CPyStatic_builtins_module;
+    cpy_r_r1 = Py_None;
+    int __tmp1 = cpy_r_r0 != cpy_r_r1;
+    if (__tmp1 < 0)
+        cpy_r_r2 = 2;
+    else
+        cpy_r_r2 = __tmp1;
+    if (cpy_r_r2) {
+        goto CPyL3;
+    } else
+        goto CPyL1;
+CPyL1: ;
+    cpy_r_r3 = CPyStatic_unicode_0; /* 'builtins' */
+    cpy_r_r4 = PyImport_Import(cpy_r_r3);
+    if (unlikely(cpy_r_r4 == NULL)) {
+        CPy_AddTraceback("prog.py", "<module>", -1, CPyStatic_globals);
+        goto CPyL4;
+    } else
+        goto CPyL2;
+CPyL2: ;
+    Py_INCREF(cpy_r_r4);
+    CPyStatic_builtins_module = cpy_r_r4;
+    CPy_DECREF(cpy_r_r4);
+    goto CPyL3;
+CPyL3: ;
+    cpy_r_r5 = Py_None;
+    CPy_INCREF(cpy_r_r5);
+    return cpy_r_r5;
+CPyL4: ;
+    cpy_r_r6 = NULL;
+    return cpy_r_r6;
 }
 [case testError]
 def f(x: List[int]) -> None: pass

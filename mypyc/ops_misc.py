@@ -223,6 +223,14 @@ py_method_call_op = custom_op(
     emit=simple_emit('{dest} = PyObject_CallMethodObjArgs({comma_args}, NULL);'))
 
 
+import_op = custom_op(
+    name='import',
+    arg_types=[str_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = PyImport_Import({args[0]});'))
+
+
 func_op('builtins.isinstance',
         arg_types=[object_rprimitive, object_rprimitive],
         result_type=bool_rprimitive,

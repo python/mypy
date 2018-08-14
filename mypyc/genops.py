@@ -19,6 +19,7 @@ import sys
 import traceback
 import itertools
 
+from mypy.build import Graph
 from mypy.nodes import (
     Node, MypyFile, SymbolNode, Statement, FuncItem, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
     IntExpr, NameExpr, LDEF, Var, IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, Argument, CallExpr,
@@ -72,7 +73,7 @@ from mypyc.ops_misc import (
     none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
-    type_op, pytype_from_template_op,
+    type_op, pytype_from_template_op, import_op
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
@@ -87,6 +88,7 @@ GenFunc = Callable[[], None]
 
 
 def build_ir(modules: List[MypyFile],
+             graph: Graph,
              types: Dict[Expression, Type]) -> List[Tuple[str, ModuleIR]]:
     result = []
     mapper = Mapper()
@@ -124,11 +126,10 @@ def build_ir(modules: List[MypyFile],
         module.accept(fvv)
 
         # Second pass.
-        builder = IRBuilder(types, mapper, module_names, fvv)
+        builder = IRBuilder(types, graph, mapper, module_names, fvv)
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
             builder.imports,
-            builder.from_imports,
             mapper.literals,
             builder.functions,
             builder.classes
@@ -618,10 +619,12 @@ class GeneratorNonlocalControl(BaseNonlocalControl):
 class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def __init__(self,
                  types: Dict[Expression, Type],
+                 graph: Graph,
                  mapper: Mapper,
                  modules: List[str],
                  fvv: FreeVariablesVisitor) -> None:
         self.types = types
+        self.graph = graph
         self.environment = Environment()
         self.environments = [self.environment]
         self.ret_types = []  # type: List[RType]
@@ -658,8 +661,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.mapper = mapper
         self.imports = []  # type: List[str]
-        self.from_imports = {}  # type: Dict[str, List[Tuple[str, str]]]
-        self.imports = []  # type: List[str]
 
     def visit_mypy_file(self, mypyfile: MypyFile) -> None:
         if mypyfile.fullname() in ('typing', 'abc'):
@@ -678,6 +679,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.classes.append(ir)
 
         self.enter(FuncInfo(name='<top level>'))
+
+        # Make sure we have a builtins import
+        self.gen_import('builtins', -1)
 
         # Generate ops.
         for node in mypyfile.defs:
@@ -860,36 +864,56 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                           [self.load_globals_dict(), self.load_static_unicode(cdef.name),
                            tp], cdef.line)
 
+    def gen_import(self, id: str, line: int) -> None:
+        self.imports.append(id)
+
+        needs_import, out = BasicBlock(), BasicBlock()
+        first_load = self.add(LoadStatic(object_rprimitive, 'module', id))
+        comparison = self.binary_op(first_load, self.none(), 'is not', line)
+        self.add_bool_branch(comparison, out, needs_import)
+
+        self.activate_block(needs_import)
+        value = self.primitive_op(import_op, [self.load_static_unicode(id)], line)
+        self.add(InitStatic(value, 'module', id))
+        self.goto_and_activate(out)
+
     def visit_import(self, node: Import) -> None:
         if node.is_unreachable or node.is_mypy_only:
             return
-        if not node.is_top_level:
-            assert False, "non-toplevel imports not supported"
-
         for node_id, _ in node.ids:
-            self.imports.append(node_id)
+            self.gen_import(node_id, node.line)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         if node.is_unreachable or node.is_mypy_only:
             return
-
         # TODO support these?
         assert not node.relative
 
-        if node.id not in self.from_imports:
-            self.from_imports[node.id] = []
+        self.gen_import(node.id, node.line)
+        module = self.add(LoadStatic(object_rprimitive, 'module', node.id))
 
+        # For top-level imports, copy everything into our module's
+        # dict.  Note that we miscompile import from in a way that
+        # probably doesn't matter much: we always load the values from
+        # the *other* module and not from our *own*, where they have
+        # been copied to.
+        globals = self.load_globals_dict()
         for name, maybe_as_name in node.names:
-            as_name = maybe_as_name or name
-            self.from_imports[node.id].append((name, as_name))
+            fullname = node.id + '.' + name
+            if fullname in self.graph or fullname in self.graph[self.module_name].suppressed:
+                self.gen_import(fullname, node.line)
+
+            if node.is_top_level:
+                as_name = maybe_as_name or name
+                obj = self.py_get_attr(module, name, node.line)
+                self.translate_special_method_call(
+                    globals, '__setitem__', [self.load_static_unicode(as_name), obj],
+                    result_type=None, line=node.line)
 
     def visit_import_all(self, node: ImportAll) -> None:
         if node.is_unreachable or node.is_mypy_only:
             return
-        if not node.is_top_level:
-            assert False, "non-toplevel imports not supported"
-
-        self.imports.append(node.id)
+        self.gen_import(node.id, node.line)
 
     def gen_glue_method(self, sig: FuncSignature, target: FuncIR,
                         cls: ClassIR, base: ClassIR, line: int) -> FuncIR:

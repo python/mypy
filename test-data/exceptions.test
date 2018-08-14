@@ -188,7 +188,7 @@ def g():
 L0:
 L1:
     r0 = builtins.module :: static
-    r1 = unicode_0 :: static  ('object')
+    r1 = unicode_1 :: static  ('object')
     r2 = getattr r0, r1
     if is_error(r2) goto L4 (error at g:3) else goto L2
 L2:
@@ -199,9 +199,9 @@ L3:
     goto L11
 L4:
     r4 = error_catch
-    r5 = unicode_1 :: static  ('weeee')
+    r5 = unicode_2 :: static  ('weeee')
     r6 = builtins.module :: static
-    r7 = unicode_2 :: static  ('print')
+    r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     if is_error(r8) goto L9 (error at g:5) else goto L5
 L5:
@@ -266,7 +266,7 @@ def a():
 L0:
 L1:
     r0 = builtins.module :: static
-    r1 = unicode_0 :: static  ('print')
+    r1 = unicode_1 :: static  ('print')
     r2 = getattr r0, r1
     if is_error(r2) goto L7 (error at a:3) else goto L2
 L2:
@@ -277,7 +277,7 @@ L3:
     r4 = cast(None, r3)
     if is_error(r4) goto L7 (error at a:3) else goto L24
 L4:
-    r5 = unicode_1 :: static  ('hi')
+    r5 = unicode_2 :: static  ('hi')
     inc_ref r5
     r6 = r5
     goto L6
@@ -294,9 +294,9 @@ L7:
     r11 = error_catch
     r7 = r11
 L8:
-    r12 = unicode_2 :: static  ('goodbye!')
+    r12 = unicode_3 :: static  ('goodbye!')
     r13 = builtins.module :: static
-    r14 = unicode_0 :: static  ('print')
+    r14 = unicode_1 :: static  ('print')
     r15 = getattr r13, r14
     if is_error(r15) goto L17 (error at a:6) else goto L9
 L9:
@@ -359,7 +359,7 @@ def lol():
     r0 :: str
     r1 :: None
 L0:
-    r0 = unicode_0 :: static  ('Hello')
+    r0 = unicode_1 :: static  ('Hello')
     r1 = None
     inc_ref r1
     return r1
@@ -388,7 +388,7 @@ def lol(x):
 L0:
 L1:
     r0 = builtins.module :: static
-    r1 = unicode_0 :: static  ('id')
+    r1 = unicode_1 :: static  ('id')
     r2 = getattr r0, r1
     if is_error(r2) goto L5 (error at lol:3) else goto L2
 L2:
@@ -405,7 +405,7 @@ L4:
 L5:
     r5 = error_catch
     r6 = builtins.module :: static
-    r7 = unicode_1 :: static  ('Exception')
+    r7 = unicode_2 :: static  ('Exception')
     r8 = getattr r6, r7
     if is_error(r8) goto L11 (error at lol:4) else goto L6
 L6:

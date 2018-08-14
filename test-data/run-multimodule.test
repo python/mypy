@@ -3,14 +3,18 @@
 [case testMultiModuleBasic]
 from other import g
 def f(x: int) -> int:
-    return g(x + 1)
+    from other import h
+    return h(g(x + 1))
 [file other.py]
 def g(x: int) -> int:
     return x + 2
+def h(x: int) -> int:
+    return x + 1
 [file driver.py]
+import native
 from native import f
 from other import g
-assert f(3) == 6
+assert f(3) == 7
 assert g(2) == 4
 try:
     f(1.1)
@@ -450,3 +454,23 @@ except TypeError:
     pass
 else:
     assert False
+
+[case testMultiModuleCrash]
+b = False
+if b:
+    import other
+
+def foo() -> None:
+    try:
+        other.x
+    except:
+        pass
+    else:
+        assert False
+
+[file other.py]
+x = 10
+
+[file driver.py]
+from native import foo
+foo()

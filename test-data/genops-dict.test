@@ -66,7 +66,7 @@ def f(x):
 L0:
     r0 = 1
     r1 = 2
-    r2 = unicode_0 :: static
+    r2 = unicode_1 :: static
     r3 = {}
     r4 = box(int, r0)
     r5 = box(int, r1)

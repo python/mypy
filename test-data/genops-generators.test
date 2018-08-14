@@ -349,7 +349,7 @@ L2:
 L3:
     r5 = 5
     r6 = builtins.module :: static
-    r7 = unicode_0 :: static  ('range')
+    r7 = unicode_3 :: static  ('range')
     r8 = getattr r6, r7
     r9 = box(int, r5)
     r10 = py_call(r8, r9)
@@ -1733,13 +1733,13 @@ L12:
     unreachable
 L13:
     r20 = None
-    r21 = unicode_0 :: static  ('lol')
+    r21 = unicode_3 :: static  ('lol')
     r22 = r21
     goto L21
 L14: (handler for L10, L11, L12, L13, L5, L6, L7, L8, L9)
     r23 = error_catch
     r24 = builtins.module :: static
-    r25 = unicode_1 :: static  ('Exception')
+    r25 = unicode_4 :: static  ('Exception')
     r26 = getattr r24, r25
     r27 = exc_matches r26
     if r27 goto L15 else goto L16 :: bool
@@ -1770,9 +1770,9 @@ L22: (handler for L17, L18, L19, L4)
     r35 = error_catch
     r31 = r35
 L23:
-    r36 = unicode_2 :: static  ('goodbye!')
+    r36 = unicode_5 :: static  ('goodbye!')
     r37 = builtins.module :: static
-    r38 = unicode_3 :: static  ('print')
+    r38 = unicode_6 :: static  ('print')
     r39 = getattr r37, r38
     r40 = py_call(r39, r36)
     r41 = cast(None, r40)

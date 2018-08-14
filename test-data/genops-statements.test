@@ -537,7 +537,7 @@ L1:
     if r3 goto L3 else goto L2 :: bool
 L2:
     r4 = builtins.module :: static
-    r5 = unicode_0 :: static  ('AssertionError')
+    r5 = unicode_3 :: static  ('AssertionError')
     r6 = getattr r4, r5
     r7 = py_call(r6, s)
     raise_exception(r6, r7); r8 = 0
@@ -605,9 +605,9 @@ def delDict():
     r10 :: bool
     r11 :: None
 L0:
-    r0 = unicode_0 :: static  ('one')
+    r0 = unicode_1 :: static  ('one')
     r1 = 1
-    r2 = unicode_1 :: static  ('two')
+    r2 = unicode_2 :: static  ('two')
     r3 = 2
     r4 = {}
     r5 = box(int, r1)
@@ -615,7 +615,7 @@ L0:
     r7 = box(int, r3)
     r8 = r4.__setitem__(r2, r7) :: dict
     d = r4
-    r9 = unicode_0 :: static  ('one')
+    r9 = unicode_1 :: static  ('one')
     r10 = d.__delitem__(r9) :: object
     r11 = None
     return r11
@@ -686,13 +686,13 @@ def delDictMultiple():
     r20 :: bool
     r21 :: None
 L0:
-    r0 = unicode_0 :: static  ('one')
+    r0 = unicode_1 :: static  ('one')
     r1 = 1
-    r2 = unicode_1 :: static  ('two')
+    r2 = unicode_2 :: static  ('two')
     r3 = 2
-    r4 = unicode_2 :: static  ('three')
+    r4 = unicode_3 :: static  ('three')
     r5 = 3
-    r6 = unicode_3 :: static  ('four')
+    r6 = unicode_4 :: static  ('four')
     r7 = 4
     r8 = {}
     r9 = box(int, r1)
@@ -704,9 +704,9 @@ L0:
     r15 = box(int, r7)
     r16 = r8.__setitem__(r6, r15) :: dict
     d = r8
-    r17 = unicode_0 :: static  ('one')
+    r17 = unicode_1 :: static  ('one')
     r18 = d.__delitem__(r17) :: object
-    r19 = unicode_3 :: static  ('four')
+    r19 = unicode_4 :: static  ('four')
     r20 = d.__delitem__(r19) :: object
     r21 = None
     return r21
@@ -731,7 +731,7 @@ L0:
     r1 = 2
     r2 = Dummy(r0, r1)
     dummy = r2
-    r3 = unicode_6 :: static  ('x')
+    r3 = unicode_7 :: static  ('x')
     r4 = delattr dummy, r3
     r5 = None
     return r5
@@ -748,9 +748,9 @@ L0:
     r1 = 2
     r2 = Dummy(r0, r1)
     dummy = r2
-    r3 = unicode_6 :: static  ('x')
+    r3 = unicode_7 :: static  ('x')
     r4 = delattr dummy, r3
-    r5 = unicode_7 :: static  ('y')
+    r5 = unicode_8 :: static  ('y')
     r6 = delattr dummy, r5
     r7 = None
     return r7
