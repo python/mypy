@@ -1918,7 +1918,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # This is the case even if the __add__ method is completely missing and the __radd__
             # method is defined.
             #
-            # We report this error message here instead of in the definition checks 
+            # We report this error message here instead of in the definition checks
             variants_raw.append((left_op, left_type, right_expr))
             if right_op is not None:
                 warn_about_uncalled_reverse_operator = True
@@ -2011,7 +2011,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 right_expr=arg,
                 context=context)
         else:
-            self.check_op_local(
+            return self.check_op_local(
                 method=method,
                 base_type=base_type,
                 arg=arg,
