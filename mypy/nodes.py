@@ -398,10 +398,10 @@ class FuncBase(Node):
         self.unanalyzed_type = None  # type: Optional[mypy.types.Type]
         # If method, reference to TypeInfo
         # TODO: Type should be Optional[TypeInfo]
-        self.info = FUNC_NO_INFO  # type: TypeInfo
-        self.is_property = False  # type: bool
-        self.is_class = False  # type: bool
-        self.is_static = False  # type: bool
+        self.info = FUNC_NO_INFO
+        self.is_property = False
+        self.is_class = False
+        self.is_static = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(str, None)
@@ -727,7 +727,7 @@ class Var(SymbolNode):
         # TODO: Should be Optional[str]
         self._fullname = cast(str, None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
-        self.info = VAR_NO_INFO  # type: TypeInfo
+        self.info = VAR_NO_INFO
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
         # Is this the first argument to an ordinary method (usually "self")?
         self.is_self = False
@@ -2436,10 +2436,10 @@ class FakeInfo(TypeInfo):
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
-VAR_NO_INFO = FakeInfo('Var is lacking info')
-CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')
-FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')
-TYPEINFO_NO_REPLACED = FakeInfo('TypeInfo is lacking replaced')
+VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: TypeInfo
+CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: TypeInfo
+FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: TypeInfo
+TYPEINFO_NO_REPLACED = FakeInfo('TypeInfo is lacking replaced')  # type: TypeInfo
 
 
 class TypeAlias(SymbolNode):

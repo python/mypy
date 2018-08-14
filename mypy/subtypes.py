@@ -560,7 +560,6 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
         else:
             typ = signature
     itype = map_instance_to_supertype(itype, node.info)
-    assert typ is not None
     typ = expand_type_by_instance(typ, itype)
     return typ
 
