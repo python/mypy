@@ -1082,6 +1082,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         | c_obj |   --------------------------+
         +-------+
         """
+        assert not any(kind in (ARG_STAR, ARG_STAR2) for kind in fitem.arg_kinds)
+
         func_reg = None  # type: Optional[Value]
 
         is_nested = fitem in self.nested_fitems
