@@ -190,9 +190,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if self._lookup_cache(left, right):
                 return True
-            # NOTE: left.type.mro may be None in quick mode if there
-            # was an error somewhere.
-            if not self.ignore_promotions and left.type.mro is not None:
+            if not self.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and self._is_subtype(base._promote, self.right):
                         self._record_cache(left, right)

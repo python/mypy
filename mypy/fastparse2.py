@@ -34,9 +34,10 @@ from mypy.nodes import (
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
+    FakeInfo,
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny
+    Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
 )
 from mypy import messages
 from mypy.errors import Errors
@@ -70,7 +71,8 @@ V = TypeVar('V')
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-_dummy_fallback = None  # type: Any
+MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")
+_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)
 
 TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment'
