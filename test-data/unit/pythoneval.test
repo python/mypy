@@ -428,10 +428,10 @@ b'' < ''
 '' < bytearray()
 bytearray() < ''
 [out]
-_program.py:2: error: Unsupported operand types for > ("bytes" and "str")
-_program.py:3: error: Unsupported operand types for > ("str" and "bytes")
-_program.py:4: error: Unsupported operand types for > ("bytearray" and "str")
-_program.py:5: error: Unsupported operand types for > ("str" and "bytearray")
+_program.py:2: error: Unsupported operand types for < ("str" and "bytes")
+_program.py:3: error: Unsupported operand types for < ("bytes" and "str")
+_program.py:4: error: Unsupported operand types for < ("str" and "bytearray")
+_program.py:5: error: Unsupported operand types for < ("bytearray" and "str")
 
 [case testInplaceOperatorMethod]
 import typing

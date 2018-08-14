@@ -1193,6 +1193,9 @@ class TypedDictType(Type):
                              set(data['required_keys']),
                              Instance.deserialize(data['fallback']))
 
+    def has_optional_keys(self) -> bool:
+        return any(key not in self.required_keys for key in self.items)
+
     def is_anonymous(self) -> bool:
         return self.fallback.type.fullname() == 'typing.Mapping'
 

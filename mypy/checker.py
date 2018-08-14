@@ -5,7 +5,7 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -30,7 +30,7 @@ from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneTyp, strip_type, TypeType, TypeOfAny,
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarDef,
-    true_only, false_only, function_type, is_named_instance, union_items,
+    true_only, false_only, function_type, is_named_instance, union_items, TypeQuery
 )
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
@@ -55,7 +55,7 @@ from mypy.visitor import NodeVisitor
 from mypy.join import join_types
 from mypy.treetransform import TransformVisitor
 from mypy.binder import ConditionalTypeBinder, get_declaration
-from mypy.meet import is_overlapping_types, is_partially_overlapping_types
+from mypy.meet import is_overlapping_erased_types, is_overlapping_types
 from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
@@ -471,6 +471,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if is_unsafe_overlapping_overload_signatures(sig1, sig2):
                             self.msg.overloaded_signatures_overlap(
                                 i + 1, i + j + 2, item.func)
+                        elif is_unsafe_partially_overlapping_overload_signatures(sig1, sig2):
+                            self.msg.overloaded_signatures_partial_overlap(
+                                i + 1, i + j + 2, item.func)
 
             if impl_type is not None:
                 assert defn.impl is not None
@@ -495,12 +498,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Is the overload alternative's arguments subtypes of the implementation's?
                 if not is_callable_compatible(impl, sig1,
-                                              is_compat=is_subtype,
+                                              is_compat=is_subtype_no_promote,
                                               ignore_return=True):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
                 # Is the overload alternative's return type a subtype of the implementation's?
-                if not is_subtype(sig1.ret_type, impl.ret_type):
+                if not is_subtype_no_promote(sig1.ret_type, impl.ret_type):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
@@ -1043,71 +1046,101 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Check for overlapping method and reverse method signatures.
 
         Assume reverse method has valid argument count and kinds.
+
+        Precondition:
+            If the reverse operator method accepts some argument of type
+            X, the forward operator method must belong to class X.
+
+            For example, if we have the reverse operator `A.__radd__(B)`, then the
+            corresponding forward operator must have the type `B.__add__(...)`.
         """
 
-        # Reverse operator method that overlaps unsafely with the
-        # forward operator method can result in type unsafety. This is
-        # similar to overlapping overload variants.
+        # Note: Suppose we have two operator methods "A.__rOP__(B) -> R1" and
+        # "B.__OP__(C) -> R2". We check if these two methods are unsafely overlapping
+        # by using the following algorithm:
         #
-        # This example illustrates the issue:
+        # 1. Rewrite "B.__OP__(C) -> R1"  to "temp1(B, C) -> R1"
         #
-        #   class X: pass
-        #   class A:
-        #       def __add__(self, x: X) -> int:
-        #           if isinstance(x, X):
-        #               return 1
-        #           return NotImplemented
-        #   class B:
-        #       def __radd__(self, x: A) -> str: return 'x'
-        #   class C(X, B): pass
-        #   def f(b: B) -> None:
-        #       A() + b # Result is 1, even though static type seems to be str!
-        #   f(C())
+        # 2. Rewrite "A.__rOP__(B) -> R2" to "temp2(B, A) -> R2"
         #
-        # The reason for the problem is that B and X are overlapping
-        # types, and the return types are different. Also, if the type
-        # of x in __radd__ would not be A, the methods could be
-        # non-overlapping.
+        # 3. Treat temp1 and temp2 as if they were both variants in the same
+        #    overloaded function. (This mirrors how the Python runtime calls
+        #    operator methods: we first try __OP__, then __rOP__.)
+        #
+        #    If the first signature is unsafely overlapping with the second,
+        #    report an error.
+        #
+        # 4. However, if temp1 shadows temp2 (e.g. the __rOP__ method can never
+        #    be called), do NOT report an error.
+        #
+        #    This behavior deviates from how we handle overloads -- many of the
+        #    modules in typeshed seem to define __OP__ methods that shadow the
+        #    corresponding __rOP__ method.
+        #
+        # Note: we do not attempt to handle unsafe overlaps related to multiple
+        # inheritance.
 
         for forward_item in union_items(forward_type):
             if isinstance(forward_item, CallableType):
-                # TODO check argument kinds
-                if len(forward_item.arg_types) < 1:
-                    # Not a valid operator method -- can't succeed anyway.
-                    return
-
-                # Construct normalized function signatures corresponding to the
-                # operator methods. The first argument is the left operand and the
-                # second operand is the right argument -- we switch the order of
-                # the arguments of the reverse method.
-                forward_tweaked = CallableType(
-                    [forward_base, forward_item.arg_types[0]],
-                    [nodes.ARG_POS] * 2,
-                    [None] * 2,
-                    forward_item.ret_type,
-                    forward_item.fallback,
-                    name=forward_item.name)
-                reverse_args = reverse_type.arg_types
-                reverse_tweaked = CallableType(
-                    [reverse_args[1], reverse_args[0]],
-                    [nodes.ARG_POS] * 2,
-                    [None] * 2,
-                    reverse_type.ret_type,
-                    fallback=self.named_type('builtins.function'),
-                    name=reverse_type.name)
-
-                if is_unsafe_overlapping_operator_signatures(
-                        forward_tweaked, reverse_tweaked):
+                if self.is_unsafe_overlapping_op(forward_item, forward_base, reverse_type):
                     self.msg.operator_method_signatures_overlap(
                         reverse_class, reverse_name,
                         forward_base, forward_name, context)
             elif isinstance(forward_item, Overloaded):
                 for item in forward_item.items():
-                    self.check_overlapping_op_methods(
-                        reverse_type, reverse_name, reverse_class,
-                        item, forward_name, forward_base, context)
+                    if self.is_unsafe_overlapping_op(item, forward_base, reverse_type):
+                        self.msg.operator_method_signatures_overlap(
+                            reverse_class, reverse_name,
+                            forward_base, forward_name,
+                            context)
             elif not isinstance(forward_item, AnyType):
                 self.msg.forward_operator_not_callable(forward_name, context)
+
+    def is_unsafe_overlapping_op(self,
+                                 forward_item: CallableType,
+                                 forward_base: Type,
+                                 reverse_type: CallableType) -> bool:
+        # TODO check argument kinds
+        if len(forward_item.arg_types) < 1:
+            # Not a valid operator method -- can't succeed anyway.
+            return False
+
+        # Erase the type if necessary to make sure we don't have a dangling
+        # TypeVar in forward_tweaked
+        forward_base_erased = forward_base
+        if isinstance(forward_base, TypeVarType):
+            forward_base_erased = erase_to_bound(forward_base)
+
+        # Construct normalized function signatures corresponding to the
+        # operator methods. The first argument is the left operand and the
+        # second operand is the right argument -- we switch the order of
+        # the arguments of the reverse method.
+
+        forward_tweaked = forward_item.copy_modified(
+            arg_types=[forward_base_erased, forward_item.arg_types[0]],
+            arg_kinds=[nodes.ARG_POS] * 2,
+            arg_names=[None] * 2,
+        )
+        reverse_tweaked = reverse_type.copy_modified(
+            arg_types=[reverse_type.arg_types[1], reverse_type.arg_types[0]],
+            arg_kinds=[nodes.ARG_POS] * 2,
+            arg_names=[None] * 2,
+        )
+
+        reverse_base_erased = reverse_type.arg_types[0]
+        if isinstance(reverse_base_erased, TypeVarType):
+            reverse_base_erased = erase_to_bound(reverse_base_erased)
+
+        if is_same_type(reverse_base_erased, forward_base_erased):
+            return False
+        elif is_subtype(reverse_base_erased, forward_base_erased):
+            first = reverse_tweaked
+            second = forward_tweaked
+        else:
+            first = forward_tweaked
+            second = reverse_tweaked
+
+        return is_unsafe_partially_overlapping_overload_signatures(first, second)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -3088,7 +3121,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         optional_type, comp_type = second_type, first_type
                         optional_expr = node.operands[1]
-                    if is_overlapping_types(optional_type, comp_type):
+                    if is_overlapping_erased_types(optional_type, comp_type):
                         return {optional_expr: remove_optional(optional_type)}, {}
             elif node.operators in [['in'], ['not in']]:
                 expr = node.operands[0]
@@ -3099,7 +3132,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                             right_type.type.fullname() != 'builtins.object'))
                 if (right_type and right_ok and is_optional(left_type) and
                         literal(expr) == LITERAL_TYPE and not is_literal_none(expr) and
-                        is_overlapping_types(left_type, right_type)):
+                        is_overlapping_erased_types(left_type, right_type)):
                     if node.operators == ['in']:
                         return {expr: remove_optional(left_type)}, {}
                     if node.operators == ['not in']:
@@ -3442,7 +3475,8 @@ def conditional_type_map(expr: Expression,
                and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
-            elif not is_overlapping_types(current_type, proposed_type):
+            elif not is_overlapping_types(current_type, proposed_type,
+                                          prohibit_none_typevar_overlap=True):
                 # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
@@ -3658,9 +3692,48 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 
 def is_unsafe_overlapping_overload_signatures(signature: CallableType,
                                               other: CallableType) -> bool:
-    """Check if two overloaded function signatures may be unsafely overlapping.
+    """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
 
-    We consider two functions 's' and 't' to be unsafely overlapping both if
+    We consider two functions 's' and 't' to be unsafely overlapping if both
+    of the following are true:
+
+    1.  s's parameters are all more precise or partially overlapping with t's
+    2.  s's return type is NOT a subtype of t's.
+
+    This function will perform a modified version of the above two checks:
+    we do not check for partial overlaps. This lets us vary our error messages
+    depending on the severity of the overlap.
+
+    See 'is_unsafe_partially_overlapping_overload_signatures' for the full checks.
+
+    Assumes that 'signature' appears earlier in the list of overload
+    alternatives then 'other' and that their argument counts are overlapping.
+    """
+    # if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
+    #    print("in first")
+
+    signature = detach_callable(signature)
+    other = detach_callable(other)
+
+    return (is_callable_compatible(signature, other,
+                                  is_compat=is_more_precise_no_promote,
+                                  is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
+                                  ignore_return=False,
+                                  check_args_covariantly=True,
+                                  allow_partial_overlap=True) or
+            is_callable_compatible(other, signature,
+                                   is_compat=is_more_precise_no_promote,
+                                   is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
+                                   ignore_return=False,
+                                   check_args_covariantly=False,
+                                   allow_partial_overlap=True))
+
+
+def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
+                                                        other: CallableType) -> bool:
+    """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
+
+    We consider two functions 's' and 't' to be unsafely overlapping if both
     of the following are true:
 
     1.  s's parameters are all more precise or partially overlapping with t's
@@ -3669,26 +3742,105 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    # TODO: Handle partially overlapping parameter types
-    #
-    # For example, the signatures "f(x: Union[A, B]) -> int" and "f(x: Union[B, C]) -> str"
-    # is unsafe: the parameter types are partially overlapping.
-    #
-    # To fix this, we need to either modify meet.is_overlapping_types or add a new
-    # function and use "is_more_precise(...) or is_partially_overlapping(...)" for the is_compat
-    # checks.
-    #
-    # (We already have a rudimentary implementation of 'is_partially_overlapping', but it only
-    # attempts to handle the obvious cases -- see its docstring for more info.)
+    # if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
+    #    print("in second")
 
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
-        return is_more_precise(t, s) or is_partially_overlapping_types(t, s)
+        return is_more_precise_no_promote(t, s) or is_overlapping_types_no_promote(t, s)
 
-    return is_callable_compatible(signature, other,
+    # Try detaching callables from the containing class so that all TypeVars
+    # are treated as being free.
+    #
+    # This lets us identify cases where the two signatures use completely
+    # incompatible types -- e.g. see the testOverloadingInferUnionReturnWithMixedTypevars
+    # test case.
+    signature = detach_callable(signature)
+    other = detach_callable(other)
+
+    # Note: We repeat this check twice in both directions due to a slight
+    # asymmetry in 'is_callable_compatible'. When checking for partial overlaps,
+    # we attempt to unify 'signature' and 'other' both against each other.
+    #
+    # If 'signature' cannot be unified with 'other', we end early. However,
+    # if 'other' cannot be modified with 'signature', the function continues
+    # using the older version of 'other'.
+    #
+    # This discrepancy is unfortunately difficult to get rid of, so we repeat the
+    # checks twice in both directions for now.
+    return (is_callable_compatible(signature, other,
                                   is_compat=is_more_precise_or_partially_overlapping,
-                                  is_compat_return=lambda l, r: not is_subtype(l, r),
+                                  is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
+                                  ignore_return=False,
                                   check_args_covariantly=True,
-                                  allow_partial_overlap=True)
+                                  allow_partial_overlap=True) or
+            is_callable_compatible(other, signature,
+                                   is_compat=is_more_precise_or_partially_overlapping,
+                                   is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
+                                   ignore_return=False,
+                                   check_args_covariantly=False,
+                                   allow_partial_overlap=True))
+
+
+def detach_callable(typ: CallableType) -> CallableType:
+    """Ensures that the callable's type variables are 'detached' and independent of the context.
+
+    A callable normally keeps track of the type variables it uses within its 'variables' field.
+    However, if the callable is from a method and that method is using a class type variable,
+    the callable will not keep track of that type variable since it belongs to the class.
+
+    This function will traverse the callable and find all used type vars and add them to the
+    variables field if it isn't already present.
+
+    The caller can then unify on all type variables whether or not the callable is originally
+    from a class or not."""
+    type_list = typ.arg_types + [typ.ret_type]
+    # old_type_list = list(type_list)
+
+    appear_map = {}  # type: Dict[str, List[int]]
+    for i, inner_type in enumerate(type_list):
+        typevars_available = inner_type.accept(TypeVarExtractor())
+        for var in typevars_available:
+            if var.fullname not in appear_map:
+                appear_map[var.fullname] = []
+            appear_map[var.fullname].append(i)
+
+    used_type_var_names = set()
+    for var_name, appearances in appear_map.items():
+        used_type_var_names.add(var_name)
+
+    all_type_vars = typ.accept(TypeVarExtractor())
+    new_variables = []
+    for var in set(all_type_vars):
+        if var.fullname not in used_type_var_names:
+            continue
+        new_variables.append(TypeVarDef(
+            name=var.name,
+            fullname=var.fullname,
+            id=var.id,
+            values=var.values,
+            upper_bound=var.upper_bound,
+            variance=var.variance,
+        ))
+    out = typ.copy_modified(
+        variables=new_variables,
+        arg_types=type_list[:-1],
+        ret_type=type_list[-1],
+    )
+    return out
+
+
+class TypeVarExtractor(TypeQuery[List[TypeVarType]]):
+    def __init__(self) -> None:
+        super().__init__(self._merge)
+
+    def _merge(self, iter: Iterable[List[TypeVarType]]) -> List[TypeVarType]:
+        out = []
+        for item in iter:
+            out.extend(item)
+        return out
+
+    def visit_type_var(self, t: TypeVarType) -> List[TypeVarType]:
+        return [t]
 
 
 def overload_can_never_match(signature: CallableType, other: CallableType) -> bool:
@@ -3702,69 +3854,6 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
     return is_callable_compatible(signature, other,
                                   is_compat=is_more_precise,
                                   ignore_return=True)
-
-
-def is_unsafe_overlapping_operator_signatures(signature: Type, other: Type) -> bool:
-    """Check if two operator method signatures may be unsafely overlapping.
-
-    Two signatures s and t are overlapping if both can be valid for the same
-    statically typed values and the return types are incompatible.
-
-    Assume calls are first checked against 'signature', then against 'other'.
-    Thus if 'signature' is more general than 'other', there is no unsafe
-    overlapping.
-
-    TODO: Clean up this function and make it not perform type erasure.
-
-    Context: This function was previously used to make sure both overloaded
-    functions and operator methods were not unsafely overlapping.
-
-    We changed the semantics for we should handle overloaded definitions,
-    but not operator functions. (We can't reuse the same semantics for both:
-    the overload semantics are too restrictive here).
-
-    We should rewrite this method so that:
-
-    1.  It uses many of the improvements made to overloads: in particular,
-        eliminating type erasure.
-
-    2.  It contains just the logic necessary for operator methods.
-    """
-    if isinstance(signature, CallableType):
-        if isinstance(other, CallableType):
-            # TODO varargs
-            # TODO keyword args
-            # TODO erasure
-            # TODO allow to vary covariantly
-            # Check if the argument counts are overlapping.
-            min_args = max(signature.min_args, other.min_args)
-            max_args = min(len(signature.arg_types), len(other.arg_types))
-            if min_args > max_args:
-                # Argument counts are not overlapping.
-                return False
-            # Signatures are overlapping iff if they are overlapping for the
-            # smallest common argument count.
-            for i in range(min_args):
-                t1 = signature.arg_types[i]
-                t2 = other.arg_types[i]
-                if not is_overlapping_types(t1, t2):
-                    return False
-            # All arguments types for the smallest common argument count are
-            # overlapping => the signature is overlapping. The overlapping is
-            # safe if the return types are identical.
-            if is_same_type(signature.ret_type, other.ret_type):
-                return False
-            # If the first signature has more general argument types, the
-            # latter will never be called
-            if is_more_general_arg_prefix(signature, other):
-                return False
-            # Special case: all args are subtypes, and returns are subtypes
-            if (all(is_proper_subtype(s, o)
-                    for (s, o) in zip(signature.arg_types, other.arg_types)) and
-                    is_subtype(signature.ret_type, other.ret_type)):
-                return False
-            return not is_more_precise_signature(signature, other)
-    return True
 
 
 def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
@@ -3784,41 +3873,12 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     return False
 
 
-def is_equivalent_type_var_def(tv1: TypeVarDef, tv2: TypeVarDef) -> bool:
-    """Are type variable definitions equivalent?
-
-    Ignore ids, locations in source file and names.
-    """
-    return (
-        tv1.variance == tv2.variance
-        and is_same_types(tv1.values, tv2.values)
-        and ((tv1.upper_bound is None and tv2.upper_bound is None)
-             or (tv1.upper_bound is not None
-                 and tv2.upper_bound is not None
-                 and is_same_type(tv1.upper_bound, tv2.upper_bound))))
-
-
 def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:
     return is_callable_compatible(t, s,
                                   is_compat=is_same_type,
                                   ignore_return=True,
                                   check_args_covariantly=True,
                                   ignore_pos_arg_names=True)
-
-
-def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
-    """Is t more precise than s?
-    A signature t is more precise than s if all argument types and the return
-    type of t are more precise than the corresponding types in s.
-    Assume that the argument kinds and names are compatible, and that the
-    argument counts are overlapping.
-    """
-    # TODO generic function types
-    # Only consider the common prefix of argument types.
-    for argt, args in zip(t.arg_types, s.arg_types):
-        if not is_more_precise(argt, args):
-            return False
-    return is_more_precise(t.ret_type, s.ret_type)
 
 
 def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, str]:
@@ -3962,3 +4022,15 @@ def is_static(func: Union[FuncBase, Decorator]) -> bool:
     elif isinstance(func, FuncBase):
         return func.is_static
     assert False, "Unexpected func type: {}".format(type(func))
+
+
+def is_subtype_no_promote(left: Type, right: Type) -> bool:
+    return is_subtype(left, right, ignore_promotions=True)
+
+
+def is_more_precise_no_promote(left: Type, right: Type) -> bool:
+    return is_more_precise(left, right, ignore_promotions=True)
+
+
+def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
+    return is_overlapping_types(left, right, ignore_promotions=True)

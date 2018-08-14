@@ -1471,6 +1471,8 @@ op_methods = {
     'in': '__contains__',
 }  # type: Dict[str, str]
 
+op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}
+
 comparison_fallback_method = '__cmp__'
 ops_falling_back_to_cmp = {'__ne__', '__eq__',
                            '__lt__', '__le__',
@@ -1504,6 +1506,26 @@ reverse_op_methods = {
     '__ge__': '__le__',
     '__gt__': '__lt__',
     '__le__': '__ge__',
+}
+
+# Suppose we have some class A. When we do A() + A(), Python will only check
+# the output of A().__add__(A()) and skip calling the __radd__ method entirely.
+# This shortcut is used only for the following methods:
+op_methods_that_shortcut = {
+    '__add__',
+    '__sub__',
+    '__mul__',
+    '__truediv__',
+    '__mod__',
+    '__divmod__',
+    '__floordiv__',
+    '__pow__',
+    '__matmul__',
+    '__and__',
+    '__or__',
+    '__xor__',
+    '__lshift__',
+    '__rshift__',
 }
 
 normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
