@@ -2681,7 +2681,7 @@ class SymbolTableNode:
         node = self.node
         if (isinstance(node, Var) and node.type is not None):
             return node.type
-        # mypy thinks this branch is unreachable but it is wrong
+        # mypy thinks this branch is unreachable but it is wrong (#3603)
         elif (isinstance(node, FuncBase) and node.type is not None):
             return node.type
         elif isinstance(node, Decorator):

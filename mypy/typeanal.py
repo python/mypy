@@ -413,6 +413,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables = self.bind_function_type_variables(t, t)
             ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=nested),
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
+                                  # If the fallback isn't filled in yet,
+                                  # its type will be the falsey FakeInfo
                                   fallback=(t.fallback if t.fallback.type
                                             else self.named_type('builtins.function')),
                                   variables=self.anal_var_defs(variables))
@@ -438,6 +440,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 return AnyType(TypeOfAny.from_error)
         any_type = AnyType(TypeOfAny.special_form)
+        # If the fallback isn't filled in yet, its type will be the falsey FakeInfo
         fallback = (t.fallback if t.fallback.type
                     else self.named_type('builtins.tuple', [any_type]))
         return TupleType(self.anal_array(t.items), fallback, t.line)
