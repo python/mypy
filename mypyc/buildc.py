@@ -10,6 +10,9 @@ import sys
 from typing import List, Tuple
 from mypyc.namegen import exported_name
 
+# Hack: what to append to the -0 flag
+OPT_LEVEL = ''
+
 
 class BuildError(Exception):
     def __init__(self, output: bytes) -> None:
@@ -104,7 +107,7 @@ from distutils import sysconfig
 import sys
 import os
 
-extra_compile_args = ['-Werror', '-Wno-unused-function', '-Wno-unused-label',
+extra_compile_args = ['-O{opt_level}', '-Werror', '-Wno-unused-function', '-Wno-unused-label',
                       '-Wno-unreachable-code', '-Wno-unused-variable', '-Wno-trigraphs']
 
 vars = sysconfig.get_config_vars()
@@ -150,6 +153,7 @@ def make_setup_py(package_name: str, packages: str,
         f.write(
             setup_format.format(
                 package_name=package_name,
+                opt_level=OPT_LEVEL,
                 cpath=cpath,
                 packages=packages,
                 libraries=libraries,

@@ -98,6 +98,11 @@ def main() -> None:
     use_shared_lib = len(module_names) > 1 or any('.' in x for x in module_names)
 
     # XXX: This is not the right way to pass in command line args
+    opt_level = os.getenv("MYPYC_OPT_LEVEL", None)
+    if opt_level:
+        import mypyc.buildc
+        mypyc.buildc.OPT_LEVEL = opt_level
+
     save_dir = os.getenv("MYPYC_DIR", None)
 
     ops = [] if save_dir else None  # type: Optional[List[str]]
