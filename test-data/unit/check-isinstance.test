@@ -2055,3 +2055,31 @@ def foo2(x: Optional[str]) -> None:
     else:
         reveal_type(x)      # E: Revealed type is 'Union[builtins.str, None]'
 [builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
+# flags: --strict-optional
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -> T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVarsNoStrictOptional]
+# flags: --no-strict-optional
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -> T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]

@@ -3475,7 +3475,8 @@ def conditional_type_map(expr: Expression,
                and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
-            elif not is_overlapping_types(current_type, proposed_type, prohibit_none_typevar_overlap=True):
+            elif not is_overlapping_types(current_type, proposed_type,
+                                          prohibit_none_typevar_overlap=True):
                 # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
@@ -3874,69 +3875,6 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
                                   ignore_return=True)
 
 
-def is_unsafe_overlapping_operator_signatures(signature: Type, other: Type) -> bool:
-    """Check if two operator method signatures may be unsafely overlapping.
-
-    Two signatures s and t are overlapping if both can be valid for the same
-    statically typed values and the return types are incompatible.
-
-    Assume calls are first checked against 'signature', then against 'other'.
-    Thus if 'signature' is more general than 'other', there is no unsafe
-    overlapping.
-
-    TODO: Clean up this function and make it not perform type erasure.
-
-    Context: This function was previously used to make sure both overloaded
-    functions and operator methods were not unsafely overlapping.
-
-    We changed the semantics for we should handle overloaded definitions,
-    but not operator functions. (We can't reuse the same semantics for both:
-    the overload semantics are too restrictive here).
-
-    We should rewrite this method so that:
-
-    1.  It uses many of the improvements made to overloads: in particular,
-        eliminating type erasure.
-
-    2.  It contains just the logic necessary for operator methods.
-    """
-    if isinstance(signature, CallableType):
-        if isinstance(other, CallableType):
-            # TODO varargs
-            # TODO keyword args
-            # TODO erasure
-            # TODO allow to vary covariantly
-            # Check if the argument counts are overlapping.
-            min_args = max(signature.min_args, other.min_args)
-            max_args = min(len(signature.arg_types), len(other.arg_types))
-            if min_args > max_args:
-                # Argument counts are not overlapping.
-                return False
-            # Signatures are overlapping iff if they are overlapping for the
-            # smallest common argument count.
-            for i in range(min_args):
-                t1 = signature.arg_types[i]
-                t2 = other.arg_types[i]
-                if not is_overlapping_erased_types(t1, t2):
-                    return False
-            # All arguments types for the smallest common argument count are
-            # overlapping => the signature is overlapping. The overlapping is
-            # safe if the return types are identical.
-            if is_same_type(signature.ret_type, other.ret_type):
-                return False
-            # If the first signature has more general argument types, the
-            # latter will never be called
-            if is_more_general_arg_prefix(signature, other):
-                return False
-            # Special case: all args are subtypes, and returns are subtypes
-            if (all(is_proper_subtype(s, o)
-                    for (s, o) in zip(signature.arg_types, other.arg_types)) and
-                    is_subtype(signature.ret_type, other.ret_type)):
-                return False
-            return not is_more_precise_signature(signature, other)
-    return True
-
-
 def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     """Does t have wider arguments than s?"""
     # TODO should an overload with additional items be allowed to be more
@@ -3954,41 +3892,12 @@ def is_more_general_arg_prefix(t: FunctionLike, s: FunctionLike) -> bool:
     return False
 
 
-def is_equivalent_type_var_def(tv1: TypeVarDef, tv2: TypeVarDef) -> bool:
-    """Are type variable definitions equivalent?
-
-    Ignore ids, locations in source file and names.
-    """
-    return (
-        tv1.variance == tv2.variance
-        and is_same_types(tv1.values, tv2.values)
-        and ((tv1.upper_bound is None and tv2.upper_bound is None)
-             or (tv1.upper_bound is not None
-                 and tv2.upper_bound is not None
-                 and is_same_type(tv1.upper_bound, tv2.upper_bound))))
-
-
 def is_same_arg_prefix(t: CallableType, s: CallableType) -> bool:
     return is_callable_compatible(t, s,
                                   is_compat=is_same_type,
                                   ignore_return=True,
                                   check_args_covariantly=True,
                                   ignore_pos_arg_names=True)
-
-
-def is_more_precise_signature(t: CallableType, s: CallableType) -> bool:
-    """Is t more precise than s?
-    A signature t is more precise than s if all argument types and the return
-    type of t are more precise than the corresponding types in s.
-    Assume that the argument kinds and names are compatible, and that the
-    argument counts are overlapping.
-    """
-    # TODO generic function types
-    # Only consider the common prefix of argument types.
-    for argt, args in zip(t.arg_types, s.arg_types):
-        if not is_more_precise(argt, args):
-            return False
-    return is_more_precise(t.ret_type, s.ret_type)
 
 
 def infer_operator_assignment_method(typ: Type, operator: str) -> Tuple[bool, str]:
