@@ -73,7 +73,7 @@ from mypyc.ops_misc import (
     none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
-    type_op, pytype_from_template_op, import_op
+    type_op, pytype_from_template_op, import_op, ellipsis_op,
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
@@ -3005,6 +3005,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         #       the 'send' function.
         return self.none()
 
+    def visit_ellipsis(self, o: EllipsisExpr) -> Value:
+        return self.primitive_op(ellipsis_op, [], o.line)
+
     # Unimplemented constructs
     # TODO: some of these are actually things that should never show up,
     # so properly sort those out.
@@ -3022,9 +3025,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         raise NotImplementedError
 
     def visit_decorator(self, o: Decorator) -> None:
-        raise NotImplementedError
-
-    def visit_ellipsis(self, o: EllipsisExpr) -> Value:
         raise NotImplementedError
 
     def visit_enum_call_expr(self, o: EnumCallExpr) -> Value:

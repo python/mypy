@@ -29,6 +29,12 @@ false_op = name_ref_op('builtins.False',
                        error_kind=ERR_NEVER,
                        emit=simple_emit('{dest} = 0;'))
 
+ellipsis_op = custom_op(name='...',
+                        arg_types=[],
+                        result_type=object_rprimitive,
+                        error_kind=ERR_NEVER,
+                        emit=simple_emit('{dest} = Py_Ellipsis; Py_INCREF({dest});'))
+
 iter_op = func_op(name='builtins.iter',
                   arg_types=[object_rprimitive],
                   result_type=object_rprimitive,
