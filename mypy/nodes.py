@@ -199,8 +199,6 @@ class SymbolNode(Node):
 class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
-    # Module name ('__main__' for initial file)
-    _name = ''      # type: str
     # Fully qualified module name
     _fullname = None  # type: Bogus[str]
     # Path to the file (None if not known)
@@ -242,7 +240,7 @@ class MypyFile(SymbolNode):
             self.ignored_lines = set()
 
     def name(self) -> str:
-        return self._name
+        return '' if not self._fullname else self._fullname.split('.')[-1]
 
     def fullname(self) -> Bogus[str]:
         return self._fullname
@@ -256,7 +254,6 @@ class MypyFile(SymbolNode):
 
     def serialize(self) -> JsonDict:
         return {'.class': 'MypyFile',
-                '_name': self._name,
                 '_fullname': self._fullname,
                 'names': self.names.serialize(self._fullname),
                 'is_stub': self.is_stub,
@@ -268,7 +265,6 @@ class MypyFile(SymbolNode):
     def deserialize(cls, data: JsonDict) -> 'MypyFile':
         assert data['.class'] == 'MypyFile', data
         tree = MypyFile([], [])
-        tree._name = data['_name']
         tree._fullname = data['_fullname']
         tree.names = SymbolTable.deserialize(data['names'])
         tree.is_stub = data['is_stub']
