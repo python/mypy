@@ -547,7 +547,7 @@ assigning the type to a variable:
 
     A type alias does not create a new type. It's just a shorthand notation for
     another type -- it's equivalent to the target type except for
-    :ref:`generic-type-aliases`.
+    :ref:`generic aliases <generic-type-aliases>`.
 
 .. _named-tuples:
 
