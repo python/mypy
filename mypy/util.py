@@ -8,6 +8,7 @@ import sys
 from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
+from mypy.mypyc_hacks import DecodeError
 
 T = TypeVar('T')
 
@@ -61,13 +62,6 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
     else:
         default_encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
         return default_encoding, -1
-
-
-class DecodeError(Exception):
-    """Exception raised when a file cannot be decoded due to an unknown encoding type.
-
-    Essentially a wrapper for the LookupError raised by `bytearray.decode`
-    """
 
 
 def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
