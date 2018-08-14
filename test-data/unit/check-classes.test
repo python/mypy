@@ -4616,3 +4616,23 @@ class Descr(Generic[T]):
     @overload
     def __get__(self, inst: object, owner: Any) -> T: ...
 [out]
+
+[case testClassCustomPropertyWorks]
+from typing import TypeVar, Generic, Callable, Any
+
+V = TypeVar('V')
+
+class classproperty(Generic[V]):
+    def __init__(self, getter: Callable[[Any], V]) -> None:
+        self.getter = getter
+    def __get__(self, instance: Any, owner: Any) -> V:
+        return self.getter(owner)
+
+class C:
+    @classproperty
+    def foo(cls) -> int:
+        return 42
+
+reveal_type(C.foo)  # E: Revealed type is 'builtins.int*'
+reveal_type(C().foo)  # E: Revealed type is 'builtins.int*'
+[out]
