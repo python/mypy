@@ -1721,8 +1721,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_index_expr(self, expr: IndexExpr) -> Value:
         base = self.accept(expr.base)
 
-        if isinstance(base.type, RTuple):
-            assert isinstance(expr.index, IntExpr)  # TODO
+        if isinstance(base.type, RTuple) and isinstance(expr.index, IntExpr):
             return self.add(TupleGet(base, expr.index.value, expr.line))
 
         index_reg = self.accept(expr.index)
