@@ -2,7 +2,7 @@
 # test cases.
 
 from typing import (
-    TypeVar, Generic, List, Iterator, Iterable, Sized, Dict, Optional, Tuple, Any,
+    TypeVar, Generic, List, Iterator, Iterable, Sized, Dict, Optional, Tuple, Any, Set,
     overload, Mapping, Union, Callable
 )
 
@@ -115,6 +115,7 @@ class set(Generic[T]):
     def discard(self, x: T) -> None: pass
     def clear(self) -> None: pass
     def pop(self) -> T: pass
+    def __or__(self, s: Set[S]) -> Set[Union[T, S]]: ...
 
 class slice: pass
 
@@ -156,7 +157,7 @@ class NotImplementedError(RuntimeError): pass
 def id(o: object) -> int: pass
 def len(o: Sized) -> int: pass
 def print(*object) -> None: pass
-def range(x: int) -> Iterator[int]: pass
+def range(x: int, y: int = ..., z: int = ...) -> Iterator[int]: pass
 def isinstance(x: object, t: object) -> bool: pass
 def next(i: Iterator[T]) -> T: pass
 def hash(o: object) -> int: ...

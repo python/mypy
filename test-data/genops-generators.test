@@ -459,10 +459,8 @@ def yield_for_loop_dict__gen.__mypyc_generator_helper__(self, type, value, trace
     r2 :: None
     r3, r4 :: bool
     r5 :: dict
-    r6 :: int
-    r7 :: bool
-    r8 :: int
-    r9 :: bool
+    r6, r7 :: int
+    r8, r9 :: bool
     r10, r11 :: int
     r12 :: bool
     r13 :: int
@@ -505,10 +503,10 @@ L2:
     unreachable
 L3:
     r5 = {}
-    r6 = 5
-    r0.__mypyc_temp__2 = r6; r7 = is_error
-    r8 = 0
-    r0.i = r8; r9 = is_error
+    r6 = 0
+    r7 = 5
+    r0.__mypyc_temp__2 = r7; r8 = is_error
+    r0.i = r6; r9 = is_error
 L4:
     r10 = r0.i
     r11 = r0.__mypyc_temp__2
@@ -623,10 +621,8 @@ def yield_for_loop_range__gen.__mypyc_generator_helper__(self, type, value, trac
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5 :: int
-    r6 :: bool
-    r7 :: int
-    r8 :: bool
+    r5, r6 :: int
+    r7, r8 :: bool
     r9, r10 :: int
     r11 :: bool
     r12 :: int
@@ -657,10 +653,10 @@ L2:
     raise_exception_with_tb(type, value, traceback); r4 = 0
     unreachable
 L3:
-    r5 = 5
-    r0.__mypyc_temp__5 = r5; r6 = is_error
-    r7 = 0
-    r0.i = r7; r8 = is_error
+    r5 = 0
+    r6 = 5
+    r0.__mypyc_temp__5 = r6; r7 = is_error
+    r0.i = r5; r8 = is_error
 L4:
     r9 = r0.i
     r10 = r0.__mypyc_temp__5

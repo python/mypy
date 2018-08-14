@@ -5,18 +5,18 @@ def f() -> None:
         x = x + i
 [out]
 def f():
-    r0, x, r1, i, r2 :: int
+    r0, x, r1, r2, i :: int
     r3 :: bool
     r4, r5, r6 :: int
     r7 :: None
 L0:
     r0 = 0
     x = r0
-    r1 = 5
-    r2 = 0
-    i = r2
+    r1 = 0
+    r2 = 5
+    i = r1
 L1:
-    r3 = i < r1 :: int
+    r3 = i < r2 :: int
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = x + i :: int
@@ -58,16 +58,16 @@ def f() -> None:
         break
 [out]
 def f():
-    r0, n, r1 :: int
+    r0, r1, n :: int
     r2 :: bool
     r3, r4 :: int
     r5 :: None
 L0:
-    r0 = 5
-    r1 = 0
-    n = r1
+    r0 = 0
+    r1 = 5
+    n = r0
 L1:
-    r2 = n < r0 :: int
+    r2 = n < r1 :: int
     if r2 goto L2 else goto L4 :: bool
 L2:
     goto L4
@@ -141,16 +141,16 @@ def f() -> None:
         continue
 [out]
 def f():
-    r0, n, r1 :: int
+    r0, r1, n :: int
     r2 :: bool
     r3, r4 :: int
     r5 :: None
 L0:
-    r0 = 5
-    r1 = 0
-    n = r1
+    r0 = 0
+    r1 = 5
+    n = r0
 L1:
-    r2 = n < r0 :: int
+    r2 = n < r1 :: int
     if r2 goto L2 else goto L4 :: bool
 L2:
 L3:

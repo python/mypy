@@ -171,7 +171,7 @@ def increment(l: List[int]) -> List[int]:
 [out]
 def increment(l):
     l :: list
-    r0, i, r1 :: int
+    r0, r1, i :: int
     r2 :: bool
     r3 :: object
     r4 :: int
@@ -179,11 +179,11 @@ def increment(l):
     r7 :: bool
     r8, r9 :: int
 L0:
-    r0 = len l :: list
-    r1 = 0
-    i = r1
+    r0 = 0
+    r1 = len l :: list
+    i = r0
 L1:
-    r2 = i < r0 :: int
+    r2 = i < r1 :: int
     if r2 goto L2 else goto L4 :: bool
 L2:
     r3 = l[i] :: list

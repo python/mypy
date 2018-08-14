@@ -1522,23 +1522,30 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Determine where we want to exit, if our condition check fails.
         normal_loop_exit = else_block if else_insts is not None else exit_block
 
+        # Only support 1 and 2 arg forms for now
         if (isinstance(expr, CallExpr)
                 and isinstance(expr.callee, RefExpr)
-                and expr.callee.fullname == 'builtins.range'):
+                and expr.callee.fullname == 'builtins.range'
+                and len(expr.args) <= 2):
 
             condition_block = BasicBlock()
             self.push_loop_stack(increment_block, exit_block)
 
             # Special case for x in range(...)
             # TODO: Check argument counts and kinds; check the lvalue
-            end = expr.args[0]
-            end_reg = self.accept(end)
+            if len(expr.args) == 1:
+                start_reg = self.add(LoadInt(0))
+                end_reg = self.accept(expr.args[0])
+            else:
+                start_reg = self.accept(expr.args[0])
+                end_reg = self.accept(expr.args[1])
+
             end_target = self.maybe_spill(end_reg)
 
             # Initialize loop index to 0. Assert that the index target is assignable.
             index_target = self.get_assignment_target(
                 index)  # type: Union[Register, AssignmentTarget]
-            self.assign(index_target, self.add(LoadInt(0)), line)
+            self.assign(index_target, start_reg, line)
             self.goto(condition_block)
 
             # Add loop condition check.

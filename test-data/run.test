@@ -48,13 +48,17 @@ from typing import List
 def count(n: int) -> None:
     for i in range(n):
         print(i)
+def count_between(n: int, k: int) -> None:
+    for i in range(n, k):
+        print(i)
 def list_iter(l: List[int]) -> None:
     for i in l:
         print(i)
 [file driver.py]
-from native import count, list_iter
+from native import count, list_iter, count_between
 count(5)
 list_iter(list(reversed(range(5))))
+count_between(11, 15)
 [out]
 0
 1
@@ -66,6 +70,10 @@ list_iter(list(reversed(range(5))))
 2
 1
 0
+11
+12
+13
+14
 
 [case testLoopElse]
 from typing import Iterator
@@ -642,7 +650,6 @@ except KeyError as e:
 [out]
 1
 'pop from an empty set'
-
 
 [case testDictUpdate]
 from typing import Dict
