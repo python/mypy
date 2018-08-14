@@ -7,8 +7,12 @@ from collections import OrderedDict
 from enum import Enum
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence, Iterator, ClassVar,
+    Callable, Sequence, Iterator,
 )
+
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 import mypy.nodes
 from mypy import experiments
@@ -22,8 +26,6 @@ from mypy.util import IdMapper
 T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
-
-MYPY = False
 
 # If we import type_visitor in the middle of the file, mypy breaks, and if we do it
 # at the top, it breaks at runtime because of import cycle issues, so we do it at different

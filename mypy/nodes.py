@@ -4,12 +4,12 @@ import os
 from abc import abstractmethod
 from collections import OrderedDict, defaultdict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence, ClassVar,
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
 )
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict
+    from typing import DefaultDict, ClassVar
 
 import mypy.strconv
 from mypy.util import short_type
