@@ -868,6 +868,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                            tp], cdef.line)
 
     def gen_import(self, id: str, line: int) -> None:
+        # Unfortunate hack:
+        if id == 'os':
+            self.gen_import('os.path', line)
+            self.gen_import('posix', line)
+
         self.imports.append(id)
 
         needs_import, out = BasicBlock(), BasicBlock()
