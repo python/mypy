@@ -6,8 +6,12 @@ from abc import abstractmethod
 from collections import OrderedDict
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence, Iterator
+    Callable, Sequence, Iterator,
 )
+
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 import mypy.nodes
 from mypy import experiments
@@ -23,8 +27,6 @@ from mypy.mypyc_hacks import TypeOfAny
 T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
-
-MYPY = False
 
 # If we import type_visitor in the middle of the file, mypy breaks, and if we do it
 # at the top, it breaks at runtime because of import cycle issues, so we do it at different
@@ -92,7 +94,7 @@ class TypeVarId:
     meta_level = 0  # type: int
 
     # Class variable used for allocating fresh ids for metavariables.
-    next_raw_id = 1  # type: int
+    next_raw_id = 1  # type: ClassVar[int]
 
     def __init__(self, raw_id: int, meta_level: int = 0) -> None:
         self.raw_id = raw_id

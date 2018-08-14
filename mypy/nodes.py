@@ -4,12 +4,12 @@ import os
 from abc import abstractmethod
 from collections import OrderedDict, defaultdict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
 )
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict
+    from typing import DefaultDict, ClassVar
 
 import mypy.strconv
 from mypy.util import short_type
@@ -48,7 +48,7 @@ class Context:
         return self.column
 
 
-if False:
+if MYPY:
     # break import cycle only needed for mypy
     import mypy.types
 
@@ -630,11 +630,10 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data['arg_names']
         ret.arg_kinds = data['arg_kinds']
-        # Mark these as 'None' so that future uses will trigger an error
-        _dummy = None  # type: Any
-        ret.arguments = _dummy
-        ret.max_pos = _dummy
-        ret.min_args = _dummy
+        # Leave these uninitialized so that future uses will trigger an error
+        del ret.arguments
+        del ret.max_pos
+        del ret.min_args
         return ret
 
 
@@ -1242,8 +1241,6 @@ class FloatExpr(Expression):
 
 class ComplexExpr(Expression):
     """Complex literal"""
-
-    value = 0.0j
 
     def __init__(self, value: complex) -> None:
         super().__init__()
@@ -2166,7 +2163,7 @@ class TypeInfo(SymbolNode):
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'
-    ]
+    ]  # type: ClassVar[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
