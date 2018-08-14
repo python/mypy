@@ -435,7 +435,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert isinstance(inner_type, CallableType)
                 impl_type = inner_type
 
-        is_descriptor_get = defn.info is not None and defn.name() == "__get__"
+        is_descriptor_get = defn.info and defn.name() == "__get__"
         for i, item in enumerate(defn.items):
             # TODO overloads involving decorators
             assert isinstance(item, Decorator)
@@ -979,7 +979,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
 
-        assert defn.info is not None
+        assert defn.info
 
         # First check for a valid signature
         method_type = CallableType([AnyType(TypeOfAny.special_form),
@@ -2765,7 +2765,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.typed_function_untyped_decorator(func.name(), dec_expr)
 
     def check_incompatible_property_override(self, e: Decorator) -> None:
-        if not e.var.is_settable_property and e.func.info is not None:
+        if not e.var.is_settable_property and e.func.info:
             name = e.func.name()
             for base in e.func.info.mro[1:]:
                 base_attr = base.names.get(name)
@@ -3322,7 +3322,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     var.type = AnyType(TypeOfAny.from_error)
 
     def is_defined_in_base_class(self, var: Var) -> bool:
-        if var.info is not None:
+        if var.info:
             for base in var.info.mro[1:]:
                 if base.get(var.name()) is not None:
                     return True
