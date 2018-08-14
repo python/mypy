@@ -176,8 +176,11 @@ class SymbolNode(Node):
     # TODO do not use methods for these
 
     @abstractmethod
-    def name(self) -> Bogus[str]: pass
+    def name(self) -> str: pass
 
+    # fullname can often be None even though the type system
+    # disagrees. We mark this with Bogus to let mypyc know not to
+    # worry about it.
     @abstractmethod
     def fullname(self) -> Bogus[str]: pass
 
@@ -197,7 +200,7 @@ class MypyFile(SymbolNode):
     """The abstract syntax tree of a single source file."""
 
     # Module name ('__main__' for initial file)
-    _name = None      # type: Bogus[str]
+    _name = ''      # type: str
     # Fully qualified module name
     _fullname = None  # type: Bogus[str]
     # Path to the file (None if not known)
@@ -238,7 +241,7 @@ class MypyFile(SymbolNode):
         else:
             self.ignored_lines = set()
 
-    def name(self) -> Bogus[str]:
+    def name(self) -> str:
         return self._name
 
     def fullname(self) -> Bogus[str]:

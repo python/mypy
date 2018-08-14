@@ -342,6 +342,7 @@ class AnyType(Type):
         return visitor.visit_any(self)
 
     def copy_modified(self,
+                      # Mark with Bogus because _dummy is just an object (with type Any)
                       type_of_any: Bogus[TypeOfAny] = _dummy,
                       original_any: Bogus[Optional['AnyType']] = _dummy,
                       ) -> 'AnyType':
