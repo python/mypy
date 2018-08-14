@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 from xml.sax.saxutils import escape
-from typing import TypeVar, List, Tuple, Optional, Dict, Sequence, Type
+from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
 
 T = TypeVar('T')
@@ -190,7 +190,7 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-FIELDS_CACHE = {}  # type: Dict[Type[object], List[str]]
+FIELDS_CACHE = {}  # type: Dict[object, List[str]]
 
 
 def replace_object_state(new: object, old: object) -> None:
