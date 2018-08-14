@@ -1438,7 +1438,7 @@ big_int()
 2147483647
 
 [case testForIterable]
-from typing import Iterable, Dict, Any
+from typing import Iterable, Dict, Any, Tuple
 def iterate_over_any(a: Any) -> None:
     for element in a:
         print(element)
@@ -1475,8 +1475,12 @@ def sum_over_two_values(d: Dict[int, int]) -> int:
         i = i + 1
     return s
 
+def iterate_over_tuple(iterable: Tuple[int, int, int]) -> None:
+    for element in iterable:
+        print(element)
+
 [file driver.py]
-from native import iterate_over_any, iterate_over_iterable, iterate_and_delete, sum_over_values, sum_over_even_values, sum_over_two_values
+from native import iterate_over_any, iterate_over_iterable, iterate_and_delete, sum_over_values, sum_over_even_values, sum_over_two_values, iterate_over_tuple
 import traceback
 def broken_generator(n):
     num = 0
@@ -1502,6 +1506,8 @@ try:
     iterate_and_delete(d)
 except RuntimeError:
     traceback.print_exc()
+
+iterate_over_tuple((1, 2, 3))
 [out]
 Traceback (most recent call last):
   File "tmp/driver.py", line 16, in <module>
@@ -1531,6 +1537,9 @@ RuntimeError: dictionary changed size during iteration
 2
 3
 4
+1
+2
+3
 
 [case testNeg]
 def neg(x: int) -> int:
@@ -2841,7 +2850,7 @@ from native import generator, ctx_manager
 T = TypeVar('T')
 U = TypeVar('U')
 
-def run_generator_and_throw(gen: Generator[T, None, U], 
+def run_generator_and_throw(gen: Generator[T, None, U],
                             num_times: int,
                             value: object = None,
                             traceback: object = None) -> Tuple[Sequence[T], U]:

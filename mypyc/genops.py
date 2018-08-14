@@ -1610,7 +1610,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # for the for-loop. If we are inside of a generator function, spill these into the
             # environment class.
             expr_reg = self.accept(expr)
-            iter_reg = self.add(PrimitiveOp([expr_reg], iter_op, line))
+            iter_reg = self.primitive_op(iter_op, [expr_reg], line)
             expr_target = self.maybe_spill(expr_reg)
             iter_target = self.maybe_spill(iter_reg)
 
@@ -1619,7 +1619,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # the Iterable being traversed or an exception being raised. Note that Branch.IS_ERROR
             # checks only for NULL (an exception does not necessarily have to be raised).
             self.goto_and_activate(increment_block)
-            next_reg = self.add(PrimitiveOp([self.read(iter_target, line)], next_op, line))
+            next_reg = self.primitive_op(next_op, [self.read(iter_target, line)], line)
             self.add(Branch(next_reg, error_check_block, body_block, Branch.IS_ERROR))
 
             # Create a new block for the body of the loop. Set the previous branch to go here if
@@ -1636,7 +1636,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # err_reg wil be set to True. If no_err_occurred_op returns False, then the exception
             # will be propagated using the ERR_FALSE flag.
             self.activate_block(error_check_block)
-            self.add(PrimitiveOp([], no_err_occurred_op, line))
+            self.primitive_op(no_err_occurred_op, [], line)
             self.goto(normal_loop_exit)
 
             self.pop_loop_stack()

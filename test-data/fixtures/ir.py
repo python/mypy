@@ -7,6 +7,7 @@ from typing import (
 )
 
 T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
 S = TypeVar('S')
 K = TypeVar('K') # for keys in mapping
 V = TypeVar('V') # for values in mapping
@@ -68,10 +69,11 @@ class bool:
     def __init__(self, o: object = ...) -> None: ...
 
 
-class tuple(Generic[T], Sized):
-    def __init__(self, i: Iterable[T]) -> None: pass
-    def __getitem__(self, i: int) -> T: pass
+class tuple(Generic[T_co], Sized):
+    def __init__(self, i: Iterable[T_co]) -> None: pass
+    def __getitem__(self, i: int) -> T_co: pass
     def __len__(self) -> int: pass
+    def __iter__(self) -> Iterator[T_co]: ...
 
 class function: pass
 
