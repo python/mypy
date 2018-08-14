@@ -436,22 +436,30 @@ a = A()
 assert a.f(2) == (5, "test")
 assert a.f(s = "123", x = -2) == (1, "123")
 
-[case testPycall]
+[case testImports]
 import testmodule
 
 def f(x: int) -> int:
     return testmodule.factorial(5)
+def g(x: int) -> int:
+    from welp import foo
+    return foo(x)
 [file testmodule.py]
 def factorial(x: int) -> int:
     if x == 0:
         return 1
     else:
         return x * factorial(x-1)
+[file welp.py]
+def foo(x: int) -> int:
+    return x
 [file driver.py]
-from native import f
+from native import f, g
 print(f(5))
+print(g(5))
 [out]
 120
+5
 
 [case testBuiltins]
 y = 10

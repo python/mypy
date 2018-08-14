@@ -900,23 +900,23 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.gen_import(node.id, node.line)
         module = self.add(LoadStatic(object_rprimitive, 'module', node.id))
 
-        # For top-level imports, copy everything into our module's
-        # dict.  Note that we miscompile import from in a way that
-        # probably doesn't matter much: we always load the values from
-        # the *other* module and not from our *own*, where they have
-        # been copied to.
+        # Copy everything into our module's dict.
+        # Note that we miscompile import from inside of functions here,
+        # since that case *shouldn't* load it into the globals dict.
+        # This probably doesn't matter much and the code runs basically right.
         globals = self.load_globals_dict()
         for name, maybe_as_name in node.names:
+            # If one of the things we are importing is a module,
+            # import it as a module also.
             fullname = node.id + '.' + name
             if fullname in self.graph or fullname in self.graph[self.module_name].suppressed:
                 self.gen_import(fullname, node.line)
 
-            if node.is_top_level:
-                as_name = maybe_as_name or name
-                obj = self.py_get_attr(module, name, node.line)
-                self.translate_special_method_call(
-                    globals, '__setitem__', [self.load_static_unicode(as_name), obj],
-                    result_type=None, line=node.line)
+            as_name = maybe_as_name or name
+            obj = self.py_get_attr(module, name, node.line)
+            self.translate_special_method_call(
+                globals, '__setitem__', [self.load_static_unicode(as_name), obj],
+                result_type=None, line=node.line)
 
     def visit_import_all(self, node: ImportAll) -> None:
         if node.is_unreachable or node.is_mypy_only:
