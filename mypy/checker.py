@@ -3804,16 +3804,8 @@ def detach_callable(typ: CallableType) -> CallableType:
                 appear_map[var.fullname] = []
             appear_map[var.fullname].append(i)
 
-    from mypy.erasetype import erase_type
-
     used_type_var_names = set()
     for var_name, appearances in appear_map.items():
-        '''if len(appearances) == 1:
-            entry = appearances[0]
-            type_list[entry] = erase_type(type_list[entry])
-        else:
-            used_type_var_names.add(var_name)'''
-
         used_type_var_names.add(var_name)
 
     all_type_vars = typ.accept(TypeVarExtractor())
@@ -3821,7 +3813,6 @@ def detach_callable(typ: CallableType) -> CallableType:
     for var in set(all_type_vars):
         if var.fullname not in used_type_var_names:
             continue
-        # new_variables.append(var)
         new_variables.append(TypeVarDef(
             name=var.name,
             fullname=var.fullname,
@@ -3835,16 +3826,6 @@ def detach_callable(typ: CallableType) -> CallableType:
         arg_types=type_list[:-1],
         ret_type=type_list[-1],
     )
-    '''
-    print(typ.name)
-    print('    before:', typ)
-    print('    after: ', out)
-    print('    type list (old):', old_type_list)
-    print('    type list (new):', type_list)
-    print('    old_vars:', typ.variables)
-    print('    new_vars:', out.variables)
-    print('    appear_map:', appear_map)
-    #'''
     return out
 
 
