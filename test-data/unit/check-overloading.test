@@ -4186,3 +4186,74 @@ def g(x: str) -> int: ...
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
+
+[case testNestedOverloadsNoCrash]
+from typing import overload
+
+def f() -> None:
+    @overload
+    def g(x: str) -> str: ...
+    @overload
+    def g(x: int) -> int: ...
+    def g(x):
+        pass
+    g(str())
+[out]
+
+[case testNestedOverloadsTypeVar]
+from typing import overload, TypeVar
+
+T = TypeVar('T')
+
+def f() -> None:
+    @overload
+    def g(x: str) -> str: ...
+    @overload
+    def g(x: T, y: int) -> T: ...
+    def g(x):
+        pass
+
+    g(str(), str())  # E: No overload variant of "g" matches argument types "str", "str" \
+                     # N: Possible overload variant: \
+                     # N:     def [T] g(x: T, y: int) -> T \
+                     # N:     <1 more non-matching overload not shown>
+    reveal_type(g(str(), int()))  # E: Revealed type is 'builtins.str*'
+[out]
+
+[case testNestedOverloadsTypeVarOverlap]
+from typing import overload, TypeVar
+
+T = TypeVar('T')
+
+def f() -> None:
+    @overload
+    def g(x: str) -> int: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+    @overload
+    def g(x: T) -> T: ...
+    def g(x):
+        pass
+[out]
+
+[case testNestedOverloadsMutuallyRecursive]
+from typing import overload, TypeVar, Dict, Any
+
+class C: ...
+T = TypeVar('T')
+
+def f() -> None:
+    @overload
+    def g() -> None: ...
+    @overload
+    def g(x: T) -> Dict[int, T]: ...
+    def g(*args, **kwargs) -> Any:
+        reveal_type(h(C()))  # E: Revealed type is 'builtins.dict[builtins.str, __main__.C*]'
+
+    @overload
+    def h() -> None: ...
+    @overload
+    def h(x: T) -> Dict[str, T]: ...
+    def h(*args, **kwargs) -> Any:
+        reveal_type(g(C()))  # E: Revealed type is 'builtins.dict[builtins.int, __main__.C*]'
+
+[builtins fixtures/dict.pyi]
+[out]
