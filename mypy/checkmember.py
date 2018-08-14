@@ -549,7 +549,7 @@ def analyze_class_attribute_access(itype: Instance,
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
         result = add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
-        if not (is_lvalue or is_method):
+        if not is_lvalue:
             result = analyze_descriptor_access(original_type, result, builtin_type,
                                                msg, context, chk=chk)
         return result

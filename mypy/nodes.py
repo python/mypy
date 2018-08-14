@@ -4,16 +4,17 @@ import os
 from abc import abstractmethod
 from collections import OrderedDict, defaultdict
 from typing import (
-    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence
+    Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
 )
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict
+    from typing import DefaultDict, ClassVar
 
 import mypy.strconv
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
+from mypy.mypyc_hacks import SymbolTable
 
 
 class Context:
@@ -47,7 +48,7 @@ class Context:
         return self.column
 
 
-if False:
+if MYPY:
     # break import cycle only needed for mypy
     import mypy.types
 
@@ -629,11 +630,10 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data['arg_names']
         ret.arg_kinds = data['arg_kinds']
-        # Mark these as 'None' so that future uses will trigger an error
-        _dummy = None  # type: Any
-        ret.arguments = _dummy
-        ret.max_pos = _dummy
-        ret.min_args = _dummy
+        # Leave these uninitialized so that future uses will trigger an error
+        del ret.arguments
+        del ret.max_pos
+        del ret.min_args
         return ret
 
 
@@ -1241,8 +1241,6 @@ class FloatExpr(Expression):
 
 class ComplexExpr(Expression):
     """Complex literal"""
-
-    value = 0.0j
 
     def __init__(self, value: complex) -> None:
         super().__init__()
@@ -2165,7 +2163,7 @@ class TypeInfo(SymbolNode):
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol'
-    ]
+    ]  # type: ClassVar[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
@@ -2736,49 +2734,6 @@ class SymbolTableNode:
         if 'implicit' in data:
             stnode.implicit = data['implicit']
         return stnode
-
-
-class SymbolTable(Dict[str, SymbolTableNode]):
-    def __str__(self) -> str:
-        a = []  # type: List[str]
-        for key, value in self.items():
-            # Filter out the implicit import of builtins.
-            if isinstance(value, SymbolTableNode):
-                if (value.fullname != 'builtins' and
-                        (value.fullname or '').split('.')[-1] not in
-                        implicit_module_attrs):
-                    a.append('  ' + str(key) + ' : ' + str(value))
-            else:
-                a.append('  <invalid item>')
-        a = sorted(a)
-        a.insert(0, 'SymbolTable(')
-        a[-1] += ')'
-        return '\n'.join(a)
-
-    def copy(self) -> 'SymbolTable':
-        return SymbolTable((key, node.copy())
-                           for key, node in self.items())
-
-    def serialize(self, fullname: str) -> JsonDict:
-        data = {'.class': 'SymbolTable'}  # type: JsonDict
-        for key, value in self.items():
-            # Skip __builtins__: it's a reference to the builtins
-            # module that gets added to every module by
-            # SemanticAnalyzerPass2.visit_file(), but it shouldn't be
-            # accessed by users of the module.
-            if key == '__builtins__' or value.no_serialize:
-                continue
-            data[key] = value.serialize(fullname, key)
-        return data
-
-    @classmethod
-    def deserialize(cls, data: JsonDict) -> 'SymbolTable':
-        assert data['.class'] == 'SymbolTable'
-        st = SymbolTable()
-        for key, value in data.items():
-            if key != '.class':
-                st[key] = SymbolTableNode.deserialize(value)
-        return st
 
 
 def get_flags(node: Node, names: List[str]) -> List[str]:

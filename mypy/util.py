@@ -13,6 +13,8 @@ MYPY = False
 if MYPY:
     from typing import Type
 
+from mypy.mypyc_hacks import DecodeError
+
 T = TypeVar('T')
 
 ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
@@ -65,13 +67,6 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
     else:
         default_encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
         return default_encoding, -1
-
-
-class DecodeError(Exception):
-    """Exception raised when a file cannot be decoded due to an unknown encoding type.
-
-    Essentially a wrapper for the LookupError raised by `bytearray.decode`
-    """
 
 
 def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
