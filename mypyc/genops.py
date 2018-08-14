@@ -2416,23 +2416,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.add(Unreachable())
             return
 
-        assert s.from_expr is None, "from_expr not implemented"
-
-        # TODO: Do we want to dynamically handle the case where the
-        # type is Any so we don't statically know what to do?
-        typ = self.types[s.expr]
-        if isinstance(typ, TypeType):
-            typ = typ.item
-        assert not isinstance(typ, AnyType), "can't raise Any"
-
-        if isinstance(typ, FunctionLike) and typ.is_type_obj():
-            etyp = self.accept(s.expr)
-            exc = self.py_call(etyp, [], s.expr.line)
-        else:
-            exc = self.accept(s.expr)
-            etyp = self.primitive_op(type_op, [exc], s.expr.line)
-
-        self.primitive_op(raise_exception_op, [etyp, exc], s.line)
+        exc = self.accept(s.expr)
+        self.primitive_op(raise_exception_op, [exc], s.line)
         self.add(Unreachable())
 
     class ExceptNonlocalControl(CleanupNonlocalControl):
@@ -2830,7 +2815,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             message = self.accept(a.msg)
             exc_type = self.load_module_attr_by_fullname('builtins.AssertionError', a.line)
             exc = self.py_call(exc_type, [message], a.line)
-            self.primitive_op(raise_exception_op, [exc_type, exc], a.line)
+            self.primitive_op(raise_exception_op, [exc], a.line)
         self.add(Unreachable())
         self.activate_block(ok_block)
 

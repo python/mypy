@@ -540,7 +540,7 @@ L2:
     r5 = unicode_3 :: static  ('AssertionError')
     r6 = getattr r4, r5
     r7 = py_call(r6, s)
-    raise_exception(r6, r7); r8 = 0
+    raise_exception(r7); r8 = 0
     unreachable
 L3:
     r9 = None

@@ -15,11 +15,11 @@ from mypyc.ops_primitive import (
 
 # TODO: Making this raise conditionally is kind of hokey.
 raise_exception_op = custom_op(
-    arg_types=[object_rprimitive, object_rprimitive],
+    arg_types=[object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    format_str = 'raise_exception({args[0]}, {args[1]}); {dest} = 0',
-    emit=simple_emit('PyErr_SetObject({args[0]}, {args[1]}); {dest} = 0;'))
+    format_str = 'raise_exception({args[0]}); {dest} = 0',
+    emit=simple_emit('CPy_Raise({args[0]}); {dest} = 0;'))
 
 raise_exception_with_tb_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],

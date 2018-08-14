@@ -737,6 +737,18 @@ static void CPy_RestoreExcInfo(PyObject *type, PyObject *value, PyObject *traceb
     PyErr_SetExcInfo(_CPy_FromDummy(type), _CPy_FromDummy(value), _CPy_FromDummy(traceback));
 }
 
+static void CPy_Raise(PyObject *exc) {
+    if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
+        PyObject *obj = PyObject_CallFunctionObjArgs(exc, NULL);
+        if (!obj)
+            return;
+        PyErr_SetObject(exc, obj);
+        Py_DECREF(obj);
+    } else {
+        PyErr_SetObject((PyObject *)Py_TYPE(exc), exc);
+    }
+}
+
 static void CPy_Reraise(void) {
     PyObject *p_type, *p_value, *p_traceback;
     PyErr_GetExcInfo(&p_type, &p_value, &p_traceback);

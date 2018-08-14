@@ -1290,19 +1290,6 @@ def bar() -> None:
 def foo():
     r0 :: object
     r1 :: str
-    r2, r3, r4 :: object
-    r5 :: bool
-L0:
-    r0 = builtins.module :: static
-    r1 = unicode_1 :: static  ('Exception')
-    r2 = getattr r0, r1
-    r3 = py_call(r2)
-    r4 = type r3 :: object
-    raise_exception(r4, r3); r5 = 0
-    unreachable
-def bar():
-    r0 :: object
-    r1 :: str
     r2, r3 :: object
     r4 :: bool
 L0:
@@ -1310,7 +1297,18 @@ L0:
     r1 = unicode_1 :: static  ('Exception')
     r2 = getattr r0, r1
     r3 = py_call(r2)
-    raise_exception(r2, r3); r4 = 0
+    raise_exception(r3); r4 = 0
+    unreachable
+def bar():
+    r0 :: object
+    r1 :: str
+    r2 :: object
+    r3 :: bool
+L0:
+    r0 = builtins.module :: static
+    r1 = unicode_1 :: static  ('Exception')
+    r2 = getattr r0, r1
+    raise_exception(r2); r3 = 0
     unreachable
 
 [case testModuleTopLevel_toplevel]

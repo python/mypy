@@ -292,16 +292,16 @@ def a(b):
     r0 :: str
     r1 :: object
     r2 :: str
-    r3, r4, r5 :: object
-    r6 :: bool
-    r7, r8, r9 :: tuple[object, object, object]
-    r10 :: str
-    r11 :: object
-    r12 :: str
-    r13, r14 :: object
-    r15 :: None
-    r16, r17 :: bool
-    r18 :: None
+    r3, r4 :: object
+    r5 :: bool
+    r6, r7, r8 :: tuple[object, object, object]
+    r9 :: str
+    r10 :: object
+    r11 :: str
+    r12, r13 :: object
+    r14 :: None
+    r15, r16 :: bool
+    r17 :: None
 L0:
 L1:
     if b goto L2 else goto L3 :: bool
@@ -311,41 +311,40 @@ L2:
     r2 = unicode_2 :: static  ('Exception')
     r3 = getattr r1, r2
     r4 = py_call(r3, r0)
-    r5 = type r4 :: object
-    raise_exception(r5, r4); r6 = 0
+    raise_exception(r4); r5 = 0
     unreachable
 L3:
 L4:
 L5:
-    r8 = <error> :: tuple[object, object, object]
-    r7 = r8
+    r7 = <error> :: tuple[object, object, object]
+    r6 = r7
     goto L7
 L6: (handler for L1, L2, L3)
-    r9 = error_catch
-    r7 = r9
+    r8 = error_catch
+    r6 = r8
 L7:
-    r10 = unicode_3 :: static  ('finally')
-    r11 = builtins.module :: static
-    r12 = unicode_4 :: static  ('print')
-    r13 = getattr r11, r12
-    r14 = py_call(r13, r10)
-    r15 = cast(None, r14)
-    if is_error(r7) goto L9 else goto L8
+    r9 = unicode_3 :: static  ('finally')
+    r10 = builtins.module :: static
+    r11 = unicode_4 :: static  ('print')
+    r12 = getattr r10, r11
+    r13 = py_call(r12, r9)
+    r14 = cast(None, r13)
+    if is_error(r6) goto L9 else goto L8
 L8:
-    reraise_exc; r16 = 0
+    reraise_exc; r15 = 0
     unreachable
 L9:
     goto L13
 L10: (handler for L7, L8)
-    if is_error(r7) goto L12 else goto L11
+    if is_error(r6) goto L12 else goto L11
 L11:
-    restore_exc_info r7
+    restore_exc_info r6
 L12:
-    r17 = keep_propagating
+    r16 = keep_propagating
     unreachable
 L13:
-    r18 = None
-    return r18
+    r17 = None
+    return r17
 
 [case testWith]
 from typing import Any
