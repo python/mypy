@@ -1930,6 +1930,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         variants = [(op, obj, arg) for (op, obj, arg) in variants_raw if op is not None]
 
         errors = []
+        results = []
         for method, obj, arg in variants:
             local_errors = make_local_errors()
 
@@ -1944,6 +1945,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    callable_name=callable_name, object_type=obj)
             if local_errors.is_errors():
                 errors.append(local_errors)
+                results.append(result)
             else:
                 return result
 
@@ -1953,6 +1955,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             if local_errors.is_errors():
                 errors.append(local_errors)
+                results.append(result)
             else:
                 return result
 
@@ -1965,8 +1968,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 rev_op_name,
                 context,
             )
-        error_any = AnyType(TypeOfAny.from_error)
-        return error_any, error_any
+        return results[0]
 
     def check_op(self, method: str, base_type: Type, arg: Expression,
                  context: Context,
