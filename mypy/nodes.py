@@ -2157,7 +2157,7 @@ class TypeInfo(SymbolNode):
     # type (NamedTuple or TypedDict) was generated, store the corresponding
     # TypeInfo here. (This attribute does not need to be serialized, it is only
     # needed during the semantic passes.)
-    replaced = None  # type: TypeInfo
+    replaced = None  # type: Optional[TypeInfo]
 
     # This is a dictionary that will be serialized and un-serialized as is.
     # It is useful for plugins to add their data to save in the cache.
@@ -2185,7 +2185,6 @@ class TypeInfo(SymbolNode):
         self.assuming_proper = []
         self.inferring = []
         self.add_type_vars()
-        self.replaced = TYPEINFO_NO_REPLACED
         self.metadata = {}
 
     def add_type_vars(self) -> None:
@@ -2439,7 +2438,6 @@ class FakeInfo(TypeInfo):
 VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: TypeInfo
 CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: TypeInfo
 FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: TypeInfo
-TYPEINFO_NO_REPLACED = FakeInfo('TypeInfo is lacking replaced')  # type: TypeInfo
 
 
 class TypeAlias(SymbolNode):
