@@ -2005,3 +2005,81 @@ def f(x: Union[A, str]) -> None:
     if isinstance(x, A):
         x.method_only_in_a()
 [builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional]
+# flags: --strict-optional
+from typing import Optional, Union
+
+class A: pass
+
+def foo1(x: Union[A, str, None]) -> None:
+    if x is None:
+        reveal_type(x)      # E: Revealed type is 'None'
+    elif isinstance(x, A):
+        reveal_type(x)      # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
+
+def foo2(x: Optional[str]) -> None:
+    if x is None:
+        reveal_type(x)      # E: Revealed type is 'None'
+    elif isinstance(x, A):
+        reveal_type(x)
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Optional, Union
+
+class A: pass
+
+def foo1(x: Union[A, str, None]) -> None:
+    if x is None:
+        # Since None is a subtype of all types in no-strict-optional,
+        # we can't really narrow the type here
+        reveal_type(x)      # E: Revealed type is 'Union[__main__.A, builtins.str, None]'
+    elif isinstance(x, A):
+        # Note that Union[None, A] == A in no-strict-optional
+        reveal_type(x)      # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
+
+def foo2(x: Optional[str]) -> None:
+    if x is None:
+        reveal_type(x)      # E: Revealed type is 'Union[builtins.str, None]'
+    elif isinstance(x, A):
+        # Mypy should, however, be able to skip impossible cases
+        reveal_type(x)
+    else:
+        reveal_type(x)      # E: Revealed type is 'Union[builtins.str, None]'
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
+# flags: --strict-optional
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -> T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVarsNoStrictOptional]
+# flags: --no-strict-optional
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -> T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]
