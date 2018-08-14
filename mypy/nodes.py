@@ -2830,7 +2830,8 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in globals().items()
-    if type(obj) is not FakeInfo and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
+    if type(obj) is not FakeInfo
+    and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
 }
 
 
