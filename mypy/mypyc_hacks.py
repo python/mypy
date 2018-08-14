@@ -1,5 +1,6 @@
 """Stuff that we had to move out of its right place because of mypyc limitations."""
 
+
 # Moved from util.py, because it inherits from Exception
 class DecodeError(Exception):
     """Exception raised when a file cannot be decoded due to an unknown encoding type.
@@ -46,9 +47,10 @@ MYPY = False
 if MYPY:
     from mypy.nodes import SymbolTableNode
 
+
 class SymbolTable(Dict[str, 'SymbolTableNode']):
     def __str__(self) -> str:
-        from mypy.nodes import implicit_module_attrs, SymbolTableNode
+        from mypy.nodes import implicit_module_attrs, SymbolTableNode  # noqa
 
         a = []  # type: List[str]
         for key, value in self.items():
@@ -83,7 +85,7 @@ class SymbolTable(Dict[str, 'SymbolTableNode']):
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SymbolTable':
-        from mypy.nodes import SymbolTableNode
+        from mypy.nodes import SymbolTableNode  # noqa
 
         assert data['.class'] == 'SymbolTable'
         st = SymbolTable()
