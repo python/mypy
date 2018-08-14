@@ -129,11 +129,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
                            ignore_pos_arg_names: bool = False,
                            ignore_declared_variance: bool = False,
                            ignore_promotions: bool = False) -> SubtypeKind:
-        return hash(('subtype',
-                     type_parameter_checker,
-                     ignore_pos_arg_names,
-                     ignore_declared_variance,
-                     ignore_promotions))
+        return ('subtype',
+                type_parameter_checker,
+                ignore_pos_arg_names,
+                ignore_declared_variance,
+                ignore_promotions)
 
     def _lookup_cache(self, left: Instance, right: Instance) -> bool:
         return TypeState.is_cached_subtype_check(self._subtype_kind, left, right)
@@ -194,7 +194,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # was an error somewhere.
             if not self.ignore_promotions and left.type.mro is not None:
                 for base in left.type.mro:
-                    # TODO: Also pass recursively ignore_declared_variance
                     if base._promote and self._is_subtype(base._promote, self.right):
                         self._record_cache(left, right)
                         return True
@@ -252,7 +251,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items())
         elif isinstance(right, Instance):
-            return is_subtype(left.fallback, right)
+            return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
@@ -1019,7 +1018,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     @staticmethod
     def build_subtype_kind(*, ignore_promotions: bool = False) -> SubtypeKind:
-        return hash(('subtype_proper', ignore_promotions))
+        return ('subtype_proper', ignore_promotions)
 
     def _lookup_cache(self, left: Instance, right: Instance) -> bool:
         return TypeState.is_cached_subtype_check(self._subtype_kind, left, right)

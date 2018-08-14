@@ -15,9 +15,9 @@ from mypy.server.trigger import make_trigger
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship = Tuple[Instance, Instance]
 
-# A hash encoding the specific conditions under which we performed the subtype check.
+# A tuple encoding the specific conditions under which we performed the subtype check.
 # (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
-SubtypeKind = int
+SubtypeKind = Tuple[Any, ...]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
