@@ -96,14 +96,25 @@ def get_possible_variants(typ: Type) -> List[Type]:
         return [typ]
 
 
-def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = False) -> bool:
-    """Can a value of type 'left' also be of type 'right' or vice-versa?"""
+def is_overlapping_types(left: Type,
+                         right: Type,
+                         ignore_promotions: bool = False,
+                         prohibit_none_typevar_overlap: bool = False) -> bool:
+    """Can a value of type 'left' also be of type 'right' or vice-versa?
+
+    If 'ignore_promotions' is True, we ignore promotions while checking for overlaps.
+    If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
+    TypeVars (in both strict-optional and non-strict-optional mode).
+    """
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         '''Encode the kind of overlapping check to perform.
 
         This function mostly exists so we don't have to repeat keyword arguments everywhere.'''
-        return is_overlapping_types(left, right, ignore_promotions=ignore_promotions)
+        return is_overlapping_types(
+            left, right,
+            ignore_promotions=ignore_promotions,
+            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap)
 
     # We should never encounter these types, but if we do, we handle
     # them in the same way we handle 'Any'.
@@ -142,6 +153,13 @@ def is_overlapping_types(left: Type, right: Type, ignore_promotions: bool = Fals
     #
     # If both types are singleton variants (and are not TypeVars), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
+
+    def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
+        return isinstance(t1, NoneTyp) and isinstance(t2, TypeVarType)
+
+    if prohibit_none_typevar_overlap:
+        if is_none_typevar_overlap(left, right) or is_none_typevar_overlap(right, left):
+            return False
 
     if (len(left_possible) > 1 or len(right_possible) > 1
             or isinstance(left, TypeVarType) or isinstance(right, TypeVarType)):

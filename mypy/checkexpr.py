@@ -1849,10 +1849,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             right_type: Type,
                             right_expr: Expression,
                             context: Context) -> Tuple[Type, Type]:
-        # TODO: Document this kludge
+        # Note: this kludge exists mostly to maintain compatibility with
+        # existing error messages. Apparently, if the left-hand-side is a
+        # union and we have a type mismatch, we print out a special,
+        # abbreviated error message. (See messages.unsupported_operand_types).
         unions_present = isinstance(left_type, UnionType)
 
         def make_local_errors() -> MessageBuilder:
+            """Creates a new MessageBuilder object."""
             local_errors = self.msg.clean_copy()
             local_errors.disable_count = 0
             if unions_present:
@@ -1860,6 +1864,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return local_errors
 
         def lookup_operator(op_name: str, base_type: Type) -> Optional[Type]:
+            """Looks up the given operator and returns the corresponding type,
+            if it exists."""
             if not self.has_member(base_type, op_name):
                 return None
             local_errors = make_local_errors()
@@ -1881,8 +1887,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return member
 
+        # If either the LHS or the RHS are Any, we can't really concluding anything
+        # about the operation since the Any type may or may not define an
+        # __op__ or __rop__ method. So, we punt and return Any instead.
+
         if isinstance(left_type, AnyType):
-            # If either side is Any, we can't necessarily conclude anything.
             any_type = AnyType(TypeOfAny.from_another_any, source_any=left_type)
             return any_type, any_type
         if isinstance(right_type, AnyType):
@@ -1891,7 +1900,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         rev_op_name = self.get_reverse_op_method(op_name)
 
-        # Stage 1: Get all variants
+        # Step 1: We start by getting the __op__ and __rop__ methods, if they exist.
+
+        # Records the method type, the base type, and the argument.
         variants_raw = []  # type: List[Tuple[Optional[CallableType], Type, Expression]]
 
         left_op = lookup_operator(op_name, left_type)
@@ -1901,6 +1912,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         bias_right = is_proper_subtype(right_type, left_type)
 
         if op_name in nodes.op_methods_that_shortcut and is_same_type(left_type, right_type):
+            # When we do "A() + A()", for example, Python will only call the __add__ method,
+            # never the __radd__ method.
+            #
+            # This is the case even if the __add__ method is completely missing and the __radd__
+            # method is defined.
+            #
+            # We report this error message here instead of in the definition checks 
             variants_raw.append((left_op, left_type, right_expr))
             if right_op is not None:
                 warn_about_uncalled_reverse_operator = True
@@ -1968,7 +1986,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 rev_op_name,
                 context,
             )
-        return results[0]
+        if len(results) == 1:
+            return results[0]
+        else:
+            error_any = AnyType(TypeOfAny.from_error)
+            result = error_any, error_any
+            return result
+
 
     def check_op(self, method: str, base_type: Type, arg: Expression,
                  context: Context,
@@ -1979,85 +2003,21 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
 
         if allow_reverse:
-            return self.check_op_reversible(method, base_type, TempNode(base_type), self.accept(arg), arg, context)
-
-
-        # Use a local error storage for errors related to invalid argument
-        # type (but NOT other errors). This error may need to be suppressed
-        # for operators which support __rX methods.
-        local_errors = self.msg.copy()
-        local_errors.disable_count = 0
-        if not allow_reverse or self.has_member(base_type, method):
-            result = self.check_op_local(method, base_type, arg, context,
-                                         local_errors)
-            if allow_reverse:
-                arg_type = self.chk.type_map[arg]
-                if isinstance(arg_type, AnyType):
-                    # If the right operand has type Any, we can't make any
-                    # conjectures about the type of the result, since the
-                    # operand could have a __r method that returns anything.
-                    any_type = AnyType(TypeOfAny.from_another_any, source_any=arg_type)
-                    result = any_type, result[1]
-            success = not local_errors.is_errors()
+            return self.check_op_reversible(
+                op_name=method,
+                left_type=base_type,
+                left_expr=TempNode(base_type),
+                right_type=self.accept(arg),
+                right_expr=arg,
+                context=context)
         else:
-            error_any = AnyType(TypeOfAny.from_error)
-            result = error_any, error_any
-            success = False
-        if success or not allow_reverse or isinstance(base_type, AnyType):
-            # We were able to call the normal variant of the operator method,
-            # or there was some problem not related to argument type
-            # validity, or the operator has no __rX method. In any case, we
-            # don't need to consider the __rX method.
-            self.msg.add_errors(local_errors)
-            return result
-        else:
-            # Calling the operator method was unsuccessful. Try the __rX
-            # method of the other operand instead.
-            rmethod = self.get_reverse_op_method(method)
-            arg_type = self.accept(arg)
-            base_arg_node = TempNode(base_type)
-            # In order to be consistent with showing an error about the lhs not matching if neither
-            # the lhs nor the rhs have a compatible signature, we keep track of the first error
-            # message generated when considering __rX methods and __cmp__ methods for Python 2.
-            first_error = None  # type: Optional[Tuple[Tuple[Type, Type], MessageBuilder]]
-            if self.has_member(arg_type, rmethod):
-                result, local_errors = self._check_op_for_errors(rmethod, arg_type,
-                                                                 base_arg_node, context)
-                if not local_errors.is_errors():
-                    return result
-                first_error = first_error or (result, local_errors)
-            # If we've failed to find an __rX method and we're checking Python 2, check to see if
-            # there is a __cmp__ method on the lhs or on the rhs.
-            if (self.chk.options.python_version[0] == 2 and
-                    method in nodes.ops_falling_back_to_cmp):
-                cmp_method = nodes.comparison_fallback_method
-                if self.has_member(base_type, cmp_method):
-                    # First check the if the lhs has a __cmp__ method that works
-                    result, local_errors = self._check_op_for_errors(cmp_method, base_type,
-                                                                     arg, context)
-                    if not local_errors.is_errors():
-                        return result
-                    first_error = first_error or (result, local_errors)
-                if self.has_member(arg_type, cmp_method):
-                    # Failed to find a __cmp__ method on the lhs, check if
-                    # the rhs as a __cmp__ method that can operate on lhs
-                    result, local_errors = self._check_op_for_errors(cmp_method, arg_type,
-                                                                     base_arg_node, context)
-                    if not local_errors.is_errors():
-                        return result
-                    first_error = first_error or (result, local_errors)
-            if first_error:
-                # We found either a __rX method, a __cmp__ method on the base_type, or a __cmp__
-                # method on the rhs and failed match. Return the error for the first of these to
-                # fail.
-                self.msg.add_errors(first_error[1])
-                return first_error[0]
-            else:
-                # No __rX method or __cmp__. Do deferred type checking to
-                # produce error message that we may have missed previously.
-                # TODO Fix type checking an expression more than once.
-                return self.check_op_local(method, base_type, arg, context,
-                                           self.msg)
+            self.check_op_local(
+                method=method,
+                base_type=base_type,
+                arg=arg,
+                context=context,
+                local_errors=self.msg,
+            )
 
     def get_reverse_op_method(self, method: str) -> str:
         if method == '__div__' and self.chk.options.python_version[0] == 2:

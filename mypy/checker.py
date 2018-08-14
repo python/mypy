@@ -3475,7 +3475,7 @@ def conditional_type_map(expr: Expression,
                and is_proper_subtype(current_type, proposed_type)):
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
-            elif not is_overlapping_types(current_type, proposed_type):
+            elif not is_overlapping_types(current_type, proposed_type, prohibit_none_typevar_overlap=True):
                 # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
