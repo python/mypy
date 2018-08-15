@@ -9,20 +9,12 @@ from mypyc.ops import (
 from mypyc.ops_primitive import method_op, binary_op, func_op, simple_emit, negative_int_emit
 
 
-def emit_get_item(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    emitter.emit_lines('%s = PyDict_GetItemWithError(%s, %s);' % (dest, args[0], args[1]),
-                       'if (!%s)' % dest,
-                       '    PyErr_SetObject(PyExc_KeyError, %s);' % args[1],
-                       'else',
-                       '    Py_INCREF(%s);' % dest)
-
-
 dict_get_item_op = method_op(
     name='__getitem__',
     arg_types=[dict_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=emit_get_item)
+    emit=simple_emit('{dest} = CPyDict_GetItem({args[0]}, {args[1]});'))
 
 
 dict_set_item_op = method_op(

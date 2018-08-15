@@ -651,8 +651,10 @@ except KeyError as e:
 1
 'pop from an empty set'
 
-[case testDictUpdate]
+[case testDictStuff]
 from typing import Dict
+from defaultdictwrap import make_dict
+
 def f(x: int) -> int:
     dict1 = {} # type: Dict[int, int]
     dict1[1] = 1
@@ -660,10 +662,25 @@ def f(x: int) -> int:
     dict2[x] = 2
     dict1.update(dict2)
     return dict1[1]
+
+def g() -> int:
+    d = make_dict()
+    d['a'] = 10
+    d['a'] += 10
+    d['b'] += 10
+    return d['a'] + d['b']
+
+[file defaultdictwrap.py]
+from typing import Dict
+from collections import defaultdict  # type: ignore
+def make_dict() -> Dict[str, int]:
+    return defaultdict(int)
+
 [file driver.py]
-from native import f
+from native import f, g
 assert f(1) == 2
 assert f(2) == 1
+assert g() == 30
 
 [case testPyMethodCall]
 from typing import List

@@ -641,6 +641,23 @@ static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     }
 }
 
+static PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
+    // dict subclasses like defaultdict override __get__ in interesting ways,
+    // so we don't want to just directly use the dict methods. Maybe we should
+    // always just use PyObject_GetItem but this can save us some indirection?
+    if (PyDict_CheckExact(dict)) {
+        PyObject *res = PyDict_GetItemWithError(dict, key);
+        if (!res) {
+            PyErr_SetObject(PyExc_KeyError, key);
+        } else {
+            Py_INCREF(res);
+        }
+        return res;
+    } else {
+        return PyObject_GetItem(dict, key);
+    }
+}
+
 static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
     PyObject *filename_obj = PyUnicode_FromString(filename);
     PyObject *funcname_obj = PyUnicode_FromString(funcname);

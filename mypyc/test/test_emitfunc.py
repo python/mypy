@@ -205,12 +205,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_dict_get_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o2], dict_get_item_op, 1),
-                         """cpy_r_r0 = PyDict_GetItemWithError(cpy_r_d, cpy_r_o2);
-                            if (!cpy_r_r0)
-                                PyErr_SetObject(PyExc_KeyError, cpy_r_o2);
-                            else
-                                Py_INCREF(cpy_r_r0);
-                         """)
+                         """cpy_r_r0 = CPyDict_GetItem(cpy_r_d, cpy_r_o2);""")
 
     def test_dict_set_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o, self.o2], dict_set_item_op, 1),
