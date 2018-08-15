@@ -79,6 +79,7 @@ static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
     PyTypeObject *dummy_class = NULL;
     PyObject *name = NULL;
     PyObject *bases = NULL;
+    PyObject *slots;
 
     PyTypeObject *metaclass = Py_TYPE(template_);
 
@@ -170,6 +171,21 @@ static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
         // to the proxy.
         if (PyDict_SetItemString(t->ht_type.tp_dict, "_gorg", (PyObject *)t) < 0)
             goto error;
+    }
+
+    // Reject anything that would give us a nontrivial __slots__,
+    // because the layout will conflict
+    slots = PyObject_GetAttrString((PyObject *)t, "__slots__");
+    if (slots) {
+        // don't fail on an empty __slots__
+        int is_true = PyObject_IsTrue(slots);
+        Py_DECREF(slots);
+        if (is_true > 0)
+            PyErr_SetString(PyExc_TypeError, "mypyc classes can't have __slots__");
+        if (is_true != 0)
+            goto error;
+    } else {
+        PyErr_Clear();
     }
 
     if (PyObject_SetAttrString((PyObject *)t, "__module__", modname) < 0)
