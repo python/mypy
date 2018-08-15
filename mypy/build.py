@@ -1884,6 +1884,25 @@ class State:
             self.child_modules = set(self.meta.child_modules)
             if temporary:
                 self.load_tree(temporary=True)
+            if not manager.use_fine_grained_cache():
+                # Special case: if there were a previously missing package imported here
+                # and it is not present, then we need to re-calculate dependencies.
+                # This is to support patterns like this:
+                #     from missing_package import missing_module  # type: ignore
+                # At first mypy doesn't know that `missing_module` is a module
+                # (it may be a variable, a class, or a function), so it is not added to
+                # suppressed dependencies. Therefore, when the package with module is added,
+                # we need to re-calculate dependencies.
+                # NOTE: see comment below for why we skip this in fine grained mode.
+                new_packages = False
+                for dep in self.suppressed:
+                    path = manager.find_module_cache.find_module(dep, manager.search_paths,
+                                                              manager.options.python_executable)
+                    if path and '__init__.py' in path:
+                        new_packages = True
+                if new_packages:
+                    self.parse_file()  # This is safe because the cache is anyway stale.
+                    self.compute_dependencies()
         else:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
@@ -2696,12 +2715,15 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
+        added = [dep for dep in st.suppressed
+                 if manager.find_module_cache.find_module(dep, manager.search_paths,
+                                                          manager.options.python_executable)]
         for dep in st.ancestors + dependencies + st.suppressed:
             # We don't want to recheck imports marked with '# type: ignore'
             # so we ignore any suppressed module not explicitly re-included
             # from the command line.
             ignored = dep in st.suppressed and dep not in entry_points
-            if ignored:
+            if ignored and dep not in added:
                 manager.missing_modules.add(dep)
             elif dep not in graph:
                 try:

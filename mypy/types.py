@@ -4,11 +4,14 @@ import sys
 import copy
 from abc import abstractmethod
 from collections import OrderedDict
-from enum import Enum
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence, Iterator
+    Callable, Sequence, Iterator,
 )
+
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 import mypy.nodes
 from mypy import experiments
@@ -20,11 +23,11 @@ from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
 from mypy.bogus_type import Bogus
 
+from mypy.mypyc_hacks import TypeOfAny
+
 T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
-
-MYPY = False
 
 # If we import type_visitor in the middle of the file, mypy breaks, and if we do it
 # at the top, it breaks at runtime because of import cycle issues, so we do it at different
@@ -92,7 +95,7 @@ class TypeVarId:
     meta_level = 0  # type: int
 
     # Class variable used for allocating fresh ids for metavariables.
-    next_raw_id = 1  # type: int
+    next_raw_id = 1  # type: ClassVar[int]
 
     def __init__(self, raw_id: int, meta_level: int = 0) -> None:
         self.raw_id = raw_id
@@ -282,30 +285,6 @@ class TypeList(Type):
 _dummy = object()  # type: Any
 
 
-class TypeOfAny(Enum):
-    """
-    This class describes different types of Any. Each 'Any' can be of only one type at a time.
-    """
-    # Was this Any type was inferred without a type annotation?
-    unannotated = 'unannotated'
-    # Does this Any come from an explicit type annotation?
-    explicit = 'explicit'
-    # Does this come from an unfollowed import? See --disallow-any-unimported option
-    from_unimported_type = 'from_unimported_type'
-    # Does this Any type come from omitted generics?
-    from_omitted_generics = 'from_omitted_generics'
-    # Does this Any come from an error?
-    from_error = 'from_error'
-    # Is this a type that can't be represented in mypy's type system? For instance, type of
-    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
-    # Also used for variables named '_'.
-    special_form = 'special_form'
-    # Does this Any come from interaction with another Any?
-    from_another_any = 'from_another_any'
-    # Does this Any come from an implementation limitation/bug?
-    implementation_artifact = 'implementation_artifact'
-
-
 class AnyType(Type):
     """The type 'Any'."""
 
@@ -492,9 +471,7 @@ class DeletedType(Type):
 
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
-NOT_READY = mypy.nodes.FakeInfo(mypy.nodes.SymbolTable(),
-                                mypy.nodes.ClassDef('<NOT READY>', mypy.nodes.Block([])),
-                                '<NOT READY>')
+NOT_READY = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')
 
 
 class Instance(Type):
@@ -508,7 +485,7 @@ class Instance(Type):
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
         super().__init__(line, column)
-        assert typ is NOT_READY or typ.fullname() not in ["builtins.Any", "typing.Any"]
+        assert not typ or typ.fullname() not in ["builtins.Any", "typing.Any"]
         self.type = typ
         self.args = args
         self.erased = erased  # True if result of type variable substitution
