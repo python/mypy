@@ -308,14 +308,27 @@ False
 True
 
 [case testTuple]
+from typing import List, Optional, Tuple
 from typing import Tuple
 def f(x: Tuple[int, int]) -> Tuple[int,int]:
     return x
+
+def lurr(x: List[Optional[Tuple[int, str]]]) -> object:
+    return x[0]
 [file driver.py]
-from native import f
+from native import f, lurr
 print(f((1,2)))
+print(lurr([(1, '2')]))
+try:
+    print(lurr([(1, 2)]))
+except TypeError:
+    pass
+else:
+    assert False
+
 [out]
 (1, 2)
+(1, '2')
 
 [case testEmptyTupleFunctionWithTupleType]
 from typing import Tuple

@@ -386,6 +386,9 @@ class Emitter:
                 self.emit_line('}')
         elif isinstance(typ, RUnion):
             self.emit_union_cast(src, dest, typ, declare_dest, err, optional, src_type)
+        elif isinstance(typ, RTuple):
+            assert not optional
+            self.emit_tuple_cast(src, dest, typ, declare_dest, err, src_type)
         else:
             assert False, 'Cast not implemented: %s' % typ
 
@@ -414,6 +417,36 @@ class Emitter:
         # Handle cast failure.
         self.emit_line(err)
         self.emit_label(good_label)
+
+    def emit_tuple_cast(self, src: str, dest: str, typ: RTuple, declare_dest: bool,
+                        err: str, src_type: Optional[RType]) -> None:
+        """Emit cast to a tuple type.
+
+        The arguments are similar to emit_cast.
+        """
+        if declare_dest:
+            self.emit_line('PyObject *{};'.format(dest))
+        # This reuse of the variable is super dodgy. We don't even
+        # care about the values except to check whether they are
+        # invalid.
+        out_label = self.new_label()
+        self.emit_lines(
+            'if (!(PyTuple_Check({r}) && PyTuple_GET_SIZE({r}) == {size})) {{'.format(
+                r=src, size=len(typ.types)),
+            '{} = NULL;'.format(dest),
+            'goto {};'.format(out_label),
+            '}')
+        for i, item in enumerate(typ.types):
+            self.emit_cast('PyTuple_GetItem({}, {})'.format(src, i),
+                           dest,
+                           item,
+                           declare_dest=False,
+                           custom_message='',
+                           optional=False)
+            self.emit_line('if ({} == NULL)/*ass*/ goto {};'.format(dest, out_label))
+
+        self.emit_line('{} = {};'.format(dest, src))
+        self.emit_label(out_label)
 
     def emit_arg_check(self, src: str, dest: str, typ: RType, check: str, optional: bool) -> None:
         if optional:
