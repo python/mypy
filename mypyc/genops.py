@@ -886,13 +886,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.goto_and_activate(out)
 
     def visit_import(self, node: Import) -> None:
-        if node.is_unreachable or node.is_mypy_only:
+        if node.is_mypy_only:
             return
         for node_id, _ in node.ids:
             self.gen_import(node_id, node.line)
 
     def visit_import_from(self, node: ImportFrom) -> None:
-        if node.is_unreachable or node.is_mypy_only:
+        if node.is_mypy_only:
             return
         # TODO support these?
         assert not node.relative
@@ -919,7 +919,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 result_type=None, line=node.line)
 
     def visit_import_all(self, node: ImportAll) -> None:
-        if node.is_unreachable or node.is_mypy_only:
+        if node.is_mypy_only:
             return
         self.gen_import(node.id, node.line)
 
