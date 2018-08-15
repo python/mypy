@@ -120,7 +120,7 @@ if sys.platform == 'darwin':
 
 # And on Linux, set the rpath to $ORIGIN so they will look for the shared
 # library in the directory that they live in.
-elif sys.platform == 'linux':
+elif sys.platform == 'linux' and os.getenv('CC', None) != 'clang':
     # This flag is needed for gcc but does not exist on clang. Currently we only support gcc for
     # linux.
     # TODO: Add support for clang on linux. Possibly also add support for gcc on Darwin.
