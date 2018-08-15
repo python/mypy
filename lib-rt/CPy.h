@@ -641,10 +641,20 @@ static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     }
 }
 
+static inline int CPy_ObjectToStatus(PyObject *obj) {
+    if (obj) {
+        Py_DECREF(obj);
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
+// dict subclasses like defaultdict override things in interesting
+// ways, so we don't want to just directly use the dict methods. Not
+// sure if it is actually worth doing all this stuff, but it saves
+// some indirections.
 static PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
-    // dict subclasses like defaultdict override __get__ in interesting ways,
-    // so we don't want to just directly use the dict methods. Maybe we should
-    // always just use PyObject_GetItem but this can save us some indirection?
     if (PyDict_CheckExact(dict)) {
         PyObject *res = PyDict_GetItemWithError(dict, key);
         if (!res) {
@@ -655,6 +665,47 @@ static PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
         return res;
     } else {
         return PyObject_GetItem(dict, key);
+    }
+}
+
+static int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
+    if (PyDict_CheckExact(dict)) {
+        return PyDict_SetItem(dict, key, value);
+    } else {
+        return PyObject_SetItem(dict, key, value);
+    }
+}
+
+static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
+    static PyObject *update_str = NULL;
+    if (!update_str) {
+        update_str = PyUnicode_FromString("update");
+        if (!update_str) {
+            return -1;
+        }
+    }
+    PyObject *res = PyObject_CallMethodObjArgs(dict, update_str, stuff, NULL);
+    return CPy_ObjectToStatus(res);
+}
+
+static int CPyDict_Update(PyObject *dict, PyObject *stuff) {
+    if (PyDict_CheckExact(dict)) {
+        return PyDict_Update(dict, stuff);
+    } else {
+        return CPyDict_UpdateGeneral(dict, stuff);
+    }
+}
+
+static int CPyDict_UpdateFromSeq(PyObject *dict, PyObject *stuff) {
+    if (PyDict_CheckExact(dict)) {
+        // Argh this sucks
+        if (PyDict_Check(stuff)) {
+            return PyDict_Update(dict, stuff);
+        } else {
+            return PyDict_MergeFromSeq2(dict, stuff, 1);
+        }
+    } else {
+        return CPyDict_UpdateGeneral(dict, stuff);
     }
 }
 

@@ -665,7 +665,7 @@ except KeyError as e:
 'pop from an empty set'
 
 [case testDictStuff]
-from typing import Dict
+from typing import Dict, Any
 from defaultdictwrap import make_dict
 
 def f(x: int) -> int:
@@ -674,6 +674,12 @@ def f(x: int) -> int:
     dict2 = {} # type: Dict[int, int]
     dict2[x] = 2
     dict1.update(dict2)
+
+    l = [(5, 2)]  # type: Any
+    dict1.update(l)
+    d2 = {6: 4}  # type: Any
+    dict1.update(d2)
+
     return dict1[1]
 
 def g() -> int:
@@ -681,6 +687,10 @@ def g() -> int:
     d['a'] = 10
     d['a'] += 10
     d['b'] += 10
+    l = [('c', 2)]  # type: Any
+    d.update(l)
+    d2 = {'d': 4}  # type: Any
+    d.update(d2)
     return d['a'] + d['b']
 
 [file defaultdictwrap.py]

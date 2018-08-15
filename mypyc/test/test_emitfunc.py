@@ -209,11 +209,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_dict_set_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o, self.o2], dict_set_item_op, 1),
-                         """cpy_r_r0 = PyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2) >= 0;""")
+                         """cpy_r_r0 = CPyDict_SetItem(cpy_r_d, cpy_r_o, cpy_r_o2) >= 0;""")
 
     def test_dict_update(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o], dict_update_op, 1),
-                        """cpy_r_r0 = PyDict_Update(cpy_r_d, cpy_r_o) != -1;""")
+                        """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o) != -1;""")
 
     def test_new_dict(self) -> None:
         self.assert_emit(PrimitiveOp([], new_dict_op, 1),
