@@ -2,38 +2,37 @@
 
 ## Supported Features
 
-Only a small subset of Python is supported. If you try to compile
+Only a subset of Python is supported. If you try to compile
 something that is not supported, you are not likely to get a good
 error message.
 
-Here's a summary of what should work:
+Here are some major things that aren't supported:
 
-* Top-level functions with required positional-only arguments.
-* Calls to top-level functions defined in the same file.
-* Types:
-  * `int`
-  * `bool`
-  * `List[...]`
-  * `Tuple[...]` (only a few tuple operations)
-  * `None` as return type
-* Some integer operations:
-  * Basic integer arithmetic: `+` `-` `*` `//` `%`
-  * Integer comparisons
-* Some list operations:
-  * `[e, ...]` (construct list)
-  * `l[n]`
-  * `l[n] = x`
-  * `l.append(x)`
-  * `len(l)`
-  * `l * n` (multiply list by integer)
-* Simple assignment statement `var = x` (only local variables).
-* If/else/elif statement.
-* While statement.
-* Expression statement.
-* Return statement.
-* `and` and `or` in a boolean context.
-* `for x in range(n): ...` (for convenience only).
-* `break` and `continue` statements.
+* Unannotated functions
+* Functions that take `*args` or `**kwargs`
+* Decorated functions
+* Many dunder methods (only some work, such as `__init__` and `__eq__`)
+* Monkey patching compiled functions or classes
+* Metaclasses
+* Async features
+* Enums
+* Generally Python 3.5+ features
+* Subclassing built-in types (other than `object`)
+* General multiple inheritance (a limited form is supported))
+* Classes or functions that use type variables with value restrictions
+* Self types
+* TypedDicts
+* Named tuple defined using the class-based syntax
+* Complex numbers
+* Defining protocols
+* Defining overloaded functions
+* `# type: ignore`
+* `del name`
+
+We aren't focused on feature completeness right now. Instead, we aim
+to support a Python subset that is just good enough to compile
+mypy. We'll likely also add some features that aren't necessary for
+compiling mypy (as long as they are easy enough to implement).
 
 ## High-level Overview
 
@@ -96,17 +95,11 @@ we don't compile the C helpers into a separate object file.
 
 All of these limitations will likely be fixed in the future:
 
-* There's currently no way to run the compiler other than through
-  tests (`test-data/run.test` has end-to-end tests -- use these
-  sparingly since they are expensive to run).
-
 * We don't detect infinite recursion.
 
 * We don't handle Ctrl-C in compiled code.
 
 * We don't detect undefined local variables.
-
-* There's no way to access most stdlib functionality.
 
 ## Hints for Implementing Typical Mypyc Features
 
@@ -125,34 +118,11 @@ builtins during tests (`test-data/fixtures/ir.py`). We don't use full
 typeshed stubs to run tests since they would seriously slow down
 tests.
 
-### Built-in Operation for an Already Supported Type
+### Adding C Helpers
 
-If you want to add support for a new primitive operation for
-a type that mypyc already supports in some fashion, you generally
-have to do at least these steps:
-
-* Add a new operation to `mypyc.ops`. Often you only need to add a
-  suboperation to `PrimitiveOp` or `Branch` instead of defining a new
-  `Op` subclass. We don't have test cases specifically for operations.
-
-* Generate the new operation in `mypyc.genops`. Also add test cases
-  (see Syntactic Sugar for more information).
-
-* Implement C generation for the new operation in
-  `mypyc.emitfunc`. Test cases are located in
-  `mypyc.test.test_emitfunc`. They are normal Python unit tests instead
-  of data-driven test cases.
-
-* Test that your new operation works by adding a test case to
-  `test-data/run.test` and verifying that it passes. You don't always
-  need to commit the new test. If your operation is pretty
-  straightforward, you can omit a test in `run.test` and just add a
-  note with your PR mentioning that you've verified that your change
-  works end-to-end.
-
-If your operation compiles into a lot of C code, you may also want to
-add a C helper function for the operation to make the generated code
-smaller. Here is how to do this:
+If you add an operation that compiles into a lot of C code, you may
+also want to add a C helper function for the operation to make the
+generated code smaller. Here is how to do this:
 
 * Add the operation to `lib-rt/CPy.h`. Usually defining a static
   function is the right thing to do, but feel free to also define
@@ -219,3 +189,15 @@ running compiled code. Ideas for things to test:
 
 * Test using the type as list item type. Test both getting a list item
   and setting a list item.
+
+### Other Hints
+
+* This developer documentation is not very complete and might be out of
+  date.
+
+* It can be useful to look through some recent PRs to get an idea of
+  what typical code changes, test cases, etc. look like.
+
+* Feel free to open GitHub issues with questions if you need help when
+  contributing, or ask questions in existing issues. Note that we only
+  support contributors. Mypyc is not (yet) an end-user product.

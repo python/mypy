@@ -9,7 +9,7 @@ statically typed Python modules into Python C extensions.
 MacOS Requirements
 ------------------
 
-* macOS Sierra
+* macOS Sierra or later
 
 * Xcode command line tools
 
@@ -54,7 +54,10 @@ Now you can run the tests:
     $ pytest mypyc
 
 Look at the [issue tracker](https://github.com/JukkaL/mypyc/issues)
-for things to work on.
+for things to work on. Please express your interest in working on an
+issue by adding a comment before doing any significant work, since
+development is currently very active and there is real risk of duplicate
+work.
 
 Documentation
 -------------
@@ -66,18 +69,21 @@ Development Roadmap
 
 These are the current planned major milestones:
 
-1. Support a smallish but useful Python subset (exact details to be
-   decided). Focus on compiling single modules, while the rest of the
-   program is interpreted and does not need to be type checked.
-   Generate useful errors for code that uses unsupported Python
-   features.
+1. [DONE] Support a smallish but useful Python subset. Focus on compiling
+   single modules, while the rest of the program is interpreted and does not
+   need to be type checked.
 
-2. Support compiling multiple modules as a single compilation unit (or
+2. [DONE] Support compiling multiple modules as a single compilation unit (or
    dynamic linking of compiled modules).  Without this inter-module
    calls will use slower Python-level objects, wrapper functions and
    Python namespaces.
 
-3. Self-compilation (both mypy and mypyc).
+3. Self-compilation (at least mypy).
+
+4. Optimize some important performance bottlenecks.
+
+5. Generate useful errors for code that uses unsupported Python
+   features instead of crashing or generating bad code.
 
 Future
 ------
