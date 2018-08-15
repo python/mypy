@@ -21,6 +21,7 @@ from mypy.nodes import (
 )
 from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper
+from mypy.bogus_type import Bogus
 
 from mypy.mypyc_hacks import TypeOfAny
 
@@ -320,8 +321,9 @@ class AnyType(Type):
         return visitor.visit_any(self)
 
     def copy_modified(self,
-                      type_of_any: TypeOfAny = _dummy,
-                      original_any: Optional['AnyType'] = _dummy,
+                      # Mark with Bogus because _dummy is just an object (with type Any)
+                      type_of_any: Bogus[TypeOfAny] = _dummy,
+                      original_any: Bogus[Optional['AnyType']] = _dummy,
                       ) -> 'AnyType':
         if type_of_any is _dummy:
             type_of_any = self.type_of_any
@@ -720,22 +722,22 @@ class CallableType(FunctionLike):
             self.def_extras = {}
 
     def copy_modified(self,
-                      arg_types: List[Type] = _dummy,
-                      arg_kinds: List[int] = _dummy,
-                      arg_names: List[Optional[str]] = _dummy,
-                      ret_type: Type = _dummy,
-                      fallback: Instance = _dummy,
-                      name: Optional[str] = _dummy,
-                      definition: SymbolNode = _dummy,
-                      variables: List[TypeVarDef] = _dummy,
-                      line: int = _dummy,
-                      column: int = _dummy,
-                      is_ellipsis_args: bool = _dummy,
-                      implicit: bool = _dummy,
-                      special_sig: Optional[str] = _dummy,
-                      from_type_type: bool = _dummy,
-                      bound_args: List[Optional[Type]] = _dummy,
-                      def_extras: Dict[str, Any] = _dummy) -> 'CallableType':
+                      arg_types: Bogus[List[Type]] = _dummy,
+                      arg_kinds: Bogus[List[int]] = _dummy,
+                      arg_names: Bogus[List[Optional[str]]] = _dummy,
+                      ret_type: Bogus[Type] = _dummy,
+                      fallback: Bogus[Instance] = _dummy,
+                      name: Bogus[Optional[str]] = _dummy,
+                      definition: Bogus[SymbolNode] = _dummy,
+                      variables: Bogus[List[TypeVarDef]] = _dummy,
+                      line: Bogus[int] = _dummy,
+                      column: Bogus[int] = _dummy,
+                      is_ellipsis_args: Bogus[bool] = _dummy,
+                      implicit: Bogus[bool] = _dummy,
+                      special_sig: Bogus[Optional[str]] = _dummy,
+                      from_type_type: Bogus[bool] = _dummy,
+                      bound_args: Bogus[List[Optional[Type]]] = _dummy,
+                      def_extras: Bogus[Dict[str, Any]] = _dummy) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -1434,8 +1436,9 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
-                                   CallableType], *, line: int = -1, column: int = -1) -> None:
+    def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
+                                         CallableType]], *,
+                 line: int = -1, column: int = -1) -> None:
         """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
         type UnionType must be handled through make_normalized static method.
         """
