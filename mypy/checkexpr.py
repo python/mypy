@@ -1497,7 +1497,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert types, "Trying to merge no callables"
         if not all(isinstance(c, CallableType) for c in types):
             return AnyType(TypeOfAny.special_form)
-        callables = cast(List[CallableType], types)
+        callables = cast(Sequence[CallableType], types)
         if len(callables) == 1:
             return callables[0]
 
@@ -1741,7 +1741,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Comparison expressions are type checked consecutive-pair-wise
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
-        result = None
+        result = None  # type: Optional[Type]
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
@@ -3563,7 +3563,7 @@ def map_formals_to_actuals(caller_kinds: List[int],
 
 
 def merge_typevars_in_callables_by_name(
-        callables: List[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
+        callables: Sequence[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
     """Takes all the typevars present in the callables and 'combines' the ones with the same name.
 
     For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and

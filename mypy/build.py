@@ -31,6 +31,9 @@ import errno
 
 from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 from mypy import sitepkgs
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
@@ -1762,7 +1765,7 @@ class State:
     """
 
     manager = None  # type: BuildManager
-    order_counter = 0  # Class variable
+    order_counter = 0  # type: ClassVar[int]
     order = None  # type: int  # Order in which modules were encountered
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
@@ -1915,6 +1918,11 @@ class State:
             self.parse_file()
             self.compute_dependencies()
             self.child_modules = set()
+
+    @property
+    def xmeta(self) -> CacheMeta:
+        assert self.meta
+        return self.meta
 
     def add_ancestors(self) -> None:
         if self.path is not None:
@@ -2753,10 +2761,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
     return graph
 
 
-class FreshState(State):
-    meta = None  # type: CacheMeta
-
-
 def process_graph(graph: Graph, manager: BuildManager) -> None:
     """Process everything in dependency order."""
     sccs = sorted_components(graph)
@@ -2811,25 +2815,24 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if fresh:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
-            fresh_graph = cast(Dict[str, FreshState], graph)
-            oldest_in_scc = min(fresh_graph[id].meta.data_mtime for id in scc)
+            oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
             viable = {id for id in stale_deps if graph[id].meta is not None}
-            newest_in_deps = 0 if not viable else max(fresh_graph[dep].meta.data_mtime
+            newest_in_deps = 0 if not viable else max(graph[dep].xmeta.data_mtime
                                                       for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | viable, key=lambda id: fresh_graph[id].meta.data_mtime)
+                all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
                 for id in all_ids:
                     if id in scc:
-                        if fresh_graph[id].meta.data_mtime < newest_in_deps:
+                        if graph[id].xmeta.data_mtime < newest_in_deps:
                             key = "*id:"
                         else:
                             key = "id:"
                     else:
-                        if fresh_graph[id].meta.data_mtime > oldest_in_scc:
+                        if graph[id].xmeta.data_mtime > oldest_in_scc:
                             key = "+dep:"
                         else:
                             key = "dep:"
-                    manager.trace(" %5s %.0f %s" % (key, fresh_graph[id].meta.data_mtime, id))
+                    manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
             if manager.options.quick_and_dirty and stale_deps:

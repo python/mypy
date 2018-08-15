@@ -35,7 +35,7 @@ TODO: Check if the third pass slows down type checking significantly.
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
 )
 
 from mypy.nodes import (
@@ -1674,7 +1674,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
-            self.add_exports(*s.rvalue.items)
+            self.add_exports(s.rvalue.items)
 
     def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
@@ -2241,7 +2241,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
-            for rv, *lvs in elementwise_assignments:
+            for part in elementwise_assignments:
+                rv, lvs = part[0], list(part[1:])
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, RefExpr):
             rnode = self.lookup_type_node(rval)
@@ -2350,7 +2351,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         s.rvalue.accept(self)
         if (isinstance(s.lvalue, NameExpr) and s.lvalue.name == '__all__' and
                 s.lvalue.kind == GDEF and isinstance(s.rvalue, (ListExpr, TupleExpr))):
-            self.add_exports(*s.rvalue.items)
+            self.add_exports(s.rvalue.items)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.expr.accept(self)
@@ -2672,7 +2673,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.add_exports(expr.args[0])
                 elif (expr.callee.name == 'extend' and expr.args and
                         isinstance(expr.args[0], (ListExpr, TupleExpr))):
-                    self.add_exports(*expr.args[0].items)
+                    self.add_exports(expr.args[0].items)
 
     def translate_dict_call(self, call: CallExpr) -> Optional[DictExpr]:
         """Translate 'dict(x=y, ...)' to {'x': y, ...}.
@@ -3284,7 +3285,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
-    def add_exports(self, *exps: Expression) -> None:
+    def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
+        exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
         for exp in exps:
             if isinstance(exp, StrExpr):
                 self.all_exports.add(exp.value)

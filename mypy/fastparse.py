@@ -2,8 +2,12 @@ from functools import wraps
 import sys
 
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
+MYPY = False
+if MYPY:
+    from typing import ClassVar
+
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
 )
@@ -205,7 +209,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }
+    }  # type: ClassVar[Dict[object, str]]
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -225,7 +229,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }
+    }  # type: ClassVar[Dict[object, str]]
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -250,7 +254,7 @@ class ASTConverter(ast3.NodeTransformer):
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
         current_overload = []  # type: List[OverloadPart]
-        current_overload_name = None
+        current_overload_name = None  # type: Optional[str]
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
@@ -861,7 +865,9 @@ class ASTConverter(ast3.NodeTransformer):
 
     # Num(object n) -- a number as a PyObject.
     @with_line
-    def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
+    def visit_Num(self, nx: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
+        # XXX: the typeshed stubs are lies
+        n = nx  # type: Any
         if isinstance(n.n, int):
             return IntExpr(n.n)
         elif isinstance(n.n, float):
