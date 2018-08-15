@@ -3,7 +3,7 @@ flake8
 flake8-bugbear; python_version >= '3.5'
 flake8-pyi; python_version >= '3.6'
 lxml==4.2.4
-git+git://github.com/python/mypy.git@5ed6919604c38a4ecfe3ec20d00687c267d8c6ca#egg=mypy_extensions&subdirectory=extensions
+mypy_extensions==0.4.0
 psutil==5.4.0
 pytest>=3.4
 pytest-xdist>=1.22
