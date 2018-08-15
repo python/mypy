@@ -35,7 +35,10 @@ from mypy.types import (
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound, type_object_type
+from mypy.checkmember import (
+    map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
+    analyze_descriptor_access
+)
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
@@ -432,7 +435,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert isinstance(inner_type, CallableType)
                 impl_type = inner_type
 
-        is_descriptor_get = defn.info is not None and defn.name() == "__get__"
+        is_descriptor_get = defn.info and defn.name() == "__get__"
         for i, item in enumerate(defn.items):
             # TODO overloads involving decorators
             assert isinstance(item, Decorator)
@@ -976,7 +979,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
 
-        assert defn.info is not None
+        assert defn.info
 
         # First check for a valid signature
         method_type = CallableType([AnyType(TypeOfAny.special_form),
@@ -2241,8 +2244,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
             if attribute_type.type.has_readable_member('__get__'):
-                attribute_type = self.expr_checker.analyze_descriptor_access(
-                    instance_type, attribute_type, context)
+                attribute_type = analyze_descriptor_access(
+                    instance_type, attribute_type, self.named_type,
+                    self.msg, context, chk=self)
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, True
 
@@ -2761,7 +2765,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.typed_function_untyped_decorator(func.name(), dec_expr)
 
     def check_incompatible_property_override(self, e: Decorator) -> None:
-        if not e.var.is_settable_property and e.func.info is not None:
+        if not e.var.is_settable_property and e.func.info:
             name = e.func.name()
             for base in e.func.info.mro[1:]:
                 base_attr = base.names.get(name)
@@ -3323,7 +3327,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     var.type = AnyType(TypeOfAny.from_error)
 
     def is_defined_in_base_class(self, var: Var) -> bool:
-        if var.info is not None:
+        if var.info:
             for base in var.info.mro[1:]:
                 if base.get(var.name()) is not None:
                     return True

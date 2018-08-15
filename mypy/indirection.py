@@ -64,7 +64,7 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
 
     def visit_instance(self, t: types.Instance) -> Set[str]:
         out = self._visit(*t.args)
-        if t.type is not None:
+        if t.type:
             # Uses of a class depend on everything in the MRO,
             # as changes to classes in the MRO can add types to methods,
             # change property types, change the MRO itself, etc.

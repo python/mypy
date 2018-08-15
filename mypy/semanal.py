@@ -416,6 +416,26 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         if not self.set_original_def(symbol.node, defn):
                             # Report error.
                             self.check_no_global(defn.name(), defn, True)
+
+            # Analyze function signature and initializers in the first phase
+            # (at least this mirrors what happens at runtime).
+            with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+                if defn.type:
+                    self.check_classvar_in_signature(defn.type)
+                    assert isinstance(defn.type, CallableType)
+                    # Signature must be analyzed in the surrounding scope so that
+                    # class-level imported names and type variables are in scope.
+                    analyzer = self.type_analyzer()
+                    defn.type = analyzer.visit_callable_type(defn.type, nested=False)
+                    self.add_type_alias_deps(analyzer.aliases_used)
+                    self.check_function_signature(defn)
+                    if isinstance(defn, FuncDef):
+                        assert isinstance(defn.type, CallableType)
+                        defn.type = set_callable_name(defn.type, defn)
+                for arg in defn.arguments:
+                    if arg.initializer:
+                        arg.initializer.accept(self)
+
             if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
                 # Postpone this function (for the second phase).
                 self.postponed_functions_stack[-1].append(defn)
@@ -646,21 +666,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
-            if defn.type:
-                self.check_classvar_in_signature(defn.type)
-                assert isinstance(defn.type, CallableType)
-                # Signature must be analyzed in the surrounding scope so that
-                # class-level imported names and type variables are in scope.
-                analyzer = self.type_analyzer()
-                defn.type = analyzer.visit_callable_type(defn.type, nested=False)
-                self.add_type_alias_deps(analyzer.aliases_used)
-                self.check_function_signature(defn)
-                if isinstance(defn, FuncDef):
-                    assert isinstance(defn.type, CallableType)
-                    defn.type = set_callable_name(defn.type, defn)
-            for arg in defn.arguments:
-                if arg.initializer:
-                    arg.initializer.accept(self)
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
@@ -2149,7 +2154,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
         class_def.info = info
         mro = basetype_or_fallback.type.mro
-        if mro is None:
+        if not mro:
             # Forward reference, MRO should be recalculated in third pass.
             mro = [basetype_or_fallback.type, self.object_type().type]
         info.mro = [info] + mro
@@ -3068,7 +3073,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        if n.node.mro is None:
+                        if not n.node.mro:
                             # We haven't yet analyzed the class `n.node`.  Fall back to direct
                             # lookup in the names declared directly under it, without its base
                             # classes.  This can happen when we have a forward reference to a
