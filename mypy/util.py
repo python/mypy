@@ -188,7 +188,7 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-FIELDS_CACHE = {}  # type: Dict[Type[object], List[str]]
+fields_cache = {}  # type: Dict[Type[object], List[str]]
 
 
 def replace_object_state(new: object, old: object) -> None:
@@ -203,13 +203,14 @@ def replace_object_state(new: object, old: object) -> None:
         new.__dict__ = old.__dict__
 
     cls = old.__class__
-    # Maintain a cache of type -> attributes
-    if cls not in FIELDS_CACHE:
+    # Maintain a cache of type -> attributes defined by descriptors in the class
+    # (that is, attributes from __slots__ and C extension classes)
+    if cls not in fields_cache:
         members = inspect.getmembers(
             cls,
             lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o))
-        FIELDS_CACHE[cls] = [x for x, y in members if x != '__weakref__']
-    for attr in FIELDS_CACHE[cls]:
+        fields_cache[cls] = [x for x, y in members if x != '__weakref__']
+    for attr in fields_cache[cls]:
         try:
             if hasattr(old, attr):
                 setattr(new, attr, getattr(old, attr))
