@@ -15,7 +15,7 @@ from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
-from mypyc.ops import FuncIR, ClassIR, ModuleIR, format_func
+from mypyc.ops import FuncIR, ClassIR, ModuleIR, LiteralsMap, format_func
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
@@ -43,7 +43,7 @@ def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], op
 
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
-    modules = genops.build_ir(file_nodes, result.graph, result.types)
+    literals, modules = genops.build_ir(file_nodes, result.graph, result.types)
     # Insert exception handling.
     for _, module in modules:
         for fn in module.functions:
@@ -61,7 +61,7 @@ def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], op
     # Generate C code.
     source_paths = {module_name: result.files[module_name].path
                     for module_name in module_names}
-    generator = ModuleGenerator(modules, source_paths, use_shared_lib)
+    generator = ModuleGenerator(literals, modules, source_paths, use_shared_lib)
     return generator.generate_c_for_modules()
 
 
@@ -88,9 +88,11 @@ def encode_bytes_as_c_string(b: bytes) -> Tuple[str, int]:
 
 class ModuleGenerator:
     def __init__(self,
+                 literals: LiteralsMap,
                  modules: List[Tuple[str, ModuleIR]],
                  source_paths: Dict[str, str],
                  use_shared_lib: bool) -> None:
+        self.literals = literals
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext([name for name, _ in modules])
@@ -107,13 +109,14 @@ class ModuleGenerator:
             self.declare_internal_globals(module_name, emitter)
             self.declare_imports(module.imports, emitter)
 
-        for module in module_irs:
-            for identifier in module.literals.values():
-                self.declare_static_pyobject(identifier, emitter)
+        for identifier in self.literals.values():
+            self.declare_static_pyobject(identifier, emitter)
 
         for module in module_irs:
             for fn in module.functions:
                 generate_function_declaration(fn, emitter)
+
+        self.generate_literals(emitter)
 
         classes = []
         for module_name, module in self.modules:
@@ -151,6 +154,49 @@ class ModuleGenerator:
             declarations.emit_line(static_def)
 
         return ''.join(declarations.fragments + emitter.fragments)
+
+    def generate_literals(self, emitter: Emitter) -> None:
+        emitter.emit_lines(
+            'static int CPyLiteralsInit(void)',
+            '{',
+            'static int is_initialized = 0;',
+            'if (is_initialized) return 0;',
+            ''
+        )
+
+        for (_, literal), identifier in self.literals.items():
+            symbol = emitter.static_name(identifier, None)
+            if isinstance(literal, int):
+                emitter.emit_line(
+                    '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(
+                        symbol, str(literal))
+                )
+            elif isinstance(literal, float):
+                emitter.emit_line(
+                    '{} = PyFloat_FromDouble({});'.format(symbol, str(literal))
+                )
+            elif isinstance(literal, str):
+                emitter.emit_line(
+                    '{} = PyUnicode_FromStringAndSize({}, {});'.format(
+                        symbol, *encode_as_c_string(literal))
+                )
+            elif isinstance(literal, bytes):
+                emitter.emit_line(
+                    '{} = PyBytes_FromStringAndSize({}, {});'.format(
+                        symbol, *encode_bytes_as_c_string(literal))
+                )
+            else:
+                assert False, ('Literals must be integers, floating point numbers, or strings,',
+                               'but the provided literal is of type {}'.format(type(literal)))
+            emitter.emit_lines('if ({} == NULL)'.format(symbol),
+                               '    return -1;')
+
+
+        emitter.emit_lines(
+            'is_initialized = 1;',
+            'return 0;',
+            '}',
+        )
 
     def generate_module_def(self, emitter: Emitter, module_name: str, module: ModuleIR) -> None:
         """Emit the PyModuleDef struct for a module and the module init function."""
@@ -219,34 +265,8 @@ class ModuleGenerator:
                 emitter.emit_lines('if (!{})'.format(type_struct),
                                    '    return NULL;')
 
-        for (_, literal), identifier in module.literals.items():
-            symbol = emitter.static_name(identifier, None)
-            if isinstance(literal, int):
-                emitter.emit_lines(
-                    '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(
-                        symbol, str(literal))
-                )
-            elif isinstance(literal, float):
-                emitter.emit_lines(
-                    '{} = PyFloat_FromDouble({});'.format(symbol, str(literal))
-                )
-            elif isinstance(literal, str):
-                emitter.emit_lines(
-                    '{} = PyUnicode_FromStringAndSize({}, {});'.format(
-                        symbol, *encode_as_c_string(literal)),
-                    'if ({} == NULL)'.format(symbol),
-                    '    return NULL;',
-                )
-            elif isinstance(literal, bytes):
-                emitter.emit_lines(
-                    '{} = PyBytes_FromStringAndSize({}, {});'.format(
-                        symbol, *encode_bytes_as_c_string(literal)),
-                    'if ({} == NULL)'.format(symbol),
-                    '    return NULL;',
-                )
-            else:
-                assert False, ('Literals must be integers, floating point numbers, or strings,',
-                               'but the provided literal is of type {}'.format(type(literal)))
+        emitter.emit_lines('if (CPyLiteralsInit() < 0)',
+                           '    return NULL;')
 
         self.generate_top_level_call(module, emitter)
 

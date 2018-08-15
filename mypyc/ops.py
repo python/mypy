@@ -1499,11 +1499,9 @@ class ModuleIR:
 
     def __init__(self,
             imports: List[str],
-            literals: LiteralsMap,
             functions: List[FuncIR],
             classes: List[ClassIR]) -> None:
         self.imports = imports[:]
-        self.literals = literals
         self.functions = functions
         self.classes = classes
 

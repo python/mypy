@@ -15,6 +15,17 @@ static PyObject *CPyStatic_unicode_0;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
 static PyObject *CPyDef___top_level__(void);
+static int CPyLiteralsInit(void)
+{
+    static int is_initialized = 0;
+    if (is_initialized) return 0;
+
+    CPyStatic_unicode_0 = PyUnicode_FromStringAndSize("builtins", 8);
+    if (CPyStatic_unicode_0 == NULL)
+        return -1;
+    is_initialized = 1;
+    return 0;
+}
 
 static PyMethodDef module_methods[] = {
     {"f", (PyCFunction)CPyPy_f, METH_VARARGS | METH_KEYWORDS, NULL /* docstring */},
@@ -43,8 +54,7 @@ PyMODINIT_FUNC PyInit_prog(void)
     CPyStatic_globals = PyModule_GetDict(CPyStatic_module);
     if (CPyStatic_globals == NULL)
         return NULL;
-    CPyStatic_unicode_0 = PyUnicode_FromStringAndSize("builtins", 8);
-    if (CPyStatic_unicode_0 == NULL)
+    if (CPyLiteralsInit() < 0)
         return NULL;
     PyObject *result = CPyDef___top_level__();
     if (result == NULL)

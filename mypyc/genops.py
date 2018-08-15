@@ -89,7 +89,7 @@ GenFunc = Callable[[], None]
 
 def build_ir(modules: List[MypyFile],
              graph: Graph,
-             types: Dict[Expression, Type]) -> List[Tuple[str, ModuleIR]]:
+             types: Dict[Expression, Type]) -> Tuple[LiteralsMap, List[Tuple[str, ModuleIR]]]:
     result = []
     mapper = Mapper()
 
@@ -130,7 +130,6 @@ def build_ir(modules: List[MypyFile],
         builder.visit_mypy_file(module)
         module_ir = ModuleIR(
             builder.imports,
-            mapper.literals,
             builder.functions,
             builder.classes
         )
@@ -141,7 +140,7 @@ def build_ir(modules: List[MypyFile],
     for cir in class_irs:
         compute_vtable(cir)
 
-    return result
+    return mapper.literals, result
 
 
 def is_trait(cdef: ClassDef) -> bool:
