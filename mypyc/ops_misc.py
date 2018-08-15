@@ -122,14 +122,14 @@ binary_op('is',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_NEVER,
-          emit=negative_int_emit('{dest} = {args[0]} == {args[1]};'),
+          emit=simple_emit('{dest} = {args[0]} == {args[1]};'),
           priority=0)
 
 binary_op('is not',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_NEVER,
-          emit=negative_int_emit('{dest} = {args[0]} != {args[1]};'),
+          emit=simple_emit('{dest} = {args[0]} != {args[1]};'),
           priority=0)
 
 for op, funcname in [('-', 'PyNumber_Negative'),

@@ -92,11 +92,7 @@ static PyObject *CPyDef___top_level__(void) {
 CPyL0: ;
     cpy_r_r0 = CPyStatic_builtins_module;
     cpy_r_r1 = Py_None;
-    int __tmp1 = cpy_r_r0 != cpy_r_r1;
-    if (__tmp1 < 0)
-        cpy_r_r2 = 2;
-    else
-        cpy_r_r2 = __tmp1;
+    cpy_r_r2 = cpy_r_r0 != cpy_r_r1;
     if (cpy_r_r2) {
         goto CPyL3;
     } else
