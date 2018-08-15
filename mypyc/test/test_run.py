@@ -76,12 +76,14 @@ class TestRun(MypycDataSuite):
                     to_delete.append(fn)
 
             try:
-                ctext = emitmodule.compile_modules_to_c(
+                result = emitmodule.parse_and_typecheck(
                     sources=sources,
-                    module_names=module_names,
                     options=options,
-                    use_shared_lib=len(module_names) > 1,
                     alt_lib_path=test_temp_dir)
+                ctext = emitmodule.compile_modules_to_c(
+                    result,
+                    module_names=module_names,
+                    use_shared_lib=len(module_names) > 1)
             except CompileError as e:
                 for line in e.messages:
                     print(line)

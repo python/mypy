@@ -17,6 +17,7 @@ import os
 import os.path
 import sys
 import tempfile
+import time
 
 base_path = os.path.join(os.path.dirname(__file__), '..')
 
@@ -107,19 +108,21 @@ def main() -> None:
 
     ops = [] if save_dir else None  # type: Optional[List[str]]
 
+    t0 = time.time()
     try:
-        ctext = emitmodule.compile_modules_to_c(
-            sources=sources,
-            module_names=module_names,
-            options=options,
-            use_shared_lib=use_shared_lib,
-            ops=ops)
+        result = emitmodule.parse_and_typecheck(sources, options)
     except CompileError as e:
         for line in e.messages:
             print(line)
         sys.exit(1)
 
-    print("C generated!")
+    t1 = time.time()
+    print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
+
+    ctext = emitmodule.compile_modules_to_c(result, module_names, use_shared_lib, ops=ops)
+
+    t2 = time.time()
+    print("Compiled to C in {:.3f}s".format(t2 - t1))
 
     if save_dir:
         try:
@@ -146,6 +149,9 @@ def main() -> None:
     finally:
         if not save_dir:
             shutil.rmtree(dir)
+
+    t3 = time.time()
+    print("Generated binary in {:.3f}s".format(t3 - t2))
 
 
 if __name__ == '__main__':

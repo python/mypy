@@ -41,12 +41,12 @@ class TestCompiler(MypycDataSuite):
             source = build.BuildSource('prog.py', 'prog', text)
 
             try:
-                ctext = emitmodule.compile_modules_to_c(
+                result = emitmodule.parse_and_typecheck(
                     sources=[source],
-                    module_names=['prog'],
                     options=options,
-                    use_shared_lib=False,
                     alt_lib_path=test_temp_dir)
+                ctext = emitmodule.compile_modules_to_c(
+                    result, module_names=['prog'], use_shared_lib=False)
                 out = ctext.splitlines()
             except CompileError as e:
                 out = e.messages

@@ -3,7 +3,7 @@
 from collections import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
 
-from mypy.build import BuildSource, build
+from mypy.build import BuildSource, BuildResult, build
 from mypy.errors import CompileError
 from mypy.options import Options
 
@@ -29,17 +29,21 @@ class MarkedDeclaration:
         self.mark = False
 
 
-def compile_modules_to_c(sources: List[BuildSource], module_names: List[str], options: Options,
-                         use_shared_lib: bool,
-                         alt_lib_path: Optional[str] = None,
-                         ops: Optional[List[str]] = None) -> str:
-    """Compile Python module(s) to C that can be used from Python C extension modules."""
+def parse_and_typecheck(sources: List[BuildSource], options: Options,
+                        alt_lib_path: Optional[str] = None) -> BuildResult:
     assert options.strict_optional, 'strict_optional must be turned on'
     result = build(sources=sources,
                    options=options,
                    alt_lib_path=alt_lib_path)
     if result.errors:
         raise CompileError(result.errors)
+    return result
+
+
+def compile_modules_to_c(result: BuildResult, module_names: List[str],
+                         use_shared_lib: bool,
+                         ops: Optional[List[str]] = None) -> str:
+    """Compile Python module(s) to C that can be used from Python C extension modules."""
 
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
@@ -190,7 +194,6 @@ class ModuleGenerator:
                                'but the provided literal is of type {}'.format(type(literal)))
             emitter.emit_lines('if ({} == NULL)'.format(symbol),
                                '    return -1;')
-
 
         emitter.emit_lines(
             'is_initialized = 1;',
