@@ -95,7 +95,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields = OrderedDict()  # type: Dict[str, str]
     fields['tp_name'] = '"{}"'.format(name)
 
-    generate_full = not cl.is_trait and not cl.is_exception
+    generate_full = not cl.is_trait and not cl.builtin_base
 
     if generate_full:
         fields['tp_new'] = new_name
@@ -135,8 +135,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     # If the class inherits from python, make space for a __dict__
     struct_name = cl.struct_name(emitter.names)
-    if cl.is_exception:
-        base_size = 'sizeof(PyBaseExceptionObject)'
+    if cl.builtin_base:
+        base_size = 'sizeof({})'.format(cl.builtin_base)
     elif cl.is_trait:
         base_size = 'sizeof(PyObject)'
     else:
@@ -172,10 +172,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     generate_methods_table(cl, methods_name, emitter)
     emit_line()
 
-    flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HAVE_GC', 'Py_TPFLAGS_HEAPTYPE',
-             'Py_TPFLAGS_BASETYPE']
-    if cl.is_exception:
-        flags.append('Py_TPFLAGS_BASE_EXC_SUBCLASS')
+    flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HEAPTYPE', 'Py_TPFLAGS_BASETYPE']
+    if generate_full:
+        flags.append('Py_TPFLAGS_HAVE_GC')
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line("static PyTypeObject {}_template_ = {{".format(emitter.type_struct_name(cl)))

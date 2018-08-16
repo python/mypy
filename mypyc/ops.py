@@ -1433,8 +1433,10 @@ class ClassIR:
 
         # Does this class or any subclass have a __bool__method
         self.has_bool = False
-        # Is this class a BaseException subclass
-        self.is_exception = False
+        # If this a subclass of some built-in python class, the name
+        # of the object for that class. We currently only support this
+        # in a few ad-hoc cases.
+        self.builtin_base = None  # type: Optional[str]
 
     def real_base(self) -> Optional['ClassIR']:
         """Return the actual concrete base class, if there is one."""

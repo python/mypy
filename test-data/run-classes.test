@@ -520,7 +520,6 @@ yo!
 3
 yo!
 
--- broken - we need to handle the layout conflicts for it to work
 [case testSubclassException]
 class Failure(Exception):
     def __init__(self, x: int) -> None:
@@ -544,6 +543,25 @@ except Failure as e:
     assert str(e) == '10'
     assert e.x == 10
 heyo()
+
+[case testSubclassDict]
+from typing import Dict
+class WelpDict(Dict[str, int]):
+    def __init__(self) -> None:
+        self.emarhavil = 3
+    def foo(self) -> int:
+        return self.emarhavil
+
+def welp() -> int:
+    x = WelpDict()
+    x['a'] = 10
+    x['b'] = 15
+    x.emarhavil = 5
+    return x['a'] + x['b'] + x.emarhavil + x.foo()
+
+[file driver.py]
+from native import welp
+assert welp() == 35
 
 [case testSubclassPy]
 from b import B, V

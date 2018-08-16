@@ -350,14 +350,19 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
                 assert node.node.func.type
                 ir.property_types[name] = decl.sig.ret_type
 
-    # Special case exceptions
+    # Special case exceptions and dicts
+    # XXX: How do we handle *other* things??
     if info.bases and any(cls.fullname() == 'builtins.Exception' for cls in info.mro):
-        ir.is_exception = True
+        ir.builtin_base = 'PyBaseExceptionObject'
+    if info.bases and any(cls.fullname() == 'builtins.dict' for cls in info.mro):
+        ir.builtin_base = 'PyDictObject'
+
+    if ir.builtin_base:
         ir.attributes.clear()
 
     # Set up a constructor decl
     init_node = cdef.info['__init__'].node
-    if not ir.is_trait and not ir.is_exception and isinstance(init_node, FuncDef):
+    if not ir.is_trait and not ir.builtin_base and isinstance(init_node, FuncDef):
         init_sig = mapper.fdef_to_sig(init_node)
         ctor_sig = FuncSignature(init_sig.args[1:], RInstance(ir))
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
@@ -765,7 +770,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def generate_attr_defaults(self, cdef: ClassDef) -> None:
         """Generate an initialization method for default attr values (from class vars)"""
         cls = self.mapper.type_to_ir[cdef.info]
-        if cls.is_exception:
+        if cls.builtin_base:
             return
 
         # Pull out all assignments in classes in the mro so we can initialize them
@@ -2178,7 +2183,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             return self.py_method_call(base, name, arg_values, base.line, arg_kinds, arg_names)
 
         # If the base type is one of ours, do a MethodCall
-        if isinstance(base.type, RInstance):
+        if isinstance(base.type, RInstance) and not base.type.class_ir.builtin_base:
             if base.type.class_ir.has_method(name):
                 decl = base.type.class_ir.method_decl(name)
                 if arg_kinds is None:
