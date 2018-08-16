@@ -1870,6 +1870,39 @@ eins?
 second: normal function
 third: normal function
 
+[case testOverloads]
+from typing import overload, Union, Tuple
+
+@overload
+def foo(x: int) -> int: ...
+
+@overload
+def foo(x: str) -> str: ...
+
+def foo(x: Union[int, str]) -> Union[int, str]:
+    return x
+
+class A:
+    @overload
+    def foo(self, x: int) -> int: ...
+
+    @overload
+    def foo(self, x: str) -> str: ...
+
+    def foo(self, x: Union[int, str]) -> Union[int, str]:
+        return x
+
+def call1() -> Tuple[int, str]:
+    return (foo(10), foo('10'))
+def call2() -> Tuple[int, str]:
+    x = A()
+    return (x.foo(10), x.foo('10'))
+
+[file driver.py]
+from native import *
+assert call1() == (10, '10')
+assert call2() == (10, '10')
+
 [case testControlFlowExprs]
 from typing import Tuple
 def foo() -> object:

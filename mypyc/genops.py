@@ -113,10 +113,8 @@ def build_ir(modules: List[MypyFile],
     # Collect all the functions also
     for module in modules:
         for node in module.defs:
-            if isinstance(node, FuncDef):
-                prepare_func_def(module.fullname(), None, node, mapper)
-            elif isinstance(node, Decorator):
-                prepare_func_def(module.fullname(), None, node.func, mapper)
+            if isinstance(node, (FuncDef, Decorator, OverloadedFuncDef)):
+                prepare_func_def(module.fullname(), None, get_func_def(node), mapper)
             # TODO: what else?
 
     # Generate IR for all modules.
@@ -149,6 +147,15 @@ def build_ir(modules: List[MypyFile],
 def is_trait(cdef: ClassDef) -> bool:
     return any(d.fullname == 'mypy_extensions.trait' for d in cdef.decorators
                if isinstance(d, NameExpr))
+
+
+def get_func_def(op: Union[FuncDef, Decorator, OverloadedFuncDef]) -> FuncDef:
+    if isinstance(op, OverloadedFuncDef):
+        assert op.impl
+        op = op.impl
+    if isinstance(op, Decorator):
+        op = op.func
+    return op
 
 
 def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
@@ -331,6 +338,21 @@ def prepare_func_def(module_name: str, class_name: Optional[str],
     return decl
 
 
+def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Mapper,
+                       node: Union[FuncDef, Decorator]) -> None:
+    if isinstance(node, FuncDef):
+        ir.method_decls[node.name()] = prepare_func_def(module_name, cdef.name, node, mapper)
+    elif isinstance(node, Decorator):
+        # TODO: do something about abstract methods here. Currently, they are handled just like
+        # normal methods.
+        decl = prepare_func_def(module_name, cdef.name, node.func, mapper)
+        if not node.decorators:
+            ir.method_decls[node.name()] = decl
+        if node.func.is_property:
+            assert node.func.type
+            ir.property_types[node.name()] = decl.sig.ret_type
+
+
 def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
     ir = mapper.type_to_ir[cdef.info]
     info = cdef.info
@@ -339,17 +361,11 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
             assert node.node.type, "Class member missing type"
             if not node.node.is_classvar and name != '__slots__':
                 ir.attributes[name] = mapper.type_to_rtype(node.node.type)
-        elif isinstance(node.node, FuncDef):
-            ir.method_decls[name] = prepare_func_def(module_name, cdef.name, node.node, mapper)
-        elif isinstance(node.node, Decorator):
-            # TODO: do something about abstract methods here. Currently, they are handled just like
-            # normal methods.
-            decl = prepare_func_def(module_name, cdef.name, node.node.func, mapper)
-            if not node.node.decorators:
-                ir.method_decls[name] = decl
-            if node.node.func.is_property:
-                assert node.node.func.type
-                ir.property_types[name] = decl.sig.ret_type
+        elif isinstance(node.node, (FuncDef, Decorator)):
+            prepare_method_def(ir, module_name, cdef, mapper, node.node)
+        elif isinstance(node.node, OverloadedFuncDef):
+            assert node.node.impl
+            prepare_method_def(ir, module_name, cdef, mapper, node.node.impl)
 
     # Special case exceptions and dicts
     # XXX: How do we handle *other* things??
@@ -832,12 +848,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.allocate_class(cdef)
 
         for stmt in cdef.defs.body:
-            if isinstance(stmt, FuncDef):
+            if isinstance(stmt, (FuncDef, Decorator, OverloadedFuncDef)):
                 with self.catch_errors(stmt.line):
-                    self.visit_method(cdef, stmt)
-            elif isinstance(stmt, Decorator):
-                with self.catch_errors(stmt.line):
-                    self.visit_method(cdef, stmt.func)
+                    self.visit_method(cdef, get_func_def(stmt))
             elif isinstance(stmt, PassStmt):
                 continue
             elif isinstance(stmt, AssignmentStmt):
@@ -1226,6 +1239,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if func_reg:
             self.assign(self.get_func_target(fdef), func_reg, fdef.line)
         self.functions.append(func_ir)
+
+    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
+        assert o.impl
+        self.accept(o.impl)
 
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
@@ -3094,9 +3111,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         raise NotImplementedError
 
     def visit_newtype_expr(self, o: NewTypeExpr) -> Value:
-        raise NotImplementedError
-
-    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         raise NotImplementedError
 
     def visit_print_stmt(self, o: PrintStmt) -> None:
