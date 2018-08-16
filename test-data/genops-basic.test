@@ -2522,3 +2522,354 @@ L0:
     r0 = self.__eq__(rhs)
     r1 = not r0
     return r1
+
+[case testDecorators_toplevel]
+from typing import Callable
+
+def a(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('Entering')
+        f()
+        print('Exited')
+    return g
+
+def b(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('---')
+        f()
+        print('---')
+    return g
+
+@a
+@b
+def c() -> None:
+    @a
+    @b
+    def d() -> None:
+        print('d')
+    print('c')
+    d()
+
+[out]
+def g_a_obj.__call__(self):
+    self :: g_a_obj
+    r0 :: a__env
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4, r5 :: object
+    r6 :: None
+    r7, r8 :: object
+    r9 :: None
+    r10 :: str
+    r11 :: object
+    r12 :: str
+    r13, r14 :: object
+    r15, r16 :: None
+L0:
+    r0 = self.__mypyc_env__
+    r1 = unicode_3 :: static  ('Entering')
+    r2 = builtins.module :: static
+    r3 = unicode_4 :: static  ('print')
+    r4 = getattr r2, r3
+    r5 = py_call(r4, r1)
+    r6 = cast(None, r5)
+    r7 = r0.f
+    r8 = py_call(r7)
+    r9 = cast(None, r8)
+    r10 = unicode_5 :: static  ('Exited')
+    r11 = builtins.module :: static
+    r12 = unicode_4 :: static  ('print')
+    r13 = getattr r11, r12
+    r14 = py_call(r13, r10)
+    r15 = cast(None, r14)
+    r16 = None
+    return r16
+def a(f):
+    f :: object
+    r0 :: a__env
+    r1 :: bool
+    r2 :: g_a_obj
+    r3 :: bool
+    g :: object
+L0:
+    r0 = a__env()
+    r0.f = f; r1 = is_error
+    r2 = g_a_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    g = r2
+    return g
+def g_b_obj.__call__(self):
+    self :: g_b_obj
+    r0 :: b__env
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4, r5 :: object
+    r6 :: None
+    r7, r8 :: object
+    r9 :: None
+    r10 :: str
+    r11 :: object
+    r12 :: str
+    r13, r14 :: object
+    r15, r16 :: None
+L0:
+    r0 = self.__mypyc_env__
+    r1 = unicode_6 :: static  ('---')
+    r2 = builtins.module :: static
+    r3 = unicode_4 :: static  ('print')
+    r4 = getattr r2, r3
+    r5 = py_call(r4, r1)
+    r6 = cast(None, r5)
+    r7 = r0.f
+    r8 = py_call(r7)
+    r9 = cast(None, r8)
+    r10 = unicode_6 :: static  ('---')
+    r11 = builtins.module :: static
+    r12 = unicode_4 :: static  ('print')
+    r13 = getattr r11, r12
+    r14 = py_call(r13, r10)
+    r15 = cast(None, r14)
+    r16 = None
+    return r16
+def b(f):
+    f :: object
+    r0 :: b__env
+    r1 :: bool
+    r2 :: g_b_obj
+    r3 :: bool
+    g :: object
+L0:
+    r0 = b__env()
+    r0.f = f; r1 = is_error
+    r2 = g_b_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    g = r2
+    return g
+def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(self):
+    self :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+    r0 :: __mypyc_c_decorator_helper____env
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4, r5 :: object
+    r6, r7 :: None
+L0:
+    r0 = self.__mypyc_env__
+    r1 = unicode_7 :: static  ('d')
+    r2 = builtins.module :: static
+    r3 = unicode_4 :: static  ('print')
+    r4 = getattr r2, r3
+    r5 = py_call(r4, r1)
+    r6 = cast(None, r5)
+    r7 = None
+    return r7
+def __mypyc_c_decorator_helper__():
+    r0 :: __mypyc_c_decorator_helper____env
+    r1 :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+    r2 :: bool
+    r3 :: object
+    r4 :: str
+    r5, r6, r7 :: object
+    r8 :: str
+    r9, r10, d :: object
+    r11 :: str
+    r12 :: object
+    r13 :: str
+    r14, r15 :: object
+    r16 :: None
+    r17 :: object
+    r18, r19 :: None
+L0:
+    r0 = __mypyc_c_decorator_helper____env()
+    r1 = __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj()
+    r1.__mypyc_env__ = r0; r2 = is_error
+    r3 = __main__.globals :: static
+    r4 = unicode_8 :: static  ('b')
+    r5 = r3[r4] :: dict
+    r6 = py_call(r5, r1)
+    r7 = __main__.globals :: static
+    r8 = unicode_9 :: static  ('a')
+    r9 = r7[r8] :: dict
+    r10 = py_call(r9, r6)
+    d = r10
+    r11 = unicode_10 :: static  ('c')
+    r12 = builtins.module :: static
+    r13 = unicode_4 :: static  ('print')
+    r14 = getattr r12, r13
+    r15 = py_call(r14, r11)
+    r16 = cast(None, r15)
+    r17 = py_call(d)
+    r18 = cast(None, r17)
+    r19 = None
+    return r19
+def __top_level__():
+    r0 :: object
+    r1 :: None
+    r2 :: bool
+    r3 :: str
+    r4, r5 :: object
+    r6 :: None
+    r7 :: bool
+    r8 :: str
+    r9, r10, r11 :: object
+    r12 :: str
+    r13 :: object
+    r14 :: str
+    r15 :: bool
+    r16 :: object
+    r17 :: str
+    r18, r19 :: object
+    r20 :: str
+    r21, r22, r23 :: object
+    r24 :: str
+    r25, r26, r27 :: object
+    r28 :: str
+    r29 :: dict
+    r30 :: bool
+    r31 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = None
+    r2 = r0 is not r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = unicode_0 :: static  ('builtins')
+    r4 = import r3 :: str
+    builtins.module = r4 :: static
+L2:
+    r5 = typing.module :: static
+    r6 = None
+    r7 = r5 is not r6
+    if r7 goto L4 else goto L3 :: bool
+L3:
+    r8 = unicode_1 :: static  ('typing')
+    r9 = import r8 :: str
+    typing.module = r9 :: static
+L4:
+    r10 = typing.module :: static
+    r11 = __main__.globals :: static
+    r12 = unicode_2 :: static  ('Callable')
+    r13 = getattr r10, r12
+    r14 = unicode_2 :: static  ('Callable')
+    r15 = r11.__setitem__(r14, r13) :: object
+    r16 = __main__.module :: static
+    r17 = unicode_11 :: static  ('__mypyc_c_decorator_helper__')
+    r18 = getattr r16, r17
+    r19 = __main__.globals :: static
+    r20 = unicode_8 :: static  ('b')
+    r21 = r19[r20] :: dict
+    r22 = py_call(r21, r18)
+    r23 = __main__.globals :: static
+    r24 = unicode_9 :: static  ('a')
+    r25 = r23[r24] :: dict
+    r26 = py_call(r25, r22)
+    r27 = __main__.globals :: static
+    r28 = unicode_10 :: static  ('c')
+    r29 = cast(dict, r27)
+    r30 = r29.__setitem__(r28, r26) :: dict
+    r31 = None
+    return r31
+
+[case testDecoratorsSimple_toplevel]
+from typing import Callable
+
+def a(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('Entering')
+        f()
+        print('Exited')
+    return g
+
+[out]
+def g_a_obj.__call__(self):
+    self :: g_a_obj
+    r0 :: a__env
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4, r5 :: object
+    r6 :: None
+    r7, r8 :: object
+    r9 :: None
+    r10 :: str
+    r11 :: object
+    r12 :: str
+    r13, r14 :: object
+    r15, r16 :: None
+L0:
+    r0 = self.__mypyc_env__
+    r1 = unicode_3 :: static  ('Entering')
+    r2 = builtins.module :: static
+    r3 = unicode_4 :: static  ('print')
+    r4 = getattr r2, r3
+    r5 = py_call(r4, r1)
+    r6 = cast(None, r5)
+    r7 = r0.f
+    r8 = py_call(r7)
+    r9 = cast(None, r8)
+    r10 = unicode_5 :: static  ('Exited')
+    r11 = builtins.module :: static
+    r12 = unicode_4 :: static  ('print')
+    r13 = getattr r11, r12
+    r14 = py_call(r13, r10)
+    r15 = cast(None, r14)
+    r16 = None
+    return r16
+def a(f):
+    f :: object
+    r0 :: a__env
+    r1 :: bool
+    r2 :: g_a_obj
+    r3 :: bool
+    g :: object
+L0:
+    r0 = a__env()
+    r0.f = f; r1 = is_error
+    r2 = g_a_obj()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    g = r2
+    return g
+def __top_level__():
+    r0 :: object
+    r1 :: None
+    r2 :: bool
+    r3 :: str
+    r4, r5 :: object
+    r6 :: None
+    r7 :: bool
+    r8 :: str
+    r9, r10, r11 :: object
+    r12 :: str
+    r13 :: object
+    r14 :: str
+    r15 :: bool
+    r16 :: None
+L0:
+    r0 = builtins.module :: static
+    r1 = None
+    r2 = r0 is not r1
+    if r2 goto L2 else goto L1 :: bool
+L1:
+    r3 = unicode_0 :: static  ('builtins')
+    r4 = import r3 :: str
+    builtins.module = r4 :: static
+L2:
+    r5 = typing.module :: static
+    r6 = None
+    r7 = r5 is not r6
+    if r7 goto L4 else goto L3 :: bool
+L3:
+    r8 = unicode_1 :: static  ('typing')
+    r9 = import r8 :: str
+    typing.module = r9 :: static
+L4:
+    r10 = typing.module :: static
+    r11 = __main__.globals :: static
+    r12 = unicode_2 :: static  ('Callable')
+    r13 = getattr r10, r12
+    r14 = unicode_2 :: static  ('Callable')
+    r15 = r11.__setitem__(r14, r13) :: object
+    r16 = None
+    return r16

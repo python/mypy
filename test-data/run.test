@@ -2950,3 +2950,105 @@ caught exception with value some string
 caught exception with value some other string
 exception
 goodbye
+
+[case testDecorators]
+from typing import Generator, Callable
+from contextlib import contextmanager
+
+def a(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('Entering')
+        f()
+        print('Exited')
+    return g
+
+def b(f: Callable[[], None]) -> Callable[[], None]:
+    def g() -> None:
+        print('***')
+        f()
+        print('***')
+    return g
+
+@contextmanager
+def foo() -> Generator:
+    try:
+        print('started')
+        yield 0
+    finally:
+        print('finished')
+
+@a
+@b
+def c() -> None:
+    @a
+    @b
+    def d() -> None:
+        print('d')
+    print('c')
+    d()
+
+[file driver.py]
+from native import foo, c
+
+with foo() as f:
+    print('hello')
+
+c()
+
+[out]
+started
+hello
+finished
+Entering
+***
+c
+Entering
+***
+d
+***
+Exited
+***
+Exited
+
+[case testDecoratorsMethods]
+from typing import Generator
+from contextlib import contextmanager
+from decorators import a
+
+class A:
+    @a
+    def foo(self) -> None:
+        print('foo')
+
+    @contextmanager
+    def generator(self) -> Generator[int, None, None]:
+        try:
+            print('contextmanager: entering')
+            yield 0
+        finally:
+            print('contextmanager: exited')
+
+[file decorators.py]
+from typing import Any, Callable
+
+def a(f: Callable[[Any], None]) -> Callable[[Any], None]:
+    def g(a: Any) -> None:
+        print('Entering')
+        f(a)
+        print('Exited')
+    return g
+
+[file driver.py]
+from native import A
+
+A().foo()
+with A().generator() as g:
+    print('hello!')
+
+[out]
+Entering
+foo
+Exited
+contextmanager: entering
+hello!
+contextmanager: exited

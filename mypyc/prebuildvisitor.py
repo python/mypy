@@ -1,11 +1,17 @@
 from typing import Dict, List, Set
 
-from mypy.nodes import FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var
+from mypy.nodes import (
+    Decorator, Expression, FuncDef, FuncItem, LambdaExpr, NameExpr, SymbolNode, Var
+)
 from mypy.traverser import TraverserVisitor
 
 
-class FreeVariablesVisitor(TraverserVisitor):
-    """Class used to visit nested functions and determine free symbols."""
+class PreBuildVisitor(TraverserVisitor):
+    """
+    Class used to visit a mypy file before building the IR for that program. This is done as a
+    first pass so that nested functions, encapsulating functions, lambda functions, decorated
+    functions, and free variables can be determined before instantiating the IRBuilder.
+    """
     def __init__(self) -> None:
         super().__init__()
         # Mapping from FuncItem instances to sets of variables. The FuncItem instances are where
@@ -20,6 +26,23 @@ class FreeVariablesVisitor(TraverserVisitor):
 
         self.encapsulating_funcs = set()  # type: Set[FuncItem]
         self.nested_funcs = set()  # type: Set[FuncItem]
+        self.funcs_to_decorators = {}  # type: Dict[FuncDef, List[Expression]]
+
+    def add_free_variable(self, symbol: SymbolNode) -> None:
+        # Get the FuncItem instance where the free symbol was first declared, and map that FuncItem
+        # to the SymbolNode representing the free symbol.
+        func = self.symbols_to_funcs[symbol]
+        self.free_variables.setdefault(func, set()).add(symbol)
+
+    def visit_decorator(self, dec: Decorator) -> None:
+        if dec.decorators:
+            # Only add the function being decorated if there exist decorators in the decorator
+            # list. Note that meaningful decorators (@property, @abstractmethod) are removed from
+            # this list by mypy, but functions decorated by those decorators do not need to be
+            # added to the set of decorated functions for the IRBuilder, because they are handled
+            # in a special way.
+            self.funcs_to_decorators[dec.func] = dec.decorators
+        super().visit_decorator(dec)
 
     def visit_func(self, func: FuncItem) -> None:
         # If there were already functions or lambda expressions defined in the function stack, then
@@ -28,7 +51,6 @@ class FreeVariablesVisitor(TraverserVisitor):
         if self.funcs:
             self.encapsulating_funcs.add(self.funcs[-1])
             self.nested_funcs.add(func)
-
         self.funcs.append(func)
         super().visit_func(func)
         self.funcs.pop()
@@ -36,8 +58,12 @@ class FreeVariablesVisitor(TraverserVisitor):
     def visit_func_def(self, fdef: FuncDef) -> None:
         self.visit_func(fdef)
 
-    def visit_var(self, var: Var) -> None:
-        self.visit_symbol_node(var)
+    def visit_lambda_expr(self, expr: LambdaExpr) -> None:
+        self.visit_func(expr)
+
+    def visit_name_expr(self, expr: NameExpr) -> None:
+        if isinstance(expr.node, (Var, FuncDef)):
+            self.visit_symbol_node(expr.node)
 
     def visit_symbol_node(self, symbol: SymbolNode) -> None:
         if not self.funcs:
@@ -55,15 +81,5 @@ class FreeVariablesVisitor(TraverserVisitor):
             # SymbolNode to the current FuncDef being visited to note where it was first visited.
             self.symbols_to_funcs[symbol] = self.funcs[-1]
 
-    def visit_lambda_expr(self, expr: LambdaExpr) -> None:
-        self.visit_func(expr)
-
-    def visit_name_expr(self, expr: NameExpr) -> None:
-        if isinstance(expr.node, (Var, FuncDef)):
-            self.visit_symbol_node(expr.node)
-
-    def add_free_variable(self, symbol: SymbolNode) -> None:
-        # Get the FuncItem instance where the free symbol was first declared, and map that FuncItem
-        # to the SymbolNode representing the free symbol.
-        func = self.symbols_to_funcs[symbol]
-        self.free_variables.setdefault(func, set()).add(symbol)
+    def visit_var(self, var: Var) -> None:
+        self.visit_symbol_node(var)
