@@ -349,9 +349,14 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
                 assert node.node.func.type
                 ir.property_types[name] = decl.sig.ret_type
 
+    # Special case exceptions
+    if info.bases and any(cls.fullname() == 'builtins.Exception' for cls in info.mro):
+        ir.is_exception = True
+        ir.attributes.clear()
+
     # Set up a constructor decl
     init_node = cdef.info['__init__'].node
-    if not ir.is_trait and isinstance(init_node, FuncDef):
+    if not ir.is_trait and not ir.is_exception and isinstance(init_node, FuncDef):
         init_sig = mapper.fdef_to_sig(init_node)
         ctor_sig = FuncSignature(init_sig.args[1:], RInstance(ir))
         ir.ctor = FuncDecl(cdef.name, None, module_name, ctor_sig)
@@ -747,6 +752,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def generate_attr_defaults(self, cdef: ClassDef) -> None:
         """Generate an initialization method for default attr values (from class vars)"""
         cls = self.mapper.type_to_ir[cdef.info]
+        if cls.is_exception:
+            return
 
         # Pull out all assignments in classes in the mro so we can initialize them
         # TODO: Support nested statements

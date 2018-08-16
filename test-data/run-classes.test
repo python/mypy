@@ -521,17 +521,29 @@ yo!
 yo!
 
 -- broken - we need to handle the layout conflicts for it to work
-[case testSubclassException-skip]
+[case testSubclassException]
 class Failure(Exception):
-    pass
+    def __init__(self, x: int) -> None:
+        self.x = x
 
 def foo() -> None:
-    raise Failure
+    raise Failure(10)
+
+def heyo() -> int:
+    try:
+        foo()
+    except Failure as e:
+        return e.x
+    return -1
 
 [file driver.py]
-import native
-native.Failure()
-native.foo()
+from native import foo, heyo, Failure
+try:
+    foo()
+except Failure as e:
+    assert str(e) == '10'
+    assert e.x == 10
+heyo()
 
 [case testSubclassPy]
 from b import B, V

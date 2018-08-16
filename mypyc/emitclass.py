@@ -95,7 +95,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields = OrderedDict()  # type: Dict[str, str]
     fields['tp_name'] = '"{}"'.format(name)
 
-    if not cl.is_trait:
+    generate_full = not cl.is_trait and not cl.is_exception
+
+    if generate_full:
         fields['tp_new'] = new_name
         fields['tp_dealloc'] = '(destructor){}_dealloc'.format(name_prefix)
         fields['tp_traverse'] = '(traverseproc){}_traverse'.format(name_prefix)
@@ -133,7 +135,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     # If the class inherits from python, make space for a __dict__
     struct_name = cl.struct_name(emitter.names)
-    if cl.is_trait:
+    if cl.is_exception:
+        base_size = 'sizeof(PyBaseExceptionObject)'
+    elif cl.is_trait:
         base_size = 'sizeof(PyObject)'
     else:
         base_size = 'sizeof({})'.format(struct_name)
@@ -144,7 +148,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     else:
         fields['tp_basicsize'] = base_size
 
-    if not cl.is_trait:
+    if generate_full:
         emitter.emit_line('static PyObject *{}(void);'.format(setup_name))
         assert cl.ctor is not None
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ';')
@@ -170,6 +174,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HAVE_GC', 'Py_TPFLAGS_HEAPTYPE',
              'Py_TPFLAGS_BASETYPE']
+    if cl.is_exception:
+        flags.append('Py_TPFLAGS_BASE_EXC_SUBCLASS')
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line("static PyTypeObject {}_template_ = {{".format(emitter.type_struct_name(cl)))
@@ -182,7 +188,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     emitter.emit_line()
     generate_trait_vtable_setup(cl, vtable_setup_name, vtable_name, emitter)
-    if not cl.is_trait:
+    if generate_full:
         generate_setup_for_class(cl, setup_name, defaults_fn, vtable_name, emitter)
         emitter.emit_line()
         generate_constructor_for_class(

@@ -146,6 +146,14 @@ static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
             goto error;
     }
 
+    // Having tp_base set is I think required for stuff to get
+    // inherited in PyType_Ready, which we needed for subclassing
+    // BaseException. XXX: Taking the first element is wrong I think though.
+    if (bases) {
+        t->ht_type.tp_base = (PyTypeObject *)PyTuple_GET_ITEM(bases, 0);
+        Py_INCREF((PyObject *)t->ht_type.tp_base);
+    }
+
     t->ht_name = name;
     Py_INCREF(name);
     t->ht_qualname = name;
@@ -155,6 +163,8 @@ static inline PyObject *CPyType_FromTemplate(PyTypeObject *template_,
 
     if (PyType_Ready((PyTypeObject *)t) < 0)
         goto error;
+
+    assert(t->ht_type.tp_base != NULL);
 
     // XXX: This is a terrible hack to work around a cpython check on
     // the mro. It was needed for mypy.stats. I need to investigate

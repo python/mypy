@@ -311,7 +311,7 @@ class AssignmentTargetAttr(AssignmentTarget):
     def __init__(self, obj: 'Value', attr: str) -> None:
         self.obj = obj
         self.attr = attr
-        if isinstance(obj.type, RInstance):
+        if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
             self.obj_type = obj.type  # type: RType
             self.type = obj.type.attr_type(attr)
         else:
@@ -1433,6 +1433,8 @@ class ClassIR:
 
         # Does this class or any subclass have a __bool__method
         self.has_bool = False
+        # Is this class a BaseException subclass
+        self.is_exception = False
 
     def real_base(self) -> Optional['ClassIR']:
         """Return the actual concrete base class, if there is one."""
