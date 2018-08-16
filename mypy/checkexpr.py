@@ -1821,14 +1821,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors,
                                             original_type=base_type, chk=self.chk)
-        return self.check_op_local_by_type(method_type, base_type, arg, context, local_errors)
+        return self.check_op_local(method, method_type, base_type, arg, context, local_errors)
 
-    def check_op_local_by_type(self,
-                               method_type: Type,
-                               base_type: Type,
-                               arg: Expression,
-                               context: Context,
-                               local_errors: MessageBuilder) -> Tuple[Type, Type]:
+    def check_op_local(self,
+                       method_name,
+                       method_type: Type,
+                       base_type: Type,
+                       arg: Expression,
+                       context: Context,
+                       local_errors: MessageBuilder) -> Tuple[Type, Type]:
         """Type check a binary operation using the (assumed) type of the operator method.
 
         Return tuple (result type, inferred operator method type).
@@ -1838,7 +1839,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(base_type, Instance):
             # TODO: Find out in which class the method was defined originally?
             # TODO: Support non-Instance types.
-            callable_name = '{}.{}'.format(base_type.type.fullname(), method_type)
+            callable_name = '{}.{}'.format(base_type.type.fullname(), method_name)
             object_type = base_type
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors,
@@ -1872,10 +1873,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             # TODO: Remove this call and rely just on analyze_member_access
             # Currently, it seems we still need this to correctly deal with
-            # things like plugins and metaclasses?
+            # things like metaclasses?
             #
-            # E.g. see the check-expressions.testIntPow and pythoneval.testMetaclassOpAccessAny
-            # test cases.
+            # E.g. see the pythoneval.testMetaclassOpAccessAny test case.
             if not self.has_member(base_type, op_name):
                 return None
 
@@ -2010,7 +2010,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         results = []
         for method, obj, arg in variants:
             local_errors = make_local_errors()
-            result = self.check_op_local_by_type(method, obj, arg, context, local_errors)
+            result = self.check_op_local(op_name, method, obj, arg, context, local_errors)
             if local_errors.is_errors():
                 errors.append(local_errors)
                 results.append(result)
