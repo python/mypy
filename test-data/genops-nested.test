@@ -34,12 +34,12 @@ def first() -> str:
 def second() -> str:
     return 'second: normal function'
 [out]
-def inner_a_obj.__call__(self):
-    self :: inner_a_obj
+def inner_a_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_a_obj
     r0 :: a__env
     r1 :: None
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = None
     return r1
 def a():
@@ -53,18 +53,18 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     inner = r1
     return inner
-def second_b_first_obj.__call__(self):
-    self :: second_b_first_obj
+def second_b_first_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: second_b_first_obj
     r0 :: first_b_env
     r1 :: b__env
     r2 :: str
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
     r2 = unicode_3 :: static  ('b.first.second: nested function')
     return r2
-def first_b_obj.__call__(self):
-    self :: first_b_obj
+def first_b_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: first_b_obj
     r0 :: b__env
     r1 :: first_b_env
     r2 :: bool
@@ -72,7 +72,7 @@ def first_b_obj.__call__(self):
     r4 :: bool
     second :: object
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = first_b_env()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = second_b_first_obj()
@@ -90,13 +90,13 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     first = r1
     return first
-def inner_c_obj.__call__(self, s):
-    self :: inner_c_obj
+def inner_c_obj.__call__(__mypyc_self__, s):
+    __mypyc_self__ :: inner_c_obj
     s :: str
     r0 :: c__env
     r1, r2 :: str
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_4 :: static  ('!')
     r2 = s + r1
     return r2
@@ -112,13 +112,13 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     inner = r1
     return inner
-def inner_d_obj.__call__(self, s):
-    self :: inner_d_obj
+def inner_d_obj.__call__(__mypyc_self__, s):
+    __mypyc_self__ :: inner_d_obj
     s :: str
     r0 :: d__env
     r1, r2 :: str
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_5 :: static  ('?')
     r2 = s + r1
     return r2
@@ -190,12 +190,12 @@ def c(flag: bool) -> str:
     return inner()
 
 [out]
-def inner_a_obj.__call__(self):
-    self :: inner_a_obj
+def inner_a_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_a_obj
     r0 :: a__env
     r1 :: int
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.num
     return r1
 def a(num):
@@ -215,14 +215,14 @@ L0:
     r4 = py_call(inner)
     r5 = unbox(int, r4)
     return r5
-def inner_b_obj.__call__(self):
-    self :: inner_b_obj
+def inner_b_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_b_obj
     r0 :: b__env
     r1 :: int
     r2 :: bool
     r3, foo, r4 :: int
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = 4
     r0.num = r1; r2 = is_error
     r3 = 6
@@ -249,20 +249,20 @@ L0:
     r7 = r0.num
     r8 = r6 + r7 :: int
     return r8
-def inner_c_obj.__call__(self):
-    self :: inner_c_obj
+def inner_c_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_c_obj
     r0 :: c__env
     r1 :: str
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_3 :: static  ('f.inner: first definition')
     return r1
-def inner_c_obj_0.__call__(self):
-    self :: inner_c_obj_0
+def inner_c_obj_0.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_c_obj_0
     r0 :: c__env
     r1 :: str
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_4 :: static  ('f.inner: second definition')
     return r1
 def c(flag):
@@ -303,18 +303,18 @@ def a() -> int:
     return b()
 
 [out]
-def c_a_b_obj.__call__(self):
-    self :: c_a_b_obj
+def c_a_b_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: c_a_b_obj
     r0 :: b_a_env
     r1 :: a__env
     r2 :: int
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
     r2 = r1.x
     return r2
-def b_a_obj.__call__(self):
-    self :: b_a_obj
+def b_a_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: b_a_obj
     r0 :: a__env
     r1 :: b_a_env
     r2 :: bool
@@ -325,7 +325,7 @@ def b_a_obj.__call__(self):
     c, r9 :: object
     r10 :: int
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = b_a_env()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = r0.x
@@ -367,20 +367,20 @@ def f(flag: bool) -> str:
             return 'f.inner: second definition'
     return inner()
 [out]
-def inner_f_obj.__call__(self):
-    self :: inner_f_obj
+def inner_f_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_f_obj
     r0 :: f__env
     r1 :: str
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_1 :: static  ('f.inner: first definition')
     return r1
-def inner_f_obj_0.__call__(self):
-    self :: inner_f_obj_0
+def inner_f_obj_0.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_f_obj_0
     r0 :: f__env
     r1 :: str
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_2 :: static  ('f.inner: second definition')
     return r1
 def f(flag):
@@ -416,13 +416,13 @@ def f(x: int, y: int) -> None:
     return s(x, y)
 
 [out]
-def __mypyc_lambda__0_f_obj.__call__(self, a, b):
-    self :: __mypyc_lambda__0_f_obj
+def __mypyc_lambda__0_f_obj.__call__(__mypyc_self__, a, b):
+    __mypyc_self__ :: __mypyc_lambda__0_f_obj
     a, b :: object
     r0 :: f__env
     r1 :: object
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = a + b
     return r1
 def f(x, y):

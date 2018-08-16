@@ -45,7 +45,7 @@ from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.common import (
     ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, TEMP_ATTR_NAME, LAMBDA_NAME,
-    MAX_SHORT_INT, TOP_LEVEL_NAME, decorator_helper_name
+    MAX_SHORT_INT, TOP_LEVEL_NAME, SELF_NAME, decorator_helper_name
 )
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
@@ -812,7 +812,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.enter(FuncInfo())
         self.ret_types[-1] = bool_rprimitive
 
-        rt_args = (RuntimeArg('self', RInstance(cls)),)
+        rt_args = (RuntimeArg(SELF_NAME, RInstance(cls)),)
         self_var = self.read(self.add_self_to_env(cls), -1)
 
         for stmt in default_assignments:
@@ -1014,7 +1014,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         Further, instead of a method call, an attribute get is performed."""
         self.enter(FuncInfo())
 
-        rt_arg = RuntimeArg('self', RInstance(cls))
+        rt_arg = RuntimeArg(SELF_NAME, RInstance(cls))
         arg = self.read(self.add_self_to_env(cls), line)
         self.ret_types[-1] = sig.ret_type
 
@@ -3460,7 +3460,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         function. Note that a 'self' parameter is added to its list of arguments, as the nested
         function becomes a class method.
         """
-        sig = FuncSignature((RuntimeArg('self', object_rprimitive),) + sig.args, sig.ret_type)
+        sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),) + sig.args, sig.ret_type)
         call_fn_decl = FuncDecl('__call__', fn_info.callable_class.ir.name, self.module_name, sig)
         call_fn_ir = FuncIR(call_fn_decl, blocks, env)
         fn_info.callable_class.ir.methods['__call__'] = call_fn_ir
@@ -3507,7 +3507,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """
         env_class = ClassIR('{}_{}_env'.format(self.fn_info.name, self.fn_info.ns),
                             self.module_name)
-        env_class.attributes['self'] = RInstance(env_class)
+        env_class.attributes[SELF_NAME] = RInstance(env_class)
         if self.fn_info.is_nested:
             # If the function is nested, its environment class must contain an environment
             # attribute pointing to its encapsulating functions' environment class.
@@ -3569,7 +3569,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                       env: Environment,
                                       fn_info: FuncInfo) -> FuncDecl:
         """Generates a helper method for a generator class, called by '__next__' and 'throw'."""
-        sig = FuncSignature((RuntimeArg('self', object_rprimitive),
+        sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
                              RuntimeArg('type', object_rprimitive),
                              RuntimeArg('value', object_rprimitive),
                              RuntimeArg('traceback', object_rprimitive)), sig.ret_type)
@@ -3588,7 +3588,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         blocks, env, _, fn_info = self.leave()
 
         # Next, add the actual function as a method of the generator class.
-        sig = FuncSignature((RuntimeArg('self', object_rprimitive),), object_rprimitive)
+        sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), object_rprimitive)
         iter_fn_decl = FuncDecl('__iter__', fn_info.generator_class.ir.name, self.module_name, sig)
         iter_fn_ir = FuncIR(iter_fn_decl, blocks, env)
         fn_info.generator_class.ir.methods['__iter__'] = iter_fn_ir
@@ -3609,7 +3609,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.add(Return(result))
         blocks, env, _, fn_info = self.leave()
 
-        sig = FuncSignature((RuntimeArg('self', object_rprimitive),), sig.ret_type)
+        sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),), sig.ret_type)
         next_fn_decl = FuncDecl('__next__', fn_info.generator_class.ir.name, self.module_name, sig)
         next_fn_ir = FuncIR(next_fn_decl, blocks, env)
         fn_info.generator_class.ir.methods['__next__'] = next_fn_ir
@@ -3643,7 +3643,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Create the FuncSignature for the throw function. NOte that the value and traceback fields
         # are optional, and are assigned to if they are not passed in inside the body of the throw
         # function.
-        sig = FuncSignature((RuntimeArg('self', object_rprimitive),
+        sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
                              RuntimeArg('type', object_rprimitive),
                              RuntimeArg('value', object_rprimitive, ARG_OPT),
                              RuntimeArg('traceback', object_rprimitive, ARG_OPT)),
@@ -3715,7 +3715,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.goto_and_activate(ok_block)
 
     def add_self_to_env(self, cls: ClassIR) -> AssignmentTargetRegister:
-        return self.environment.add_local_reg(Var('self'),
+        return self.environment.add_local_reg(Var(SELF_NAME),
                                               RInstance(cls),
                                               is_arg=True)
 

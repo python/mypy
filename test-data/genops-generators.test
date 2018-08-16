@@ -6,8 +6,8 @@ def yield_three_times() -> Iterable:
     yield 2
 
 [out]
-def yield_three_times__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: yield_three_times__gen
+def yield_three_times__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_three_times__gen
     type, value, traceback :: object
     r0 :: yield_three_times__env
     r1 :: int
@@ -36,7 +36,7 @@ def yield_three_times__gen.__mypyc_generator_helper__(self, type, value, traceba
     r29 :: int
     r30, r31 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L13
 L1:
@@ -98,20 +98,20 @@ L15:
 L16:
     raise StopIteration
     unreachable
-def yield_three_times__gen.__next__(self):
-    self :: yield_three_times__gen
+def yield_three_times__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: yield_three_times__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = yield_three_times__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = yield_three_times__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def yield_three_times__gen.__iter__(self):
-    self :: yield_three_times__gen
+def yield_three_times__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: yield_three_times__gen
 L0:
-    return self
-def yield_three_times__gen.throw(self, type, value, traceback):
-    self :: yield_three_times__gen
+    return __mypyc_self__
+def yield_three_times__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_three_times__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -125,7 +125,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = yield_three_times__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = yield_three_times__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def yield_three_times():
     r0 :: yield_three_times__env
@@ -151,8 +151,8 @@ def yield_while_loop() -> Generator:
         i += 1
 
 [out]
-def yield_while_loop__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: yield_while_loop__gen
+def yield_while_loop__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_while_loop__gen
     type, value, traceback :: object
     r0 :: yield_while_loop__env
     r1 :: int
@@ -179,7 +179,7 @@ def yield_while_loop__gen.__mypyc_generator_helper__(self, type, value, tracebac
     r28 :: int
     r29, r30 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L12
 L1:
@@ -236,20 +236,20 @@ L13:
 L14:
     raise StopIteration
     unreachable
-def yield_while_loop__gen.__next__(self):
-    self :: yield_while_loop__gen
+def yield_while_loop__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: yield_while_loop__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = yield_while_loop__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = yield_while_loop__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def yield_while_loop__gen.__iter__(self):
-    self :: yield_while_loop__gen
+def yield_while_loop__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: yield_while_loop__gen
 L0:
-    return self
-def yield_while_loop__gen.throw(self, type, value, traceback):
-    self :: yield_while_loop__gen
+    return __mypyc_self__
+def yield_while_loop__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_while_loop__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -263,7 +263,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = yield_while_loop__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = yield_while_loop__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def yield_while_loop():
     r0 :: yield_while_loop__env
@@ -297,8 +297,8 @@ def yield_for_loop_range() -> Iterable:
         yield i
 
 [out]
-def yield_for_loop_list__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: yield_for_loop_list__gen
+def yield_for_loop_list__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_for_loop_list__gen
     type, value, traceback :: object
     r0 :: yield_for_loop_list__env
     r1 :: int
@@ -336,7 +336,7 @@ def yield_for_loop_list__gen.__mypyc_generator_helper__(self, type, value, trace
     r43 :: int
     r44, r45 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L13
 L1:
@@ -409,20 +409,20 @@ L14:
 L15:
     raise StopIteration
     unreachable
-def yield_for_loop_list__gen.__next__(self):
-    self :: yield_for_loop_list__gen
+def yield_for_loop_list__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: yield_for_loop_list__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = yield_for_loop_list__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = yield_for_loop_list__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def yield_for_loop_list__gen.__iter__(self):
-    self :: yield_for_loop_list__gen
+def yield_for_loop_list__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: yield_for_loop_list__gen
 L0:
-    return self
-def yield_for_loop_list__gen.throw(self, type, value, traceback):
-    self :: yield_for_loop_list__gen
+    return __mypyc_self__
+def yield_for_loop_list__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_for_loop_list__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -436,7 +436,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = yield_for_loop_list__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = yield_for_loop_list__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def yield_for_loop_list():
     r0 :: yield_for_loop_list__env
@@ -451,8 +451,8 @@ L0:
     r3 = 0
     r0.__mypyc_next_label__ = r3; r4 = is_error
     return r1
-def yield_for_loop_dict__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: yield_for_loop_dict__gen
+def yield_for_loop_dict__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_for_loop_dict__gen
     type, value, traceback :: object
     r0 :: yield_for_loop_dict__env
     r1 :: int
@@ -491,7 +491,7 @@ def yield_for_loop_dict__gen.__mypyc_generator_helper__(self, type, value, trace
     r45 :: int
     r46, r47 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L17
 L1:
@@ -572,20 +572,20 @@ L18:
 L19:
     raise StopIteration
     unreachable
-def yield_for_loop_dict__gen.__next__(self):
-    self :: yield_for_loop_dict__gen
+def yield_for_loop_dict__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: yield_for_loop_dict__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = yield_for_loop_dict__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = yield_for_loop_dict__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def yield_for_loop_dict__gen.__iter__(self):
-    self :: yield_for_loop_dict__gen
+def yield_for_loop_dict__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: yield_for_loop_dict__gen
 L0:
-    return self
-def yield_for_loop_dict__gen.throw(self, type, value, traceback):
-    self :: yield_for_loop_dict__gen
+    return __mypyc_self__
+def yield_for_loop_dict__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_for_loop_dict__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -599,7 +599,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = yield_for_loop_dict__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = yield_for_loop_dict__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def yield_for_loop_dict():
     r0 :: yield_for_loop_dict__env
@@ -614,8 +614,8 @@ L0:
     r3 = 0
     r0.__mypyc_next_label__ = r3; r4 = is_error
     return r1
-def yield_for_loop_range__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: yield_for_loop_range__gen
+def yield_for_loop_range__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_for_loop_range__gen
     type, value, traceback :: object
     r0 :: yield_for_loop_range__env
     r1 :: int
@@ -642,7 +642,7 @@ def yield_for_loop_range__gen.__mypyc_generator_helper__(self, type, value, trac
     r30 :: int
     r31, r32 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L13
 L1:
@@ -702,20 +702,20 @@ L14:
 L15:
     raise StopIteration
     unreachable
-def yield_for_loop_range__gen.__next__(self):
-    self :: yield_for_loop_range__gen
+def yield_for_loop_range__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: yield_for_loop_range__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = yield_for_loop_range__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = yield_for_loop_range__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def yield_for_loop_range__gen.__iter__(self):
-    self :: yield_for_loop_range__gen
+def yield_for_loop_range__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: yield_for_loop_range__gen
 L0:
-    return self
-def yield_for_loop_range__gen.throw(self, type, value, traceback):
-    self :: yield_for_loop_range__gen
+    return __mypyc_self__
+def yield_for_loop_range__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_for_loop_range__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -729,7 +729,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = yield_for_loop_range__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = yield_for_loop_range__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def yield_for_loop_range():
     r0 :: yield_for_loop_range__env
@@ -756,8 +756,8 @@ def yield_with_vars(a: int, b: float) -> Generator[int, None, float]:
     return b
 
 [out]
-def yield_with_vars__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: yield_with_vars__gen
+def yield_with_vars__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_with_vars__gen
     type, value, traceback :: object
     r0 :: yield_with_vars__env
     r1 :: int
@@ -784,7 +784,7 @@ def yield_with_vars__gen.__mypyc_generator_helper__(self, type, value, traceback
     r28 :: int
     r29, r30 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L12
 L1:
@@ -841,20 +841,20 @@ L13:
 L14:
     raise StopIteration
     unreachable
-def yield_with_vars__gen.__next__(self):
-    self :: yield_with_vars__gen
+def yield_with_vars__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: yield_with_vars__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = yield_with_vars__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = yield_with_vars__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def yield_with_vars__gen.__iter__(self):
-    self :: yield_with_vars__gen
+def yield_with_vars__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: yield_with_vars__gen
 L0:
-    return self
-def yield_with_vars__gen.throw(self, type, value, traceback):
-    self :: yield_with_vars__gen
+    return __mypyc_self__
+def yield_with_vars__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_with_vars__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -868,7 +868,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = yield_with_vars__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = yield_with_vars__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def yield_with_vars(a, b):
     a :: int
@@ -897,8 +897,8 @@ class A(object):
         yield 0
 
 [out]
-def generator__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: generator__gen
+def generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator__gen
     type, value, traceback :: object
     r0 :: generator__env
     r1 :: int
@@ -918,7 +918,7 @@ def generator__gen.__mypyc_generator_helper__(self, type, value, traceback):
     r19 :: int
     r20, r21 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L9
 L1:
@@ -961,20 +961,20 @@ L10:
 L11:
     raise StopIteration
     unreachable
-def generator__gen.__next__(self):
-    self :: generator__gen
+def generator__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: generator__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = generator__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = generator__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def generator__gen.__iter__(self):
-    self :: generator__gen
+def generator__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: generator__gen
 L0:
-    return self
-def generator__gen.throw(self, type, value, traceback):
-    self :: generator__gen
+    return __mypyc_self__
+def generator__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -988,7 +988,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = generator__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def A.generator(self):
     self :: A
@@ -1017,8 +1017,8 @@ def generator(a: int) -> Generator:
         return
 
 [out]
-def generator__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: generator__gen
+def generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator__gen
     type, value, traceback :: object
     r0 :: generator__env
     r1 :: int
@@ -1043,7 +1043,7 @@ def generator__gen.__mypyc_generator_helper__(self, type, value, traceback):
     r26 :: int
     r27, r28 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L13
 L1:
@@ -1100,20 +1100,20 @@ L14:
 L15:
     raise StopIteration
     unreachable
-def generator__gen.__next__(self):
-    self :: generator__gen
+def generator__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: generator__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = generator__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = generator__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def generator__gen.__iter__(self):
-    self :: generator__gen
+def generator__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: generator__gen
 L0:
-    return self
-def generator__gen.throw(self, type, value, traceback):
-    self :: generator__gen
+    return __mypyc_self__
+def generator__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -1127,7 +1127,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = generator__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def generator(a):
     a :: int
@@ -1171,18 +1171,18 @@ def triple() -> Callable:
     return generator
 
 [out]
-def normal_generator_obj.__call__(self, x):
-    self :: normal_generator_obj
+def normal_generator_obj.__call__(__mypyc_self__, x):
+    __mypyc_self__ :: normal_generator_obj
     x :: int
     r0 :: generator__env
     r1, r2 :: int
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.a
     r2 = r1 + x :: int
     return r2
-def generator__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: generator__gen
+def generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator__gen
     type, value, traceback :: object
     r0 :: generator__env
     r1 :: int
@@ -1206,7 +1206,7 @@ def generator__gen.__mypyc_generator_helper__(self, type, value, traceback):
     r26 :: int
     r27, r28 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L9
 L1:
@@ -1256,20 +1256,20 @@ L10:
 L11:
     raise StopIteration
     unreachable
-def generator__gen.__next__(self):
-    self :: generator__gen
+def generator__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: generator__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = generator__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = generator__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def generator__gen.__iter__(self):
-    self :: generator__gen
+def generator__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: generator__gen
 L0:
-    return self
-def generator__gen.throw(self, type, value, traceback):
-    self :: generator__gen
+    return __mypyc_self__
+def generator__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -1283,7 +1283,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = generator__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def generator(a):
     a :: int
@@ -1301,8 +1301,8 @@ L0:
     r4 = 0
     r0.__mypyc_next_label__ = r4; r5 = is_error
     return r2
-def generator_normal_gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: generator_normal_gen
+def generator_normal_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator_normal_gen
     type, value, traceback :: object
     r0 :: generator_normal_env
     r1 :: int
@@ -1332,7 +1332,7 @@ def generator_normal_gen.__mypyc_generator_helper__(self, type, value, traceback
     r30 :: int
     r31, r32 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     r2 = r0.__mypyc_env__
     goto L13
@@ -1395,20 +1395,20 @@ L15:
 L16:
     raise StopIteration
     unreachable
-def generator_normal_gen.__next__(self):
-    self :: generator_normal_gen
+def generator_normal_gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: generator_normal_gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = generator_normal_gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = generator_normal_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def generator_normal_gen.__iter__(self):
-    self :: generator_normal_gen
+def generator_normal_gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: generator_normal_gen
 L0:
-    return self
-def generator_normal_gen.throw(self, type, value, traceback):
-    self :: generator_normal_gen
+    return __mypyc_self__
+def generator_normal_gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator_normal_gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -1422,10 +1422,10 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = generator_normal_gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = generator_normal_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
-def generator_normal_obj.__call__(self, x):
-    self :: generator_normal_obj
+def generator_normal_obj.__call__(__mypyc_self__, x):
+    __mypyc_self__ :: generator_normal_obj
     x :: int
     r0 :: normal__env
     r1 :: generator_normal_env
@@ -1435,7 +1435,7 @@ def generator_normal_obj.__call__(self, x):
     r6 :: int
     r7 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = generator_normal_env()
     r1.__mypyc_env__ = r0; r2 = is_error
     r1.x = x; r3 = is_error
@@ -1458,15 +1458,15 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     generator = r2
     return generator
-def inner_triple_generator_obj.__call__(self):
-    self :: inner_triple_generator_obj
+def inner_triple_generator_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: inner_triple_generator_obj
     r0 :: generator_triple_env
     r1 :: triple__env
     r2, r3, r4 :: int
     r5 :: bool
     r6 :: int
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
     r2 = r0.x
     r3 = 1
@@ -1474,8 +1474,8 @@ L0:
     r0.x = r4; r5 = is_error
     r6 = r0.x
     return r6
-def generator_triple_gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: generator_triple_gen
+def generator_triple_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator_triple_gen
     type, value, traceback :: object
     r0 :: generator_triple_env
     r1 :: int
@@ -1503,7 +1503,7 @@ def generator_triple_gen.__mypyc_generator_helper__(self, type, value, traceback
     r30 :: int
     r31, r32 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     r2 = r0.__mypyc_env__
     goto L12
@@ -1562,20 +1562,20 @@ L13:
 L14:
     raise StopIteration
     unreachable
-def generator_triple_gen.__next__(self):
-    self :: generator_triple_gen
+def generator_triple_gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: generator_triple_gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = generator_triple_gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = generator_triple_gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def generator_triple_gen.__iter__(self):
-    self :: generator_triple_gen
+def generator_triple_gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: generator_triple_gen
 L0:
-    return self
-def generator_triple_gen.throw(self, type, value, traceback):
-    self :: generator_triple_gen
+    return __mypyc_self__
+def generator_triple_gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: generator_triple_gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -1589,10 +1589,10 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = generator_triple_gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = generator_triple_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
-def generator_triple_obj.__call__(self):
-    self :: generator_triple_obj
+def generator_triple_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: generator_triple_obj
     r0 :: triple__env
     r1 :: generator_triple_env
     r2 :: bool
@@ -1601,7 +1601,7 @@ def generator_triple_obj.__call__(self):
     r5 :: int
     r6 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = generator_triple_env()
     r1.__mypyc_env__ = r0; r2 = is_error
     r3 = generator_triple_gen()
@@ -1635,8 +1635,8 @@ def yield_try_finally() -> Generator[int, None, str]:
         print('goodbye!')
 
 [out]
-def yield_try_finally__gen.__mypyc_generator_helper__(self, type, value, traceback):
-    self :: yield_try_finally__gen
+def yield_try_finally__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_try_finally__gen
     type, value, traceback :: object
     r0 :: yield_try_finally__env
     r1 :: int
@@ -1686,7 +1686,7 @@ def yield_try_finally__gen.__mypyc_generator_helper__(self, type, value, traceba
     r55 :: int
     r56, r57 :: bool
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_next_label__
     goto L35
 L1:
@@ -1817,20 +1817,20 @@ L37:
 L38:
     raise StopIteration
     unreachable
-def yield_try_finally__gen.__next__(self):
-    self :: yield_try_finally__gen
+def yield_try_finally__gen.__next__(__mypyc_self__):
+    __mypyc_self__ :: yield_try_finally__gen
     r0 :: None
     r1 :: object
 L0:
     r0 = None
-    r1 = yield_try_finally__gen.__mypyc_generator_helper__(self, r0, r0, r0)
+    r1 = yield_try_finally__gen.__mypyc_generator_helper__(__mypyc_self__, r0, r0, r0)
     return r1
-def yield_try_finally__gen.__iter__(self):
-    self :: yield_try_finally__gen
+def yield_try_finally__gen.__iter__(__mypyc_self__):
+    __mypyc_self__ :: yield_try_finally__gen
 L0:
-    return self
-def yield_try_finally__gen.throw(self, type, value, traceback):
-    self :: yield_try_finally__gen
+    return __mypyc_self__
+def yield_try_finally__gen.throw(__mypyc_self__, type, value, traceback):
+    __mypyc_self__ :: yield_try_finally__gen
     type, value, traceback :: object
     r0 :: None
     r1 :: object
@@ -1844,7 +1844,7 @@ L2:
 L3:
     traceback = r0
 L4:
-    r1 = yield_try_finally__gen.__mypyc_generator_helper__(self, type, value, traceback)
+    r1 = yield_try_finally__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback)
     return r1
 def yield_try_finally():
     r0 :: yield_try_finally__env

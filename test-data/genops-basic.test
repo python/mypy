@@ -2094,12 +2094,12 @@ def DerivedProperty.value(self):
 L0:
     r0 = self._incrementer
     return r0
-def DerivedProperty.value__BaseProperty_glue(self):
-    self :: DerivedProperty
+def DerivedProperty.value__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__ :: DerivedProperty
     r0 :: int
     r1 :: object
 L0:
-    r0 = self.value
+    r0 = __mypyc_self__.value
     r1 = box(int, r0)
     return r1
 def DerivedProperty.bad_value(self):
@@ -2127,10 +2127,10 @@ L0:
     r5 = unbox(int, r4)
     r6 = DerivedProperty(r0, r5)
     return r6
-def DerivedProperty.next__BaseProperty_glue(self):
-    self, r0 :: DerivedProperty
+def DerivedProperty.next__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: DerivedProperty
 L0:
-    r0 = self.next
+    r0 = __mypyc_self__.next
     return r0
 def DerivedProperty.__init__(self, incr_func, value):
     self :: DerivedProperty
@@ -2168,15 +2168,15 @@ L0:
     r9 = unbox(int, r8)
     r10 = AgainProperty(r0, r9)
     return r10
-def AgainProperty.next__DerivedProperty_glue(self):
-    self, r0 :: AgainProperty
+def AgainProperty.next__DerivedProperty_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: AgainProperty
 L0:
-    r0 = self.next
+    r0 = __mypyc_self__.next
     return r0
-def AgainProperty.next__BaseProperty_glue(self):
-    self, r0 :: AgainProperty
+def AgainProperty.next__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: AgainProperty
 L0:
-    r0 = self.next
+    r0 = __mypyc_self__.next
     return r0
 def AgainProperty.bad_value(self):
     self :: AgainProperty
@@ -2184,20 +2184,20 @@ def AgainProperty.bad_value(self):
 L0:
     r0 = self._incrementer
     return r0
-def AgainProperty.bad_value__DerivedProperty_glue(self):
-    self :: AgainProperty
+def AgainProperty.bad_value__DerivedProperty_glue(__mypyc_self__):
+    __mypyc_self__ :: AgainProperty
     r0 :: int
     r1 :: object
 L0:
-    r0 = self.bad_value
+    r0 = __mypyc_self__.bad_value
     r1 = box(int, r0)
     return r1
-def AgainProperty.bad_value__BaseProperty_glue(self):
-    self :: AgainProperty
+def AgainProperty.bad_value__BaseProperty_glue(__mypyc_self__):
+    __mypyc_self__ :: AgainProperty
     r0 :: int
     r1 :: object
 L0:
-    r0 = self.bad_value
+    r0 = __mypyc_self__.bad_value
     r1 = box(int, r0)
     return r1
 
@@ -2238,10 +2238,10 @@ def DerivingObject.this(self):
     self :: DerivingObject
 L0:
     return self
-def DerivingObject.this__SubclassedTrait_glue(self):
-    self, r0 :: DerivingObject
+def DerivingObject.this__SubclassedTrait_glue(__mypyc_self__):
+    __mypyc_self__, r0 :: DerivingObject
 L0:
-    r0 = self.this
+    r0 = __mypyc_self__.this
     return r0
 def DerivingObject.boxed(self):
     self :: DerivingObject
@@ -2249,12 +2249,12 @@ def DerivingObject.boxed(self):
 L0:
     r0 = 5
     return r0
-def DerivingObject.boxed__SubclassedTrait_glue(self):
-    self :: DerivingObject
+def DerivingObject.boxed__SubclassedTrait_glue(__mypyc_self__):
+    __mypyc_self__ :: DerivingObject
     r0 :: int
     r1 :: object
 L0:
-    r0 = self.boxed
+    r0 = __mypyc_self__.boxed
     r1 = box(int, r0)
     return r1
 
@@ -2551,8 +2551,8 @@ def c() -> None:
     d()
 
 [out]
-def g_a_obj.__call__(self):
-    self :: g_a_obj
+def g_a_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: g_a_obj
     r0 :: a__env
     r1 :: str
     r2 :: object
@@ -2567,7 +2567,7 @@ def g_a_obj.__call__(self):
     r13, r14 :: object
     r15, r16 :: None
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_3 :: static  ('Entering')
     r2 = builtins.module :: static
     r3 = unicode_4 :: static  ('print')
@@ -2599,8 +2599,8 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     g = r2
     return g
-def g_b_obj.__call__(self):
-    self :: g_b_obj
+def g_b_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: g_b_obj
     r0 :: b__env
     r1 :: str
     r2 :: object
@@ -2615,7 +2615,7 @@ def g_b_obj.__call__(self):
     r13, r14 :: object
     r15, r16 :: None
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_6 :: static  ('---')
     r2 = builtins.module :: static
     r3 = unicode_4 :: static  ('print')
@@ -2647,8 +2647,8 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     g = r2
     return g
-def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(self):
-    self :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
+def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
     r0 :: __mypyc_c_decorator_helper____env
     r1 :: str
     r2 :: object
@@ -2656,7 +2656,7 @@ def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(self)
     r4, r5 :: object
     r6, r7 :: None
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_7 :: static  ('d')
     r2 = builtins.module :: static
     r3 = unicode_4 :: static  ('print')
@@ -2783,8 +2783,8 @@ def a(f: Callable[[], None]) -> Callable[[], None]:
     return g
 
 [out]
-def g_a_obj.__call__(self):
-    self :: g_a_obj
+def g_a_obj.__call__(__mypyc_self__):
+    __mypyc_self__ :: g_a_obj
     r0 :: a__env
     r1 :: str
     r2 :: object
@@ -2799,7 +2799,7 @@ def g_a_obj.__call__(self):
     r13, r14 :: object
     r15, r16 :: None
 L0:
-    r0 = self.__mypyc_env__
+    r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_3 :: static  ('Entering')
     r2 = builtins.module :: static
     r3 = unicode_4 :: static  ('print')

@@ -669,17 +669,17 @@ L0:
     self.x = r0; r1 = is_error
     r2 = None
     return r2
-def A.__mypyc_defaults_setup(self):
-    self :: A
+def A.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: A
     r0 :: int
     r1, r2 :: bool
 L0:
     r0 = 10
-    self.x = r0; r1 = is_error
+    __mypyc_self__.x = r0; r1 = is_error
     r2 = True
     return r2
-def B.__mypyc_defaults_setup(self):
-    self :: B
+def B.__mypyc_defaults_setup(__mypyc_self__):
+    __mypyc_self__ :: B
     r0 :: object
     r1 :: str
     r2 :: object
@@ -694,12 +694,12 @@ L0:
     r1 = unicode_7 :: static  ('LOL')
     r2 = r0[r1] :: dict
     r3 = cast(str, r2)
-    self.y = r3; r4 = is_error
+    __mypyc_self__.y = r3; r4 = is_error
     r5 = None
-    self.z = r5; r6 = is_error
+    __mypyc_self__.z = r5; r6 = is_error
     r7 = True
-    self.b = r7; r8 = is_error
+    __mypyc_self__.b = r7; r8 = is_error
     r9 = 10
-    self.x = r9; r10 = is_error
+    __mypyc_self__.x = r9; r10 = is_error
     r11 = True
     return r11
