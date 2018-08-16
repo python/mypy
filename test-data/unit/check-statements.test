@@ -1578,7 +1578,7 @@ d = {'weight0': 65.5}
 reveal_type(d['weight0'])  # E: Revealed type is 'builtins.float*'
 d['weight0'] = 65
 reveal_type(d['weight0'])  # E: Revealed type is 'builtins.float*'
-d['weight0'] *= 'a'  # E: Unsupported operand types for * ("float" and "str") # E: Incompatible types in assignment (expression has type "str", target has type "float")
+d['weight0'] *= 'a'  # E: Unsupported operand types for * ("float" and "str")
 d['weight0'] *= 0.5
 reveal_type(d['weight0'])  # E: Revealed type is 'builtins.float*'
 d['weight0'] *= object()  # E: Unsupported operand types for * ("float" and "object")

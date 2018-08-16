@@ -466,6 +466,9 @@ class MessageBuilder:
                     matches.extend(best_matches(member, alternatives)[:3])
                     if member == '__aiter__' and matches == ['__iter__']:
                         matches = []  # Avoid misleading suggestion
+                    if member == '__div__' and matches == ['__truediv__']:
+                        # TODO: Handle differences in division between Python 2 and 3 more cleanly
+                        matches = []
                     if matches:
                         self.fail('{} has no attribute "{}"; maybe {}?{}'.format(
                             self.format(original_type), member, pretty_or(matches), extra),
@@ -993,6 +996,22 @@ class MessageBuilder:
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation cannot produce return type '
                   'of signature {}'.format(index), context)
+
+    def reverse_operator_method_never_called(self,
+                                             op: str,
+                                             forward_method: str,
+                                             reverse_type: Type,
+                                             reverse_method: str,
+                                             context: Context) -> None:
+        msg = "{rfunc} will not be called when evaluating '{cls} {op} {cls}': must define {ffunc}"
+        self.note(
+            msg.format(
+                op=op,
+                ffunc=forward_method,
+                rfunc=reverse_method,
+                cls=self.format_bare(reverse_type),
+            ),
+            context=context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,

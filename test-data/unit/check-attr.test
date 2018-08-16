@@ -661,16 +661,16 @@ reveal_type(D.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1)
 
 A() < A()
 B() < B()
-A() < B() # E: Unsupported operand types for > ("B" and "A")
+A() < B() # E: Unsupported operand types for < ("A" and "B")
 
 C() > A()
 C() > B()
 C() > C()
-C() > D() # E: Unsupported operand types for < ("D" and "C")
+C() > D() # E: Unsupported operand types for > ("C" and "D")
 
 D() >= A()
-D() >= B()  # E: Unsupported operand types for <= ("B" and "D")
-D() >= C()  # E: Unsupported operand types for <= ("C" and "D")
+D() >= B()  # E: Unsupported operand types for >= ("D" and "B")
+D() >= C()  # E: Unsupported operand types for >= ("D" and "C")
 D() >= D()
 
 A() <= 1  # E: Unsupported operand types for <= ("A" and "int")
