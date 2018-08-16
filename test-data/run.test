@@ -3015,8 +3015,8 @@ caught exception with value some other string
 exception
 goodbye
 
-[case testDecorators]
-from typing import Generator, Callable
+[case testDecorators1]
+from typing import Generator, Callable, Iterator
 from contextlib import contextmanager
 
 def a(f: Callable[[], None]) -> Callable[[], None]:
@@ -3034,12 +3034,23 @@ def b(f: Callable[[], None]) -> Callable[[], None]:
     return g
 
 @contextmanager
-def foo() -> Generator:
+def foo() -> Iterator[int]:
     try:
         print('started')
         yield 0
     finally:
         print('finished')
+
+@contextmanager
+def catch() -> Iterator[None]:
+    try:
+        print('started')
+        yield
+    except IndexError:
+        print('index')
+        raise
+    except Exception:
+        print('lol')
 
 def thing() -> None:
     c()
@@ -3054,14 +3065,26 @@ def c() -> None:
     print('c')
     d()
 
+def hm() -> None:
+    x = [1]
+    with catch():
+        x[2]
+
 [file driver.py]
-from native import foo, c, thing
+from native import foo, c, thing, hm
 
 with foo() as f:
     print('hello')
 
 c()
 thing()
+print('==')
+try:
+    hm()
+except IndexError:
+    pass
+else:
+    assert False
 
 [out]
 started
@@ -3087,6 +3110,9 @@ d
 Exited
 ***
 Exited
+==
+started
+index
 
 [case testDecoratorsMethods]
 from typing import Generator
@@ -3113,6 +3139,10 @@ def inside() -> None:
 with A().generator() as g:
     print('hello!')
 
+def lol() -> None:
+    with A().generator() as g:
+        raise Exception
+
 [file decorators.py]
 from typing import Any, Callable
 
@@ -3124,11 +3154,17 @@ def a(f: Callable[[Any], None]) -> Callable[[Any], None]:
     return g
 
 [file driver.py]
-from native import A
+from native import A, lol
 
 A().foo()
 with A().generator() as g:
     print('hello!')
+try:
+    lol()
+except:
+    pass
+else:
+    assert False
 
 [out]
 contextmanager: entering
@@ -3139,4 +3175,6 @@ foo
 Exited
 contextmanager: entering
 hello!
+contextmanager: exited
+contextmanager: entering
 contextmanager: exited
