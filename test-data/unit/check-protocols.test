@@ -2366,6 +2366,7 @@ a: Call
 b: Normal
 
 reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
+reveal_type([b, a])  # E: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2385,5 +2386,6 @@ def a(x: Call) -> None: ...
 def b(x: Normal) -> None: ...
 
 reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
+reveal_type([b, a])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
 [builtins fixtures/list.pyi]
 [out]

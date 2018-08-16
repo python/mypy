@@ -415,9 +415,10 @@ in ``typing`` such as ``Iterable``.
 Callback protocols
 ******************
 
-Protocols can be used to define flexible callback types that are impossible
-to express using the ``Callable[...]`` syntax, for example variadic, overloaded,
-and complex generic callbacks. They are defined with a special ``__call__`` member:
+Protocols can be used to define flexible callback types that are hard
+(or even impossible) to express using the ``Callable[...]`` syntax, such as variadic,
+overloaded, and complex generic callbacks. They are defined with a special ``__call__``
+member:
 
 .. code-block:: python
 
@@ -441,8 +442,8 @@ and complex generic callbacks. They are defined with a special ``__call__`` memb
                             # different name and kind in the callback
 
 Callback protocols and ``Callable[...]`` types can be used interchangeably.
-To indicate an "anonymous" positional-only argument use double underscore,
-for example:
+Keyword argument names in ``__call__`` methods must be identical, unless
+a double underscore prefix is used. For example:
 
 .. code-block:: python
 
