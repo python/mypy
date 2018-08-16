@@ -1756,8 +1756,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # are just to verify whether something is valid typing wise).
                 local_errors = self.msg.copy()
                 local_errors.disable_count = 0
-                sub_result, method_type = self.check_op_local('__contains__', right_type,
-                                                          left, e, local_errors)
+                sub_result, method_type = self.check_op_local_by_name('__contains__', right_type,
+                                                                      left, e, local_errors)
                 if isinstance(right_type, PartialType):
                     # We don't really know if this is an error or not, so just shut up.
                     pass
@@ -1808,8 +1808,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             return nodes.op_methods[op]
 
-    def check_op_local(self, method: str, base_type: Type, arg: Expression,
-                       context: Context, local_errors: MessageBuilder) -> Tuple[Type, Type]:
+    def check_op_local_by_name(self,
+                               method: str,
+                               base_type: Type,
+                               arg: Expression,
+                               context: Context,
+                               local_errors: MessageBuilder) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
 
         Return tuple (result type, inferred operator method type).
@@ -1817,12 +1821,24 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors,
                                             original_type=base_type, chk=self.chk)
+        return self.check_op_local_by_type(method_type, base_type, arg, context, local_errors)
+
+    def check_op_local_by_type(self,
+                               method_type: Type,
+                               base_type: Type,
+                               arg: Expression,
+                               context: Context,
+                               local_errors: MessageBuilder) -> Tuple[Type, Type]:
+        """Type check a binary operation using the (assumed) type of the operator method.
+
+        Return tuple (result type, inferred operator method type).
+        """
         callable_name = None
         object_type = None
         if isinstance(base_type, Instance):
             # TODO: Find out in which class the method was defined originally?
             # TODO: Support non-Instance types.
-            callable_name = '{}.{}'.format(base_type.type.fullname(), method)
+            callable_name = '{}.{}'.format(base_type.type.fullname(), method_type)
             object_type = base_type
         return self.check_call(method_type, [arg], [nodes.ARG_POS],
                                context, arg_messages=local_errors,
@@ -1852,9 +1868,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         def lookup_operator(op_name: str, base_type: Type) -> Optional[Type]:
             """Looks up the given operator and returns the corresponding type,
             if it exists."""
+            local_errors = make_local_errors()
+
+            # TODO: Remove this call and rely just on analyze_member_access
+            # Currently, it seems we still need this to correctly deal with
+            # things like plugins and metaclasses?
+            #
+            # E.g. see the check-expressions.testIntPow and pythoneval.testMetaclassOpAccessAny
+            # test cases.
             if not self.has_member(base_type, op_name):
                 return None
-            local_errors = make_local_errors()
+
             member = analyze_member_access(
                 name=op_name,
                 typ=base_type,
@@ -1884,11 +1908,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
             If the attr name is not present in the given class or its MRO, returns None.
             """
-            mro = typ.type.mro
-            if mro is None:
-                return None
-
-            for cls in mro:
+            for cls in typ.type.mro:
                 if cls.names.get(attr_name):
                     return cls.fullname()
             return None
@@ -1904,13 +1924,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             any_type = AnyType(TypeOfAny.from_another_any, source_any=right_type)
             return any_type, any_type
 
-        rev_op_name = self.get_reverse_op_method(op_name)
-
         # STEP 1:
         # We start by getting the __op__ and __rop__ methods, if they exist.
 
-        # Records the method type, the base type, and the argument.
-        variants_raw = []  # type: List[Tuple[Optional[Type], Type, Expression]]
+        rev_op_name = self.get_reverse_op_method(op_name)
 
         left_op = lookup_operator(op_name, left_type)
         right_op = lookup_operator(rev_op_name, right_type)
@@ -1919,6 +1936,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We figure out in which order Python will call the operator methods. As it
         # turns out, it's not as simple as just trying to call __op__ first and
         # __rop__ second.
+        #
+        # We store the determined order inside the 'variants_raw' variable,
+        # which records tuples containing the method, base type, and the argument.
 
         warn_about_uncalled_reverse_operator = False
         bias_right = is_proper_subtype(right_type, left_type)
@@ -1928,10 +1948,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #
             # This is the case even if the __add__ method is completely missing and the __radd__
             # method is defined.
-            #
-            # We report this error message here instead of in the definition checks
 
-            variants_raw.append((left_op, left_type, right_expr))
+            variants_raw = [
+                (left_op, left_type, right_expr)
+            ]
             if right_op is not None:
                 warn_about_uncalled_reverse_operator = True
         elif (is_subtype(right_type, left_type)
@@ -1945,14 +1965,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # This mechanism lets subclasses "refine" the expected outcome of the operation, even
             # if they're located on the RHS.
 
-            variants_raw.append((right_op, right_type, left_expr))
-            variants_raw.append((left_op, left_type, right_expr))
+            variants_raw = [
+                (right_op, right_type, left_expr),
+                (left_op, left_type, right_expr),
+            ]
         else:
             # In all other cases, we do the usual thing and call __add__ first and
             # __radd__ second when doing "A() + B()".
 
-            variants_raw.append((left_op, left_type, right_expr))
-            variants_raw.append((right_op, right_type, left_expr))
+            variants_raw = [
+                (left_op, left_type, right_expr),
+                (right_op, right_type, left_expr),
+            ]
 
         # STEP 2b:
         # When running Python 2, we might also try calling the __cmp__ method.
@@ -1986,16 +2010,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         results = []
         for method, obj, arg in variants:
             local_errors = make_local_errors()
-
-            callable_name = None  # type: Optional[str]
-            if isinstance(obj, Instance):
-                # TODO: Find out in which class the method was defined originally?
-                # TODO: Support non-Instance types.
-                callable_name = '{}.{}'.format(obj.type.fullname(), op_name)
-
-            result = self.check_call(method, [arg], [nodes.ARG_POS],
-                                   context, arg_messages=local_errors,
-                                   callable_name=callable_name, object_type=obj)
+            result = self.check_op_local_by_type(method, obj, arg, context, local_errors)
             if local_errors.is_errors():
                 errors.append(local_errors)
                 results.append(result)
@@ -2006,14 +2021,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Sometimes, the variants list is empty. In that case, we fall-back to attempting to
         # call the __op__ method (even though it's missing).
 
-        if len(errors) == 0:
+        if not variants:
             local_errors = make_local_errors()
-            result = self.check_op_local(op_name, left_type, right_expr, context, local_errors)
+            result = self.check_op_local_by_name(
+                op_name, left_type, right_expr, context, local_errors)
 
             if local_errors.is_errors():
                 errors.append(local_errors)
                 results.append(result)
             else:
+                # In theory, we should never enter this case, but it seems
+                # we sometimes do, when dealing with Type[...]? E.g. see
+                # check-classes.testTypeTypeComparisonWorks.
+                #
+                # This is probably related to the TODO in lookup_operator(...)
+                # up above.
+                #
+                # TODO: Remove this extra case
                 return result
 
         self.msg.add_errors(errors[0])
@@ -2049,7 +2073,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 right_expr=arg,
                 context=context)
         else:
-            return self.check_op_local(
+            return self.check_op_local_by_name(
                 method=method,
                 base_type=base_type,
                 arg=arg,

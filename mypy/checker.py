@@ -778,7 +778,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                            self.msg, context=fdef)
 
                 if name:  # Special method names
-                    if defn.info and name in nodes.reverse_op_method_set:
+                    if defn.info and self.is_reverse_op_method(name):
                         self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ('__getattr__', '__getattribute__'):
                         self.check_getattr_method(typ, defn, name)
@@ -923,6 +923,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             self.binder = old_binder
 
+    def is_forward_op_method(self, method_name: str) -> bool:
+        if self.options.python_version[0] == 2 and method_name == '__div__':
+            return True
+        else:
+            return method_name in nodes.reverse_op_methods
+
+    def is_reverse_op_method(self, method_name: str) -> bool:
+        if self.options.python_version[0] == 2 and method_name == '__rdiv__':
+            return True
+        else:
+            return method_name in nodes.reverse_op_method_set
+
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
         def is_unannotated_any(t: Type) -> bool:
@@ -1010,7 +1022,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                       arg_names=[reverse_type.arg_names[0], "_"])
         assert len(reverse_type.arg_types) >= 2
 
-        forward_name = nodes.normal_from_reverse_op[reverse_name]
+        if self.options.python_version[0] == 2 and reverse_name == '__rdiv__':
+            forward_name = '__div__'
+        else:
+            forward_name = nodes.normal_from_reverse_op[reverse_name]
         forward_inst = reverse_type.arg_types[1]
         if isinstance(forward_inst, TypeVarType):
             forward_inst = forward_inst.upper_bound
@@ -1042,11 +1057,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                      context: Context) -> None:
         """Check for overlapping method and reverse method signatures.
 
-        Assume reverse method has valid argument count and kinds.
+        This function assumes that:
 
-        Precondition:
-            If the reverse operator method accepts some argument of type
-            X, the forward operator method must belong to class X.
+        -   The reverse method has valid argument count and kinds.
+        -   If the reverse operator method accepts some argument of type
+            X, the forward operator method also belong to class X.
 
             For example, if we have the reverse operator `A.__radd__(B)`, then the
             corresponding forward operator must have the type `B.__add__(...)`.
@@ -1075,7 +1090,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         #    corresponding __rOP__ method.
         #
         # Note: we do not attempt to handle unsafe overlaps related to multiple
-        # inheritance.
+        # inheritance. (This is consistent with how we handle overloads: we also
+        # do not try checking unsafe overlaps due to multiple inheritance there.)
 
         for forward_item in union_items(forward_type):
             if isinstance(forward_item, CallableType):
@@ -1097,13 +1113,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                  forward_item: CallableType,
                                  forward_base: Type,
                                  reverse_type: CallableType) -> bool:
-        # TODO check argument kinds
+        # TODO: check argument kinds?
         if len(forward_item.arg_types) < 1:
             # Not a valid operator method -- can't succeed anyway.
             return False
 
-        # Erase the type if necessary to make sure we don't have a dangling
-        # TypeVar in forward_tweaked
+        # Erase the type if necessary to make sure we don't have a single
+        # TypeVar in forward_tweaked. (Having a function signature containing
+        # just a single TypeVar can lead to unpredictable behavior.)
         forward_base_erased = forward_base
         if isinstance(forward_base, TypeVarType):
             forward_base_erased = erase_to_bound(forward_base)
@@ -1342,7 +1359,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             fail = True
         elif (not isinstance(original, Overloaded) and
               isinstance(override, Overloaded) and
-              name in nodes.reverse_op_methods.keys()):
+              self.is_forward_op_method(name)):
             # Operator method overrides cannot introduce overloading, as
             # this could be unsafe with reverse operator methods.
             fail = True

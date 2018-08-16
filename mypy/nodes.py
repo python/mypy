@@ -1471,6 +1471,7 @@ op_methods = {
 }  # type: Dict[str, str]
 
 op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}
+op_methods_to_symbols['__div__'] = '/'
 
 comparison_fallback_method = '__cmp__'
 ops_falling_back_to_cmp = {'__ne__', '__eq__',
@@ -1514,6 +1515,7 @@ op_methods_that_shortcut = {
     '__add__',
     '__sub__',
     '__mul__',
+    '__div__',
     '__truediv__',
     '__mod__',
     '__divmod__',

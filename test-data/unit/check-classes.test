@@ -1619,7 +1619,7 @@ class B(A): pass
 # where x and y are *not* the same type, Python will not try
 # calling __radd__.
 A() + A()               # E: Unsupported operand types for + ("A" and "A") \
-                        # N: __radd__ will not be called when running 'A + A': must define __add__
+                        # N: __radd__ will not be called when evaluating 'A + A': must define __add__
 
 # Here, Python *will* call __radd__(...)
 reveal_type(B() + A())  # E: Revealed type is '__main__.A'
@@ -1735,7 +1735,7 @@ class A:
 
 # Note: Python only tries calling __add__ and never __radd__, even though it's present
 A() + A()  # E: Unsupported left operand type for + ("A") \
-           # N: __radd__ will not be called when running 'A + A': must define __add__
+           # N: __radd__ will not be called when evaluating 'A + A': must define __add__
 
 [case testReverseOperatorOrderingCase2]
 class A:
@@ -1767,6 +1767,8 @@ class B(A):
 reveal_type(A() + B())  # E: Revealed type is 'builtins.str'
 
 [case testReverseOperatorOrderingCase5]
+# Note: these two methods are not unsafely overlapping because __radd__ is
+# never called -- see case 1.
 class A:
     def __add__(self, other: B) -> int: ...
     def __radd__(self, other: A) -> str: ...
@@ -1782,6 +1784,8 @@ class A:
     def __radd__(self, other: A) -> str: ...
 
 class B(A):
+    # Although A.__radd__ can never be called, B.__radd__ *can* be -- so the
+    # unsafe overlap check kicks in here.
     def __radd__(self, other: A) -> str: ...  # E: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
 
 reveal_type(A() + B())  # E: Revealed type is 'builtins.str'
@@ -1799,6 +1803,104 @@ class C(B): pass
 # A refinement made by a parent also counts
 reveal_type(A() + C())  # E: Revealed type is 'builtins.str'
 
+[case testReverseOperatorWithOverloads1]
+from typing import overload
+
+class A:
+    def __add__(self, other: C) -> int: ...
+
+class B:
+    def __add__(self, other: C) -> int: ...
+
+class C:
+    @overload
+    def __radd__(self, other: A) -> str: ...   # E: Signatures of "__radd__" of "C" and "__add__" of "A" are unsafely overlapping
+    @overload
+    def __radd__(self, other: B) -> str: ...   # E: Signatures of "__radd__" of "C" and "__add__" of "B" are unsafely overlapping
+    def __radd__(self, other): pass
+
+reveal_type(A() + C())   # E: Revealed type is 'builtins.int'
+reveal_type(B() + C())   # E: Revealed type is 'builtins.int'
+
+[case testReverseOperatorWithOverloads2]
+from typing import overload, Union
+
+class Num1:
+    def __add__(self, other: Num1) -> Num1: ...
+    def __radd__(self, other: Num1) -> Num1: ...
+
+class Num2(Num1):
+    # TODO: This should not be an error. See https://github.com/python/mypy/issues/4985
+    @overload    # E: Signature of "__add__" incompatible with supertype "Num1"
+    def __add__(self, other: Num2) -> Num2: ...  
+    @overload
+    def __add__(self, other: Num1) -> Num2: ...
+    def __add__(self, other): pass
+
+    @overload
+    def __radd__(self, other: Num2) -> Num2: ...
+    @overload
+    def __radd__(self, other: Num1) -> Num2: ...
+    def __radd__(self, other): pass
+
+class Num3(Num1):
+    def __add__(self, other: Union[Num1, Num3]) -> Num3: ...
+    def __radd__(self, other: Union[Num1, Num3]) -> Num3: ...
+
+reveal_type(Num1() + Num2())  # E: Revealed type is '__main__.Num2'
+reveal_type(Num2() + Num1())  # E: Revealed type is '__main__.Num2'
+
+reveal_type(Num1() + Num3())  # E: Revealed type is '__main__.Num3'
+reveal_type(Num3() + Num1())  # E: Revealed type is '__main__.Num3'
+
+reveal_type(Num2() + Num3())  # E: Revealed type is '__main__.Num2'
+reveal_type(Num3() + Num2())  # E: Revealed type is '__main__.Num3'
+
+[case testDivReverseOperatorPython3]
+# No error: __div__ has no special meaning in Python 3
+class A1:
+    def __div__(self, x: B1) -> int: ...
+class B1:
+    def __rdiv__(self, x: A1) -> str: ...
+
+class A2:
+    def __truediv__(self, x: B2) -> int: ...
+class B2:
+    def __rtruediv__(self, x: A2) -> str: ...  # E: Signatures of "__rtruediv__" of "B2" and "__truediv__" of "A2" are unsafely overlapping
+
+A1() / B1()                 # E: Unsupported left operand type for / ("A1")
+reveal_type(A2() / B2())    # E: Revealed type is 'builtins.int'
+
+[case testDivReverseOperatorPython2]
+# flags: --python-version 2.7
+
+# Note: if 'from __future__ import division' is called, we use
+# __truediv__. Otherwise, we use __div__. So, we check both:
+class A1:
+    def __div__(self, x):
+        # type: (B1) -> int
+        pass
+class B1:
+    def __rdiv__(self, x):   # E: Signatures of "__rdiv__" of "B1" and "__div__" of "A1" are unsafely overlapping
+        # type: (A1) -> str
+        pass
+
+class A2:
+    def __truediv__(self, x):
+        # type: (B2) -> int
+        pass
+class B2:
+    def __rtruediv__(self, x):  # E: Signatures of "__rtruediv__" of "B2" and "__truediv__" of "A2" are unsafely overlapping
+        # type: (A2) -> str
+        pass
+
+# That said, mypy currently doesn't handle the actual division operation very
+# gracefully -- it doesn't correctly switch to using __truediv__ when
+# 'from __future__ import division' is included, it doesn't display a very
+# graceful error if __div__ is missing but __truediv__ is present...
+# Also see https://github.com/python/mypy/issues/2048
+reveal_type(A1() / B1())        # E: Revealed type is 'builtins.int'
+A2() / B2()                     # E: "A2" has no attribute "__div__"
 
 [case testReverseOperatorMethodForwardIsAny]
 from typing import Any
