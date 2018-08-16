@@ -431,7 +431,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def try_infer_partial_type(self, e: CallExpr) -> None:
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
-            var = cast(Var, e.callee.expr.node)
+            var = e.callee.expr.node
+            if not isinstance(var, Var):
+                return
             partial_types = self.chk.find_partial_types(var)
             if partial_types is not None and not self.chk.current_node_deferred:
                 partial_type = var.type
