@@ -307,8 +307,7 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             return meet_types(t, self.s)
         elif isinstance(self.s, TupleType):
             return meet_types(t, self.s)
-        else:
-            return self.default(self.s)
+        return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
