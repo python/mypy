@@ -79,6 +79,15 @@ class D(C, T2):
         self.line = 1337
         self.x = 13
 
+@trait
+class T3:
+    def baz(self) -> int:
+        return -2
+
+class E(T3):
+    def __init__(self) -> None:
+        pass
+
 
 def use_t(t: T) -> None:
     t.bar()
@@ -139,5 +148,23 @@ T = TypeVar('T')
 
 class C(Generic[T], T1, T2):
     pass
+
+@trait
+class S1(Generic[T]):
+    def foo(self) -> None: pass
+    def bar(self, x: T) -> T: raise Exception
+
+@trait
+class S2(S1[T]):
+    def bar(self, x: T) -> T: return x
+
+@trait
+class S3(S2[T]):
+    def bar(self, x: T) -> T: return x
+
+class D(S3[bool]):
+    def bar(self, x: bool) -> bool: return x
+
+
 [file driver.py]
 import native

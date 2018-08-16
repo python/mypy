@@ -179,7 +179,8 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
                                          cls.glue_methods[(entry.cls, method.name)])
             elif parent.is_trait:
                 assert cls.vtable is not None
-                entry = cls.vtable_entries[cls.vtable[entry.name]]
+                if entry.name in cls.vtable:
+                    entry = cls.vtable_entries[cls.vtable[entry.name]]
         else:
             # If it is an attribute from a trait, we need to find out real class it got
             # mixed in at and point to that.
@@ -217,6 +218,8 @@ def compute_vtable(cls: ClassIR) -> None:
         entries.append(VTableAttr(cls, attr, is_setter=False))
         entries.append(VTableAttr(cls, attr, is_setter=True))
 
+    all_traits = [t for t in cls.mro if t.is_trait]
+
     for t in [cls] + cls.traits:
         for fn in itertools.chain(t.properties.values(), t.methods.values()):
             # TODO: don't generate a new entry when we overload without changing the type
@@ -225,7 +228,6 @@ def compute_vtable(cls: ClassIR) -> None:
                 entries.append(VTableMethod(t, fn.name, fn))
 
     # Compute vtables for all of the traits that the class implements
-    all_traits = [t for t in cls.mro if t.is_trait]
     if not cls.is_trait:
         for trait in all_traits:
             compute_vtable(trait)
