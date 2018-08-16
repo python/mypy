@@ -4636,3 +4636,10 @@ class C:
 reveal_type(C.foo)  # E: Revealed type is 'builtins.int*'
 reveal_type(C().foo)  # E: Revealed type is 'builtins.int*'
 [out]
+
+[case tesBadCallOverride]
+class Base:
+    def __call__(self, arg: int) -> None: ...
+class Sub(Base):
+    def __call__(self, zzz: int) -> None: ...  # E: Signature of "__call__" incompatible with supertype "Base"
+[out]

@@ -2243,6 +2243,26 @@ func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int], int]
 [builtins fixtures/tuple.pyi]
 [out]
 
+[case testCallableImplementsProtocolGenericNotGeneric]
+from typing import Protocol, TypeVar, Tuple
+
+T = TypeVar('T')
+
+class Caller(Protocol):
+    def __call__(self, x: int) -> int: ...
+
+def call(x: T) -> T: ...
+
+def bad(x: T) -> Tuple[T, T]: ...
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[T], Tuple[T, T]]"; expected "Caller"
+[builtins fixtures/tuple.pyi]
+[out]
+
 [case testCallableImplementsProtocolOverload]
 from typing import Protocol, overload, Union
 
@@ -2306,4 +2326,64 @@ def anon(caller: CallerAnon) -> None:
 func(call)
 func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[str], None]"; expected "Caller"
 anon(bad)
+[out]
+
+[case testCallableProtocolVsProtocol]
+from typing import Protocol
+
+class One(Protocol):
+    def __call__(self, x: str) -> None: ...
+
+class Other(Protocol):
+    def __call__(self, x: str) -> None: ...
+
+class Bad(Protocol):
+    def __call__(self, zzz: str) -> None: ...
+
+def func(caller: One) -> None:
+    pass
+
+a: Other
+b: Bad
+
+func(a)
+func(b)  # E: Argument 1 to "func" has incompatible type "Bad"; expected "One"
+[out]
+
+[case testJoinProtocolCallback]
+from typing import Protocol, Callable
+
+class A: ...
+class B(A): ...
+class C(B): ...
+class D(B): ...
+
+class Call(Protocol):
+    def __call__(self, x: B) -> C: ...
+Normal = Callable[[A], D]
+
+a: Call
+b: Normal
+
+reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testMeetProtocolCallback]
+from typing import Protocol, Callable
+
+class A: ...
+class B(A): ...
+class C(B): ...
+class D(B): ...
+
+class Call(Protocol):
+    def __call__(self, __x: C) -> B: ...
+Normal = Callable[[D], A]
+
+def a(x: Call) -> None: ...
+def b(x: Normal) -> None: ...
+
+reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
+[builtins fixtures/list.pyi]
 [out]
