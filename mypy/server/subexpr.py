@@ -21,53 +21,50 @@ class SubexpressionFinder(TraverserVisitor):
     def __init__(self) -> None:
         self.expressions = []  # type: List[Expression]
 
-    def _visit_leaf(self, o: Expression) -> None:
+    def visit_int_expr(self, o: Expression) -> None:
         self.add(o)
 
-    def visit_int_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
-
     def visit_name_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_float_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_str_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_bytes_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_unicode_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_complex_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_ellipsis(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_super_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_type_var_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_type_alias_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_namedtuple_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_typeddict_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit__promote_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_newtype_expr(self, o: Expression) -> None:
-        self._visit_leaf(o)
+        self.add(o)
 
     def visit_member_expr(self, e: MemberExpr) -> None:
         self.add(e)
