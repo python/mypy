@@ -698,3 +698,26 @@ assert b.y == 'rofl'
 assert b.z is None
 # N.B: this doesn't match cpython
 assert not hasattr(b, 'bogus')
+
+[case testMethodOverrideDefault]
+class A:
+    def foo(self, x: int) -> None:
+        pass
+class B(A):
+    def foo(self, x: int, y: int = 10) -> None:
+        print(x, y)
+
+def a(x: A) -> None:
+    x.foo(1)
+def b(x: B) -> None:
+    x.foo(2)
+    x.foo(2, 3)
+
+[file driver.py]
+from native import B, a, b
+a(B())
+b(B())
+[out]
+1 10
+2 10
+2 3

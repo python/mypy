@@ -993,12 +993,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         rt_args = (RuntimeArg(sig.args[0].name, RInstance(cls)),) + sig.args[1:]
 
+        # TODO: could kw only arguments get shuffled?
         # The environment operates on Vars, so we make some up
         fake_vars = [(Var(arg.name), arg.type) for arg in rt_args]
-        args = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
-                for var, type in fake_vars]  # type: List[Value]
+        args_opt = [self.read(self.environment.add_local_reg(var, type, is_arg=True), line)
+                    for var, type in fake_vars]  # type: List[Optional[Value]]
+        args_opt += [None] * (len(target.sig.args) - len(args_opt))
         self.ret_types[-1] = sig.ret_type
 
+        args = self.missing_args_to_error_values(args_opt, target.sig)
         args = self.coerce_native_call_args(args, target.sig, line)
         retval = self.add(MethodCall(args[0], target.name, args[1:], line))
         retval = self.coerce(retval, sig.ret_type, line)
