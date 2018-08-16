@@ -315,12 +315,23 @@ def f(x: Tuple[int, int]) -> Tuple[int,int]:
 
 def lurr(x: List[Optional[Tuple[int, str]]]) -> object:
     return x[0]
+
+def asdf(x: Tuple[int, str]) -> None:
+    pass
+
 [file driver.py]
-from native import f, lurr
+from native import f, lurr, asdf
 print(f((1,2)))
 print(lurr([(1, '2')]))
 try:
     print(lurr([(1, 2)]))
+except TypeError:
+    pass
+else:
+    assert False
+
+try:
+    asdf((1, 2))
 except TypeError:
     pass
 else:

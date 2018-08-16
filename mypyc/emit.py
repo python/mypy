@@ -443,7 +443,7 @@ class Emitter:
                            declare_dest=False,
                            custom_message='',
                            optional=False)
-            self.emit_line('if ({} == NULL)/*ass*/ goto {};'.format(dest, out_label))
+            self.emit_line('if ({} == NULL) goto {};'.format(dest, out_label))
 
         self.emit_line('{} = {};'.format(dest, src))
         self.emit_label(out_label)
@@ -508,9 +508,21 @@ class Emitter:
             self.declare_tuple_struct(typ)
             if declare_dest:
                 self.emit_line('{} {};'.format(self.ctype(typ), dest))
-            self.emit_arg_check(src, dest, typ,
-                '(!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(
-                    src, src, len(typ.types)), optional)
+            # HACK: The error handling for unboxing tuples is busted
+            # and instead of fixing it I am just wrapping it in the
+            # cast code which I think is right. This is not good.
+            if optional:
+                self.emit_line('if ({} == NULL) {{'.format(src))
+                self.emit_line('{} = {};'.format(dest, self.c_error_value(typ)))
+                self.emit_line('} else {')
+
+            cast_temp = self.temp_name()
+            self.emit_tuple_cast(src, cast_temp, typ, declare_dest=True, err='', src_type=None)
+            self.emit_line('if ({} == NULL) {{'.format(cast_temp))
+
+            # self.emit_arg_check(src, dest, typ,
+            #     '(!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(
+            #         src, src, len(typ.types)), optional)
             self.emit_lines(*failure)  # TODO: Decrease refcount?
             self.emit_line('} else {')
             if not typ.types:
@@ -529,6 +541,9 @@ class Emitter:
                     self.emit_cast(temp, temp2, item_type, declare_dest=True)
                 self.emit_line('{}.f{} = {};'.format(dest, i, temp2))
             self.emit_line('}')
+            if optional:
+                self.emit_line('}')
+
         else:
             assert False, 'Unboxing not implemented: %s' % typ
 
