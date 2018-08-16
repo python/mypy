@@ -244,7 +244,10 @@ class Mapper:
         # Maps integer, float, and unicode literals to a static name
         self.literals = {}  # type: LiteralsMap
 
-    def type_to_rtype(self, typ: Type) -> RType:
+    def type_to_rtype(self, typ: Optional[Type]) -> RType:
+        if typ is None:
+            return object_rprimitive
+
         if isinstance(typ, Instance):
             if typ.type.fullname() == 'builtins.int':
                 return int_rprimitive
@@ -286,8 +289,7 @@ class Mapper:
             return object_rprimitive
         elif isinstance(typ, TypeVarType):
             # Erase type variable to upper bound.
-            # TODO: Erase to object if object has value restriction -- or union (once supported)?
-            assert not typ.values, 'TypeVar with value restriction not supported'
+            # TODO: Erase to union if object has value restriction?
             return self.type_to_rtype(typ.upper_bound)
         elif isinstance(typ, PartialType):
             assert typ.var.type is not None
@@ -3240,7 +3242,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def alloc_temp(self, type: RType) -> Register:
         return self.environment.add_temp(type)
 
-    def type_to_rtype(self, typ: Type) -> RType:
+    def type_to_rtype(self, typ: Optional[Type]) -> RType:
         return self.mapper.type_to_rtype(typ)
 
     def node_type(self, node: Expression) -> RType:
@@ -3391,12 +3393,10 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         fn_info = self.fn_info
         if local:
             for arg in fn_info.fitem.arguments:
-                assert arg.variable.type, "Function argument missing type"
                 rtype = self.type_to_rtype(arg.variable.type)
                 self.environment.add_local_reg(arg.variable, rtype, is_arg=True)
         else:
             for arg in fn_info.fitem.arguments:
-                assert arg.variable.type, "Function argument missing type"
                 if self.is_free_variable(arg.variable) or fn_info.is_generator:
                     rtype = self.type_to_rtype(arg.variable.type)
                     assert base is not None, 'base cannot be None for adding nonlocal args'
