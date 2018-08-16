@@ -2977,6 +2977,9 @@ def foo() -> Generator:
     finally:
         print('finished')
 
+def thing() -> None:
+    c()
+
 @a
 @b
 def c() -> None:
@@ -2988,17 +2991,28 @@ def c() -> None:
     d()
 
 [file driver.py]
-from native import foo, c
+from native import foo, c, thing
 
 with foo() as f:
     print('hello')
 
 c()
+thing()
 
 [out]
 started
 hello
 finished
+Entering
+***
+c
+Entering
+***
+d
+***
+Exited
+***
+Exited
 Entering
 ***
 c
@@ -3028,6 +3042,13 @@ class A:
         finally:
             print('contextmanager: exited')
 
+def inside() -> None:
+    with A().generator() as g:
+        print('hello!')
+
+with A().generator() as g:
+    print('hello!')
+
 [file decorators.py]
 from typing import Any, Callable
 
@@ -3046,6 +3067,9 @@ with A().generator() as g:
     print('hello!')
 
 [out]
+contextmanager: entering
+hello!
+contextmanager: exited
 Entering
 foo
 Exited

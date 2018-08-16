@@ -345,7 +345,8 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
             # TODO: do something about abstract methods here. Currently, they are handled just like
             # normal methods.
             decl = prepare_func_def(module_name, cdef.name, node.node.func, mapper)
-            ir.method_decls[name] = decl
+            if not node.node.decorators:
+                ir.method_decls[name] = decl
             if node.node.func.is_property:
                 assert node.node.func.type
                 ir.property_types[name] = decl.sig.ret_type
@@ -705,7 +706,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_method(self, cdef: ClassDef, fdef: FuncDef) -> None:
         name = fdef.name()
         class_ir = self.mapper.type_to_ir[cdef.info]
-        func_ir, _ = self.gen_func_item(fdef, name, class_ir.method_sig(name), cdef.name)
+        func_ir, _ = self.gen_func_item(fdef, name, self.mapper.fdef_to_sig(fdef), cdef.name)
         self.functions.append(func_ir)
 
         if self.is_decorated(fdef):
