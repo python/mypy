@@ -490,7 +490,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 return False
 
     if not proper_subtype:
-        # Nominal check currently ignores arg names, except for __call__
+        # Nominal check currently ignores arg names, but __call__ is special for protocols
         ignore_names = right.type.protocol_members != ['__call__']
         subtype_kind = SubtypeVisitor.build_subtype_kind(ignore_pos_arg_names=ignore_names)
     else:

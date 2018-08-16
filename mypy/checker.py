@@ -1308,10 +1308,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         # Use boolean variable to clarify code.
         fail = False
-        # __call__ is special among dunders, because arguments can be passed
-        # as keyword args (unlike other dunders).
-        ignore_names = name != '__call__'
-        if not is_subtype(override, original, ignore_pos_arg_names=ignore_names):
+        if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
         elif (not isinstance(original, Overloaded) and
               isinstance(override, Overloaded) and
