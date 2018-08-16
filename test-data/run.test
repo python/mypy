@@ -777,8 +777,16 @@ def r2() -> None:
 
 def q2() -> None:
     raise Exception
+
+class A:
+    def __init__(self) -> None:
+        raise Exception
+
+def hey() -> None:
+    A()
+
 [file driver.py]
-from native import f, r1, r2
+from native import f, r1, r2, hey
 import traceback
 try:
     f([])
@@ -790,6 +798,10 @@ except Exception:
     traceback.print_exc()
 try:
     r2()
+except Exception:
+    traceback.print_exc()
+try:
+    hey()
 except Exception:
     traceback.print_exc()
 [out]
@@ -815,6 +827,14 @@ Traceback (most recent call last):
   File "tmp/py/native.py", line 16, in r2
     q2()
   File "tmp/py/native.py", line 19, in q2
+    raise Exception
+Exception
+Traceback (most recent call last):
+  File "tmp/driver.py", line 16, in <module>
+    hey()
+  File "tmp/py/native.py", line 26, in hey
+    A()
+  File "tmp/py/native.py", line 23, in __init__
     raise Exception
 Exception
 
