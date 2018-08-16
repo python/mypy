@@ -15,6 +15,11 @@ from mypyc.ops import (
 from mypyc.namegen import NameGenerator
 
 
+# Whether to insert debug asserts for all error handling, to quickly
+# catch errors propagating without exceptions set.
+DEBUG_ERRORS = False
+
+
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
     args = ', '.join(emitter.ctype(arg.type) for arg in fn.args)
     ret = emitter.ctype(fn.ret_type)
@@ -127,6 +132,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
                                                                       func_name,
                                                                       op.line,
                                                                       globals_static))
+            if DEBUG_ERRORS:
+                self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
         self.emit_lines(
             'goto %s;' % self.label(op.true),
             '} else',
@@ -186,14 +194,15 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         obj = self.reg(op.obj)
         rtype = op.class_type
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s);' % (
+        self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */' % (
             dest,
             version,
             obj,
             self.emitter.type_struct_name(rtype.class_ir),
             rtype.getter_index(op.attr),
             rtype.struct_name(self.names),
-            self.ctype(rtype.attr_type(op.attr))))
+            self.ctype(rtype.attr_type(op.attr)),
+            op.attr))
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
@@ -202,7 +211,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         rtype = op.class_type
         # TODO: Track errors
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s);' % (
+        self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
             dest,
             version,
             obj,
@@ -210,7 +219,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             rtype.setter_index(op.attr),
             src,
             rtype.struct_name(self.names),
-            self.ctype(rtype.attr_type(op.attr))))
+            self.ctype(rtype.attr_type(op.attr)),
+            op.attr))
 
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,
@@ -274,9 +284,9 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         args = ', '.join(obj_args + [self.reg(arg) for arg in op.args])
         mtype = native_function_type(method, self.emitter)
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({});'.format(
+        self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({}); /* {} */'.format(
             dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
-            method_idx, rtype.struct_name(self.names), mtype, args))
+            method_idx, rtype.struct_name(self.names), mtype, args, op.method))
 
     def visit_inc_ref(self, op: IncRef) -> None:
         src = self.reg(op.src)

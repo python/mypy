@@ -42,6 +42,13 @@ no_err_occurred_op = custom_op(
     format_str = '{dest} = no_err_occurred',
     emit=simple_emit('{dest} = (PyErr_Occurred() == NULL);'))
 
+assert_err_occured_op = custom_op(
+    arg_types=[],
+    result_type=void_rtype,
+    error_kind=ERR_NEVER,
+    format_str='assert_err_occurred',
+    emit=simple_emit('assert(PyErr_Occurred() != NULL && "failure w/o err!");'))
+
 keep_propagating_op = custom_op(
     arg_types=[],
     result_type=bool_rprimitive,

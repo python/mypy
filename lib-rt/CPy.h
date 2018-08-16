@@ -814,6 +814,10 @@ static void CPy_CatchError(PyObject **p_type, PyObject **p_value, PyObject **p_t
     _CPy_ToDummy(p_value);
     _CPy_ToDummy(p_traceback);
 
+    if (!PyErr_Occurred()) {
+        PyErr_SetString(PyExc_RuntimeError, "CPy_CatchError called with no error!");
+    }
+
     // Retrieve the error info and normalize it so that it looks like
     // what python code needs it to be.
     PyObject *type, *value, *traceback;

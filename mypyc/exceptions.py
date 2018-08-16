@@ -16,6 +16,7 @@ from mypyc.ops import (
     ERR_FALSE, RegisterOp, PrimitiveOp,
     NO_TRACEBACK_LINE_NO,
 )
+from mypyc.ops_exc import assert_err_occured_op
 
 
 def insert_exception_handling(ir: FuncIR) -> None:
