@@ -51,7 +51,7 @@ class TypeState:
     # A blocking error will be generated in this case, since we can't proceed safely.
     # For the description of kinds of protocol dependencies and corresponding examples,
     # see _snapshot_protocol_deps.
-    proto_deps = {}  # type: Optional[Dict[str, Set[str]]]
+    proto_deps = {}  # type: ClassVar[Optional[Dict[str, Set[str]]]]
 
     # Protocols (full names) a given class attempted to implement.
     # Used to calculate fine grained protocol dependencies and optimize protocol
@@ -59,13 +59,13 @@ class TypeState:
     # of type a.A to a function expecting something compatible with protocol p.P,
     # we'd have 'a.A' -> {'p.P', ...} in the map. This map is flushed after every incremental
     # update.
-    _attempted_protocols = {}  # type: Dict[str, Set[str]]
+    _attempted_protocols = {}  # type: ClassVar[Dict[str, Set[str]]]
     # We also snapshot protocol members of the above protocols. For example, if we pass
     # a value of type a.A to a function expecting something compatible with Iterable, we'd have
     # 'a.A' -> {'__iter__', ...} in the map. This map is also flushed after every incremental
     # update. This map is needed to only generate dependencies like <a.A.__iter__> -> <a.A>
     # instead of a wildcard to avoid unnecessarily invalidating classes.
-    _checked_against_members = {}  # type: Dict[str, Set[str]]
+    _checked_against_members = {}  # type: ClassVar[Dict[str, Set[str]]]
     # TypeInfos that appeared as a left type (subtype) in a subtype check since latest
     # dependency snapshot update. This is an optimisation for fine grained mode; during a full
     # run we only take a dependency snapshot at the very end, so this set will contain all
@@ -73,7 +73,7 @@ class TypeState:
     # dependencies generated from (typically) few TypeInfos that were subtype-checked
     # (i.e. appeared as r.h.s. in an assignment or an argument in a function call in
     # a re-checked target) during the update.
-    _rechecked_types = set()  # type: Set[TypeInfo]
+    _rechecked_types = set()  # type: ClassVar[Set[TypeInfo]]
 
     @classmethod
     def reset_all_subtype_caches(cls) -> None:
