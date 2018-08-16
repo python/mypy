@@ -162,7 +162,10 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def visit_assign(self, op: Assign) -> None:
         dest = self.reg(op.dest)
         src = self.reg(op.src)
-        self.emit_line('%s = %s;' % (dest, src))
+        # clang whines about self assignment (which we might generate
+        # for some casts), so don't emit it.
+        if dest != src:
+            self.emit_line('%s = %s;' % (dest, src))
 
     def visit_load_int(self, op: LoadInt) -> None:
         dest = self.reg(op)
