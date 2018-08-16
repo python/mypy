@@ -1824,7 +1824,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.check_op_local(method, method_type, base_type, arg, context, local_errors)
 
     def check_op_local(self,
-                       method_name,
+                       method_name: str,
                        method_type: Type,
                        base_type: Type,
                        arg: Expression,
