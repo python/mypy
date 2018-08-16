@@ -306,6 +306,18 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_instance(self, template: Instance) -> List[Constraint]:
         original_actual = actual = self.actual
         res = []  # type: List[Constraint]
+        if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
+            if template.type.protocol_members == ['__call__']:
+                # Special case: a generic callback protocol
+                if not any(is_same_type(template, t) for t in template.type.inferring):
+                    template.type.inferring.append(template)
+                    call = mypy.subtypes.find_member('__call__', template, actual)
+                    assert call is not None
+                    if mypy.subtypes.is_subtype(actual, erase_typevars(call)):
+                        subres = infer_constraints(call, actual, self.direction)
+                        res.extend(subres)
+                    template.type.inferring.pop()
+                    return res
         if isinstance(actual, CallableType) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, Overloaded) and actual.fallback is not None:

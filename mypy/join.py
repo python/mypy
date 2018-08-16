@@ -11,7 +11,7 @@ from mypy.types import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
-    is_protocol_implementation
+    is_protocol_implementation, find_member
 )
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT
 
@@ -154,6 +154,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return nominal
             return structural
         elif isinstance(self.s, FunctionLike):
+            if t.type.is_protocol:
+                call = unpack_callback_protocol(t)
+                if call:
+                    return join_types(call, self.s)
             return join_types(t, self.s.fallback)
         elif isinstance(self.s, TypeType):
             return join_types(t, self.s)
@@ -174,8 +178,11 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)
-        else:
-            return join_types(t.fallback, self.s)
+        elif isinstance(self.s, Instance) and self.s.type.is_protocol:
+            call = unpack_callback_protocol(self.s)
+            if call:
+                return join_types(t, call)
+        return join_types(t.fallback, self.s)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # This is more complex than most other cases. Here are some
@@ -224,6 +231,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 else:
                     return Overloaded(result)
             return join_types(t.fallback, s.fallback)
+        elif isinstance(s, Instance) and s.type.is_protocol:
+            call = unpack_callback_protocol(s)
+            if call:
+                return join_types(t, call)
         return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
@@ -436,3 +447,10 @@ def join_type_list(types: List[Type]) -> Type:
     for t in types[1:]:
         joined = join_types(joined, t)
     return joined
+
+
+def unpack_callback_protocol(t: Instance) -> Optional[Type]:
+    assert t.type.is_protocol
+    if t.type.protocol_members == ['__call__']:
+        return find_member('__call__', t, t)
+    return None

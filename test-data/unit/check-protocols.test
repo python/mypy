@@ -2187,3 +2187,205 @@ else:
     reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
 [builtins fixtures/isinstance.pyi]
 [out]
+
+[case testCallableImplementsProtocol]
+from typing import Protocol
+
+class Caller(Protocol):
+    def __call__(self, x: str, *args: int) -> None: ...
+
+def call(x: str, *args: int) -> None:
+    pass
+def bad(x: int, *args: str) -> None:
+    pass
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int, VarArg(str)], None]"; expected "Caller"
+[out]
+
+[case testCallableImplementsProtocolGeneric]
+from typing import Protocol, TypeVar, Tuple
+
+T = TypeVar('T')
+S = TypeVar('S')
+
+class Caller(Protocol[T, S]):
+    def __call__(self, x: T, y: S) -> Tuple[T, S]: ...
+
+def call(x: int, y: str) -> Tuple[int, str]: ...
+
+def func(caller: Caller[T, S]) -> Tuple[T, S]:
+    pass
+
+reveal_type(func(call))  # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testCallableImplementsProtocolGenericTight]
+from typing import Protocol, TypeVar
+
+T = TypeVar('T')
+
+class Caller(Protocol):
+    def __call__(self, x: T) -> T: ...
+
+def call(x: T) -> T: ...
+def bad(x: int) -> int: ...
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int], int]"; expected "Caller"
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testCallableImplementsProtocolGenericNotGeneric]
+from typing import Protocol, TypeVar, Tuple
+
+T = TypeVar('T')
+
+class Caller(Protocol):
+    def __call__(self, x: int) -> int: ...
+
+def call(x: T) -> T: ...
+
+def bad(x: T) -> Tuple[T, T]: ...
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[T], Tuple[T, T]]"; expected "Caller"
+[builtins fixtures/tuple.pyi]
+[out]
+
+[case testCallableImplementsProtocolOverload]
+from typing import Protocol, overload, Union
+
+class Caller(Protocol):
+    @overload
+    def __call__(self, x: int) -> int: ...
+    @overload
+    def __call__(self, x: str) -> str: ...
+
+@overload
+def call(x: int) -> int: ...
+@overload
+def call(x: str) -> str: ...
+def call(x: Union[int, str]) -> Union[int, str]:
+    pass
+
+def bad(x: Union[int, str]) -> Union[int, str]:
+    pass
+
+def func(caller: Caller) -> None:
+    pass
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[Union[int, str]], Union[int, str]]"; expected "Caller"
+[out]
+
+[case testCallableImplementsProtocolExtraNote]
+from typing import Protocol
+
+class Caller(Protocol):
+    def __call__(self, x: str, *args: int) -> None: ...
+
+def bad(x: int, *args: str) -> None:
+    pass
+
+cb: Caller = bad  # E: Incompatible types in assignment (expression has type "Callable[[int, VarArg(str)], None]", variable has type "Caller") \
+                  # N: "Caller.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
+[out]
+
+[case testCallableImplementsProtocolArgName]
+from typing import Protocol
+
+class Caller(Protocol):
+    def __call__(self, x: str) -> None: ...
+
+class CallerAnon(Protocol):
+    def __call__(self, __x: str) -> None: ...
+
+def call(x: str) -> None:
+    pass
+def bad(y: str) -> None:
+    pass
+
+def func(caller: Caller) -> None:
+    pass
+
+def anon(caller: CallerAnon) -> None:
+    pass
+
+
+func(call)
+func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[str], None]"; expected "Caller"
+anon(bad)
+[out]
+
+[case testCallableProtocolVsProtocol]
+from typing import Protocol
+
+class One(Protocol):
+    def __call__(self, x: str) -> None: ...
+
+class Other(Protocol):
+    def __call__(self, x: str) -> None: ...
+
+class Bad(Protocol):
+    def __call__(self, zzz: str) -> None: ...
+
+def func(caller: One) -> None:
+    pass
+
+a: Other
+b: Bad
+
+func(a)
+func(b)  # E: Argument 1 to "func" has incompatible type "Bad"; expected "One"
+[out]
+
+[case testJoinProtocolCallback]
+from typing import Protocol, Callable
+
+class A: ...
+class B(A): ...
+class C(B): ...
+class D(B): ...
+
+class Call(Protocol):
+    def __call__(self, x: B) -> C: ...
+Normal = Callable[[A], D]
+
+a: Call
+b: Normal
+
+reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
+reveal_type([b, a])  # E: Revealed type is 'builtins.list[def (__main__.B) -> __main__.B]'
+[builtins fixtures/list.pyi]
+[out]
+
+[case testMeetProtocolCallback]
+from typing import Protocol, Callable
+
+class A: ...
+class B(A): ...
+class C(B): ...
+class D(B): ...
+
+class Call(Protocol):
+    def __call__(self, __x: C) -> B: ...
+Normal = Callable[[D], A]
+
+def a(x: Call) -> None: ...
+def b(x: Normal) -> None: ...
+
+reveal_type([a, b])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
+reveal_type([b, a])  # E: Revealed type is 'builtins.list[def (x: def (__main__.B) -> __main__.B)]'
+[builtins fixtures/list.pyi]
+[out]

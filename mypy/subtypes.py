@@ -249,6 +249,13 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items())
         elif isinstance(right, Instance):
+            if right.type.is_protocol and right.type.protocol_members == ['__call__']:
+                # OK, a callable can implement a protocol with a single `__call__` member.
+                # TODO: we should probably explicitly exclude self-types in this case.
+                call = find_member('__call__', right, left)
+                assert call is not None
+                if self._is_subtype(left, call):
+                    return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
@@ -315,6 +322,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_overloaded(self, left: Overloaded) -> bool:
         right = self.right
         if isinstance(right, Instance):
+            if right.type.is_protocol and right.type.protocol_members == ['__call__']:
+                # same as for CallableType
+                call = find_member('__call__', right, left)
+                assert call is not None
+                if self._is_subtype(left, call):
+                    return True
             return self._is_subtype(left.fallback, right)
         elif isinstance(right, CallableType):
             for item in left.items():
@@ -439,6 +452,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
             # nominal subtyping currently ignores '__init__' and '__new__' signatures
             if member in ('__init__', '__new__'):
                 continue
+            ignore_names = member != '__call__'  # __call__ can be passed kwargs
             # The third argument below indicates to what self type is bound.
             # We always bind self to the subtype. (Similarly to nominal types).
             supertype = find_member(member, right, left)
@@ -453,7 +467,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 # Nominal check currently ignores arg names
                 # NOTE: If we ever change this, be sure to also change the call to
                 # SubtypeVisitor.build_subtype_kind(...) down below.
-                is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=True)
+                is_compat = is_subtype(subtype, supertype, ignore_pos_arg_names=ignore_names)
             else:
                 is_compat = is_proper_subtype(subtype, supertype)
             if not is_compat:
@@ -476,8 +490,9 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 return False
 
     if not proper_subtype:
-        # Nominal check currently ignores arg names
-        subtype_kind = SubtypeVisitor.build_subtype_kind(ignore_pos_arg_names=True)
+        # Nominal check currently ignores arg names, but __call__ is special for protocols
+        ignore_names = right.type.protocol_members != ['__call__']
+        subtype_kind = SubtypeVisitor.build_subtype_kind(ignore_pos_arg_names=ignore_names)
     else:
         subtype_kind = ProperSubtypeVisitor.build_subtype_kind()
     TypeState.record_subtype_cache_entry(subtype_kind, left, right)

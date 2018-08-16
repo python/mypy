@@ -3174,6 +3174,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 call = find_member('__call__', subtype, subtype)
                 if call:
                     self.msg.note_call(subtype, call, context)
+            if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
+                if supertype.type.is_protocol and supertype.type.protocol_members == ['__call__']:
+                    call = find_member('__call__', supertype, subtype)
+                    assert call is not None
+                    self.msg.note_call(supertype, call, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
