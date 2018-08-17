@@ -6,6 +6,7 @@ from typing import (
 )
 MYPY = False
 if MYPY:
+    import typing  # for typing.Type, which conflicts with types.Type
     from typing import ClassVar
 
 from mypy.sharedparse import (
@@ -209,7 +210,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }  # type: ClassVar[Dict[object, str]]
+    }  # type: ClassVar[Dict[typing.Type[ast3.AST], str]]
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -229,7 +230,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }  # type: ClassVar[Dict[object, str]]
+    }  # type: ClassVar[Dict[typing.Type[ast3.AST], str]]
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -865,9 +866,7 @@ class ASTConverter(ast3.NodeTransformer):
 
     # Num(object n) -- a number as a PyObject.
     @with_line
-    def visit_Num(self, nx: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
-        # XXX: the typeshed stubs are lies
-        n = nx  # type: Any
+    def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
         if isinstance(n.n, int):
             return IntExpr(n.n)
         elif isinstance(n.n, float):

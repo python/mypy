@@ -2247,6 +2247,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
+            # TODO: use 'for rv, *lvs in' once mypyc supports it
             for part in elementwise_assignments:
                 rv, lvs = part[0], list(part[1:])
                 self.process_module_assignment(lvs, rv, ctx)

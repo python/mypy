@@ -1921,7 +1921,7 @@ class State:
 
     @property
     def xmeta(self) -> CacheMeta:
-        assert self.meta
+        assert self.meta, "missing meta on allegedly fresh module"
         return self.meta
 
     def add_ancestors(self) -> None:
