@@ -5,7 +5,7 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Any
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -1312,8 +1312,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                if (isinstance(base_attr.node, (FuncBase, Decorator))
-                        and not is_static(base_attr.node)):
+                # mypyc hack to workaround mypy misunderstanding multiple inheritance (#3603)
+                base_attr_node = base_attr.node  # type: Any
+                if (isinstance(base_attr_node, (FuncBase, Decorator))
+                        and not is_static(base_attr_node)):
                     bound = bind_self(original_type, self.scope.active_self_type())
                 else:
                     bound = original_type
@@ -2793,7 +2795,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname)
         self.check_untyped_after_decorator(sig, e.func)
-        sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True

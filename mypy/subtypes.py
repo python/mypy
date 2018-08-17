@@ -44,7 +44,7 @@ def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
 
 
 def is_subtype(left: Type, right: Type,
-               type_parameter_checker: TypeParameterChecker = check_type_parameter,
+               type_parameter_checker: Optional[TypeParameterChecker] = None,
                *, ignore_pos_arg_names: bool = False,
                ignore_declared_variance: bool = False,
                ignore_promotions: bool = False) -> bool:
@@ -59,6 +59,7 @@ def is_subtype(left: Type, right: Type,
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    type_parameter_checker = type_parameter_checker or check_type_parameter
     if (isinstance(right, AnyType) or isinstance(right, UnboundType)
             or isinstance(right, ErasedType)):
         return True
@@ -96,7 +97,7 @@ def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
 
 def is_equivalent(a: Type,
                   b: Type,
-                  type_parameter_checker: TypeParameterChecker = check_type_parameter,
+                  type_parameter_checker: Optional[TypeParameterChecker] = None,
                   *,
                   ignore_pos_arg_names: bool = False
                   ) -> bool:
@@ -125,10 +126,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     @staticmethod
     def build_subtype_kind(*,
-                           type_parameter_checker: TypeParameterChecker = check_type_parameter,
+                           type_parameter_checker: Optional[TypeParameterChecker] = None,
                            ignore_pos_arg_names: bool = False,
                            ignore_declared_variance: bool = False,
                            ignore_promotions: bool = False) -> SubtypeKind:
+        type_parameter_checker = type_parameter_checker or check_type_parameter
         return ('subtype',
                 type_parameter_checker,
                 ignore_pos_arg_names,
