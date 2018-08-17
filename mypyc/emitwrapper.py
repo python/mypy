@@ -109,6 +109,21 @@ def generate_richcompare_wrapper(cl: ClassIR, emitter: Emitter) -> Optional[str]
     return name
 
 
+def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    """Generates a wrapper for native __get__ methods."""
+    name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))
+    emitter.emit_line(
+        'static PyObject *{name}(PyObject *self, PyObject *instance, PyObject *owner) {{'.
+        format(name=name))
+    emitter.emit_line('instance = instance ? instance : Py_None;')
+    emitter.emit_line('return {}{}(self, instance, owner);'.format(
+        NATIVE_PREFIX,
+        fn.cname(emitter.names)))
+    emitter.emit_line('}')
+
+    return name
+
+
 def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __hash__ methods."""
     name = '{}{}{}'.format(DUNDER_PREFIX, fn.name, cl.name_prefix(emitter.names))

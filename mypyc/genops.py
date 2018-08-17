@@ -73,7 +73,7 @@ from mypyc.ops_misc import (
     none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
-    type_op, pytype_from_template_op, import_op, ellipsis_op,
+    type_op, pytype_from_template_op, import_op, ellipsis_op, method_new_op,
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
@@ -1202,6 +1202,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         func_reg = None  # type: Optional[Value]
         if fn_info.is_nested:
             func_ir = self.add_call_to_callable_class(blocks, sig, env, fn_info)
+            self.add_get_to_callable_class(fn_info)
             func_reg = self.instantiate_callable_class(fn_info)
         else:
             assert isinstance(fn_info.fitem, FuncDef)
@@ -3470,6 +3471,39 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         call_fn_ir = FuncIR(call_fn_decl, blocks, env)
         fn_info.callable_class.ir.methods['__call__'] = call_fn_ir
         return call_fn_ir
+
+    def add_get_to_callable_class(self, fn_info: FuncInfo) -> None:
+        """Generates the '__get__' method for a callable class."""
+        line = fn_info.fitem.line
+        self.enter(fn_info)
+
+        vself = self.read(self.environment.add_local_reg(Var(SELF_NAME), object_rprimitive, True))
+        instance = self.environment.add_local_reg(Var('instance'), object_rprimitive, True)
+        self.environment.add_local_reg(Var('owner'), object_rprimitive, True)
+
+        # If accessed through the class, just return the callable
+        # object. If accessed through an object, create a new bound
+        # instance method object.
+        instance_block, class_block = BasicBlock(), BasicBlock()
+        comparison = self.binary_op(self.read(instance), self.none(), 'is', line)
+        self.add_bool_branch(comparison, class_block, instance_block)
+
+        self.activate_block(class_block)
+        self.add(Return(vself))
+
+        self.activate_block(instance_block)
+        self.add(Return(self.primitive_op(method_new_op, [vself, self.read(instance)], line)))
+
+        blocks, env, _, fn_info = self.leave()
+
+        sig = FuncSignature((RuntimeArg(SELF_NAME, object_rprimitive),
+                             RuntimeArg('instance', object_rprimitive),
+                             RuntimeArg('owner', object_rprimitive)),
+                            object_rprimitive)
+        get_fn_decl = FuncDecl('__get__', fn_info.callable_class.ir.name, self.module_name, sig)
+        get_fn_ir = FuncIR(get_fn_decl, blocks, env)
+        fn_info.callable_class.ir.methods['__get__'] = get_fn_ir
+        self.functions.append(get_fn_ir)
 
     def instantiate_callable_class(self, fn_info: FuncInfo) -> Value:
         """

@@ -34,6 +34,20 @@ def first() -> str:
 def second() -> str:
     return 'second: normal function'
 [out]
+def inner_a_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_a_obj
     r0 :: a__env
@@ -53,6 +67,20 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     inner = r1
     return inner
+def second_b_first_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def second_b_first_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: second_b_first_obj
     r0 :: first_b_env
@@ -62,6 +90,20 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
     r2 = unicode_3 :: static  ('b.first.second: nested function')
+    return r2
+def first_b_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
     return r2
 def first_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: first_b_obj
@@ -90,6 +132,20 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     first = r1
     return first
+def inner_c_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_c_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: inner_c_obj
     s :: str
@@ -112,6 +168,20 @@ L0:
     r1.__mypyc_env__ = r0; r2 = is_error
     inner = r1
     return inner
+def inner_d_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_d_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: inner_d_obj
     s :: str
@@ -190,6 +260,20 @@ def c(flag: bool) -> str:
     return inner()
 
 [out]
+def inner_a_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_a_obj
     r0 :: a__env
@@ -215,6 +299,20 @@ L0:
     r4 = py_call(inner)
     r5 = unbox(int, r4)
     return r5
+def inner_b_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_b_obj
     r0 :: b__env
@@ -249,6 +347,20 @@ L0:
     r7 = r0.num
     r8 = r6 + r7 :: int
     return r8
+def inner_c_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_c_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_c_obj
     r0 :: c__env
@@ -257,6 +369,20 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_3 :: static  ('f.inner: first definition')
     return r1
+def inner_c_obj_0.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_c_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_c_obj_0
     r0 :: c__env
@@ -303,6 +429,20 @@ def a() -> int:
     return b()
 
 [out]
+def c_a_b_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def c_a_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: c_a_b_obj
     r0 :: b_a_env
@@ -312,6 +452,20 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
     r2 = r1.x
+    return r2
+def b_a_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
     return r2
 def b_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: b_a_obj
@@ -367,6 +521,20 @@ def f(flag: bool) -> str:
             return 'f.inner: second definition'
     return inner()
 [out]
+def inner_f_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_f_obj
     r0 :: f__env
@@ -375,6 +543,20 @@ L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = unicode_1 :: static  ('f.inner: first definition')
     return r1
+def inner_f_obj_0.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def inner_f_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_f_obj_0
     r0 :: f__env
@@ -416,6 +598,20 @@ def f(x: int, y: int) -> None:
     return s(x, y)
 
 [out]
+def __mypyc_lambda__0_f_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def __mypyc_lambda__0_f_obj.__call__(__mypyc_self__, a, b):
     __mypyc_self__ :: __mypyc_lambda__0_f_obj
     a, b :: object

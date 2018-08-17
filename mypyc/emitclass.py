@@ -10,7 +10,7 @@ from mypyc.emit import Emitter
 from mypyc.emitfunc import native_function_header
 from mypyc.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
-    generate_bool_wrapper,
+    generate_bool_wrapper, generate_get_wrapper
 )
 from mypyc.ops import (
     ClassIR, FuncIR, FuncDecl, RType, RTuple, Environment, object_rprimitive, FuncSignature,
@@ -44,15 +44,16 @@ SLOT_DEFS = {
     '__next__': ('tp_iternext', native_slot),
     '__iter__': ('tp_iter', native_slot),
     '__hash__': ('tp_hash', generate_hash_wrapper),
-}
+    '__get__': ('tp_descr_get', generate_get_wrapper),
+}  # type: SlotTable
 
 AS_MAPPING_SLOT_DEFS = {
     '__getitem__': ('mp_subscript', generate_dunder_wrapper),
-}
+}  # type: SlotTable
 
 AS_NUMBER_SLOT_DEFS = {
     '__bool__': ('nb_bool', generate_bool_wrapper),
-}
+}  # type: SlotTable
 
 SIDE_TABLES = [
     ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),

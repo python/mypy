@@ -49,6 +49,13 @@ next_op = custom_op(name='next',
                     error_kind=ERR_NEVER,
                     emit=simple_emit('{dest} = PyIter_Next({args[0]});'))
 
+method_new_op = custom_op(name='method_new',
+                          arg_types=[object_rprimitive, object_rprimitive],
+                          result_type=object_rprimitive,
+                          error_kind=ERR_MAGIC,
+                          emit=simple_emit('{dest} = PyMethod_New({args[0]}, {args[1]});'))
+
+
 #
 # Fallback primitive operations that operate on 'object' operands
 #

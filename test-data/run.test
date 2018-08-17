@@ -3115,9 +3115,15 @@ started
 index
 
 [case testDecoratorsMethods]
-from typing import Generator
+from typing import Any, Callable, Iterator
 from contextlib import contextmanager
-from decorators import a
+
+def a(f: Callable[[Any], None]) -> Callable[[Any], None]:
+    def g(a: Any) -> None:
+        print('Entering')
+        f(a)
+        print('Exited')
+    return g
 
 class A:
     @a
@@ -3125,7 +3131,7 @@ class A:
         print('foo')
 
     @contextmanager
-    def generator(self) -> Generator[int, None, None]:
+    def generator(self) -> Iterator[int]:
         try:
             print('contextmanager: entering')
             yield 0
@@ -3143,19 +3149,10 @@ def lol() -> None:
     with A().generator() as g:
         raise Exception
 
-[file decorators.py]
-from typing import Any, Callable
-
-def a(f: Callable[[Any], None]) -> Callable[[Any], None]:
-    def g(a: Any) -> None:
-        print('Entering')
-        f(a)
-        print('Exited')
-    return g
-
 [file driver.py]
 from native import A, lol
 
+A.foo(A())
 A().foo()
 with A().generator() as g:
     print('hello!')
@@ -3170,6 +3167,9 @@ else:
 contextmanager: entering
 hello!
 contextmanager: exited
+Entering
+foo
+Exited
 Entering
 foo
 Exited

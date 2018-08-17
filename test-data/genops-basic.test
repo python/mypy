@@ -2551,6 +2551,20 @@ def c() -> None:
     d()
 
 [out]
+def g_a_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: g_a_obj
     r0 :: a__env
@@ -2599,6 +2613,20 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     g = r2
     return g
+def g_b_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def g_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: g_b_obj
     r0 :: b__env
@@ -2647,6 +2675,20 @@ L0:
     r2.__mypyc_env__ = r0; r3 = is_error
     g = r2
     return g
+def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
     r0 :: __mypyc_c_decorator_helper____env
@@ -2783,6 +2825,20 @@ def a(f: Callable[[], None]) -> Callable[[], None]:
     return g
 
 [out]
+def g_a_obj.__get__(__mypyc_self__, instance, owner):
+    __mypyc_self__, instance, owner :: object
+    r0 :: None
+    r1 :: bool
+    r2 :: object
+L0:
+    r0 = None
+    r1 = instance is r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    return __mypyc_self__
+L2:
+    r2 = method_new __mypyc_self__, instance
+    return r2
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: g_a_obj
     r0 :: a__env
