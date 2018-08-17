@@ -19,7 +19,7 @@ static int CPyLiteralsInit(void)
 {
     static int is_initialized = 0;
     if (is_initialized) return 0;
-
+    
     CPyStatic_unicode_0 = PyUnicode_FromStringAndSize("builtins", 8);
     if (CPyStatic_unicode_0 == NULL)
         return -1;
@@ -128,6 +128,7 @@ CPyL4: ;
     cpy_r_r6 = NULL;
     return cpy_r_r6;
 }
+
 [case testError]
 def f(x: List[int]) -> None: pass
 [out]

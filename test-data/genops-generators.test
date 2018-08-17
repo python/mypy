@@ -1189,12 +1189,15 @@ def normal_generator_obj.__call__(__mypyc_self__, x):
     __mypyc_self__ :: normal_generator_obj
     x :: int
     r0 :: generator__env
-    r1, r2 :: int
+    normal, r1 :: object
+    r2, r3 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
-    r1 = r0.a
-    r2 = r1 + x :: int
-    return r2
+    r1 = r0.normal
+    normal = r1
+    r2 = r0.a
+    r3 = r2 + x :: int
+    return r3
 def generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
     __mypyc_self__ :: generator__gen
     type, value, traceback :: object
@@ -1456,36 +1459,40 @@ def generator_normal_obj.__call__(__mypyc_self__, x):
     __mypyc_self__ :: generator_normal_obj
     x :: int
     r0 :: normal__env
-    r1 :: generator_normal_env
-    r2, r3 :: bool
-    r4 :: generator_normal_gen
-    r5 :: bool
-    r6 :: int
-    r7 :: bool
+    generator, r1 :: object
+    r2 :: generator_normal_env
+    r3, r4 :: bool
+    r5 :: generator_normal_gen
+    r6 :: bool
+    r7 :: int
+    r8 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
-    r1 = generator_normal_env()
-    r1.__mypyc_env__ = r0; r2 = is_error
-    r1.x = x; r3 = is_error
-    r4 = generator_normal_gen()
-    r4.__mypyc_env__ = r1; r5 = is_error
-    r6 = 0
-    r1.__mypyc_next_label__ = r6; r7 = is_error
-    return r4
+    r1 = r0.generator
+    generator = r1
+    r2 = generator_normal_env()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    r2.x = x; r4 = is_error
+    r5 = generator_normal_gen()
+    r5.__mypyc_env__ = r2; r6 = is_error
+    r7 = 0
+    r2.__mypyc_next_label__ = r7; r8 = is_error
+    return r5
 def normal(a):
     a :: int
     r0 :: normal__env
     r1 :: bool
     r2 :: generator_normal_obj
-    r3 :: bool
-    generator :: object
+    r3, r4 :: bool
+    r5 :: object
 L0:
     r0 = normal__env()
     r0.a = a; r1 = is_error
     r2 = generator_normal_obj()
     r2.__mypyc_env__ = r0; r3 = is_error
-    generator = r2
-    return generator
+    r0.generator = r2; r4 = is_error
+    r5 = r0.generator
+    return r5
 def generator_triple_obj.__get__(__mypyc_self__, instance, owner):
     __mypyc_self__, instance, owner :: object
     r0 :: None
@@ -1518,18 +1525,21 @@ def inner_triple_generator_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_triple_generator_obj
     r0 :: generator_triple_env
     r1 :: triple__env
-    r2, r3, r4 :: int
-    r5 :: bool
-    r6 :: int
+    inner, r2 :: object
+    r3, r4, r5 :: int
+    r6 :: bool
+    r7 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.__mypyc_env__
-    r2 = r0.x
-    r3 = 1
-    r4 = r2 += r3 :: int
-    r0.x = r4; r5 = is_error
-    r6 = r0.x
-    return r6
+    r2 = r0.inner
+    inner = r2
+    r3 = r0.x
+    r4 = 1
+    r5 = r3 += r4 :: int
+    r0.x = r5; r6 = is_error
+    r7 = r0.x
+    return r7
 def generator_triple_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, traceback):
     __mypyc_self__ :: generator_triple_gen
     type, value, traceback :: object
@@ -1650,32 +1660,36 @@ L4:
 def generator_triple_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: generator_triple_obj
     r0 :: triple__env
-    r1 :: generator_triple_env
-    r2 :: bool
-    r3 :: generator_triple_gen
-    r4 :: bool
-    r5 :: int
-    r6 :: bool
+    generator, r1 :: object
+    r2 :: generator_triple_env
+    r3 :: bool
+    r4 :: generator_triple_gen
+    r5 :: bool
+    r6 :: int
+    r7 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
-    r1 = generator_triple_env()
-    r1.__mypyc_env__ = r0; r2 = is_error
-    r3 = generator_triple_gen()
-    r3.__mypyc_env__ = r1; r4 = is_error
-    r5 = 0
-    r1.__mypyc_next_label__ = r5; r6 = is_error
-    return r3
+    r1 = r0.generator
+    generator = r1
+    r2 = generator_triple_env()
+    r2.__mypyc_env__ = r0; r3 = is_error
+    r4 = generator_triple_gen()
+    r4.__mypyc_env__ = r2; r5 = is_error
+    r6 = 0
+    r2.__mypyc_next_label__ = r6; r7 = is_error
+    return r4
 def triple():
     r0 :: triple__env
     r1 :: generator_triple_obj
-    r2 :: bool
-    generator :: object
+    r2, r3 :: bool
+    r4 :: object
 L0:
     r0 = triple__env()
     r1 = generator_triple_obj()
     r1.__mypyc_env__ = r0; r2 = is_error
-    generator = r1
-    return generator
+    r0.generator = r1; r3 = is_error
+    r4 = r0.generator
+    return r4
 
 [case testYieldTryFinally]
 from typing import Generator

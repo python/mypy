@@ -1843,6 +1843,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if expr.kind == LDEF:
             # TODO: Behavior currently only defined for Var and FuncDef node types.
             return self.read(self.get_assignment_target(expr), expr.line)
+
         return self.load_global(expr)
 
     def is_module_member_expr(self, expr: MemberExpr) -> bool:
@@ -3332,15 +3333,27 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             index -= 1
 
     def load_env_registers(self) -> None:
-        """Loads the registers for a given FuncDef.
+        """Loads the registers for the current FuncItem being visited.
 
-        Adds the arguments of the FuncDef to the environment. If the FuncDef is nested inside of
-        another function, then this also loads all of the outer environments of the FuncDef into
+        Adds the arguments of the FuncItem to the environment. If the FuncItem is nested inside of
+        another function, then this also loads all of the outer environments of the FuncItem into
         registers so that they can be used when accessing free variables.
         """
         self.add_args_to_env(local=True)
-        if self.fn_info.is_nested:
-            self.load_outer_envs(self.fn_info.callable_class)
+
+        fn_info = self.fn_info
+        fitem = fn_info.fitem
+        if fn_info.is_nested:
+            self.load_outer_envs(fn_info.callable_class)
+            # If this is a FuncDef, then make sure to load the FuncDef into its own environment
+            # class so that the function can be called recursively.
+            if isinstance(fitem, FuncDef):
+                target = self.environment.add_local_reg(fitem, object_rprimitive)
+                prev_env = self.fn_infos[-2].env_class
+                assert fitem.type is not None
+                prev_env.attributes[fitem.name()] = self.type_to_rtype(fitem.type)
+                val = self.add(GetAttr(fn_info.callable_class.prev_env_reg, fitem.name(), -1))
+                self.assign(target, val, -1)
 
     def add_var_to_env_class(self,
                              var: SymbolNode,
@@ -3880,6 +3893,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         if self.fn_info.is_generator:
             return self.add_var_to_env_class(fdef, object_rprimitive, self.fn_info.generator_class,
                                              reassign=False)
+
+        # If the given FuncDef is nested (i.e. if the parent function contains nested functions),
+        # then add the FuncDef to the parent function's environment class.
+        if self.fn_info.contains_nested:
+            if self.fn_info.is_nested:
+                return self.add_var_to_env_class(fdef, object_rprimitive,
+                                                 self.fn_info.callable_class, reassign=False)
+            return self.add_var_to_env_class(fdef, object_rprimitive, self.fn_info, reassign=False)
 
         return self.environment.add_local_reg(fdef, object_rprimitive)
 
