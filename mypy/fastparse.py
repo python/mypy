@@ -2,8 +2,13 @@ from functools import wraps
 import sys
 
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
+MYPY = False
+if MYPY:
+    import typing  # for typing.Type, which conflicts with types.Type
+    from typing import ClassVar
+
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
 )
@@ -212,7 +217,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }
+    }  # type: ClassVar[Dict[typing.Type[ast3.AST], str]]
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -232,7 +237,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }
+    }  # type: ClassVar[Dict[typing.Type[ast3.AST], str]]
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -257,7 +262,7 @@ class ASTConverter(ast3.NodeTransformer):
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
         current_overload = []  # type: List[OverloadPart]
-        current_overload_name = None
+        current_overload_name = None  # type: Optional[str]
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))

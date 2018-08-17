@@ -6,6 +6,9 @@ from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable,
     Sequence, Any, Iterator
 )
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -423,15 +426,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
                  'builtins.set': ['add', 'discard'],
-                 }
+                 }  # type: ClassVar[Dict[str, List[str]]]
     container_args = {'builtins.list': {'extend': ['builtins.list']},
                       'builtins.dict': {'update': ['builtins.dict']},
                       'builtins.set': {'update': ['builtins.set', 'builtins.list']},
-                      }
+                      }  # type: ClassVar[Dict[str, Dict[str, List[str]]]]
 
     def try_infer_partial_type(self, e: CallExpr) -> None:
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
-            var = cast(Var, e.callee.expr.node)
+            var = e.callee.expr.node
+            if not isinstance(var, Var):
+                return
             partial_types = self.chk.find_partial_types(var)
             if partial_types is not None and not self.chk.current_node_deferred:
                 partial_type = var.type
@@ -1497,7 +1502,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert types, "Trying to merge no callables"
         if not all(isinstance(c, CallableType) for c in types):
             return AnyType(TypeOfAny.special_form)
-        callables = cast(List[CallableType], types)
+        callables = cast(Sequence[CallableType], types)
         if len(callables) == 1:
             return callables[0]
 
@@ -1741,7 +1746,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Comparison expressions are type checked consecutive-pair-wise
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
-        result = None
+        result = None  # type: Optional[Type]
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
@@ -3569,7 +3574,7 @@ def map_formals_to_actuals(caller_kinds: List[int],
 
 
 def merge_typevars_in_callables_by_name(
-        callables: List[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
+        callables: Sequence[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
     """Takes all the typevars present in the callables and 'combines' the ones with the same name.
 
     For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and

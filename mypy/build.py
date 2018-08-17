@@ -31,6 +31,9 @@ import errno
 
 from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 from mypy import sitepkgs
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
@@ -55,6 +58,8 @@ from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
 from mypy.typestate import TypeState, reset_global_state
+
+from mypy.mypyc_hacks import BuildManagerBase
 
 
 # Switch to True to produce debug output related to fine-grained incremental
@@ -658,7 +663,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class BuildManager:
+class BuildManager(BuildManagerBase):
     """This class holds shared state for building a mypy program.
 
     It is used to coordinate parsing, import processing, semantic
@@ -703,6 +708,7 @@ class BuildManager:
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
                  ) -> None:
+        super().__init__()
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -727,7 +733,6 @@ class BuildManager:
         self.flush_errors = flush_errors
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
-        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
 
@@ -887,37 +892,6 @@ class BuildManager:
                     options: Options) -> None:
         if self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
-
-    def log(self, *message: str) -> None:
-        if self.options.verbosity >= 1:
-            if message:
-                print('LOG: ', *message, file=sys.stderr)
-            else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
-
-    def log_fine_grained(self, *message: str) -> None:
-        if self.options.verbosity >= 1:
-            self.log('fine-grained:', *message)
-        elif DEBUG_FINE_GRAINED:
-            # Output log in a simplified format that is quick to browse.
-            if message:
-                print(*message, file=sys.stderr)
-            else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
-
-    def trace(self, *message: str) -> None:
-        if self.options.verbosity >= 2:
-            print('TRACE:', *message, file=sys.stderr)
-            sys.stderr.flush()
-
-    def add_stats(self, **kwds: Any) -> None:
-        for key, value in kwds.items():
-            if key in self.stats:
-                self.stats[key] += value
-            else:
-                self.stats[key] = value
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
@@ -1310,7 +1284,8 @@ def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
-def atomic_write(filename: str, *lines: str) -> bool:
+def atomic_write(filename: str, line1: str, line2: str) -> bool:
+    lines = [line1, line2]
     tmp_filename = filename + '.' + random_string()
     try:
         with open(tmp_filename, 'w') as f:
@@ -1762,7 +1737,7 @@ class State:
     """
 
     manager = None  # type: BuildManager
-    order_counter = 0  # Class variable
+    order_counter = 0  # type: ClassVar[int]
     order = None  # type: int  # Order in which modules were encountered
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
@@ -1915,6 +1890,11 @@ class State:
             self.parse_file()
             self.compute_dependencies()
             self.child_modules = set()
+
+    @property
+    def xmeta(self) -> CacheMeta:
+        assert self.meta, "missing meta on allegedly fresh module"
+        return self.meta
 
     def add_ancestors(self) -> None:
         if self.path is not None:
@@ -2753,10 +2733,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
     return graph
 
 
-class FreshState(State):
-    meta = None  # type: CacheMeta
-
-
 def process_graph(graph: Graph, manager: BuildManager) -> None:
     """Process everything in dependency order."""
     sccs = sorted_components(graph)
@@ -2811,25 +2787,24 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if fresh:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
-            fresh_graph = cast(Dict[str, FreshState], graph)
-            oldest_in_scc = min(fresh_graph[id].meta.data_mtime for id in scc)
+            oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
             viable = {id for id in stale_deps if graph[id].meta is not None}
-            newest_in_deps = 0 if not viable else max(fresh_graph[dep].meta.data_mtime
+            newest_in_deps = 0 if not viable else max(graph[dep].xmeta.data_mtime
                                                       for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | viable, key=lambda id: fresh_graph[id].meta.data_mtime)
+                all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
                 for id in all_ids:
                     if id in scc:
-                        if fresh_graph[id].meta.data_mtime < newest_in_deps:
+                        if graph[id].xmeta.data_mtime < newest_in_deps:
                             key = "*id:"
                         else:
                             key = "id:"
                     else:
-                        if fresh_graph[id].meta.data_mtime > oldest_in_scc:
+                        if graph[id].xmeta.data_mtime > oldest_in_scc:
                             key = "+dep:"
                         else:
                             key = "dep:"
-                    manager.trace(" %5s %.0f %s" % (key, fresh_graph[id].meta.data_mtime, id))
+                    manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
             if manager.options.quick_and_dirty and stale_deps:
