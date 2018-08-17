@@ -56,6 +56,8 @@ from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
 from mypy.typestate import TypeState, reset_global_state
 
+from mypy.mypyc_hacks import BuildManagerBase
+
 
 # Switch to True to produce debug output related to fine-grained incremental
 # mode only that is useful during development. This produces only a subset of
@@ -658,7 +660,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class BuildManager:
+class BuildManager(BuildManagerBase):
     """This class holds shared state for building a mypy program.
 
     It is used to coordinate parsing, import processing, semantic
@@ -703,6 +705,7 @@ class BuildManager:
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
                  ) -> None:
+        super().__init__()
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -727,7 +730,6 @@ class BuildManager:
         self.flush_errors = flush_errors
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
-        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.fscache)
 
@@ -887,37 +889,6 @@ class BuildManager:
                     options: Options) -> None:
         if self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
-
-    def log(self, *message: str) -> None:
-        if self.options.verbosity >= 1:
-            if message:
-                print('LOG: ', *message, file=sys.stderr)
-            else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
-
-    def log_fine_grained(self, *message: str) -> None:
-        if self.options.verbosity >= 1:
-            self.log('fine-grained:', *message)
-        elif DEBUG_FINE_GRAINED:
-            # Output log in a simplified format that is quick to browse.
-            if message:
-                print(*message, file=sys.stderr)
-            else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
-
-    def trace(self, *message: str) -> None:
-        if self.options.verbosity >= 2:
-            print('TRACE:', *message, file=sys.stderr)
-            sys.stderr.flush()
-
-    def add_stats(self, **kwds: Any) -> None:
-        for key, value in kwds.items():
-            if key in self.stats:
-                self.stats[key] += value
-            else:
-                self.stats[key] = value
 
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
@@ -1310,7 +1281,8 @@ def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
-def atomic_write(filename: str, *lines: str) -> bool:
+def atomic_write(filename: str, line1: str, line2: str) -> bool:
+    lines = [line1, line2]
     tmp_filename = filename + '.' + random_string()
     try:
         with open(tmp_filename, 'w') as f:
