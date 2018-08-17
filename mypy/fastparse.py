@@ -72,6 +72,13 @@ TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 
+# Older versions of typing don't allow using overload outside stubs,
+# so provide a dummy.
+if not MYPY and sys.version_info < (3, 6):
+    def overload(x: Any) -> Any:  # noqa
+        return x
+
+
 def parse(source: Union[str, bytes],
           fnam: str,
           module: Optional[str],
@@ -887,42 +894,40 @@ class ASTConverter(ast3.NodeTransformer):
         # unicode.
         return StrExpr(n.s)
 
-    # Only available with typed_ast >= 0.6.2
-    if hasattr(ast3, 'JoinedStr'):
-        # JoinedStr(expr* values)
-        @with_line
-        def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
-            # Each of n.values is a str or FormattedValue; we just concatenate
-            # them all using ''.join.
-            empty_string = StrExpr('')
-            empty_string.set_line(n.lineno, n.col_offset)
-            strs_to_join = ListExpr(self.translate_expr_list(n.values))
-            strs_to_join.set_line(empty_string)
-            join_method = MemberExpr(empty_string, 'join')
-            join_method.set_line(empty_string)
-            result_expression = CallExpr(join_method,
-                                         [strs_to_join],
-                                         [ARG_POS],
-                                         [None])
-            return result_expression
+    # JoinedStr(expr* values)
+    @with_line
+    def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
+        # Each of n.values is a str or FormattedValue; we just concatenate
+        # them all using ''.join.
+        empty_string = StrExpr('')
+        empty_string.set_line(n.lineno, n.col_offset)
+        strs_to_join = ListExpr(self.translate_expr_list(n.values))
+        strs_to_join.set_line(empty_string)
+        join_method = MemberExpr(empty_string, 'join')
+        join_method.set_line(empty_string)
+        result_expression = CallExpr(join_method,
+                                     [strs_to_join],
+                                     [ARG_POS],
+                                     [None])
+        return result_expression
 
-        # FormattedValue(expr value)
-        @with_line
-        def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
-            # A FormattedValue is a component of a JoinedStr, or it can exist
-            # on its own. We translate them to individual '{}'.format(value)
-            # calls -- we don't bother with the conversion/format_spec fields.
-            exp = self.visit(n.value)
-            exp.set_line(n.lineno, n.col_offset)
-            format_string = StrExpr('{}')
-            format_string.set_line(n.lineno, n.col_offset)
-            format_method = MemberExpr(format_string, 'format')
-            format_method.set_line(format_string)
-            result_expression = CallExpr(format_method,
-                                         [exp],
-                                         [ARG_POS],
-                                         [None])
-            return result_expression
+    # FormattedValue(expr value)
+    @with_line
+    def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
+        # A FormattedValue is a component of a JoinedStr, or it can exist
+        # on its own. We translate them to individual '{}'.format(value)
+        # calls -- we don't bother with the conversion/format_spec fields.
+        exp = self.visit(n.value)
+        exp.set_line(n.lineno, n.col_offset)
+        format_string = StrExpr('{}')
+        format_string.set_line(n.lineno, n.col_offset)
+        format_method = MemberExpr(format_string, 'format')
+        format_method.set_line(format_string)
+        result_expression = CallExpr(format_method,
+                                     [exp],
+                                     [ARG_POS],
+                                     [None])
+        return result_expression
 
     # Bytes(bytes s)
     @with_line
@@ -1003,7 +1008,13 @@ class TypeConverter(ast3.NodeTransformer):
         self.line = line
         self.node_stack = []  # type: List[ast3.AST]
 
-    def _visit_implementation(self, node: Optional[ast3.AST]) -> Optional[Type]:
+    @overload
+    def visit(self, node: ast3.expr) -> Type: ...
+
+    @overload  # noqa
+    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
+
+    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1012,19 +1023,6 @@ class TypeConverter(ast3.NodeTransformer):
             return super().visit(node)
         finally:
             self.node_stack.pop()
-
-    if sys.version_info >= (3, 6):
-        @overload
-        def visit(self, node: ast3.expr) -> Type: ...
-
-        @overload  # noqa
-        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
-
-        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
-            return self._visit_implementation(node)
-    else:
-        def visit(self, node: Optional[ast3.AST]) -> Any:
-            return self._visit_implementation(node)
 
     def parent(self) -> Optional[ast3.AST]:
         """Return the AST node above the one we are processing"""
