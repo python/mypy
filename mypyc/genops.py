@@ -37,7 +37,7 @@ from mypy.nodes import (
 import mypy.nodes
 from mypy.types import (
     Type, Instance, CallableType, NoneTyp, TupleType, UnionType, AnyType, TypeVarType, PartialType,
-    TypeType, FunctionLike, Overloaded, TypeOfAny, UninhabitedType,
+    TypeType, FunctionLike, Overloaded, TypeOfAny, UninhabitedType, UnboundType,
 )
 from mypy.visitor import ExpressionVisitor, StatementVisitor
 from mypy.subtypes import is_named_instance
@@ -298,7 +298,7 @@ class Mapper:
             return self.type_to_rtype(typ.var.type)
         elif isinstance(typ, Overloaded):
             return object_rprimitive
-        elif isinstance(typ, UninhabitedType):
+        elif isinstance(typ, (UninhabitedType, UnboundType)):
             # Sure, whatever!
             return object_rprimitive
         assert False, '%s unsupported' % type(typ)
