@@ -67,6 +67,13 @@ TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
 TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 
+# Older versions of typing don't allow using overload outside stubs,
+# so provide a dummy.
+if sys.version_info < (3, 6):
+    def overload(x: Any) -> Any:  # noqa
+        return x
+
+
 def parse(source: Union[str, bytes],
           fnam: str,
           module: Optional[str],
