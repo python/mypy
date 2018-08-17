@@ -74,7 +74,7 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 # Older versions of typing don't allow using overload outside stubs,
 # so provide a dummy.
-if sys.version_info < (3, 6):
+if not MYPY and sys.version_info < (3, 6):
     def overload(x: Any) -> Any:  # noqa
         return x
 
