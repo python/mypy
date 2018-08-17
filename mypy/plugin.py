@@ -3,6 +3,7 @@
 from abc import abstractmethod
 from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
+from mypy_extensions import trait
 
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
@@ -17,6 +18,7 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 
 
+@trait
 class TypeAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
@@ -47,6 +49,7 @@ AnalyzeTypeContext = NamedTuple(
         ('api', TypeAnalyzerPluginInterface)])
 
 
+@trait
 class CheckerPluginInterface:
     """Interface for accessing type checker functionality in plugins."""
 
@@ -57,6 +60,7 @@ class CheckerPluginInterface:
         raise NotImplementedError
 
 
+@trait
 class SemanticAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 

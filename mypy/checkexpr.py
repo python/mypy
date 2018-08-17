@@ -2803,14 +2803,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # If any of the comprehensions use async for, the expression will return an async generator
         # object
         if any(e.is_async):
-            typ = 'typing.AsyncIterator'
+            typ = 'typing.AsyncGenerator'
+            # received type is always None in async generator expressions
+            additional_args = [NoneTyp()]  # type: List[Type]
         else:
-            typ = 'typing.Iterator'
-        return self.check_generator_or_comprehension(e, typ, '<generator>')
+            typ = 'typing.Generator'
+            # received type and returned type are None
+            additional_args = [NoneTyp(), NoneTyp()]
+        return self.check_generator_or_comprehension(e, typ, '<generator>',
+                                                     additional_args=additional_args)
 
     def check_generator_or_comprehension(self, gen: GeneratorExpr,
                                          type_name: str,
-                                         id_for_messages: str) -> Type:
+                                         id_for_messages: str,
+                                         additional_args: List[Type] = []) -> Type:
         """Type check a generator expression or a list comprehension."""
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(gen)
@@ -2818,12 +2824,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
             tvdef = TypeVarDef('T', 'T', -1, [], self.object_type())
-            tv = TypeVarType(tvdef)
+            tv_list = [TypeVarType(tvdef)]  # type: List[Type]
             constructor = CallableType(
-                [tv],
+                tv_list,
                 [nodes.ARG_POS],
                 [None],
-                self.chk.named_generic_type(type_name, [tv]),
+                self.chk.named_generic_type(type_name, tv_list + additional_args),
                 self.chk.named_type('builtins.function'),
                 name=id_for_messages,
                 variables=[tvdef])

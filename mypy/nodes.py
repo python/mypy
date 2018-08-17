@@ -6,6 +6,7 @@ from collections import OrderedDict, defaultdict
 from typing import (
     Any, TypeVar, List, Tuple, cast, Set, Dict, Union, Optional, Callable, Sequence,
 )
+from mypy_extensions import trait
 
 MYPY = False
 if MYPY:
@@ -144,6 +145,7 @@ class Node(Context):
         raise RuntimeError('Not implemented')
 
 
+@trait
 class Statement(Node):
     """A statement node."""
 
@@ -153,6 +155,7 @@ class Statement(Node):
         raise RuntimeError('Not implemented')
 
 
+@trait
 class Expression(Node):
     """An expression node."""
 
@@ -168,6 +171,7 @@ class Expression(Node):
 Lvalue = Expression
 
 
+@trait
 class SymbolNode(Node):
     """Nodes that can be stored in a symbol table."""
 
