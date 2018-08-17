@@ -6,6 +6,9 @@ from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable,
     Sequence, Any, Iterator
 )
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -423,11 +426,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
                  'builtins.set': ['add', 'discard'],
-                 }
+                 }  # type: ClassVar[Dict[str, List[str]]]
     container_args = {'builtins.list': {'extend': ['builtins.list']},
                       'builtins.dict': {'update': ['builtins.dict']},
                       'builtins.set': {'update': ['builtins.set', 'builtins.list']},
-                      }
+                      }  # type: ClassVar[Dict[str, Dict[str, List[str]]]]
 
     def try_infer_partial_type(self, e: CallExpr) -> None:
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
