@@ -6,6 +6,9 @@ from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable,
     Sequence, Any, Iterator
 )
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -382,13 +385,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_dict(self, callee: TypedDictType,
                                        kwargs: DictExpr,
                                        context: Context) -> Type:
-        item_name_exprs = [item[0] for item in kwargs.items]
         item_args = [item[1] for item in kwargs.items]
 
         item_names = []  # List[str]
-        for item_name_expr in item_name_exprs:
+        for item_name_expr, item_arg in kwargs.items:
             if not isinstance(item_name_expr, StrExpr):
-                self.chk.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, item_name_expr)
+                key_context = item_name_expr or item_arg
+                self.chk.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
                 return AnyType(TypeOfAny.from_error)
             item_names.append(item_name_expr.value)
 
@@ -423,15 +426,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Types and methods that can be used to infer partial types.
     item_args = {'builtins.list': ['append'],
                  'builtins.set': ['add', 'discard'],
-                 }
+                 }  # type: ClassVar[Dict[str, List[str]]]
     container_args = {'builtins.list': {'extend': ['builtins.list']},
                       'builtins.dict': {'update': ['builtins.dict']},
                       'builtins.set': {'update': ['builtins.set', 'builtins.list']},
-                      }
+                      }  # type: ClassVar[Dict[str, Dict[str, List[str]]]]
 
     def try_infer_partial_type(self, e: CallExpr) -> None:
         if isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, RefExpr):
-            var = cast(Var, e.callee.expr.node)
+            var = e.callee.expr.node
+            if not isinstance(var, Var):
+                return
             partial_types = self.chk.find_partial_types(var)
             if partial_types is not None and not self.chk.current_node_deferred:
                 partial_type = var.type
@@ -1497,7 +1502,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         assert types, "Trying to merge no callables"
         if not all(isinstance(c, CallableType) for c in types):
             return AnyType(TypeOfAny.special_form)
-        callables = cast(List[CallableType], types)
+        callables = cast(Sequence[CallableType], types)
         if len(callables) == 1:
             return callables[0]
 
@@ -1741,7 +1746,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Comparison expressions are type checked consecutive-pair-wise
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
-        result = None
+        result = None  # type: Optional[Type]
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
@@ -2803,14 +2808,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # If any of the comprehensions use async for, the expression will return an async generator
         # object
         if any(e.is_async):
-            typ = 'typing.AsyncIterator'
+            typ = 'typing.AsyncGenerator'
+            # received type is always None in async generator expressions
+            additional_args = [NoneTyp()]  # type: List[Type]
         else:
-            typ = 'typing.Iterator'
-        return self.check_generator_or_comprehension(e, typ, '<generator>')
+            typ = 'typing.Generator'
+            # received type and returned type are None
+            additional_args = [NoneTyp(), NoneTyp()]
+        return self.check_generator_or_comprehension(e, typ, '<generator>',
+                                                     additional_args=additional_args)
 
     def check_generator_or_comprehension(self, gen: GeneratorExpr,
                                          type_name: str,
-                                         id_for_messages: str) -> Type:
+                                         id_for_messages: str,
+                                         additional_args: List[Type] = []) -> Type:
         """Type check a generator expression or a list comprehension."""
         with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             self.check_for_comp(gen)
@@ -2818,12 +2829,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Infer the type of the list comprehension by using a synthetic generic
             # callable type.
             tvdef = TypeVarDef('T', 'T', -1, [], self.object_type())
-            tv = TypeVarType(tvdef)
+            tv_list = [TypeVarType(tvdef)]  # type: List[Type]
             constructor = CallableType(
-                [tv],
+                tv_list,
                 [nodes.ARG_POS],
                 [None],
-                self.chk.named_generic_type(type_name, [tv]),
+                self.chk.named_generic_type(type_name, tv_list + additional_args),
                 self.chk.named_type('builtins.function'),
                 name=id_for_messages,
                 variables=[tvdef])
@@ -3563,7 +3574,7 @@ def map_formals_to_actuals(caller_kinds: List[int],
 
 
 def merge_typevars_in_callables_by_name(
-        callables: List[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
+        callables: Sequence[CallableType]) -> Tuple[List[CallableType], List[TypeVarDef]]:
     """Takes all the typevars present in the callables and 'combines' the ones with the same name.
 
     For example, suppose we have two callables with signatures "f(x: T, y: S) -> T" and

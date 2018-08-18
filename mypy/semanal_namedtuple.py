@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import Tuple, List, Dict, Mapping, Optional, cast
+from typing import Tuple, List, Dict, Mapping, Optional, Union, cast
 
 from mypy.types import (
     Type, TupleType, NoneTyp, AnyType, TypeOfAny, TypeVarType, TypeVarDef, CallableType, TypeType
@@ -158,7 +158,7 @@ class NamedTupleAnalyzer:
             info = self.build_namedtuple_typeinfo(name, [], [], {})
             self.store_namedtuple_info(info, name, call, is_typed)
             return info
-        name = cast(StrExpr, call.args[0]).value
+        name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         if name != var_name or is_func_scope:
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
@@ -226,7 +226,7 @@ class NamedTupleAnalyzer:
         if not isinstance(args[1], (ListExpr, TupleExpr)):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
-                str_expr = cast(StrExpr, args[1])
+                str_expr = args[1]
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 return self.fail_namedtuple_arg(

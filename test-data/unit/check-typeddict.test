@@ -1131,6 +1131,12 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x'})  # E: TypedDict() expects a dictionary literal as the second argument
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictTypeWithKwargs]
+from mypy_extensions import TypedDict
+d = {'x': int, 'y': int}
+Point = TypedDict('Point', {**d})  # E: Invalid TypedDict() field name
+[builtins fixtures/dict.pyi]
+
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
 [case testCannotCreateTypedDictTypeWithNonpositionalArgs]

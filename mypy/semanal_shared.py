@@ -2,6 +2,7 @@
 
 from abc import abstractmethod, abstractproperty
 from typing import Optional, List, Callable
+from mypy_extensions import trait
 
 from mypy.nodes import (
     Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF
@@ -22,6 +23,7 @@ PRIORITY_FALLBACKS = 1
 PRIORITY_TYPEVAR_VALUES = 2
 
 
+@trait
 class SemanticAnalyzerCoreInterface:
     """A core abstract interface to generic semantic analyzer functionality.
 
@@ -52,6 +54,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
 
+@trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     """A limited abstract interface to some generic semantic analyzer pass 2 functionality.
 
