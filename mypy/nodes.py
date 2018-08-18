@@ -1694,9 +1694,9 @@ class ListExpr(Expression):
 class DictExpr(Expression):
     """Dictionary literal expression {key: value, ...}."""
 
-    items = None  # type: List[Tuple[Expression, Expression]]
+    items = None  # type: List[Tuple[Optional[Expression], Expression]]
 
-    def __init__(self, items: List[Tuple[Expression, Expression]]) -> None:
+    def __init__(self, items: List[Tuple[Optional[Expression], Expression]]) -> None:
         super().__init__()
         self.items = items
 

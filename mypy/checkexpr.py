@@ -385,13 +385,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_dict(self, callee: TypedDictType,
                                        kwargs: DictExpr,
                                        context: Context) -> Type:
-        item_name_exprs = [item[0] for item in kwargs.items]
         item_args = [item[1] for item in kwargs.items]
 
         item_names = []  # List[str]
-        for item_name_expr in item_name_exprs:
+        for item_name_expr, item_arg in kwargs.items:
             if not isinstance(item_name_expr, StrExpr):
-                self.chk.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, item_name_expr)
+                key_context = item_name_expr or item_arg
+                self.chk.fail(messages.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
                 return AnyType(TypeOfAny.from_error)
             item_names.append(item_name_expr.value)
 

@@ -403,7 +403,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return ListExpr(self.expressions(node.items))
 
     def visit_dict_expr(self, node: DictExpr) -> DictExpr:
-        return DictExpr([(self.expr(key), self.expr(value))
+        return DictExpr([(self.expr(key) if key else None, self.expr(value))
                          for key, value in node.items])
 
     def visit_tuple_expr(self, node: TupleExpr) -> TupleExpr:
