@@ -616,6 +616,18 @@ main:3: error: Incompatible types in assignment (expression has type "B", variab
 main:4: error: Incompatible types in assignment (expression has type "A", variable has type "D")
 main:5: error: Incompatible types in assignment (expression has type "D2", variable has type "D")
 
+[case testClassmethodBeforeInit]
+class C:
+    @classmethod
+    def create(cls, arg: int) -> 'C':
+        return cls(arg)
+
+    def __init__(self, arg: 'int') -> None:
+        self._arg: int = arg
+
+reveal_type(C.create)  # E: Revealed type is 'def (arg: builtins.int) -> __main__.C'
+[builtins fixtures/classmethod.pyi]
+
 
 -- Attribute access in class body
 -- ------------------------------

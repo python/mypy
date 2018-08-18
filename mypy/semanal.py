@@ -214,6 +214,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     # postpone_nested_functions_stack[-1] == FUNCTION_FIRST_PHASE_POSTPONE_SECOND.
     postponed_functions_stack = None  # type: List[List[Node]]
 
+    # Classmethod definitions that couldn't be prepared yet
+    # until the class analysis is complete
+    postponed_classmethods_stack = None  # type: List[List[FuncDef]]
+
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
@@ -246,6 +250,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.missing_modules = missing_modules
         self.postpone_nested_functions_stack = [FUNCTION_BOTH_PHASES]
         self.postponed_functions_stack = []
+        self.postponed_classmethods_stack = []
         self.all_exports = set()  # type: Set[str]
         self.plugin = plugin
         # If True, process function definitions. If False, don't. This is used
@@ -456,6 +461,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     assert ret_type is not None, "Internal error: typing.Coroutine not found"
                     defn.type = defn.type.copy_modified(ret_type=ret_type)
 
+    def prepare_postponed_classmethods_signature(self) -> None:
+        for func in self.postponed_classmethods_stack[-1]:
+            functype = func.type
+            assert isinstance(functype, CallableType)
+            assert self.type, "Classmethod singatures preparation outside of a class"
+            leading_type = self.class_type(self.type)
+            func.type = replace_implicit_first_type(functype, leading_type)
+
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
@@ -467,10 +480,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
                     if func.is_class or func.name() in ('__new__', '__init_subclass__'):
-                        leading_type = self.class_type(info)
+                        self.postponed_classmethods_stack[-1].append(func)
                     else:
                         leading_type = fill_typevars(info)
-                    func.type = replace_implicit_first_type(functype, leading_type)
+                        func.type = replace_implicit_first_type(functype, leading_type)
 
     def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
@@ -834,6 +847,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.locals.append(None)  # Add class scope
         self.block_depth.append(-1)  # The class body increments this to 0
         self.postpone_nested_functions_stack.append(FUNCTION_BOTH_PHASES)
+        self.postponed_classmethods_stack.append([])
         self.type = info
 
     def leave_class(self) -> None:
@@ -841,6 +855,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.postpone_nested_functions_stack.pop()
         self.block_depth.pop()
         self.locals.pop()
+        self.prepare_postponed_classmethods_signature()
+        self.postponed_classmethods_stack.pop()
         self.type = self.type_stack.pop()
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:

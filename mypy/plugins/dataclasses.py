@@ -88,23 +88,6 @@ class DataclassTransformer:
                 args=[attr.to_argument(info) for attr in attributes if attr.is_in_init],
                 return_type=NoneTyp(),
             )
-            for stmt in self._ctx.cls.defs.body:
-                # Fix up the types of classmethods since, by default,
-                # they will be based on the parent class' init.
-                if isinstance(stmt, Decorator) and stmt.func.is_class:
-                    func_type = stmt.func.type
-                    if isinstance(func_type, CallableType):
-                        func_type.arg_types[0] = self._ctx.api.class_type(self._ctx.cls.info)
-                if isinstance(stmt, OverloadedFuncDef) and stmt.is_class:
-                    func_type = stmt.type
-                    if isinstance(func_type, Overloaded):
-                        class_type = ctx.api.class_type(ctx.cls.info)
-                        for item in func_type.items():
-                            item.arg_types[0] = class_type
-                        if stmt.impl is not None:
-                            assert isinstance(stmt.impl, Decorator)
-                            if isinstance(stmt.impl.func.type, CallableType):
-                                stmt.impl.func.type.arg_types[0] = class_type
 
         # Add an eq method, but only if the class doesn't already have one.
         if decorator_arguments['eq'] and info.get('__eq__') is None:
