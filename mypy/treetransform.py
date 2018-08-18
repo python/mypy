@@ -105,7 +105,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new = FuncDef(node.name(),
                       [self.copy_argument(arg) for arg in node.arguments],
                       self.block(node.body),
-                      cast(FunctionLike, self.optional_type(node.type)))
+                      cast(Optional[FunctionLike], self.optional_type(node.type)))
 
         self.copy_function_attributes(new, node)
 

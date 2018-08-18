@@ -17,7 +17,12 @@ two in a typesafe way.
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
+MYPY = False
+if MYPY:
+    import typing  # for typing.Type, which conflicts with types.Type
+    from typing import ClassVar
+
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
 )
@@ -193,7 +198,7 @@ class ASTConverter(ast27.NodeTransformer):
         ast27.BitXor: '^',
         ast27.BitAnd: '&',
         ast27.FloorDiv: '//'
-    }
+    }  # type: ClassVar[Dict[typing.Type[ast27.AST], str]]
 
     def from_operator(self, op: ast27.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -215,7 +220,7 @@ class ASTConverter(ast27.NodeTransformer):
         ast27.IsNot: 'is not',
         ast27.In: 'in',
         ast27.NotIn: 'not in'
-    }
+    }  # type: ClassVar[Dict[typing.Type[ast27.AST], str]]
 
     def from_comp_operator(self, op: ast27.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -240,7 +245,7 @@ class ASTConverter(ast27.NodeTransformer):
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
         current_overload = []  # type: List[OverloadPart]
-        current_overload_name = None
+        current_overload_name = None  # type: Optional[str]
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))

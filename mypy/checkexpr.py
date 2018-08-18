@@ -720,8 +720,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res = res.copy_modified(from_type_type=True)
             return expand_type_by_instance(res, item)
         if isinstance(item, UnionType):
-            return UnionType([self.analyze_type_type_callee(item, context)
-                              for item in item.relevant_items()], item.line)
+            return UnionType([self.analyze_type_type_callee(x, context)
+                              for x in item.relevant_items()], item.line)
         if isinstance(item, TypeVarType):
             # Pretend we're calling the typevar's upper bound,
             # i.e. its constructor (a poor approximation for reality,
