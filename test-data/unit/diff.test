@@ -944,3 +944,19 @@ class A:
 [out]
 __main__.A.(abstract)
 __main__.A.g
+
+[case testFinalFlagsTriggerVar]
+
+[out]
+
+[case testFinalFlagsTriggerInstanceVar]
+
+[out]
+
+[case testFinalFlagsTriggerFunc]
+
+[out]
+
+[case testFinalFlagsTriggerMethod]
+
+[out]

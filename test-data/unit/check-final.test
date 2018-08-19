@@ -1,0 +1,228 @@
+-- Test case for final qualifier
+--
+
+-- Definitions
+
+[case testFinalDefiningModuleVar]
+from typing import Final
+x: Final = int()
+y: Final[float] = int()
+z: Final[int] = int()
+bad: Final[str] = str()
+reveal_type(x)
+reveal_type(y)
+reveal_type(z)
+[out]
+
+[case testFinalDefiningInstanceVar]
+from typing import Final
+class C:
+    x: Final = int()
+    y: Final[float] = int()
+    z: Final[int] = int()
+    bad: Final[str] = str()
+reveal_type(C.x)
+reveal_type(C.y)
+reveal_type(C.z)
+reveal_type(C().x)
+reveal_type(C().y)
+reveal_type(C().z)
+[out]
+
+[case testFinalDefiningInstanceVarImplicit]
+from typing import Final, Tuple, Any
+
+class C:
+    def __init__(self, x: Tuple[int, Any]) -> None:
+        self.x: Final = x
+        self.y: Final[float] = 1
+reveal_type(C((1, 2)).x)
+reveal_type(C((1, 2)).y)
+[out]
+
+[case testFinalDefiningInstanceVarStubs]
+# Allow skipping r.h.s.
+
+[out]
+
+[case testFinalDefiningFunc]
+
+[out]
+
+[case testFinalDefiningFuncOverloaded]
+
+[out]
+
+[case testFinalDefiningFuncOverloadedStubs]
+
+[out]
+
+[case testFinalDefiningMeth]
+
+[out]
+
+[case testFinalDefiningProperty]
+
+[out]
+
+[case testFinalDefiningOuterOnly]
+from typing import Final, Callable, Tuple
+x: Tuple[Final]
+y: Callable[[], Tuple[Final[int]]]
+[out]
+
+[case testFinalDefiningNotInMethod]
+
+[out]
+
+[case testFinalDefiningNoRhs]
+from typing import Final
+x: Final
+y: Final[int]
+class C:
+    x: Final
+    y: Final[int]
+    def __init__(self) -> None:
+        self.z: Final
+reveal_type(x)
+reveal_type(y)
+reveal_type(C().x)
+reveal_type(C().y)
+reveal_type(C().z)
+[out]
+
+[case testFinalDefiningNoTypevarsExplicit]
+from typing import Final, TypeVar, Generic, Tuple, Any
+
+T = TypeVar('T')
+d: Any
+
+class C(Generic[T]):
+    x: Final[Tuple[T, T]] = d
+[out]
+
+[case testFinalDefiningTypevarsImplicit]
+from typing import Final, TypeVar, Generic, Tuple, Any
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: Tuple[T, T]) -> None:
+        self.x: Final = x
+
+reveal_type(C((1, 2)).x)
+C.x
+[out]
+
+[case testFinalDefiningNotInOtherMethod]
+from typing import Final, Any, Tuple
+
+class C:
+    def meth(self, x: Tuple[int, Any]) -> None:
+        self.x: Final = x
+        self.y: Final[float] = 1
+[out]
+
+-- Reassignments
+
+[case testFinalReassignModuleVar]
+
+[out]
+
+[case testFinalReassignModuleFunc]
+
+[out]
+
+[case testFinalReassignModuleVarExternal]
+
+[out]
+
+[case testFinalReassignModuleFuncExternal]
+
+[out]
+
+[case testFinalReassignModuleFuncOverloaded]
+
+[out]
+
+[case testFinalReassignInstanceVarClassBody]
+
+[out]
+
+[case testFinalReassignInstanceVarInit]
+
+[out]
+
+[case testFinalReassignInstanceVarMethod]
+
+[out]
+
+[case testFinalReassignInstanceVarExternalClass]
+
+[out]
+
+[case testFinalReassignInstanceVarExternalInstance]
+
+[out]
+
+-- Overriding
+
+[case testFinalOverridingVarClassBody]
+
+[out]
+
+[case testFinalOverridingVarInit]
+
+[out]
+
+[case testFinalOverridingVarOtherMethod]
+
+[out]
+
+[case testFinalOverridingVarMultipleInheritance]
+
+[out]
+
+[case testFinalOverridingVarMultipleInheritance2]
+
+[out]
+
+[case testFinalOverridingVarWithMethod]
+
+[out]
+
+[case testFinalOverridingMethodWithVar]
+
+[out]
+
+[case testFinalOverridingMethodWithVarImplicit]
+
+[out]
+
+[case testFinalOverridingMethodMultipleinheritance]
+
+[out]
+
+[case testFinalOverridingMethodMultiplaInheritance2]
+
+[out]
+
+[case testFinalOverridingClassMethod]
+
+[out]
+
+[case testFinalOverridingStaticMethod]
+
+[out]
+
+[case testFinalOverridingProperty]
+
+[out]
+
+[case testFinalAcessingImplicitVarSubclassObject]
+
+[out]
+
+[case testFinalOverridingMethodOverloads]
+
+[out]

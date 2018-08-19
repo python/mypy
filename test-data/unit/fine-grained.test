@@ -7530,3 +7530,5 @@ x = 1
 Func = Callable[..., Any]
 [out]
 ==
+
+-- Test cases for final qualifier
