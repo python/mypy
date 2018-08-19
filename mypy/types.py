@@ -567,7 +567,10 @@ class TypeVarType(Type):
         return visitor.visit_type_var(self)
 
     def erase_to_union_or_bound(self) -> Type:
-        return self.binder.erase_to_union_or_bound()
+        if self.values:
+            return UnionType.make_simplified_union(self.values)
+        else:
+            return self.upper_bound
 
     def __hash__(self) -> int:
         return hash(self.id)
