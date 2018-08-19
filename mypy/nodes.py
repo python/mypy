@@ -378,7 +378,7 @@ class ImportedName(SymbolNode):
 
 
 FUNCBASE_FLAGS = [
-    'is_property', 'is_class', 'is_static',
+    'is_property', 'is_class', 'is_static', 'is_final'
 ]
 
 
@@ -390,7 +390,8 @@ class FuncBase(Node):
                  'info',
                  'is_property',
                  'is_class',        # Uses "@classmethod"
-                 'is_static',       # USes "@staticmethod"
+                 'is_static',       # Uses "@staticmethod"
+                 'is_final',        # Uses "@final"
                  '_fullname',
                  )
 
@@ -407,6 +408,7 @@ class FuncBase(Node):
         self.is_property = False
         self.is_class = False
         self.is_static = False
+        self.is_final = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(Bogus[str], None)
@@ -442,6 +444,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.set_line(items[0].line)
+        self.is_final = False
 
     def name(self) -> str:
         if self.items:
@@ -593,6 +596,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.is_abstract = False
+        self.is_final = False
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
@@ -698,7 +702,7 @@ class Decorator(SymbolNode, Statement):
 VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-    'is_classvar', 'is_abstract_var'
+    'is_classvar', 'is_abstract_var', 'is_final'
 ]
 
 
@@ -722,6 +726,7 @@ class Var(SymbolNode):
                  'is_settable_property',
                  'is_classvar',
                  'is_abstract_var',
+                 'is_final'
                  'is_suppressed_import',
                  )
 
@@ -748,6 +753,8 @@ class Var(SymbolNode):
         # Set to true when this variable refers to a module we were unable to
         # parse for some reason (eg a silenced module)
         self.is_suppressed_import = False
+        # Was this defined as Final[...]?
+        self.is_final = False
 
     def name(self) -> str:
         return self._name
@@ -919,6 +926,8 @@ class AssignmentStmt(Statement):
     new_syntax = False  # type: bool
     # Does this assignment define a type alias?
     is_alias_def = False
+    # Is this a constant definition?
+    is_final_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
