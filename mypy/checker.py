@@ -3752,6 +3752,8 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
 
     Assumes that both signatures have overlapping argument counts.
     """
+    signature = expand_type(signature, {tvar.id: tvar.erase_to_union_or_bound()
+                            for tvar in signature.variables})
     return is_callable_compatible(signature, other,
                                   is_compat=is_more_precise,
                                   ignore_return=True)

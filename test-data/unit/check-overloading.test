@@ -4257,3 +4257,49 @@ def f() -> None:
 
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testOverloadConstrainedTypevarNotShadowingAny]
+from lib import attr
+from typing import Any
+
+reveal_type(attr(1))  # E: Revealed type is 'builtins.int*'
+reveal_type(attr("hi"))  # E: Revealed type is 'builtins.int'
+x: Any
+reveal_type(attr(x)) # E: Revealed type is 'Any'
+attr("hi", 1)  # E: No overload variant of "attr" matches argument types "str", "int" \
+               # N: Possible overload variant: \
+               # N:     def [T in (int, float)] attr(default: T = ..., blah: int = ...) -> T \
+               # N:     <1 more non-matching overload not shown>
+[file lib.pyi]
+from typing import overload, Any, TypeVar
+
+T = TypeVar('T', int, float)
+
+@overload
+def attr(default: T = ..., blah: int = ...) -> T: ...
+@overload
+def attr(default: Any = ...) -> int: ...
+[out]
+
+[case testOverloadBoundedTypevarNotShadowingAny]
+from lib import attr
+from typing import Any
+
+reveal_type(attr(1))  # E: Revealed type is 'builtins.int*'
+reveal_type(attr("hi"))  # E: Revealed type is 'builtins.int'
+x: Any
+reveal_type(attr(x)) # E: Revealed type is 'Any'
+attr("hi", 1)  # E: No overload variant of "attr" matches argument types "str", "int" \
+               # N: Possible overload variant: \
+               # N:     def [T <: int] attr(default: T = ..., blah: int = ...) -> T \
+               # N:     <1 more non-matching overload not shown>
+[file lib.pyi]
+from typing import overload, TypeVar, Any
+
+T = TypeVar('T', bound=int)
+
+@overload
+def attr(default: T = ..., blah: int = ...) -> T: ...
+@overload
+def attr(default: Any = ...) -> int: ...
+[out]
