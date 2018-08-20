@@ -933,3 +933,85 @@ and non-required keys, such as ``Movie`` above, will only be compatible with
 another TypedDict if all required keys in the other TypedDict are required keys in the
 first TypedDict, and all non-required keys of the other TypedDict are also non-required keys
 in the first TypedDict.
+
+Final attributes of classes and modules
+***************************************
+
+Definition syntax
+-----------------
+
+General idea: constants (not the same as being read-only). The idea is to provide a static
+guarantee that whenever a given attribute is accessed it is always the same value.
+
+* ``a: Final = 1``, *not* the same as ``Final[Any]``, will use inference.
+* ``Final[float] = 1``, to avoid invariance
+* ``Final[float]`` (stubs only)
+* ``self.a: Final = 1`` (also with arg), but *only* in ``__init__``
+
+Definition rules
+----------------
+
+* At most one final declaration per module/class for a given name
+
+.. code-block:: python
+
+   x: Final = 1
+   x: Final = 2  # Error!
+
+    class C:
+        x: Final = 1
+        def __init__(self, x: int) -> None:
+            self.x: Final = x  # Error!
+
+Note related to second: mypy doesn't keep two namespaces, only one common.
+
+* Exactly one assignment to a final attribute
+
+.. code-block:: python
+
+   x = 1
+   x: Final = 2  # Error!
+
+   y: Final = 1
+   y = 2  # Error!
+
+Using final attributes
+----------------------
+
+* Can't be re-assigned (or shadowed), both internally and externally:
+
+.. code-block:: python
+
+   # file mod.py
+   from typing import Final
+
+   x: Final = 1
+
+   # file main.py
+   from typing import Final
+
+
+   import mod
+   mod.x = 2  # Error!
+
+   class C:
+       x: Final = 1
+
+       def meth(self) -> None:
+           self.x = 2
+
+    class C(D):
+        ...
+
+   d: D
+   d.x = 2  # Error!
+
+* Can't be overriden by a subclass (even with another explicit final).
+Final however can override normal attributes. These rules also apply to
+multiple inferitance.
+
+Final methods
+-------------
+
+Methods, class methods, static methods, properies all can be final
+(this includes overloaded methods).
