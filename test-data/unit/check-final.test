@@ -9,9 +9,9 @@ x: Final = int()
 y: Final[float] = int()
 z: Final[int] = int()
 bad: Final[str] = str()
-reveal_type(x)
-reveal_type(y)
-reveal_type(z)
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+reveal_type(y)  # E: Revealed type is 'builtins.float'
+reveal_type(z)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testFinalDefiningInstanceVar]
@@ -20,13 +20,13 @@ class C:
     x: Final = int()
     y: Final[float] = int()
     z: Final[int] = int()
-    bad: Final[str] = str()
-reveal_type(C.x)
-reveal_type(C.y)
-reveal_type(C.z)
-reveal_type(C().x)
-reveal_type(C().y)
-reveal_type(C().z)
+    bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+reveal_type(C.x)  # E: Revealed type is 'builtins.int'
+reveal_type(C.y)  # E: Revealed type is 'builtins.float'
+reveal_type(C.z)  # E: Revealed type is 'builtins.int'
+reveal_type(C().x)  # E: Revealed type is 'builtins.int'
+reveal_type(C().y)  # E: Revealed type is 'builtins.float'
+reveal_type(C().z)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testFinalDefiningInstanceVarImplicit]
@@ -36,13 +36,22 @@ class C:
     def __init__(self, x: Tuple[int, Any]) -> None:
         self.x: Final = x
         self.y: Final[float] = 1
-reveal_type(C((1, 2)).x)
-reveal_type(C((1, 2)).y)
+reveal_type(C((1, 2)).x)  # E: Revealed type is 'Tuple[builtins.int, Any]'
+reveal_type(C((1, 2)).y)  # E: Revealed type is 'builtins.float'
 [out]
 
 [case testFinalDefiningInstanceVarStubs]
 # Allow skipping r.h.s.
-
+import mod
+[file mod.pyi]
+from typing import Final
+x: Final
+y: Final[int]
+class C:
+    x: Final
+    y: Final[int]
+    def __init__(self) -> None:
+        self.z: Final
 [out]
 
 [case testFinalDefiningFunc]
@@ -66,29 +75,32 @@ reveal_type(C((1, 2)).y)
 [out]
 
 [case testFinalDefiningOuterOnly]
-from typing import Final, Callable, Tuple
-x: Tuple[Final]
-y: Callable[[], Tuple[Final[int]]]
+from typing import Final, Callable, Tuple, Any
+x: Tuple[Final]  # E: Final can be only used as an outermost type qualifier in assignments
+y: Callable[[], Tuple[Final[int]]]  # E: Final can be only used as an outermost type qualifier in assignments
 [out]
 
 [case testFinalDefiningNotInMethod]
+from typing import Final
 
+def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost type qualifier in assignments
+def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost type qualifier in assignments
 [out]
 
 [case testFinalDefiningNoRhs]
 from typing import Final
-x: Final
-y: Final[int]
+x: Final  # E: Final declaration outside stubs must have right hand side
+y: Final[int]  # E: Final declaration outside stubs must have right hand side
 class C:
-    x: Final
-    y: Final[int]
+    x: Final  # E: Final declaration outside stubs must have right hand side
+    y: Final[int]  # E: Final declaration outside stubs must have right hand side
     def __init__(self) -> None:
-        self.z: Final
-reveal_type(x)
-reveal_type(y)
-reveal_type(C().x)
-reveal_type(C().y)
-reveal_type(C().z)
+        self.z: Final  # E: Final declaration outside stubs must have right hand side
+reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+reveal_type(C().x)  # E: Revealed type is 'Any'
+reveal_type(C().y)  # E: Revealed type is 'builtins.int'
+reveal_type(C().z)  # E: Revealed type is 'Any'
 [out]
 
 [case testFinalDefiningNoTypevarsExplicit]
@@ -119,8 +131,22 @@ from typing import Final, Any, Tuple
 
 class C:
     def meth(self, x: Tuple[int, Any]) -> None:
-        self.x: Final = x
-        self.y: Final[float] = 1
+        self.x: Final = x  # E: Can only declare final attributes in class body or __init__ method
+        self.y: Final[float] = 1  # E: Can only declare final attributes in class body or __init__ method
+[out]
+
+[case testFinalDefiningOnlyOnSelf]
+from typing import Final, Any, Tuple
+
+class U:
+    x: Any
+    y: Any
+class C:
+    def __init__(self, x: Tuple[int, Any]) -> None:
+        slf = U()
+        slf.x: Final = x  # E: Final can be only applied to a name or an attribute on self
+        slf.y: Final[float] = 1  # E: Type cannot be declared in assignment to non-self attribute \
+                                 # E: Final can be only applied to a name or an attribute on self
 [out]
 
 -- Reassignments

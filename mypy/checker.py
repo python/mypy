@@ -1586,6 +1586,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 break
             self.accept(s)
 
+    def check_final(self, s: AssignmentStmt) -> None:
+        lvs = self.flatten_lvalues(s.lvalues)
+        for lv in lvs:
+            if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
+                if lv.node.is_final and not s.is_final_def:
+                    name = lv.node.name()
+                    self.fail('Can\'t assign to constant "{}"'.format(name), s)
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
 
@@ -1613,6 +1621,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
                 self.check_assignment(lv, rvalue, s.type is None)
+
+        self.check_final(s)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
@@ -1719,6 +1729,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if not self.check_compatibility_classvar_super(lvalue_node,
                                                                    base,
                                                                    tnode.node):
+                        # Show only one error per variable
+                        break
+
+                    if not self.check_compatibility_final_super(lvalue_node,
+                                                                base,
+                                                                tnode.node):
                         # Show only one error per variable
                         break
 
@@ -1850,6 +1866,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.fail('Cannot override class variable '
                       '(previously declared on base class "%s") '
                       'with instance variable' % base.name(), node)
+            return False
+        return True
+
+    def check_compatibility_final_super(self, node: Var,
+                                        base: TypeInfo, base_node: Optional[Node]) -> bool:
+        if not isinstance(base_node, Var):
+            return True
+        if base_node.is_final:
+            self.fail('Cannot override constant '
+                      '(previously declared on base class "%s") ' % base.name(), node)
             return False
         return True
 

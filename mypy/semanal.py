@@ -1648,32 +1648,38 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if not s.type or not self.is_final_type(s.type):
             return
         assert isinstance(s.type, UnboundType)
+        if len(s.type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.type)
         if not s.type.args:
             s.type = None
         else:
             s.type = s.type.args[0]
-        if len(s.type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", s.type)
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
             self.fail("Invalid final declaration, ignoring", s)
             return
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
+        s.is_final_def = True
+        if self.type and self.type.is_protocol:
+            self.fail("Protocol members can't be final", s)
+        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
+            self.fail("Final declaration outside stubs must have right hand side", s)
+        return
+
+    def check_final_implicit_def(self, s: AssignmentStmt) -> None:
+        lval = s.lvalues[0]
+        assert isinstance(lval, RefExpr)
         if isinstance(lval, MemberExpr):
             if not self.is_self_member_ref(lval):
                 self.fail("Final can be only applied to a name or an attribute on self", s)
+                s.is_final_def = False
                 return
             else:
                 assert self.function_stack
                 if self.function_stack[-1].name() != '__init__':
                     self.fail("Can only declare final attributes in class body or __init__ method", s)
+                    s.is_final_def = False
                     return
-        s.is_final_def = True
-        if self.type and self.type.is_protocol:
-            self.fail("Protocol members can't be final", s.type)
-        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
-            self.fail("Final declaration outside stubs must have right hand side", s)
-        return
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.unwrap_final(s)
@@ -1683,6 +1689,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None,
                                 final_cb=final_cb if s.is_final_def else None)
+        self.check_final_implicit_def(s)
         self.check_classvar(s)
         s.rvalue.accept(self)
         if s.type:

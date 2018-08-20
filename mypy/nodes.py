@@ -726,7 +726,7 @@ class Var(SymbolNode):
                  'is_settable_property',
                  'is_classvar',
                  'is_abstract_var',
-                 'is_final'
+                 'is_final',
                  'is_suppressed_import',
                  )
 
