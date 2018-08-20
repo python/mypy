@@ -1667,6 +1667,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return
 
     def check_final_implicit_def(self, s: AssignmentStmt) -> None:
+        if not s.is_final_def:
+            return
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
         if isinstance(lval, MemberExpr):

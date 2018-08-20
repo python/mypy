@@ -40,6 +40,27 @@ reveal_type(C((1, 2)).x)  # E: Revealed type is 'Tuple[builtins.int, Any]'
 reveal_type(C((1, 2)).y)  # E: Revealed type is 'builtins.float'
 [out]
 
+[case testFinalBadDefinitionTooManyArgs]
+from typing import Final
+
+x: Final[int, str]  # E: Final declaration outside stubs must have right hand side \
+                    # E: Final[...] takes at most one type argument
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+class C:
+    def __init__(self) -> None:
+        self.x: Final[float, float] = 1  # E: Final[...] takes at most one type argument
+reveal_type(C().x)  # E: Revealed type is 'builtins.float'
+[out]
+
+[case testFinalInvalidDefinitions]
+from typing import Final, Any
+x = y = 1  # type: Final[float]  # E: Invalid final declaration, ignoring
+z: Any
+z[0]: Final  # E: Unexpected type declaration \
+             # E: Invalid final declaration, ignoring
+[out]
+
 [case testFinalDefiningInstanceVarStubs]
 # Allow skipping r.h.s.
 import mod
