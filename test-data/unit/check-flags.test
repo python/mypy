@@ -148,6 +148,14 @@ class UntypedDecorator:
 @TypedDecorator()
 def f() -> None: pass
 
+[case testDisallowUntypedDecoratorsNonCallableInstance]
+# flags: --disallow-untyped-decorators
+class Decorator:
+    pass
+
+@Decorator()  # E: "Decorator" not callable
+def f() -> None: pass
+
 [case testSubclassingAny]
 # flags: --disallow-subclassing-any
 from typing import Any
