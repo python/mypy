@@ -2143,6 +2143,51 @@ main:3: note: Possible overload variants:
 main:3: note:     def foo(cls: Wrapper, x: int) -> int
 main:3: note:     def foo(cls: Wrapper, x: str) -> str
 
+[case testInitMovesAroundClassmethod]
+[file m.py]
+class C:
+    def __init__(self, x: int) -> None:
+        self._x = x
+    @classmethod
+    def create(cls, x: int) -> 'C':
+        return cls(x)
+[file m.py.2]
+class C:
+    @classmethod
+    def create(cls, x: int) -> 'C':
+        return cls(x)
+    def __init__(self, x: int) -> None:
+        self._x = x
+[file m.py.3]
+class C:
+    def __init__(self, x: int) -> None:
+        self._x = x
+    @classmethod
+    def create(cls, x: int) -> 'C':
+        return cls(x)
+[builtins fixtures/classmethod.pyi]
+[out]
+==
+==
+
+[case testInitDisappearsClassmethodStays]
+[file m.py]
+class C:
+    def __init__(self, x: int) -> None:
+        self._x = x
+    @classmethod
+    def create(cls, x: int) -> 'C':
+        return cls(x)
+[file m.py.2]
+class C:
+    @classmethod
+    def create(cls, x: int) -> 'C':
+        return cls(x)
+[builtins fixtures/classmethod.pyi]
+[out]
+==
+m.py:4: error: Too many arguments for "C"
+
 [case testRefreshGenericClass]
 from typing import TypeVar, Generic
 from a import A
