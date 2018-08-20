@@ -1545,6 +1545,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
+        if isinstance(second.node, Var) and second.node.is_final:
+            # Final can never be overriden, but can override
+            self.fail('Cannot override constant '
+                      '(previously declared on base class "%s")' % base2.name(), ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True

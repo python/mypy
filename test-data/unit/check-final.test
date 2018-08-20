@@ -414,16 +414,53 @@ class C(B):
         self.y = 3  # E: Can't assign to constant "y"
 [out]
 
-[case testFinalOverridingVarMultipleInheritance]
+[case testFinalOverridingVarMultipleInheritanceClass]
 from typing import Final
 
-
+class A:
+    x: Final = 1
+class B:
+    x = 2
+class C(A, B): ...
+class D(B, A): ...  # E: Cannot override constant (previously declared on base class "A")
+C.x = 3  # E: Can't assign to constant "x"
+D.x = 3  # E: Can't assign to constant "x"
+C().x = 4  # E: Can't assign to constant "x"
+D().x = 4  # E: Can't assign to constant "x"
 [out]
 
-[case testFinalOverridingVarMultipleInheritance2]
+[case testFinalOverridingVarMultipleInheritanceInit]
 from typing import Final
 
+class A:
+    def __init__(self) -> None:
+        self.x: Final = 1
+class B:
+    def __init__(self) -> None:
+        self.x = 2
+class C(A, B): ...
+class D(B, A): ...  # E: Cannot override constant (previously declared on base class "A")
+C.x = 3  # E: Can't access instance constant on class object \
+         # E: Can't assign to constant "x"
+D.x = 3  # E: Can't assign to constant "x"
+C().x = 4  # E: Can't assign to constant "x"
+D().x = 4  # E: Can't assign to constant "x"
+[out]
 
+[case testFinalOverridingVarMultipleInheritanceMixed]
+from typing import Final
+
+class A:
+    x: Final = 1
+class B:
+    def __init__(self) -> None:
+        self.x = 2
+class C(A, B): ...
+class D(B, A): ...  # E: Cannot override constant (previously declared on base class "A")
+C.x = 3  # E: Can't assign to constant "x"
+D.x = 3  # E: Can't assign to constant "x"
+C().x = 4  # E: Can't assign to constant "x"
+D().x = 4  # E: Can't assign to constant "x"
 [out]
 
 [case testFinalOverridingVarWithMethod]

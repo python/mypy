@@ -1679,15 +1679,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             else:
                 assert self.function_stack
                 if self.function_stack[-1].name() != '__init__':
-                    self.fail("Can only declare final attributes in class body or __init__ method", s)
+                    self.fail("Can only declare final attributes in class body"
+                              " or __init__ method", s)
                     s.is_final_def = False
                     return
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.unwrap_final(s)
+
         def final_cb() -> None:
             self.fail("Final can't redefine an existing name, ignoring", s)
             s.is_final_def = False
+
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None,
                                 final_cb=final_cb if s.is_final_def else None)
