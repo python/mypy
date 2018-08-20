@@ -236,7 +236,11 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         if is_int_rprimitive(op.type):
             self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, name))
         else:
-            ann = ' /* %s */' % repr(op.ann) if op.ann else ''
+            ann = ''
+            if op.ann:
+                s = repr(op.ann)
+                if not any(x in s for x in ('/*', '*/', '\0')):
+                    ann = ' /* %s */' % s
             self.emit_line('%s = %s;%s' % (dest, name, ann))
 
     def visit_init_static(self, op: InitStatic) -> None:
