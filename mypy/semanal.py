@@ -1644,9 +1644,45 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
+    def unwrap_final(self, s: AssignmentStmt) -> None:
+        if not s.type or not self.is_final_type(s.type):
+            return
+        assert isinstance(s.type, UnboundType)
+        if not s.type.args:
+            s.type = None
+        else:
+            s.type = s.type.args[0]
+        if len(s.type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.type)
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
+            self.fail("Invalid final declaration, ignoring", s)
+            return
+        lval = s.lvalues[0]
+        assert isinstance(lval, RefExpr)
+        if isinstance(lval, MemberExpr):
+            if not self.is_self_member_ref(lval):
+                self.fail("Final can be only applied to a name or an attribute on self", s)
+                return
+            else:
+                assert self.function_stack
+                if self.function_stack[-1].name() != '__init__':
+                    self.fail("Can only declare final attributes in class body or __init__ method", s)
+                    return
+        s.is_final_def = True
+        if self.type and self.type.is_protocol:
+            self.fail("Protocol members can't be final", s.type)
+        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
+            self.fail("Final declaration outside stubs must have right hand side", s)
+        return
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+        self.unwrap_final(s)
+        def final_cb() -> None:
+            self.fail("Final can't redefine an existing name, ignoring", s)
+            s.is_final_def = False
         for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None)
+            self.analyze_lvalue(lval, explicit_type=s.type is not None,
+                                final_cb=final_cb if s.is_final_def else None)
         self.check_classvar(s)
         s.rvalue.accept(self)
         if s.type:
@@ -1674,6 +1710,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
+        self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
 
@@ -1681,6 +1718,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def store_final_status(self, s: AssignmentStmt) -> None:
+        if s.is_final_def:
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
+                node = s.lvalues[0].node
+                if isinstance(node, Var):
+                    node.is_final = True
 
     def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
@@ -1808,7 +1852,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
-                       explicit_type: bool = False) -> None:
+                       explicit_type: bool = False,
+                       final_cb: Optional[Callable[[], None]] = None) -> None:
         """Analyze an lvalue or assignment target.
 
         Args:
@@ -1887,13 +1932,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
                 original_def = global_def or local_def or type_def
                 self.name_already_defined(lval.name, lval, original_def)
+                if final_cb is not None:
+                    final_cb()
             else:
                 # Bind to an existing name.
+                if final_cb is not None:
+                    final_cb()
                 lval.accept(self)
                 self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
             if not add_global:
-                self.analyze_member_lvalue(lval, explicit_type)
+                self.analyze_member_lvalue(lval, explicit_type, final_cb=final_cb)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
@@ -1931,12 +1980,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
                                     explicit_type = explicit_type)
 
-    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False) -> None:
+    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False,
+                              final_cb: Optional[Callable[[], None]] = None) -> None:
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"
             cur_node = self.type.names.get(lval.name, None)
             node = self.type.get(lval.name)
+            if cur_node and final_cb is not None:
+                # Overrides will be checked in type checker.
+                final_cb()
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
@@ -2207,6 +2260,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if not sym or not sym.node:
             return False
         return sym.node.fullname() == 'typing.ClassVar'
+
+    def is_final_type(self, typ: Type) -> bool:
+        if not isinstance(typ, UnboundType):
+            return False
+        sym = self.lookup_qualified(typ.name, typ)
+        if not sym or not sym.node:
+            return False
+        return sym.node.fullname() == 'typing.Final'
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
