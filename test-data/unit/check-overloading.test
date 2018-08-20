@@ -523,6 +523,21 @@ class A:
   def __init__(self, b: 'B') -> None: pass
 class B: pass
 
+[case testOverloadedInitAndClassMethod]
+from foo import *
+[file foo.pyi]
+from typing import overload
+class A:
+  @classmethod
+  def from_int(cls, x: int) -> 'A':
+    reveal_type(cls) # E: Revealed type is 'Any'
+    return cls(x)
+  @overload
+  def __init__(self, a: int) -> None: pass
+  @overload
+  def __init__(self, b: str) -> None: pass
+[builtins fixtures/classmethod.pyi]
+
 [case testIntersectionTypeCompatibility]
 from foo import *
 [file foo.pyi]

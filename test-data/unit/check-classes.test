@@ -620,12 +620,29 @@ main:5: error: Incompatible types in assignment (expression has type "D2", varia
 class C:
     @classmethod
     def create(cls, arg: int) -> 'C':
+        reveal_type(cls) # E: Revealed type is 'def (arg: builtins.int) -> __main__.C'
+        reveal_type(cls(arg)) # E: Revealed type is '__main__.C'
+        cls() # E: Too few arguments for "C"
         return cls(arg)
 
     def __init__(self, arg: 'int') -> None:
         self._arg: int = arg
 
 reveal_type(C.create)  # E: Revealed type is 'def (arg: builtins.int) -> __main__.C'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassmethodBeforeInitInGenericClass]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class C(Generic[T]):
+    @classmethod
+    def create(cls, arg: T) -> 'C':
+        cls() # E: Too few arguments for "C"
+        return cls(arg, arg)
+
+    def __init__(self, arg1: T, arg2: T) -> None:
+        self._arg1 = arg1
+        self._arg2 = arg2
 [builtins fixtures/classmethod.pyi]
 
 
