@@ -253,27 +253,65 @@ class C:
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
+from typing import Final
 
+class C:
+    y: Final = 1
+    def __init__(self) -> None:
+        self.x: Final = 1
+        self.y = 2  # E: Can't assign to constant "y"
+    x = 2  # E: Can't assign to constant "x"
 [out]
 
 [case testFinalReassignInstanceVarMethod]
+from typing import Final
 
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+    def meth(self) -> None:
+        self.x = 2  # E: Can't assign to constant "x"
+        self.y = 2  # E: Can't assign to constant "y"
+    def other(self) -> None:
+        self.x = 2  # E: Can't assign to constant "x"
+        self.y = 2  # E: Can't assign to constant "y"
+    @classmethod
+    def cm(cls) -> None:
+        cls.x = 2  # E: Can't assign to constant "x"
+        cls.y  # E: Can't access intsance constant on class object
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testFinalReassignInstanceVarExternalClass]
+from typing import Final
 
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+
+class D(C): pass
+
+C.x = 2  # E: Can't assign to constant "x"
+D.x = 2  # E: Can't assign to constant "x"
+D.y = 2  # E: Can't access intsance constant on class object \
+         # E: Can't assign to constant "y"
 [out]
 
 [case testFinalReassignInstanceVarExternalInstance]
+from typing import Final
 
-[out]
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
 
-[case testFinalReassignInstanceVarExternalSubclassClass]
+class D(C): pass
 
-[out]
-
-[case testFinalReassignInstanceVarExternalSubclassInstance]
-
+C().x = 2  # E: Can't assign to constant "x"
+D().x = 2  # E: Can't assign to constant "x"
+D().y = 2  # E: Can't assign to constant "y"
 [out]
 
 -- Overriding
