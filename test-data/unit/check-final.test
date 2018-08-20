@@ -131,7 +131,7 @@ T = TypeVar('T')
 d: Any
 
 class C(Generic[T]):
-    x: Final[Tuple[T, T]] = d
+    x: Final[Tuple[T, T]] = d  # E: Constant declared in class body can't depend on type variables
 [out]
 
 [case testFinalDefiningTypevarsImplicit]
@@ -142,9 +142,12 @@ T = TypeVar('T')
 class C(Generic[T]):
     def __init__(self, x: Tuple[T, T]) -> None:
         self.x: Final = x
+        self.y: Final = 1
 
-reveal_type(C((1, 2)).x)
-C.x
+reveal_type(C((1, 2)).x)  # E: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
+C.x  # E: Can't access intsance constant on class object \
+     # E: Access to generic instance variables via class is ambiguous
+C.y  # E: Can't access intsance constant on class object
 [out]
 
 [case testFinalDefiningNotInOtherMethod]

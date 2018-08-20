@@ -1638,6 +1638,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_assignment(lv, rvalue, s.type is None)
 
         self.check_final(s)
+        if (s.is_final_def and s.type and not has_no_typevars(s.type)
+                and self.scope.active_class() is not None):
+            self.fail("Constant declared in class body can't depend on type variables", s)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:

@@ -540,6 +540,9 @@ def analyze_class_attribute_access(itype: Instance,
         if isinstance(node.node, TypeInfo):
             msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
 
+    if node.implicit and isinstance(node.node, Var) and node.node.is_final:
+        msg.fail("Can't access intsance constant on class object", context)
+
     if itype.type.is_enum and not (is_lvalue or is_decorated or is_method):
         return itype
 
