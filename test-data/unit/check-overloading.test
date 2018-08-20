@@ -4257,3 +4257,22 @@ def f() -> None:
 
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testDisallowUntypedDecoratorsOverload]
+# flags: --disallow-untyped-decorators
+from typing import Any, Callable, overload, TypeVar
+
+F = TypeVar('F', bound=Callable[..., Any])
+
+@overload
+def dec(x: F) -> F: ...
+@overload
+def dec(x: str) -> Callable[[F], F]: ...
+def dec(x) -> Any:
+    pass
+
+@dec
+def f(name: str) -> int:
+    return 0
+
+reveal_type(f)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'

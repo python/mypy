@@ -4014,6 +4014,8 @@ def is_untyped_decorator(typ: Optional[Type]) -> bool:
             return not is_typed_callable(method.type)
         else:
             return False
+    elif isinstance(typ, Overloaded):
+        return any(is_untyped_decorator(item) for item in typ.items())
     return True
 
 
