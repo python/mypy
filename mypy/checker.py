@@ -1604,8 +1604,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         lvs = self.flatten_lvalues(s.lvalues)
         for lv in lvs:
             if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
+                name = lv.node.name()
+                cls = self.scope.active_class()
+                if cls is not None:
+                    # This exist to give more errors even if we overriden with a new var
+                    # (which is itself an error)
+                    for base in cls.mro:
+                        sym = base.names.get(name)
+                        if sym and isinstance(sym.node, Var):
+                            if sym.node.is_final and not s.is_final_def:
+                                self.fail('Can\'t assign to constant "{}"'.format(name), s)
                 if lv.node.is_final and not s.is_final_def:
-                    name = lv.node.name()
                     self.fail('Can\'t assign to constant "{}"'.format(name), s)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

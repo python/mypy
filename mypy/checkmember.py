@@ -262,6 +262,13 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
 
     if isinstance(v, Var):
         implicit = info[name].implicit
+
+        if is_lvalue and not chk.get_final_context():
+            for base in info.mro:
+                sym = base.names.get(name)
+                if sym and isinstance(sym.node, Var) and sym.node.is_final:
+                    msg.fail('Can\'t assign to constant "{}"'.format(name), node)
+
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
                            original_type, builtin_type, not_ready_callback,
                            chk=chk, implicit=implicit)
@@ -397,11 +404,6 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
     if implicit is True, the original Var was created as an assignment to self
     """
     # Found a member variable.
-
-    if is_lvalue and var.is_final and not chk.get_final_context():
-        name = var.name()
-        msg.fail('Can\'t assign to constant "{}"'.format(name), node)
-
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
     if typ:
@@ -541,11 +543,13 @@ def analyze_class_attribute_access(itype: Instance,
             msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
 
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
-        msg.fail("Can't access intsance constant on class object", context)
-    if (isinstance(node.node, Var) and is_lvalue and node.node.is_final
-            and not chk.get_final_context()):
-        name = node.node.name()
-        msg.fail('Can\'t assign to constant "{}"'.format(name), context)
+        msg.fail("Can't access instance constant on class object", context)
+    for base in itype.type.mro:
+        b_node = base.names.get(name)
+        if (b_node and isinstance(b_node.node, Var) and is_lvalue and b_node.node.is_final
+                and not chk.get_final_context()):
+            name = b_node.node.name()
+            msg.fail('Can\'t assign to constant "{}"'.format(name), context)
 
     if itype.type.is_enum and not (is_lvalue or is_decorated or is_method):
         return itype

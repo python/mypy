@@ -2002,7 +2002,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
-                    (cur_node is None and explicit_type)):
+                    (cur_node is None and (explicit_type or final_cb is not None))):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:

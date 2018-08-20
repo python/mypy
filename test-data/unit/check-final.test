@@ -145,9 +145,9 @@ class C(Generic[T]):
         self.y: Final = 1
 
 reveal_type(C((1, 2)).x)  # E: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
-C.x  # E: Can't access intsance constant on class object \
+C.x  # E: Can't access instance constant on class object \
      # E: Access to generic instance variables via class is ambiguous
-C.y  # E: Can't access intsance constant on class object
+C.y  # E: Can't access instance constant on class object
 [out]
 
 [case testFinalDefiningNotInOtherMethod]
@@ -279,7 +279,7 @@ class C:
     @classmethod
     def cm(cls) -> None:
         cls.x = 2  # E: Can't assign to constant "x"
-        cls.y  # E: Can't access intsance constant on class object
+        cls.y  # E: Can't access instance constant on class object
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -295,7 +295,7 @@ class D(C): pass
 
 C.x = 2  # E: Can't assign to constant "x"
 D.x = 2  # E: Can't assign to constant "x"
-D.y = 2  # E: Can't access intsance constant on class object \
+D.y = 2  # E: Can't access instance constant on class object \
          # E: Can't assign to constant "y"
 [out]
 
@@ -317,26 +317,118 @@ D().y = 2  # E: Can't assign to constant "y"
 -- Overriding
 
 [case testFinalOverridingVarClassBody]
+from typing import Final
 
+class A:
+    x = 0
+    def __init__(self) -> None:
+        self.y = 0
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    x: int = 2  # E: Cannot override constant (previously declared on base class "B") \
+                # E: Can't assign to constant "x"
+    y: int = 2  # E: Cannot override constant (previously declared on base class "B") \
+                # E: Can't assign to constant "y"
+    x = 3  # E: Can't assign to constant "x"
+    y = 3  # E: Can't assign to constant "y"
+class D(C):
+    pass
+D.x = 4  # E: Can't assign to constant "x"
+D.y = 4  # E: Can't assign to constant "y"
+[out]
+
+[case testFinalOverridingVarClassBodyExplicit]
+from typing import Final
+
+class A:
+    x = 0
+    def __init__(self) -> None:
+        self.y = 0
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    x: Final = 2  # E: Cannot override constant (previously declared on base class "B")
+    y: Final = 2  # E: Cannot override constant (previously declared on base class "B")
 [out]
 
 [case testFinalOverridingVarInit]
+from typing import Final
 
+class A:
+    x = 0
+    def __init__(self) -> None:
+        self.y = 0
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    def __init__(self) -> None:
+        self.x = 2  # E: Can't assign to constant "x"
+        self.y = 2  # E: Can't assign to constant "y"
+    def meth(self) -> None:
+        self.x = 3  # E: Can't assign to constant "x"
+        self.y = 3  # E: Can't assign to constant "y"
+[out]
+
+[case testFinalOverridingVarInit2]
+from typing import Final
+
+class A:
+    x = 0
+    def __init__(self) -> None:
+        self.y = 0
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    def __init__(self) -> None:
+        self.x: Final = 2  # E: Cannot override constant (previously declared on base class "B")
+        self.y: Final = 2  # E: Cannot override constant (previously declared on base class "B")
 [out]
 
 [case testFinalOverridingVarOtherMethod]
+from typing import Final
 
+class A:
+    x = 0
+    def __init__(self) -> None:
+        self.y = 0
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    def meth(self) -> None:
+        self.x: int = 2    # E: Can't assign to constant "x" \
+                           # E: Cannot override constant (previously declared on base class "B")
+        self.y: int = 2    # E: Can't assign to constant "y" \
+                           # E: Cannot override constant (previously declared on base class "B")
+        self.x = 3  # E: Can't assign to constant "x"
+        self.y = 3  # E: Can't assign to constant "y"
 [out]
 
 [case testFinalOverridingVarMultipleInheritance]
+from typing import Final
+
 
 [out]
 
 [case testFinalOverridingVarMultipleInheritance2]
+from typing import Final
+
 
 [out]
 
 [case testFinalOverridingVarWithMethod]
+from typing import Final
+
 
 [out]
 
@@ -365,10 +457,6 @@ D().y = 2  # E: Can't assign to constant "y"
 [out]
 
 [case testFinalOverridingProperty]
-
-[out]
-
-[case testFinalAcessingImplicitVarSubclassObject]
 
 [out]
 
