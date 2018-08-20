@@ -144,9 +144,24 @@ class UntypedDecorator:
     def __call__(self, c):
         return function
 
-@UntypedDecorator()  # E: Untyped decorator makes function "f" untyped
 @TypedDecorator()
 def f() -> None: pass
+
+@UntypedDecorator()  # E: Untyped decorator makes function "g" untyped
+def g() -> None: pass
+
+@TypedDecorator()
+@UntypedDecorator()  # E: Untyped decorator makes function "h" untyped
+def h() -> None: pass
+
+@UntypedDecorator()  # E: Untyped decorator makes function "i" untyped
+@TypedDecorator()
+def i() -> None: pass
+
+reveal_type(f)  # E: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(g)  # E: Revealed type is 'Any'
+reveal_type(h)  # E: Revealed type is 'def (*Any, **Any) -> Any'
+reveal_type(i)  # E: Revealed type is 'Any'
 
 [case testDisallowUntypedDecoratorsNonCallableInstance]
 # flags: --disallow-untyped-decorators
