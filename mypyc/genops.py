@@ -1172,6 +1172,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.enter(fn_info)
             self.setup_env_for_generator_class()
             self.load_outer_envs(self.fn_info.generator_class)
+            if self.fn_info.is_nested and isinstance(fitem, FuncDef):
+                self.setup_func_for_recursive_call(fitem, self.fn_info.generator_class)
             self.create_switch_for_generator_class()
             self.add_raise_exception_blocks_to_generator_class(fitem.line)
         else:
@@ -3360,12 +3362,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             # If this is a FuncDef, then make sure to load the FuncDef into its own environment
             # class so that the function can be called recursively.
             if isinstance(fitem, FuncDef):
-                target = self.environment.add_local_reg(fitem, object_rprimitive)
-                prev_env = self.fn_infos[-2].env_class
-                assert fitem.type is not None
-                prev_env.attributes[fitem.name()] = self.type_to_rtype(fitem.type)
-                val = self.add(GetAttr(fn_info.callable_class.prev_env_reg, fitem.name(), -1))
-                self.assign(target, val, -1)
+                self.setup_func_for_recursive_call(fitem, fn_info.callable_class)
 
     def add_var_to_env_class(self,
                              var: SymbolNode,
@@ -3387,6 +3384,32 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # the environment class.
         return self.environment.add_target(var, attr_target)
 
+    def setup_func_for_recursive_call(self, fdef: FuncDef, base: ImplicitClass) -> None:
+        """
+        Adds the instance of the callable class representing the given FuncDef to a register in the
+        environment so that the function can be called recursively. Note that this needs to be done
+        only for nested functions.
+        """
+        assert fdef.type is not None
+
+        # First, set the attribute of the environment class so that GetAttr can be called on it.
+        prev_env = self.fn_infos[-2].env_class
+        prev_env.attributes[fdef.name()] = self.type_to_rtype(fdef.type)
+
+        if isinstance(base, GeneratorClass):
+            # If we are dealing with a generator class, then we need to first get the register
+            # holding the current environment class, and load the previous environment class from
+            # there.
+            prev_env_reg = self.add(GetAttr(base.curr_env_reg, ENV_ATTR_NAME, -1))
+        else:
+            prev_env_reg = base.prev_env_reg
+
+        # Obtain the instance of the callable class representing the FuncDef, and add it to the
+        # current environment.
+        val = self.add(GetAttr(prev_env_reg, fdef.name(), -1))
+        target = self.environment.add_local_reg(fdef, object_rprimitive)
+        self.assign(target, val, -1)
+
     def setup_env_for_generator_class(self) -> None:
         """Populates the environment for a generator class."""
         fitem = self.fn_info.fitem
@@ -3394,7 +3417,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self_target = self.add_self_to_env(cls.ir)
 
         # Add the type, value, and traceback variables to the environment.
-
         exc_type = self.environment.add_local(Var('type'), object_rprimitive, is_arg=True)
         exc_val = self.environment.add_local(Var('value'), object_rprimitive, is_arg=True)
         exc_tb = self.environment.add_local(Var('traceback'), object_rprimitive, is_arg=True)

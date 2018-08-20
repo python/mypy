@@ -51,7 +51,7 @@ L2:
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_a_obj
     r0 :: a__env
-    inner, r1 :: object
+    r1, inner :: object
     r2 :: None
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -89,7 +89,7 @@ def second_b_first_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: second_b_first_obj
     r0 :: first_b_env
     r1 :: b__env
-    second, r2 :: object
+    r2, second :: object
     r3 :: str
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -115,7 +115,7 @@ L2:
 def first_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: first_b_obj
     r0 :: b__env
-    first, r1 :: object
+    r1, first :: object
     r2 :: first_b_env
     r3 :: bool
     r4 :: second_b_first_obj
@@ -162,7 +162,7 @@ def inner_c_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: inner_c_obj
     s :: str
     r0 :: c__env
-    inner, r1 :: object
+    r1, inner :: object
     r2, r3 :: str
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -202,7 +202,7 @@ def inner_d_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: inner_d_obj
     s :: str
     r0 :: d__env
-    inner, r1 :: object
+    r1, inner :: object
     r2, r3 :: str
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -297,7 +297,7 @@ L2:
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_a_obj
     r0 :: a__env
-    inner, r1 :: object
+    r1, inner :: object
     r2 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -340,7 +340,7 @@ L2:
 def inner_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_b_obj
     r0 :: b__env
-    inner, r1 :: object
+    r1, inner :: object
     r2 :: int
     r3 :: bool
     r4, foo, r5 :: int
@@ -392,7 +392,7 @@ L2:
 def inner_c_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_c_obj
     r0 :: c__env
-    inner, r1 :: object
+    r1, inner :: object
     r2 :: str
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -417,7 +417,7 @@ L2:
 def inner_c_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_c_obj_0
     r0 :: c__env
-    inner, r1 :: object
+    r1, inner :: object
     r2 :: str
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -481,7 +481,7 @@ def c_a_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: c_a_b_obj
     r0 :: b_a_env
     r1 :: a__env
-    c, r2 :: object
+    r2, c :: object
     r3 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -507,7 +507,7 @@ L2:
 def b_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: b_a_obj
     r0 :: a__env
-    b, r1 :: object
+    r1, b :: object
     r2 :: b_a_env
     r3 :: bool
     r4, r5, r6 :: int
@@ -580,7 +580,7 @@ L2:
 def inner_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_f_obj
     r0 :: f__env
-    inner, r1 :: object
+    r1, inner :: object
     r2 :: str
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -605,7 +605,7 @@ L2:
 def inner_f_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_f_obj_0
     r0 :: f__env
-    inner, r1 :: object
+    r1, inner :: object
     r2 :: str
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -675,7 +675,7 @@ L2:
 def foo_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: foo_f_obj
     r0 :: f__env
-    foo, r1 :: object
+    r1, foo :: object
     r2, r3, r4 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -702,7 +702,7 @@ L2:
 def bar_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: bar_f_obj
     r0 :: f__env
-    bar, r1, r2, r3 :: object
+    r1, bar, r2, r3 :: object
     r4 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -730,7 +730,7 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     __mypyc_self__ :: baz_f_obj
     n :: int
     r0 :: f__env
-    baz, r1 :: object
+    r1, baz :: object
     r2 :: int
     r3 :: bool
     r4, r5, r6 :: int

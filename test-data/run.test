@@ -2911,9 +2911,19 @@ def another_triple() -> Callable:
         yield next(inner_generator())
     return generator
 
+def outer() -> Generator:
+    def recursive(n: int) -> Generator:
+        if n < 10:
+            for i in range(n):
+                yield i
+            return        
+        for i in recursive(5):
+            yield i
+    return recursive(10)
+
 [file driver.py]
 from typing import Generator, Tuple, TypeVar, Sequence
-from native import normal, generator, triple, another_triple
+from native import normal, generator, triple, another_triple, outer
 
 T = TypeVar('T')
 U = TypeVar('U')
@@ -2931,6 +2941,7 @@ assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
 assert run_generator(generator(1)) == ((1, 2, 3), None)
 assert run_generator(triple()()) == ((1, 2, 3), None)
 assert run_generator(another_triple()()) == ((1,), None)
+assert run_generator(outer()) == ((0, 1, 2, 3, 4), None)
 
 [case testYieldThrow]
 from typing import Generator, Iterable

@@ -2568,7 +2568,7 @@ L2:
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: g_a_obj
     r0 :: a__env
-    g, r1 :: object
+    r1, g :: object
     r2 :: str
     r3 :: object
     r4 :: str
@@ -2634,7 +2634,7 @@ L2:
 def g_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: g_b_obj
     r0 :: b__env
-    g, r1 :: object
+    r1, g :: object
     r2 :: str
     r3 :: object
     r4 :: str
@@ -2700,7 +2700,7 @@ L2:
 def __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
     r0 :: __mypyc_c_decorator_helper____env
-    d, r1 :: object
+    r1, d :: object
     r2 :: str
     r3 :: object
     r4 :: str
@@ -2855,7 +2855,7 @@ L2:
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: g_a_obj
     r0 :: a__env
-    g, r1 :: object
+    r1, g :: object
     r2 :: str
     r3 :: object
     r4 :: str
