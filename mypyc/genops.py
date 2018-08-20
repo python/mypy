@@ -822,9 +822,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         for stmt in default_assignments:
             lvalue = stmt.lvalues[0]
             assert isinstance(lvalue, NameExpr)
-            with self.catch_errors(stmt.line):
-                assert self.is_approximately_constant(stmt.rvalue), (
-                    "Unsupported default attribute value")
+            if not self.is_approximately_constant(stmt.rvalue):
+                print('{}:{}: Warning: unsupported default attribute value'.format(
+                    self.module_path, stmt.rvalue.line))
 
             # If the attribute is initialized to None and type isn't optional,
             # don't initialize it to anything.
@@ -1083,9 +1083,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         fitem = self.fn_info.fitem
         for arg in fitem.arguments:
             if arg.initializer:
-                with self.catch_errors(arg.initializer.line):
-                    assert self.is_approximately_constant(arg.initializer), (
-                        "Unsupported default argument")
+                if not self.is_approximately_constant(arg.initializer):
+                    print('{}:{}: Warning: unsupported default argument value'.format(
+                        self.module_path, arg.initializer.line))
                 target = self.environment.lookup(arg.variable)
                 assert isinstance(target, AssignmentTargetRegister)
                 self.assign_if_null(target,
