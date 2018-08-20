@@ -471,9 +471,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if is_unsafe_overlapping_overload_signatures(sig1, sig2):
                             self.msg.overloaded_signatures_overlap(
                                 i + 1, i + j + 2, item.func)
-                        elif is_unsafe_partially_overlapping_overload_signatures(sig1, sig2):
-                            self.msg.overloaded_signatures_partial_overlap(
-                                i + 1, i + j + 2, item.func)
 
             if impl_type is not None:
                 assert defn.impl is not None
@@ -1157,7 +1154,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             first = forward_tweaked
             second = reverse_tweaked
 
-        return is_unsafe_partially_overlapping_overload_signatures(first, second)
+        return is_unsafe_overlapping_overload_signatures(first, second)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -3499,7 +3496,8 @@ def conditional_type_map(expr: Expression,
                 # Expression is always of one of the types in proposed_type_ranges
                 return {}, None
             elif not is_overlapping_types(current_type, proposed_type,
-                                          prohibit_none_typevar_overlap=True):
+                                          prohibit_none_typevar_overlap=True,
+                                          default_return=False):
                 # Expression is never of any type in proposed_type_ranges
                 return None, {}
             else:
@@ -3715,46 +3713,7 @@ def are_argument_counts_overlapping(t: CallableType, s: CallableType) -> bool:
 
 def is_unsafe_overlapping_overload_signatures(signature: CallableType,
                                               other: CallableType) -> bool:
-    """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
-
-    We consider two functions 's' and 't' to be unsafely overlapping if both
-    of the following are true:
-
-    1.  s's parameters are all more precise or partially overlapping with t's
-    2.  s's return type is NOT a subtype of t's.
-
-    This function will perform a modified version of the above two checks:
-    we do not check for partial overlaps. This lets us vary our error messages
-    depending on the severity of the overlap.
-
-    See 'is_unsafe_partially_overlapping_overload_signatures' for the full checks.
-
-    Assumes that 'signature' appears earlier in the list of overload
-    alternatives then 'other' and that their argument counts are overlapping.
-    """
-    # if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
-    #    print("in first")
-
-    signature = detach_callable(signature)
-    other = detach_callable(other)
-
-    return (is_callable_compatible(signature, other,
-                                  is_compat=is_more_precise_no_promote,
-                                  is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
-                                  ignore_return=False,
-                                  check_args_covariantly=True,
-                                  allow_partial_overlap=True) or
-            is_callable_compatible(other, signature,
-                                   is_compat=is_more_precise_no_promote,
-                                   is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
-                                   ignore_return=False,
-                                   check_args_covariantly=False,
-                                   allow_partial_overlap=True))
-
-
-def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
-                                                        other: CallableType) -> bool:
-    """Check if two overloaded signatures are unsafely overlapping, ignoring partial overlaps.
+    """Check if two overloaded signatures are unsafely overlapping or partially overlapping.
 
     We consider two functions 's' and 't' to be unsafely overlapping if both
     of the following are true:
@@ -3765,9 +3724,6 @@ def is_unsafe_partially_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    # if "foo" in signature.name or "bar" in signature.name or "chain_call" in signature.name:
-    #    print("in second")
-
     def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
         return is_more_precise_no_promote(t, s) or is_overlapping_types_no_promote(t, s)
 
@@ -3817,7 +3773,6 @@ def detach_callable(typ: CallableType) -> CallableType:
     The caller can then unify on all type variables whether or not the callable is originally
     from a class or not."""
     type_list = typ.arg_types + [typ.ret_type]
-    # old_type_list = list(type_list)
 
     appear_map = {}  # type: Dict[str, List[int]]
     for i, inner_type in enumerate(type_list):

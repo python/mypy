@@ -2058,6 +2058,12 @@ def foo2(x: Optional[str]) -> None:
 
 [case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
 # flags: --strict-optional
+
+# Note: this test (and the following one) are testing checker.conditional_type_map:
+# if you set the 'prohibit_none_typevar_overlap' keyword argument to False when calling
+# 'is_overlapping_types', the binder will incorrectly infer that 'out' has a type of
+# Union[T, None] after the if statement.
+
 from typing import TypeVar
 
 T = TypeVar('T')

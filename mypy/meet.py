@@ -39,7 +39,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(declared, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
                                                 for x in declared.relevant_items()])
-    elif not is_overlapping_types(declared, narrowed):
+    elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True, default_return=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
@@ -91,9 +91,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
-        out = []  # type: List[Type]
-        out.extend(typ.items())
-        return out
+        return list(typ.items())
     else:
         return [typ]
 
@@ -101,7 +99,8 @@ def get_possible_variants(typ: Type) -> List[Type]:
 def is_overlapping_types(left: Type,
                          right: Type,
                          ignore_promotions: bool = False,
-                         prohibit_none_typevar_overlap: bool = False) -> bool:
+                         prohibit_none_typevar_overlap: bool = False,
+                         default_return: bool = False) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
     If 'ignore_promotions' is True, we ignore promotions while checking for overlaps.
@@ -116,14 +115,20 @@ def is_overlapping_types(left: Type,
         return is_overlapping_types(
             left, right,
             ignore_promotions=ignore_promotions,
-            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap)
+            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
+            default_return=default_return)
 
-    # We should never encounter these types, but if we do, we handle
-    # them in the same way we handle 'Any'.
-    illegal_types = (UnboundType, PartialType, ErasedType, DeletedType)
+    # We should never encounter this type.
+    if isinstance(left, PartialType) or isinstance(right, PartialType):
+        assert False, "Unexpectedly encountered partial type"
+
+    # We should also never encounter these types, but it's possible a few
+    # have snuck through due to unrelated bugs. For now, we handle these
+    # in the same way we handle 'Any'.
+    #
+    # TODO: Replace these with an 'assert False' once we are more confident.
+    illegal_types = (UnboundType, ErasedType, DeletedType)
     if isinstance(left, illegal_types) or isinstance(right, illegal_types):
-        # TODO: Replace this with an 'assert False' once we are confident we
-        # never accidentally generate these types.
         return True
 
     # 'Any' may or may not be overlapping with the other type
@@ -172,13 +177,19 @@ def is_overlapping_types(left: Type,
         return False
 
     # Now that we've finished handling TypeVars, we're free to end early
-    # if one one of the types is None and we're running in strict-optional
-    # mode. (We must perform this check after the TypeVar checks because
-    # a TypeVar could be bound to None, for example.)
+    # if one one of the types is None. (None only overlaps with None in
+    # strict-optional mode; None overlaps with everything in non-strict-optional
+    # mode).
+    #
+    # We must perform this check after the TypeVar checks because
+    # a TypeVar could be bound to None, for example.
 
     if experiments.STRICT_OPTIONAL:
         if isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
             return False
+    else:
+        if isinstance(left, NoneTyp) or isinstance(right, NoneTyp):
+            return True
 
     # Next, we handle single-variant types that may be inherently partially overlapping:
     #
@@ -241,6 +252,20 @@ def is_overlapping_types(left: Type,
             return False
 
         if len(left.args) == len(right.args):
+            # Note: we don't really care about variance here, since the overlapping check
+            # is symmetric and since we want to return 'True' even for partial overlaps.
+            #
+            # For example, suppose we have two types Wrapper[Parent] and Wrapper[Child].
+            # It doesn't matter whether Wrapper is covariant or contravariant since
+            # either way, one of the two types will overlap with the other.
+            #
+            # Similarly, if Wrapper was invariant, the two types could still be partially
+            # overlapping -- what if Wrapper[Parent] happened to contain only instances of
+            # specifically Child?
+            #
+            # Or, to use a more concrete example, List[Union[A, B]] and List[Union[B, C]]
+            # would be considered partially overlapping since it's possible for both lists
+            # to contain only instances of B at runtime.
             for left_arg, right_arg in zip(left.args, right.args):
                 if _is_overlapping_types(left_arg, right_arg):
                     return True
@@ -248,25 +273,31 @@ def is_overlapping_types(left: Type,
     # We ought to have handled every case by now: we conclude the
     # two types are not overlapping, either completely or partially.
 
-    return False
+    return default_return
 
 
 def is_overlapping_erased_types(left: Type, right: Type, *,
                                 ignore_promotions: bool = False) -> bool:
     """The same as 'is_overlapping_erased_types', except the types are erased first."""
     return is_overlapping_types(erase_type(left), erase_type(right),
-                                ignore_promotions=ignore_promotions)
+                                ignore_promotions=ignore_promotions,
+                                prohibit_none_typevar_overlap=True,
+                                default_return=True)
 
 
 def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
-                                ignore_promotions: bool = False) -> bool:
+                                ignore_promotions: bool = False,
+                                prohibit_none_typevar_overlap: bool = False,
+                                default_return: bool = False) -> bool:
     """Returns 'true' if left and right are overlapping TypeDictTypes."""
     # All required keys in left are present and overlapping with something in right
     for key in left.required_keys:
         if key not in right.items:
             return False
         if not is_overlapping_types(left.items[key], right.items[key],
-                                    ignore_promotions=ignore_promotions):
+                                    ignore_promotions=ignore_promotions,
+                                    prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
+                                    default_return=default_return):
             return False
 
     # Repeat check in the other direction
@@ -284,17 +315,20 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
 
 
 def are_tuples_overlapping(left: Type, right: Type, *,
-                           ignore_promotions: bool = False) -> bool:
-    """Returns true if left and right are overlapping tuples.
-
-    Precondition: is_tuple(left) and is_tuple(right) are both true."""
+                           ignore_promotions: bool = False,
+                           prohibit_none_typevar_overlap: bool = False,
+                           default_return: bool = False) -> bool:
+    """Returns true if left and right are overlapping tuples."""
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
-    assert isinstance(left, TupleType)
-    assert isinstance(right, TupleType)
+    assert isinstance(left, TupleType), 'Type {} is not a tuple'.format(left)
+    assert isinstance(right, TupleType), 'Type {} is not a tuple'.format(right)
     if len(left.items) != len(right.items):
         return False
-    return all(is_overlapping_types(l, r, ignore_promotions=ignore_promotions)
+    return all(is_overlapping_types(l, r,
+                                    ignore_promotions=ignore_promotions,
+                                    prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
+                                    default_return=default_return)
                for l, r in zip(left.items, right.items))
 
 
