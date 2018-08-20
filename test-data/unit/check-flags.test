@@ -132,6 +132,22 @@ def d3(p) -> Any:
 @d1  # E: Untyped decorator makes function "f" untyped
 def f() -> None: pass
 
+[case testDisallowUntypedDecoratorsCallableInstance]
+# flags: --disallow-untyped-decorators
+from typing import Callable
+
+class TypedDecorator:
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+class UntypedDecorator:
+    def __call__(self, c):
+        return function
+
+@UntypedDecorator()  # E: Untyped decorator makes function "f" untyped
+@TypedDecorator()
+def f() -> None: pass
+
 [case testSubclassingAny]
 # flags: --disallow-subclassing-any
 from typing import Any

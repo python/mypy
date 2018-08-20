@@ -4004,9 +4004,15 @@ def is_typed_callable(c: Optional[Type]) -> bool:
 
 
 def is_untyped_decorator(typ: Optional[Type]) -> bool:
-    if not typ or not isinstance(typ, CallableType):
+    if not typ:
         return True
-    return typ.implicit
+    if isinstance(typ, CallableType):
+        return typ.implicit
+    if isinstance(typ, Instance):
+        method = typ.type.get_method('__call__')
+        if method and method.type:
+            return not is_typed_callable(method.type)
+    return True
 
 
 def is_static(func: Union[FuncBase, Decorator]) -> bool:
