@@ -631,6 +631,33 @@ class C:
 reveal_type(C.create)  # E: Revealed type is 'def (arg: builtins.int) -> __main__.C'
 [builtins fixtures/classmethod.pyi]
 
+[case testClassmethodBeforeInitInNestedClass]
+class A:
+    @classmethod
+    def create(cls, arg: int) -> 'A':
+        reveal_type(cls) # E: Revealed type is 'def (arg: builtins.int) -> __main__.A'
+        reveal_type(cls(arg)) # E: Revealed type is '__main__.A'
+        cls() # E: Too few arguments for "A"
+        return cls(arg)
+
+    class B:
+        @classmethod
+        def create(cls, arg: str) -> 'A.B':
+            reveal_type(cls) # E: Revealed type is 'def (arg: builtins.str) -> __main__.A.B'
+            reveal_type(cls(arg)) # E: Revealed type is '__main__.A.B'
+            cls() # E: Too few arguments for "B"
+            return cls(arg)
+
+        def __init__(self, arg: 'str') -> None:
+            self._arg: str = arg
+
+    def __init__(self, arg: 'int') -> None:
+        self._arg: int = arg
+
+reveal_type(A.create)  # E: Revealed type is 'def (arg: builtins.int) -> __main__.A'
+reveal_type(A.B.create)  # E: Revealed type is 'def (arg: builtins.str) -> __main__.A.B'
+[builtins fixtures/classmethod.pyi]
+
 [case testClassmethodBeforeInitInGenericClass]
 from typing import Generic, TypeVar
 T = TypeVar('T')
