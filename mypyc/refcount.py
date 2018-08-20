@@ -27,7 +27,7 @@ from mypyc.analysis import (
 )
 from mypyc.ops import (
     FuncIR, BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto, Environment,
-    Return, Op, Cast, Box, RType, Value, Register, AssignmentTargetRegister
+    Return, Op, ControlOp, RType, Value, Register, AssignmentTargetRegister
 )
 
 
@@ -80,35 +80,38 @@ def transform_block(block: BasicBlock,
     ops = []  # type: List[Op]
     for i, op in enumerate(old_ops):
         key = (block, i)
-        if isinstance(op, (Assign, Cast, Box)):
-            dest = op.dest if isinstance(op, Assign) else op
-            # These operations just copy/steal a reference and don't create new
-            # references.
-            if op.src in post_live[key] or op.src in pre_borrow[key]:
-                maybe_append_inc_ref(ops, op.src)
-                if (dest not in pre_borrow[key] and
-                        dest in pre_live[key]):
+
+        assert op not in pre_live[key]
+        dest = op.dest if isinstance(op, Assign) else op
+        stolen = op.stolen()
+
+        # Incref any references that are being stolen that stay live, were borrowed,
+        # or are stolen more than once by this operation.
+        for i, src in enumerate(stolen):
+            if src in post_live[key] or src in pre_borrow[key] or src in stolen[:i]:
+                maybe_append_inc_ref(ops, src)
+                # For assignments to registers that were already live,
+                # decref the old value.
+                if (dest not in pre_borrow[key] and dest in pre_live[key]):
+                    assert isinstance(op, Assign)
                     maybe_append_dec_ref(ops, dest)
-            ops.append(op)
-            if dest not in post_live[key]:
-                assert dest is not None
-                maybe_append_dec_ref(ops, dest)
-        elif isinstance(op, RegisterOp):
-            # These operations construct a new reference.
-            assert op not in pre_live[key]
-            ops.append(op)
-            for src in op.unique_sources():
-                # Decrement source that won't be live afterwards.
-                if src not in post_live[key] and src not in pre_borrow[key]:
-                    maybe_append_dec_ref(ops, src)
-            if not op.is_void and op not in post_live[key] and not op.is_borrowed:
-                maybe_append_dec_ref(ops, op)
-        elif isinstance(op, Return) and op.reg in pre_borrow[key]:
-            # The return op returns a new reference.
-            maybe_append_inc_ref(ops, op.reg)
-            ops.append(op)
-        else:
-            ops.append(op)
+
+        ops.append(op)
+
+        # Control ops don't have any space to insert ops after them, so
+        # their inc/decrefs get inserted by insert_branch_inc_and_decrefs.
+        if isinstance(op, ControlOp):
+            continue
+
+        for src in op.unique_sources():
+            # Decrement source that won't be live afterwards.
+            if src not in post_live[key] and src not in pre_borrow[key] and src not in stolen:
+                maybe_append_dec_ref(ops, src)
+        # Decrement the destination if it is dead after the op and
+        # wasn't a borrowed RegisterOp
+        if (not dest.is_void and dest not in post_live[key]
+                and not (isinstance(op, RegisterOp) and dest.is_borrowed)):
+            maybe_append_dec_ref(ops, dest)
     block.ops = ops
 
 

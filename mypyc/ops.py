@@ -525,6 +525,21 @@ class Op(Value):
         return False
 
     @abstractmethod
+    def sources(self) -> List[Value]:
+        pass
+
+    def stolen(self) -> List[Value]:
+        """Return arguments that have a reference count stolen by this op"""
+        return []
+
+    def unique_sources(self) -> List[Value]:
+        result = []  # type: List[Value]
+        for reg in self.sources():
+            if reg not in result:
+                result.append(reg)
+        return result
+
+    @abstractmethod
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         pass
 
@@ -546,6 +561,9 @@ class Goto(ControlOp):
 
     def __repr__(self) -> str:
         return '<Goto %s>' % self.label.label
+
+    def sources(self) -> List[Value]:
+        return []
 
     def to_str(self, env: Environment) -> str:
         return env.format('goto %l', self.label)
@@ -611,6 +629,12 @@ class Return(ControlOp):
         super().__init__(line)
         self.reg = reg
 
+    def sources(self) -> List[Value]:
+        return [self.reg]
+
+    def stolen(self) -> List[Value]:
+        return [self.reg]
+
     def to_str(self, env: Environment) -> str:
         return env.format('return %r', self.reg)
 
@@ -636,6 +660,9 @@ class Unreachable(ControlOp):
     def to_str(self, env: Environment) -> str:
         return "unreachable"
 
+    def sources(self) -> List[Value]:
+        return []
+
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_unreachable(self)
 
@@ -644,7 +671,7 @@ class RegisterOp(Op):
     """An operation that can be written as r1 = f(r2, ..., rn).
 
     Takes some registers, performs an operation and generates an output.
-    The output register can be None for no output.
+    Doesn't do any control flow, but can raise an error.
     """
 
     error_kind = -1  # Can this raise exception and how is it signalled; one of ERR_*
@@ -655,19 +682,8 @@ class RegisterOp(Op):
         super().__init__(line)
         assert self.error_kind != -1, 'error_kind not defined'
 
-    @abstractmethod
-    def sources(self) -> List[Value]:
-        pass
-
     def can_raise(self) -> bool:
         return self.error_kind != ERR_NEVER
-
-    def unique_sources(self) -> List[Value]:
-        result = []  # type: List[Value]
-        for reg in self.sources():
-            if reg not in result:
-                result.append(reg)
-        return result
 
 
 class IncRef(RegisterOp):
@@ -892,6 +908,9 @@ class Assign(Op):
         self.dest = dest
 
     def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
@@ -1131,6 +1150,9 @@ class Cast(RegisterOp):
     def sources(self) -> List[Value]:
         return [self.src]
 
+    def stolen(self) -> List[Value]:
+        return [self.src]
+
     def to_str(self, env: Environment) -> str:
         return env.format('%r = cast(%s, %r)', self, self.type, self.src)
 
@@ -1153,6 +1175,9 @@ class Box(RegisterOp):
         self.type = object_rprimitive
 
     def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
         return [self.src]
 
     def to_str(self, env: Environment) -> str:
