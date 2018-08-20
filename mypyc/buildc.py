@@ -113,11 +113,15 @@ extra_compile_args = ['-O{opt_level}', '-Werror', '-Wno-unused-function', '-Wno-
 
 vars = sysconfig.get_config_vars()
 
-# On OS X, Force the creation of dynamic libraries instead of bundles so that
-# we can link against multi-module shared libraries.
-# From https://stackoverflow.com/a/32765319
 if sys.platform == 'darwin':
+    # On OS X, force the creation of dynamic libraries instead of bundles so that
+    # we can link against multi-module shared libraries.
+    # From https://stackoverflow.com/a/32765319
     vars['LDSHARED'] = vars['LDSHARED'].replace('-bundle', '-dynamiclib')
+    # Also disable building 32-bit binaries, since we generate too much code
+    # for a 32-bit MACH-O object. There has to be a better way to do this.
+    vars['LDFLAGS'] = vars['LDFLAGS'].replace('-arch i386', '')
+    vars['CFLAGS'] = vars['CFLAGS'].replace('-arch i386', '')
 
 # And on Linux, set the rpath to $ORIGIN so they will look for the shared
 # library in the directory that they live in.
