@@ -397,6 +397,11 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
     if implicit is True, the original Var was created as an assignment to self
     """
     # Found a member variable.
+
+    if is_lvalue and var.is_final and not chk.get_final_context():
+        name = var.name()
+        msg.fail('Can\'t assign to constant "{}"'.format(name), node)
+
     itype = map_instance_to_supertype(itype, var.info)
     typ = var.type
     if typ:

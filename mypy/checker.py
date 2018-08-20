@@ -217,6 +217,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
+        self._is_final_def = False
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -1586,7 +1587,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 break
             self.accept(s)
 
+    def get_final_context(self) -> bool:
+        return self._is_final_def
+
+    @contextmanager
+    def set_final_context(self, is_final_def: bool) -> Iterator[None]:
+        old_ctx = self._is_final_def
+        self._is_final_def = is_final_def
+        try:
+            yield
+        finally:
+            self._is_final_def = old_ctx
+
     def check_final(self, s: AssignmentStmt) -> None:
+        # for class body & modules, other in checkmember
         lvs = self.flatten_lvalues(s.lvalues)
         for lv in lvs:
             if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
@@ -1599,7 +1613,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
+        with self.set_final_context(s.is_final_def):
+            self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if (s.type is not None and
                 self.options.disallow_any_unimported and

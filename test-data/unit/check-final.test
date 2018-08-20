@@ -173,15 +173,49 @@ class C:
 -- Reassignments
 
 [case testFinalReassignModuleVar]
+from typing import Final
 
+x: Final = 1
+x = 2  # E: Can't assign to constant "x"
+def f() -> int:
+    global x
+    x = 3  # E: Can't assign to constant "x"
+    return x
+
+y = 1
+y: Final = 2  # E: Name 'y' already defined on line 10 \
+              # E: Final can't redefine an existing name, ignoring
+y = 3  # No error here, first definition wins
+
+z: Final = 1
+z: Final = 2  # E: Name 'z' already defined on line 14 \
+              # E: Final can't redefine an existing name, ignoring \
+              # E: Can't assign to constant "z"
+z = 3  # E: Can't assign to constant "z"
 [out]
 
-[case testFinalReassignModuleFunc]
+[case testFinalReassignFuncScope]
+from typing import Final
 
+def f() -> None:
+    nl: Final = 0
+    x: Final = 1
+    x = 1  # E: Can't assign to constant "x"
+
+    y: Final = 1
+    y: Final = 2  # E: Final can't redefine an existing name, ignoring \
+                  # E: Can't assign to constant "y"
+    def nested() -> None:
+        nonlocal nl
+        nl = 1  # E: Can't assign to constant "nl"
 [out]
 
 [case testFinalReassignModuleVarExternal]
-
+import mod
+mod.x = 2  # E: Can't assign to constant "x"
+[file mod.pyi]
+from typing import Final
+x: Final[int]
 [out]
 
 [case testFinalReassignModuleFuncExternal]
@@ -193,10 +227,29 @@ class C:
 [out]
 
 [case testFinalReassignInstanceVarClassBody]
+from typing import Final
 
+class C:
+    x: Final = 1
+    x = 2  # E: Can't assign to constant "x"
+
+    y = 1
+    y: Final = 2  # E: Final can't redefine an existing name, ignoring
 [out]
 
 [case testFinalReassignInstanceVarInit]
+from typing import Final
+
+class C:
+    def __init__(self) -> None:
+        self.x: Final = 1
+        self.y = 1
+        self.y: Final = 2  # E: Final can't redefine an existing name, ignoring
+    def meth(self) -> None:
+        self.x = 2  # E: Can't assign to constant "x"
+[out]
+
+[case testFinalReassignInstanceVarClassVsInit]
 
 [out]
 
@@ -209,6 +262,14 @@ class C:
 [out]
 
 [case testFinalReassignInstanceVarExternalInstance]
+
+[out]
+
+[case testFinalReassignInstanceVarExternalSubclassClass]
+
+[out]
+
+[case testFinalReassignInstanceVarExternalSubclassInstance]
 
 [out]
 
