@@ -651,7 +651,6 @@ L0:
     r1 = C()
     c.x = r1; r2 = is_error
     dec_ref c
-    dec_ref r1
     r3 = None
     inc_ref r3
     return r3

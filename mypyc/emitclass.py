@@ -253,7 +253,7 @@ def generate_native_getters_and_setters(cl: ClassIR,
             emit_undefined_check(rtype, emitter, attr, '!=')
             emitter.emit_dec_ref('self->{}'.format(attr), rtype)
             emitter.emit_line('}')
-        emitter.emit_inc_ref('value'.format(attr), rtype)
+        # This steal the reference to src, so we don't need to increment the arg
         emitter.emit_lines('self->{} = value;'.format(attr),
                            'return 1;',
                            '}')

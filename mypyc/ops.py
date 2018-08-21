@@ -984,7 +984,10 @@ class GetAttr(RegisterOp):
 
 
 class SetAttr(RegisterOp):
-    """obj.attr = src (for a native object)"""
+    """obj.attr = src (for a native object)
+
+    Steals the reference to src.
+    """
 
     error_kind = ERR_FALSE
 
@@ -999,6 +1002,9 @@ class SetAttr(RegisterOp):
 
     def sources(self) -> List[Value]:
         return [self.obj, self.src]
+
+    def stolen(self) -> List[Value]:
+        return [self.src]
 
     def to_str(self, env: Environment) -> str:
         return env.format('%r.%s = %r; %r = is_error', self.obj, self.attr, self.src, self)
