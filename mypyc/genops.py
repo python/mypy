@@ -2430,6 +2430,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """First accepts all keys and values, then makes a dict out of them."""
         key_value_pairs = []
         for key_expr, value_expr in expr.items:
+            assert key is not None, "**args in dict expressions unimplemented"
             key = self.accept(key_expr)
             value = self.accept(value_expr)
             key_value_pairs.append((key, value))
