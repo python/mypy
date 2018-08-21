@@ -196,7 +196,18 @@ def correct_relative_import(cur_mod_id: str,
 fields_cache = {}  # type: Dict[Type[object], List[str]]
 
 
-def replace_object_state(new: object, old: object) -> None:
+def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
+    # Maintain a cache of type -> attributes defined by descriptors in the class
+    # (that is, attributes from __slots__ and C extension classes)
+    if cls not in fields_cache:
+        members = inspect.getmembers(
+            cls,
+            lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o))
+        fields_cache[cls] = [x for x, y in members if x != '__weakref__']
+    return fields_cache[cls]
+
+
+def replace_object_state(new: object, old: object, copy_dict: bool=False) -> None:
     """Copy state of old node to the new node.
 
     This handles cases where there is __dict__ and/or attribute descriptors
@@ -205,17 +216,12 @@ def replace_object_state(new: object, old: object) -> None:
     Assume that both objects have the same __class__.
     """
     if hasattr(old, '__dict__'):
-        new.__dict__ = old.__dict__
+        if copy_dict:
+            new.__dict__ = dict(old.__dict__)
+        else:
+            new.__dict__ = old.__dict__
 
-    cls = old.__class__
-    # Maintain a cache of type -> attributes defined by descriptors in the class
-    # (that is, attributes from __slots__ and C extension classes)
-    if cls not in fields_cache:
-        members = inspect.getmembers(
-            cls,
-            lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o))
-        fields_cache[cls] = [x for x, y in members if x != '__weakref__']
-    for attr in fields_cache[cls]:
+    for attr in get_class_descriptors(old.__class__):
         try:
             if hasattr(old, attr):
                 setattr(new, attr, getattr(old, attr))

@@ -4,14 +4,17 @@ import pprint
 import sys
 
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 
 from mypy import defaults
-
+from mypy.util import get_class_descriptors, replace_object_state
 
 class BuildType:
-    STANDARD = 0
-    MODULE = 1
-    PROGRAM_TEXT = 2
+    STANDARD = 0  # type: ClassVar[int]
+    MODULE = 1  # type: ClassVar[int]
+    PROGRAM_TEXT = 2  # type: ClassVar[int]
 
 
 class Options:
@@ -46,11 +49,11 @@ class Options:
         "warn_no_return",
         "warn_return_any",
         "warn_unused_ignores",
-    }
+    }  # type: ClassVar[Set[str]]
 
-    OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
+    OPTIONS_AFFECTING_CACHE = ((Options.PER_MODULE_OPTIONS |
                                 {"quick_and_dirty", "platform", "bazel"})
-                               - {"debug_cache"})
+                               - {"debug_cache"})  # type: ClassVar[Set[str]]
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
@@ -209,12 +212,16 @@ class Options:
 
     def snapshot(self) -> object:
         """Produce a comparable snapshot of this Option"""
-        d = dict(self.__dict__)
+        # Under mypyc, we don't have a __dict__, so we need to do worse things.
+        d = dict(getattr(self, '__dict__', ()))
+        for k in get_class_descriptors(Options):
+            if hasattr(self, k):
+                d[k] = getattr(self, k)
         del d['per_module_cache']
         return d
 
     def __eq__(self, other: object) -> bool:
-        return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
+        return isinstance(other, Options) and self.snapshot() == other.snapshot()
 
     def __ne__(self, other: object) -> bool:
         return not self == other
@@ -224,8 +231,10 @@ class Options:
 
     def apply_changes(self, changes: Dict[str, object]) -> 'Options':
         new_options = Options()
-        new_options.__dict__.update(self.__dict__)
-        new_options.__dict__.update(changes)
+        # Under mypyc, we don't have a __dict__, so we need to do worse things.
+        replace_object_state(new_options, self, copy_dict=True)
+        for key, value in changes.items():
+            setattr(new_options, key, value)
         return new_options
 
     def build_per_module_cache(self) -> None:
@@ -281,7 +290,7 @@ class Options:
         """
         if self.per_module_cache is None:
             self.build_per_module_cache()
-            assert self.per_module_cache is not None
+        assert self.per_module_cache is not None
 
         # If the module just directly has a config entry, use it.
         if module in self.per_module_cache:
@@ -327,4 +336,4 @@ class Options:
         return re.compile(expr + '\\Z')
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        return {opt: getattr(self, opt) for opt in self.OPTIONS_AFFECTING_CACHE}
+        return {opt: getattr(self, opt) for opt in Options.OPTIONS_AFFECTING_CACHE}

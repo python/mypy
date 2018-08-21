@@ -1743,11 +1743,7 @@ def copy_type(t: Type) -> Type:
     # and copying everything in with replace_object_state.
     typ = type(t)
     nt = typ.__new__(typ)
-    replace_object_state(nt, t)
-    # replace_object_state leaves the new object with the same
-    # __dict__ as the old, so make a copy.
-    if hasattr(nt, '__dict__'):
-        nt.__dict__ = nt.__dict__.copy()
+    replace_object_state(nt, t, copy_dict=True)
     return nt
 
 
