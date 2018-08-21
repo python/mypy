@@ -1555,7 +1555,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.accept(s.else_body)
 
         self.for_loop_helper(s.index, s.expr, body,
-                             else_block if s.else_body else None, None, s.line)
+                             else_block if s.else_body else None, s.line)
 
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
@@ -1599,7 +1599,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def for_loop_helper(self, index: Lvalue, expr: Expression,
                         body_insts: GenFunc, else_insts: Optional[GenFunc],
-                        exit_block: Optional[BasicBlock], line: int) -> None:
+                        line: int) -> None:
         """Generate IR for a loop.
 
         "index" is the loop index Lvalue
@@ -1609,9 +1609,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         body_block, increment_block = BasicBlock(), BasicBlock()
         # Block for the else clause, if we need it.
         else_block = BasicBlock()
-
-        if exit_block is None:
-            exit_block = BasicBlock()
+        exit_block = BasicBlock()
 
         # Determine where we want to exit, if our condition check fails.
         normal_loop_exit = else_block if else_insts is not None else exit_block
@@ -2106,7 +2104,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.goto(exit_block)
             self.activate_block(false_block)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, exit_block, gen.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, gen.line)
+        self.goto_and_activate(exit_block)
+
         return retval
 
     def translate_refexpr_call(self, expr: CallExpr, callee: RefExpr) -> Value:
@@ -2972,7 +2972,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             e = self.accept(gen.left_expr)
             self.primitive_op(list_append_op, [list_ops, e], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
         return list_ops
 
     def visit_set_comprehension(self, o: SetComprehension) -> Value:
@@ -2984,7 +2984,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             e = self.accept(gen.left_expr)
             self.primitive_op(set_add_op, [set_ops, e], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
         return set_ops
 
     def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> Value:
@@ -2996,7 +2996,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             v = self.accept(o.value)
             self.primitive_op(dict_set_item_op, [d, k, v], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
         return d
 
     def visit_generator_expr(self, o: GeneratorExpr) -> Value:
@@ -3011,13 +3011,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             e = self.accept(gen.left_expr)
             self.primitive_op(list_append_op, [list_ops, e], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
         return list_ops
 
     def comprehension_helper(self,
                              loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
                              gen_inner_stmts: Callable[[], None],
-                             exit_block: Optional[BasicBlock],
                              line: int) -> None:
         """Helper function for list comprehensions.
 
@@ -3037,7 +3036,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             index, expr, conds = loop_params[0]
             self.for_loop_helper(index, expr,
                                  lambda: loop_contents(conds, loop_params[1:]),
-                                 None, exit_block, line)
+                                 None, line)
 
         def loop_contents(
                 conds: List[Expression],
