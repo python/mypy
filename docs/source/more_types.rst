@@ -956,8 +956,8 @@ unintentional modifications:
 
    RATE = 300  # this too
 
-Another example is where a user might want to protect certain attributes
-from overriding in a subclass:
+Another example is where a user might want to protect certain instance
+attributes from overriding in a subclass:
 
 .. code-block:: python
 
@@ -1073,10 +1073,10 @@ two following guarantees:
      class Base:
          ID = 0
 
-     class One:
+     class One(Base):
          ID: Final = 1  # OK
 
-     class Other:
+     class Other(Base):
          ID: Final = 2  # OK
 
      class Combo(One, Other):  # Error, cannot override final attribute.
