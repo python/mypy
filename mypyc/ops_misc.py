@@ -5,6 +5,7 @@ from typing import List
 from mypyc.ops import (
     EmitterInterface, PrimitiveOp,
     none_rprimitive, bool_rprimitive, object_rprimitive, tuple_rprimitive, str_rprimitive,
+    int_rprimitive,
     ERR_NEVER, ERR_MAGIC, ERR_FALSE
 )
 from mypyc.ops_primitive import (
@@ -185,6 +186,13 @@ method_op('__delitem__',
           error_kind=ERR_FALSE,
           emit=simple_emit('{dest} = PyObject_DelItem({args[0]}, {args[1]}) >= 0;'),
           priority=0)
+
+func_op(
+    name='builtins.hash',
+    arg_types=[object_rprimitive],
+    result_type=int_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = CPyObject_Hash({args[0]});'))
 
 py_getattr_op = func_op(
     name='builtins.getattr',

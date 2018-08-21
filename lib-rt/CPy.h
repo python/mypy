@@ -271,15 +271,31 @@ static inline PyObject *CPyTagged_LongAsObject(CPyTagged x) {
     return (PyObject *)(x & ~CPY_INT_TAG);
 }
 
+static inline bool CPyTagged_LongLongTooBig(long long value) {
+    // Micro-optimized where the common case where long long is small
+    // enough.
+    return (unsigned long long)value >= (1LL << 62)
+        && (value >= 0 || value < -(1LL << 62));
+}
+
+static CPyTagged CPyTagged_FromLongLong(long long value) {
+    // We use a Python object if the value shifted left by 1 is too
+    // large for long long.
+    if (CPyTagged_LongLongTooBig(value)) {
+        PyObject *object = PyLong_FromLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
+}
+
 static CPyTagged CPyTagged_FromObject(PyObject *object) {
     int overflow;
     // TODO: This may call __int__ and raise exceptions.
     PY_LONG_LONG value = PyLong_AsLongLongAndOverflow(object, &overflow);
     // We use a Python object if the value shifted left by 1 is too
-    // large for long long.  The latter check is micro-optimized where
-    // the common case where long long is small enough.
-    if (overflow != 0 || (((unsigned long long)value >= (1LL << 62)) &&
-                          (value >= 0 || value < -(1LL << 62)))) {
+    // large for long long.
+    if (overflow != 0 || CPyTagged_LongLongTooBig(value)) {
         Py_INCREF(object);
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {
@@ -292,10 +308,8 @@ static CPyTagged CPyTagged_StealFromObject(PyObject *object) {
     // TODO: This may call __int__ and raise exceptions.
     PY_LONG_LONG value = PyLong_AsLongLongAndOverflow(object, &overflow);
     // We use a Python object if the value shifted left by 1 is too
-    // large for long long.  The latter check is micro-optimized where
-    // the common case where long long is small enough.
-    if (overflow != 0 || (((unsigned long long)value >= (1LL << 62)) &&
-                          (value >= 0 || value < -(1LL << 62)))) {
+    // large for long long.
+    if (overflow != 0 || CPyTagged_LongLongTooBig(value)) {
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {
         Py_DECREF(object);
@@ -664,6 +678,21 @@ static PyObject *CPySequenceTuple_GetItem(PyObject *tuple, CPyTagged index) {
     } else {
         PyErr_SetString(PyExc_IndexError, "tuple index out of range");
         return NULL;
+    }
+}
+
+static CPyTagged CPyObject_Hash(PyObject *o) {
+    Py_hash_t h = PyObject_Hash(o);
+    if (h == -1) {
+        return CPY_INT_TAG;
+    } else {
+        // This is tragically annoying. The range of hash values in
+        // 64-bit python covers 64-bits, and our short integers only
+        // cover 63. This means that half the time we are boxing the
+        // result for basically no good reason. To add insult to
+        // injury it is probably about to be immediately unboxed by a
+        // tp_hash wrapper.
+        return CPyTagged_FromLongLong(h);
     }
 }
 
