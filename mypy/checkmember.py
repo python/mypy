@@ -267,7 +267,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
             for base in info.mro:
                 sym = base.names.get(name)
                 if sym and isinstance(sym.node, (Var, FuncBase, Decorator)) and sym.node.is_final:
-                    msg.fail('Can\'t assign to constant "{}"'.format(name), node)
+                    msg.cant_assign_to_final(name, module_level=False, ctx=node)
 
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
                            original_type, builtin_type, not_ready_callback,
@@ -550,7 +550,7 @@ def analyze_class_attribute_access(itype: Instance,
                 is_lvalue and b_node.node.is_final
                 and not chk.get_final_context()):
             name = b_node.node.name()
-            msg.fail('Can\'t assign to constant "{}"'.format(name), context)
+            msg.cant_assign_to_final(name, module_level=False, ctx=context)
 
     if itype.type.is_enum and not (is_lvalue or is_decorated or is_method):
         return itype

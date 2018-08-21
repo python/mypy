@@ -229,6 +229,11 @@ class C:
                                  # E: Final can be only applied to a name or an attribute on self
 [out]
 
+[case testFinalNotInProtocol]
+from typing import Final, final, Protocol
+
+[out]
+
 -- Reassignments
 
 [case testFinalReassignModuleVar]
@@ -297,7 +302,7 @@ class C:
         self.y = 1
         self.y: Final = 2  # E: Final can't redefine an existing name, ignoring
     def meth(self) -> None:
-        self.x = 2  # E: Can't assign to constant "x"
+        self.x = 2  # E: Can't assign to final attribute "x"
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
@@ -307,7 +312,7 @@ class C:
     y: Final = 1
     def __init__(self) -> None:
         self.x: Final = 1
-        self.y = 2  # E: Can't assign to constant "y"
+        self.y = 2  # E: Can't assign to final attribute "y"
     x = 2  # E: Can't assign to constant "x"
 [out]
 
@@ -319,14 +324,14 @@ class C:
     def __init__(self) -> None:
         self.y: Final = 1
     def meth(self) -> None:
-        self.x = 2  # E: Can't assign to constant "x"
-        self.y = 2  # E: Can't assign to constant "y"
+        self.x = 2  # E: Can't assign to final attribute "x"
+        self.y = 2  # E: Can't assign to final attribute "y"
     def other(self) -> None:
-        self.x = 2  # E: Can't assign to constant "x"
-        self.y = 2  # E: Can't assign to constant "y"
+        self.x = 2  # E: Can't assign to final attribute "x"
+        self.y = 2  # E: Can't assign to final attribute "y"
     @classmethod
     def cm(cls) -> None:
-        cls.x = 2  # E: Can't assign to constant "x"
+        cls.x = 2  # E: Can't assign to final attribute "x"
         cls.y  # E: Can't access instance constant on class object
 [builtins fixtures/classmethod.pyi]
 [out]
@@ -341,10 +346,10 @@ class C:
 
 class D(C): pass
 
-C.x = 2  # E: Can't assign to constant "x"
-D.x = 2  # E: Can't assign to constant "x"
+C.x = 2  # E: Can't assign to final attribute "x"
+D.x = 2  # E: Can't assign to final attribute "x"
 D.y = 2  # E: Can't access instance constant on class object \
-         # E: Can't assign to constant "y"
+         # E: Can't assign to final attribute "y"
 [out]
 
 [case testFinalReassignInstanceVarExternalInstance]
@@ -357,9 +362,9 @@ class C:
 
 class D(C): pass
 
-C().x = 2  # E: Can't assign to constant "x"
-D().x = 2  # E: Can't assign to constant "x"
-D().y = 2  # E: Can't assign to constant "y"
+C().x = 2  # E: Can't assign to final attribute "x"
+D().x = 2  # E: Can't assign to final attribute "x"
+D().y = 2  # E: Can't assign to final attribute "y"
 [out]
 
 [case testFinalWorksWithComplexTargets]
@@ -385,16 +390,18 @@ class B(A):
     def __init__(self) -> None:
         self.y: Final = 1
 class C(B):
-    x: int = 2  # E: Cannot override constant (previously declared on base class "B") \
+    x: int = 2  # E: Cannot override final attribute "x" \
+                # N: (previously declared on base class "B") \
                 # E: Can't assign to constant "x"
-    y: int = 2  # E: Cannot override constant (previously declared on base class "B") \
+    y: int = 2  # E: Cannot override final attribute "y" \
+                # N: (previously declared on base class "B") \
                 # E: Can't assign to constant "y"
     x = 3  # E: Can't assign to constant "x"
     y = 3  # E: Can't assign to constant "y"
 class D(C):
     pass
-D.x = 4  # E: Can't assign to constant "x"
-D.y = 4  # E: Can't assign to constant "y"
+D.x = 4  # E: Can't assign to final attribute "x"
+D.y = 4  # E: Can't assign to final attribute "y"
 [out]
 
 [case testFinalOverridingVarClassBodyExplicit]
@@ -409,10 +416,10 @@ class B(A):
     def __init__(self) -> None:
         self.y: Final = 1
 class C(B):
-    x: Final = 2  # E: Cannot override constant (previously declared on base class "B") \
-                  # E: Can't assign to constant "x"
-    y: Final = 2  # E: Cannot override constant (previously declared on base class "B") \
-                  # E: Can't assign to constant "y"
+    x: Final = 2  # E: Cannot override final attribute "x" \
+                  # N: (previously declared on base class "B")
+    y: Final = 2  # E: Cannot override final attribute "y" \
+                  # N: (previously declared on base class "B")
 [out]
 
 [case testFinalOverridingVarInit]
@@ -428,11 +435,11 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x = 2  # E: Can't assign to constant "x"
-        self.y = 2  # E: Can't assign to constant "y"
+        self.x = 2  # E: Can't assign to final attribute "x"
+        self.y = 2  # E: Can't assign to final attribute "y"
     def meth(self) -> None:
-        self.x = 3  # E: Can't assign to constant "x"
-        self.y = 3  # E: Can't assign to constant "y"
+        self.x = 3  # E: Can't assign to final attribute "x"
+        self.y = 3  # E: Can't assign to final attribute "y"
 [out]
 
 [case testFinalOverridingVarInit2]
@@ -448,8 +455,10 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x: Final = 2  # E: Cannot override constant (previously declared on base class "B")
-        self.y: Final = 2  # E: Cannot override constant (previously declared on base class "B")
+        self.x: Final = 2  # E: Cannot override final attribute "x" \
+                           # N: (previously declared on base class "B")
+        self.y: Final = 2  # E: Cannot override final attribute "y" \
+                           # N: (previously declared on base class "B")
 [out]
 
 [case testFinalOverridingVarOtherMethod]
@@ -465,12 +474,14 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def meth(self) -> None:
-        self.x: int = 2    # E: Can't assign to constant "x" \
-                           # E: Cannot override constant (previously declared on base class "B")
-        self.y: int = 2    # E: Can't assign to constant "y" \
-                           # E: Cannot override constant (previously declared on base class "B")
-        self.x = 3  # E: Can't assign to constant "x"
-        self.y = 3  # E: Can't assign to constant "y"
+        self.x: int = 2    # E: Can't assign to final attribute "x" \
+                           # E: Cannot override final attribute "x" \
+                           # N: (previously declared on base class "B")
+        self.y: int = 2    # E: Can't assign to final attribute "y" \
+                           # E: Cannot override final attribute "y" \
+                           # N: (previously declared on base class "B")
+        self.x = 3  # E: Can't assign to final attribute "x"
+        self.y = 3  # E: Can't assign to final attribute "y"
 [out]
 
 [case testFinalOverridingVarMultipleInheritanceClass]
@@ -481,11 +492,12 @@ class A:
 class B:
     x = 2
 class C(A, B): ...
-class D(B, A): ...  # E: Cannot override constant (previously declared on base class "A")
-C.x = 3  # E: Can't assign to constant "x"
-D.x = 3  # E: Can't assign to constant "x"
-C().x = 4  # E: Can't assign to constant "x"
-D().x = 4  # E: Can't assign to constant "x"
+class D(B, A): ...  # E: Cannot override final attribute "x" \
+                    # N: (previously declared on base class "A")
+C.x = 3  # E: Can't assign to final attribute "x"
+D.x = 3  # E: Can't assign to final attribute "x"
+C().x = 4  # E: Can't assign to final attribute "x"
+D().x = 4  # E: Can't assign to final attribute "x"
 [out]
 
 [case testFinalOverridingVarMultipleInheritanceInit]
@@ -498,12 +510,13 @@ class B:
     def __init__(self) -> None:
         self.x = 2
 class C(A, B): ...
-class D(B, A): ...  # E: Cannot override constant (previously declared on base class "A")
+class D(B, A): ...  # E: Cannot override final attribute "x" \
+                    # N: (previously declared on base class "A")
 C.x = 3  # E: Can't access instance constant on class object \
-         # E: Can't assign to constant "x"
-D.x = 3  # E: Can't assign to constant "x"
-C().x = 4  # E: Can't assign to constant "x"
-D().x = 4  # E: Can't assign to constant "x"
+         # E: Can't assign to final attribute "x"
+D.x = 3  # E: Can't assign to final attribute "x"
+C().x = 4  # E: Can't assign to final attribute "x"
+D().x = 4  # E: Can't assign to final attribute "x"
 [out]
 
 [case testFinalOverridingVarMultipleInheritanceMixed]
@@ -515,11 +528,12 @@ class B:
     def __init__(self) -> None:
         self.x = 2
 class C(A, B): ...
-class D(B, A): ...  # E: Cannot override constant (previously declared on base class "A")
-C.x = 3  # E: Can't assign to constant "x"
-D.x = 3  # E: Can't assign to constant "x"
-C().x = 4  # E: Can't assign to constant "x"
-D().x = 4  # E: Can't assign to constant "x"
+class D(B, A): ...  # E: Cannot override final attribute "x" \
+                    # N: (previously declared on base class "A")
+C.x = 3  # E: Can't assign to final attribute "x"
+D.x = 3  # E: Can't assign to final attribute "x"
+C().x = 4  # E: Can't assign to final attribute "x"
+D().x = 4  # E: Can't assign to final attribute "x"
 [out]
 
 [case testFinalOverridingVarWithMethod]
@@ -531,13 +545,17 @@ class A:
         self.y: Final[Any] = 1
 
 class B(A):
-    def x(self) -> None: pass  # E: Cannot override constant (previously declared on base class "A")
-    def y(self) -> None: pass  # E: Cannot override constant (previously declared on base class "A")
+    def x(self) -> None: pass  # E: Cannot override final attribute "x" \
+                               # N: (previously declared on base class "A")
+    def y(self) -> None: pass  # E: Cannot override final attribute "y" \
+                               # N: (previously declared on base class "A")
 
 class C(A):
-    @property  # E: Cannot override constant (previously declared on base class "A")
+    @property  # E: Cannot override final attribute "x" \
+               # N: (previously declared on base class "A")
     def x(self) -> None: pass
-    @property  # E: Cannot override constant (previously declared on base class "A")
+    @property  # E: Cannot override final attribute "y" \
+               # N: (previously declared on base class "A")
     def y(self) -> None: pass
 [builtins fixtures/property.pyi]
 [out]
@@ -551,9 +569,11 @@ class A:
         self.y: Final[Any] = 1
 
 class B(A):
-    @classmethod  # E: Cannot override constant (previously declared on base class "A")
+    @classmethod  # E: Cannot override final attribute "x" \
+                  # N: (previously declared on base class "A")
     def x(self) -> None: pass
-    @classmethod  # E: Cannot override constant (previously declared on base class "A")
+    @classmethod  # E: Cannot override final attribute "y" \
+                  # N: (previously declared on base class "A")
     def y(self) -> None: pass
 
 [builtins fixtures/classmethod.pyi]
@@ -572,20 +592,24 @@ class A:
     def p(self) -> int: pass
 
 class B(A):
-    f = a  # E: Cannot override constant (previously declared on base class "A") \
+    f = a  # E: Cannot override final attribute "f" \
+           # N: (previously declared on base class "A") \
            # E: Can't assign to constant "f"
-    p = a  # E: Cannot override constant (previously declared on base class "A") \
+    p = a  # E: Cannot override final attribute "p" \
+           # N: (previously declared on base class "A") \
            # E: Can't assign to constant "p"
 class C(A):
-    f: Any  # E: Cannot override constant (previously declared on base class "A") \
+    f: Any  # E: Cannot override final attribute "f" \
+            # N: (previously declared on base class "A") \
             # E: Can't assign to constant "f"
-    p: Any  # E: Cannot override constant (previously declared on base class "A") \
+    p: Any  # E: Cannot override final attribute "p" \
+            # N: (previously declared on base class "A") \
             # E: Can't assign to constant "p"
 class D(A):
-    f: Final = a  # E: Cannot override constant (previously declared on base class "A") \
-                  # E: Can't assign to constant "f"
-    p: Final = a  # E: Cannot override constant (previously declared on base class "A") \
-                  # E: Can't assign to constant "p"
+    f: Final = a  # E: Cannot override final attribute "f" \
+                  # N: (previously declared on base class "A")
+    p: Final = a  # E: Cannot override final attribute "p" \
+                  # N: (previously declared on base class "A")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -603,18 +627,22 @@ class A:
 
 class B(A):
     def __init__(self) -> None:
-        self.f: Any  # E: Can't assign to constant "f" \
-                     # E: Cannot override constant (previously declared on base class "A")
-        self.c: Any  # E: Can't assign to constant "c" \
-                     # E: Cannot override constant (previously declared on base class "A")
+        self.f: Any  # E: Can't assign to final attribute "f" \
+                     # E: Cannot override final attribute "f" \
+                     # N: (previously declared on base class "A")
+        self.c: Any  # E: Can't assign to final attribute "c" \
+                     # E: Cannot override final attribute "c" \
+                     # N: (previously declared on base class "A")
 
-B().f = a  # E: Can't assign to constant "f"
-B().c = a  # E: Can't assign to constant "c"
+B().f = a  # E: Can't assign to final attribute "f"
+B().c = a  # E: Can't assign to final attribute "c"
 
 class C(A):
     def __init__(self) -> None:
-        self.f: Final = a  # E: Cannot override constant (previously declared on base class "A")
-        self.c: Final = a  # E: Cannot override constant (previously declared on base class "A")
+        self.f: Final = a  # E: Cannot override final attribute "f" \
+                           # N: (previously declared on base class "A")
+        self.c: Final = a  # E: Cannot override final attribute "c" \
+                           # N: (previously declared on base class "A")
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -627,7 +655,8 @@ class B:
     @final
     def m(self) -> int: pass
 
-class C(A, B): pass  # E: Cannot override constant (previously declared on base class "B")
+class C(A, B): pass  # E: Cannot override final attribute "m" \
+                     # N: (previously declared on base class "B")
 class D(B, A): pass
 [out]
 
@@ -640,7 +669,8 @@ class B:
     @final
     def m(self) -> int: pass
 
-class C(A, B): pass  # E: Cannot override constant (previously declared on base class "B")
+class C(A, B): pass  # E: Cannot override final attribute "m" \
+                     # N: (previously declared on base class "B")
 class D(B, A): pass
 [out]
 
@@ -653,7 +683,8 @@ class B:
     def f(cls) -> int: pass
 
 class C(B):
-    @classmethod  # E: Cannot override constant (previously declared on base class "B")
+    @classmethod  # E: Cannot override final attribute "f" \
+                  # N: (previously declared on base class "B")
     def f(cls) -> int: pass
 [builtins fixtures/classmethod.pyi]
 [out]
@@ -667,7 +698,8 @@ class B:
     def f() -> int: pass
 
 class C(B):
-    @staticmethod  # E: Cannot override constant (previously declared on base class "B")
+    @staticmethod  # E: Cannot override final attribute "f" \
+                   # N: (previously declared on base class "B")
     def f() -> int: pass
 [builtins fixtures/staticmethod.pyi]
 [out]
@@ -681,7 +713,8 @@ class B:
     def f(self) -> int: pass
 
 class C(B):
-    @property  # E: Cannot override constant (previously declared on base class "B")
+    @property  # E: Cannot override final attribute "f" \
+               # N: (previously declared on base class "B")
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
@@ -699,7 +732,8 @@ class B:
         pass
 
 class C(B):
-    @overload  # E: Cannot override constant (previously declared on base class "B")
+    @overload  # E: Cannot override final attribute "f" \
+               # N: (previously declared on base class "B")
     def f(self, x: int) -> int: ...
     @overload
     def f(self, x: str) -> str: ...

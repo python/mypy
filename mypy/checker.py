@@ -1274,16 +1274,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         base_attr = base.names.get(name)
         if base_attr:
             # The name of the method is defined in the base class.
-            if (isinstance(base_attr.node, (Var, FuncBase)) and base_attr.node.is_final or
-                    isinstance(base_attr.node, Decorator) and base_attr.node.func.is_final):
-                self.fail('Cannot override constant '
-                          '(previously declared on base class "%s")' % base.name(), defn)
+
             # Point errors at the 'def' line (important for backward compatibility
             # of type ignores).
             if not isinstance(defn, Decorator):
                 context = defn
             else:
                 context = defn.func
+
+            # First if we don't override a final (always an error, even with Any types)
+            if (isinstance(base_attr.node, (Var, FuncBase)) and base_attr.node.is_final or
+                    isinstance(base_attr.node, Decorator) and base_attr.node.func.is_final):
+                self.msg.cant_override_final(name, base.name(), defn)
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):
                 typ = self.function_type(defn)  # type: Type
@@ -1551,11 +1553,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
+        # Final attribute can never be overridden, but can override normal attributes,
+        # so we only check `second`.
         if (isinstance(second.node, (Var, FuncBase)) and second.node.is_final or
                 isinstance(second.node, Decorator) and second.node.func.is_final):
-            # Final can never be overriden, but can override
-            self.fail('Cannot override constant '
-                      '(previously declared on base class "%s")' % base2.name(), ctx)
+            self.msg.cant_override_final(name, base2.name(), ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True
@@ -1618,16 +1620,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 name = lv.node.name()
                 cls = self.scope.active_class()
                 if cls is not None:
-                    # This exist to give more errors even if we overriden with a new var
+                    # This exist to give more errors even if we overridden with a new var
                     # (which is itself an error)
                     for base in cls.mro[1:]:
                         sym = base.names.get(name)
                         if sym and isinstance(sym.node, (Var, Decorator)):
                             var = sym.node if isinstance(sym.node, Var) else sym.node.var
-                            if var.is_final:
-                                self.fail('Can\'t assign to constant "{}"'.format(name), s)
+                            if var.is_final and not s.is_final_def:
+                                self.msg.cant_assign_to_final(name, var.info is not None, s)
                 if lv.node.is_final and not s.is_final_def:
-                    self.fail('Can\'t assign to constant "{}"'.format(name), s)
+                    self.msg.cant_assign_to_final(name, lv.node.info is not None, s)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
@@ -1913,8 +1915,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not isinstance(base_node, (Var, FuncBase, Decorator)):
             return True
         if base_node.is_final:
-            self.fail('Cannot override constant '
-                      '(previously declared on base class "%s")' % base.name(), node)
+            self.msg.cant_override_final(node.name(), base.name(), node)
             return False
         return True
 
