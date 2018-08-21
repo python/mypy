@@ -72,6 +72,9 @@ class LambdaExpr(FuncItem, Expression):
     def accept(self, visitor: visitor.ExpressionVisitor[T]) -> T:
         return visitor.visit_lambda_expr(self)
 
+def lol(x: Statement) -> int:
+    return x.line
+
 [file other_visitor.py]
 from mypy_extensions import trait
 from typing import TypeVar, cast, Generic

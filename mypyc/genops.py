@@ -219,10 +219,15 @@ def compute_vtable(cls: ClassIR) -> None:
     # attributes can be at different places in different classes, but
     # regular classes can just directly get them.
     if cls.is_trait:
-        for attr in cls.attributes:
-            cls.vtable[attr] = len(entries)
-            entries.append(VTableAttr(cls, attr, is_setter=False))
-            entries.append(VTableAttr(cls, attr, is_setter=True))
+        # Traits also need to pull in vtable entries for non-trait
+        # parent classes explicitly.
+        for t in cls.mro:
+            for attr in t.attributes:
+                if attr in cls.vtable:
+                    continue
+                cls.vtable[attr] = len(entries)
+                entries.append(VTableAttr(t, attr, is_setter=False))
+                entries.append(VTableAttr(t, attr, is_setter=True))
 
     all_traits = [t for t in cls.mro if t.is_trait]
 
