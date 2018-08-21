@@ -2200,7 +2200,7 @@ class TypeInfo(SymbolNode):
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_newtype', 'is_protocol', 'runtime_protocol'
+        'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
     ]  # type: ClassVar[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -2220,6 +2220,7 @@ class TypeInfo(SymbolNode):
         self.inferring = []
         self.add_type_vars()
         self.metadata = {}
+        self.is_final = False
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:

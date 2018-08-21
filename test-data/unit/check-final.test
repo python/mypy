@@ -76,23 +76,72 @@ class C:
 [out]
 
 [case testFinalDefiningFunc]
+from typing import final
 
+@final  # E: @final can't be used with non-method functions
+def f(x: int) -> None: ...
 [out]
 
 [case testFinalDefiningFuncOverloaded]
+from typing import final, overload
 
-[out]
-
-[case testFinalDefiningFuncOverloadedStubs]
-
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+@final  # E: @final can't be used with non-method functions
+def f(x):
+    pass
 [out]
 
 [case testFinalDefiningMeth]
+from typing import final
 
+class C:
+    @final
+    def f(self, x: int) -> None: ...
+reveal_type(C().f)  # E: Revealed type is 'def (x: builtins.int)'
+[out]
+
+[case testFinalDefiningMethOverloaded]
+from typing import final, overload
+
+class C:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    @final
+    def f(self, x):
+        pass
+
+reveal_type(C().f)  # E: Revealed type is 'Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)'
+[out]
+
+[case testFinalDefiningMethOverloadedStubs]
+from mod import C
+
+reveal_type(C().f)  # E: Revealed type is 'Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)'
+[file mod.pyi]
+from typing import final, overload
+
+class C:
+    @final
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
 [out]
 
 [case testFinalDefiningProperty]
+from typing import final
 
+class C:
+    @final
+    @property
+    def f(self) -> int: pass
+reveal_type(C().f)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalDefiningOuterOnly]
@@ -219,14 +268,6 @@ mod.x = 2  # E: Can't assign to constant "x"
 [file mod.pyi]
 from typing import Final
 x: Final[int]
-[out]
-
-[case testFinalReassignModuleFuncExternal]
-
-[out]
-
-[case testFinalReassignModuleFuncOverloaded]
-
 [out]
 
 [case testFinalReassignInstanceVarClassBody]
@@ -464,9 +505,40 @@ D().x = 4  # E: Can't assign to constant "x"
 [out]
 
 [case testFinalOverridingVarWithMethod]
-from typing import Final
+from typing import Final, Any
 
+class A:
+    x: Final[Any] = 1
+    def __init__(self) -> None:
+        self.y: Final[Any] = 1
 
+class B(A):
+    def x(self) -> None: pass  # E: Cannot override constant (previously declared on base class "A")
+    def y(self) -> None: pass  # E: Cannot override constant (previously declared on base class "A")
+
+class C(A):
+    @property  # E: Cannot override constant (previously declared on base class "A")
+    def x(self) -> None: pass
+    @property  # E: Cannot override constant (previously declared on base class "A")
+    def y(self) -> None: pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarWithMethodClass]
+from typing import Final, Any
+
+class A:
+    x: Final[Any] = 1
+    def __init__(self) -> None:
+        self.y: Final[Any] = 1
+
+class B(A):
+    @classmethod  # E: Cannot override constant (previously declared on base class "A")
+    def x(self) -> None: pass
+    @classmethod  # E: Cannot override constant (previously declared on base class "A")
+    def y(self) -> None: pass
+
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testFinalOverridingMethodWithVar]
@@ -477,11 +549,11 @@ from typing import Final
 
 [out]
 
-[case testFinalOverridingMethodMultipleinheritance]
+[case testFinalOverridingMethodMultipleInheritance]
 
 [out]
 
-[case testFinalOverridingMethodMultiplaInheritance2]
+[case testFinalOverridingMethodMultipleInheritanceVar]
 
 [out]
 
@@ -499,4 +571,27 @@ from typing import Final
 
 [case testFinalOverridingMethodOverloads]
 
+[out]
+
+[case testFinalClassNoInheritance]
+from typing import final
+
+@final
+class B: ...
+class C(B):  # E: Can't inherit from final class "B"
+    pass
+class D(C):  # E: Can't inherit from final class "B"
+    pass
+[out]
+
+[case testFinalClassNoInheritanceMulti]
+from typing import final
+
+class A: ...
+@final
+class B: ...
+class C(B, A):  # E: Can't inherit from final class "B"
+    pass
+class D(A, B):  # E: Can't inherit from final class "B"
+    pass
 [out]

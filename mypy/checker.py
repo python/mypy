@@ -1274,7 +1274,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         base_attr = base.names.get(name)
         if base_attr:
             # The name of the method is defined in the base class.
-
+            if isinstance(base_attr.node, (Var, FuncBase)) and base_attr.node.is_final:
+                self.fail('Cannot override constant '
+                          '(previously declared on base class "%s")' % base.name(), defn)
             # Point errors at the 'def' line (important for backward compatibility
             # of type ignores).
             if not isinstance(defn, Decorator):
@@ -1434,6 +1436,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = defn.info
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+        for base in typ.mro[1:]:
+            if base.is_final:
+                self.fail('Can\'t inherit from final class "{}"'.format(base.name()), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1906,7 +1911,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True
         if base_node.is_final:
             self.fail('Cannot override constant '
-                      '(previously declared on base class "%s") ' % base.name(), node)
+                      '(previously declared on base class "%s")' % base.name(), node)
             return False
         return True
 

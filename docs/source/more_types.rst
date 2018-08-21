@@ -1015,3 +1015,9 @@ Final methods
 
 Methods, class methods, static methods, properies all can be final
 (this includes overloaded methods).
+
+Final classes
+-------------
+
+As a bonus, final classes can't be subclassed. Mypy doesn't provide any
+additional festures for them, but some other tools may have some.

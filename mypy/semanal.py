@@ -851,12 +851,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-        if (isinstance(decorator, RefExpr) and
-                decorator.fullname in ('typing.runtime', 'typing_extensions.runtime')):
-            if defn.info.is_protocol:
-                defn.info.runtime_protocol = True
-            else:
-                self.fail('@runtime can only be used with protocol classes', defn)
+        if isinstance(decorator, RefExpr):
+            if decorator.fullname in ('typing.runtime', 'typing_extensions.runtime'):
+                if defn.info.is_protocol:
+                    defn.info.runtime_protocol = True
+                else:
+                    self.fail('@runtime can only be used with protocol classes', defn)
+            elif decorator.fullname == 'typing.final':
+                defn.info.is_final = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -2383,6 +2385,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
+            elif refers_to_fullname(d, 'typing.final'):
+                if self.is_class_scope():
+                    dec.func.is_final = True
+                    dec.var.is_final = True
+                    removed.append(i)
+                else:
+                    self.fail("@final can't be used with non-method functions", d)
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:
