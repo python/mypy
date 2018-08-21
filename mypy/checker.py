@@ -1274,7 +1274,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         base_attr = base.names.get(name)
         if base_attr:
             # The name of the method is defined in the base class.
-            if isinstance(base_attr.node, (Var, FuncBase)) and base_attr.node.is_final:
+            if (isinstance(base_attr.node, (Var, FuncBase)) and base_attr.node.is_final or
+                    isinstance(base_attr.node, Decorator) and base_attr.node.func.is_final):
                 self.fail('Cannot override constant '
                           '(previously declared on base class "%s")' % base.name(), defn)
             # Point errors at the 'def' line (important for backward compatibility
@@ -1550,7 +1551,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
-        if isinstance(second.node, Var) and second.node.is_final:
+        if (isinstance(second.node, (Var, FuncBase)) and second.node.is_final or
+                isinstance(second.node, Decorator) and second.node.func.is_final):
             # Final can never be overriden, but can override
             self.fail('Cannot override constant '
                       '(previously declared on base class "%s")' % base2.name(), ctx)
@@ -1618,10 +1620,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if cls is not None:
                     # This exist to give more errors even if we overriden with a new var
                     # (which is itself an error)
-                    for base in cls.mro:
+                    for base in cls.mro[1:]:
                         sym = base.names.get(name)
-                        if sym and isinstance(sym.node, Var):
-                            if sym.node.is_final and not s.is_final_def:
+                        if sym and isinstance(sym.node, (Var, Decorator)):
+                            var = sym.node if isinstance(sym.node, Var) else sym.node.var
+                            if var.is_final:
                                 self.fail('Can\'t assign to constant "{}"'.format(name), s)
                 if lv.node.is_final and not s.is_final_def:
                     self.fail('Can\'t assign to constant "{}"'.format(name), s)
@@ -1907,7 +1910,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_compatibility_final_super(self, node: Var,
                                         base: TypeInfo, base_node: Optional[Node]) -> bool:
-        if not isinstance(base_node, Var):
+        if not isinstance(base_node, (Var, FuncBase, Decorator)):
             return True
         if base_node.is_final:
             self.fail('Cannot override constant '

@@ -266,7 +266,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         if is_lvalue and not chk.get_final_context():
             for base in info.mro:
                 sym = base.names.get(name)
-                if sym and isinstance(sym.node, Var) and sym.node.is_final:
+                if sym and isinstance(sym.node, (Var, FuncBase, Decorator)) and sym.node.is_final:
                     msg.fail('Can\'t assign to constant "{}"'.format(name), node)
 
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
@@ -546,7 +546,8 @@ def analyze_class_attribute_access(itype: Instance,
         msg.fail("Can't access instance constant on class object", context)
     for base in itype.type.mro:
         b_node = base.names.get(name)
-        if (b_node and isinstance(b_node.node, Var) and is_lvalue and b_node.node.is_final
+        if (b_node and isinstance(b_node.node, (Var, FuncBase, Decorator)) and
+                is_lvalue and b_node.node.is_final
                 and not chk.get_final_context()):
             name = b_node.node.name()
             msg.fail('Can\'t assign to constant "{}"'.format(name), context)

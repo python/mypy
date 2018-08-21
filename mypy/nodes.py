@@ -672,6 +672,10 @@ class Decorator(SymbolNode, Statement):
         return self.func.fullname()
 
     @property
+    def is_final(self) -> bool:
+        return self.func.is_final
+
+    @property
     def info(self) -> 'TypeInfo':
         return self.func.info
 

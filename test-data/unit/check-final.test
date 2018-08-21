@@ -393,8 +393,10 @@ class B(A):
     def __init__(self) -> None:
         self.y: Final = 1
 class C(B):
-    x: Final = 2  # E: Cannot override constant (previously declared on base class "B")
-    y: Final = 2  # E: Cannot override constant (previously declared on base class "B")
+    x: Final = 2  # E: Cannot override constant (previously declared on base class "B") \
+                  # E: Can't assign to constant "x"
+    y: Final = 2  # E: Cannot override constant (previously declared on base class "B") \
+                  # E: Can't assign to constant "y"
 [out]
 
 [case testFinalOverridingVarInit]
@@ -542,11 +544,62 @@ class B(A):
 [out]
 
 [case testFinalOverridingMethodWithVar]
+from typing import final, Final, Any
 
+a: Any
+
+class A:
+    @final
+    def f(self) -> None: pass
+    @final
+    @property
+    def p(self) -> int: pass
+
+class B(A):
+    f = a  # E: Cannot override constant (previously declared on base class "A") \
+           # E: Can't assign to constant "f"
+    p = a  # E: Cannot override constant (previously declared on base class "A") \
+           # E: Can't assign to constant "p"
+class C(A):
+    f: Any  # E: Cannot override constant (previously declared on base class "A") \
+            # E: Can't assign to constant "f"
+    p: Any  # E: Cannot override constant (previously declared on base class "A") \
+            # E: Can't assign to constant "p"
+class D(A):
+    f: Final = a  # E: Cannot override constant (previously declared on base class "A") \
+                  # E: Can't assign to constant "f"
+    p: Final = a  # E: Cannot override constant (previously declared on base class "A") \
+                  # E: Can't assign to constant "p"
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingMethodWithVarImplicit]
+from typing import final, Any, Final
 
+a: Any
+
+class A:
+    @final
+    def f(self) -> None: pass
+    @final
+    @classmethod
+    def c(cls) -> int: pass
+
+class B(A):
+    def __init__(self) -> None:
+        self.f: Any  # E: Can't assign to constant "f" \
+                     # E: Cannot override constant (previously declared on base class "A")
+        self.c: Any  # E: Can't assign to constant "c" \
+                     # E: Cannot override constant (previously declared on base class "A")
+
+B().f = a  # E: Can't assign to constant "f"
+B().c = a  # E: Can't assign to constant "c"
+
+class C(A):
+    def __init__(self) -> None:
+        self.f: Final = a  # E: Cannot override constant (previously declared on base class "A")
+        self.c: Final = a  # E: Cannot override constant (previously declared on base class "A")
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testFinalOverridingMethodMultipleInheritance]
