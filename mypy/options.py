@@ -17,43 +17,43 @@ class BuildType:
     PROGRAM_TEXT = 2  # type: ClassVar[int]
 
 
+PER_MODULE_OPTIONS = {
+    # Please keep this list sorted
+    "always_false",
+    "always_true",
+    "check_untyped_defs",
+    "debug_cache",
+    "disallow_any_decorated",
+    "disallow_any_explicit",
+    "disallow_any_expr",
+    "disallow_any_generics",
+    "disallow_any_unimported",
+    "disallow_incomplete_defs",
+    "disallow_subclassing_any",
+    "disallow_untyped_calls",
+    "disallow_untyped_decorators",
+    "disallow_untyped_defs",
+    "follow_imports",
+    "follow_imports_for_stubs",
+    "ignore_errors",
+    "ignore_missing_imports",
+    "local_partial_types",
+    "no_implicit_optional",
+    "show_none_errors",
+    "strict_boolean",
+    "strict_optional",
+    "strict_optional_whitelist",
+    "warn_no_return",
+    "warn_return_any",
+    "warn_unused_ignores",
+}
+
+OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
+                            {"quick_and_dirty", "platform", "bazel"})
+                           - {"debug_cache"})
+
 class Options:
     """Options collected from flags."""
-
-    PER_MODULE_OPTIONS = {
-        # Please keep this list sorted
-        "always_false",
-        "always_true",
-        "check_untyped_defs",
-        "debug_cache",
-        "disallow_any_decorated",
-        "disallow_any_explicit",
-        "disallow_any_expr",
-        "disallow_any_generics",
-        "disallow_any_unimported",
-        "disallow_incomplete_defs",
-        "disallow_subclassing_any",
-        "disallow_untyped_calls",
-        "disallow_untyped_decorators",
-        "disallow_untyped_defs",
-        "follow_imports",
-        "follow_imports_for_stubs",
-        "ignore_errors",
-        "ignore_missing_imports",
-        "local_partial_types",
-        "no_implicit_optional",
-        "show_none_errors",
-        "strict_boolean",
-        "strict_optional",
-        "strict_optional_whitelist",
-        "warn_no_return",
-        "warn_return_any",
-        "warn_unused_ignores",
-    }  # type: ClassVar[Set[str]]
-
-    OPTIONS_AFFECTING_CACHE = ((Options.PER_MODULE_OPTIONS |
-                                {"quick_and_dirty", "platform", "bazel"})
-                               - {"debug_cache"})  # type: ClassVar[Set[str]]
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
@@ -336,4 +336,4 @@ class Options:
         return re.compile(expr + '\\Z')
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
-        return {opt: getattr(self, opt) for opt in Options.OPTIONS_AFFECTING_CACHE}
+        return {opt: getattr(self, opt) for opt in OPTIONS_AFFECTING_CACHE}
