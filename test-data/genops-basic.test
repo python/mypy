@@ -994,22 +994,18 @@ L0:
     return r0
 def call_python_function(x):
     x :: int
-    r0 :: object
-    r1 :: str
-    r2, r3, r4 :: object
-    r5 :: int
+    r0, r1, r2 :: object
+    r3 :: int
 L0:
-    r0 = builtins.module :: static
-    r1 = unicode_3 :: static  ('int')
-    r2 = getattr r0, r1
-    r3 = box(int, x)
-    r4 = py_call(r2, r3)
-    r5 = unbox(int, r4)
-    return r5
+    r0 = int
+    r1 = box(int, x)
+    r2 = py_call(r0, r1)
+    r3 = unbox(int, r2)
+    return r3
 def return_float():
     r0 :: float
 L0:
-    r0 = float_4 :: static  (5.0)
+    r0 = float_3 :: static  (5.0)
     return r0
 def return_callable_type():
     r0 :: object
@@ -1017,7 +1013,7 @@ def return_callable_type():
     r2 :: object
 L0:
     r0 = __main__.globals :: static
-    r1 = unicode_5 :: static  ('return_float')
+    r1 = unicode_4 :: static  ('return_float')
     r2 = r0[r1] :: dict
     return r2
 def call_callable_type():
@@ -1047,28 +1043,24 @@ def call_python_function_with_keyword_arg(x):
     r0 :: int
     r1 :: object
     r2 :: str
-    r3 :: object
-    r4 :: str
-    r5 :: tuple[str]
-    r6 :: dict
-    r7 :: object
-    r8 :: bool
-    r9, r10 :: object
-    r11 :: int
+    r3 :: tuple[str]
+    r4 :: dict
+    r5 :: object
+    r6 :: bool
+    r7, r8 :: object
+    r9 :: int
 L0:
     r0 = 2
-    r1 = builtins.module :: static
-    r2 = unicode_3 :: static  ('int')
-    r3 = getattr r1, r2
-    r4 = unicode_4 :: static  ('base')
-    r5 = (x)
-    r6 = {}
-    r7 = box(int, r0)
-    r8 = r6.__setitem__(r4, r7) :: dict
-    r9 = box(tuple[str], r5)
-    r10 = py_call_with_kwargs(r3, r9, r6)
-    r11 = unbox(int, r10)
-    return r11
+    r1 = int
+    r2 = unicode_3 :: static  ('base')
+    r3 = (x)
+    r4 = {}
+    r5 = box(int, r0)
+    r6 = r4.__setitem__(r2, r5) :: dict
+    r7 = box(tuple[str], r3)
+    r8 = py_call_with_kwargs(r1, r7, r4)
+    r9 = unbox(int, r8)
+    return r9
 def call_python_method_with_keyword_args(xs, first, second):
     xs :: list
     first, second, r0 :: int
@@ -1095,9 +1087,9 @@ def call_python_method_with_keyword_args(xs, first, second):
     r24 :: None
 L0:
     r0 = 0
-    r1 = unicode_5 :: static  ('insert')
+    r1 = unicode_4 :: static  ('insert')
     r2 = getattr xs, r1
-    r3 = unicode_6 :: static  ('x')
+    r3 = unicode_5 :: static  ('x')
     r4 = (r0)
     r5 = {}
     r6 = box(int, first)
@@ -1106,10 +1098,10 @@ L0:
     r9 = py_call_with_kwargs(r2, r8, r5)
     r10 = cast(None, r9)
     r11 = 1
-    r12 = unicode_5 :: static  ('insert')
+    r12 = unicode_4 :: static  ('insert')
     r13 = getattr xs, r12
-    r14 = unicode_6 :: static  ('x')
-    r15 = unicode_7 :: static  ('i')
+    r14 = unicode_5 :: static  ('x')
+    r15 = unicode_6 :: static  ('i')
     r16 = ()
     r17 = {}
     r18 = box(int, second)
@@ -2316,55 +2308,51 @@ def __top_level__():
     r23 :: bool
     r24, r25 :: str
     r26 :: object
-    r27 :: str
+    r27 :: tuple[str, object]
     r28 :: object
-    r29 :: tuple[str, object]
+    r29 :: str
     r30 :: object
     r31 :: str
     r32 :: object
-    r33 :: str
+    r33 :: tuple[str, object]
     r34 :: object
-    r35 :: tuple[str, object]
-    r36 :: object
-    r37 :: tuple[object, object]
-    r38, r39 :: object
-    r40 :: str
-    r41, r42, r43 :: object
-    r44 :: str
-    r45 :: bool
-    r46 :: int
+    r35 :: tuple[object, object]
+    r36, r37 :: object
+    r38 :: str
+    r39, r40, r41 :: object
+    r42 :: str
+    r43 :: bool
+    r44 :: int
+    r45 :: str
+    r46 :: object
     r47 :: str
-    r48 :: object
-    r49 :: str
-    r50, r51, r52 :: object
-    r53 :: tuple
-    r54 :: object
-    r55 :: str
-    r56 :: bool
-    r57 :: object
-    r58 :: str
-    r59, r60 :: object
+    r48, r49, r50 :: object
+    r51 :: tuple
+    r52 :: object
+    r53 :: str
+    r54 :: bool
+    r55 :: object
+    r56 :: str
+    r57, r58, r59, r60 :: object
     r61 :: str
-    r62, r63, r64 :: object
+    r62 :: bool
+    r63 :: str
+    r64 :: object
     r65 :: str
-    r66 :: bool
-    r67 :: str
-    r68 :: object
-    r69 :: str
-    r70, r71 :: object
+    r66, r67 :: object
+    r68 :: str
+    r69, r70, r71 :: object
     r72 :: str
-    r73, r74, r75 :: object
-    r76 :: str
-    r77 :: bool
-    r78, r79, r80 :: int
-    r81, r82, r83 :: object
-    r84 :: list
-    r85 :: object
+    r73 :: bool
+    r74, r75, r76 :: int
+    r77, r78, r79 :: object
+    r80 :: list
+    r81 :: object
+    r82 :: str
+    r83, r84, r85 :: object
     r86 :: str
-    r87, r88, r89 :: object
-    r90 :: str
-    r91 :: bool
-    r92 :: None
+    r87 :: bool
+    r88 :: None
 L0:
     r0 = builtins.module :: static
     r1 = None
@@ -2400,74 +2388,70 @@ L4:
     r23 = r11.__setitem__(r22, r21) :: object
     r24 = unicode_5 :: static  ('Lol')
     r25 = unicode_6 :: static  ('a')
-    r26 = builtins.module :: static
-    r27 = unicode_7 :: static  ('int')
-    r28 = getattr r26, r27
-    r29 = (r25, r28)
-    r30 = box(tuple[str, object], r29)
-    r31 = unicode_8 :: static  ('b')
-    r32 = builtins.module :: static
-    r33 = unicode_9 :: static  ('str')
-    r34 = getattr r32, r33
-    r35 = (r31, r34)
-    r36 = box(tuple[str, object], r35)
-    r37 = (r30, r36)
-    r38 = box(tuple[object, object], r37)
-    r39 = __main__.globals :: static
-    r40 = unicode_4 :: static  ('NamedTuple')
-    r41 = r39[r40] :: dict
-    r42 = py_call(r41, r24, r38)
-    r43 = __main__.globals :: static
-    r44 = unicode_5 :: static  ('Lol')
-    r45 = r43.__setitem__(r44, r42) :: object
-    r46 = 1
-    r47 = unicode_10 :: static
-    r48 = __main__.globals :: static
-    r49 = unicode_5 :: static  ('Lol')
-    r50 = r48[r49] :: dict
-    r51 = box(int, r46)
-    r52 = py_call(r50, r51, r47)
-    r53 = cast(tuple, r52)
-    r54 = __main__.globals :: static
-    r55 = unicode_11 :: static  ('x')
-    r56 = r54.__setitem__(r55, r53) :: object
-    r57 = __main__.globals :: static
-    r58 = unicode_2 :: static  ('List')
-    r59 = r57[r58] :: dict
-    r60 = builtins.module :: static
-    r61 = unicode_7 :: static  ('int')
-    r62 = getattr r60, r61
-    r63 = r59[r62] :: object
+    r26 = int
+    r27 = (r25, r26)
+    r28 = box(tuple[str, object], r27)
+    r29 = unicode_7 :: static  ('b')
+    r30 = builtins.module :: static
+    r31 = unicode_8 :: static  ('str')
+    r32 = getattr r30, r31
+    r33 = (r29, r32)
+    r34 = box(tuple[str, object], r33)
+    r35 = (r28, r34)
+    r36 = box(tuple[object, object], r35)
+    r37 = __main__.globals :: static
+    r38 = unicode_4 :: static  ('NamedTuple')
+    r39 = r37[r38] :: dict
+    r40 = py_call(r39, r24, r36)
+    r41 = __main__.globals :: static
+    r42 = unicode_5 :: static  ('Lol')
+    r43 = r41.__setitem__(r42, r40) :: object
+    r44 = 1
+    r45 = unicode_9 :: static
+    r46 = __main__.globals :: static
+    r47 = unicode_5 :: static  ('Lol')
+    r48 = r46[r47] :: dict
+    r49 = box(int, r44)
+    r50 = py_call(r48, r49, r45)
+    r51 = cast(tuple, r50)
+    r52 = __main__.globals :: static
+    r53 = unicode_10 :: static  ('x')
+    r54 = r52.__setitem__(r53, r51) :: object
+    r55 = __main__.globals :: static
+    r56 = unicode_2 :: static  ('List')
+    r57 = r55[r56] :: dict
+    r58 = int
+    r59 = r57[r58] :: object
+    r60 = __main__.globals :: static
+    r61 = unicode_11 :: static  ('Foo')
+    r62 = r60.__setitem__(r61, r59) :: object
+    r63 = unicode_12 :: static  ('Bar')
     r64 = __main__.globals :: static
-    r65 = unicode_12 :: static  ('Foo')
-    r66 = r64.__setitem__(r65, r63) :: object
-    r67 = unicode_13 :: static  ('Bar')
-    r68 = __main__.globals :: static
-    r69 = unicode_12 :: static  ('Foo')
-    r70 = r68[r69] :: dict
+    r65 = unicode_11 :: static  ('Foo')
+    r66 = r64[r65] :: dict
+    r67 = __main__.globals :: static
+    r68 = unicode_3 :: static  ('NewType')
+    r69 = r67[r68] :: dict
+    r70 = py_call(r69, r63, r66)
     r71 = __main__.globals :: static
-    r72 = unicode_3 :: static  ('NewType')
-    r73 = r71[r72] :: dict
-    r74 = py_call(r73, r67, r70)
-    r75 = __main__.globals :: static
-    r76 = unicode_13 :: static  ('Bar')
-    r77 = r75.__setitem__(r76, r74) :: object
-    r78 = 1
-    r79 = 2
-    r80 = 3
-    r81 = box(int, r78)
-    r82 = box(int, r79)
-    r83 = box(int, r80)
-    r84 = [r81, r82, r83]
+    r72 = unicode_12 :: static  ('Bar')
+    r73 = r71.__setitem__(r72, r70) :: object
+    r74 = 1
+    r75 = 2
+    r76 = 3
+    r77 = box(int, r74)
+    r78 = box(int, r75)
+    r79 = box(int, r76)
+    r80 = [r77, r78, r79]
+    r81 = __main__.globals :: static
+    r82 = unicode_12 :: static  ('Bar')
+    r83 = r81[r82] :: dict
+    r84 = py_call(r83, r80)
     r85 = __main__.globals :: static
-    r86 = unicode_13 :: static  ('Bar')
-    r87 = r85[r86] :: dict
-    r88 = py_call(r87, r84)
-    r89 = __main__.globals :: static
-    r90 = unicode_14 :: static  ('y')
-    r91 = r89.__setitem__(r90, r88) :: object
-    r92 = None
-    return r92
+    r86 = unicode_13 :: static  ('y')
+    r87 = r85.__setitem__(r86, r84) :: object
+    r88 = None
+    return r88
 
 [case testChainedConditional]
 def g(x: int) -> int:

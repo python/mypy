@@ -257,27 +257,23 @@ def f(x: Union[int, A]) -> int:
 def f(x):
     x :: union[int, A]
     r0 :: object
-    r1 :: str
-    r2 :: object
-    r3 :: bool
-    r4, r5, r6 :: int
-    r7 :: A
-    r8 :: int
+    r1 :: bool
+    r2, r3, r4 :: int
+    r5 :: A
+    r6 :: int
 L0:
-    r0 = builtins.module :: static
-    r1 = unicode_5 :: static  ('int')
-    r2 = getattr r0, r1
-    r3 = isinstance x, r2
-    if r3 goto L1 else goto L2 :: bool
+    r0 = int
+    r1 = isinstance x, r0
+    if r1 goto L1 else goto L2 :: bool
 L1:
-    r4 = unbox(int, x)
-    r5 = 1
-    r6 = r4 + r5 :: int
-    return r6
+    r2 = unbox(int, x)
+    r3 = 1
+    r4 = r2 + r3 :: int
+    return r4
 L2:
-    r7 = cast(A, x)
-    r8 = r7.a
-    return r8
+    r5 = cast(A, x)
+    r6 = r5.a
+    return r6
 L3:
     unreachable
 

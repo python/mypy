@@ -23,6 +23,14 @@ func_op(
     emit=simple_emit('{dest} = PySet_New({args[0]});')
 )
 
+func_op(
+    name='builtins.frozenset',
+    arg_types=[object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = PyFrozenSet_New({args[0]});')
+)
+
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     temp = emitter.temp_name()

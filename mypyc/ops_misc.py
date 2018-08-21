@@ -14,11 +14,11 @@ from mypyc.ops_primitive import (
 )
 
 
-# N.B: none_op is special cased as borrowed by PrimitiveOp
 none_op = name_ref_op('builtins.None',
                       result_type=none_rprimitive,
                       error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = Py_None;'))
+                      emit=simple_emit('{dest} = Py_None;'),
+                      is_borrowed=True)
 
 true_op = name_ref_op('builtins.True',
                       result_type=bool_rprimitive,

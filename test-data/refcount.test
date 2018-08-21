@@ -568,8 +568,6 @@ L0:
     r2 = box(int, r0)
     r3 = box(int, r1)
     r4 = [r2, r3]
-    dec_ref r2
-    dec_ref r3
     a = r4
     dec_ref a
     r5 = 0
@@ -588,7 +586,6 @@ L0:
     inc_ref x :: int
     r0 = box(int, x)
     r1 = [r0]
-    dec_ref r0
     return r1
 
 [case testListSet]
@@ -614,7 +611,6 @@ L0:
     r4 = box(int, r2)
     r5 = a.__setitem__(r3, r4) :: list
     dec_ref r3 :: int
-    dec_ref r4
     r6 = None
     inc_ref r6
     return r6
@@ -672,7 +668,6 @@ def f():
 L0:
     r0 = C()
     r1 = [r0]
-    dec_ref r0
     a = r1
     r2 = 0
     r3 = a[r2] :: list
@@ -723,33 +718,28 @@ def g(x):
     r0 :: int
     r1 :: object
     r2 :: str
-    r3 :: object
-    r4 :: str
-    r5 :: tuple[str]
-    r6 :: dict
-    r7 :: object
-    r8 :: bool
-    r9, r10 :: object
-    r11 :: int
+    r3 :: tuple[str]
+    r4 :: dict
+    r5 :: object
+    r6 :: bool
+    r7, r8 :: object
+    r9 :: int
 L0:
     r0 = 2
-    r1 = builtins.module :: static
-    r2 = unicode_1 :: static  ('int')
-    r3 = getattr r1, r2
-    r4 = unicode_2 :: static  ('base')
-    r5 = (x)
-    r6 = {}
-    r7 = box(int, r0)
-    r8 = r6.__setitem__(r4, r7) :: dict
+    r1 = int
+    r2 = unicode_1 :: static  ('base')
+    r3 = (x)
+    r4 = {}
+    r5 = box(int, r0)
+    r6 = r4.__setitem__(r2, r5) :: dict
+    dec_ref r5
+    r7 = box(tuple[str], r3)
+    r8 = py_call_with_kwargs(r1, r7, r4)
     dec_ref r7
-    r9 = box(tuple[str], r5)
-    r10 = py_call_with_kwargs(r3, r9, r6)
-    dec_ref r3
-    dec_ref r9
-    dec_ref r6
-    r11 = unbox(int, r10)
-    dec_ref r10
-    return r11
+    dec_ref r4
+    r9 = unbox(int, r8)
+    dec_ref r8
+    return r9
 
 [case testListAppend]
 from typing import List

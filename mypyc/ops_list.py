@@ -6,14 +6,21 @@ from mypyc.ops import (
     int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER,
     ERR_FALSE, EmitterInterface, PrimitiveOp, Value
 )
-from mypyc.ops_primitive import binary_op, func_op, method_op, custom_op, simple_emit
+from mypyc.ops_primitive import (
+    name_ref_op, binary_op, func_op, method_op, custom_op, simple_emit,
+)
+
+
+name_ref_op('builtins.list',
+            result_type=object_rprimitive,
+            error_kind=ERR_NEVER,
+            emit=simple_emit('{dest} = (PyObject *)&PyList_Type;'),
+            is_borrowed=True)
 
 
 def emit_new(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     # TODO: This would be better split into multiple smaller ops.
     emitter.emit_line('%s = PyList_New(%d); ' % (dest, len(args)))
-    for arg in args:
-        emitter.emit_line('Py_INCREF(%s);' % arg)
     emitter.emit_line('if (%s != NULL) {' % dest)
     for i, arg in enumerate(args):
         emitter.emit_line('PyList_SET_ITEM(%s, %s, %s);' % (dest, i, arg))
@@ -24,7 +31,8 @@ new_list_op = custom_op(arg_types=[object_rprimitive],
                         result_type=list_rprimitive,
                         is_var_arg=True,
                         error_kind=ERR_MAGIC,
-                        format_str = '{dest} = [{comma_args}]',
+                        steals=True,
+                        format_str='{dest} = [{comma_args}]',
                         emit=emit_new)
 
 
@@ -39,6 +47,7 @@ list_get_item_op = method_op(
 list_set_item_op = method_op(
     name='__setitem__',
     arg_types=[list_rprimitive, int_rprimitive, object_rprimitive],
+    steals=[False, False, True],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
     emit=simple_emit('{dest} = CPyList_SetItem({args[0]}, {args[1]}, {args[2]}) != 0;'))

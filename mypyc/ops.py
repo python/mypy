@@ -832,6 +832,9 @@ class EmitterInterface:
 
 EmitCallback = Callable[[EmitterInterface, List[str], str], None]
 
+# True steals all arguments, False steals none, a list steals those in matching positions
+StealsDescription = Union[bool, List[bool]]
+
 OpDescription = NamedTuple(
     'OpDescription', [('name', str),
                       ('arg_types', List[RType]),
@@ -840,6 +843,8 @@ OpDescription = NamedTuple(
                       ('error_kind', int),
                       ('format_str', str),
                       ('emit', EmitCallback),
+                      ('steals', StealsDescription),
+                      ('is_borrowed', bool),
                       ('priority', int)])  # To resolve ambiguities, highest priority wins
 
 
@@ -871,14 +876,17 @@ class PrimitiveOp(RegisterOp):
         else:
             self.type = desc.result_type
 
-        # This is a kind of awful hack: none_op produces a borrowed
-        # value. There are basically zero other primitive ops where we
-        # want a borrowed value, so we just special case it.
-        if desc is mypyc.ops_misc.none_op:
-            self.is_borrowed = True
+        self.is_borrowed = desc.is_borrowed
 
     def sources(self) -> List[Value]:
         return list(self.args)
+
+    def stolen(self) -> List[Value]:
+        if isinstance(self.desc.steals, list):
+            assert len(self.desc.steals) == len(self.args)
+            return [arg for arg, steal in zip(self.args, self.desc.steals) if steal]
+        else:
+            return [] if not self.desc.steals else self.sources()
 
     def __repr__(self) -> str:
         return '<PrimitiveOp name=%r args=%s>' % (self.desc.name,

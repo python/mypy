@@ -53,7 +53,6 @@ L1:
     inc_ref z :: int
     r3 = box(int, z)
     r4 = x.__setitem__(y, r3) :: list
-    dec_ref r3
     if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
     r5 = None

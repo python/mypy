@@ -3123,6 +3123,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             assert False, 'Unsupported del operation'
 
     def visit_super_expr(self, o: SuperExpr) -> Value:
+        # print('{}:{}: Warning: can not optimize super() expression'.format(
+        #     self.module_path, o.line))
         sup_val = self.load_module_attr_by_fullname('builtins.super', o.line)
         if o.call.args:
             args = [self.accept(arg) for arg in o.call.args]

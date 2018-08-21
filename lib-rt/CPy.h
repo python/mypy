@@ -636,7 +636,7 @@ static bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
                 return false;
             }
         }
-        Py_INCREF(value); // TODO: Move this outside the function to allow optimizing it away
+        // N.B: Steals reference
         PyList_SET_ITEM(list, n, value);
         return true;
     } else {

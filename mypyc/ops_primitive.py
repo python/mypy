@@ -9,7 +9,8 @@ count and argument types.
 from typing import Dict, List, Callable, Optional
 
 from mypyc.ops import (
-    OpDescription, PrimitiveOp, RType, EmitterInterface, EmitCallback, short_name, bool_rprimitive
+    OpDescription, PrimitiveOp, RType, EmitterInterface, EmitCallback, StealsDescription,
+    short_name, bool_rprimitive
 )
 
 
@@ -59,12 +60,15 @@ def binary_op(op: str,
               error_kind: int,
               emit: EmitCallback,
               format_str: Optional[str] = None,
+              steals: StealsDescription = False,
+              is_borrowed: bool = False,
               priority: int = 1) -> None:
     assert len(arg_types) == 2
     ops = binary_ops.setdefault(op, [])
     if format_str is None:
         format_str = '{dest} = {args[0]} %s {args[1]}' % op
-    desc = OpDescription(op, arg_types, result_type, False, error_kind, format_str, emit, priority)
+    desc = OpDescription(op, arg_types, result_type, False, error_kind, format_str, emit,
+                         steals, is_borrowed, priority)
     ops.append(desc)
 
 
@@ -74,12 +78,14 @@ def unary_op(op: str,
              error_kind: int,
              emit: EmitCallback,
              format_str: Optional[str] = None,
+             steals: StealsDescription = False,
+             is_borrowed: bool = False,
              priority: int = 1) -> OpDescription:
     ops = unary_ops.setdefault(op, [])
     if format_str is None:
         format_str = '{dest} = %s{args[0]}' % op
     desc = OpDescription(op, [arg_type], result_type, False, error_kind, format_str, emit,
-                         priority)
+                         steals, is_borrowed, priority)
     ops.append(desc)
     return desc
 
@@ -90,6 +96,8 @@ def func_op(name: str,
             error_kind: int,
             emit: EmitCallback,
             format_str: Optional[str] = None,
+            steals: StealsDescription = False,
+            is_borrowed: bool = False,
             priority: int = 1) -> OpDescription:
     ops = func_ops.setdefault(name, [])
     typename = ''
@@ -101,7 +109,7 @@ def func_op(name: str,
                                                      for i in range(len(arg_types))),
                                            typename)
     desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit,
-                         priority)
+                         steals, is_borrowed, priority)
     ops.append(desc)
     return desc
 
@@ -111,6 +119,8 @@ def method_op(name: str,
               result_type: Optional[RType],
               error_kind: int,
               emit: EmitCallback,
+              steals: StealsDescription = False,
+              is_borrowed: bool = False,
               priority: int = 1) -> OpDescription:
     """Define a primitive op that replaces a method call.
 
@@ -129,7 +139,7 @@ def method_op(name: str,
     else:
         format_str = '{dest} = {args[0]}.%s(%s) :: %s' % (name, args, type_name)
     desc = OpDescription(name, arg_types, result_type, False, error_kind, format_str, emit,
-                         priority)
+                         steals, is_borrowed, priority)
     ops.append(desc)
     return desc
 
@@ -137,7 +147,8 @@ def method_op(name: str,
 def name_ref_op(name: str,
                 result_type: RType,
                 error_kind: int,
-                emit: EmitCallback) -> OpDescription:
+                emit: EmitCallback,
+                is_borrowed: bool = False) -> OpDescription:
     """Define an op that is used to implement reading a module attribute.
 
     Args:
@@ -145,7 +156,8 @@ def name_ref_op(name: str,
     """
     assert name not in name_ref_ops, 'already defined: %s' % name
     format_str = '{dest} = %s' % short_name(name)
-    desc = OpDescription(name, [], result_type, False, error_kind, format_str, emit, 0)
+    desc = OpDescription(name, [], result_type, False, error_kind, format_str, emit,
+                         False, is_borrowed, 0)
     name_ref_ops[name] = desc
     return desc
 
@@ -156,6 +168,8 @@ def custom_op(arg_types: List[RType],
               emit: EmitCallback,
               name: Optional[str] = None,
               format_str: Optional[str] = None,
+              steals: StealsDescription = False,
+              is_borrowed: bool = False,
               is_var_arg: bool = False) -> OpDescription:
     """
     Create a one-off op that can't be automatically generated from the AST.
@@ -173,4 +187,4 @@ def custom_op(arg_types: List[RType],
                                        typename)
     assert format_str is not None
     return OpDescription('<custom>', arg_types, result_type, is_var_arg, error_kind, format_str,
-                         emit, 0)
+                         emit, steals, is_borrowed, 0)
