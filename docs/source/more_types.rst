@@ -937,87 +937,195 @@ in the first TypedDict.
 Final attributes of classes and modules
 ***************************************
 
+There are several situations where static guarantees about non-redefinition
+of certain names (or references in general) can be useful. One such example
+is module or class level constants, user might want to guard them against
+unintentional modifications:
+
+.. code-block:: python
+
+   RATE = 3000
+
+   class Base:
+       DEFAULT_ID = 0
+
+   # 1000 lines later
+
+   class Derived(Base):
+       DEFAULT_ID = 1  # this may be unintentional
+
+   RATE = 300  # this too
+
+Another example is where a user might want to protect certain attributes
+from overriding in a subclass:
+
+.. code-block:: python
+
+   import uuid
+
+   class Snowflake:
+       """An absolutely unique object in the database"""
+       def __init__(self) -> None:
+           self.id = uuid.uuid4()
+
+   # 1000 lines later
+
+   class User(Snowflake):
+       id = uuid.uuid4()  # This has valid type, but the meaning
+                          # may be wrong
+
+Some other use cases might be solved by using ``@property``, but note that both
+above use cases can't be solved this way. For such situations, one might want
+to use ``typing.Final``.
+
 Definition syntax
 -----------------
 
-General idea: constants (not the same as being read-only). The idea is to provide a static
-guarantee that whenever a given attribute is accessed it is always the same value.
+The ``typing.Final`` type qualifier indicates that a given name or attribute
+should never be re-assigned, re-defined, nor overridden. It can be used in
+one of these forms:
 
-* ``a: Final = 1``, *not* the same as ``Final[Any]``, will use inference.
-* ``Final[float] = 1``, to avoid invariance
-* ``Final[float]`` (stubs only)
-* ``self.a: Final = 1`` (also with arg), but *only* in ``__init__``
+* The simplest one is ``ID: Final = 1``. Note that unlike gor generic classes
+  this is *not* the same as ``Final[Any]``. Here mypy will infer type ``int``.
+
+* An explicit type ``ID: Final[float] = 1`` can be used as in any
+  normal assignment.
+
+* In stub files one can omit the right hand side and just write
+  ``ID: Final[float]``.
+
+* Finally, one can define ``self.id: Final = 1`` (also with a type argument),
+  but this is allowed *only* in ``__init__`` methods.
 
 Definition rules
 ----------------
 
-* At most one final declaration per module/class for a given name
+The are two rules that should be always followed when defining a final name:
 
-.. code-block:: python
+* There can be *at most one* final declaration per module or class for
+  a given attribute:
 
-   x: Final = 1
-   x: Final = 2  # Error!
+  .. code-block:: python
 
-    class C:
-        x: Final = 1
-        def __init__(self, x: int) -> None:
-            self.x: Final = x  # Error!
+     ID: Final = 1
+     ID: Final = 2  # Error!
 
-Note related to second: mypy doesn't keep two namespaces, only one common.
+     class SomeCls:
+         id: Final = 1
+         def __init__(self, x: int) -> None:
+             self.id: Final = x  # Error!
 
-* Exactly one assignment to a final attribute
+  Note that mypy has a single namespace for a class. So there can't be two
+  class-level and instance-level constants with the same name.
 
-.. code-block:: python
+* There must be *exactly one* assignment to a final attribute:
 
-   x = 1
-   x: Final = 2  # Error!
+  .. code-block:: python
 
-   y: Final = 1
-   y = 2  # Error!
+     ID = 1
+     ID: Final = 2  # Error!
+
+     class SomeCls:
+         ID = 1
+         ID: Final = 2  # Error!
 
 Using final attributes
 ----------------------
 
-* Can't be re-assigned (or shadowed), both internally and externally:
+As a result of a final declaration mypy strives to provide the
+two following guarantees:
 
-.. code-block:: python
+* A final attribute can't be re-assigned (or otherwise re-defined), both
+  internally and externally:
 
-   # file mod.py
-   from typing import Final
+  .. code-block:: python
 
-   x: Final = 1
+     # file mod.py
+     from typing import Final
 
-   # file main.py
-   from typing import Final
+     ID: Final = 1
 
+     # file main.py
+     from typing import Final
 
-   import mod
-   mod.x = 2  # Error!
+     import mod
+     mod.ID = 2  # Error, can't assign to constant.
 
-   class C:
-       x: Final = 1
+     class SomeCls:
+         ID: Final = 1
 
-       def meth(self) -> None:
-           self.x = 2
+         def meth(self) -> None:
+             self.ID = 2  # Error, can't assign to final attribute
 
-    class C(D):
-        ...
+     class DerivedCls(SomeCls):
+         ...
 
-   d: D
-   d.x = 2  # Error!
+     DerivedCls.ID = 2  # Error!
+     obj: DerivedCls
+     obj.ID = 2  # Error!
 
-* Can't be overriden by a subclass (even with another explicit final).
-Final however can override normal attributes. These rules also apply to
-multiple inferitance.
+* A final attribute can't be overridden by a subclass (even with another
+  explicit final declaration). Note however, that final attributes can
+  override normal attributes. This also applies to multiple inheritance:
+
+  .. code-block:: python
+
+     class Base:
+         ID = 0
+
+     class One:
+         ID: Final = 1  # OK
+
+     class Other:
+         ID: Final = 2  # OK
+
+     class Combo(One, Other):  # Error, cannot override final attribute.
+         pass
 
 Final methods
 -------------
 
-Methods, class methods, static methods, properies all can be final
-(this includes overloaded methods).
+Like with attributes, sometimes it is useful to protect a method from
+overriding. In such situations one can use a ``typing.final`` decorator:
+
+.. code-block:: python
+
+   from typing import final
+
+   class Base:
+       @final
+       def common_name(self) -> None:  # common signature
+           ...
+
+   # 1000 lines later
+
+   class Derived(Base):
+       def common_name(self) -> None:  # Error, this overriding might break
+                                       # invariants in the base class.
+           ...
+
+This ``@final`` decorator can be used with instance methods, class methods,
+static methods, and properties (this includes overloaded methods).
 
 Final classes
 -------------
 
-As a bonus, final classes can't be subclassed. Mypy doesn't provide any
-additional festures for them, but some other tools may have some.
+As a bonus, applying a ``typing.final`` decorator to a class indicates to mypy
+that it can't be subclassed. Mypy doesn't provide any additional features for
+final classes, but some other tools may use this information for their benefits.
+Plus it serves a verifiable documentation purpose:
+
+.. code-block:: python
+
+   # file lib.pyi
+   from typing import final
+
+   @final
+   class Leaf:
+       ...
+
+   # file main.py
+   from lib import Leaf
+
+   class MyLeaf(Leaf):  # Error, library author believes this is unsafe
+       ...
