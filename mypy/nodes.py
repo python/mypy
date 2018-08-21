@@ -757,7 +757,7 @@ class Var(SymbolNode):
         # Set to true when this variable refers to a module we were unable to
         # parse for some reason (eg a silenced module)
         self.is_suppressed_import = False
-        # Was this defined as Final[...]?
+        # Was this "variable" (rather a constant) defined as Final[...]?
         self.is_final = False
 
     def name(self) -> str:
@@ -930,7 +930,12 @@ class AssignmentStmt(Statement):
     new_syntax = False  # type: bool
     # Does this assignment define a type alias?
     is_alias_def = False
-    # Is this a constant definition?
+    # Is this a final definition?
+    # Final attributes can't be re-assigned once set, and can't be overridden
+    # in a subclass. This flag is not set if an attempted declaration was found to
+    # be invalid during semantic analysis. It is still set to `True` if
+    # a final declaration overrides another final declaration (this is checked
+    # during type checking when MROs are known).
     is_final_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,

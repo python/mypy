@@ -610,7 +610,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # redefinitions already.
             return
 
-        # Check final status
+        # Check final status, if at least one item or the implementation is marked
+        # as @final, then the whole overloaded definition if @final.
         if any(item.is_final for item in defn.items):
             defn.is_final = True
         if defn.impl is not None and defn.impl.is_final:
@@ -1652,46 +1653,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             target = self.scope.current_target()
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
-    def unwrap_final(self, s: AssignmentStmt) -> None:
-        if not s.type or not self.is_final_type(s.type):
-            return
-        assert isinstance(s.type, UnboundType)
-        if len(s.type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", s.type)
-        if not s.type.args:
-            s.type = None
-        else:
-            s.type = s.type.args[0]
-        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
-            self.fail("Invalid final declaration, ignoring", s)
-            return
-        lval = s.lvalues[0]
-        assert isinstance(lval, RefExpr)
-        s.is_final_def = True
-        if self.type and self.type.is_protocol:
-            self.msg.protocol_members_cant_be_final(s)
-        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
-            self.fail("Final declaration outside stubs must have right hand side", s)
-        return
-
-    def check_final_implicit_def(self, s: AssignmentStmt) -> None:
-        if not s.is_final_def:
-            return
-        lval = s.lvalues[0]
-        assert isinstance(lval, RefExpr)
-        if isinstance(lval, MemberExpr):
-            if not self.is_self_member_ref(lval):
-                self.fail("Final can be only applied to a name or an attribute on self", s)
-                s.is_final_def = False
-                return
-            else:
-                assert self.function_stack
-                if self.function_stack[-1].name() != '__init__':
-                    self.fail("Can only declare final attributes in class body"
-                              " or __init__ method", s)
-                    s.is_final_def = False
-                    return
-
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.unwrap_final(s)
 
@@ -1739,7 +1700,58 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
 
+    def unwrap_final(self, s: AssignmentStmt) -> None:
+        """Strip Final[...] if present in an assignment.
+
+        This is done to invoke type inference during type checking phase for this
+        assignment. Also, Final[...] desn't affect type in any way, it is rather an
+        access qualifier for given `Var`.
+        """
+        if not s.type or not self.is_final_type(s.type):
+            return
+        assert isinstance(s.type, UnboundType)
+        if len(s.type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.type)
+        if not s.type.args:
+            s.type = None
+        else:
+            s.type = s.type.args[0]
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
+            self.fail("Invalid final declaration, ignoring", s)
+            return
+        lval = s.lvalues[0]
+        assert isinstance(lval, RefExpr)
+        s.is_final_def = True
+        if self.type and self.type.is_protocol:
+            self.msg.protocol_members_cant_be_final(s)
+        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
+            self.fail("Final declaration outside stubs must have right hand side", s)
+        return
+
+    def check_final_implicit_def(self, s: AssignmentStmt) -> None:
+        """Do basic checks for final declaration on self in __init__.
+
+        Additional re-definition checks are performed by `analyze_lvalue`.
+        """
+        if not s.is_final_def:
+            return
+        lval = s.lvalues[0]
+        assert isinstance(lval, RefExpr)
+        if isinstance(lval, MemberExpr):
+            if not self.is_self_member_ref(lval):
+                self.fail("Final can be only applied to a name or an attribute on self", s)
+                s.is_final_def = False
+                return
+            else:
+                assert self.function_stack
+                if self.function_stack[-1].name() != '__init__':
+                    self.fail("Can only declare final attributes in class body"
+                              " or __init__ method", s)
+                    s.is_final_def = False
+                    return
+
     def store_final_status(self, s: AssignmentStmt) -> None:
+        """If this is a locally valid final declaration, set the corresponding flag on `Var`."""
         if s.is_final_def:
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
                 node = s.lvalues[0].node
@@ -2013,6 +2025,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
+                    # Note that `explicit_type` might has been erased for bare `Final`,
+                    # so we alse check if `final_cb` is passed.
                     (cur_node is None and (explicit_type or final_cb is not None))):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)

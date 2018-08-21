@@ -263,6 +263,8 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
     if isinstance(v, Var):
         implicit = info[name].implicit
 
+        # An assignment to final attribute is always an error,
+        # independently of types.
         if is_lvalue and not chk.get_final_context():
             for base in info.mro:
                 sym = base.names.get(name)
@@ -542,8 +544,13 @@ def analyze_class_attribute_access(itype: Instance,
         if isinstance(node.node, TypeInfo):
             msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
 
+    # If a constant was declared on `self` in `__init__`, then it
+    # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
         msg.fail("Can't access instance constant on class object", context)
+
+    # An assignment to final attribute on class object is also always an error,
+    # independently of types.
     for base in itype.type.mro:
         b_node = base.names.get(name)
         if (b_node and isinstance(b_node.node, (Var, FuncBase, Decorator)) and

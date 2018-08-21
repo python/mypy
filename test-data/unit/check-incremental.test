@@ -4884,3 +4884,5 @@ def f(x: str) -> None: pass
 [out]
 [out2]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+-- Test cases for final qualifier

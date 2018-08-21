@@ -956,6 +956,10 @@ class MessageBuilder:
         self.note('(previously declared on base class "{}")'.format(base_name), ctx)
 
     def cant_assign_to_final(self, name: str, module_level: bool, ctx: Context) -> None:
+        """Warn about a prohibited assignment to a final attribute.
+
+        Pass `module_level=True` if the assignment assigns to a module attribute.
+        """
         kind = "constant" if module_level else "final attribute"
         self.fail('Can\'t assign to {} "{}"'.format(kind, name), ctx)
 

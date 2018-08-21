@@ -217,6 +217,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
+        # This internal flag is used to indicate whether we a currently type-checking
+        # a final declaration (assignment). Should not be set manually, use
+        # get_final_context/set_final_context instead.
         self._is_final_def = False
 
     def reset(self) -> None:
@@ -1282,10 +1285,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 context = defn.func
 
-            # First if we don't override a final (always an error, even with Any types)
-            if (isinstance(base_attr.node, (Var, FuncBase)) and base_attr.node.is_final or
-                    isinstance(base_attr.node, Decorator) and base_attr.node.func.is_final):
+            # First, check if we don't override a final (always an error, even with Any types).
+            if isinstance(base_attr.node, (Var, FuncBase, Decorator)) and base_attr.node.is_final:
                 self.msg.cant_override_final(name, base.name(), defn)
+
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):
                 typ = self.function_type(defn)  # type: Type
@@ -1553,10 +1556,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
-        # Final attribute can never be overridden, but can override normal attributes,
+        # Final attributes can never be overridden, but can override normal attributes,
         # so we only check `second`.
-        if (isinstance(second.node, (Var, FuncBase)) and second.node.is_final or
-                isinstance(second.node, Decorator) and second.node.func.is_final):
+        if isinstance(second.node, (Var, FuncBase, Decorator)) and second.node.is_final:
             self.msg.cant_override_final(name, base2.name(), ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
@@ -1599,37 +1601,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if self.binder.is_unreachable():
                 break
             self.accept(s)
-
-    def get_final_context(self) -> bool:
-        return self._is_final_def
-
-    @contextmanager
-    def set_final_context(self, is_final_def: bool) -> Iterator[None]:
-        old_ctx = self._is_final_def
-        self._is_final_def = is_final_def
-        try:
-            yield
-        finally:
-            self._is_final_def = old_ctx
-
-    def check_final(self, s: AssignmentStmt) -> None:
-        # for class body & modules, other in checkmember
-        lvs = self.flatten_lvalues(s.lvalues)
-        for lv in lvs:
-            if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
-                name = lv.node.name()
-                cls = self.scope.active_class()
-                if cls is not None:
-                    # This exist to give more errors even if we overridden with a new var
-                    # (which is itself an error)
-                    for base in cls.mro[1:]:
-                        sym = base.names.get(name)
-                        if sym and isinstance(sym.node, (Var, Decorator)):
-                            var = sym.node if isinstance(sym.node, Var) else sym.node.var
-                            if var.is_final and not s.is_final_def:
-                                self.msg.cant_assign_to_final(name, var.info is not None, s)
-                if lv.node.is_final and not s.is_final_def:
-                    self.msg.cant_assign_to_final(name, lv.node.info is not None, s)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
@@ -1918,6 +1889,43 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(node.name(), base.name(), node)
             return False
         return True
+
+    def get_final_context(self) -> bool:
+        return self._is_final_def
+
+    @contextmanager
+    def set_final_context(self, is_final_def: bool) -> Iterator[None]:
+        old_ctx = self._is_final_def
+        self._is_final_def = is_final_def
+        try:
+            yield
+        finally:
+            self._is_final_def = old_ctx
+
+    def check_final(self, s: AssignmentStmt) -> None:
+        """Check if this assignment does not assign to a final attribute.
+
+        This function perfoms the check only for name assignments at module
+        and class scope. The assignments to `obj.attr` and `Cls.attr` are checked
+        in checkmember.py.
+        """
+        lvs = self.flatten_lvalues(s.lvalues)
+        for lv in lvs:
+            if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
+                name = lv.node.name()
+                cls = self.scope.active_class()
+                if cls is not None:
+                    # Theses additional checks exist to give more errors messages
+                    # even if the final attribute was overridden with a new symbol
+                    # (which is itself an error).
+                    for base in cls.mro[1:]:
+                        sym = base.names.get(name)
+                        if sym and isinstance(sym.node, (Var, Decorator)):
+                            var = sym.node if isinstance(sym.node, Var) else sym.node.var
+                            if var.is_final and not s.is_final_def:
+                                self.msg.cant_assign_to_final(name, var.info is not None, s)
+                if lv.node.is_final and not s.is_final_def:
+                    self.msg.cant_assign_to_final(name, lv.node.info is not None, s)
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,

@@ -1451,19 +1451,3 @@ TypeInfo<0>(
     X<3> (builtins.int<4>)
     Y<6> (builtins.int<4>))
   MetaclassType(enum.EnumMeta<5>))
-
-[case testFinalFlagsUpdatedCorrectlyVar]
-
-[out]
-
-[case testFinalFlagsUpdatedCorrectlyInstanceVar]
-
-[out]
-
-[case testFinalFlagsUpdatedCorrectlyFunc]
-
-[out]
-
-[case testFinalFlagsUpdatedCorrectlyMethod]
-
-[out]
