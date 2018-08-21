@@ -230,8 +230,20 @@ class C:
 [out]
 
 [case testFinalNotInProtocol]
-from typing import Final, final, Protocol
+from typing import Final, final, Protocol, overload
 
+class P(Protocol):
+    x: Final[float] = 1  # E: Protocol members can't be final
+    @final  # E: Protocol members can't be final
+    def meth(self, x) -> int:
+        pass
+    @overload
+    def other(self, x: int) -> int: ...
+    @overload
+    def other(self, x: str) -> str: ...
+    @final  # E: Protocol members can't be final
+    def other(self, x):
+        pass
 [out]
 
 -- Reassignments

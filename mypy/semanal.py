@@ -1669,7 +1669,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         assert isinstance(lval, RefExpr)
         s.is_final_def = True
         if self.type and self.type.is_protocol:
-            self.fail("Protocol members can't be final", s)
+            self.msg.protocol_members_cant_be_final(s)
         if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
             self.fail("Final declaration outside stubs must have right hand side", s)
         return
@@ -2393,8 +2393,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 no_type_check = True
             elif refers_to_fullname(d, 'typing.final'):
                 if self.is_class_scope():
-                    dec.func.is_final = True
-                    dec.var.is_final = True
+                    assert self.type is not None, "No type set at class scope"
+                    if self.type.is_protocol:
+                        self.msg.protocol_members_cant_be_final(d)
+                    else:
+                        dec.func.is_final = True
+                        dec.var.is_final = True
                     removed.append(i)
                 else:
                     self.fail("@final can't be used with non-method functions", d)
