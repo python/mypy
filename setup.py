@@ -33,8 +33,8 @@ types.
 '''.lstrip()
 
 
-def find_data_files(base, globs):
-    """Find all interesting data files, for setup(data_files=)
+def find_package_data(base, globs):
+    """Find all interesting data files, for setup(package_data=)
 
     Arguments:
       root:  The directory to search in.
@@ -49,9 +49,7 @@ def find_data_files(base, globs):
             files += glob.glob(os.path.join(rv_dir, pat))
         if not files:
             continue
-        target = os.path.join('lib', 'mypy', rv_dir)
-        rv.append((target, files))
-
+        rv.extend([f[5:] for f in files])
     return rv
 
 
@@ -67,11 +65,12 @@ class CustomPythonBuild(build_py):
         build_py.run(self)
 
 
-data_files = []
+package_data = ['py.typed']
 
-data_files += find_data_files('typeshed', ['*.py', '*.pyi'])
+package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.pyi'])
 
-data_files += find_data_files('xml', ['*.xsd', '*.xslt', '*.css'])
+package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
+
 
 classifiers = [
     'Development Status :: 3 - Alpha',
@@ -95,12 +94,11 @@ setup(name='mypy',
       license='MIT License',
       py_modules=[],
       packages=['mypy', 'mypy.test', 'mypy.server', 'mypy.plugins'],
-      package_data={'mypy': ['py.typed']},
+      package_data={'mypy': package_data},
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
                                         'dmypy=mypy.dmypy:main',
                                         ]},
-      data_files=data_files,
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
       install_requires = ['typed-ast >= 1.1.0, < 1.2.0',
@@ -110,4 +108,5 @@ setup(name='mypy',
           ':python_version < "3.5"': 'typing >= 3.5.3',
           'dmypy': 'psutil >= 5.4.0, < 5.5.0; sys_platform!="win32"',
       },
+      include_package_data=True,
       )
