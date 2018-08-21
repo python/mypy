@@ -154,6 +154,8 @@ class RuntimeError(Exception): pass
 class NotImplementedError(RuntimeError): pass
 
 
+def any(i: Iterable[T]) -> bool: pass
+def all(i: Iterable[T]) -> bool: pass
 def id(o: object) -> int: pass
 def len(o: Sized) -> int: pass
 def print(*object) -> None: pass

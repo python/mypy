@@ -2946,3 +2946,73 @@ L4:
     r15 = r11.__setitem__(r14, r13) :: object
     r16 = None
     return r16
+
+[case testAnyAllG]
+from typing import Iterable
+
+def call_any(l: Iterable[int]) -> bool:
+    return any(i == 0 for i in l)
+
+def call_all(l: Iterable[int]) -> bool:
+    return all(i == 0 for i in l)
+
+[out]
+def call_any(l):
+    l :: object
+    r0, r1 :: bool
+    r2, r3 :: object
+    i, r4, r5 :: int
+    r6, r7, r8 :: bool
+L0:
+    r1 = False
+    r0 = r1
+    r2 = iter l :: object
+L1:
+    r3 = next r2 :: object
+    if is_error(r3) goto L5 else goto L2
+L2:
+    r4 = unbox(int, r3)
+    i = r4
+    r5 = 0
+    r6 = i == r5 :: int
+    if r6 goto L3 else goto L4 :: bool
+L3:
+    r7 = True
+    r0 = r7
+    goto L6
+L4:
+    goto L1
+L5:
+    r8 = no_err_occurred
+L6:
+    return r0
+def call_all(l):
+    l :: object
+    r0, r1 :: bool
+    r2, r3 :: object
+    i, r4, r5 :: int
+    r6, r7, r8, r9 :: bool
+L0:
+    r1 = True
+    r0 = r1
+    r2 = iter l :: object
+L1:
+    r3 = next r2 :: object
+    if is_error(r3) goto L5 else goto L2
+L2:
+    r4 = unbox(int, r3)
+    i = r4
+    r5 = 0
+    r6 = i == r5 :: int
+    r7 = !r6
+    if r7 goto L3 else goto L4 :: bool
+L3:
+    r8 = False
+    r0 = r8
+    goto L6
+L4:
+    goto L1
+L5:
+    r9 = no_err_occurred
+L6:
+    return r0

@@ -1554,7 +1554,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             assert s.else_body is not None
             self.accept(s.else_body)
 
-        self.for_loop_helper(s.index, s.expr, body, else_block if s.else_body else None, s.line)
+        self.for_loop_helper(s.index, s.expr, body,
+                             else_block if s.else_body else None, None, s.line)
 
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
@@ -1597,16 +1598,20 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return reg
 
     def for_loop_helper(self, index: Lvalue, expr: Expression,
-                        body_insts: GenFunc, else_insts: Optional[GenFunc], line: int) -> None:
+                        body_insts: GenFunc, else_insts: Optional[GenFunc],
+                        exit_block: Optional[BasicBlock], line: int) -> None:
         """Generate IR for a loop.
 
         "index" is the loop index Lvalue
         "expr" is the expression to iterate over
         "body_insts" is a function to generate the body of the loop.
         """
-        body_block, exit_block, increment_block = BasicBlock(), BasicBlock(), BasicBlock()
+        body_block, increment_block = BasicBlock(), BasicBlock()
         # Block for the else clause, if we need it.
         else_block = BasicBlock()
+
+        if exit_block is None:
+            exit_block = BasicBlock()
 
         # Determine where we want to exit, if our condition check fails.
         normal_loop_exit = else_block if else_insts is not None else exit_block
@@ -1741,6 +1746,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.activate_block(else_block)
             else_insts()
             self.goto(exit_block)
+
         self.activate_block(exit_block)
 
     def visit_break_stmt(self, node: BreakStmt) -> None:
@@ -2082,15 +2088,54 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.py_call(function, args, expr.line,
                             arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
 
+    def any_all_helper(self,
+                       gen: GeneratorExpr,
+                       initial_value_op: OpDescription,
+                       modify: Callable[[Value], Value],
+                       new_value_op: OpDescription) -> Value:
+        retval = self.alloc_temp(bool_rprimitive)
+        self.assign(retval, self.primitive_op(initial_value_op, [], -1), -1)
+        loop_params = list(zip(gen.indices, gen.sequences, gen.condlists))
+        true_block, false_block, exit_block = BasicBlock(), BasicBlock(), BasicBlock()
+
+        def gen_inner_stmts() -> None:
+            comparison = modify(self.accept(gen.left_expr))
+            self.add_bool_branch(comparison, true_block, false_block)
+            self.activate_block(true_block)
+            self.assign(retval, self.primitive_op(new_value_op, [], -1), -1)
+            self.goto(exit_block)
+            self.activate_block(false_block)
+
+        self.comprehension_helper(loop_params, gen_inner_stmts, exit_block, gen.line)
+        return retval
+
     def translate_refexpr_call(self, expr: CallExpr, callee: RefExpr) -> Value:
         """Translate a non-method call."""
-        # Gen the argument values
-        arg_values = [self.accept(arg) for arg in expr.args]
 
         # TODO: Allow special cases to have default args or named args. Currently they don't since
         # they check that everything in arg_kinds is ARG_POS.
 
         # TODO: Generalize special cases
+
+        # Special case builtins.any
+        if (callee.fullname == 'builtins.any'
+                and len(expr.args) == 1
+                and expr.arg_kinds == [ARG_POS]
+                and isinstance(expr.args[0], GeneratorExpr)):
+            return self.any_all_helper(expr.args[0], false_op, lambda x: x, true_op)
+
+        # Special case builtins.all
+        if (callee.fullname == 'builtins.all'
+                and len(expr.args) == 1
+                and expr.arg_kinds == [ARG_POS]
+                and isinstance(expr.args[0], GeneratorExpr)):
+            return self.any_all_helper(expr.args[0],
+                                       true_op,
+                                       lambda x: self.unary_op(x, 'not', expr.line),
+                                       false_op)
+
+        # Gen the argument values
+        arg_values = [self.accept(arg) for arg in expr.args]
 
         # Special case builtins.len
         if (callee.fullname == 'builtins.len'
@@ -2927,7 +2972,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             e = self.accept(gen.left_expr)
             self.primitive_op(list_append_op, [list_ops, e], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
         return list_ops
 
     def visit_set_comprehension(self, o: SetComprehension) -> Value:
@@ -2939,7 +2984,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             e = self.accept(gen.left_expr)
             self.primitive_op(set_add_op, [set_ops, e], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
         return set_ops
 
     def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> Value:
@@ -2951,7 +2996,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             v = self.accept(o.value)
             self.primitive_op(dict_set_item_op, [d, k, v], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
         return d
 
     def visit_generator_expr(self, o: GeneratorExpr) -> Value:
@@ -2966,12 +3011,13 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             e = self.accept(gen.left_expr)
             self.primitive_op(list_append_op, [list_ops, e], o.line)
 
-        self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
+        self.comprehension_helper(loop_params, gen_inner_stmts, None, o.line)
         return list_ops
 
     def comprehension_helper(self,
                              loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
                              gen_inner_stmts: Callable[[], None],
+                             exit_block: Optional[BasicBlock],
                              line: int) -> None:
         """Helper function for list comprehensions.
 
@@ -2991,7 +3037,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             index, expr, conds = loop_params[0]
             self.for_loop_helper(index, expr,
                                  lambda: loop_contents(conds, loop_params[1:]),
-                                 None, line)
+                                 None, exit_block, line)
 
         def loop_contents(
                 conds: List[Expression],
