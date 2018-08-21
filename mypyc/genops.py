@@ -184,11 +184,11 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
                 if entry.name in cls.vtable:
                     entry = cls.vtable_entries[cls.vtable[entry.name]]
         else:
-            # If it is an attribute from a trait, we need to find out real class it got
-            # mixed in at and point to that.
+            # If it is an attribute from a trait, we need to find out
+            # the real class it got mixed in at and point to that.
             if parent.is_trait:
-                assert cls.vtable is not None
-                entry = cls.vtable_entries[cls.vtable[entry.name] + int(entry.is_setter)]
+                _, origin_cls = cls.attr_details(entry.name)
+                entry = VTableAttr(origin_cls, entry.name, entry.is_setter)
         updated.append(entry)
     return updated
 
@@ -215,10 +215,14 @@ def compute_vtable(cls: ClassIR) -> None:
     # Include the vtable from the parent classes, but handle method overrides.
     entries = cls.vtable_entries
 
-    for attr in cls.attributes:
-        cls.vtable[attr] = len(entries)
-        entries.append(VTableAttr(cls, attr, is_setter=False))
-        entries.append(VTableAttr(cls, attr, is_setter=True))
+    # Traits need to have attributes in the vtable, since the
+    # attributes can be at different places in different classes, but
+    # regular classes can just directly get them.
+    if cls.is_trait:
+        for attr in cls.attributes:
+            cls.vtable[attr] = len(entries)
+            entries.append(VTableAttr(cls, attr, is_setter=False))
+            entries.append(VTableAttr(cls, attr, is_setter=True))
 
     all_traits = [t for t in cls.mro if t.is_trait]
 

@@ -9,7 +9,7 @@ from mypyc.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, Register, RType, RTuple, MethodCall, PrimitiveOp,
     EmitterInterface, Unreachable, is_int_rprimitive, NAMESPACE_STATIC, NAMESPACE_TYPE,
-    RaiseStandardError, FuncDecl,
+    RaiseStandardError, FuncDecl, ClassIR,
     FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
 )
 from mypyc.namegen import NameGenerator
@@ -18,6 +18,14 @@ from mypyc.namegen import NameGenerator
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
 DEBUG_ERRORS = False
+
+
+def native_getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
+    return names.private_name(cl.module_name, 'native_{}_get{}'.format(cl.name, attribute))
+
+
+def native_setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
+    return names.private_name(cl.module_name, 'native_{}_set{}'.format(cl.name, attribute))
 
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
@@ -193,34 +201,54 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         dest = self.reg(op)
         obj = self.reg(op.obj)
         rtype = op.class_type
-        version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */' % (
-            dest,
-            version,
-            obj,
-            self.emitter.type_struct_name(rtype.class_ir),
-            rtype.getter_index(op.attr),
-            rtype.struct_name(self.names),
-            self.ctype(rtype.attr_type(op.attr)),
-            op.attr))
+        cl = rtype.class_ir
+        version = '_TRAIT' if cl.is_trait else ''
+        if cl.is_trait or cl.get_method(op.attr):
+            self.emit_line('%s = CPY_GET_ATTR%s(%s, %s, %d, %s, %s); /* %s */' % (
+                dest,
+                version,
+                obj,
+                self.emitter.type_struct_name(rtype.class_ir),
+                rtype.getter_index(op.attr),
+                rtype.struct_name(self.names),
+                self.ctype(rtype.attr_type(op.attr)),
+                op.attr))
+        else:
+            typ, decl_cl = cl.attr_details(op.attr)
+            self.emit_line('%s = %s((%s *)%s); /* %s */' % (
+                dest,
+                native_getter_name(decl_cl, op.attr, self.emitter.names),
+                decl_cl.struct_name(self.names),
+                obj,
+                op.attr))
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
         obj = self.reg(op.obj)
         src = self.reg(op.src)
         rtype = op.class_type
-        # TODO: Track errors
-        version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
-            dest,
-            version,
-            obj,
-            self.emitter.type_struct_name(rtype.class_ir),
-            rtype.setter_index(op.attr),
-            src,
-            rtype.struct_name(self.names),
-            self.ctype(rtype.attr_type(op.attr)),
-            op.attr))
+        cl = rtype.class_ir
+        version = '_TRAIT' if cl.is_trait else ''
+        if cl.is_trait:
+            self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
+                dest,
+                version,
+                obj,
+                self.emitter.type_struct_name(rtype.class_ir),
+                rtype.setter_index(op.attr),
+                src,
+                rtype.struct_name(self.names),
+                self.ctype(rtype.attr_type(op.attr)),
+                op.attr))
+        else:
+            typ, decl_cl = cl.attr_details(op.attr)
+            self.emit_line('%s = %s((%s *)%s, %s); /* %s */' % (
+                dest,
+                native_setter_name(decl_cl, op.attr, self.emitter.names),
+                decl_cl.struct_name(self.names),
+                obj,
+                src,
+                op.attr))
 
     PREFIX_MAP = {
         NAMESPACE_STATIC: STATIC_PREFIX,

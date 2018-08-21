@@ -7,7 +7,7 @@ from collections import OrderedDict
 
 from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, DUNDER_PREFIX
 from mypyc.emit import Emitter
-from mypyc.emitfunc import native_function_header
+from mypyc.emitfunc import native_function_header, native_getter_name, native_setter_name
 from mypyc.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
     generate_bool_wrapper, generate_get_wrapper
@@ -203,14 +203,6 @@ def getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
     return names.private_name(cl.module_name, '{}_set{}'.format(cl.name, attribute))
-
-
-def native_getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, 'native_{}_get{}'.format(cl.name, attribute))
-
-
-def native_setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
-    return names.private_name(cl.module_name, 'native_{}_set{}'.format(cl.name, attribute))
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:

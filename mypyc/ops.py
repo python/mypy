@@ -1353,11 +1353,11 @@ class FuncIR:
 INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))
 
 
-# Some notes on the vtable layout:
-# Each concrete class has a vtable that contains function pointers for its
-# methods and for getters/setters of its attributes. So that subclasses
-# may be efficiently used when their parent class is expected, the layout
-# of child vtables must be an extension of their base class's vtable.
+# Some notes on the vtable layout: Each concrete class has a vtable
+# that contains function pointers for its methods. So that subclasses
+# may be efficiently used when their parent class is expected, the
+# layout of child vtables must be an extension of their base class's
+# vtable.
 #
 # This makes multiple inheritance tricky, since obviously we cannot be
 # an extension of multiple parent classes. We solve this by requriing
@@ -1368,6 +1368,8 @@ INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))
 # a class's main vtable. When we want to call a trait method, we
 # (at runtime!) search the array of trait vtables to find the correct one,
 # then call through it.
+# Trait vtables additionally need entries for attribute getters and setters,
+# since they can't always be in the same location.
 #
 # To keep down the number of indirections necessary, we store the
 # array of trait vtables in the memory *before* the class vtable, and
@@ -1376,11 +1378,11 @@ INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))
 # need it again.)
 # There are some tricks we could try in the future to store the trait
 # vtables inline in the trait table (which would cut down one indirection),
-# but this seems good enough for now.#
+# but this seems good enough for now.
 #
 # As an example:
 # Imagine that we have a class B that inherits from a concrete class A
-# and traits T1 and T2, and that A has attribute x and methods foo() and
+# and traits T1 and T2, and that A has methods foo() and
 # bar() and B overrides bar() with a more specific type.
 # Then B's vtable will look something like:
 #
@@ -1388,9 +1390,7 @@ INVALID_FUNC_DEF = FuncDef('<INVALID_FUNC_DEF>', [], Block([]))
 #      ptr to B's T1 trait vtable
 #      T2 type object
 #      ptr to B's T2 trait vtable
-# -> | Getter for x
-#    | Setter for x
-#    | A.foo
+# -> | A.foo
 #    | Glue function that converts between A.bar's type and B.bar
 #      B.bar
 #      B.baz
@@ -1480,13 +1480,16 @@ class ClassIR:
         assert name in self.vtable, '%r has no attribute %r' % (self.name, name)
         return self.vtable[name]
 
-    def attr_type(self, name: str) -> RType:
+    def attr_details(self, name: str) -> Tuple[RType, 'ClassIR']:
         for ir in self.mro:
             if name in ir.attributes:
-                return ir.attributes[name]
+                return ir.attributes[name], ir
             if name in ir.property_types:
-                return ir.property_types[name]
+                return ir.property_types[name], ir
         raise KeyError('%r has no attribute %r' % (self.name, name))
+
+    def attr_type(self, name: str) -> RType:
+        return self.attr_details(name)[0]
 
     def method_decl(self, name: str) -> FuncDecl:
         for ir in self.mro:
