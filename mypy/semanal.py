@@ -610,6 +610,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # redefinitions already.
             return
 
+        # Check final status
+        if any(item.is_final for item in defn.items):
+            defn.is_final = True
+        if defn.impl is not None and defn.impl.is_final:
+            defn.is_final = True
+
         # We know this is an overload def -- let's handle classmethod and staticmethod
         class_status = []
         static_status = []

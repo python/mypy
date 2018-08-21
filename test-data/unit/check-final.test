@@ -5,10 +5,12 @@
 
 [case testFinalDefiningModuleVar]
 from typing import Final
+
 x: Final = int()
 y: Final[float] = int()
 z: Final[int] = int()
 bad: Final[str] = str()
+
 reveal_type(x)  # E: Revealed type is 'builtins.int'
 reveal_type(y)  # E: Revealed type is 'builtins.float'
 reveal_type(z)  # E: Revealed type is 'builtins.int'
@@ -16,17 +18,20 @@ reveal_type(z)  # E: Revealed type is 'builtins.int'
 
 [case testFinalDefiningInstanceVar]
 from typing import Final
+
 class C:
     x: Final = int()
     y: Final[float] = int()
     z: Final[int] = int()
     bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-reveal_type(C.x)  # E: Revealed type is 'builtins.int'
-reveal_type(C.y)  # E: Revealed type is 'builtins.float'
-reveal_type(C.z)  # E: Revealed type is 'builtins.int'
-reveal_type(C().x)  # E: Revealed type is 'builtins.int'
-reveal_type(C().y)  # E: Revealed type is 'builtins.float'
-reveal_type(C().z)  # E: Revealed type is 'builtins.int'
+class D(C): pass
+
+reveal_type(D.x)  # E: Revealed type is 'builtins.int'
+reveal_type(D.y)  # E: Revealed type is 'builtins.float'
+reveal_type(D.z)  # E: Revealed type is 'builtins.int'
+reveal_type(D().x)  # E: Revealed type is 'builtins.int'
+reveal_type(D().y)  # E: Revealed type is 'builtins.float'
+reveal_type(D().z)  # E: Revealed type is 'builtins.int'
 [out]
 
 [case testFinalDefiningInstanceVarImplicit]
@@ -55,6 +60,7 @@ reveal_type(C().x)  # E: Revealed type is 'builtins.float'
 
 [case testFinalInvalidDefinitions]
 from typing import Final, Any
+
 x = y = 1  # type: Final[float]  # E: Invalid final declaration, ignoring
 z: Any
 z[0]: Final  # E: Unexpected type declaration \
@@ -66,6 +72,7 @@ z[0]: Final  # E: Unexpected type declaration \
 import mod
 [file mod.pyi]
 from typing import Final
+
 x: Final
 y: Final[int]
 class C:
@@ -355,6 +362,15 @@ D().x = 2  # E: Can't assign to constant "x"
 D().y = 2  # E: Can't assign to constant "y"
 [out]
 
+[case testFinalWorksWithComplexTargets]
+from typing import Final, Any
+
+y: Final[Any] = 1
+x = a, (b, y), c = 2, (2, 2), 2  # E: Can't assign to constant "y"
+t, *y, s = u = [2, 2, 2]  # E: Can't assign to constant "y"
+[builtins fixtures/list.pyi]
+[out]
+
 -- Overriding
 
 [case testFinalOverridingVarClassBody]
@@ -603,27 +619,92 @@ class C(A):
 [out]
 
 [case testFinalOverridingMethodMultipleInheritance]
+from typing import final
 
+class A:
+    def m(self) -> int: pass
+class B:
+    @final
+    def m(self) -> int: pass
+
+class C(A, B): pass  # E: Cannot override constant (previously declared on base class "B")
+class D(B, A): pass
 [out]
 
 [case testFinalOverridingMethodMultipleInheritanceVar]
+from typing import final, Any
 
+class A:
+    m: Any
+class B:
+    @final
+    def m(self) -> int: pass
+
+class C(A, B): pass  # E: Cannot override constant (previously declared on base class "B")
+class D(B, A): pass
 [out]
 
 [case testFinalOverridingClassMethod]
+from typing import final
 
+class B:
+    @classmethod
+    @final
+    def f(cls) -> int: pass
+
+class C(B):
+    @classmethod  # E: Cannot override constant (previously declared on base class "B")
+    def f(cls) -> int: pass
+[builtins fixtures/classmethod.pyi]
 [out]
 
 [case testFinalOverridingStaticMethod]
+from typing import final
 
+class B:
+    @staticmethod
+    @final
+    def f() -> int: pass
+
+class C(B):
+    @staticmethod  # E: Cannot override constant (previously declared on base class "B")
+    def f() -> int: pass
+[builtins fixtures/staticmethod.pyi]
 [out]
 
 [case testFinalOverridingProperty]
+from typing import final
 
+class B:
+    @final
+    @property
+    def f(self) -> int: pass
+
+class C(B):
+    @property  # E: Cannot override constant (previously declared on base class "B")
+    def f(self) -> int: pass
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingMethodOverloads]
+from typing import final, overload
 
+class B:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    @final
+    def f(self, x):
+        pass
+
+class C(B):
+    @overload  # E: Cannot override constant (previously declared on base class "B")
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    def f(self, x):
+        pass
 [out]
 
 [case testFinalClassNoInheritance]
