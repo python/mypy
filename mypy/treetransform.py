@@ -116,6 +116,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_static = node.is_static
         new.is_class = node.is_class
         new.is_property = node.is_property
+        new.is_final = node.is_final
         new.original_def = node.original_def
 
         if node in self.func_placeholder_map:
@@ -156,6 +157,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_static = node.is_static
         new.is_class = node.is_class
         new.is_property = node.is_property
+        new.is_final = node.is_final
         if node.impl:
             new.impl = cast(OverloadPart, node.impl.accept(self))
         return new
@@ -204,6 +206,8 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_staticmethod = node.is_staticmethod
         new.is_classmethod = node.is_classmethod
         new.is_property = node.is_property
+        new.is_final = node.is_final
+        new.final_value = node.final_value
         new.set_line(node.line)
         self.var_map[node] = new
         return new
@@ -219,6 +223,7 @@ class TransformVisitor(NodeVisitor[Node]):
                              self.expr(node.rvalue),
                              self.optional_type(node.type))
         new.line = node.line
+        new.is_final_def = node.is_final_def
         return new
 
     def visit_operator_assignment_stmt(self,

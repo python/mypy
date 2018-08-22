@@ -720,6 +720,7 @@ class Var(SymbolNode):
                  '_fullname',
                  'info',
                  'type',
+                 'final_value',
                  'is_self',
                  'is_ready',
                  'is_inferred',
@@ -759,6 +760,10 @@ class Var(SymbolNode):
         self.is_suppressed_import = False
         # Was this "variable" (rather a constant) defined as Final[...]?
         self.is_final = False
+        # If constant value is a simple literal,
+        # store the literal value (unboxed) for the benefit of
+        # tools like mypyc.
+        self.final_value = None  # type: Optional[Union[int, float, bool, str]]
 
     def name(self) -> str:
         return self._name

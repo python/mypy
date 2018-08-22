@@ -1759,6 +1759,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 node = s.lvalues[0].node
                 if isinstance(node, Var):
                     node.is_final = True
+                    node.final_value = self.unbox_literal(s.rvalue)
+
+    def unbox_literal(self, e: Expression) -> Optional[Union[int, float, bool, str]]:
+        if isinstance(e, (IntExpr, FloatExpr, StrExpr)):
+            return e.value
+        elif isinstance(e, NameExpr) and e.name in ('True', 'False'):
+            return True if e.name == 'True' else False
+        return None
 
     def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
