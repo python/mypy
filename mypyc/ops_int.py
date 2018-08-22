@@ -23,8 +23,7 @@ func_op(
     arg_types=[float_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit(
-        '{dest} = PyLong_FromDouble(PyFloat_AS_DOUBLE({args[0]}));'),
+    emit=simple_emit('{dest} = CPyLong_FromFloat({args[0]});'),
     priority=1)
 
 

@@ -1468,6 +1468,7 @@ assert sum == 50.0
 
 assert str(from_int(10)) == '10.0'
 assert str(to_int(3.14)) == '3'
+assert str(to_int(3)) == '3'
 
 [case testBytes]
 def f(x: bytes) -> bytes:

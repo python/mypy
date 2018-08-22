@@ -764,6 +764,16 @@ static int CPyDict_UpdateFromSeq(PyObject *dict, PyObject *stuff) {
     }
 }
 
+// mypy lets ints silently coerce to floats, so a mypyc runtime float
+// might be an int also
+static inline bool CPyFloat_Check(PyObject *o) {
+    return PyFloat_Check(o) || PyLong_Check(o);
+}
+
+static PyObject *CPyLong_FromFloat(PyObject *o) {
+    return PyLong_Check(o) ? o : PyLong_FromDouble(PyFloat_AS_DOUBLE(o));
+}
+
 static PyCodeObject *CPy_CreateCodeObject(const char *filename, const char *funcname, int line) {
     PyObject *filename_obj = PyUnicode_FromString(filename);
     PyObject *funcname_obj = PyUnicode_FromString(funcname);

@@ -330,7 +330,7 @@ class Emitter:
             elif is_set_rprimitive(typ):
                 prefix = 'PySet'
             elif is_float_rprimitive(typ):
-                prefix = 'PyFloat'
+                prefix = 'CPyFloat'
             elif is_str_rprimitive(typ):
                 prefix = 'PyUnicode'
             elif is_int_rprimitive(typ):
