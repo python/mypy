@@ -7538,12 +7538,14 @@ import mod
 from a import D
 from mod import x
 
-mod.x = 2  # This an all below are errors.
 x = 2
-d: D
-d.y = 2
-d.z = 2
-D.y = 2
+def outer() -> None:
+    mod.x = 2
+    x = 2  # This is OK because it creates a local variable
+    d: D
+    d.y = 2
+    d.z = 2
+    D.y = 2
 [file a.py]
 import mod
 
@@ -7567,10 +7569,10 @@ class C:
 [out]
 ==
 main:5: error: Can't assign to constant "x"
-main:6: error: Can't assign to constant "x"
-main:8: error: Can't assign to final attribute "y"
-main:9: error: Can't assign to final attribute "z"
+main:7: error: Can't assign to constant "x"
 main:10: error: Can't assign to final attribute "y"
+main:11: error: Can't assign to final attribute "z"
+main:12: error: Can't assign to final attribute "y"
 
 [case testFinalAddFinalVarOverrideFine]
 from mod import C
@@ -7664,13 +7666,14 @@ main:7: note: (previously declared on base class "C")
 from typing import overload
 from mod import C
 
-class D(C):
-    @overload
-    def meth(self, x: int) -> int: ...
-    @overload
-    def meth(self, x: str) -> str: ...
-    def meth(self, x):
-        pass
+def outer() -> None:
+    class D(C):
+        @overload
+        def meth(self, x: int) -> int: ...
+        @overload
+        def meth(self, x: str) -> str: ...
+        def meth(self, x):
+            pass
 
 [file mod.pyi]
 from typing import overload
@@ -7691,17 +7694,18 @@ class C:
     def meth(self, x: str) -> str: ...
 [out]
 ==
-main:5: error: Cannot override final attribute "meth"
-main:5: note: (previously declared on base class "C")
+main:6: error: Cannot override final attribute "meth"
+main:6: note: (previously declared on base class "C")
 
 [case testFinalAddFinalPropertyWithVarFine]
 from mod import C
 
-class D(C):
-    p = 2
-class E(C):
-    def __init__(self) -> None:
-        self.p: int = 2
+def outer() -> None:
+    class D(C):
+        p = 2
+    class E(C):
+        def __init__(self) -> None:
+            self.p: int = 2
 
 [file mod.py]
 class C:
@@ -7720,9 +7724,9 @@ class C:
 [builtins fixtures/property.pyi]
 [out]
 ==
-main:4: error: Cannot override final attribute "p"
-main:4: note: (previously declared on base class "C")
-main:4: error: Can't assign to constant "p"
-main:7: error: Can't assign to final attribute "p"
-main:7: error: Cannot override final attribute "p"
-main:7: note: (previously declared on base class "C")
+main:5: error: Cannot override final attribute "p"
+main:5: note: (previously declared on base class "C")
+main:5: error: Can't assign to constant "p"
+main:8: error: Can't assign to final attribute "p"
+main:8: error: Cannot override final attribute "p"
+main:8: note: (previously declared on base class "C")
