@@ -4906,7 +4906,7 @@ class D(mod.C):
 [file mod.py]
 x = 1
 class C:
-    y = 2
+    y = 1
     def __init__(self) -> None:
         self.z = 1
 
@@ -4915,7 +4915,7 @@ from typing import Final
 
 x: Final = 1
 class C:
-    y: Final = 2
+    y: Final = 1
     def __init__(self) -> None:
         self.z: Final = 1
 [out]
@@ -4927,26 +4927,156 @@ main:9: error: Can't assign to final attribute "z"
 main:10: error: Can't assign to final attribute "y"
 
 [case testFinalAddFinalVarOverride]
+from mod import C
 
+class D(C):
+    x = 2
+    def __init__(self) -> None:
+        self.y = 2
+class E(C):
+    y = 2
+    def __init__(self) -> None:
+        self.x = 2
+
+[file mod.py]
+class C:
+    x = 1
+    def __init__(self) -> None:
+        self.y = 1
+
+[file mod.py.2]
+from typing import Final
+
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
 [out]
 [out2]
+main:4: error: Cannot override final attribute "x"
+main:4: note: (previously declared on base class "C")
+main:4: error: Can't assign to constant "x"
+main:6: error: Can't assign to final attribute "y"
+main:8: error: Cannot override final attribute "y"
+main:8: note: (previously declared on base class "C")
+main:8: error: Can't assign to constant "y"
+main:10: error: Can't assign to final attribute "x"
 
 [case testFinalAddFinalMethodOverride]
+from mod import C
 
+class D(C):
+    def meth(self) -> int: ...
+
+[file mod.py]
+class C:
+    def meth(self) -> int: ...
+
+[file mod.py.2]
+from typing import final
+
+class C:
+    @final
+    def meth(self) -> int: ...
 [out]
 [out2]
+main:4: error: Cannot override final attribute "meth"
+main:4: note: (previously declared on base class "C")
 
 [case testFinalAddFinalMethodOverrideWithVar]
+from mod import C
+from typing import Any
 
+class D(C):
+    meth: Any = 2
+    def __init__(self) -> None:
+        self.other: Any = 2
+
+[file mod.py]
+class C:
+    def meth(self) -> int: ...
+    def other(self) -> int: ...
+
+[file mod.py.2]
+from typing import final
+
+class C:
+    @final
+    def meth(self) -> int: ...
+    @final
+    def other(self) -> int: ...
 [out]
 [out2]
+main:5: error: Cannot override final attribute "meth"
+main:5: note: (previously declared on base class "C")
+main:5: error: Can't assign to constant "meth"
+main:7: error: Can't assign to final attribute "other"
+main:7: error: Cannot override final attribute "other"
+main:7: note: (previously declared on base class "C")
 
 [case testFinalAddFinalMethodOverrideOverload]
+from typing import overload
+from mod import C
 
+class D(C):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    def meth(self, x):
+        pass
+
+[file mod.pyi]
+from typing import overload
+class C:
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+
+[file mod.pyi.2]
+from typing import final, overload
+
+class C:
+    @final
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
 [out]
 [out2]
+main:5: error: Cannot override final attribute "meth"
+main:5: note: (previously declared on base class "C")
 
 [case testFinalAddFinalPropertyWithVar]
+from mod import C
 
+class D(C):
+    p = 2
+class E(C):
+    def __init__(self) -> None:
+        self.p: int = 2
+
+[file mod.py]
+class C:
+    @property
+    def p(self) -> int:
+        pass
+
+[file mod.py.2]
+from typing import final
+
+class C:
+    @final
+    @property
+    def p(self) -> int:
+        pass
+[builtins fixtures/property.pyi]
 [out]
 [out2]
+main:4: error: Cannot override final attribute "p"
+main:4: note: (previously declared on base class "C")
+main:4: error: Can't assign to constant "p"
+main:7: error: Can't assign to final attribute "p"
+main:7: error: Cannot override final attribute "p"
+main:7: note: (previously declared on base class "C")
