@@ -11,6 +11,7 @@ if MYPY:
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
 
+
 class BuildType:
     STANDARD = 0  # type: ClassVar[int]
     MODULE = 1  # type: ClassVar[int]
@@ -51,6 +52,7 @@ PER_MODULE_OPTIONS = {
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
                             {"quick_and_dirty", "platform", "bazel"})
                            - {"debug_cache"})
+
 
 class Options:
     """Options collected from flags."""
