@@ -4886,3 +4886,67 @@ def f(x: str) -> None: pass
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
 -- Test cases for final qualifier
+
+[case testFinalAddFinalVarAssign]
+import mod
+from a import D
+from mod import x
+
+mod.x = 2  # This an all below are errors.
+x = 2
+d: D
+d.y = 2
+d.z = 2
+D.y = 2
+[file a.py]
+import mod
+
+class D(mod.C):
+    pass
+[file mod.py]
+x = 1
+class C:
+    y = 2
+    def __init__(self) -> None:
+        self.z = 1
+
+[file mod.py.2]
+from typing import Final
+
+x: Final = 1
+class C:
+    y: Final = 2
+    def __init__(self) -> None:
+        self.z: Final = 1
+[out]
+[out2]
+main:5: error: Can't assign to constant "x"
+main:6: error: Can't assign to constant "x"
+main:8: error: Can't assign to final attribute "y"
+main:9: error: Can't assign to final attribute "z"
+main:10: error: Can't assign to final attribute "y"
+
+[case testFinalAddFinalVarOverride]
+
+[out]
+[out2]
+
+[case testFinalAddFinalMethodOverride]
+
+[out]
+[out2]
+
+[case testFinalAddFinalMethodOverrideWithVar]
+
+[out]
+[out2]
+
+[case testFinalAddFinalMethodOverrideOverload]
+
+[out]
+[out2]
+
+[case testFinalAddFinalPropertyWithVar]
+
+[out]
+[out2]

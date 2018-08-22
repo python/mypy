@@ -1129,3 +1129,10 @@ Plus it serves a verifiable documentation purpose:
 
    class MyLeaf(Leaf):  # Error, library author believes this is unsafe
        ...
+
+.. note::
+
+   Mypy treats re-exported final names as final. In other words, once declared,
+   the final status can't be "stripped". Such behaviour is typically desired
+   for larger libraries where constants are defined in a separate module and
+   then re-exported.

@@ -1455,6 +1455,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # 'from m import x as x' exports x in a stub file.
                 module_public = not self.is_stub_file or as_id is not None
                 module_hidden = not module_public and possible_module_id not in self.modules
+                # NOTE: we take the original node even for final `Var`s. This is to support
+                # a common pattern when constants are re-exported (same applies to import *).
                 symbol = SymbolTableNode(node.kind, node.node,
                                          module_public=module_public,
                                          module_hidden=module_hidden)

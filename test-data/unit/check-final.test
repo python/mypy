@@ -270,6 +270,30 @@ z: Final = 2  # E: Name 'z' already defined on line 14 \
 z = 3  # E: Can't assign to constant "z"
 [out]
 
+[case testFinalReassignModuleReexport]
+from typing import Final
+
+from lib import X
+from lib.mod import ID
+
+X = 1  # E: Can't assign to constant "X"
+ID: Final = 1  # E: Name 'ID' already defined (possibly by an import) \
+               # E: Final can't redefine an existing name, ignoring \
+               # E: Can't assign to constant "ID"
+ID = 1  # E: Can't assign to constant "ID"
+[file lib/__init__.pyi]
+from lib.const import X as X
+
+[file lib/mod.pyi]
+from lib.const import *
+
+[file lib/const.pyi]
+from typing import Final
+
+ID: Final
+X: Final[int]
+[out]
+
 [case testFinalReassignFuncScope]
 from typing import Final
 
