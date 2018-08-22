@@ -107,6 +107,7 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
+    default_return = False
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         '''Encode the kind of overlapping check to perform.
@@ -116,7 +117,7 @@ def is_overlapping_types(left: Type,
             left, right,
             ignore_promotions=ignore_promotions,
             prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
-            default_return=default_return)
+            default_return=False)
 
     # We should never encounter this type.
     if isinstance(left, PartialType) or isinstance(right, PartialType):
@@ -177,19 +178,14 @@ def is_overlapping_types(left: Type,
         return False
 
     # Now that we've finished handling TypeVars, we're free to end early
-    # if one one of the types is None. (None only overlaps with None in
-    # strict-optional mode; None overlaps with everything in non-strict-optional
-    # mode).
+    # if one one of the types is None and we're running in strict-optional mode.
+    # (None only overlaps with None in strict-optional mode).
     #
     # We must perform this check after the TypeVar checks because
     # a TypeVar could be bound to None, for example.
 
-    if experiments.STRICT_OPTIONAL:
-        if isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
-            return False
-    else:
-        if isinstance(left, NoneTyp) or isinstance(right, NoneTyp):
-            return True
+    if experiments.STRICT_OPTIONAL and isinstance(left, NoneTyp) != isinstance(right, NoneTyp):
+        return False
 
     # Next, we handle single-variant types that may be inherently partially overlapping:
     #
@@ -273,7 +269,7 @@ def is_overlapping_types(left: Type,
     # We ought to have handled every case by now: we conclude the
     # two types are not overlapping, either completely or partially.
 
-    return default_return
+    return False
 
 
 def is_overlapping_erased_types(left: Type, right: Type, *,
