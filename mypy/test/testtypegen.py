@@ -2,18 +2,16 @@
 
 import re
 
-from typing import Set
-
 from mypy import build
 from mypy.build import BuildSource
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.test_visitors import SkippedNodeSearcher, ignore_node
 from mypy.util import short_type
 from mypy.nodes import (
     NameExpr, TypeVarExpr, CallExpr, Expression, MypyFile, AssignmentStmt, IntExpr
 )
-from mypy.traverser import TraverserVisitor
 from mypy.errors import CompileError
 from mypy.options import Options
 
@@ -73,49 +71,3 @@ class TypeExportSuite(DataSuite):
             testcase.output, a,
             'Invalid type checker output ({}, line {})'.format(testcase.file,
                                                                testcase.line))
-
-
-class SkippedNodeSearcher(TraverserVisitor):
-    def __init__(self) -> None:
-        self.nodes = set()  # type: Set[Expression]
-        self.is_typing = False
-
-    def visit_mypy_file(self, f: MypyFile) -> None:
-        self.is_typing = f.fullname() == 'typing' or f.fullname() == 'builtins'
-        super().visit_mypy_file(f)
-
-    def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        if s.type or ignore_node(s.rvalue):
-            for lvalue in s.lvalues:
-                if isinstance(lvalue, NameExpr):
-                    self.nodes.add(lvalue)
-        super().visit_assignment_stmt(s)
-
-    def visit_name_expr(self, n: NameExpr) -> None:
-        self.skip_if_typing(n)
-
-    def visit_int_expr(self, n: IntExpr) -> None:
-        self.skip_if_typing(n)
-
-    def skip_if_typing(self, n: Expression) -> None:
-        if self.is_typing:
-            self.nodes.add(n)
-
-
-def ignore_node(node: Expression) -> bool:
-    """Return True if node is to be omitted from test case output."""
-
-    # We want to get rid of object() expressions in the typing module stub
-    # and also TypeVar(...) expressions. Since detecting whether a node comes
-    # from the typing module is not easy, we just to strip them all away.
-    if isinstance(node, TypeVarExpr):
-        return True
-    if isinstance(node, NameExpr) and node.fullname == 'builtins.object':
-        return True
-    if isinstance(node, NameExpr) and node.fullname == 'builtins.None':
-        return True
-    if isinstance(node, CallExpr) and (ignore_node(node.callee) or
-                                       node.analyzed):
-        return True
-
-    return False
