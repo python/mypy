@@ -175,9 +175,14 @@ def snapshot_definition(node: Optional[SymbolNode],
             signature = snapshot_type(node.type)
         else:
             signature = snapshot_untyped_signature(node)
-        return ('Func', common, node.is_property, node.is_class, node.is_static, signature)
+        return ('Func', common,
+                node.is_property, node.is_final,
+                node.is_class, node.is_static,
+                signature)
     elif isinstance(node, Var):
-        return ('Var', common, snapshot_optional_type(node.type))
+        return ('Var', common,
+                snapshot_optional_type(node.type),
+                node.is_final)
     elif isinstance(node, Decorator):
         # Note that decorated methods are represented by Decorator instances in
         # a symbol table since we need to preserve information about the

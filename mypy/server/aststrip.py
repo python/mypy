@@ -111,6 +111,8 @@ class NodeStripVisitor(TraverserVisitor):
             return
         node.expanded = []
         node.type = node.unanalyzed_type
+        # All nodes are non-final after the first pass.
+        node.is_final = False
         # Type variable binder binds tvars before the type is analyzed.
         # It should be refactored, before that we just undo this change here.
         # TODO: this will be not necessary when #4814 is fixed.
@@ -125,6 +127,9 @@ class NodeStripVisitor(TraverserVisitor):
         for expr in node.decorators:
             expr.accept(self)
         if self.recurse_into_functions:
+            # Only touch the final status if we re-process
+            # a method target
+            node.var.is_final = False
             node.func.accept(self)
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
@@ -132,6 +137,7 @@ class NodeStripVisitor(TraverserVisitor):
             return
         # Revert change made during semantic analysis pass 2.
         node.items = node.unanalyzed_items.copy()
+        node.is_final = False
         super().visit_overloaded_func_def(node)
 
     @contextlib.contextmanager
@@ -160,6 +166,7 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
+        node.is_final_def = False
         if self.type and not self.is_class_body:
             for lvalue in node.lvalues:
                 self.process_lvalue_in_method(lvalue)
