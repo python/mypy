@@ -405,7 +405,7 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
     base_mro = []
     for cls in info.mro:
         if cls not in mapper.type_to_ir:
-            if cls.name != 'builtins.object':
+            if cls.fullname() != 'builtins.object':
                 ir.inherits_python = True
             continue
         base_ir = mapper.type_to_ir[cls]
