@@ -1528,13 +1528,17 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return '{}Object'.format(self.name_prefix(names))
 
-    def get_method(self, name: str) -> Optional[FuncIR]:
+    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, 'ClassIR']]:
         for ir in self.mro:
             if name in ir.methods:
-                return ir.methods[name]
+                return ir.methods[name], ir
             if name in ir.properties:
-                return ir.properties[name]
+                return ir.properties[name], ir
         return None
+
+    def get_method(self, name: str) -> Optional[FuncIR]:
+        res = self.get_method_and_class(name)
+        return res[0] if res else None
 
 
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes]], str]

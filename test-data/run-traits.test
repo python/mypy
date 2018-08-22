@@ -168,3 +168,27 @@ class D(S3[bool]):
 
 [file driver.py]
 import native
+
+[case testTrait4]
+from mypy_extensions import trait
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+
+@trait
+class S1(Generic[T]):
+    def bar(self) -> T: raise Exception
+
+class S2(S1[bool]):
+    def bar(self) -> bool: return False
+
+class D(S2):
+    pass
+
+def lol(x: S1) -> None:
+    x.bar()
+
+[file driver.py]
+import native
+native.lol(native.D())

@@ -167,22 +167,17 @@ def specialize_parent_vtable(cls: ClassIR, parent: ClassIR) -> VTableEntries:
         if isinstance(entry, VTableMethod):
             method = entry.method
             child_method = None
-            if method.name in cls.methods:
-                child_method = cls.methods[method.name]
-            elif method.name in cls.properties:
-                child_method = cls.properties[method.name]
-            if child_method is not None:
+
+            method_cls = cls.get_method_and_class(method.name)
+            if method_cls:
+                child_method, defining_cls = method_cls
                 # TODO: emit a wrapper for __init__ that raises or something
                 if (is_same_method_signature(method.sig, child_method.sig)
                         or method.name == '__init__'):
-                    entry = VTableMethod(cls, entry.name, child_method)
+                    entry = VTableMethod(defining_cls, entry.name, child_method)
                 else:
-                    entry = VTableMethod(cls, entry.name,
-                                         cls.glue_methods[(entry.cls, method.name)])
-            elif parent.is_trait:
-                assert cls.vtable is not None
-                if entry.name in cls.vtable:
-                    entry = cls.vtable_entries[cls.vtable[entry.name]]
+                    entry = VTableMethod(defining_cls, entry.name,
+                                         defining_cls.glue_methods[(entry.cls, method.name)])
         else:
             # If it is an attribute from a trait, we need to find out
             # the real class it got mixed in at and point to that.
