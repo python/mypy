@@ -9,7 +9,7 @@ from mypy.test.helpers import (
 )
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
-from mypy.test.test_visitors import TypeAssertTransformVisitor
+from mypy.test.visitors import TypeAssertTransformVisitor
 from mypy.errors import CompileError
 from mypy.options import Options
 
