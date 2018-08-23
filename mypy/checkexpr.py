@@ -1647,8 +1647,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_member_expr(self, e: MemberExpr) -> Type:
         """Visit member expression (of form e.id)."""
+        return self._visit_member_expr(e, False)
+
+    def _visit_member_expr(self, e: MemberExpr, is_lvalue: bool) -> Type:
         self.chk.module_refs.update(extract_refexpr_names(e))
-        result = self.analyze_ordinary_member_access(e, False)
+        result = self.analyze_ordinary_member_access(e, is_lvalue)
         return self.narrow_type_from_binder(e, result)
 
     def analyze_ordinary_member_access(self, e: MemberExpr,

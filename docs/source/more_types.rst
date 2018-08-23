@@ -1029,6 +1029,10 @@ The are two rules that should be always followed when defining a final name:
          ID = 1
          ID: Final = 2  # Error!
 
+.. note::
+   Conditional final declarations and final declarations within loops are
+   not supported.
+
 Using final attributes
 ----------------------
 

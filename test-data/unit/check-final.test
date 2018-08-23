@@ -246,6 +246,17 @@ class P(Protocol):
         pass
 [out]
 
+[case testFinalNotInLoops]
+from typing import Final
+
+for i in [1, 2, 3]:
+    x: Final = i  # E: Final declarations are prohibited within loops
+
+while True:
+    y: Final = True  # E: Final declarations are prohibited within loops
+[builtins fixtures/list.pyi]
+[out]
+
 -- Reassignments
 
 [case testFinalReassignModuleVar]
@@ -410,6 +421,29 @@ y: Final[Any] = 1
 x = a, (b, y), c = 2, (2, 2), 2  # E: Can't assign to constant "y"
 t, *y, s = u = [2, 2, 2]  # E: Can't assign to constant "y"
 [builtins fixtures/list.pyi]
+[out]
+
+[case testFinalInplaceAssign]
+from typing import Final
+
+class A:  # no such things in fixtures
+    def __add__(self, other: A) -> A: ...
+class B:
+    def __add__(self, other: B) -> B: ...
+    def __iadd__(self, other: B) -> B: ...
+
+a: Final = A()
+b: Final = B()
+class C:
+    a: Final = A()
+    b: Final = B()
+class D(C):
+    pass
+
+a += A()  # E: Can't assign to constant "a"
+b += B()  # E: Can't assign to constant "b"
+D().a += A()  # E: Can't assign to final attribute "a"
+D().b += B()  # E: Can't assign to final attribute "b"
 [out]
 
 -- Overriding

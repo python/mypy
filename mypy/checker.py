@@ -1902,14 +1902,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         finally:
             self._is_final_def = old_ctx
 
-    def check_final(self, s: AssignmentStmt) -> None:
+    def check_final(self, s: Union[AssignmentStmt, OperatorAssignmentStmt]) -> None:
         """Check if this assignment does not assign to a final attribute.
 
         This function perfoms the check only for name assignments at module
         and class scope. The assignments to `obj.attr` and `Cls.attr` are checked
         in checkmember.py.
         """
-        lvs = self.flatten_lvalues(s.lvalues)
+        if isinstance(s, AssignmentStmt):
+            lvs = self.flatten_lvalues(s.lvalues)
+        else:
+            lvs = [s.lvalue]
+        is_final_decl = s.is_final_def if isinstance(s, AssignmentStmt) else False
         for lv in lvs:
             if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
                 name = lv.node.name()
@@ -1922,9 +1926,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         sym = base.names.get(name)
                         if sym and isinstance(sym.node, (Var, Decorator)):
                             var = sym.node if isinstance(sym.node, Var) else sym.node.var
-                            if var.is_final and not s.is_final_def:
+                            if var.is_final and not is_final_decl:
                                 self.msg.cant_assign_to_final(name, var.info is not None, s)
-                if lv.node.is_final and not s.is_final_def:
+                if lv.node.is_final and not is_final_decl:
                     self.msg.cant_assign_to_final(name, lv.node.info is not None, s)
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
@@ -2574,7 +2578,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> None:
         """Type check an operator assignment statement, e.g. x += 1."""
-        lvalue_type = self.expr_checker.accept(s.lvalue)
+        if isinstance(s.lvalue, MemberExpr):
+            # Special case, some additional errors may be given for
+            # assignments to read-only or final attributes.
+            lvalue_type = self.expr_checker._visit_member_expr(s.lvalue, True)
+        else:
+            lvalue_type = self.expr_checker.accept(s.lvalue)
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
@@ -2588,6 +2597,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expr.set_line(s)
             self.check_assignment(lvalue=s.lvalue, rvalue=expr,
                                   infer_lvalue_type=True, new_syntax=False)
+        self.check_final(s)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         self.expr_checker.accept(s.expr)

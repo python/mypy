@@ -1724,6 +1724,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
         s.is_final_def = True
+        if self.loop_depth > 0:
+            self.fail("Final declarations are prohibited within loops", s)
         if self.type and self.type.is_protocol:
             self.msg.protocol_members_cant_be_final(s)
         if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
