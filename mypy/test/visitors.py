@@ -16,6 +16,7 @@ from mypy.traverser import TraverserVisitor
 from mypy.treetransform import TransformVisitor
 from mypy.types import Type
 
+
 # from testtypegen
 class SkippedNodeSearcher(TraverserVisitor):
     def __init__(self) -> None:
