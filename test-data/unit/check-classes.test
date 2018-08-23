@@ -1571,7 +1571,8 @@ from typing import overload
 class A:
     def __add__(self, x: int) -> int: pass
 class B(A):
-    @overload  # E: Signature of "__add__" incompatible with supertype "A"
+    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
+               # N: Overloaded operator methods can't have wider argument types in overrides
     def __add__(self, x: int) -> int: pass
     @overload
     def __add__(self, x: str) -> str: pass
@@ -1665,7 +1666,8 @@ class A:
     @overload
     def __add__(self, x: str) -> 'A': pass
 class B(A):
-    @overload
+    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
+               # N: Overloaded operator methods can't have wider argument types in overrides
     def __add__(self, x: int) -> A: pass
     @overload
     def __add__(self, x: str) -> A: pass
@@ -1830,8 +1832,7 @@ class Num1:
     def __radd__(self, other: Num1) -> Num1: ...
 
 class Num2(Num1):
-    # TODO: This should not be an error. See https://github.com/python/mypy/issues/4985
-    @overload    # E: Signature of "__add__" incompatible with supertype "Num1"
+    @overload
     def __add__(self, other: Num2) -> Num2: ...  
     @overload
     def __add__(self, other: Num1) -> Num2: ...

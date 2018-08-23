@@ -4125,6 +4125,59 @@ main:11: error: Argument 7 to "f" has incompatible type "Union[int, str]"; expec
 main:11: error: Argument 8 to "f" has incompatible type "Union[int, str]"; expected "int"
 main:11: note: Not all union combinations were tried because there are too many unions
 
+[case testSafeDunderOverlapInSubclass]
+from typing import overload
+
+class A:
+    def __add__(self, x : 'A') -> 'A': ...
+
+class B(A):
+    @overload
+    def __add__(self, x : 'B') -> 'B': ...
+    @overload
+    def __add__(self, x : 'A') -> 'A' : ...
+    def __add__(self, x):
+        pass
+[out]
+
+[case testUnsafeDunderOverlapInSubclass]
+from typing import overload
+
+class A:
+    def __add__(self, x : 'A') -> 'A':
+        if isinstance(x, A):
+            return A()
+        else:
+            return NotImplemented
+
+# This is unsafe override because of the problem below
+class B(A):
+     @overload  # E: Signature of "__add__" incompatible with supertype "A" \
+                # N: Overloaded operator methods can't have wider argument types in overrides
+     def __add__(self, x : 'Other') -> 'B' : ...
+     @overload
+     def __add__(self, x : 'A') -> 'A': ...
+     def __add__(self, x):
+        if isinstance(x, Other):
+            return B()
+        elif isinstance(x, A):
+            return A()
+        else:
+            return NotImplemented
+
+class Other:
+    def __radd__(self, x: 'A') -> 'Other':
+        if isinstance(x, A):
+            return Other()
+        else:
+            return NotImplemented
+
+actually_b: A = B()
+reveal_type(actually_b + Other())  # E: Revealed type is '__main__.Other'
+# Runtime type is B, this is why we report the error on overriding.
+[builtins fixtures/isinstance.pyi]
+[out]
+
 [case testOverloadErrorMessageManyMatches]
 from typing import overload
 
