@@ -1371,7 +1371,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         # Use boolean variable to clarify code.
         fail = False
-        dunder_note = False
+        op_method_wider_note = False
         if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
         elif isinstance(override, Overloaded) and self.is_forward_op_method(name):
@@ -1382,7 +1382,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (original_domain and override_domain and
                     not is_subtype(override_domain, original_domain)):
                 fail = True
-                dunder_note = True
+                op_method_wider_note = True
         if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
             if original_class_or_static and not override_class_or_static:
                 fail = True
@@ -1444,7 +1444,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Fall back to generic incompatibility message.
                 self.msg.signature_incompatible_with_supertype(
                     name, name_in_super, supertype, node)
-            if dunder_note:
+            if op_method_wider_note:
                 self.note("Overloaded operator methods can't have wider argument types"
                           " in overrides", node)
 
