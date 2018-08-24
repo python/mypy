@@ -3744,9 +3744,6 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     Assumes that 'signature' appears earlier in the list of overload
     alternatives then 'other' and that their argument counts are overlapping.
     """
-    def is_more_precise_or_partially_overlapping(t: Type, s: Type) -> bool:
-        return is_more_precise_no_promote(t, s) or is_overlapping_types_no_promote(t, s)
-
     # Try detaching callables from the containing class so that all TypeVars
     # are treated as being free.
     #
@@ -3767,13 +3764,13 @@ def is_unsafe_overlapping_overload_signatures(signature: CallableType,
     # This discrepancy is unfortunately difficult to get rid of, so we repeat the
     # checks twice in both directions for now.
     return (is_callable_compatible(signature, other,
-                                  is_compat=is_more_precise_or_partially_overlapping,
+                                  is_compat=is_overlapping_types_no_promote,
                                   is_compat_return=lambda l, r: not is_subtype_no_promote(l, r),
                                   ignore_return=False,
                                   check_args_covariantly=True,
                                   allow_partial_overlap=True) or
             is_callable_compatible(other, signature,
-                                   is_compat=is_more_precise_or_partially_overlapping,
+                                   is_compat=is_overlapping_types_no_promote,
                                    is_compat_return=lambda l, r: not is_subtype_no_promote(r, l),
                                    ignore_return=False,
                                    check_args_covariantly=False,
@@ -4024,10 +4021,6 @@ def is_static(func: Union[FuncBase, Decorator]) -> bool:
 
 def is_subtype_no_promote(left: Type, right: Type) -> bool:
     return is_subtype(left, right, ignore_promotions=True)
-
-
-def is_more_precise_no_promote(left: Type, right: Type) -> bool:
-    return is_more_precise(left, right, ignore_promotions=True)
 
 
 def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
