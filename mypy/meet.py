@@ -97,17 +97,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
     else:
         return [typ]
 
-def wrap(func):
-    def wrapper(*args, **kwargs):
-        global level
-        print('!!', args, kwargs)
-        out = func(*args, **kwargs)
-        print('   out:', out)
-        print()
-        return out
-    return wrapper
 
-@wrap
 def is_overlapping_types(left: Type,
                          right: Type,
                          ignore_promotions: bool = False,
