@@ -39,7 +39,9 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(declared, UnionType):
         return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
                                                 for x in declared.relevant_items()])
-    elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True, default_return=True):
+    elif not is_overlapping_types(declared, narrowed,
+                                  prohibit_none_typevar_overlap=True,
+                                  default_return=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
@@ -95,7 +97,17 @@ def get_possible_variants(typ: Type) -> List[Type]:
     else:
         return [typ]
 
+def wrap(func):
+    def wrapper(*args, **kwargs):
+        global level
+        print('!!', args, kwargs)
+        out = func(*args, **kwargs)
+        print('   out:', out)
+        print()
+        return out
+    return wrapper
 
+@wrap
 def is_overlapping_types(left: Type,
                          right: Type,
                          ignore_promotions: bool = False,
@@ -107,7 +119,6 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
-    default_return = False
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         '''Encode the kind of overlapping check to perform.
@@ -269,7 +280,7 @@ def is_overlapping_types(left: Type,
     # We ought to have handled every case by now: we conclude the
     # two types are not overlapping, either completely or partially.
 
-    return False
+    return default_return
 
 
 def is_overlapping_erased_types(left: Type, right: Type, *,
