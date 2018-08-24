@@ -1341,6 +1341,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), context)
 
+    def get_op_other_domain(self, tp: FunctionLike) -> Optional[Type]:
+        if isinstance(tp, CallableType):
+            if tp.arg_kinds and tp.arg_kinds[0] == ARG_POS:
+                return tp.arg_types[0]
+            return None
+        elif isinstance(tp, Overloaded):
+            raw_items = [self.get_op_other_domain(it) for it in tp.items()]
+            items = [it for it in raw_items if it]
+            if items:
+                return UnionType.make_simplified_union(items)
+            return None
+        else:
+            assert False, "Need to check all FunctionLike subtypes here"
+
     def check_override(self, override: FunctionLike, original: FunctionLike,
                        name: str, name_in_super: str, supertype: str,
                        original_class_or_static: bool,
@@ -1357,15 +1371,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         # Use boolean variable to clarify code.
         fail = False
+        op_method_wider_note = False
         if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
-        elif (not isinstance(original, Overloaded) and
-              isinstance(override, Overloaded) and
-              self.is_forward_op_method(name)):
-            # Operator method overrides cannot introduce overloading, as
+        elif isinstance(override, Overloaded) and self.is_forward_op_method(name):
+            # Operator method overrides cannot extend the domain, as
             # this could be unsafe with reverse operator methods.
-            fail = True
-
+            original_domain = self.get_op_other_domain(original)
+            override_domain = self.get_op_other_domain(override)
+            if (original_domain and override_domain and
+                    not is_subtype(override_domain, original_domain)):
+                fail = True
+                op_method_wider_note = True
         if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
             if original_class_or_static and not override_class_or_static:
                 fail = True
@@ -1427,6 +1444,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Fall back to generic incompatibility message.
                 self.msg.signature_incompatible_with_supertype(
                     name, name_in_super, supertype, node)
+            if op_method_wider_note:
+                self.note("Overloaded operator methods can't have wider argument types"
+                          " in overrides", node)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
