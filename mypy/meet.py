@@ -40,8 +40,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         return UnionType.make_simplified_union([narrow_declared_type(x, narrowed)
                                                 for x in declared.relevant_items()])
     elif not is_overlapping_types(declared, narrowed,
-                                  prohibit_none_typevar_overlap=True,
-                                  default_return=True):
+                                  prohibit_none_typevar_overlap=True):
         if experiments.STRICT_OPTIONAL:
             return UninhabitedType()
         else:
@@ -101,8 +100,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
 def is_overlapping_types(left: Type,
                          right: Type,
                          ignore_promotions: bool = False,
-                         prohibit_none_typevar_overlap: bool = False,
-                         default_return: bool = False) -> bool:
+                         prohibit_none_typevar_overlap: bool = False) -> bool:
     """Can a value of type 'left' also be of type 'right' or vice-versa?
 
     If 'ignore_promotions' is True, we ignore promotions while checking for overlaps.
@@ -117,8 +115,7 @@ def is_overlapping_types(left: Type,
         return is_overlapping_types(
             left, right,
             ignore_promotions=ignore_promotions,
-            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
-            default_return=False)
+            prohibit_none_typevar_overlap=prohibit_none_typevar_overlap)
 
     # We should never encounter this type.
     if isinstance(left, PartialType) or isinstance(right, PartialType):
@@ -177,6 +174,12 @@ def is_overlapping_types(left: Type,
                 if _is_overlapping_types(l, r):
                     return True
         return False
+
+    # TODO: Document
+    if len(left_possible) == 1:
+        left = left_possible[0]
+    if len(right_possible) == 1:
+        right = right_possible[0]
 
     # Now that we've finished handling TypeVars, we're free to end early
     # if one one of the types is None and we're running in strict-optional mode.
@@ -267,10 +270,12 @@ def is_overlapping_types(left: Type,
                 if _is_overlapping_types(left_arg, right_arg):
                     return True
 
+        return False
+
     # We ought to have handled every case by now: we conclude the
     # two types are not overlapping, either completely or partially.
 
-    return default_return
+    return False
 
 
 def is_overlapping_erased_types(left: Type, right: Type, *,
@@ -278,14 +283,12 @@ def is_overlapping_erased_types(left: Type, right: Type, *,
     """The same as 'is_overlapping_erased_types', except the types are erased first."""
     return is_overlapping_types(erase_type(left), erase_type(right),
                                 ignore_promotions=ignore_promotions,
-                                prohibit_none_typevar_overlap=True,
-                                default_return=True)
+                                prohibit_none_typevar_overlap=True)
 
 
 def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
                                 ignore_promotions: bool = False,
-                                prohibit_none_typevar_overlap: bool = False,
-                                default_return: bool = False) -> bool:
+                                prohibit_none_typevar_overlap: bool = False) -> bool:
     """Returns 'true' if left and right are overlapping TypeDictTypes."""
     # All required keys in left are present and overlapping with something in right
     for key in left.required_keys:
@@ -293,8 +296,7 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
             return False
         if not is_overlapping_types(left.items[key], right.items[key],
                                     ignore_promotions=ignore_promotions,
-                                    prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
-                                    default_return=default_return):
+                                    prohibit_none_typevar_overlap=prohibit_none_typevar_overlap):
             return False
 
     # Repeat check in the other direction
@@ -310,11 +312,9 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
     # keys happened to be missing.
     return True
 
-
 def are_tuples_overlapping(left: Type, right: Type, *,
                            ignore_promotions: bool = False,
-                           prohibit_none_typevar_overlap: bool = False,
-                           default_return: bool = False) -> bool:
+                           prohibit_none_typevar_overlap: bool = False) -> bool:
     """Returns true if left and right are overlapping tuples."""
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
@@ -324,8 +324,7 @@ def are_tuples_overlapping(left: Type, right: Type, *,
         return False
     return all(is_overlapping_types(l, r,
                                     ignore_promotions=ignore_promotions,
-                                    prohibit_none_typevar_overlap=prohibit_none_typevar_overlap,
-                                    default_return=default_return)
+                                    prohibit_none_typevar_overlap=prohibit_none_typevar_overlap)
                for l, r in zip(left.items, right.items))
 
 
