@@ -188,10 +188,12 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                     path, p[i0].line))
 
 
-if sys.version_info >= (3, 5):
-    TmpDir = tempfile.TemporaryDirectory[str]
-else:
-    TmpDir = tempfile.TemporaryDirectory
+MYPY = False
+if MYPY:
+    if sys.version_info >= (3, 5):
+        TmpDir = tempfile.TemporaryDirectory[str]
+    else:
+        TmpDir = tempfile.TemporaryDirectory
 
 
 class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
