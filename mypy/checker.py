@@ -3752,6 +3752,13 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
 
     Assumes that both signatures have overlapping argument counts.
     """
+    # The extra erasure is needed to prevent spurious errors
+    # in situations where an `Any` overload is used as a fallback
+    # for an overload with type variables. The spurious error appears
+    # because the type variables turn into `Any` during unification in
+    # the below subtype check and (surprisingly?) `is_proper_subtype(Any, Any)`
+    # returns `True`.
+    # TODO: find a cleaner solution instead of this ad-hoc erasure.
     exp_signature = expand_type(signature, {tvar.id: tvar.erase_to_union_or_bound()
                                 for tvar in signature.variables})
     assert isinstance(exp_signature, CallableType)

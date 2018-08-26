@@ -4303,3 +4303,21 @@ def attr(default: T = ..., blah: int = ...) -> T: ...
 @overload
 def attr(default: Any = ...) -> int: ...
 [out]
+
+[case testAnyIsOKAsFallbackInOverloads]
+import stub
+[file stub.pyi]
+from typing import TypeVar, Any, overload
+
+T = TypeVar('T')
+
+@overload
+def foo(x: T) -> T: ...
+@overload
+def foo(x: Any) -> Any: ...
+
+@overload
+def bar(x: T) -> T: ...
+@overload
+def bar(x: Any) -> int: ...
+[out]
