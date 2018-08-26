@@ -88,7 +88,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
         else:
             return [typ.upper_bound]
     elif isinstance(typ, UnionType):
-        return typ.relevant_items()
+        return typ.items
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
@@ -134,7 +134,16 @@ def is_overlapping_types(left: Type,
     if isinstance(left, AnyType) or isinstance(right, AnyType):
         return True
 
-    # We check for complete overlaps first as a general-purpose failsafe.
+    # When running under non-strict optional mode, simplify away types of
+    # the form 'Union[A, B, C, None]' into just 'Union[A, B, C]'.
+
+    if not experiments.STRICT_OPTIONAL:
+        if isinstance(left, UnionType):
+            left = UnionType.make_union(left.relevant_items())
+        if isinstance(right, UnionType):
+            right = UnionType.make_union(right.relevant_items())
+
+    # We check for complete overlaps next as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
     # *partial* overlap between types.
     #
@@ -174,12 +183,6 @@ def is_overlapping_types(left: Type,
                 if _is_overlapping_types(l, r):
                     return True
         return False
-
-    # TODO: Document
-    if len(left_possible) == 1:
-        left = left_possible[0]
-    if len(right_possible) == 1:
-        right = right_possible[0]
 
     # Now that we've finished handling TypeVars, we're free to end early
     # if one one of the types is None and we're running in strict-optional mode.
@@ -275,6 +278,7 @@ def is_overlapping_types(left: Type,
     # We ought to have handled every case by now: we conclude the
     # two types are not overlapping, either completely or partially.
 
+    assert type(left) != type(right)
     return False
 
 
@@ -311,6 +315,7 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
     # TypedDicts are partially overlapping: the dicts would be overlapping if the
     # keys happened to be missing.
     return True
+
 
 def are_tuples_overlapping(left: Type, right: Type, *,
                            ignore_promotions: bool = False,

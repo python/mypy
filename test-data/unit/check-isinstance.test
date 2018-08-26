@@ -2089,3 +2089,41 @@ def foo(x: T) -> T:
         pass
     return out
 [builtins fixtures/isinstance.pyi]
+
+[case testNoneAndGenericTypesOverlapNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Union, Optional, List
+
+# Note: this test is indirectly making sure meet.is_overlapping_types
+# correctly ignores 'None' in unions.
+
+def foo(x: Optional[List[str]]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'builtins.list[builtins.str]'
+
+def bar(x: Union[List[str], List[int], None]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNoneAndGenericTypesOverlapStrictOptional]
+# flags: --strict-optional
+from typing import Union, Optional, List
+
+# This test is the same as the one above, except for strict-optional.
+# It isn't testing anything explicitly and mostly exists for the sake 
+# of completeness.
+
+def foo(x: Optional[List[str]]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'builtins.list[builtins.str]'
+
+def bar(x: Union[List[str], List[int], None]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
+[builtins fixtures/isinstancelist.pyi]
+
