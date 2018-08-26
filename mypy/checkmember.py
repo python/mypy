@@ -266,10 +266,7 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         # An assignment to final attribute is always an error,
         # independently of types.
         if is_lvalue and not chk.get_final_context():
-            for base in info.mro:
-                sym = base.names.get(name)
-                if sym and isinstance(sym.node, (Var, FuncBase, Decorator)) and sym.node.is_final:
-                    msg.cant_assign_to_final(name, module_level=False, ctx=node)
+            check_final_member(name, info, msg, node)
 
         return analyze_var(name, v, itype, info, node, is_lvalue, msg,
                            original_type, builtin_type, not_ready_callback,
@@ -311,6 +308,14 @@ def analyze_member_var_access(name: str, itype: Instance, info: TypeInfo,
         if chk and chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
         return msg.has_no_attr(original_type, itype, name, node)
+
+
+def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:
+    """Give an error if the name being assigned was declared as final."""
+    for base in info.mro:
+        sym = base.names.get(name)
+        if sym and isinstance(sym.node, (Var, FuncBase, Decorator)) and sym.node.is_final:
+            msg.cant_assign_to_final(name, module_level=False, ctx=ctx)
 
 
 def analyze_descriptor_access(instance_type: Type, descriptor_type: Type,
@@ -551,13 +556,8 @@ def analyze_class_attribute_access(itype: Instance,
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.
-    for base in itype.type.mro:
-        b_node = base.names.get(name)
-        if (b_node and isinstance(b_node.node, (Var, FuncBase, Decorator)) and
-                is_lvalue and b_node.node.is_final
-                and not chk.get_final_context()):
-            name = b_node.node.name()
-            msg.cant_assign_to_final(name, module_level=False, ctx=context)
+    if is_lvalue and not chk.get_final_context():
+        check_final_member(name, itype.type, msg, context)
 
     if itype.type.is_enum and not (is_lvalue or is_decorated or is_method):
         return itype

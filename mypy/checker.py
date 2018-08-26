@@ -217,9 +217,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
-        # This internal flag is used to indicate whether we a currently type-checking
-        # a final declaration (assignment). Should not be set manually, use
-        # get_final_context/set_final_context instead.
+        # This internal flag is used to track whether we a currently type-checking
+        # a final declaration (assignment), so that some errors should be suppressed.
+        # Should not be set manually, use get_final_context/set_final_context instead.
+        # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
+        # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
 
     def reset(self) -> None:

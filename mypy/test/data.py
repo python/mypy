@@ -5,6 +5,7 @@ import os
 import tempfile
 import posixpath
 import re
+import sys
 from os import remove, rmdir
 import shutil
 from abc import abstractmethod
@@ -187,6 +188,12 @@ def parse_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                     path, p[i0].line))
 
 
+if sys.version_info >= (3, 5):
+    TmpDir = tempfile.TemporaryDirectory[str]
+else:
+    TmpDir = tempfile.TemporaryDirectory
+
+
 class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     """Holds parsed data-driven test cases, and handles directory setup and teardown."""
 
@@ -229,7 +236,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
         super().__init__(name, parent)
         self.skip = skip
         self.old_cwd = None  # type: Optional[str]
-        self.tmpdir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
+        self.tmpdir = None  # type: Optional[TmpDir]
         self.input = input
         self.output = output
         self.output2 = output2
