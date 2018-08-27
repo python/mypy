@@ -277,6 +277,9 @@ def is_overlapping_types(left: Type,
 
     # We ought to have handled every case by now: we conclude the
     # two types are not overlapping, either completely or partially.
+    #
+    # Note: it's unclear however, whether returning False is the right thing
+    # to do when inferring reachability -- see  https://github.com/python/mypy/issues/5529
 
     assert type(left) != type(right)
     return False
