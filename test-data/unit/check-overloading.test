@@ -4374,3 +4374,34 @@ def bar(x: T) -> T: ...
 @overload
 def bar(x: Any) -> int: ...
 [out]
+
+[case testBadOverloadProbableMatch]
+from typing import overload, List, Type
+
+class Other: pass
+
+@overload
+def multiple_plausible(x: int) -> int: ...
+@overload
+def multiple_plausible(x: str) -> str: ...
+def multiple_plausible(x): pass
+
+
+@overload
+def single_plausible(x: Type[int]) -> int: ...
+@overload
+def single_plausible(x: List[str]) -> str: ...
+def single_plausible(x): pass
+
+a = multiple_plausible(Other())  # E: No overload variant of "multiple_plausible" matches argument type "Other" \
+                                 # N: Possible overload variants: \
+                                 # N:     def multiple_plausible(x: int) -> int \
+                                 # N:     def multiple_plausible(x: str) -> str
+reveal_type(a)                   # E: Revealed type is 'Any'
+
+b = single_plausible(Other)      # E: Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
+reveal_type(b)                   # E: Revealed type is 'builtins.int'
+
+c = single_plausible([Other()])  # E: List item 0 has incompatible type "Other"; expected "str"
+reveal_type(c)                   # E: Revealed type is 'builtins.str'
+[builtins fixtures/list.pyi]
