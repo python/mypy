@@ -3387,7 +3387,7 @@ def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
     def is_typetype_like(typ: Type) -> bool:
         return (isinstance(typ, TypeType)
                 or (isinstance(typ, FunctionLike) and typ.is_type_obj())
-                or (isinstance(typ, Instance) and typ.type.fullname() == "builtins.object"))
+                or (isinstance(typ, Instance) and typ.type.fullname() == "builtins.type"))
 
     if isinstance(formal, CallableType):
         if isinstance(actual, (CallableType, Overloaded, TypeType)):
