@@ -653,6 +653,8 @@ Generic protocols can also be recursive. Example:
 
    result = last(L())  # Inferred type of 'result' is 'int'
 
+.. _generic-type-aliases:
+
 Generic type aliases
 ********************
 

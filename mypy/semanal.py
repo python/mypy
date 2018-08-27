@@ -35,7 +35,7 @@ TODO: Check if the third pass slows down type checking significantly.
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable,
 )
 
 from mypy.nodes import (
@@ -217,7 +217,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     loop_depth = 0         # Depth of breakable loops
     cur_mod_id = ''        # Current module id (or None) (phase 2)
     is_stub_file = False   # Are we analyzing a stub file?
-    is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
+    _is_typeshed_stub_file = False  # Are we analyzing a typeshed stub file?
     imports = None  # type: Set[str]  # Imported modules (during phase 2 analysis)
     errors = None  # type: Errors     # Keeps track of generated errors
     plugin = None  # type: Plugin     # Mypy plugin for special casing of library features
@@ -253,6 +253,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.recurse_into_functions = True
         self.scope = Scope()
 
+    # mypyc doesn't properly handle implementing an abstractproperty
+    # with a regular attribute so we make it a property
+    @property
+    def is_typeshed_stub_file(self) -> bool:
+        return self._is_typeshed_stub_file
+
     def visit_file(self, file_node: MypyFile, fnam: str, options: Options,
                    patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Run semantic analysis phase 2 over a file.
@@ -267,7 +273,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname()
         self.is_stub_file = fnam.lower().endswith('.pyi')
-        self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
+        self._is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.patches = patches
         self.named_tuple_analyzer = NamedTupleAnalyzer(options, self)
@@ -337,7 +343,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.cur_mod_id = file_node.fullname()
         scope.enter_file(self.cur_mod_id)
         self.is_stub_file = fnam.lower().endswith('.pyi')
-        self.is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
+        self._is_typeshed_stub_file = self.errors.is_typeshed_file(file_node.path)
         self.globals = file_node.names
         self.tvar_scope = TypeVarScope()
         if active_type:
@@ -416,6 +422,26 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         if not self.set_original_def(symbol.node, defn):
                             # Report error.
                             self.check_no_global(defn.name(), defn, True)
+
+            # Analyze function signature and initializers in the first phase
+            # (at least this mirrors what happens at runtime).
+            with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+                if defn.type:
+                    self.check_classvar_in_signature(defn.type)
+                    assert isinstance(defn.type, CallableType)
+                    # Signature must be analyzed in the surrounding scope so that
+                    # class-level imported names and type variables are in scope.
+                    analyzer = self.type_analyzer()
+                    defn.type = analyzer.visit_callable_type(defn.type, nested=False)
+                    self.add_type_alias_deps(analyzer.aliases_used)
+                    self.check_function_signature(defn)
+                    if isinstance(defn, FuncDef):
+                        assert isinstance(defn.type, CallableType)
+                        defn.type = set_callable_name(defn.type, defn)
+                for arg in defn.arguments:
+                    if arg.initializer:
+                        arg.initializer.accept(self)
+
             if phase_info == FUNCTION_FIRST_PHASE_POSTPONE_SECOND:
                 # Postpone this function (for the second phase).
                 self.postponed_functions_stack[-1].append(defn)
@@ -518,7 +544,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     # The first item was already visited
                     item.is_overload = True
                     item.accept(self)
-                # TODO support decorated overloaded functions properly
+                # TODO: support decorated overloaded functions properly
                 if isinstance(item, Decorator):
                     callable = function_type(item.func, self.builtin_type('builtins.function'))
                     assert isinstance(callable, CallableType)
@@ -646,21 +672,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_function(self, defn: FuncItem) -> None:
         is_method = self.is_class_scope()
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
-            if defn.type:
-                self.check_classvar_in_signature(defn.type)
-                assert isinstance(defn.type, CallableType)
-                # Signature must be analyzed in the surrounding scope so that
-                # class-level imported names and type variables are in scope.
-                analyzer = self.type_analyzer()
-                defn.type = analyzer.visit_callable_type(defn.type, nested=False)
-                self.add_type_alias_deps(analyzer.aliases_used)
-                self.check_function_signature(defn)
-                if isinstance(defn, FuncDef):
-                    assert isinstance(defn.type, CallableType)
-                    defn.type = set_callable_name(defn.type, defn)
-            for arg in defn.arguments:
-                if arg.initializer:
-                    arg.initializer.accept(self)
             # Bind the type variables again to visit the body.
             if defn.type:
                 a = self.type_analyzer()
@@ -1669,7 +1680,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         if (len(s.lvalues) == 1 and isinstance(s.lvalues[0], NameExpr) and
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
-            self.add_exports(*s.rvalue.items)
+            self.add_exports(s.rvalue.items)
 
     def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
@@ -2149,7 +2160,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         info = TypeInfo(SymbolTable(), class_def, self.cur_mod_id)
         class_def.info = info
         mro = basetype_or_fallback.type.mro
-        if mro is None:
+        if not mro:
             # Forward reference, MRO should be recalculated in third pass.
             mro = [basetype_or_fallback.type, self.object_type().type]
         info.mro = [info] + mro
@@ -2236,7 +2247,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # extra elements, so no error will be raised here; mypy will later complain
             # about the length mismatch in type-checking.
             elementwise_assignments = zip(rval.items, *[v.items for v in seq_lvals])
-            for rv, *lvs in elementwise_assignments:
+            # TODO: use 'for rv, *lvs in' once mypyc supports it
+            for part in elementwise_assignments:
+                rv, lvs = part[0], list(part[1:])
                 self.process_module_assignment(lvs, rv, ctx)
         elif isinstance(rval, RefExpr):
             rnode = self.lookup_type_node(rval)
@@ -2345,7 +2358,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         s.rvalue.accept(self)
         if (isinstance(s.lvalue, NameExpr) and s.lvalue.name == '__all__' and
                 s.lvalue.kind == GDEF and isinstance(s.rvalue, (ListExpr, TupleExpr))):
-            self.add_exports(*s.rvalue.items)
+            self.add_exports(s.rvalue.items)
 
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.expr.accept(self)
@@ -2667,7 +2680,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.add_exports(expr.args[0])
                 elif (expr.callee.name == 'extend' and expr.args and
                         isinstance(expr.args[0], (ListExpr, TupleExpr))):
-                    self.add_exports(*expr.args[0].items)
+                    self.add_exports(expr.args[0].items)
 
     def translate_dict_call(self, call: CallExpr) -> Optional[DictExpr]:
         """Translate 'dict(x=y, ...)' to {'x': y, ...}.
@@ -3068,7 +3081,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if n:
                 for i in range(1, len(parts)):
                     if isinstance(n.node, TypeInfo):
-                        if n.node.mro is None:
+                        if not n.node.mro:
                             # We haven't yet analyzed the class `n.node`.  Fall back to direct
                             # lookup in the names declared directly under it, without its base
                             # classes.  This can happen when we have a forward reference to a
@@ -3279,7 +3292,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
-    def add_exports(self, *exps: Expression) -> None:
+    def add_exports(self, exp_or_exps: Union[Iterable[Expression], Expression]) -> None:
+        exps = [exp_or_exps] if isinstance(exp_or_exps, Expression) else exp_or_exps
         for exp in exps:
             if isinstance(exp, StrExpr):
                 self.all_exports.add(exp.value)

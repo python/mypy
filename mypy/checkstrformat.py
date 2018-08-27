@@ -36,7 +36,8 @@ FORMAT_RE = compile_format_re()
 
 
 class ConversionSpecifier:
-    def __init__(self, key: str, flags: str, width: str, precision: str, type: str) -> None:
+    def __init__(self, key: Optional[str],
+                 flags: str, width: str, precision: str, type: str) -> None:
         self.key = key
         self.flags = flags
         self.width = width
@@ -179,6 +180,7 @@ class StringFormatterChecker:
                 if specifier.type == '%':
                     # %% is allowed in mappings, no checking is required
                     continue
+                assert specifier.key is not None
                 if specifier.key not in mapping:
                     self.msg.key_not_in_mapping(specifier.key, replacements)
                     return

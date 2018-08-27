@@ -273,7 +273,7 @@ For more details, see :ref:`no_strict_optional`.
 
     For example, by default mypy will assume that the ``x`` parameter
     is of type ``Optional[int]`` in the code snippet below since
-    the default pararameter is ``None``:
+    the default parameter is ``None``:
 
     .. code-block:: python
 

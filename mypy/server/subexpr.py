@@ -21,24 +21,50 @@ class SubexpressionFinder(TraverserVisitor):
     def __init__(self) -> None:
         self.expressions = []  # type: List[Expression]
 
-    def _visit_leaf(self, o: Expression) -> None:
+    def visit_int_expr(self, o: Expression) -> None:
         self.add(o)
 
-    visit_int_expr = _visit_leaf
-    visit_name_expr = _visit_leaf
-    visit_float_expr = _visit_leaf
-    visit_str_expr = _visit_leaf
-    visit_bytes_expr = _visit_leaf
-    visit_unicode_expr = _visit_leaf
-    visit_complex_expr = _visit_leaf
-    visit_ellipsis = _visit_leaf
-    visit_super_expr = _visit_leaf
-    visit_type_var_expr = _visit_leaf
-    visit_type_alias_expr = _visit_leaf
-    visit_namedtuple_expr = _visit_leaf
-    visit_typeddict_expr = _visit_leaf
-    visit__promote_expr = _visit_leaf
-    visit_newtype_expr = _visit_leaf
+    def visit_name_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_float_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_str_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_bytes_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_unicode_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_complex_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_ellipsis(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_super_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_type_var_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_type_alias_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_namedtuple_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_typeddict_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit__promote_expr(self, o: Expression) -> None:
+        self.add(o)
+
+    def visit_newtype_expr(self, o: Expression) -> None:
+        self.add(o)
 
     def visit_member_expr(self, e: MemberExpr) -> None:
         self.add(e)

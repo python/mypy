@@ -1568,7 +1568,8 @@ from typing import overload
 class A:
     def __add__(self, x: int) -> int: pass
 class B(A):
-    @overload  # E: Signature of "__add__" incompatible with supertype "A"
+    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
+               # N: Overloaded operator methods can't have wider argument types in overrides
     def __add__(self, x: int) -> int: pass
     @overload
     def __add__(self, x: str) -> str: pass
@@ -1595,6 +1596,33 @@ class A:
     def __add__(self, x: int) -> 'A': pass
 class B(A):
     def __add__(self, x): pass
+
+[case testOperatorMethodAgainstSameType]
+class A:
+    def __add__(self, x: int) -> 'A':
+        if isinstance(x, int):
+            return A()
+        else:
+            return NotImplemented
+
+    def __radd__(self, x: 'A') -> 'A':
+        if isinstance(x, A):
+            return A()
+        else:
+            return NotImplemented
+
+class B(A): pass
+
+# Note: This is a runtime error. If we run x.__add__(y)
+# where x and y are *not* the same type, Python will not try
+# calling __radd__.
+A() + A()               # E: Unsupported operand types for + ("A" and "A") \
+                        # N: __radd__ will not be called when evaluating 'A + A': must define __add__
+
+# Here, Python *will* call __radd__(...)
+reveal_type(B() + A())  # E: Revealed type is '__main__.A'
+reveal_type(A() + B())  # E: Revealed type is '__main__.A'
+[builtins fixtures/isinstance.pyi]
 
 [case testOperatorMethodOverrideWithIdenticalOverloadedType]
 from foo import *
@@ -1635,7 +1663,8 @@ class A:
     @overload
     def __add__(self, x: str) -> 'A': pass
 class B(A):
-    @overload
+    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
+               # N: Overloaded operator methods can't have wider argument types in overrides
     def __add__(self, x: int) -> A: pass
     @overload
     def __add__(self, x: str) -> A: pass
@@ -1699,6 +1728,178 @@ class C:
 tmp/foo.pyi:3: error: Invalid signature "def (foo.B) -> foo.A"
 tmp/foo.pyi:5: error: Invalid signature "def (foo.C, Any, Any) -> builtins.int"
 
+[case testReverseOperatorOrderingCase1]
+class A:
+    def __radd__(self, other: 'A') -> int: ...
+
+# Note: Python only tries calling __add__ and never __radd__, even though it's present
+A() + A()  # E: Unsupported left operand type for + ("A") \
+           # N: __radd__ will not be called when evaluating 'A + A': must define __add__
+
+[case testReverseOperatorOrderingCase2]
+class A:
+    def __lt__(self, other: object) -> bool: ...
+
+# Not all operators have the above shortcut though.
+reveal_type(A() > A())   # E: Revealed type is 'builtins.bool'
+reveal_type(A() < A())   # E: Revealed type is 'builtins.bool'
+[builtins fixtures/bool.pyi]
+
+[case testReverseOperatorOrderingCase3]
+class A:
+    def __add__(self, other: B) -> int: ...
+
+class B:
+    def __radd__(self, other: A) -> str: ...  # E: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+
+# Normally, we try calling __add__ before __radd__
+reveal_type(A() + B())  # E: Revealed type is 'builtins.int'
+
+[case testReverseOperatorOrderingCase4]
+class A:
+    def __add__(self, other: B) -> int: ...
+
+class B(A):
+    def __radd__(self, other: A) -> str: ...  # E: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+
+# However, if B is a subtype of A, we try calling __radd__ first.
+reveal_type(A() + B())  # E: Revealed type is 'builtins.str'
+
+[case testReverseOperatorOrderingCase5]
+# Note: these two methods are not unsafely overlapping because __radd__ is
+# never called -- see case 1.
+class A:
+    def __add__(self, other: B) -> int: ...
+    def __radd__(self, other: A) -> str: ...
+
+class B(A): pass
+
+# ...but only if B specifically defines a new __radd__.
+reveal_type(A() + B())  # E: Revealed type is 'builtins.int'
+
+[case testReverseOperatorOrderingCase6]
+class A:
+    def __add__(self, other: B) -> int: ...
+    def __radd__(self, other: A) -> str: ...
+
+class B(A):
+    # Although A.__radd__ can never be called, B.__radd__ *can* be -- so the
+    # unsafe overlap check kicks in here.
+    def __radd__(self, other: A) -> str: ...  # E: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+
+reveal_type(A() + B())  # E: Revealed type is 'builtins.str'
+
+[case testReverseOperatorOrderingCase7]
+class A:
+    def __add__(self, other: B) -> int: ...
+    def __radd__(self, other: A) -> str: ...
+
+class B(A):
+    def __radd__(self, other: A) -> str: ...  # E: Signatures of "__radd__" of "B" and "__add__" of "A" are unsafely overlapping
+
+class C(B): pass
+
+# A refinement made by a parent also counts
+reveal_type(A() + C())  # E: Revealed type is 'builtins.str'
+
+[case testReverseOperatorWithOverloads1]
+from typing import overload
+
+class A:
+    def __add__(self, other: C) -> int: ...
+
+class B:
+    def __add__(self, other: C) -> int: ...
+
+class C:
+    @overload
+    def __radd__(self, other: A) -> str: ...   # E: Signatures of "__radd__" of "C" and "__add__" of "A" are unsafely overlapping
+    @overload
+    def __radd__(self, other: B) -> str: ...   # E: Signatures of "__radd__" of "C" and "__add__" of "B" are unsafely overlapping
+    def __radd__(self, other): pass
+
+reveal_type(A() + C())   # E: Revealed type is 'builtins.int'
+reveal_type(B() + C())   # E: Revealed type is 'builtins.int'
+
+[case testReverseOperatorWithOverloads2]
+from typing import overload, Union
+
+class Num1:
+    def __add__(self, other: Num1) -> Num1: ...
+    def __radd__(self, other: Num1) -> Num1: ...
+
+class Num2(Num1):
+    @overload
+    def __add__(self, other: Num2) -> Num2: ...  
+    @overload
+    def __add__(self, other: Num1) -> Num2: ...
+    def __add__(self, other): pass
+
+    @overload
+    def __radd__(self, other: Num2) -> Num2: ...
+    @overload
+    def __radd__(self, other: Num1) -> Num2: ...
+    def __radd__(self, other): pass
+
+class Num3(Num1):
+    def __add__(self, other: Union[Num1, Num3]) -> Num3: ...
+    def __radd__(self, other: Union[Num1, Num3]) -> Num3: ...
+
+reveal_type(Num1() + Num2())  # E: Revealed type is '__main__.Num2'
+reveal_type(Num2() + Num1())  # E: Revealed type is '__main__.Num2'
+
+reveal_type(Num1() + Num3())  # E: Revealed type is '__main__.Num3'
+reveal_type(Num3() + Num1())  # E: Revealed type is '__main__.Num3'
+
+reveal_type(Num2() + Num3())  # E: Revealed type is '__main__.Num2'
+reveal_type(Num3() + Num2())  # E: Revealed type is '__main__.Num3'
+
+[case testDivReverseOperatorPython3]
+# No error: __div__ has no special meaning in Python 3
+class A1:
+    def __div__(self, x: B1) -> int: ...
+class B1:
+    def __rdiv__(self, x: A1) -> str: ...
+
+class A2:
+    def __truediv__(self, x: B2) -> int: ...
+class B2:
+    def __rtruediv__(self, x: A2) -> str: ...  # E: Signatures of "__rtruediv__" of "B2" and "__truediv__" of "A2" are unsafely overlapping
+
+A1() / B1()                 # E: Unsupported left operand type for / ("A1")
+reveal_type(A2() / B2())    # E: Revealed type is 'builtins.int'
+
+[case testDivReverseOperatorPython2]
+# flags: --python-version 2.7
+
+# Note: if 'from __future__ import division' is called, we use
+# __truediv__. Otherwise, we use __div__. So, we check both:
+class A1:
+    def __div__(self, x):
+        # type: (B1) -> int
+        pass
+class B1:
+    def __rdiv__(self, x):   # E: Signatures of "__rdiv__" of "B1" and "__div__" of "A1" are unsafely overlapping
+        # type: (A1) -> str
+        pass
+
+class A2:
+    def __truediv__(self, x):
+        # type: (B2) -> int
+        pass
+class B2:
+    def __rtruediv__(self, x):  # E: Signatures of "__rtruediv__" of "B2" and "__truediv__" of "A2" are unsafely overlapping
+        # type: (A2) -> str
+        pass
+
+# That said, mypy currently doesn't handle the actual division operation very
+# gracefully -- it doesn't correctly switch to using __truediv__ when
+# 'from __future__ import division' is included, it doesn't display a very
+# graceful error if __div__ is missing but __truediv__ is present...
+# Also see https://github.com/python/mypy/issues/2048
+reveal_type(A1() / B1())        # E: Revealed type is 'builtins.int'
+A2() / B2()                     # E: "A2" has no attribute "__div__"
+
 [case testReverseOperatorMethodForwardIsAny]
 from typing import Any
 def deco(f: Any) -> Any: return f
@@ -1756,16 +1957,17 @@ class B:
 from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
-    def __add__(self, other) -> str: ...
+    def __add__(self, other: Fraction) -> str: ...
 class Fraction(Real):
-    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+    def __radd__(self, other: T) -> T: ...  # TODO: This should be unsafely overlapping
 
 [case testReverseOperatorTypeType]
 from typing import TypeVar, Type
 class Real(type):
-    def __add__(self, other) -> str: ...
+    def __add__(self, other: FractionChild) -> str: ...
 class Fraction(Real):
     def __radd__(self, other: Type['A']) -> Real: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "Type[A]" are unsafely overlapping
+class FractionChild(Fraction): pass
 
 class A(metaclass=Real): pass
 
@@ -1808,7 +2010,7 @@ class B:
     @overload
     def __radd__(self, x: A) -> str: pass   # Error
 class X:
-    def __add__(self, x): pass
+    def __add__(self, x: B) -> int: pass
 [out]
 tmp/foo.pyi:6: error: Signatures of "__radd__" of "B" and "__add__" of "X" are unsafely overlapping
 
@@ -4488,4 +4690,142 @@ class B(a.A): ...
 from typing import Any
 def __getattr__(attr: str) -> Any: ...
 [builtins fixtures/module.pyi]
+[out]
+
+[case testGetAttrDescriptor]
+from typing import TypeVar, Generic, Any
+
+T = TypeVar('T')
+class C(Generic[T]):
+    normal: T
+    def __getattr__(self, attr: str) -> T: ...
+
+class Descr:
+    def __get__(self, inst: Any, owner: Any) -> int: ...
+
+class D(C[Descr]):
+    other: Descr
+
+d: D
+reveal_type(d.normal)  # E: Revealed type is 'builtins.int'
+reveal_type(d.dynamic)  # E: Revealed type is '__main__.Descr*'
+reveal_type(D.other)  # E: Revealed type is 'builtins.int'
+D.dynamic  # E: "Type[D]" has no attribute "dynamic"
+[out]
+
+[case testSelfDescriptorAssign]
+from typing import Any
+
+class Descr:
+    def __get__(self, inst: Any, owner: Any) -> int: ...
+
+class C:
+    def __init__(self, x: Descr) -> None:
+        self.x = x
+
+c = C(Descr())
+reveal_type(c.x)  # E: Revealed type is '__main__.Descr'
+[out]
+
+[case testForwardInstanceWithWrongArgCount]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int, int]]  # E: "G" expects 1 type argument, but 2 given
+B = G
+[out]
+
+[case testForwardInstanceWithNoArgs]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class G(Generic[T]): ...
+
+A = G
+x: A[B]
+reveal_type(x)  # E: Revealed type is '__main__.G[__main__.G[Any]]'
+B = G
+[out]
+
+[case testForwardInstanceWithBound]
+from typing import TypeVar, Generic
+
+T = TypeVar('T', bound=str)
+class G(Generic[T]): ...
+
+A = G
+x: A[B[int]]
+B = G
+[out]
+main:7: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
+main:7: error: Type argument "__main__.G[builtins.int]" of "G" must be a subtype of "builtins.str"
+
+[case testExtremeForwardReferencing]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class B(Generic[T]): ...
+
+y: A
+z: A[int]
+x = [y, z]
+reveal_type(x)  # E: Revealed type is 'builtins.list[__main__.B*[Any]]'
+
+A = B
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoneAnyFallback]
+from typing import Any
+dynamic: Any
+class C(dynamic): pass
+x: None = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "None")
+[out]
+
+[case testNoneAnyFallbackDescriptor]
+from typing import Any
+from d import Descr
+
+dynamic: Any
+class C(dynamic):
+    id = Descr(int)
+    name = Descr(str)
+
+c: C
+reveal_type(c.id)  # E: Revealed type is 'builtins.int*'
+reveal_type(C.name)  # E: Revealed type is 'd.Descr[builtins.str*]'
+
+[file d.pyi]
+from typing import Any, overload, Generic, TypeVar, Type
+
+T = TypeVar('T')
+class Descr(Generic[T]):
+    def __init__(self, tp: Type[T]) -> None: ...
+    @overload
+    def __get__(self, inst: None, owner: Any) -> Descr[T]: ...
+    @overload
+    def __get__(self, inst: object, owner: Any) -> T: ...
+[out]
+
+[case testClassCustomPropertyWorks]
+from typing import TypeVar, Generic, Callable, Any
+
+V = TypeVar('V')
+
+class classproperty(Generic[V]):
+    def __init__(self, getter: Callable[[Any], V]) -> None:
+        self.getter = getter
+    def __get__(self, instance: Any, owner: Any) -> V:
+        return self.getter(owner)
+
+class C:
+    @classproperty
+    def foo(cls) -> int:
+        return 42
+
+reveal_type(C.foo)  # E: Revealed type is 'builtins.int*'
+reveal_type(C().foo)  # E: Revealed type is 'builtins.int*'
 [out]

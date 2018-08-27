@@ -104,6 +104,7 @@ setup(name='mypy',
       classifiers=classifiers,
       cmdclass={'build_py': CustomPythonBuild},
       install_requires = ['typed-ast >= 1.1.0, < 1.2.0',
+                          'mypy_extensions >= 0.4.0, < 0.5.0',
                           ],
       extras_require = {
           ':python_version < "3.5"': 'typing >= 3.5.3',

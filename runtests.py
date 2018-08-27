@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 from os import system
-from sys import argv, exit
+from sys import argv, exit, platform
 
 prog, *args = argv
 
+if platform == 'win32':
+    python_name = 'py -3'
+else:
+    python_name = 'python3'
+
 cmds = {
-    'self': 'python3 -m mypy --config-file mypy_self_check.ini -p mypy',
+    'self': python_name + ' -m mypy --config-file mypy_self_check.ini -p mypy',
     'lint': 'flake8 -j0',
     'pytest': 'pytest'
 }

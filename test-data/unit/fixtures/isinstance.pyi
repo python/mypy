@@ -1,4 +1,4 @@
-from typing import Tuple, TypeVar, Generic, Union
+from typing import Tuple, TypeVar, Generic, Union, cast, Any
 
 T = TypeVar('T')
 
@@ -22,3 +22,5 @@ class bool(int): pass
 class str:
     def __add__(self, other: 'str') -> 'str': pass
 class ellipsis: pass
+
+NotImplemented = cast(Any, None)

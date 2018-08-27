@@ -186,6 +186,8 @@ Any)`` function signature. Example:
     arbitrary_call(open)  # Error: does not return an int
     arbitrary_call(1)     # Error: 'int' is not callable
 
+In situations where more precise or complex types of callbacks are
+necessary one can use flexible :ref:`callback protocols <callback_protocols>`.
 Lambdas are also supported. The lambda argument and return value types
 cannot be given explicitly; they are always inferred based on context
 using bidirectional type inference:
@@ -546,7 +548,8 @@ assigning the type to a variable:
 .. note::
 
     A type alias does not create a new type. It's just a shorthand notation for
-    another type -- it's equivalent to the target type.
+    another type -- it's equivalent to the target type except for
+    :ref:`generic aliases <generic-type-aliases>`.
 
 .. _named-tuples:
 

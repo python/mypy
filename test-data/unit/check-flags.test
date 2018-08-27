@@ -1059,3 +1059,29 @@ ignore_missing_imports = True
 always_true = YOLO1, YOLO
 always_false = BLAH, BLAH1
 [builtins fixtures/bool.pyi]
+
+[case testCheckDisallowAnyGenericsNamedTuple]
+# flags: --disallow-any-generics
+from typing import NamedTuple
+
+N = NamedTuple('N', [('x', N)])  # type: ignore
+n: N
+[out]
+
+[case testCheckDisallowAnyGenericsTypedDict]
+# flags: --disallow-any-generics
+from typing import Dict, Any, Optional
+from mypy_extensions import TypedDict
+
+VarsDict = Dict[str, Any]
+HostsDict = Dict[str, Optional[VarsDict]]
+
+GroupDataDict = TypedDict(  # type: ignore
+    "GroupDataDict", {"children": "GroupsDict",
+                      "vars": VarsDict,
+                      "hosts": HostsDict}, total=False
+)
+
+GroupsDict = Dict[str, GroupDataDict]  # type: ignore
+[builtins fixtures/dict.pyi]
+[out]

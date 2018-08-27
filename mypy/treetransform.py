@@ -61,7 +61,6 @@ class TransformVisitor(NodeVisitor[Node]):
         # NOTE: The 'names' and 'imports' instance variables will be empty!
         new = MypyFile(self.statements(node.defs), [], node.is_bom,
                        ignored_lines=set(node.ignored_lines))
-        new._name = node._name
         new._fullname = node._fullname
         new.path = node.path
         new.names = SymbolTable()
@@ -404,7 +403,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return ListExpr(self.expressions(node.items))
 
     def visit_dict_expr(self, node: DictExpr) -> DictExpr:
-        return DictExpr([(self.expr(key), self.expr(value))
+        return DictExpr([(self.expr(key) if key else None, self.expr(value))
                          for key, value in node.items])
 
     def visit_tuple_expr(self, node: TupleExpr) -> TupleExpr:

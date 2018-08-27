@@ -1,7 +1,9 @@
 from collections import OrderedDict
 from typing import List, Optional, Tuple
 
-from mypy.join import is_similar_callables, combine_similar_callables, join_type_list
+from mypy.join import (
+    is_similar_callables, combine_similar_callables, join_type_list, unpack_callback_protocol
+)
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneTyp, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
@@ -297,12 +299,15 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                         return UninhabitedType()
                     else:
                         return NoneTyp()
+        elif isinstance(self.s, FunctionLike) and t.type.is_protocol:
+            call = unpack_callback_protocol(t)
+            if call:
+                return meet_types(call, self.s)
         elif isinstance(self.s, TypeType):
             return meet_types(t, self.s)
         elif isinstance(self.s, TupleType):
             return meet_types(t, self.s)
-        else:
-            return self.default(self.s)
+        return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> Type:
         if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
@@ -313,8 +318,11 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)
             return result
-        else:
-            return self.default(self.s)
+        elif isinstance(self.s, Instance) and self.s.type.is_protocol:
+            call = unpack_callback_protocol(self.s)
+            if call:
+                return meet_types(t, call)
+        return self.default(self.s)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # TODO: Implement a better algorithm that covers at least the same cases
@@ -329,6 +337,10 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 return t
             else:
                 return meet_types(t.fallback, s.fallback)
+        elif isinstance(self.s, Instance) and self.s.type.is_protocol:
+            call = unpack_callback_protocol(self.s)
+            if call:
+                return meet_types(t, call)
         return meet_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:

@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import Tuple, List, Dict, Mapping, Optional, cast
+from typing import Tuple, List, Dict, Mapping, Optional, Union, cast
 
 from mypy.types import (
     Type, TupleType, NoneTyp, AnyType, TypeOfAny, TypeVarType, TypeVarDef, CallableType, TypeType
@@ -151,8 +151,14 @@ class NamedTupleAnalyzer:
         items, types, defaults, ok = self.parse_namedtuple_args(call, fullname)
         if not ok:
             # Error. Construct dummy return value.
-            return self.build_namedtuple_typeinfo('namedtuple', [], [], {})
-        name = cast(StrExpr, call.args[0]).value
+            if var_name:
+                name = var_name
+            else:
+                name = 'namedtuple@' + str(call.line)
+            info = self.build_namedtuple_typeinfo(name, [], [], {})
+            self.store_namedtuple_info(info, name, call, is_typed)
+            return info
+        name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         if name != var_name or is_func_scope:
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
@@ -166,11 +172,15 @@ class NamedTupleAnalyzer:
         info = self.build_namedtuple_typeinfo(name, items, types, default_items)
         # Store it as a global just in case it would remain anonymous.
         # (Or in the nearest class if there is one.)
+        self.store_namedtuple_info(info, name, call, is_typed)
+        return info
+
+    def store_namedtuple_info(self, info: TypeInfo, name: str,
+                              call: CallExpr, is_typed: bool) -> None:
         stnode = SymbolTableNode(GDEF, info)
         self.api.add_symbol_table_node(name, stnode)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
         call.analyzed.set_line(call.line, call.column)
-        return info
 
     def parse_namedtuple_args(self, call: CallExpr, fullname: str
                               ) -> Tuple[List[str], List[Type], List[Expression], bool]:
@@ -216,7 +226,7 @@ class NamedTupleAnalyzer:
         if not isinstance(args[1], (ListExpr, TupleExpr)):
             if (fullname == 'collections.namedtuple'
                     and isinstance(args[1], (StrExpr, BytesExpr, UnicodeExpr))):
-                str_expr = cast(StrExpr, args[1])
+                str_expr = args[1]
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 return self.fail_namedtuple_arg(

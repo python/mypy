@@ -5,7 +5,7 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Any
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -35,7 +35,10 @@ from mypy.types import (
 from mypy.sametypes import is_same_type, is_same_types
 from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
-from mypy.checkmember import map_type_from_supertype, bind_self, erase_to_bound, type_object_type
+from mypy.checkmember import (
+    map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
+    analyze_descriptor_access
+)
 from mypy import messages
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
@@ -432,7 +435,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert isinstance(inner_type, CallableType)
                 impl_type = inner_type
 
-        is_descriptor_get = defn.info is not None and defn.name() == "__get__"
+        is_descriptor_get = defn.info and defn.name() == "__get__"
         for i, item in enumerate(defn.items):
             # TODO overloads involving decorators
             assert isinstance(item, Decorator)
@@ -775,7 +778,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                            self.msg, context=fdef)
 
                 if name:  # Special method names
-                    if name in nodes.reverse_op_method_set:
+                    if defn.info and self.is_reverse_op_method(name):
                         self.check_reverse_op_method(item, typ, name, defn)
                     elif name in ('__getattr__', '__getattribute__'):
                         self.check_getattr_method(typ, defn, name)
@@ -920,6 +923,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             self.binder = old_binder
 
+    def is_forward_op_method(self, method_name: str) -> bool:
+        if self.options.python_version[0] == 2 and method_name == '__div__':
+            return True
+        else:
+            return method_name in nodes.reverse_op_methods
+
+    def is_reverse_op_method(self, method_name: str) -> bool:
+        if self.options.python_version[0] == 2 and method_name == '__rdiv__':
+            return True
+        else:
+            return method_name in nodes.reverse_op_method_set
+
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
         def is_unannotated_any(t: Type) -> bool:
@@ -976,6 +991,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # just decides whether it's worth calling
         # check_overlapping_op_methods().
 
+        assert defn.info
+
         # First check for a valid signature
         method_type = CallableType([AnyType(TypeOfAny.special_form),
                                     AnyType(TypeOfAny.special_form)],
@@ -1005,7 +1022,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                       arg_names=[reverse_type.arg_names[0], "_"])
         assert len(reverse_type.arg_types) >= 2
 
-        forward_name = nodes.normal_from_reverse_op[reverse_name]
+        if self.options.python_version[0] == 2 and reverse_name == '__rdiv__':
+            forward_name = '__div__'
+        else:
+            forward_name = nodes.normal_from_reverse_op[reverse_name]
         forward_inst = reverse_type.arg_types[1]
         if isinstance(forward_inst, TypeVarType):
             forward_inst = forward_inst.upper_bound
@@ -1037,72 +1057,104 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                      context: Context) -> None:
         """Check for overlapping method and reverse method signatures.
 
-        Assume reverse method has valid argument count and kinds.
+        This function assumes that:
+
+        -   The reverse method has valid argument count and kinds.
+        -   If the reverse operator method accepts some argument of type
+            X, the forward operator method also belong to class X.
+
+            For example, if we have the reverse operator `A.__radd__(B)`, then the
+            corresponding forward operator must have the type `B.__add__(...)`.
         """
 
-        # Reverse operator method that overlaps unsafely with the
-        # forward operator method can result in type unsafety. This is
-        # similar to overlapping overload variants.
+        # Note: Suppose we have two operator methods "A.__rOP__(B) -> R1" and
+        # "B.__OP__(C) -> R2". We check if these two methods are unsafely overlapping
+        # by using the following algorithm:
         #
-        # This example illustrates the issue:
+        # 1. Rewrite "B.__OP__(C) -> R1"  to "temp1(B, C) -> R1"
         #
-        #   class X: pass
-        #   class A:
-        #       def __add__(self, x: X) -> int:
-        #           if isinstance(x, X):
-        #               return 1
-        #           return NotImplemented
-        #   class B:
-        #       def __radd__(self, x: A) -> str: return 'x'
-        #   class C(X, B): pass
-        #   def f(b: B) -> None:
-        #       A() + b # Result is 1, even though static type seems to be str!
-        #   f(C())
+        # 2. Rewrite "A.__rOP__(B) -> R2" to "temp2(B, A) -> R2"
         #
-        # The reason for the problem is that B and X are overlapping
-        # types, and the return types are different. Also, if the type
-        # of x in __radd__ would not be A, the methods could be
-        # non-overlapping.
+        # 3. Treat temp1 and temp2 as if they were both variants in the same
+        #    overloaded function. (This mirrors how the Python runtime calls
+        #    operator methods: we first try __OP__, then __rOP__.)
+        #
+        #    If the first signature is unsafely overlapping with the second,
+        #    report an error.
+        #
+        # 4. However, if temp1 shadows temp2 (e.g. the __rOP__ method can never
+        #    be called), do NOT report an error.
+        #
+        #    This behavior deviates from how we handle overloads -- many of the
+        #    modules in typeshed seem to define __OP__ methods that shadow the
+        #    corresponding __rOP__ method.
+        #
+        # Note: we do not attempt to handle unsafe overlaps related to multiple
+        # inheritance. (This is consistent with how we handle overloads: we also
+        # do not try checking unsafe overlaps due to multiple inheritance there.)
 
         for forward_item in union_items(forward_type):
             if isinstance(forward_item, CallableType):
-                # TODO check argument kinds
-                if len(forward_item.arg_types) < 1:
-                    # Not a valid operator method -- can't succeed anyway.
-                    return
-
-                # Construct normalized function signatures corresponding to the
-                # operator methods. The first argument is the left operand and the
-                # second operand is the right argument -- we switch the order of
-                # the arguments of the reverse method.
-                forward_tweaked = CallableType(
-                    [forward_base, forward_item.arg_types[0]],
-                    [nodes.ARG_POS] * 2,
-                    [None] * 2,
-                    forward_item.ret_type,
-                    forward_item.fallback,
-                    name=forward_item.name)
-                reverse_args = reverse_type.arg_types
-                reverse_tweaked = CallableType(
-                    [reverse_args[1], reverse_args[0]],
-                    [nodes.ARG_POS] * 2,
-                    [None] * 2,
-                    reverse_type.ret_type,
-                    fallback=self.named_type('builtins.function'),
-                    name=reverse_type.name)
-
-                if is_unsafe_overlapping_operator_signatures(
-                        forward_tweaked, reverse_tweaked):
+                if self.is_unsafe_overlapping_op(forward_item, forward_base, reverse_type):
                     self.msg.operator_method_signatures_overlap(
                         reverse_class, reverse_name,
                         forward_base, forward_name, context)
             elif isinstance(forward_item, Overloaded):
                 for item in forward_item.items():
-                    self.check_overlapping_op_methods(
-                        reverse_type, reverse_name, reverse_class,
-                        item, forward_name, forward_base, context)
+                    if self.is_unsafe_overlapping_op(item, forward_base, reverse_type):
+                        self.msg.operator_method_signatures_overlap(
+                            reverse_class, reverse_name,
+                            forward_base, forward_name,
+                            context)
             elif not isinstance(forward_item, AnyType):
                 self.msg.forward_operator_not_callable(forward_name, context)
+
+    def is_unsafe_overlapping_op(self,
+                                 forward_item: CallableType,
+                                 forward_base: Type,
+                                 reverse_type: CallableType) -> bool:
+        # TODO: check argument kinds?
+        if len(forward_item.arg_types) < 1:
+            # Not a valid operator method -- can't succeed anyway.
+            return False
+
+        # Erase the type if necessary to make sure we don't have a single
+        # TypeVar in forward_tweaked. (Having a function signature containing
+        # just a single TypeVar can lead to unpredictable behavior.)
+        forward_base_erased = forward_base
+        if isinstance(forward_base, TypeVarType):
+            forward_base_erased = erase_to_bound(forward_base)
+
+        # Construct normalized function signatures corresponding to the
+        # operator methods. The first argument is the left operand and the
+        # second operand is the right argument -- we switch the order of
+        # the arguments of the reverse method.
+
+        forward_tweaked = forward_item.copy_modified(
+            arg_types=[forward_base_erased, forward_item.arg_types[0]],
+            arg_kinds=[nodes.ARG_POS] * 2,
+            arg_names=[None] * 2,
+        )
+        reverse_tweaked = reverse_type.copy_modified(
+            arg_types=[reverse_type.arg_types[1], reverse_type.arg_types[0]],
+            arg_kinds=[nodes.ARG_POS] * 2,
+            arg_names=[None] * 2,
+        )
+
+        reverse_base_erased = reverse_type.arg_types[0]
+        if isinstance(reverse_base_erased, TypeVarType):
+            reverse_base_erased = erase_to_bound(reverse_base_erased)
+
+        if is_same_type(reverse_base_erased, forward_base_erased):
+            return False
+        elif is_subtype(reverse_base_erased, forward_base_erased):
+            first = reverse_tweaked
+            second = forward_tweaked
+        else:
+            first = forward_tweaked
+            second = reverse_tweaked
+
+        return is_unsafe_overlapping_overload_signatures(first, second)
 
     def check_inplace_operator_method(self, defn: FuncBase) -> None:
         """Check an inplace operator method such as __iadd__.
@@ -1260,8 +1312,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                if (isinstance(base_attr.node, (FuncBase, Decorator))
-                        and not is_static(base_attr.node)):
+                # mypyc hack to workaround mypy misunderstanding multiple inheritance (#3603)
+                base_attr_node = base_attr.node  # type: Any
+                if (isinstance(base_attr_node, (FuncBase, Decorator))
+                        and not is_static(base_attr_node)):
                     bound = bind_self(original_type, self.scope.active_self_type())
                 else:
                     bound = original_type
@@ -1287,6 +1341,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), context)
 
+    def get_op_other_domain(self, tp: FunctionLike) -> Optional[Type]:
+        if isinstance(tp, CallableType):
+            if tp.arg_kinds and tp.arg_kinds[0] == ARG_POS:
+                return tp.arg_types[0]
+            return None
+        elif isinstance(tp, Overloaded):
+            raw_items = [self.get_op_other_domain(it) for it in tp.items()]
+            items = [it for it in raw_items if it]
+            if items:
+                return UnionType.make_simplified_union(items)
+            return None
+        else:
+            assert False, "Need to check all FunctionLike subtypes here"
+
     def check_override(self, override: FunctionLike, original: FunctionLike,
                        name: str, name_in_super: str, supertype: str,
                        original_class_or_static: bool,
@@ -1303,15 +1371,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         # Use boolean variable to clarify code.
         fail = False
+        op_method_wider_note = False
         if not is_subtype(override, original, ignore_pos_arg_names=True):
             fail = True
-        elif (not isinstance(original, Overloaded) and
-              isinstance(override, Overloaded) and
-              name in nodes.reverse_op_methods.keys()):
-            # Operator method overrides cannot introduce overloading, as
+        elif isinstance(override, Overloaded) and self.is_forward_op_method(name):
+            # Operator method overrides cannot extend the domain, as
             # this could be unsafe with reverse operator methods.
-            fail = True
-
+            original_domain = self.get_op_other_domain(original)
+            override_domain = self.get_op_other_domain(override)
+            if (original_domain and override_domain and
+                    not is_subtype(override_domain, original_domain)):
+                fail = True
+                op_method_wider_note = True
         if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
             if original_class_or_static and not override_class_or_static:
                 fail = True
@@ -1373,6 +1444,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # Fall back to generic incompatibility message.
                 self.msg.signature_incompatible_with_supertype(
                     name, name_in_super, supertype, node)
+            if op_method_wider_note:
+                self.note("Overloaded operator methods can't have wider argument types"
+                          " in overrides", node)
 
     def visit_class_def(self, defn: ClassDef) -> None:
         """Type check a class definition."""
@@ -2239,8 +2313,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # (which allow you to override the descriptor with any value), but preserves
             # the type of accessing the attribute (even after the override).
             if attribute_type.type.has_readable_member('__get__'):
-                attribute_type = self.expr_checker.analyze_descriptor_access(
-                    instance_type, attribute_type, context)
+                attribute_type = analyze_descriptor_access(
+                    instance_type, attribute_type, self.named_type,
+                    self.msg, context, chk=self)
             rvalue_type = self.check_simple_assignment(attribute_type, rvalue, context)
             return rvalue_type, True
 
@@ -2740,7 +2815,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                    [nodes.ARG_POS], e,
                                                    callable_name=fullname)
         self.check_untyped_after_decorator(sig, e.func)
-        sig = cast(FunctionLike, sig)
         sig = set_callable_name(sig, e.func)
         e.var.type = sig
         e.var.is_ready = True
@@ -2759,7 +2833,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.typed_function_untyped_decorator(func.name(), dec_expr)
 
     def check_incompatible_property_override(self, e: Decorator) -> None:
-        if not e.var.is_settable_property and e.func.info is not None:
+        if not e.var.is_settable_property and e.func.info:
             name = e.func.name()
             for base in e.func.info.mro[1:]:
                 base_attr = base.names.get(name)
@@ -3168,6 +3242,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 call = find_member('__call__', subtype, subtype)
                 if call:
                     self.msg.note_call(subtype, call, context)
+            if isinstance(subtype, (CallableType, Overloaded)) and isinstance(supertype, Instance):
+                if supertype.type.is_protocol and supertype.type.protocol_members == ['__call__']:
+                    call = find_member('__call__', supertype, subtype)
+                    assert call is not None
+                    self.msg.note_call(supertype, call, context)
             return False
 
     def contains_none(self, t: Type) -> bool:
@@ -3316,7 +3395,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     var.type = AnyType(TypeOfAny.from_error)
 
     def is_defined_in_base_class(self, var: Var) -> bool:
-        if var.info is not None:
+        if var.info:
             for base in var.info.mro[1:]:
                 if base.get(var.name()) is not None:
                     return True
@@ -3693,7 +3772,17 @@ def overload_can_never_match(signature: CallableType, other: CallableType) -> bo
 
     Assumes that both signatures have overlapping argument counts.
     """
-    return is_callable_compatible(signature, other,
+    # The extra erasure is needed to prevent spurious errors
+    # in situations where an `Any` overload is used as a fallback
+    # for an overload with type variables. The spurious error appears
+    # because the type variables turn into `Any` during unification in
+    # the below subtype check and (surprisingly?) `is_proper_subtype(Any, Any)`
+    # returns `True`.
+    # TODO: find a cleaner solution instead of this ad-hoc erasure.
+    exp_signature = expand_type(signature, {tvar.id: tvar.erase_to_union_or_bound()
+                                for tvar in signature.variables})
+    assert isinstance(exp_signature, CallableType)
+    return is_callable_compatible(exp_signature, other,
                                   is_compat=is_more_precise,
                                   ignore_return=True)
 

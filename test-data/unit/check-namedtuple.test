@@ -685,7 +685,7 @@ my_eval(A([B(1), B(2)])) # OK
 from typing import NamedTuple
 
 class Real(NamedTuple):
-    def __sub__(self, other) -> str: return ""
+    def __sub__(self, other: Real) -> str: return ""
 class Fraction(Real):
     def __rsub__(self, other: Real) -> Real: return other  # E: Signatures of "__rsub__" of "Fraction" and "__sub__" of "Real" are unsafely overlapping
 
