@@ -4393,9 +4393,9 @@ def single_plausible(x: Type[int]) -> int: ...
 def single_plausible(x: List[str]) -> str: ...
 def single_plausible(x): pass
 
-a = multiple_plausible(Other())  # E: No possible overload variant of "multiple_plausible" matches argument type "Other" \
+a = multiple_plausible(Other())  # E: No overload variant of "multiple_plausible" matches argument type "Other" \
                                  # N: Possible overload variants: \
-                                 # N:     def multiple_plausible(x: int) -> int
+                                 # N:     def multiple_plausible(x: int) -> int \
                                  # N:     def multiple_plausible(x: str) -> str
 reveal_type(a)                   # E: Revealed type is 'Any'
 
