@@ -1223,11 +1223,8 @@ class D:
     def __get__(self, inst: Base, own: Type[Base]) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variants:
-main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
+main:5: error: Revealed type is 'd.D'
+main:5: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
 main:6: error: Revealed type is 'Any'
 main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
 main:6: note: Possible overload variants:
@@ -3064,16 +3061,10 @@ def f(a: Type[B]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
-f(A)  # E: No overload variant of "f" matches argument type "Type[A]" \
-      # N: Possible overload variants: \
-      # N:     def f(a: Type[B]) -> None \
-      # N:     def f(a: int) -> None
+f(A)  # E: Argument 1 to "f" has incompatible type "Type[A]"; expected "Type[B]"
 f(B)
 f(C)
-f(AType)  # E: No overload variant of "f" matches argument type "Type[A]" \
-          # N: Possible overload variants: \
-          # N:     def f(a: Type[B]) -> None \
-          # N:     def f(a: int) -> None
+f(AType)  # E: Argument 1 to "f" has incompatible type "Type[A]"; expected "Type[B]"
 f(BType)
 f(CType)
 [builtins fixtures/classmethod.pyi]
