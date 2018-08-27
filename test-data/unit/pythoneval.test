@@ -396,9 +396,7 @@ print('y' in x)
 True
 False
 
-[case testOverlappingOperatorMethods-skip]
-# TODO: This test will be repaired by my follow-up PR improving support for
-# detecting partially-overlapping types in general
+[case testOverlappingOperatorMethods]
 
 class X: pass
 class A:
