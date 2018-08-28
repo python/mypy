@@ -191,7 +191,7 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.shadow_file = None  # type: Optional[List[Tuple[str, str]]]
+        self.shadow_file = None  # type: Optional[List[List[str]]]
         self.show_column_numbers = False  # type: bool
         self.dump_graph = False
         self.dump_deps = False
