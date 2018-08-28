@@ -4867,4 +4867,9 @@ def dec(x) -> Any:
 def f(name: str) -> int:
     return 0
 
+@dec('abc')
+def g(name: str) -> int:
+    return 0
+
 reveal_type(f)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
+reveal_type(g)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
