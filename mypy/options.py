@@ -18,6 +18,8 @@ class BuildType:
     PROGRAM_TEXT = 2  # type: ClassVar[int]
 
 
+# These aren't classvars in Options because mypyc doesn't properly
+# implement class namespaces yet.
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
     "always_false",
