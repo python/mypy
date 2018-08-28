@@ -4017,7 +4017,7 @@ def is_typed_callable(c: Optional[Type]) -> bool:
 def is_untyped_decorator(typ: Optional[Type]) -> bool:
     if not typ:
         return True
-    if isinstance(typ, CallableType):
+    elif isinstance(typ, CallableType):
         return not is_typed_callable(typ)
     elif isinstance(typ, Instance):
         method = typ.type.get_method('__call__')
