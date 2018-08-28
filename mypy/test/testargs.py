@@ -21,7 +21,7 @@ class ArgSuite(Suite):
         _, parsed_options = process_options([], require_targets=False)
         # FIX: test this too. Requires changing working dir to avoid finding 'setup.cfg'
         options.config_file = parsed_options.config_file
-        assert_equal(options, parsed_options)
+        assert_equal(options.snapshot(), parsed_options.snapshot())
 
     def test_executable_inference(self) -> None:
         """Test the --python-executable flag with --python-version"""

@@ -222,12 +222,6 @@ class Options:
         del d['per_module_cache']
         return d
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Options) and self.snapshot() == other.snapshot()
-
-    def __ne__(self, other: object) -> bool:
-        return not self == other
-
     def __repr__(self) -> str:
         return 'Options({})'.format(pprint.pformat(self.snapshot()))
 
