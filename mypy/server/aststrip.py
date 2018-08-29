@@ -44,7 +44,7 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr, ForStmt
+    ListExpr, ForStmt, Block
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
@@ -82,6 +82,11 @@ class NodeStripVisitor(TraverserVisitor):
         self.file_node = file_node
         self.recurse_into_functions = False
         file_node.accept(self)
+
+    def visit_block(self, b: Block) -> None:
+        if b.is_unreachable:
+            return
+        super().visit_block(b)
 
     def visit_class_def(self, node: ClassDef) -> None:
         """Strip class body and type info, but don't strip methods."""
