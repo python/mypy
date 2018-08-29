@@ -55,6 +55,7 @@ import mypy.build
 import mypy.parse
 import mypy.errors
 import mypy.traverser
+import mypy.util
 from mypy import defaults
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
@@ -818,28 +819,33 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self.is_top_level() and name in self._toplevel_names
 
 
+class SelfTraverser(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        self.results = []  # type: List[Tuple[str, Expression]]
+
+    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        lvalue = o.lvalues[0]
+        if (isinstance(lvalue, MemberExpr) and
+                isinstance(lvalue.expr, NameExpr) and
+                lvalue.expr.name == 'self'):
+            self.results.append((lvalue.name, o.rvalue))
+
+
 def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
-    results = []  # type: List[Tuple[str, Expression]]
+    traverser = SelfTraverser()
+    fdef.accept(traverser)
+    return traverser.results
 
-    class SelfTraverser(mypy.traverser.TraverserVisitor):
-        def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-            lvalue = o.lvalues[0]
-            if (isinstance(lvalue, MemberExpr) and
-                    isinstance(lvalue.expr, NameExpr) and
-                    lvalue.expr.name == 'self'):
-                results.append((lvalue.name, o.rvalue))
 
-    fdef.accept(SelfTraverser())
-    return results
+class ReturnSeeker(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        self.found = True
 
 
 def has_return_statement(fdef: FuncBase) -> bool:
-    class ReturnSeeker(mypy.traverser.TraverserVisitor):
-        def __init__(self) -> None:
-            self.found = False
-
-        def visit_return_stmt(self, o: ReturnStmt) -> None:
-            self.found = True
 
     seeker = ReturnSeeker()
     fdef.accept(seeker)

@@ -1111,8 +1111,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_type_var(self, left: TypeVarType) -> bool:
         if isinstance(self.right, TypeVarType) and left.id == self.right.id:
             return True
-        if left.values and is_subtype(UnionType.make_simplified_union(left.values), self.right,
-                                      ignore_promotions=self.ignore_promotions):
+        if left.values and self._is_proper_subtype(UnionType.make_simplified_union(left.values),
+                                                   self.right):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 

@@ -156,6 +156,12 @@ class TypeVarDef(mypy.nodes.Context):
         return TypeVarDef(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
 
+    def erase_to_union_or_bound(self) -> Type:
+        if self.values:
+            return UnionType.make_simplified_union(self.values)
+        else:
+            return self.upper_bound
+
     def __repr__(self) -> str:
         if self.values:
             return '{} in {}'.format(self.name, tuple(self.values))
@@ -1743,11 +1749,7 @@ def copy_type(t: Type) -> Type:
     # and copying everything in with replace_object_state.
     typ = type(t)
     nt = typ.__new__(typ)
-    replace_object_state(nt, t)
-    # replace_object_state leaves the new object with the same
-    # __dict__ as the old, so make a copy.
-    if hasattr(nt, '__dict__'):
-        nt.__dict__ = nt.__dict__.copy()
+    replace_object_state(nt, t, copy_dict=True)
     return nt
 
 

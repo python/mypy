@@ -105,7 +105,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new = FuncDef(node.name(),
                       [self.copy_argument(arg) for arg in node.arguments],
                       self.block(node.body),
-                      cast(FunctionLike, self.optional_type(node.type)))
+                      cast(Optional[FunctionLike], self.optional_type(node.type)))
 
         self.copy_function_attributes(new, node)
 
@@ -132,8 +132,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_lambda_expr(self, node: LambdaExpr) -> LambdaExpr:
         new = LambdaExpr([self.copy_argument(arg) for arg in node.arguments],
-                       self.block(node.body),
-                       cast(FunctionLike, self.optional_type(node.type)))
+                         self.block(node.body),
+                         cast(Optional[FunctionLike], self.optional_type(node.type)))
         self.copy_function_attributes(new, node)
         return new
 

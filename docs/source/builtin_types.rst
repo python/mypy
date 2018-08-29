@@ -27,7 +27,7 @@ The type ``Any`` and type constructors such as ``List``, ``Dict``,
 
 The type ``Dict`` is a *generic* class, signified by type arguments within
 ``[...]``. For example, ``Dict[int, str]`` is a dictionary from integers to
-strings and and ``Dict[Any, Any]`` is a dictionary of dynamically typed
+strings and ``Dict[Any, Any]`` is a dictionary of dynamically typed
 (arbitrary) values and keys. ``List`` is another generic class. ``Dict`` and
 ``List`` are aliases for the built-ins ``dict`` and ``list``, respectively.
 
