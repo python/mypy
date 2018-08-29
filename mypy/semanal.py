@@ -1144,10 +1144,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             defn.info.mro = [defn.info, self.object_type().type]
             return
         calculate_class_mro(defn, self.fail_blocker, self.object_type)
-        # If there are cyclic imports, we may be missing 'object' in
-        # the MRO. Fix MRO if needed.
-        if info.mro and info.mro[-1].fullname() != 'builtins.object':
-            info.mro.append(self.object_type().type)
 
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
@@ -3432,8 +3428,7 @@ def refers_to_class_or_function(node: Expression) -> bool:
 
 def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None],
                         obj_type: Optional[Callable[[], Instance]] = None) -> None:
-    """
-    Calculate method resolution order for a class.
+    """Calculate method resolution order for a class.
 
     `obj_type` may be omitted in the third pass when all classes are already analyzed.
     It exists just to fill in empty base class list during second pass in case of
