@@ -1143,6 +1143,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Give it an MRO consisting of just the class itself and object.
             defn.info.mro = [defn.info, self.object_type().type]
             return
+        # TODO: Ideally we should move MRO calculation to a later stage, but this is
+        # not easy, see issue #5536.
         calculate_class_mro(defn, self.fail_blocker, self.object_type)
 
     def update_metaclass(self, defn: ClassDef) -> None:
