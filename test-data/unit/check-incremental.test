@@ -4884,3 +4884,57 @@ def f(x: str) -> None: pass
 [out]
 [out2]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFollowImportSkipNotInvalidatedOnPresent]
+# flags: --follow-imports=skip
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.py]
+x = 1
+[file other.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+
+[case testFollowImportSkipNotInvalidatedOnPresentPackage]
+# flags: --follow-imports=skip
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other/__init__.py]
+x = 1
+[file other/__init__.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+
+[case testFollowImportSkipNotInvalidatedOnAdded]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.py.2]
+x = 1
+[stale]
+[rechecked]
+
+[case testFollowImportSkipInvalidatedOnAddedStub]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[stale main, other]
+[rechecked main, other]
+
+[case testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs]
+# flags: --follow-imports=skip --ignore-missing-imports --follow-import-for-stubs
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[stale]
+[rechecked]
