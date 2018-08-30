@@ -1869,13 +1869,7 @@ class State:
                 # suppressed dependencies. Therefore, when the package with module is added,
                 # we need to re-calculate dependencies.
                 # NOTE: see comment below for why we skip this in fine grained mode.
-                new_packages = False
-                for dep in self.suppressed:
-                    path = manager.find_module_cache.find_module(dep, manager.search_paths,
-                                                              manager.options.python_executable)
-                    if path and '__init__.py' in path:
-                        new_packages = True
-                if new_packages:
+                if find_added_packages(self.suppressed, manager, self.options):
                     self.parse_file()  # This is safe because the cache is anyway stale.
                     self.compute_dependencies()
         else:
@@ -2421,6 +2415,25 @@ def find_module_and_diagnose(manager: BuildManager,
             raise CompileError(["mypy: can't find module '%s'" % id])
 
 
+def find_added_packages(suppressed: List[str],
+                        manager: BuildManager, options: Options) -> bool:
+    """Find if there are any newly added packages that were previously suppressed.
+
+    Exclude everything not in build for follow-imports=skip.
+    """
+    for dep in suppressed:
+        path = manager.find_module_cache.find_module(dep, manager.search_paths,
+                                                     manager.options.python_executable)
+        if not path or dep in manager.source_set.source_modules:
+            continue
+        if (options.follow_imports == 'skip' and
+                (not path.endswith('.pyi') or options.follow_imports_for_stubs)):
+            continue
+        if '__init__.py' in path:
+            return True
+    return False
+
+
 def in_partial_package(id: str, manager: BuildManager) -> bool:
     """Check if a missing module can potentially be a part of a package.
 
@@ -2695,13 +2708,20 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
-        added = [dep for dep in st.suppressed
-                 if manager.find_module_cache.find_module(dep, manager.search_paths,
-                                                          manager.options.python_executable)]
+        if not manager.use_fine_grained_cache():
+            # TODO: Ideally we could skip here modules that appeared in st.suppressed
+            # because they are not in build with `follow-imports=skip`.
+            # This way we could avoid overhead of cloning options in `State.__init__()`
+            # below to get the option value. This is quite minor performance loss however.
+            added = [dep for dep in st.suppressed
+                     if manager.find_module_cache.find_module(dep, manager.search_paths,
+                                                              manager.options.python_executable)]
+        else:
+            # During initial loading we don't care about newly added modules,
+            # they will be taken care of during fine grained update. See also
+            # comment about this in `State.__init__()`.
+            added = []
         for dep in st.ancestors + dependencies + st.suppressed:
-            # We don't want to recheck imports marked with '# type: ignore'
-            # so we ignore any suppressed module not explicitly re-included
-            # from the command line.
             ignored = dep in st.suppressed and dep not in entry_points
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
