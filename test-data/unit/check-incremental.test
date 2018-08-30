@@ -4930,11 +4930,14 @@ x = 1
 [rechecked main, other]
 
 [case testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs]
-# flags: --follow-imports=skip --ignore-missing-imports --follow-import-for-stubs
+# flags: --follow-imports=skip --ignore-missing-imports --config-file=tmp/mypy.ini
 # cmd: mypy -m main
 [file main.py]
 import other
 [file other.pyi.2]
 x = 1
+[file mypy.ini]
+[[mypy]
+follow_imports_for_stubs = True
 [stale]
 [rechecked]
