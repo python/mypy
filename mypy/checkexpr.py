@@ -2030,6 +2030,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_variants = [base_type]
             if isinstance(base_type, UnionType):
                 left_variants = [item for item in base_type.relevant_items()]
+            right_type = self.accept(arg)
+
+            # Step 1: We first try leaving the right arguments alone and destructure just the left ones
+            msg = self.msg.clean_copy()
+            msg.disable_count = 0
+            all_results = []
+            all_inferred = []
+
+            for left_possible_type in left_variants:
+                result, inferred = self.check_op_reversible(
+                    op_name=method,
+                    left_type=left_possible_type,
+                    left_expr=TempNode(left_possible_type),
+                    right_type=right_type,
+                    right_expr=arg,
+                    context=context,
+                    msg=msg)
+                all_results.append(result)
+                all_inferred.append(inferred)
+
+            if not msg.is_errors():
+                results_final = UnionType.make_simplified_union(all_results)
+                inferred_final = UnionType.make_simplified_union(all_inferred)
+                return results_final, inferred_final
+
+            # Step 2: If that fails, we try again but also destructure the right argument.
 
             # Note: We want to pass in the original 'arg' for 'left_expr' and 'right_expr'
             # whenever possible so that plugins and similar things can introspect on the original
@@ -2037,7 +2063,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #
             # We don't do the same for the base expression because it could lead to weird
             # type inference errors -- e.g. see 'testOperatorDoubleUnionSum'.
-            right_type = self.accept(arg)
             right_variants = [(right_type, arg)]
             if isinstance(right_type, UnionType):
                 right_variants = [(item, TempNode(item)) for item in right_type.relevant_items()]
