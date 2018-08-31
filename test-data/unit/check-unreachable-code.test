@@ -564,3 +564,43 @@ if typing.TYPE_CHECKING:
 reveal_type(x)  # E: Revealed type is '__main__.B'
 
 [builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachableWhenSuperclassIsAny]
+# flags: --strict-optional
+from typing import Any
+
+# This can happen if we're importing a class from a missing module
+Parent: Any
+class Child(Parent):
+    def foo(self) -> int:
+        reveal_type(self)       # E: Revealed type is '__main__.Child'
+        if self is None:
+            reveal_type(self)
+            return None
+        reveal_type(self)       # E: Revealed type is '__main__.Child'
+        return 3
+
+    def bar(self) -> int:
+        self = super(Child, self).something()
+        reveal_type(self)       # E: Revealed type is '__main__.Child'
+        if self is None:
+            reveal_type(self)
+            return None
+        reveal_type(self)       # E: Revealed type is '__main__.Child'
+        return 3
+[builtins fixtures/isinstance.pyi]
+
+[case testUnreachableWhenSuperclassIsAnyNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Any
+
+Parent: Any
+class Child(Parent):
+    def foo(self) -> int:
+        reveal_type(self)       # E: Revealed type is '__main__.Child'
+        if self is None:
+            reveal_type(self)   # E: Revealed type is '__main__.Child'
+            return None
+        reveal_type(self)       # E: Revealed type is '__main__.Child'
+        return 3
+[builtins fixtures/isinstance.pyi]

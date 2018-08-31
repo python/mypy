@@ -1223,11 +1223,8 @@ class D:
     def __get__(self, inst: Base, own: Type[Base]) -> str: pass
 [builtins fixtures/bool.pyi]
 [out]
-main:5: error: Revealed type is 'Any'
-main:5: error: No overload variant of "__get__" of "D" matches argument types "None", "Type[A]"
-main:5: note: Possible overload variants:
-main:5: note:     def __get__(self, inst: None, own: Type[Base]) -> D
-main:5: note:     def __get__(self, inst: Base, own: Type[Base]) -> str
+main:5: error: Revealed type is 'd.D'
+main:5: error: Argument 2 to "__get__" of "D" has incompatible type "Type[A]"; expected "Type[Base]"
 main:6: error: Revealed type is 'Any'
 main:6: error: No overload variant of "__get__" of "D" matches argument types "A", "Type[A]"
 main:6: note: Possible overload variants:
@@ -1571,7 +1568,8 @@ from typing import overload
 class A:
     def __add__(self, x: int) -> int: pass
 class B(A):
-    @overload  # E: Signature of "__add__" incompatible with supertype "A"
+    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
+               # N: Overloaded operator methods can't have wider argument types in overrides
     def __add__(self, x: int) -> int: pass
     @overload
     def __add__(self, x: str) -> str: pass
@@ -1665,7 +1663,8 @@ class A:
     @overload
     def __add__(self, x: str) -> 'A': pass
 class B(A):
-    @overload
+    @overload  # E: Signature of "__add__" incompatible with supertype "A" \
+               # N: Overloaded operator methods can't have wider argument types in overrides
     def __add__(self, x: int) -> A: pass
     @overload
     def __add__(self, x: str) -> A: pass
@@ -1830,8 +1829,7 @@ class Num1:
     def __radd__(self, other: Num1) -> Num1: ...
 
 class Num2(Num1):
-    # TODO: This should not be an error. See https://github.com/python/mypy/issues/4985
-    @overload    # E: Signature of "__add__" incompatible with supertype "Num1"
+    @overload
     def __add__(self, other: Num2) -> Num2: ...  
     @overload
     def __add__(self, other: Num1) -> Num2: ...
@@ -1955,13 +1953,61 @@ class B:
     def __radd__(*self) -> int: pass
     def __rsub__(*self: 'B') -> int: pass
 
-[case testReverseOperatorTypeVar]
+[case testReverseOperatorTypeVar1]
+from typing import TypeVar, Any
+T = TypeVar("T", bound='Real')
+class Real:
+    def __add__(self, other: Any) -> str: ...
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+
+# Note: When doing A + B and if B is a subtype of A, we will always call B.__radd__(A) first
+# and only try A.__add__(B) second if necessary.
+reveal_type(Real() + Fraction())      # E: Revealed type is '__main__.Real*'
+
+# Note: When doing A + A, we only ever call A.__add__(A), never A.__radd__(A).
+reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
+
+[case testReverseOperatorTypeVar2a]
 from typing import TypeVar
 T = TypeVar("T", bound='Real')
 class Real:
     def __add__(self, other: Fraction) -> str: ...
 class Fraction(Real):
-    def __radd__(self, other: T) -> T: ...  # TODO: This should be unsafely overlapping
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+
+reveal_type(Real() + Fraction())      # E: Revealed type is '__main__.Real*'
+reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
+
+
+[case testReverseOperatorTypeVar2b]
+from typing import TypeVar
+T = TypeVar("T", Real, Fraction)
+class Real:
+    def __add__(self, other: Fraction) -> str: ...
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "Real" are unsafely overlapping
+
+reveal_type(Real() + Fraction())      # E: Revealed type is '__main__.Real*'
+reveal_type(Fraction() + Fraction())  # E: Revealed type is 'builtins.str'
+
+[case testReverseOperatorTypeVar3]
+from typing import TypeVar, Any
+T = TypeVar("T", bound='Real')
+class Real:
+    def __add__(self, other: FractionChild) -> str: ...
+class Fraction(Real):
+    def __radd__(self, other: T) -> T: ...  # E: Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping
+class FractionChild(Fraction): pass
+
+reveal_type(Real() + Fraction())                # E: Revealed type is '__main__.Real*'
+reveal_type(FractionChild() + Fraction())       # E: Revealed type is '__main__.FractionChild*'
+reveal_type(FractionChild() + FractionChild())  # E: Revealed type is 'builtins.str'
+
+# Runtime error: we try calling __add__, it doesn't match, and we don't try __radd__ since
+# the LHS and the RHS are not the same.
+Fraction() + Fraction()                         # E: Unsupported operand types for + ("Fraction" and "Fraction") \
+                                                # N: __radd__ will not be called when evaluating 'Fraction + Fraction': must define __add__
 
 [case testReverseOperatorTypeType]
 from typing import TypeVar, Type
@@ -3015,16 +3061,10 @@ def f(a: Type[B]) -> None: pass
 @overload
 def f(a: int) -> None: pass
 
-f(A)  # E: No overload variant of "f" matches argument type "Type[A]" \
-      # N: Possible overload variants: \
-      # N:     def f(a: Type[B]) -> None \
-      # N:     def f(a: int) -> None
+f(A)  # E: Argument 1 to "f" has incompatible type "Type[A]"; expected "Type[B]"
 f(B)
 f(C)
-f(AType)  # E: No overload variant of "f" matches argument type "Type[A]" \
-          # N: Possible overload variants: \
-          # N:     def f(a: Type[B]) -> None \
-          # N:     def f(a: int) -> None
+f(AType)  # E: Argument 1 to "f" has incompatible type "Type[A]"; expected "Type[B]"
 f(BType)
 f(CType)
 [builtins fixtures/classmethod.pyi]
@@ -4836,4 +4876,40 @@ class C:
 
 reveal_type(C.foo)  # E: Revealed type is 'builtins.int*'
 reveal_type(C().foo)  # E: Revealed type is 'builtins.int*'
+[out]
+
+[case testMultipleInheritanceCycle]
+import b
+[file a.py]
+from b import B
+class A: ...
+class C(A, B): ...
+class D(C): ...
+class Other: ...
+[file b.py]
+from a import Other
+class B: ...
+[out]
+
+[case testMultipleInheritanceCycle2]
+import b
+[file a.py]
+from b import B
+class A: ...
+class C(A, B): ...
+class D(C): ...
+class Other: ...
+a: A
+b: B
+c: C
+d: D
+d = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "D")
+d = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "D")
+d = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+a = D()
+b = D()
+c = D()
+[file b.py]
+from a import Other
+class B: ...
 [out]

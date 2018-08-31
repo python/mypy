@@ -720,8 +720,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res = res.copy_modified(from_type_type=True)
             return expand_type_by_instance(res, item)
         if isinstance(item, UnionType):
-            return UnionType([self.analyze_type_type_callee(item, context)
-                              for item in item.relevant_items()], item.line)
+            return UnionType([self.analyze_type_type_callee(tp, context)
+                              for tp in item.relevant_items()], item.line)
         if isinstance(item, TypeVarType):
             # Pretend we're calling the typevar's upper bound,
             # i.e. its constructor (a poor approximation for reality,
@@ -1575,12 +1575,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def erased_signature_similarity(self, arg_types: List[Type], arg_kinds: List[int],
                                     arg_names: Optional[Sequence[Optional[str]]],
                                     callee: CallableType,
-                                    context: Context) -> int:
-        """Determine whether arguments could match the signature at runtime.
-
-        Return similarity level (0 = no match, 1 = can match, 2 = non-promotion match). See
-        overload_arg_similarity for a discussion of similarity levels.
-        """
+                                    context: Context) -> bool:
+        """Determine whether arguments could match the signature at runtime, after
+        erasing types."""
         formal_to_actual = map_actuals_to_formals(arg_kinds,
                                                   arg_names,
                                                   callee.arg_kinds,
@@ -1590,17 +1587,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not self.check_argument_count(callee, arg_types, arg_kinds, arg_names,
                                          formal_to_actual, None, None):
             # Too few or many arguments -> no match.
-            return 0
-
-        similarity = 2
+            return False
 
         def check_arg(caller_type: Type, original_caller_type: Type, caller_kind: int,
                       callee_type: Type, n: int, m: int, callee: CallableType,
                       context: Context, messages: MessageBuilder) -> None:
-            nonlocal similarity
-            similarity = min(similarity,
-                             overload_arg_similarity(caller_type, callee_type))
-            if similarity == 0:
+            if not arg_approximate_similarity(caller_type, callee_type):
                 # No match -- exit early since none of the remaining work can change
                 # the result.
                 raise Finished
@@ -1608,37 +1600,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         try:
             self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
                                       context=context, check_arg=check_arg)
+            return True
         except Finished:
-            pass
-
-        return similarity
-
-    def match_signature_types(self, arg_types: List[Type], arg_kinds: List[int],
-                              arg_names: Optional[Sequence[Optional[str]]], callee: CallableType,
-                              context: Context) -> bool:
-        """Determine whether arguments types match the signature.
-
-        Assume that argument counts are compatible.
-
-        Return True if arguments match.
-        """
-        formal_to_actual = map_actuals_to_formals(arg_kinds,
-                                                  arg_names,
-                                                  callee.arg_kinds,
-                                                  callee.arg_names,
-                                                  lambda i: arg_types[i])
-        ok = True
-
-        def check_arg(caller_type: Type, original_caller_type: Type, caller_kind: int,
-                      callee_type: Type, n: int, m: int, callee: CallableType,
-                      context: Context, messages: MessageBuilder) -> None:
-            nonlocal ok
-            if not is_subtype(caller_type, callee_type):
-                ok = False
-
-        self.check_argument_types(arg_types, arg_kinds, callee, formal_to_actual,
-                                  context=context, check_arg=check_arg)
-        return ok
+            return False
 
     def apply_generic_arguments(self, callable: CallableType, types: Sequence[Optional[Type]],
                                 context: Context) -> CallableType:
@@ -3399,67 +3363,55 @@ class HasUninhabitedComponentsQuery(types.TypeQuery[bool]):
         return True
 
 
-def overload_arg_similarity(actual: Type, formal: Type) -> int:
-    """Return if caller argument (actual) is compatible with overloaded signature arg (formal).
+def arg_approximate_similarity(actual: Type, formal: Type) -> bool:
+    """Return if caller argument (actual) is roughly compatible with signature arg (formal).
 
-    Return a similarity level:
-      0: no match
-      1: actual is compatible, but only using type promotions (e.g. int vs float)
-      2: actual is compatible without type promotions (e.g. int vs object)
+    This function is deliberately loose and will report two types are similar
+    as long as their "shapes" are plausibly the same.
 
-    The distinction is important in cases where multiple overload items match. We want
-    give priority to higher similarity matches.
+    This is useful when we're doing error reporting: for example, if we're trying
+    to select an overload alternative and there's no exact match, we can use
+    this function to help us identify which alternative the user might have
+    *meant* to match.
     """
-    # Replace type variables with their upper bounds. Overloading
-    # resolution is based on runtime behavior which erases type
-    # parameters, so no need to handle type variables occurring within
-    # a type.
+
+    # Erase typevars: we'll consider them all to have the same "shape".
+
     if isinstance(actual, TypeVarType):
         actual = actual.erase_to_union_or_bound()
     if isinstance(formal, TypeVarType):
         formal = formal.erase_to_union_or_bound()
-    if (isinstance(actual, UninhabitedType) or isinstance(actual, AnyType) or
-            isinstance(formal, AnyType) or
-            (isinstance(actual, Instance) and actual.type.fallback_to_any)):
-        # These could match anything at runtime.
-        return 2
+
+    # Callable or Type[...]-ish types
+
+    def is_typetype_like(typ: Type) -> bool:
+        return (isinstance(typ, TypeType)
+                or (isinstance(typ, FunctionLike) and typ.is_type_obj())
+                or (isinstance(typ, Instance) and typ.type.fullname() == "builtins.type"))
+
     if isinstance(formal, CallableType):
-        if isinstance(actual, (CallableType, Overloaded)):
-            # TODO: do more sophisticated callable matching
-            return 2
-        if isinstance(actual, TypeType):
-            return 2 if is_subtype(actual, formal) else 0
-    if isinstance(actual, NoneTyp):
-        if not experiments.STRICT_OPTIONAL:
-            # NoneTyp matches anything if we're not doing strict Optional checking
-            return 2
-        else:
-            # NoneType is a subtype of object
-            if isinstance(formal, Instance) and formal.type.fullname() == "builtins.object":
-                return 2
+        if isinstance(actual, (CallableType, Overloaded, TypeType)):
+            return True
+    if is_typetype_like(actual) and is_typetype_like(formal):
+        return True
+
+    # Unions
+
     if isinstance(actual, UnionType):
-        return max(overload_arg_similarity(item, formal)
-                   for item in actual.relevant_items())
+        return any(arg_approximate_similarity(item, formal) for item in actual.relevant_items())
     if isinstance(formal, UnionType):
-        return max(overload_arg_similarity(actual, item)
-                   for item in formal.relevant_items())
-    if isinstance(formal, TypeType):
-        if isinstance(actual, TypeType):
-            # Since Type[T] is covariant, check if actual = Type[A] is
-            # a subtype of formal = Type[F].
-            return overload_arg_similarity(actual.item, formal.item)
-        elif isinstance(actual, FunctionLike) and actual.is_type_obj():
-            # Check if the actual is a constructor of some sort.
-            # Note that this is this unsound, since we don't check the __init__ signature.
-            return overload_arg_similarity(actual.items()[0].ret_type, formal.item)
-        else:
-            return 0
+        return any(arg_approximate_similarity(actual, item) for item in formal.relevant_items())
+
+    # TypedDicts
+
     if isinstance(actual, TypedDictType):
         if isinstance(formal, TypedDictType):
-            # Don't support overloading based on the keys or value types of a TypedDict since
-            # that would be complicated and probably only marginally useful.
-            return 2
-        return overload_arg_similarity(actual.fallback, formal)
+            return True
+        return arg_approximate_similarity(actual.fallback, formal)
+
+    # Instances
+    # For instances, we mostly defer to the existing is_subtype check.
+
     if isinstance(formal, Instance):
         if isinstance(actual, CallableType):
             actual = actual.fallback
@@ -3467,33 +3419,12 @@ def overload_arg_similarity(actual: Type, formal: Type) -> int:
             actual = actual.items()[0].fallback
         if isinstance(actual, TupleType):
             actual = actual.fallback
-        if isinstance(actual, Instance):
-            # First perform a quick check (as an optimization) and fall back to generic
-            # subtyping algorithm if type promotions are possible (e.g., int vs. float).
-            if formal.type in actual.type.mro:
-                return 2
-            elif formal.type.is_protocol and is_subtype(actual, erasetype.erase_type(formal)):
-                return 2
-            elif actual.type._promote and is_subtype(actual, formal):
-                return 1
-            else:
-                return 0
-        elif isinstance(actual, TypeType):
-            item = actual.item
-            if formal.type.fullname() in {"builtins.object", "builtins.type"}:
-                return 2
-            elif isinstance(item, Instance) and item.type.metaclass_type:
-                # FIX: this does not handle e.g. Union of instances
-                return overload_arg_similarity(item.type.metaclass_type, formal)
-            else:
-                return 0
-        else:
-            return 0
-    if isinstance(actual, UnboundType) or isinstance(formal, UnboundType):
-        # Either actual or formal is the result of an error; shut up.
-        return 2
-    # Fall back to a conservative equality check for the remaining kinds of type.
-    return 2 if is_same_type(erasetype.erase_type(actual), erasetype.erase_type(formal)) else 0
+        if isinstance(actual, Instance) and formal.type in actual.type.mro:
+            # Try performing a quick check as an optimization
+            return True
+
+    # Fall back to a standard subtype check for the remaining kinds of type.
+    return is_subtype(erasetype.erase_type(actual), erasetype.erase_type(formal))
 
 
 def any_causes_overload_ambiguity(items: List[CallableType],

@@ -7530,3 +7530,44 @@ x = 1
 Func = Callable[..., Any]
 [out]
 ==
+
+[case testIfMypyUnreachableClass]
+from a import x
+
+MYPY = False
+if MYPY:
+    pass
+else:
+    class A:
+        pass
+y: int = x
+[file a.py]
+x = 1
+[file a.py.2]
+x = 2
+[builtins fixtures/bool.pyi]
+[out]
+==
+
+[case testIfTypeCheckingUnreachableClass]
+from a import x
+from typing import TYPE_CHECKING
+
+if not TYPE_CHECKING:
+    class A(int):
+        pass
+else:
+    A = int
+
+y: A = x
+[file a.py]
+x = 1
+[file a.py.2]
+x = 2
+[file a.py.3]
+x = 'no way'
+[builtins fixtures/bool.pyi]
+[out]
+==
+==
+main:10: error: Incompatible types in assignment (expression has type "str", variable has type "int")

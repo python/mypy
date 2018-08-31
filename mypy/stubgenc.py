@@ -6,7 +6,7 @@ The public interface is via the mypy.stubgen module.
 import importlib
 import os.path
 import re
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Mapping, Any
 from types import ModuleType
 
 from mypy.stubutil import is_c_module, write_header, infer_sig_from_docstring
@@ -137,7 +137,10 @@ def generate_c_type_stub(module: ModuleType,
                          sigs: Dict[str, str] = {},
                          class_sigs: Dict[str, str] = {},
                          ) -> None:
-    items = sorted(obj.__dict__.items(), key=lambda x: method_name_sort_key(x[0]))
+    # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
+    # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
+    obj_dict = getattr(obj, '__dict__')  # type: Mapping[str, Any]
+    items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
     methods = []
     done = set()
     for attr, value in items:
@@ -151,7 +154,7 @@ def generate_c_type_stub(module: ModuleType,
                     self_var = 'self'
                 if attr == '__new__':
                     # TODO: We should support __new__.
-                    if '__init__' in obj.__dict__:
+                    if '__init__' in obj_dict:
                         # Avoid duplicate functions if both are present.
                         # But is there any case where .__new__() has a
                         # better signature than __init__() ?

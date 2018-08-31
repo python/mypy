@@ -19,7 +19,7 @@ from mypy.build import BuildSource, BuildResult, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
-from mypy.options import Options, BuildType
+from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
 from mypy.report import reporter_classes
 
 from mypy.version import __version__
@@ -1014,11 +1014,11 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                 print("%s: Per-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
                       file=sys.stderr)
-            if set(updates) - Options.PER_MODULE_OPTIONS:
+            if set(updates) - PER_MODULE_OPTIONS:
                 print("%s: Per-module sections should only specify per-module flags (%s)" %
-                      (prefix, ', '.join(sorted(set(updates) - Options.PER_MODULE_OPTIONS))),
+                      (prefix, ', '.join(sorted(set(updates) - PER_MODULE_OPTIONS))),
                       file=sys.stderr)
-                updates = {k: v for k, v in updates.items() if k in Options.PER_MODULE_OPTIONS}
+                updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
             globs = name[5:]
             for glob in globs.split(','):
                 # For backwards compatibility, replace (back)slashes with dots.
