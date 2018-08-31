@@ -1,3 +1,9 @@
+Type qualifiers
+===============
+
+This section describes constructs that do not affect types of variables
+and methods, but affect how they can be accessed, assigned, and overridden.
+
 Class and instance variables
 ****************************
 
