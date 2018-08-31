@@ -9,7 +9,7 @@ Class and instance variables
 
 By default mypy assumes that a variable declared in the class body is
 an instance variable. One can mark names intended to be used as class variables
-with a special type qualifier ``ClassVar``. For example:
+with a special type qualifier ``typing.ClassVar``. For example:
 
 .. code-block:: python
 
@@ -36,6 +36,24 @@ other than assignment in class body. For example:
    class C:
        y: List[ClassVar[int]]  # Error: can't use ClassVar as nested type
 
+Instance variable can not override a class variable in a subclass
+and vice-versa:
+
+.. code-block:: python
+
+   class Base:
+       x: int
+       y: ClassVar[int]
+
+   class Derived(Base):
+        x: ClassVar[int]  # Error!
+        y: int  # Error!
+
+.. note::
+
+   Assigning a value to a variable in the class body doesn't make it a class
+   variable, it just sets a default value for an instance variable, *only*
+   names explicitly declared with ``ClassVar`` are class variables.
 
 Final attributes of classes and modules
 ***************************************
@@ -46,53 +64,52 @@ Final attributes of classes and modules
    versions of mypy. The final qualifiers are available in ``typing_extensions``
    module. When the semantics is stable, they will be added to ``typing``.
 
-There are several situations where static guarantees about non-redefinition
-of certain names (or references in general) can be useful. One such example
-is module or class level constants, user might want to guard them against
-unintentional modifications:
+You can declare a variable or attribute as final, which means that the variable
+must not be assigned a new value after initialization. This is often useful for
+module and class level constants as a way to prevent unintended modification.
+Mypy will prevent further assignments to final names in type-checked code:
 
 .. code-block:: python
 
-   RATE = 3000
+   from typing_extensions import Final
 
+   RATE: Final = 3000
    class Base:
-       DEFAULT_ID = 0
+       DEFAULT_ID: Final = 0
 
    # 1000 lines later
 
-   class Derived(Base):
-       DEFAULT_ID = 1  # this may be unintentional
+   RATE = 300  # Error: can't assign to final attribute
+   Base.DEFAULT_ID = 1  # Error: can't override a final attribute
 
-   RATE = 300  # this too
-
-Another example is where a user might want to protect certain instance
-attributes from overriding in a subclass:
+Another use case for final attributes is where a user wants to protect certain
+instance attributes from overriding in a subclass:
 
 .. code-block:: python
 
    import uuid
+   from typing_extensions import Final
 
    class Snowflake:
        """An absolutely unique object in the database"""
        def __init__(self) -> None:
-           self.id = uuid.uuid4()
+           self.id: Final = uuid.uuid4()
 
    # 1000 lines later
 
    class User(Snowflake):
-       id = uuid.uuid4()  # This has valid type, but the meaning
-                          # may be wrong
+       id = uuid.uuid4()  # Error: can't override a final attribute
 
 Some other use cases might be solved by using ``@property``, but note that both
 above use cases can't be solved this way. For such situations, one might want
-to use ``typing.Final``.
+to use ``typing_extensions.Final``.
 
 Definition syntax
 -----------------
 
-The ``typing.Final`` type qualifier indicates that a given name or attribute
-should never be re-assigned, re-defined, nor overridden. It can be used in
-one of these forms:
+The ``typing_extensions.Final`` type qualifier indicates that a given name or
+attribute should never be re-assigned, re-defined, nor overridden. It can be
+used in one of these forms:
 
 * The simplest one is ``ID: Final = 1``. Note that unlike gor generic classes
   this is *not* the same as ``Final[Any]``. Here mypy will infer type ``int``.
@@ -116,13 +133,15 @@ The are two rules that should be always followed when defining a final name:
 
   .. code-block:: python
 
+     from typing_extensions import Final
+
      ID: Final = 1
-     ID: Final = 2  # Error!
+     ID: Final = 2  # Error: "ID" already declared as final
 
      class SomeCls:
          id: Final = 1
          def __init__(self, x: int) -> None:
-             self.id: Final = x  # Error!
+             self.id: Final = x  # Error: "id" already declared in class body
 
   Note that mypy has a single namespace for a class. So there can't be two
   class-level and instance-level constants with the same name.
@@ -137,6 +156,32 @@ The are two rules that should be always followed when defining a final name:
      class SomeCls:
          ID = 1
          ID: Final = 2  # Error!
+
+* A final attribute declared in class body without r.h.s. must be initialized
+  in the ``__init__`` method (one can skip initializer in stub files):
+
+  .. code-block:: python
+
+     class SomeCls:
+         x: Final
+         y: Final  # Error: final attribute without an initializer
+         def __init__(self) -> None:
+             self.x = 1  # Good
+
+* ``Final`` can be only used as an outermost type in assignments, using it in
+  any other position is an error. In particular, ``Final`` can't be used in
+  annotations for function arguments because this may cause confusions about
+  what are the guarantees in this case:
+
+  .. code-block:: python
+
+     x: List[Final[int]] = []  # Error!
+     def fun(x: Final[List[int]]) ->  None:  # Error!
+         ...
+
+* ``Final`` and ``ClassVar`` should not be used together, mypy will infer
+  the scope of a final declaration automatically depending on whether it was
+  initialized in class body or in ``__init__``.
 
 .. note::
    Conditional final declarations and final declarations within loops are
@@ -154,23 +199,24 @@ two following guarantees:
   .. code-block:: python
 
      # file mod.py
-     from typing import Final
+     from typing_extensions import Final
 
      ID: Final = 1
-
-     # file main.py
-     from typing import Final
-
-     import mod
-     mod.ID = 2  # Error, can't assign to constant.
 
      class SomeCls:
          ID: Final = 1
 
          def meth(self) -> None:
-             self.ID = 2  # Error, can't assign to final attribute
+             self.ID = 2  # Error: can't assign to final attribute
 
-     class DerivedCls(SomeCls):
+     # file main.py
+     import mod
+     mod.ID = 2  # Error: can't assign to constant.
+
+     from mod import ID
+     ID = 2  # Also an error, see note below.
+
+     class DerivedCls(mod.SomeCls):
          ...
 
      DerivedCls.ID = 2  # Error!
@@ -192,8 +238,21 @@ two following guarantees:
      class Other(Base):
          ID: Final = 2  # OK
 
-     class Combo(One, Other):  # Error, cannot override final attribute.
+     class Combo(One, Other):  # Error: cannot override final attribute.
          pass
+
+* Declaring a name as final only guarantees that the name wll not be re-bound
+  to other value, it doesn't make the value immutable. One can use immutable ABCs
+  and containers to prevent mutating such values:
+
+  .. code-block:: python
+
+     x: Final = ['a', 'b']
+     x.append('c')  # OK
+
+     y: Final[Sequance[str]] = ['a', 'b']
+     y.append('x')  # Error: Sequance is immutable
+     z: Final = ('a', 'b')  # Also an option
 
 .. note::
 
@@ -206,31 +265,50 @@ Final methods
 -------------
 
 Like with attributes, sometimes it is useful to protect a method from
-overriding. In such situations one can use a ``typing.final`` decorator:
+overriding. In such situations one can use a ``typing_extensions.final``
+decorator:
 
 .. code-block:: python
 
-   from typing import final
+   from typing_extensions import final
 
    class Base:
        @final
-       def common_name(self) -> None:  # common signature
+       def common_name(self) -> None:
            ...
 
    # 1000 lines later
 
    class Derived(Base):
-       def common_name(self) -> None:  # Error, this overriding might break
+       def common_name(self) -> None:  # Error: this overriding might break
                                        # invariants in the base class.
            ...
 
 This ``@final`` decorator can be used with instance methods, class methods,
-static methods, and properties (this includes overloaded methods).
+static methods, and properties (this includes overloaded methods). For overloaded
+methods it is enough to add ``@final`` on at leats one of overloads (or on
+the implementation) to make it final:
+
+.. code-block:: python
+   from typing import Any, overload
+
+   class Base:
+       @overload
+       def meth(self) -> None: ...
+       @overload
+       def meth(self, arg: int) -> int: ...
+       @final
+       def meth(self, x=None):
+           ...
+
+    class Derived(Base):
+        def meth(self, x: Any = None) -> Any:  # Error: can't override final method
+            ...
 
 Final classes
 -------------
 
-As a bonus, applying a ``typing.final`` decorator to a class indicates to mypy
+As a bonus, applying a ``typing_extensions.final`` decorator to a class indicates to mypy
 that it can't be subclassed. Mypy doesn't provide any additional features for
 final classes, but some other tools may use this information for their benefits.
 Plus it serves a verifiable documentation purpose:
@@ -238,7 +316,7 @@ Plus it serves a verifiable documentation purpose:
 .. code-block:: python
 
    # file lib.pyi
-   from typing import final
+   from typing_extensions import final
 
    @final
    class Leaf:
@@ -247,5 +325,15 @@ Plus it serves a verifiable documentation purpose:
    # file main.py
    from lib import Leaf
 
-   class MyLeaf(Leaf):  # Error, library author believes this is unsafe
+   class MyLeaf(Leaf):  # Error: library author believes this is unsafe
        ...
+
+Some situations where this may be useful include:
+
+* A class wasn't designed to be subclassed. Perhaps subclassing does not
+  work as expected, or it's error-prone.
+* You want to retain the freedom to arbitrarily change the class implementation
+  in the future, and these changes might break subclasses.
+* You believe that subclassing would make code harder to understand or maintain.
+  For example, you may want to prevent unnecessarily tight coupling between
+  base classes and subclasses.
