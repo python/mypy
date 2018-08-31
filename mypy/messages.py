@@ -1019,6 +1019,12 @@ class MessageBuilder:
             ),
             context=context)
 
+    def warn_both_operands_are_from_unions(self, context: Context) -> None:
+        self.note('Both left and right operands are unions', context)
+
+    def warn_operand_was_from_union(self, side: str, original: Type, context: Context) -> None:
+        self.note('{} operand is of type {}'.format(side, self.format(original)), context)
+
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
             forward_method: str, context: Context) -> None:

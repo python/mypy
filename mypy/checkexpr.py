@@ -1697,7 +1697,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if e.op in nodes.op_methods:
             method = self.get_operator_method(e.op)
-            result, method_type = self.check_op(method, left_type, e.right, e,
+            result, method_type = self.check_op(method, e.left, left_type, e.right, e,
                                                 allow_reverse=True)
             e.method_type = method_type
             return result
@@ -1749,7 +1749,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     sub_result = self.bool_type()
             elif operator in nodes.op_methods:
                 method = self.get_operator_method(operator)
-                sub_result, method_type = self.check_op(method, left_type, right, e,
+                sub_result, method_type = self.check_op(method, left, left_type, right, e,
                                                     allow_reverse=True)
 
             elif operator == 'is' or operator == 'is not':
@@ -1820,19 +1820,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             left_expr: Expression,
                             right_type: Type,
                             right_expr: Expression,
-                            context: Context) -> Tuple[Type, Type]:
-        # Note: this kludge exists mostly to maintain compatibility with
-        # existing error messages. Apparently, if the left-hand-side is a
-        # union and we have a type mismatch, we print out a special,
-        # abbreviated error message. (See messages.unsupported_operand_types).
-        unions_present = isinstance(left_type, UnionType)
-
+                            context: Context,
+                            msg: MessageBuilder) -> Tuple[Type, Type]:
         def make_local_errors() -> MessageBuilder:
             """Creates a new MessageBuilder object."""
-            local_errors = self.msg.clean_copy()
+            local_errors = msg.clean_copy()
             local_errors.disable_count = 0
-            if unions_present:
-                local_errors.disable_type_names += 1
             return local_errors
 
         def lookup_operator(op_name: str, base_type: Type) -> Optional[Type]:
@@ -2009,9 +2002,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: Remove this extra case
                 return result
 
-        self.msg.add_errors(errors[0])
+        msg.add_errors(errors[0])
         if warn_about_uncalled_reverse_operator:
-            self.msg.reverse_operator_method_never_called(
+            msg.reverse_operator_method_never_called(
                 nodes.op_methods_to_symbols[op_name],
                 op_name,
                 right_type,
@@ -2025,8 +2018,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = error_any, error_any
             return result
 
-    def check_op(self, method: str, base_type: Type, arg: Expression,
-                 context: Context,
+    def check_op(self, method: str, base_expr: Expression, base_type: Type,
+                 arg: Expression, context: Context,
                  allow_reverse: bool = False) -> Tuple[Type, Type]:
         """Type check a binary operation which maps to a method call.
 
@@ -2034,13 +2027,48 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
 
         if allow_reverse:
-            return self.check_op_reversible(
-                op_name=method,
-                left_type=base_type,
-                left_expr=TempNode(base_type),
-                right_type=self.accept(arg),
-                right_expr=arg,
-                context=context)
+            # Note: We want to pass in the original 'base_expr' and 'arg' for
+            # 'left_expr' and 'right_expr' whenever possible so that plugins
+            # and similar things can introspect on the original node if possible.
+            left_variants = [(base_type, base_expr)]
+            if isinstance(base_type, UnionType):
+                left_variants = [(item, TempNode(item)) for item in base_type.relevant_items()]
+
+            right_type = self.accept(arg)
+            right_variants = [(right_type, arg)]
+            if isinstance(right_type, UnionType):
+                right_variants = [(item, TempNode(item)) for item in right_type.relevant_items()]
+
+            msg = self.msg.clean_copy()
+            msg.disable_count = 0
+            all_results = []
+            all_inferred = []
+
+            for left_possible_type, left_expr in left_variants:
+                for right_possible_type, right_expr in right_variants:
+                    result, inferred = self.check_op_reversible(
+                        op_name=method,
+                        left_type=left_possible_type,
+                        left_expr=left_expr,
+                        right_type=right_possible_type,
+                        right_expr=right_expr,
+                        context=context,
+                        msg=msg)
+                    all_results.append(result)
+                    all_inferred.append(inferred)
+
+            if msg.is_errors():
+                self.msg.add_errors(msg)
+                if len(left_variants) >= 2 and len(right_variants) >= 2:
+                    self.msg.warn_both_operands_are_from_unions(context)
+                elif len(left_variants) >= 2:
+                    self.msg.warn_operand_was_from_union("Left", base_type, context)
+                elif len(right_variants) >= 2:
+                    self.msg.warn_operand_was_from_union("Right", right_type, context)
+
+            results_final = UnionType.make_simplified_union(all_results)
+            inferred_final = UnionType.make_simplified_union(all_inferred)
+            return results_final, inferred_final
         else:
             return self.check_op_local_by_name(
                 method=method,
@@ -2125,7 +2153,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_type = self.accept(e.left, type_context=self.type_context[-1])
         else:
             left_type = self.accept(e.left)
-        result, method_type = self.check_op('__mul__', left_type, e.right, e)
+        result, method_type = self.check_op('__mul__', e.left, left_type, e.right, e)
         e.method_type = method_type
         return result
 
@@ -2179,7 +2207,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               and left_type.is_type_obj() and left_type.type_object().is_enum):
             return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
         else:
-            result, method_type = self.check_op('__getitem__', left_type, e.index, e)
+            result, method_type = self.check_op('__getitem__', e.base, left_type, e.index, e)
             e.method_type = method_type
             return result
 

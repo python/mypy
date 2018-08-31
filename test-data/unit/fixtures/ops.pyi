@@ -36,6 +36,7 @@ class unicode: pass
 
 class int:
     def __add__(self, x: 'int') -> 'int': pass
+    def __radd__(self, x: 'int') -> 'int': pass
     def __sub__(self, x: 'int') -> 'int': pass
     def __mul__(self, x: 'int') -> 'int': pass
     def __mod__(self, x: 'int') -> 'int': pass
@@ -50,7 +51,9 @@ class int:
     def __gt__(self, x: 'int') -> bool: pass
     def __ge__(self, x: 'int') -> bool: pass
 
-class float: pass
+class float:
+    def __add__(self, x: 'float') -> 'float': pass
+    def __radd__(self, x: 'float') -> 'float': pass
 
 class BaseException: pass
 

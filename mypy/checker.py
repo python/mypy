@@ -2525,7 +2525,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
             rvalue_type, method_type = self.expr_checker.check_op(
-                method, lvalue_type, s.rvalue, s)
+                method, s.lvalue, lvalue_type, s.rvalue, s)
             if not is_subtype(rvalue_type, lvalue_type):
                 self.msg.incompatible_operator_assignment(s.op, s)
         else:

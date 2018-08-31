@@ -2019,6 +2019,136 @@ class FractionChild(Fraction): pass
 
 class A(metaclass=Real): pass
 
+[case testOperatorDoubleUnionIntFloat]
+from typing import Union
+
+a: Union[int, float]
+b: int
+c: float
+
+reveal_type(a + a)  # E: Revealed type is 'builtins.float'
+reveal_type(a + b)  # E: Revealed type is 'builtins.float'
+reveal_type(b + a)  # E: Revealed type is 'builtins.float'
+reveal_type(a + c)  # E: Revealed type is 'builtins.float'
+reveal_type(c + a)  # E: Revealed type is 'builtins.float'
+[builtins fixtures/ops.pyi]
+
+[case testOperatorDoubleUnionStandardSubtyping]
+from typing import Union
+
+class Parent:
+    def __add__(self, x: Parent) -> Parent: pass
+    def __radd__(self, x: Parent) -> Parent: pass
+
+class Child(Parent):
+    def __add__(self, x: Parent) -> Child: pass
+    def __radd__(self, x: Parent) -> Child: pass
+
+a: Union[Parent, Child]
+b: Parent
+c: Child
+
+reveal_type(a + a)  # E: Revealed type is '__main__.Parent'
+reveal_type(a + b)  # E: Revealed type is '__main__.Parent'
+reveal_type(b + a)  # E: Revealed type is '__main__.Parent'
+reveal_type(a + c)  # E: Revealed type is '__main__.Child'
+reveal_type(c + a)  # E: Revealed type is '__main__.Child'
+
+[case testOperatorDoubleUnionNoRelationship1]
+from typing import Union
+
+class Foo:
+    def __add__(self, x: Foo) -> Foo: pass
+    def __radd__(self, x: Foo) -> Foo: pass
+
+class Bar:
+    def __add__(self, x: Bar) -> Bar: pass
+    def __radd__(self, x: Bar) -> Bar: pass
+
+a: Union[Foo, Bar]
+b: Foo
+c: Bar
+
+a + a  # E: Unsupported operand types for + ("Foo" and "Bar") \
+       # E: Unsupported operand types for + ("Bar" and "Foo") \
+       # N: Both left and right operands are unions
+
+a + b  # E: Unsupported operand types for + ("Bar" and "Foo") \
+       # N: Left operand is of type "Union[Foo, Bar]"
+
+b + a  # E: Unsupported operand types for + ("Foo" and "Bar") \
+       # N: Right operand is of type "Union[Foo, Bar]"
+
+a + c  # E: Unsupported operand types for + ("Foo" and "Bar") \
+       # N: Left operand is of type "Union[Foo, Bar]"
+
+c + a  # E: Unsupported operand types for + ("Bar" and "Foo") \
+       # N: Right operand is of type "Union[Foo, Bar]"
+
+[case testOperatorDoubleUnionNoRelationship2]
+from typing import Union
+
+class Foo:
+    def __add__(self, x: Foo) -> Foo: pass
+    def __radd__(self, x: Foo) -> Foo: pass
+
+class Bar:
+    def __add__(self, x: Union[Foo, Bar]) -> Bar: pass
+    def __radd__(self, x: Union[Foo, Bar]) -> Bar: pass
+
+a: Union[Foo, Bar]
+b: Foo
+c: Bar
+
+reveal_type(a + a)  # E: Revealed type is 'Union[__main__.Foo, __main__.Bar]'
+reveal_type(a + b)  # E: Revealed type is 'Union[__main__.Foo, __main__.Bar]'
+reveal_type(b + a)  # E: Revealed type is 'Union[__main__.Foo, __main__.Bar]'
+reveal_type(a + c)  # E: Revealed type is '__main__.Bar'
+reveal_type(c + a)  # E: Revealed type is '__main__.Bar'
+
+[case testOperatorDoubleUnionNaiveAdd]
+from typing import Union
+
+class A: pass
+class B: pass
+class C:
+    def __radd__(self, x: A) -> int: pass
+class D:
+    def __radd__(self, x: B) -> str: pass
+
+x: Union[A, B]
+y: Union[C, D]
+
+x + y  # E: Unsupported operand types for + ("A" and "D") \
+       # E: Unsupported operand types for + ("B" and "C") \
+       # N: Both left and right operands are unions
+
+[case testOperatorDoubleUnionInterwovenUnionAdd]
+from typing import Union
+
+class Out1: pass
+class Out2: pass
+class Out3: pass
+class Out4: pass
+
+class A:
+    def __add__(self, x: D) -> Out1: pass
+class B:
+    def __add__(self, x: C) -> Out2: pass
+class C:
+    def __radd__(self, x: A) -> Out3: pass
+class D:
+    def __radd__(self, x: B) -> Out4: pass
+
+x: Union[A, B]
+y: Union[C, D]
+
+reveal_type(x + y)    # E: Revealed type is 'Union[__main__.Out3, __main__.Out1, __main__.Out2, __main__.Out4]'
+reveal_type(A() + y)  # E: Revealed type is 'Union[__main__.Out3, __main__.Out1]'
+reveal_type(B() + y)  # E: Revealed type is 'Union[__main__.Out2, __main__.Out4]'
+reveal_type(x + C())  # E: Revealed type is 'Union[__main__.Out3, __main__.Out2]'
+reveal_type(x + D())  # E: Revealed type is 'Union[__main__.Out1, __main__.Out4]'
+
 [case testAbstractReverseOperatorMethod]
 import typing
 from abc import abstractmethod
