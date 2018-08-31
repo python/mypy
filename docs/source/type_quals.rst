@@ -225,12 +225,13 @@ two following guarantees:
 
 * A final attribute can't be overridden by a subclass (even with another
   explicit final declaration). Note however, that final attributes can
-  override normal attributes. This also applies to multiple inheritance:
+  override read-only properties. This also applies to multiple inheritance:
 
   .. code-block:: python
 
      class Base:
-         ID = 0
+         @property
+         def ID(self) -> int: ...
 
      class One(Base):
          ID: Final = 1  # OK

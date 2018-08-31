@@ -951,6 +951,9 @@ class MessageBuilder:
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
+    def final_cant_override_writeable(self, name: str, ctx: Context) -> None:
+        self.fail('Can\'t override writeable attribute "{}" with a final one'.format(name), ctx)
+
     def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
         self.fail('Cannot override final attribute "{}"'.format(name), ctx)
         self.note('(previously declared on base class "{}")'.format(base_name), ctx)

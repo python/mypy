@@ -1290,6 +1290,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # First, check if we don't override a final (always an error, even with Any types).
             if isinstance(base_attr.node, (Var, FuncBase, Decorator)) and base_attr.node.is_final:
                 self.msg.cant_override_final(name, base.name(), defn)
+            # Second, final can't override anything writeable independently of types.
+            if defn.is_final:
+                if isinstance(base_attr.node, (Var, Decorator)):
+                    svar = (base_attr.node if isinstance(base_attr.node, Var)
+                            else base_attr.node.var)
+                    if not (svar.is_final or svar.is_property and not svar.is_settable_property):
+                        self.msg.final_cant_override_writeable(name, defn)
 
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):
@@ -1578,10 +1585,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
-        # Final attributes can never be overridden, but can override normal attributes,
-        # so we only check `second`.
+        # Final attributes can never be overridden, but can override
+        # non-final read-only attributes.
         if isinstance(second.node, (Var, FuncBase, Decorator)) and second.node.is_final:
             self.msg.cant_override_final(name, base2.name(), ctx)
+        if isinstance(first.node, (Var, FuncBase, Decorator)) and first.node.is_final:
+            if isinstance(second.node, (Var, Decorator)):
+                svar = second.node if isinstance(second.node, Var) else second.node.var
+                if not (svar.is_final or svar.is_property and not svar.is_settable_property):
+                    self.msg.final_cant_override_writeable(name, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True
@@ -1910,6 +1922,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if base_node.is_final:
             self.msg.cant_override_final(node.name(), base.name(), node)
             return False
+        if node.is_final:
+            if isinstance(base_node, (Var, Decorator)):
+                svar = base_node if isinstance(base_node, Var) else base_node.var
+                if not (svar.is_final or svar.is_property and not svar.is_settable_property):
+                    self.msg.final_cant_override_writeable(node.name(), node)
         return True
 
     def get_final_context(self) -> bool:
