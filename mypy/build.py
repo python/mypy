@@ -368,7 +368,7 @@ def _build(sources: List[BuildSource],
 
 def default_data_dir() -> str:
     """Returns directory containing typeshed directory."""
-    return str(pathlib.Path(__file__).parent)
+    return os.path.dirname(__file__)
 
 
 def mypy_path() -> List[str]:
