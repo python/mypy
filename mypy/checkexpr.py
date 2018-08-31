@@ -2032,7 +2032,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 left_variants = [item for item in base_type.relevant_items()]
             right_type = self.accept(arg)
 
-            # Step 1: We first try leaving the right arguments alone and destructure just the left ones
+            # Step 1: We first try leaving the right arguments alone and destructure
+            # just the left ones. (Mypy can sometimes perform some more precise inference
+            # if we leave the right operands a union -- see testOperatorWithEmptyListAndSum.
             msg = self.msg.clean_copy()
             msg.disable_count = 0
             all_results = []
@@ -2056,6 +2058,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return results_final, inferred_final
 
             # Step 2: If that fails, we try again but also destructure the right argument.
+            # This is also necessary to make certain edge cases work -- see
+            # testOperatorDoubleUnionInterwovenUnionAdd, for example.
 
             # Note: We want to pass in the original 'arg' for 'left_expr' and 'right_expr'
             # whenever possible so that plugins and similar things can introspect on the original
