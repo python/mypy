@@ -306,7 +306,7 @@ This is computed from the following items:
 
 .. note::
 
-    You cannot point to a PEP 561 package via the MYPYPATH, they must be
+    You cannot point to a PEP 561 package via the MYPYPATH, it must be
     installed (see :ref:`PEP 561 support <installed-packages>`)
 
 For sources given on the command line, the path is adjusted by crawling
