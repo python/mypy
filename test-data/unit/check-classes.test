@@ -2149,6 +2149,19 @@ reveal_type(B() + y)  # E: Revealed type is 'Union[__main__.Out2, __main__.Out4]
 reveal_type(x + C())  # E: Revealed type is 'Union[__main__.Out3, __main__.Out2]'
 reveal_type(x + D())  # E: Revealed type is 'Union[__main__.Out1, __main__.Out4]'
 
+[case testOperatorWithInference]
+from typing import TypeVar, List, Iterable, Union
+
+T = TypeVar('T')
+def sum(x: Iterable[T]) -> Union[T, int]: ...
+
+def len(x: Iterable[T]) -> int: ...
+
+x = [1.1, 2.2, 3.3]
+reveal_type(sum(x))  # E: Revealed type is 'builtins.float*'
+reveal_type(sum(x) / len(x))  # E: Revealed type is 'builtins.float'
+[builtins fixtures/floatdict.pyi]
+
 [case testAbstractReverseOperatorMethod]
 import typing
 from abc import abstractmethod
