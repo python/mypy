@@ -1961,6 +1961,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         is_final_decl = s.is_final_def if isinstance(s, AssignmentStmt) else False
         if is_final_decl and self.scope.active_class():
             lv = lvs[0]
+            assert isinstance(lv, RefExpr)
             assert isinstance(lv.node, Var)
             if (lv.node.final_unset_in_class and not
                     lv.node.final_set_in_init and not self.is_stub):
