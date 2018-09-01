@@ -194,7 +194,7 @@ def build(sources: List[BuildSource],
         raise
 
 
-# python_path is usercode, mypy_path is set via config or environment variable,
+# python_path is user code, mypy_path is set via config or environment variable,
 # package_path is calculated by _get_site_packages_dirs, and typeshed_path points
 # to typeshed. Each is a tuple of paths to be searched in find_module()
 SearchPaths = NamedTuple('SearchPaths',
@@ -676,7 +676,7 @@ class BuildManager(BuildManagerBase):
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
         self.fscache = fscache
-        self.find_module_cache = FindModuleCache(self.fscache)
+        self.find_module_cache = FindModuleCache(self.fscache, self.options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -854,12 +854,14 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
+    def __init__(self, fscache: Optional[FileSystemCache] = None,
+                 options: Optional[Options] = None) -> None:
         self.fscache = fscache or FileSystemCache()
         # Cache find_lib_path_dirs: (dir_chain, search_paths) -> list(package_dirs, should_verify)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], PackageDirs]
         # Cache find_module: (id, search_paths, python_version) -> result.
         self.results = {}  # type: Dict[Tuple[str, SearchPaths, Optional[str]], Optional[str]]
+        self.options = options
 
     def clear(self) -> None:
         self.results.clear()
@@ -935,6 +937,10 @@ class FindModuleCache:
             elif fscache.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
                 third_party_inline_dirs.append((path, True))
+        if self.options and self.options.use_builtins_fixtures:
+            # Everything should be in fixtures.
+            third_party_inline_dirs.clear()
+            third_party_stubs_dirs.clear()
         python_mypy_path = search_paths.python_path + search_paths.mypy_path
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
