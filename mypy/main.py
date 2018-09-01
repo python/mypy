@@ -606,7 +606,7 @@ def process_options(args: List[str],
         help="Use the custom typeshed in DIR")
     add_invertible_flag('--warn-incomplete-stub', default=False,
                         help="Warn if missing type annotation in typeshed, only relevant with"
-                         " --disallow-untyped-defs or --disallow-incomplete-defs enabled",
+                             " --disallow-untyped-defs or --disallow-incomplete-defs enabled",
                         group=internals_group)
     internals_group.add_argument(
         '--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
