@@ -1917,7 +1917,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                         base: TypeInfo, base_node: Optional[Node]) -> bool:
         if not isinstance(base_node, (Var, FuncBase, Decorator)):
             return True
-        if base_node.is_final:
+        if base_node.is_final and (node.is_final or not isinstance(base_node, Var)):
+            # Give this error only for explicit override attempt with `Final`, or
+            # if we are overriding a final method with variable.
+            # Other override attempts will be flagged as assignment to constant
+            # in `check_final()`.
             self.msg.cant_override_final(node.name(), base.name(), node)
             return False
         if node.is_final:
@@ -1973,15 +1977,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if cls is not None:
                     # Theses additional checks exist to give more errors messages
                     # even if the final attribute was overridden with a new symbol
-                    # (which is itself an error).
+                    # (which is itself an error)...
                     for base in cls.mro[1:]:
                         sym = base.names.get(name)
                         if sym and isinstance(sym.node, (Var, Decorator)):
                             var = sym.node if isinstance(sym.node, Var) else sym.node.var
                             if var.is_final and not is_final_decl:
-                                self.msg.cant_assign_to_final(name, var.info is not None, s)
+                                self.msg.cant_assign_to_final(name, var.info is None, s)
+                                # ...but only once
+                                break
                 if lv.node.is_final and not is_final_decl:
-                    self.msg.cant_assign_to_final(name, lv.node.info is not None, s)
+                    self.msg.cant_assign_to_final(name, lv.node.info is None, s)
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,

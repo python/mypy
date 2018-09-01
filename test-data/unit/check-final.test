@@ -274,9 +274,7 @@ class C:
 c: C
 c.x = 3  # E: Can't assign to final attribute "x"
 class D(C):
-    x = 4  # E: Cannot override final attribute "x" \
-           # N: (previously declared on base class "C") \
-           # E: Can't assign to constant "x"
+    x = 4  # E: Can't assign to constant "x"
 d: D
 d.x = 5  # E: Can't assign to final attribute "x"
 [out]
@@ -489,12 +487,8 @@ class B(A):
     def __init__(self) -> None:
         self.y: Final = 1
 class C(B):
-    x: int = 2  # E: Cannot override final attribute "x" \
-                # N: (previously declared on base class "B") \
-                # E: Can't assign to constant "x"
-    y: int = 2  # E: Cannot override final attribute "y" \
-                # N: (previously declared on base class "B") \
-                # E: Can't assign to constant "y"
+    x: int = 2  # E: Can't assign to constant "x"
+    y: int = 2  # E: Can't assign to constant "y"
     x = 3  # E: Can't assign to constant "x"
     y = 3  # E: Can't assign to constant "y"
 class D(C):
@@ -581,12 +575,9 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def meth(self) -> None:
-        self.x: int = 2    # E: Can't assign to final attribute "x" \
-                           # E: Cannot override final attribute "x" \
-                           # N: (previously declared on base class "B")
-        self.y: int = 2    # E: Can't assign to final attribute "y" \
-                           # E: Cannot override final attribute "y" \
-                           # N: (previously declared on base class "B")
+        self.x: int = 2    # E: Can't assign to final attribute "x"
+        self.y: int = 2    # E: Can't assign to final attribute "y"
+
         self.x = 3  # E: Can't assign to final attribute "x"
         self.y = 3  # E: Can't assign to final attribute "y"
 [builtins fixtures/property.pyi]

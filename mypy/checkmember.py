@@ -315,7 +315,7 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
     for base in info.mro:
         sym = base.names.get(name)
         if sym and isinstance(sym.node, (Var, FuncBase, Decorator)) and sym.node.is_final:
-            msg.cant_assign_to_final(name, module_level=False, ctx=ctx)
+            msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
 def analyze_descriptor_access(instance_type: Type, descriptor_type: Type,

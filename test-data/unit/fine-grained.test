@@ -7601,12 +7601,8 @@ class C:
         self.y: Final = 1
 [out]
 ==
-main:4: error: Cannot override final attribute "x"
-main:4: note: (previously declared on base class "C")
 main:4: error: Can't assign to constant "x"
 main:6: error: Can't assign to final attribute "y"
-main:8: error: Cannot override final attribute "y"
-main:8: note: (previously declared on base class "C")
 main:8: error: Can't assign to constant "y"
 main:10: error: Can't assign to final attribute "x"
 

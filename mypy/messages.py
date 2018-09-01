@@ -958,12 +958,12 @@ class MessageBuilder:
         self.fail('Cannot override final attribute "{}"'.format(name), ctx)
         self.note('(previously declared on base class "{}")'.format(base_name), ctx)
 
-    def cant_assign_to_final(self, name: str, module_level: bool, ctx: Context) -> None:
+    def cant_assign_to_final(self, name: str, attr_assign: bool, ctx: Context) -> None:
         """Warn about a prohibited assignment to a final attribute.
 
-        Pass `module_level=True` if the assignment assigns to a module attribute.
+        Pass `attr_assign=True` if the assignment assigns to an attribute.
         """
-        kind = "constant" if module_level else "final attribute"
+        kind = "final attribute" if attr_assign else "constant"
         self.fail('Can\'t assign to {} "{}"'.format(kind, name), ctx)
 
     def protocol_members_cant_be_final(self, ctx: Context) -> None:
