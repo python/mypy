@@ -12,7 +12,7 @@ from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
 
 # NOTE: options.use_builtins_fixtures should not be set in these
-# tests, otherwise mypy will ignored installed third-party packages.
+# tests, otherwise mypy will ignore installed third-party packages.
 
 SIMPLE_PROGRAM = """
 from typedpkg.sample import ex
