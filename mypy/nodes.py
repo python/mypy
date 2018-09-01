@@ -706,7 +706,7 @@ class Decorator(SymbolNode, Statement):
 VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-    'is_classvar', 'is_abstract_var', 'is_final'
+    'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init'
 ]
 
 
@@ -732,6 +732,8 @@ class Var(SymbolNode):
                  'is_classvar',
                  'is_abstract_var',
                  'is_final',
+                 'final_unset_in_class',
+                 'final_set_in_init',
                  'is_suppressed_import',
                  )
 
@@ -764,6 +766,9 @@ class Var(SymbolNode):
         # store the literal value (unboxed) for the benefit of
         # tools like mypyc.
         self.final_value = None  # type: Optional[Union[int, float, bool, str]]
+        # Where the value was set (only for class attributes)
+        self.final_unset_in_class = False
+        self.final_set_in_init = False
 
     def name(self) -> str:
         return self._name

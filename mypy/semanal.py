@@ -1729,8 +1729,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.fail("Final declarations are prohibited within loops", s)
         if self.type and self.type.is_protocol:
             self.msg.protocol_members_cant_be_final(s)
-        if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and not self.is_stub_file:
-            self.fail("Final declaration outside stubs must have right hand side", s)
+        if (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and
+                not self.is_stub_file and not self.is_class_scope()):
+            self.fail("Final names outside stubs must have a value", s)
         return
 
     def check_final_implicit_def(self, s: AssignmentStmt) -> None:
@@ -1763,6 +1764,26 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if isinstance(node, Var):
                     node.is_final = True
                     node.final_value = self.unbox_literal(s.rvalue)
+                    if (self.is_class_scope() and
+                            (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                        node.final_unset_in_class = True
+        elif len(s.lvalues) == 1 and isinstance(s.lvalues[0], MemberExpr):
+            # Special case: deferred initialization of a final attribute in __init__.
+            # In this case we just pretend this is a valid final definition to suppress
+            # errors about assigning to final attribute.
+            lval = s.lvalues[0]
+            if self.is_self_member_ref(lval):
+                assert self.type, "Self member outside a class"
+                cur_node = self.type.names.get(lval.name, None)
+                if cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_final:
+                    assert self.function_stack
+                    top_function = self.function_stack[-1]
+                    if (top_function.name() == '__init__' and
+                            cur_node.node.final_unset_in_class and
+                            not cur_node.node.final_set_in_init and
+                            not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                        cur_node.node.final_set_in_init = True
+                        s.is_final_def = True
 
     def unbox_literal(self, e: Expression) -> Optional[Union[int, float, bool, str]]:
         if isinstance(e, (IntExpr, FloatExpr, StrExpr)):
@@ -2023,7 +2044,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 star_exprs[0].valid = True
             for i in items:
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
-                                    explicit_type = explicit_type)
+                                    explicit_type=explicit_type)
 
     def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False,
                               final_cb: Optional[Callable[[], None]] = None) -> None:

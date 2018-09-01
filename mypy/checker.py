@@ -1959,6 +1959,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             lvs = [s.lvalue]
         is_final_decl = s.is_final_def if isinstance(s, AssignmentStmt) else False
+        if is_final_decl and self.scope.active_class():
+            lv = lvs[0]
+            assert isinstance(lv.node, Var)
+            if (lv.node.final_unset_in_class and not
+                    lv.node.final_set_in_init and not self.is_stub):
+                self.fail('Final names outside stubs must have a value', s)
         for lv in lvs:
             if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
                 name = lv.node.name()

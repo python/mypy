@@ -48,7 +48,7 @@ reveal_type(C((1, 2)).y)  # E: Revealed type is 'builtins.float'
 [case testFinalBadDefinitionTooManyArgs]
 from typing import Final
 
-x: Final[int, str]  # E: Final declaration outside stubs must have right hand side \
+x: Final[int, str]  # E: Final names outside stubs must have a value \
                     # E: Final[...] takes at most one type argument
 reveal_type(x)  # E: Revealed type is 'builtins.int'
 
@@ -166,13 +166,13 @@ def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost ty
 
 [case testFinalDefiningNoRhs]
 from typing import Final
-x: Final  # E: Final declaration outside stubs must have right hand side
-y: Final[int]  # E: Final declaration outside stubs must have right hand side
+x: Final  # E: Final names outside stubs must have a value
+y: Final[int]  # E: Final names outside stubs must have a value
 class C:
-    x: Final  # E: Final declaration outside stubs must have right hand side
-    y: Final[int]  # E: Final declaration outside stubs must have right hand side
+    x: Final  # E: Final names outside stubs must have a value
+    y: Final[int]  # E: Final names outside stubs must have a value
     def __init__(self) -> None:
-        self.z: Final  # E: Final declaration outside stubs must have right hand side
+        self.z: Final  # E: Final names outside stubs must have a value
 reveal_type(x)  # E: Revealed type is 'Any'
 reveal_type(y)  # E: Revealed type is 'builtins.int'
 reveal_type(C().x)  # E: Revealed type is 'Any'
@@ -255,6 +255,30 @@ for i in [1, 2, 3]:
 while True:
     y: Final = True  # E: Final declarations are prohibited within loops
 [builtins fixtures/list.pyi]
+[out]
+
+[case testFinalDelayedDefinition]
+from typing import Final
+
+class C:
+    x: Final[int]  # OK, defined in __init__
+    bad: Final[int]  # E: Final names outside stubs must have a value
+
+    def __init__(self, x: int) -> None:
+        self.x = x  # OK, deferred definition
+        self.x = 2  # E: Can't assign to final attribute "x"
+
+    def meth(self) -> None:
+        self.x = 2  # E: Can't assign to final attribute "x"
+
+c: C
+c.x = 3  # E: Can't assign to final attribute "x"
+class D(C):
+    x = 4  # E: Cannot override final attribute "x" \
+           # N: (previously declared on base class "C") \
+           # E: Can't assign to constant "x"
+d: D
+d.x = 5  # E: Can't assign to final attribute "x"
 [out]
 
 -- Reassignments
