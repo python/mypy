@@ -2659,17 +2659,9 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
-        if not manager.use_fine_grained_cache():
-            # TODO: Ideally we could skip here modules that appeared in st.suppressed
-            # because they are not in build with `follow-imports=skip`.
-            # This way we could avoid overhead of cloning options in `State.__init__()`
-            # below to get the option value. This is quite minor performance loss however.
-            added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
-        else:
-            # During initial loading we don't care about newly added modules,
-            # they will be taken care of during fine grained update. See also
-            # comment about this in `State.__init__()`.
-            added = []
+        added = [dep for dep in st.suppressed
+                 if manager.find_module_cache.find_module(dep, manager.search_paths,
+                                                          manager.options.python_executable)]
         for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed and dep not in entry_points
             if ignored and dep not in added:
