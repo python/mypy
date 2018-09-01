@@ -7624,8 +7624,7 @@ class C:
     def meth(self) -> int: ...
 [out]
 ==
-main:4: error: Cannot override final attribute "meth"
-main:4: note: (previously declared on base class "C")
+main:4: error: Cannot override final attribute "meth" (previously declared on base class "C")
 
 [case testFinalAddFinalMethodOverrideWithVarFine]
 from mod import C
@@ -7651,12 +7650,9 @@ class C:
     def other(self) -> int: ...
 [out]
 ==
-main:5: error: Cannot override final attribute "meth"
-main:5: note: (previously declared on base class "C")
-main:5: error: Can't assign to constant "meth"
+main:5: error: Cannot override final attribute "meth" (previously declared on base class "C")
 main:7: error: Can't assign to final attribute "other"
-main:7: error: Cannot override final attribute "other"
-main:7: note: (previously declared on base class "C")
+main:7: error: Cannot override final attribute "other" (previously declared on base class "C")
 
 [case testFinalAddFinalMethodOverrideOverloadFine]
 from typing import overload
@@ -7690,8 +7686,7 @@ class C:
     def meth(self, x: str) -> str: ...
 [out]
 ==
-main:6: error: Cannot override final attribute "meth"
-main:6: note: (previously declared on base class "C")
+main:6: error: Cannot override final attribute "meth" (previously declared on base class "C")
 
 [case testFinalAddFinalPropertyWithVarFine]
 from mod import C
@@ -7720,12 +7715,9 @@ class C:
 [builtins fixtures/property.pyi]
 [out]
 ==
-main:5: error: Cannot override final attribute "p"
-main:5: note: (previously declared on base class "C")
-main:5: error: Can't assign to constant "p"
+main:5: error: Cannot override final attribute "p" (previously declared on base class "C")
 main:8: error: Can't assign to final attribute "p"
-main:8: error: Cannot override final attribute "p"
-main:8: note: (previously declared on base class "C")
+main:8: error: Cannot override final attribute "p" (previously declared on base class "C")
 
 [case testIfMypyUnreachableClass]
 from a import x

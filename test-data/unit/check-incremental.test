@@ -4976,5 +4976,4 @@ class C:
     def meth(self) -> int: ...
 [out]
 [out2]
-main:4: error: Cannot override final attribute "meth"
-main:4: note: (previously declared on base class "C")
+main:4: error: Cannot override final attribute "meth" (previously declared on base class "C")

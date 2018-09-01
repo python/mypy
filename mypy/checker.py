@@ -1980,10 +1980,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # (which is itself an error)...
                     for base in cls.mro[1:]:
                         sym = base.names.get(name)
-                        if sym and isinstance(sym.node, (Var, Decorator)):
-                            var = sym.node if isinstance(sym.node, Var) else sym.node.var
-                            if var.is_final and not is_final_decl:
-                                self.msg.cant_assign_to_final(name, var.info is None, s)
+                        # We only give this error if base node is variable,
+                        # overriding final method will be caught in
+                        # `check_compatibility_final_super()`.
+                        if sym and isinstance(sym.node, Var):
+                            if sym.node.is_final and not is_final_decl:
+                                self.msg.cant_assign_to_final(name, sym.node.info is None, s)
                                 # ...but only once
                                 break
                 if lv.node.is_final and not is_final_decl:

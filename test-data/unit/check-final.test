@@ -511,10 +511,8 @@ class B(A):
     def __init__(self) -> None:
         self.y: Final = 1
 class C(B):
-    x: Final = 2  # E: Cannot override final attribute "x" \
-                  # N: (previously declared on base class "B")
-    y: Final = 2  # E: Cannot override final attribute "y" \
-                  # N: (previously declared on base class "B")
+    x: Final = 2  # E: Cannot override final attribute "x" (previously declared on base class "B")
+    y: Final = 2  # E: Cannot override final attribute "y" (previously declared on base class "B")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -554,10 +552,8 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x: Final = 2  # E: Cannot override final attribute "x" \
-                           # N: (previously declared on base class "B")
-        self.y: Final = 2  # E: Cannot override final attribute "y" \
-                           # N: (previously declared on base class "B")
+        self.x: Final = 2  # E: Cannot override final attribute "x" (previously declared on base class "B")
+        self.y: Final = 2  # E: Cannot override final attribute "y" (previously declared on base class "B")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -592,8 +588,7 @@ class B:
     @property
     def x(self) -> int: ...
 class C(A, B): ...
-class D(B, A): ...  # E: Cannot override final attribute "x" \
-                    # N: (previously declared on base class "A")
+class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared on base class "A")
 C.x = 3  # E: Can't assign to final attribute "x"
 C().x = 4  # E: Can't assign to final attribute "x"
 D().x = 4  # E: Can't assign to final attribute "x" \
@@ -611,8 +606,7 @@ class B:
     @property
     def x(self) -> int: ...
 class C(A, B): ...
-class D(B, A): ...  # E: Cannot override final attribute "x" \
-                    # N: (previously declared on base class "A")
+class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared on base class "A")
 C.x = 3  # E: Can't access instance constant on class object \
          # E: Can't assign to final attribute "x"
 C().x = 4  # E: Can't assign to final attribute "x"
@@ -628,8 +622,7 @@ class B:
     def __init__(self) -> None:
         self.x = 2
 class C(A, B): ...  # E: Can't override writeable attribute "x" with a final one
-class D(B, A): ...  # E: Cannot override final attribute "x" \
-                    # N: (previously declared on base class "A")
+class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared on base class "A")
 C.x = 3  # E: Can't assign to final attribute "x"
 D.x = 3  # E: Can't assign to final attribute "x"
 C().x = 4  # E: Can't assign to final attribute "x"
@@ -645,17 +638,13 @@ class A:
         self.y: Final[Any] = 1
 
 class B(A):
-    def x(self) -> None: pass  # E: Cannot override final attribute "x" \
-                               # N: (previously declared on base class "A")
-    def y(self) -> None: pass  # E: Cannot override final attribute "y" \
-                               # N: (previously declared on base class "A")
+    def x(self) -> None: pass  # E: Cannot override final attribute "x" (previously declared on base class "A")
+    def y(self) -> None: pass  # E: Cannot override final attribute "y" (previously declared on base class "A")
 
 class C(A):
-    @property  # E: Cannot override final attribute "x" \
-               # N: (previously declared on base class "A")
+    @property  # E: Cannot override final attribute "x" (previously declared on base class "A")
     def x(self) -> None: pass
-    @property  # E: Cannot override final attribute "y" \
-               # N: (previously declared on base class "A")
+    @property  # E: Cannot override final attribute "y" (previously declared on base class "A")
     def y(self) -> None: pass
 [builtins fixtures/property.pyi]
 [out]
@@ -669,11 +658,9 @@ class A:
         self.y: Final[Any] = 1
 
 class B(A):
-    @classmethod  # E: Cannot override final attribute "x" \
-                  # N: (previously declared on base class "A")
+    @classmethod  # E: Cannot override final attribute "x" (previously declared on base class "A")
     def x(self) -> None: pass
-    @classmethod  # E: Cannot override final attribute "y" \
-                  # N: (previously declared on base class "A")
+    @classmethod  # E: Cannot override final attribute "y" (previously declared on base class "A")
     def y(self) -> None: pass
 
 [builtins fixtures/classmethod.pyi]
@@ -692,24 +679,14 @@ class A:
     def p(self) -> int: pass
 
 class B(A):
-    f = a  # E: Cannot override final attribute "f" \
-           # N: (previously declared on base class "A") \
-           # E: Can't assign to constant "f"
-    p = a  # E: Cannot override final attribute "p" \
-           # N: (previously declared on base class "A") \
-           # E: Can't assign to constant "p"
+    f = a  # E: Cannot override final attribute "f" (previously declared on base class "A")
+    p = a  # E: Cannot override final attribute "p" (previously declared on base class "A")
 class C(A):
-    f: Any  # E: Cannot override final attribute "f" \
-            # N: (previously declared on base class "A") \
-            # E: Can't assign to constant "f"
-    p: Any  # E: Cannot override final attribute "p" \
-            # N: (previously declared on base class "A") \
-            # E: Can't assign to constant "p"
+    f: Any  # E: Cannot override final attribute "f" (previously declared on base class "A")
+    p: Any  # E: Cannot override final attribute "p" (previously declared on base class "A")
 class D(A):
-    f: Final = a  # E: Cannot override final attribute "f" \
-                  # N: (previously declared on base class "A")
-    p: Final = a  # E: Cannot override final attribute "p" \
-                  # N: (previously declared on base class "A")
+    f: Final = a  # E: Cannot override final attribute "f" (previously declared on base class "A")
+    p: Final = a  # E: Cannot override final attribute "p" (previously declared on base class "A")
 [builtins fixtures/property.pyi]
 [out]
 
@@ -728,21 +705,17 @@ class A:
 class B(A):
     def __init__(self) -> None:
         self.f: Any  # E: Can't assign to final attribute "f" \
-                     # E: Cannot override final attribute "f" \
-                     # N: (previously declared on base class "A")
+                     # E: Cannot override final attribute "f" (previously declared on base class "A")
         self.c: Any  # E: Can't assign to final attribute "c" \
-                     # E: Cannot override final attribute "c" \
-                     # N: (previously declared on base class "A")
+                     # E: Cannot override final attribute "c" (previously declared on base class "A")
 
 B().f = a  # E: Can't assign to final attribute "f"
 B().c = a  # E: Can't assign to final attribute "c"
 
 class C(A):
     def __init__(self) -> None:
-        self.f: Final = a  # E: Cannot override final attribute "f" \
-                           # N: (previously declared on base class "A")
-        self.c: Final = a  # E: Cannot override final attribute "c" \
-                           # N: (previously declared on base class "A")
+        self.f: Final = a  # E: Cannot override final attribute "f" (previously declared on base class "A")
+        self.c: Final = a  # E: Cannot override final attribute "c" (previously declared on base class "A")
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -765,8 +738,7 @@ class B:
     @final
     def m(self) -> int: pass
 
-class C(A, B): pass  # E: Cannot override final attribute "m" \
-                     # N: (previously declared on base class "B")
+class C(A, B): pass  # E: Cannot override final attribute "m" (previously declared on base class "B")
 class D(B, A): pass
 [out]
 
@@ -779,8 +751,7 @@ class B:
     @final
     def m(self) -> int: pass
 
-class C(A, B): pass  # E: Cannot override final attribute "m" \
-                     # N: (previously declared on base class "B")
+class C(A, B): pass  # E: Cannot override final attribute "m" (previously declared on base class "B")
 class D(B, A): pass  # E: Can't override writeable attribute "m" with a final one
 [out]
 
@@ -793,8 +764,7 @@ class B:
     def f(cls) -> int: pass
 
 class C(B):
-    @classmethod  # E: Cannot override final attribute "f" \
-                  # N: (previously declared on base class "B")
+    @classmethod  # E: Cannot override final attribute "f" (previously declared on base class "B")
     def f(cls) -> int: pass
 [builtins fixtures/classmethod.pyi]
 [out]
@@ -808,8 +778,7 @@ class B:
     def f() -> int: pass
 
 class C(B):
-    @staticmethod  # E: Cannot override final attribute "f" \
-                   # N: (previously declared on base class "B")
+    @staticmethod  # E: Cannot override final attribute "f" (previously declared on base class "B")
     def f() -> int: pass
 [builtins fixtures/staticmethod.pyi]
 [out]
@@ -823,8 +792,7 @@ class B:
     def f(self) -> int: pass
 
 class C(B):
-    @property  # E: Cannot override final attribute "f" \
-               # N: (previously declared on base class "B")
+    @property  # E: Cannot override final attribute "f" (previously declared on base class "B")
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
@@ -842,8 +810,7 @@ class B:
         pass
 
 class C(B):
-    @overload  # E: Cannot override final attribute "f" \
-               # N: (previously declared on base class "B")
+    @overload  # E: Cannot override final attribute "f" (previously declared on base class "B")
     def f(self, x: int) -> int: ...
     @overload
     def f(self, x: str) -> str: ...
@@ -910,8 +877,7 @@ class B:
     @final
     def meth(self) -> None: ...
 class C(B):
-    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" \
-                                 # N: (previously declared on base class "B")
+    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" (previously declared on base class "B")
 
 @final
 class F: ...
