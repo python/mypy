@@ -4877,3 +4877,39 @@ class C:
 reveal_type(C.foo)  # E: Revealed type is 'builtins.int*'
 reveal_type(C().foo)  # E: Revealed type is 'builtins.int*'
 [out]
+
+[case testMultipleInheritanceCycle]
+import b
+[file a.py]
+from b import B
+class A: ...
+class C(A, B): ...
+class D(C): ...
+class Other: ...
+[file b.py]
+from a import Other
+class B: ...
+[out]
+
+[case testMultipleInheritanceCycle2]
+import b
+[file a.py]
+from b import B
+class A: ...
+class C(A, B): ...
+class D(C): ...
+class Other: ...
+a: A
+b: B
+c: C
+d: D
+d = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "D")
+d = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "D")
+d = C()  # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+a = D()
+b = D()
+c = D()
+[file b.py]
+from a import Other
+class B: ...
+[out]

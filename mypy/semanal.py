@@ -1153,11 +1153,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Give it an MRO consisting of just the class itself and object.
             defn.info.mro = [defn.info, self.object_type().type]
             return
-        calculate_class_mro(defn, self.fail_blocker)
-        # If there are cyclic imports, we may be missing 'object' in
-        # the MRO. Fix MRO if needed.
-        if info.mro and info.mro[-1].fullname() != 'builtins.object':
-            info.mro.append(self.object_type().type)
+        # TODO: Ideally we should move MRO calculation to a later stage, but this is
+        # not easy, see issue #5536.
+        calculate_class_mro(defn, self.fail_blocker, self.object_type)
 
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
@@ -3572,21 +3570,28 @@ def refers_to_class_or_function(node: Expression) -> bool:
             isinstance(node.node, (TypeInfo, FuncDef, OverloadedFuncDef)))
 
 
-def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None]) -> None:
+def calculate_class_mro(defn: ClassDef, fail: Callable[[str, Context], None],
+                        obj_type: Optional[Callable[[], Instance]] = None) -> None:
+    """Calculate method resolution order for a class.
+
+    `obj_type` may be omitted in the third pass when all classes are already analyzed.
+    It exists just to fill in empty base class list during second pass in case of
+    an import cycle.
+    """
     try:
-        calculate_mro(defn.info)
+        calculate_mro(defn.info, obj_type)
     except MroError:
         fail("Cannot determine consistent method resolution order "
              '(MRO) for "%s"' % defn.name, defn)
         defn.info.mro = []
 
 
-def calculate_mro(info: TypeInfo) -> None:
+def calculate_mro(info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = None) -> None:
     """Calculate and set mro (method resolution order).
 
     Raise MroError if cannot determine mro.
     """
-    mro = linearize_hierarchy(info)
+    mro = linearize_hierarchy(info, obj_type)
     assert mro, "Could not produce a MRO at all for %s" % (info,)
     info.mro = mro
     # The property of falling back to Any is inherited.
@@ -3598,15 +3603,22 @@ class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
 
-def linearize_hierarchy(info: TypeInfo) -> List[TypeInfo]:
+def linearize_hierarchy(info: TypeInfo,
+                        obj_type: Optional[Callable[[], Instance]] = None) -> List[TypeInfo]:
     # TODO describe
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
+    if (not bases and info.fullname() != 'builtins.object' and
+            obj_type is not None):
+        # Second pass in import cycle, add a dummy `object` base class,
+        # otherwise MRO calculation may spuriously fail.
+        # MRO will be re-calculated for real in the third pass.
+        bases = [obj_type().type]
     lin_bases = []
     for base in bases:
         assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname(), bases)
-        lin_bases.append(linearize_hierarchy(base))
+        lin_bases.append(linearize_hierarchy(base, obj_type))
     lin_bases.append(bases)
     return [info] + merge(lin_bases)
 
