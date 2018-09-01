@@ -113,7 +113,7 @@ class DataclassTransformer:
                 # the same type as self (covariant).  Note the
                 # "self_type" parameter to _add_method.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                cmp_tvar_def = TypeVarDef('T', 'T', 1, [], obj_type)
+                cmp_tvar_def = TypeVarDef('T', 'T', -1, [], obj_type)
                 cmp_other_type = TypeVarType(cmp_tvar_def)
                 cmp_return_type = ctx.api.named_type('__builtins__.bool')
 
@@ -135,7 +135,7 @@ class DataclassTransformer:
                 # Like for __eq__ and __ne__, we want "other" to match
                 # the self type.
                 obj_type = ctx.api.named_type('__builtins__.object')
-                order_tvar_def = TypeVarDef('T', 'T', 1, [], obj_type)
+                order_tvar_def = TypeVarDef('T', 'T', -1, [], obj_type)
                 order_other_type = TypeVarType(order_tvar_def)
                 order_return_type = ctx.api.named_type('__builtins__.bool')
                 order_args = [
