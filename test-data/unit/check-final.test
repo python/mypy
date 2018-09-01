@@ -451,10 +451,15 @@ D().b += B()  # E: Can't assign to final attribute "b"
 [case testFinalOverridingVarClassBody]
 from typing import Final
 
+# We use properties in this tests and below because we want to check
+# that any existing variable before final doesn't affect logic of
+# subsequent overrides but writable attributes can't be overridden by final.
 class A:
-    x = 0
-    def __init__(self) -> None:
-        self.y = 0
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+
 class B(A):
     x: Final = 1
     def __init__(self) -> None:
@@ -472,15 +477,17 @@ class D(C):
     pass
 D.x = 4  # E: Can't assign to final attribute "x"
 D.y = 4  # E: Can't assign to final attribute "y"
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingVarClassBodyExplicit]
 from typing import Final
 
 class A:
-    x = 0
-    def __init__(self) -> None:
-        self.y = 0
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
 class B(A):
     x: Final = 1
     def __init__(self) -> None:
@@ -490,15 +497,17 @@ class C(B):
                   # N: (previously declared on base class "B")
     y: Final = 2  # E: Cannot override final attribute "y" \
                   # N: (previously declared on base class "B")
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingVarInit]
 from typing import Final
 
 class A:
-    x = 0
-    def __init__(self) -> None:
-        self.y = 0
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
 class B(A):
     x: Final = 1
     def __init__(self) -> None:
@@ -510,15 +519,17 @@ class C(B):
     def meth(self) -> None:
         self.x = 3  # E: Can't assign to final attribute "x"
         self.y = 3  # E: Can't assign to final attribute "y"
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingVarInit2]
 from typing import Final
 
 class A:
-    x = 0
-    def __init__(self) -> None:
-        self.y = 0
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
 class B(A):
     x: Final = 1
     def __init__(self) -> None:
@@ -529,15 +540,17 @@ class C(B):
                            # N: (previously declared on base class "B")
         self.y: Final = 2  # E: Cannot override final attribute "y" \
                            # N: (previously declared on base class "B")
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingVarOtherMethod]
 from typing import Final
 
 class A:
-    x = 0
-    def __init__(self) -> None:
-        self.y = 0
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
 class B(A):
     x: Final = 1
     def __init__(self) -> None:
@@ -552,41 +565,43 @@ class C(B):
                            # N: (previously declared on base class "B")
         self.x = 3  # E: Can't assign to final attribute "x"
         self.y = 3  # E: Can't assign to final attribute "y"
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingVarMultipleInheritanceClass]
-from typing import Final
+from typing import Final, Any
 
 class A:
-    x: Final = 1
+    x: Final[Any] = 1
 class B:
-    x = 2
+    @property
+    def x(self) -> int: ...
 class C(A, B): ...
 class D(B, A): ...  # E: Cannot override final attribute "x" \
                     # N: (previously declared on base class "A")
 C.x = 3  # E: Can't assign to final attribute "x"
-D.x = 3  # E: Can't assign to final attribute "x"
 C().x = 4  # E: Can't assign to final attribute "x"
-D().x = 4  # E: Can't assign to final attribute "x"
+D().x = 4  # E: Can't assign to final attribute "x" \
+           # E: Property "x" defined in "B" is read-only
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingVarMultipleInheritanceInit]
-from typing import Final
+from typing import Final, Any
 
 class A:
     def __init__(self) -> None:
-        self.x: Final = 1
+        self.x: Final[Any] = 1
 class B:
-    def __init__(self) -> None:
-        self.x = 2
+    @property
+    def x(self) -> int: ...
 class C(A, B): ...
 class D(B, A): ...  # E: Cannot override final attribute "x" \
                     # N: (previously declared on base class "A")
 C.x = 3  # E: Can't access instance constant on class object \
          # E: Can't assign to final attribute "x"
-D.x = 3  # E: Can't assign to final attribute "x"
 C().x = 4  # E: Can't assign to final attribute "x"
-D().x = 4  # E: Can't assign to final attribute "x"
+[builtins fixtures/property.pyi]
 [out]
 
 [case testFinalOverridingVarMultipleInheritanceMixed]
@@ -597,7 +612,7 @@ class A:
 class B:
     def __init__(self) -> None:
         self.x = 2
-class C(A, B): ...
+class C(A, B): ...  # E: Can't override writeable attribute "x" with a final one
 class D(B, A): ...  # E: Cannot override final attribute "x" \
                     # N: (previously declared on base class "A")
 C.x = 3  # E: Can't assign to final attribute "x"
@@ -716,6 +731,16 @@ class C(A):
 [builtins fixtures/classmethod.pyi]
 [out]
 
+[case testFinalCanOverrideMethodWithFinal]
+from typing import final
+
+class B:
+    def meth(self) -> None: ...
+class C(B):
+    @final  # OK
+    def meth(self) -> None: ...
+[out]
+
 [case testFinalOverridingMethodMultipleInheritance]
 from typing import final
 
@@ -741,7 +766,7 @@ class B:
 
 class C(A, B): pass  # E: Cannot override final attribute "m" \
                      # N: (previously declared on base class "B")
-class D(B, A): pass
+class D(B, A): pass  # E: Can't override writeable attribute "m" with a final one
 [out]
 
 [case testFinalOverridingClassMethod]
@@ -832,4 +857,48 @@ class C(B, A):  # E: Can't inherit from final class "B"
     pass
 class D(A, B):  # E: Can't inherit from final class "B"
     pass
+[out]
+
+[case testFinalCantOverrideWriteable]
+from typing import Any, Final, final
+
+class B:
+    x: Any
+    @property
+    def y(self) -> Any: ...
+    @y.setter
+    def y(self, x: Any) -> None: ...
+
+class C(B):
+    x: Final = 1  # E: Can't override writeable attribute "x" with a final one
+    y: Final = 1  # E: Can't override writeable attribute "y" with a final one
+
+class D(B):
+    @final  # E: Can't override writeable attribute "x" with a final one
+    def x(self) -> int: ...
+    @final  # E: Can't override writeable attribute "y" with a final one
+    def y(self) -> int: ...
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalCanUseTypingExtensions]
+from typing_extensions import final, Final
+
+x: Final = 1
+x = 2  # E: Can't assign to constant "x"
+
+class S:
+    x: Final = 1
+S.x = 2  # E: Can't assign to final attribute "x"
+
+class B:
+    @final
+    def meth(self) -> None: ...
+class C(B):
+    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" \
+                                 # N: (previously declared on base class "B")
+
+@final
+class F: ...
+class E(F): ...  # E: Can't inherit from final class "F"
 [out]

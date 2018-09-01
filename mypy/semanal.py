@@ -864,7 +864,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     defn.info.runtime_protocol = True
                 else:
                     self.fail('@runtime can only be used with protocol classes', defn)
-            elif decorator.fullname == 'typing.final':
+            elif decorator.fullname in ('typing.final',
+                                        'typing_extensions.final'):
                 defn.info.is_final = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
@@ -2313,7 +2314,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         sym = self.lookup_qualified(typ.name, typ)
         if not sym or not sym.node:
             return False
-        return sym.node.fullname() == 'typing.Final'
+        return sym.node.fullname() in ('typing.Final',
+                                       'typing_extensions.Final')
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
@@ -2417,7 +2419,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
-            elif refers_to_fullname(d, 'typing.final'):
+            elif (refers_to_fullname(d, 'typing.final') or
+                  refers_to_fullname(d, 'typing_extensions.final')):
                 if self.is_class_scope():
                     assert self.type is not None, "No type set at class scope"
                     if self.type.is_protocol:

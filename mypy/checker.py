@@ -21,7 +21,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT,
+    CONTRAVARIANT, COVARIANT, INVARIANT
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash
@@ -1292,11 +1292,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.cant_override_final(name, base.name(), defn)
             # Second, final can't override anything writeable independently of types.
             if defn.is_final:
-                if isinstance(base_attr.node, (Var, Decorator)):
-                    svar = (base_attr.node if isinstance(base_attr.node, Var)
-                            else base_attr.node.var)
-                    if not (svar.is_final or svar.is_property and not svar.is_settable_property):
-                        self.msg.final_cant_override_writeable(name, defn)
+                self.check_no_writeable(name, base_attr.node, defn)
 
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):
@@ -1590,10 +1586,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(second.node, (Var, FuncBase, Decorator)) and second.node.is_final:
             self.msg.cant_override_final(name, base2.name(), ctx)
         if isinstance(first.node, (Var, FuncBase, Decorator)) and first.node.is_final:
-            if isinstance(second.node, (Var, Decorator)):
-                svar = second.node if isinstance(second.node, Var) else second.node.var
-                if not (svar.is_final or svar.is_property and not svar.is_settable_property):
-                    self.msg.final_cant_override_writeable(name, ctx)
+            self.check_no_writeable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True
@@ -1894,6 +1887,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # value, not the Callable
                     if base_node.is_property:
                         base_type = base_type.ret_type
+                if isinstance(base_type, FunctionLike) and isinstance(base_node,
+                                                                      OverloadedFuncDef):
+                    # Same for properties with setter
+                    if base_node.is_property:
+                        base_type = base_type.items()[0].ret_type
 
                 return base_type, base_node
 
@@ -1923,11 +1921,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(node.name(), base.name(), node)
             return False
         if node.is_final:
-            if isinstance(base_node, (Var, Decorator)):
-                svar = base_node if isinstance(base_node, Var) else base_node.var
-                if not (svar.is_final or svar.is_property and not svar.is_settable_property):
-                    self.msg.final_cant_override_writeable(node.name(), node)
+            self.check_no_writeable(node.name(), base_node, node)
         return True
+
+    def check_no_writeable(self, name: str, base_node: Optional[Node], ctx: Context) -> None:
+        if isinstance(base_node, Var):
+            ok = False
+        elif isinstance(base_node, OverloadedFuncDef) and base_node.is_property:
+            first_item = cast(Decorator, base_node.items[0])
+            ok = not first_item.var.is_settable_property
+        else:
+            ok = True
+        if not ok:
+            self.msg.final_cant_override_writeable(name, ctx)
 
     def get_final_context(self) -> bool:
         return self._is_final_def
@@ -1944,7 +1950,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_final(self, s: Union[AssignmentStmt, OperatorAssignmentStmt]) -> None:
         """Check if this assignment does not assign to a final attribute.
 
-        This function perfoms the check only for name assignments at module
+        This function performs the check only for name assignments at module
         and class scope. The assignments to `obj.attr` and `Cls.attr` are checked
         in checkmember.py.
         """
