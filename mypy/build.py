@@ -1811,7 +1811,7 @@ class State:
                 # suppressed dependencies. Therefore, when the package with module is added,
                 # we need to re-calculate dependencies.
                 # NOTE: see comment below for why we skip this in fine grained mode.
-                if find_added_packages(self.suppressed, manager, self.options):
+                if exist_added_packages(self.suppressed, manager, self.options):
                     self.parse_file()  # This is safe because the cache is anyway stale.
                     self.compute_dependencies()
         else:
@@ -2357,23 +2357,32 @@ def find_module_and_diagnose(manager: BuildManager,
             raise CompileError(["mypy: can't find module '%s'" % id])
 
 
-def find_added_packages(suppressed: List[str],
+def exist_added_packages(suppressed: List[str],
                         manager: BuildManager, options: Options) -> bool:
     """Find if there are any newly added packages that were previously suppressed.
 
     Exclude everything not in build for follow-imports=skip.
     """
     for dep in suppressed:
-        path = manager.find_module_cache.find_module(dep, manager.search_paths,
-                                                     manager.options.python_executable)
-        if not path or dep in manager.source_set.source_modules:
+        if dep in manager.source_set.source_modules:
+            # We don't need to add any special logic for this. If a module
+            # is added to build, importers will be invalidated by normal mechanism.
+            continue
+        path = find_module_simple(dep, manager)
+        if not path:
             continue
         if (options.follow_imports == 'skip' and
                 (not path.endswith('.pyi') or options.follow_imports_for_stubs)):
             continue
-        if '__init__.py' in path:
+        if path.split(os.path.sep)[-1] in ('__init__.py', '__init__.pyi'):
             return True
     return False
+
+
+def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
+    """Find a filesystem path for module `id` or `None` if not found."""
+    return manager.find_module_cache.find_module(id, manager.search_paths,
+                                                 manager.options.python_executable)
 
 
 def in_partial_package(id: str, manager: BuildManager) -> bool:
@@ -2655,9 +2664,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             # because they are not in build with `follow-imports=skip`.
             # This way we could avoid overhead of cloning options in `State.__init__()`
             # below to get the option value. This is quite minor performance loss however.
-            added = [dep for dep in st.suppressed
-                     if manager.find_module_cache.find_module(dep, manager.search_paths,
-                                                              manager.options.python_executable)]
+            added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
         else:
             # During initial loading we don't care about newly added modules,
             # they will be taken care of during fine grained update. See also

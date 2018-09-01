@@ -4941,3 +4941,17 @@ x = 1
 follow_imports_for_stubs = True
 [stale]
 [rechecked]
+
+[case testAddedSkippedStubsPackageFrom]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+# cmd2: mypy -m main package package.missing
+[file main.py]
+from package import missing
+missing.f(int())
+[file package/__init__.py]
+[file package/missing.py]
+def f(x: str) -> None: pass
+[out]
+[out2]
+tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
