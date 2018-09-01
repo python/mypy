@@ -512,10 +512,6 @@ def process_options(args: List[str],
     add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="Type check the interior of functions without type annotations",
                         group=untyped_group)
-    add_invertible_flag('--warn-incomplete-stub', default=False,
-                        help="Warn if missing type annotation in typeshed, only relevant with"
-                             " --check-untyped-defs enabled",
-                        group=untyped_group)
     add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
                         help="Disallow decorating typed functions with untyped decorators",
                         group=untyped_group)
@@ -608,6 +604,10 @@ def process_options(args: List[str],
     internals_group.add_argument(
         '--custom-typeshed-dir', metavar='DIR',
         help="Use the custom typeshed in DIR")
+    add_invertible_flag('--warn-incomplete-stub', default=False,
+                        help="Warn if missing type annotation in typeshed, only relevant with"
+                         " --disallow-untyped-defs or --disallow-incomplete-defs enabled",
+                        group=internals_group)
     internals_group.add_argument(
         '--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
         dest='shadow_file', action='append',
