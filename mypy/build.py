@@ -2369,6 +2369,12 @@ def find_module_and_diagnose(manager: BuildManager,
             raise CompileError(["mypy: can't find module '%s'" % id])
 
 
+def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
+    """Find a filesystem path for module `id` or `None` if not found."""
+    return manager.find_module_cache.find_module(id, manager.search_paths,
+                                                 manager.options.python_executable)
+
+
 def in_partial_package(id: str, manager: BuildManager) -> bool:
     """Check if a missing module can potentially be a part of a package.
 
@@ -2643,9 +2649,17 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
-        added = [dep for dep in st.suppressed
-                 if manager.find_module_cache.find_module(dep, manager.search_paths,
-                                                          manager.options.python_executable)]
+        if not manager.use_fine_grained_cache():
+            # TODO: Ideally we could skip here modules that appeared in st.suppressed
+            # because they are not in build with `follow-imports=skip`.
+            # This way we could avoid overhead of cloning options in `State.__init__()`
+            # below to get the option value. This is quite minor performance loss however.
+            added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
+        else:
+            # During initial loading we don't care about newly added modules,
+            # they will be taken care of during fine grained update. See also
+            # comment about this in `State.__init__()`.
+            added = []
         for dep in st.ancestors + dependencies + st.suppressed:
             # We don't want to recheck imports marked with '# type: ignore'
             # so we ignore any suppressed module not explicitly re-included
