@@ -208,6 +208,8 @@ class TransformVisitor(NodeVisitor[Node]):
         new.is_property = node.is_property
         new.is_final = node.is_final
         new.final_value = node.final_value
+        new.final_unset_in_class = node.final_unset_in_class
+        new.final_set_in_init = node.final_set_in_init
         new.set_line(node.line)
         self.var_map[node] = new
         return new

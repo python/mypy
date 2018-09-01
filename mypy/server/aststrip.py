@@ -259,6 +259,7 @@ class NodeStripVisitor(TraverserVisitor):
         # [*] although we always strip type, thus returning the Var to the state after pass 1.
         if isinstance(node.node, Var):
             node.node.type = None
+            self._reset_var_final_flags(node.node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
@@ -273,7 +274,14 @@ class NodeStripVisitor(TraverserVisitor):
             # definition.
             self.strip_class_attr(node.name)
             node.def_var = None
+        if isinstance(node.node, Var):
+            self._reset_var_final_flags(node.node)
         super().visit_member_expr(node)
+
+    def _reset_var_final_flags(self, v: Var) -> None:
+        v.is_final = False
+        v.final_unset_in_class = False
+        v.final_set_in_init = False
 
     def visit_index_expr(self, node: IndexExpr) -> None:
         node.analyzed = None  # was a type alias
