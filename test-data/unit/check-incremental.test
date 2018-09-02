@@ -4526,10 +4526,10 @@ class A:
 tmp/b.py:3: error: Revealed type is 'def (a: builtins.int) -> a.A'
 tmp/b.py:4: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
 tmp/b.py:5: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
-tmp/b.py:6: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:7: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:8: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:9: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+tmp/b.py:6: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:7: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:8: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:9: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
 tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
 tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")

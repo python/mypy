@@ -909,3 +909,15 @@ class A:
 A(None, None)
 
 [builtins fixtures/attr.pyi]
+
+[case testAttrsTypeVarNoCollision]
+from typing import TypeVar, Generic
+import attr
+
+T = TypeVar("T", bytes, str)
+
+# Make sure the generated __le__ (and friends) don't use T for their arguments.
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    v: T
+[builtins fixtures/attr.pyi]
