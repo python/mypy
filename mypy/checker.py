@@ -2743,14 +2743,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 delegate_sig = self.expr_checker.accept(d.args[0])
                 if not isinstance(delegate_sig, CallableType):
                     continue  # TODO error message?
-                exclude = []
+                exclude = []  # type: List[str]
                 if d.arg_names[1:2] == ['exclude']:
-                    exclude = d.args[1]
-                    if not (isinstance(exclude, (ListExpr, TupleExpr, SetExpr))
+                    exclude_arg = d.args[1]
+                    if not (isinstance(exclude_arg, (ListExpr, TupleExpr, SetExpr))
                             and all(isinstance(ex, StrExpr)
-                                    for ex in exclude.items)):
+                                    for ex in exclude_arg.items)):
                         continue  # TODO error message?
-                    exclude = [s.value for s in cast(List[StrExpr], exclude.items)]
+                    exclude = [s.value for s in cast(List[StrExpr], exclude_arg.items)]
                 sig = self._delegated_sig(delegate_sig, sig, exclude)
                 continue
 
@@ -2775,9 +2775,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def _delegated_sig(self,
                        delegate_sig: CallableType,
                        sig: CallableType,
-                       exclude: List[str]):
+                       exclude: List[str]) -> CallableType:
         # TODO: also delegate *args (currently only does **kwargs)
-        exclude += sig.arg_names
         args = [(name,
                  kind if kind != nodes.ARG_OPT else nodes.ARG_NAMED_OPT,
                  typ)
@@ -2786,13 +2785,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     delegate_sig.arg_kinds,
                     delegate_sig.arg_types)
                 if kind not in (nodes.ARG_POS, nodes.ARG_STAR)
+                and name not in sig.arg_names
                 and name not in exclude]
         names, kinds, types = map(list, zip(*args))
         # **kwargs are always last in the signature, so we remove them with [:-1]
         sig = sig.copy_modified(
-            arg_names=sig.arg_names[:-1] + names,
-            arg_kinds=sig.arg_kinds[:-1] + kinds,
-            arg_types=sig.arg_types[:-1] + types,
+            arg_names=sig.arg_names[:-1] + cast(List[Optional[str]], names),
+            arg_kinds=sig.arg_kinds[:-1] + cast(List[int], kinds),
+            arg_types=sig.arg_types[:-1] + cast(List[Type], types),
         )
         return sig
 
