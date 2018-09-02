@@ -2772,7 +2772,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if e.func.info and not e.func.is_dynamic():
             self.check_method_override(e)
 
-    def _delegated_sig(self, delegate_sig, sig, exclude):
+    def _delegated_sig(self,
+                       delegate_sig: CallableType,
+                       sig: CallableType,
+                       exclude: List[str]):
         # TODO: also delegate *args (currently only does **kwargs)
         exclude += sig.arg_names
         args = [(name,
