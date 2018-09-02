@@ -1,0 +1,67 @@
+-- Delegating arguments
+
+[case testSimpleDelegation]
+from mypy_extensions import delegate
+
+def raw(name: str = 'he', age: int = 42):
+    return '%s is %s' % (name, age)
+
+@delegate(raw)
+def cooked(**kwargs):
+    return raw(**kwargs)
+
+reveal_type(cooked)  # E: Revealed type is 'def (*, name: builtins.str =, age: builtins.int =) -> Any'
+cooked(x=56)  # E: Unexpected keyword argument "x" for "cooked"
+[builtins fixtures/dict.pyi]
+
+
+[case testDelegationWithPositionalArg]
+from mypy_extensions import delegate
+
+def raw(foo, name='he', age=42):
+    return '%s is %s' % (name, age)
+
+@delegate(raw)
+def cooked(foo, bar, **kwargs):
+    return raw(foo, **kwargs)
+
+reveal_type(cooked)  # E: Revealed type is 'def (foo: Any, bar: Any, *, name: Any =, age: Any =) -> Any'
+cooked(3)  # E: Too few arguments for "cooked"
+cooked(3, 4)
+cooked(3, 4, 5)  # E: Too many positional arguments for "cooked"
+cooked(3, 4, name='bob')
+cooked(3, 4, x='bob')  # E: Unexpected keyword argument "x" for "cooked"
+[builtins fixtures/dict.pyi]
+
+
+[case testDelegationWithKeywordOnlyArg]
+from mypy_extensions import delegate
+
+def raw(*, name, age):
+    return '%s is %s' % (name, age)
+
+@delegate(raw)
+def cooked(foo, bar, **kwargs):
+    return raw(foo, **kwargs)
+
+reveal_type(cooked)  # E: Revealed type is 'def (foo: Any, bar: Any, *, name: Any, age: Any) -> Any'
+cooked(3, 4, name='bob', age=34)
+cooked(3, 4, name='bob')  # E: Missing named argument "age" for "cooked"
+cooked(3, 4, x='bob')  # E: Unexpected keyword argument "x" for "cooked"
+[builtins fixtures/dict.pyi]
+
+
+[case testDelegationWithExclude]
+from mypy_extensions import delegate
+
+def raw(name='he', age=42):
+    return '%s is %s' % (name, age)
+
+@delegate(raw, exclude=['name'])
+def cooked(**kwargs):
+    return raw(name='bob', **kwargs)
+
+reveal_type(cooked)  # E: Revealed type is 'def (*, age: Any =) -> Any'
+cooked(age=32)
+cooked(name='me')  # E: Unexpected keyword argument "name" for "cooked"
+[builtins fixtures/dict.pyi]

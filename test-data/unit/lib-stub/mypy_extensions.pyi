@@ -1,5 +1,5 @@
 # NOTE: Requires fixtures/dict.pyi
-from typing import Dict, Type, TypeVar, Optional, Any, Generic
+from typing import Dict, Type, TypeVar, Optional, Any, Generic, Callable, List
 
 _T = TypeVar('_T')
 _U = TypeVar('_U')
@@ -27,3 +27,6 @@ def trait(cls: Any) -> Any: ...
 class NoReturn: pass
 
 class FlexibleAlias(Generic[_T, _U]): ...
+
+
+def delegate(base_func: Callable, exclude: List[str] = ()) -> Callable: ...

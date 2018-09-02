@@ -157,3 +157,10 @@ class _FlexibleAliasCls:
 
 
 FlexibleAlias = _FlexibleAliasCls()
+
+
+def delegate(base_func, exclude=()):
+    def decorator(func):
+        return func
+
+    return decorator

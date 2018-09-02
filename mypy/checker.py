@@ -13,7 +13,7 @@ from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
     ClassDef, Block, AssignmentStmt, NameExpr, MemberExpr, IndexExpr,
-    TupleExpr, ListExpr, ExpressionStmt, ReturnStmt, IfStmt,
+    TupleExpr, ListExpr, SetExpr, ExpressionStmt, ReturnStmt, IfStmt,
     WhileStmt, OperatorAssignmentStmt, WithStmt, AssertStmt,
     RaiseStmt, TryStmt, ForStmt, DelStmt, CallExpr, IntExpr, StrExpr,
     UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
@@ -2733,6 +2733,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.fail('Single overload definition, multiple required', e)
                 continue
             dec = self.expr_checker.accept(d)
+
+            if (isinstance(d, CallExpr)
+                    and getattr(d.callee, 'fullname', '') == 'mypy_extensions.delegate'
+                    and d.args
+                    and isinstance(sig, CallableType)  # TODO allow Overloaded?
+                    and sig.is_kw_arg):
+                # TODO how should this combine with other decorators?
+                delegate_sig = self.expr_checker.accept(d.args[0])
+                if not isinstance(delegate_sig, CallableType):
+                    continue  # TODO error message?
+                exclude = []
+                if d.arg_names[1:2] == ['exclude']:
+                    exclude = d.args[1]
+                    if not (isinstance(exclude, (ListExpr, TupleExpr, SetExpr))
+                            and all(isinstance(ex, StrExpr)
+                                    for ex in exclude.items)):
+                        continue  # TODO error message?
+                    exclude = [s.value for s in cast(List[StrExpr], exclude.items)]
+                sig = self._delegated_sig(delegate_sig, sig, exclude)
+                continue
+
             temp = self.temp_node(sig)
             fullname = None
             if isinstance(d, RefExpr):
@@ -2750,6 +2771,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_incompatible_property_override(e)
         if e.func.info and not e.func.is_dynamic():
             self.check_method_override(e)
+
+    def _delegated_sig(self, delegate_sig, sig, exclude):
+        # TODO: also delegate *args (currently only does **kwargs)
+        exclude += sig.arg_names
+        args = [(name,
+                 kind if kind != nodes.ARG_OPT else nodes.ARG_NAMED_OPT,
+                 typ)
+                for (name, kind, typ) in
+                zip(delegate_sig.arg_names,
+                    delegate_sig.arg_kinds,
+                    delegate_sig.arg_types)
+                if kind not in (nodes.ARG_POS, nodes.ARG_STAR)
+                and name not in exclude]
+        names, kinds, types = map(list, zip(*args))
+        # **kwargs are always last in the signature, so we remove them with [:-1]
+        sig = sig.copy_modified(
+            arg_names=sig.arg_names[:-1] + names,
+            arg_kinds=sig.arg_kinds[:-1] + kinds,
+            arg_types=sig.arg_types[:-1] + types,
+        )
+        return sig
 
     def check_for_untyped_decorator(self,
                                     func: FuncDef,
