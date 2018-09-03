@@ -187,10 +187,10 @@ class A:
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> __main__.A'
 reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__ne__)  # E: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -654,10 +654,10 @@ class C(A, B): pass
 @attr.s
 class D(A): pass
 
-reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(B.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(C.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(D.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(B.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(C.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(D.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 
 A() < A()
 B() < B()
@@ -908,4 +908,16 @@ class A:
 
 A(None, None)
 
+[builtins fixtures/attr.pyi]
+
+[case testAttrsTypeVarNoCollision]
+from typing import TypeVar, Generic
+import attr
+
+T = TypeVar("T", bytes, str)
+
+# Make sure the generated __le__ (and friends) don't use T for their arguments.
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    v: T
 [builtins fixtures/attr.pyi]

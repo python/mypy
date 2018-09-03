@@ -465,6 +465,21 @@ in developing or debugging mypy internals.
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
 
+``--warn-incomplete-stub``
+    This flag modifies both the ``--disallow-untyped-defs`` and 
+    ``--disallow-incomplete-defs`` flags so they also report errors
+    if stubs in typeshed are missing type annotations or has incomplete
+    annotations. If both flags are missing, ``--warn-incomplete-stub``
+    also does nothing.
+
+    This flag is mainly intended to be used by people who want contribute
+    to typeshed and would like a convenient way to find gaps and omissions.
+    
+    If you want mypy to report an error when your codebase *uses* an untyped
+    function, whether that function is defined in typeshed or not, use the 
+    ``--disallow-untyped-call`` flag. See :ref:`untyped-definitions-and-calls`
+    for more details.
+
 .. _shadow-file:
 
 ``--shadow-file SOURCE_FILE SHADOW_FILE``
