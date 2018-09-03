@@ -214,6 +214,10 @@ class Plugin:
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
 
+    def get_customize_class_mro_hook(self, fullname: str
+                                     ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
 
 T = TypeVar('T')
 
@@ -269,6 +273,10 @@ class ChainedPlugin(Plugin):
     def get_base_class_hook(self, fullname: str
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_base_class_hook(fullname))
+
+    def get_customize_class_mro_hook(self, fullname: str
+                                     ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_customize_class_mro_hook(fullname))
 
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:

@@ -458,7 +458,7 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
-    tvd = TypeVarDef('AT', 'AT', 1, [], object_type)
+    tvd = TypeVarDef('AT', 'AT', -1, [], object_type)
     tvd_type = TypeVarType(tvd)
     args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
     for method in ['__lt__', '__le__', '__gt__', '__ge__']:

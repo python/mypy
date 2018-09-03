@@ -103,7 +103,7 @@ The following global flags may only be set in the global section
 
 - ``warn_incomplete_stub`` (Boolean, default False) warns for missing
   type annotation in typeshed.  This is only relevant in combination
-  with ``check_untyped_defs``.
+  with ``disallow_untyped_defs`` or ``disallow_incomplete_defs``.
 
 - ``warn_redundant_casts`` (Boolean, default False) warns about
   casting an expression to its inferred type.

@@ -30,11 +30,11 @@ from mypy.traverser import TraverserVisitor
 from mypy.typeanal import TypeAnalyserPass3, collect_any_types
 from mypy.typevars import has_no_typevars
 from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
+from mypy.semanal import SemanticAnalyzerPass2
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
 from mypy.scope import Scope
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
-import mypy.semanal
 
 
 class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
@@ -45,7 +45,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     """
 
     def __init__(self, modules: Dict[str, MypyFile], errors: Errors,
-                 sem: 'mypy.semanal.SemanticAnalyzerPass2') -> None:
+                 sem: SemanticAnalyzerPass2) -> None:
         self.modules = modules
         self.errors = errors
         self.sem = sem
@@ -138,7 +138,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         # import loop. (Only do so if we succeeded the first time.)
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
-            mypy.semanal.calculate_class_mro(tdef, self.fail_blocker)
+            self.sem.calculate_class_mro(tdef)
         if tdef.analyzed is not None:
             # Also check synthetic types associated with this ClassDef.
             # Currently these are TypedDict, and NamedTuple.
@@ -230,7 +230,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     self.analyze_info(analyzed.info)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
-                    mypy.semanal.calculate_class_mro(analyzed.info.defn, self.fail_blocker)
+                    self.sem.calculate_class_mro(analyzed.info.defn)
             if isinstance(analyzed, TypeVarExpr):
                 types = []
                 if analyzed.upper_bound:
