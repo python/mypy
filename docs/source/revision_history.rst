@@ -331,7 +331,7 @@ detailed release notes):
     Split the HTML documentation into
     multiple pages.
 
-- Sep 2014
+- Sept 2014
     Migrated docs to Sphinx.
 
 - Aug 2014
