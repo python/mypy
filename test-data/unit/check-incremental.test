@@ -3642,10 +3642,10 @@ from a import A
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> a.A'
 reveal_type(A.__eq__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__ne__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -3681,10 +3681,10 @@ class A:
 main:2: error: Revealed type is 'def (a: builtins.int) -> a.A'
 main:3: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 main:4: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-main:5: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-main:6: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-main:7: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-main:8: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:5: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+main:6: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+main:7: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+main:8: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 main:17: error: Unsupported operand types for < ("A" and "int")
 main:18: error: Unsupported operand types for <= ("A" and "int")
 main:19: error: Unsupported operand types for > ("A" and "int")
@@ -4526,10 +4526,10 @@ class A:
 tmp/b.py:3: error: Revealed type is 'def (a: builtins.int) -> a.A'
 tmp/b.py:4: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
 tmp/b.py:5: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
-tmp/b.py:6: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:7: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:8: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:9: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+tmp/b.py:6: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:7: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:8: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:9: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
 tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
 tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")

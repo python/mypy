@@ -333,7 +333,7 @@ class NamedTupleAnalyzer:
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
 
-        tvd = TypeVarDef('NT', 'NT', 1, [], info.tuple_type)
+        tvd = TypeVarDef('NT', 'NT', -1, [], info.tuple_type)
         selftype = TypeVarType(tvd)
 
         def add_method(funcname: str,
