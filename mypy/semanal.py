@@ -3284,8 +3284,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if not (node.kind == MODULE_REF and
                         self.locals[-1][name].node == node.node):
                     self.name_already_defined(name, context, self.locals[-1][name])
+                    return
             self.locals[-1][name] = node
         elif self.type:
+            existing = self.type.names.get(name)
+            if existing and isinstance(existing.node, TypeInfo) and existing.node != node.node:
+                # Classes can never be redefined
+                self.name_already_defined(name, context, existing)
+                return
             self.type.names[name] = node
         else:
             existing = self.globals.get(name)
@@ -3301,6 +3307,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     ok = True
                 if not ok:
                     self.name_already_defined(name, context, existing)
+                    return
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
@@ -3308,6 +3315,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         name = node.name()
         if name in self.locals[-1]:
             self.name_already_defined(name, ctx, self.locals[-1][name])
+            return
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 
