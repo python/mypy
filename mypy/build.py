@@ -2380,7 +2380,9 @@ def exist_added_packages(suppressed: List[str],
         if (options.follow_imports == 'skip' and
                 (not path.endswith('.pyi') or options.follow_imports_for_stubs)):
             continue
-        if path.split(os.path.sep)[-1] in ('__init__.py', '__init__.pyi'):
+        if '__init__.py' in path:
+            # It is better to have a bit lenient test, this will only slightly reduce
+            # performance, while having a too strict test may affect correctness.
             return True
     return False
 
