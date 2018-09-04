@@ -1616,8 +1616,7 @@ class B(A): pass
 # Note: This is a runtime error. If we run x.__add__(y)
 # where x and y are *not* the same type, Python will not try
 # calling __radd__.
-A() + A()               # E: Unsupported operand types for + ("A" and "A") \
-                        # N: __radd__ will not be called when evaluating 'A + A': must define __add__
+A() + A()               # E: Unsupported operand types for + ("A" and "A")
 
 # Here, Python *will* call __radd__(...)
 reveal_type(B() + A())  # E: Revealed type is '__main__.A'
@@ -1733,8 +1732,7 @@ class A:
     def __radd__(self, other: 'A') -> int: ...
 
 # Note: Python only tries calling __add__ and never __radd__, even though it's present
-A() + A()  # E: Unsupported left operand type for + ("A") \
-           # N: __radd__ will not be called when evaluating 'A + A': must define __add__
+A() + A()  # E: Unsupported left operand type for + ("A")
 
 [case testReverseOperatorOrderingCase2]
 class A:
@@ -2006,8 +2004,7 @@ reveal_type(FractionChild() + FractionChild())  # E: Revealed type is 'builtins.
 
 # Runtime error: we try calling __add__, it doesn't match, and we don't try __radd__ since
 # the LHS and the RHS are not the same.
-Fraction() + Fraction()                         # E: Unsupported operand types for + ("Fraction" and "Fraction") \
-                                                # N: __radd__ will not be called when evaluating 'Fraction + Fraction': must define __add__
+Fraction() + Fraction()                         # E: Unsupported operand types for + ("Fraction" and "Fraction")
 
 [case testReverseOperatorTypeType]
 from typing import TypeVar, Type
