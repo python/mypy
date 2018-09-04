@@ -4991,3 +4991,74 @@ from cext import Slow  # type: ignore
 Slow = 1
 [out]
 [out2]
+
+[case testFollowImportSkipNotInvalidatedOnPresent]
+# flags: --follow-imports=skip
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.py]
+x = 1
+[file other.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+
+[case testFollowImportSkipNotInvalidatedOnPresentPackage]
+# flags: --follow-imports=skip
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other/__init__.py]
+x = 1
+[file other/__init__.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+
+[case testFollowImportSkipNotInvalidatedOnAdded]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.py.2]
+x = 1
+[stale]
+[rechecked]
+
+[case testFollowImportSkipInvalidatedOnAddedStub]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[stale main, other]
+[rechecked main, other]
+
+[case testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs]
+# flags: --follow-imports=skip --ignore-missing-imports --config-file=tmp/mypy.ini
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[file mypy.ini]
+[[mypy]
+follow_imports_for_stubs = True
+[stale]
+[rechecked]
+
+[case testAddedSkippedStubsPackageFrom]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+# cmd2: mypy -m main package package.missing
+[file main.py]
+from package import missing
+missing.f(int())
+[file package/__init__.py]
+[file package/missing.py]
+def f(x: str) -> None: pass
+[out]
+[out2]
+tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
