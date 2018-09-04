@@ -42,13 +42,16 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
+def main(script_path: Optional[str], args: Optional[List[str]] = None,
+         clean_exit: bool = False) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
         be used.
+        clean_exit: If True, call sys.exit() on failure instead of killing
+            process.
     """
     # Check for known bad Python versions.
     if sys.version_info[:2] < (3, 4):
@@ -110,10 +113,14 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     code = 0
     if messages:
         code = 2 if blockers else 1
-    # Exit without freeing objects since it's faster.
-    #
-    # NOTE: We can't rely on flushing all open files on exit (and running other destructors).
-    util.hard_exit(code)
+    if clean_exit:
+        # The API catches the SystemExit.
+        sys.exit(code)
+    else:
+        # Exit without freeing objects since it's faster.
+        #
+        # NOTE: We can't rely on flushing all open files on exit (and running other destructors).
+        util.hard_exit(code)
 
 
 def find_bin_directory(script_path: str) -> str:

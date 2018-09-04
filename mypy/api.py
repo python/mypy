@@ -51,7 +51,7 @@ def run(args: List[str]) -> Tuple[str, str, int]:
     sys.stderr = new_stderr
 
     try:
-        main(None, args=args)
+        main(None, args=args, clean_exit=True)
         exit_status = 0
     except SystemExit as system_exit:
         exit_status = system_exit.code
