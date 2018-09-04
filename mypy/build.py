@@ -20,6 +20,7 @@ import gc
 import hashlib
 import json
 import os.path
+import pathlib
 import re
 import site
 import stat
@@ -193,7 +194,7 @@ def build(sources: List[BuildSource],
         raise
 
 
-# python_path is usercode, mypy_path is set via config or environment variable,
+# python_path is user code, mypy_path is set via config or environment variable,
 # package_path is calculated by _get_site_packages_dirs, and typeshed_path points
 # to typeshed. Each is a tuple of paths to be searched in find_module()
 SearchPaths = NamedTuple('SearchPaths',
@@ -326,7 +327,7 @@ def _build(sources: List[BuildSource],
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
 
-    data_dir = default_data_dir(bin_dir)
+    data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
 
     search_paths = compute_search_paths(sources, options, data_dir, fscache, alt_lib_path)
@@ -365,68 +366,9 @@ def _build(sources: List[BuildSource],
         reports.finish()
 
 
-def default_data_dir(bin_dir: Optional[str]) -> str:
-    """Returns directory containing typeshed directory
-
-    Args:
-      bin_dir: directory containing the mypy script
-    """
-    if not bin_dir:
-        if os.name == 'nt':
-            prefixes = [os.path.join(sys.prefix, 'Lib')]
-            try:
-                prefixes.append(os.path.join(site.getuserbase(), 'lib'))
-            except AttributeError:
-                # getuserbase in not available in virtualenvs
-                prefixes.append(os.path.join(get_python_lib(), 'lib'))
-            for parent in prefixes:
-                    data_dir = os.path.join(parent, 'mypy')
-                    if os.path.exists(data_dir):
-                        return data_dir
-        mypy_package = os.path.dirname(__file__)
-        parent = os.path.dirname(mypy_package)
-        if (os.path.basename(parent) == 'site-packages' or
-                os.path.basename(parent) == 'dist-packages'):
-            # Installed in site-packages or dist-packages, but invoked with python3 -m mypy;
-            # __file__ is .../blah/lib/python3.N/site-packages/mypy/build.py
-            # or .../blah/lib/python3.N/dist-packages/mypy/build.py (Debian)
-            # or .../blah/lib64/python3.N/dist-packages/mypy/build.py (Gentoo)
-            # or .../blah/lib/site-packages/mypy/build.py (Windows)
-            # blah may be a virtualenv or /usr/local.  We want .../blah/lib/mypy.
-            lib = parent
-            for i in range(2):
-                lib = os.path.dirname(lib)
-                if os.path.basename(lib) in ('lib', 'lib32', 'lib64'):
-                    return os.path.join(os.path.dirname(lib), 'lib/mypy')
-        subdir = os.path.join(parent, 'lib', 'mypy')
-        if os.path.isdir(subdir):
-            # If installed via buildout, the __file__ is
-            # somewhere/mypy/__init__.py and what we want is
-            # somewhere/lib/mypy.
-            return subdir
-        # Default to directory containing this file's parent.
-        return parent
-    base = os.path.basename(bin_dir)
-    dir = os.path.dirname(bin_dir)
-    if (sys.platform == 'win32' and base.lower() == 'scripts'
-            and not os.path.isdir(os.path.join(dir, 'typeshed'))):
-        # Installed, on Windows.
-        return os.path.join(dir, 'Lib', 'mypy')
-    elif base == 'scripts':
-        # Assume that we have a repo check out or unpacked source tarball.
-        return dir
-    elif base == 'bin':
-        # Installed to somewhere (can be under /usr/local or anywhere).
-        return os.path.join(dir, 'lib', 'mypy')
-    elif base == 'python3':
-        # Assume we installed python3 with brew on os x
-        return os.path.join(os.path.dirname(dir), 'lib', 'mypy')
-    elif dir.endswith('python-exec'):
-        # Gentoo uses a python wrapper in /usr/lib to which mypy is a symlink.
-        return os.path.join(os.path.dirname(dir), 'mypy')
-    else:
-        # Don't know where to find the data files!
-        raise RuntimeError("Broken installation: can't determine base dir")
+def default_data_dir() -> str:
+    """Returns directory containing typeshed directory."""
+    return os.path.dirname(__file__)
 
 
 def mypy_path() -> List[str]:
@@ -734,7 +676,7 @@ class BuildManager(BuildManagerBase):
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
         self.fscache = fscache
-        self.find_module_cache = FindModuleCache(self.fscache)
+        self.find_module_cache = FindModuleCache(self.fscache, self.options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -912,12 +854,14 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
+    def __init__(self, fscache: Optional[FileSystemCache] = None,
+                 options: Optional[Options] = None) -> None:
         self.fscache = fscache or FileSystemCache()
         # Cache find_lib_path_dirs: (dir_chain, search_paths) -> list(package_dirs, should_verify)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], PackageDirs]
         # Cache find_module: (id, search_paths, python_version) -> result.
         self.results = {}  # type: Dict[Tuple[str, SearchPaths, Optional[str]], Optional[str]]
+        self.options = options
 
     def clear(self) -> None:
         self.results.clear()
@@ -993,6 +937,10 @@ class FindModuleCache:
             elif fscache.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
                 third_party_inline_dirs.append((path, True))
+        if self.options and self.options.use_builtins_fixtures:
+            # Everything should be in fixtures.
+            third_party_inline_dirs.clear()
+            third_party_stubs_dirs.clear()
         python_mypy_path = search_paths.python_path + search_paths.mypy_path
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
@@ -1869,13 +1817,7 @@ class State:
                 # suppressed dependencies. Therefore, when the package with module is added,
                 # we need to re-calculate dependencies.
                 # NOTE: see comment below for why we skip this in fine grained mode.
-                new_packages = False
-                for dep in self.suppressed:
-                    path = manager.find_module_cache.find_module(dep, manager.search_paths,
-                                                              manager.options.python_executable)
-                    if path and '__init__.py' in path:
-                        new_packages = True
-                if new_packages:
+                if exist_added_packages(self.suppressed, manager, self.options):
                     self.parse_file()  # This is safe because the cache is anyway stale.
                     self.compute_dependencies()
         else:
@@ -2421,6 +2363,36 @@ def find_module_and_diagnose(manager: BuildManager,
             raise CompileError(["mypy: can't find module '%s'" % id])
 
 
+def exist_added_packages(suppressed: List[str],
+                        manager: BuildManager, options: Options) -> bool:
+    """Find if there are any newly added packages that were previously suppressed.
+
+    Exclude everything not in build for follow-imports=skip.
+    """
+    for dep in suppressed:
+        if dep in manager.source_set.source_modules:
+            # We don't need to add any special logic for this. If a module
+            # is added to build, importers will be invalidated by normal mechanism.
+            continue
+        path = find_module_simple(dep, manager)
+        if not path:
+            continue
+        if (options.follow_imports == 'skip' and
+                (not path.endswith('.pyi') or options.follow_imports_for_stubs)):
+            continue
+        if '__init__.py' in path:
+            # It is better to have a bit lenient test, this will only slightly reduce
+            # performance, while having a too strict test may affect correctness.
+            return True
+    return False
+
+
+def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
+    """Find a filesystem path for module `id` or `None` if not found."""
+    return manager.find_module_cache.find_module(id, manager.search_paths,
+                                                 manager.options.python_executable)
+
+
 def in_partial_package(id: str, manager: BuildManager) -> bool:
     """Check if a missing module can potentially be a part of a package.
 
@@ -2695,13 +2667,18 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
-        added = [dep for dep in st.suppressed
-                 if manager.find_module_cache.find_module(dep, manager.search_paths,
-                                                          manager.options.python_executable)]
+        if not manager.use_fine_grained_cache():
+            # TODO: Ideally we could skip here modules that appeared in st.suppressed
+            # because they are not in build with `follow-imports=skip`.
+            # This way we could avoid overhead of cloning options in `State.__init__()`
+            # below to get the option value. This is quite minor performance loss however.
+            added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
+        else:
+            # During initial loading we don't care about newly added modules,
+            # they will be taken care of during fine grained update. See also
+            # comment about this in `State.__init__()`.
+            added = []
         for dep in st.ancestors + dependencies + st.suppressed:
-            # We don't want to recheck imports marked with '# type: ignore'
-            # so we ignore any suppressed module not explicitly re-included
-            # from the command line.
             ignored = dep in st.suppressed and dep not in entry_points
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)

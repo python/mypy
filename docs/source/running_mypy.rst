@@ -304,6 +304,11 @@ This is computed from the following items:
 - The relevant directories of the
   `typeshed <https://github.com/python/typeshed>`_ repo.
 
+.. note::
+
+    You cannot point to a PEP 561 package via the MYPYPATH, it must be
+    installed (see :ref:`PEP 561 support <installed-packages>`)
+
 For sources given on the command line, the path is adjusted by crawling
 up from the given file or package to the nearest directory that does not
 contain an ``__init__.py`` or ``__init__.pyi`` file.
