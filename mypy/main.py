@@ -107,9 +107,13 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
 
+    code = 0
     if messages:
         code = 2 if blockers else 1
-        sys.exit(code)
+    # Exit without freeing objects since it's faster.
+    #
+    # NOTE: We can't rely on flushing all open files on exit (and running other destructors).
+    util.hard_exit(code)
 
 
 def find_bin_directory(script_path: str) -> str:
