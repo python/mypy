@@ -496,7 +496,7 @@ def f(x):
     r2, r3 :: B
 L0:
     r0 = __main__.B :: type
-    r1 = isinstance x, r0
+    r1 = type_is x, r0
     if r1 goto L1 else goto L2 :: bool
 L1:
     r2 = cast(B, x)

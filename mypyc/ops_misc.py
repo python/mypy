@@ -268,6 +268,13 @@ fast_isinstance_op = func_op(
     emit=simple_emit('{dest} = PyObject_TypeCheck({args[0]}, (PyTypeObject *){args[1]});'),
     priority=0)
 
+type_is_op = custom_op(
+    name='type_is',
+    arg_types=[object_rprimitive, object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
+    emit=simple_emit('{dest} = Py_TYPE({args[0]}) == (PyTypeObject *){args[1]};'))
+
 bool_op = func_op(
     'builtins.bool',
     arg_types=[object_rprimitive],

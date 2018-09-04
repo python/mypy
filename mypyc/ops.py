@@ -1470,6 +1470,8 @@ class ClassIR:
         # base_mro is the chain of concrete (non-trait) ancestors
         self.base_mro = [self]  # type: List[ClassIR]
 
+        # Children of this class
+        self.children = []  # type: List[ClassIR]
         # Does this class or any subclass have a __bool__method
         self.has_bool = False
         # If this a subclass of some built-in python class, the name

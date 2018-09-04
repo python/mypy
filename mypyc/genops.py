@@ -75,7 +75,7 @@ from mypyc.ops_misc import (
     none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
-    type_op, pytype_from_template_op, import_op, ellipsis_op, method_new_op,
+    type_op, pytype_from_template_op, import_op, ellipsis_op, method_new_op, type_is_op,
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
@@ -420,6 +420,9 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
         "non-trait MRO must be linear")
     ir.mro = mro
     ir.base_mro = base_mro
+
+    for base in bases:
+        base.children.append(ir)
 
     # We need to know whether any children of a class have a __bool__
     # method in order to know whether we can assume it is always true.
@@ -2149,7 +2152,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 and isinstance(expr.args[1].node, TypeInfo)
                 and self.is_native_module_ref_expr(expr.args[1])):
             # Special case native isinstance() checks as this makes them much faster.
-            return self.primitive_op(fast_isinstance_op, arg_values, expr.line)
+            ir = self.mapper.type_to_ir.get(expr.args[1].node)
+            op = type_is_op if ir and not ir.children else fast_isinstance_op
+            return self.primitive_op(op, arg_values, expr.line)
 
         # Special case builtins.globals
         if (callee.fullname == 'builtins.globals'

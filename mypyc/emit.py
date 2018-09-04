@@ -359,8 +359,14 @@ class Emitter:
         elif isinstance(typ, RInstance):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
-            self.emit_arg_check(src, dest, typ, '(PyObject_TypeCheck({}, {}))'.format(src,
-                    self.type_struct_name(typ.class_ir)), optional)
+            if typ.class_ir.children:
+                check = '(PyObject_TypeCheck({}, {}))'.format(
+                    src, self.type_struct_name(typ.class_ir))
+            else:
+                # If the class has no children, just check the type directly
+                check = '(Py_TYPE({}) == {})'.format(
+                    src, self.type_struct_name(typ.class_ir))
+            self.emit_arg_check(src, dest, typ, check, optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
                 'else {',
