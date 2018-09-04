@@ -4885,6 +4885,149 @@ def f(x: str) -> None: pass
 [out2]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
+-- These tests should just not crash
+[case testOverrideByBadVar]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+s: Slow
+from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+A = Slow
+from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarClass]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+    s: Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarClassAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+    A = Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarExisting]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+s: Slow
+from cext import Slow  # type: ignore
+[file cext.py]
+Slow = 1
+[out]
+[out2]
+
+[case testOverrideByBadVarAliasExisting]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+A = Slow
+from cext import Slow  # type: ignore
+[file cext.py]
+Slow = 1
+[out]
+[out2]
+
+[case testOverrideByBadFunction]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+
+    s: Slow
+    def Slow() -> None: ...  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarLocal]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+def outer() -> None:
+    class Slow:
+        pass
+
+    s: Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip
 # cmd: mypy -m main
