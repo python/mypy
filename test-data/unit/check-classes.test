@@ -2150,14 +2150,14 @@ reveal_type(x + C())  # E: Revealed type is 'Union[__main__.Out3, __main__.Out2]
 reveal_type(x + D())  # E: Revealed type is 'Union[__main__.Out1, __main__.Out4]'
 
 [case testOperatorDoubleUnionDivisionPython2]
-# flags: --py2
+# flags: --python-version 2.7
 from typing import Union
 def f(a):
     # type: (Union[int, float]) -> None
     a /= 1.1
     b = a / 1.1
     reveal_type(b)  # E: Revealed type is 'builtins.float'
-[builtins fixtures/ops.pyi]
+[builtins_py2 fixtures/ops.pyi]
 
 [case testOperatorDoubleUnionDivisionPython3]
 from typing import Union
