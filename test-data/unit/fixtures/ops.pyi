@@ -39,6 +39,10 @@ class int:
     def __radd__(self, x: 'int') -> 'int': pass
     def __sub__(self, x: 'int') -> 'int': pass
     def __mul__(self, x: 'int') -> 'int': pass
+    def __div__(self, x: 'int') -> 'int': pass
+    def __rdiv__(self, x: 'int') -> 'int': pass
+    def __truediv__(self, x: 'int') -> 'int': pass
+    def __rtruediv__(self, x: 'int') -> 'int': pass
     def __mod__(self, x: 'int') -> 'int': pass
     def __floordiv__(self, x: 'int') -> 'int': pass
     def __pow__(self, x: 'int') -> Any: pass
@@ -54,6 +58,10 @@ class int:
 class float:
     def __add__(self, x: 'float') -> 'float': pass
     def __radd__(self, x: 'float') -> 'float': pass
+    def __div__(self, x: 'float') -> 'float': pass
+    def __rdiv__(self, x: 'float') -> 'float': pass
+    def __truediv__(self, x: 'float') -> 'float': pass
+    def __rtruediv__(self, x: 'float') -> 'float': pass
 
 class BaseException: pass
 
