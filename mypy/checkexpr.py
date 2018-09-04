@@ -1188,14 +1188,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # gives a narrower type.
                 if unioned_return:
                     returns, inferred_types = zip(*unioned_return)
-                    # Note that we use `union_overload_matches` instead of just returning
+                    # Note that we use `combine_function_signatures` instead of just returning
                     # a union of inferred callables because for example a call
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
                     # we don't want to introduce internal inconsistencies.
                     unioned_result = (UnionType.make_simplified_union(list(returns),
                                                                       context.line,
                                                                       context.column),
-                                      self.union_overload_matches(inferred_types))
+                                      self.combine_function_signatures(inferred_types))
 
         # Step 3: We try checking each branch one-by-one.
         inferred_result = self.infer_overload_return_type(plausible_targets, args, arg_types,
@@ -1492,8 +1492,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for expr in exprs:
                 del self.type_overrides[expr]
 
-    def union_overload_matches(self, types: Sequence[Type]) -> Union[AnyType, CallableType]:
-        """Accepts a list of overload signatures and attempts to combine them together into a
+    def combine_function_signatures(self, types: Sequence[Type]) -> Union[AnyType, CallableType]:
+        """Accepts a list of function signatures and attempts to combine them together into a
         new CallableType consisting of the union of all of the given arguments and return types.
 
         If there is at least one non-callable type, return Any (this can happen if there is
@@ -1507,7 +1507,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return callables[0]
 
         # Note: we are assuming here that if a user uses some TypeVar 'T' in
-        # two different overloads, they meant for that TypeVar to mean the
+        # two different functions, they meant for that TypeVar to mean the
         # same thing.
         #
         # This function will make sure that all instances of that TypeVar 'T'
@@ -1525,7 +1525,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         too_complex = False
         for target in callables:
-            # We fall back to Callable[..., Union[<returns>]] if the overloads do not have
+            # We fall back to Callable[..., Union[<returns>]] if the functions do not have
             # the exact same signature. The only exception is if one arg is optional and
             # the other is positional: in that case, we continue unioning (and expect a
             # positional arg).
@@ -2098,8 +2098,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 elif len(right_variants) >= 2:
                     self.msg.warn_operand_was_from_union("Right", right_type, context)
 
+            # See the comment in 'check_overload_call' for more details on why
+            # we call 'combine_function_signature' instead of just unioning the inferred
+            # callable types.
             results_final = UnionType.make_simplified_union(all_results)
-            inferred_final = UnionType.make_simplified_union(all_inferred)
+            inferred_final = self.combine_function_signatures(all_inferred)
             return results_final, inferred_final
         else:
             return self.check_op_local_by_name(
