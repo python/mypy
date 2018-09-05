@@ -14,7 +14,7 @@ from abc import abstractmethod, abstractproperty
 import re
 from typing import (
     List, Sequence, Dict, Generic, TypeVar, Optional, Any, NamedTuple, Tuple, Callable,
-    Union, Iterable, Type,
+    Union, Iterable, Type, Set
 )
 from collections import OrderedDict
 
@@ -1470,7 +1470,7 @@ class ClassIR:
         # base_mro is the chain of concrete (non-trait) ancestors
         self.base_mro = [self]  # type: List[ClassIR]
 
-        # Children of this class
+        # Direct subclasses of this class (use subclasses() to also incude non-direct ones)
         self.children = []  # type: List[ClassIR]
         # Does this class or any subclass have a __bool__method
         self.has_bool = False
@@ -1541,6 +1541,14 @@ class ClassIR:
     def get_method(self, name: str) -> Optional[FuncIR]:
         res = self.get_method_and_class(name)
         return res[0] if res else None
+
+    def subclasses(self) -> Set['ClassIR']:
+        """Return all subclassses of this class, both direct and indirect."""
+        result = set(self.children)
+        for child in self.children:
+            if child.children:
+                result.update(child.subclasses())
+        return result
 
 
 LiteralsMap = Dict[Tuple[Type[object], Union[int, float, str, bytes]], str]

@@ -293,19 +293,29 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             return ''
 
     def visit_call(self, op: Call) -> None:
+        """Call native function."""
         dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
         cname = op.fn.cname(self.names)
         self.emit_line('%s%s%s(%s);' % (dest, NATIVE_PREFIX, cname, args))
 
     def visit_method_call(self, op: MethodCall) -> None:
+        """Call native method."""
         dest = self.get_dest_assign(op)
         obj = self.reg(op.obj)
 
         rtype = op.receiver_type
-        method_idx = rtype.method_index(op.method)
-        method = rtype.class_ir.get_method(op.method)
+        class_ir = rtype.class_ir
+        name = op.method
+        method_idx = rtype.method_index(name)
+        method = rtype.class_ir.get_method(name)
         assert method is not None
+
+        # Can we call the method directly, bypassing vtable?
+        is_direct = False
+        if not class_ir.is_trait:
+            if not any(name in subc.methods for subc in class_ir.subclasses()):
+                is_direct = True
 
         # The first argument gets omitted for static methods and
         # turned into the class for class methods
@@ -316,9 +326,17 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         args = ', '.join(obj_args + [self.reg(arg) for arg in op.args])
         mtype = native_function_type(method, self.emitter)
         version = '_TRAIT' if rtype.class_ir.is_trait else ''
-        self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({}); /* {} */'.format(
-            dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
-            method_idx, rtype.struct_name(self.names), mtype, args, op.method))
+        if is_direct:
+            # Directly call method, without going through the vtable.
+            self.emit_line('{}{}{}({});'.format(dest,
+                                                NATIVE_PREFIX,
+                                                method.cname(self.names),
+                                                args))
+        else:
+            # Call using vtable.
+            self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({}); /* {} */'.format(
+                dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
+                method_idx, rtype.struct_name(self.names), mtype, args, op.method))
 
     def visit_inc_ref(self, op: IncRef) -> None:
         src = self.reg(op.src)

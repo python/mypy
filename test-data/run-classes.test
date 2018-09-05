@@ -721,3 +721,35 @@ b(B())
 1 10
 2 10
 2 3
+
+[case testOverride]
+class A:
+    def f(self) -> int:
+        return 0
+    def g(self) -> int:
+        return 1
+
+class B(A):
+    def g(self) -> int:
+        return 2
+
+class C(B):
+    def f(self) -> int:
+        return 3
+
+def test() -> None:
+    ba: A = B()
+    ca: A = C()
+    assert ba.f() == 0
+    assert ba.g() == 2
+    assert ca.f() == 3
+    assert ca.g() == 2
+    cc = C()
+    assert cc.f() == 3
+    assert cc.g() == 2
+    print('ok')
+[file driver.py]
+import native
+native.test()
+[out]
+ok
