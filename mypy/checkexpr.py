@@ -1999,7 +1999,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: Remove this extra case
                 return result
 
-        self.msg.add_errors(errors[0])
+        msg.add_errors(errors[0])
         if len(results) == 1:
             return results[0]
         else:
