@@ -1,5 +1,9 @@
 """Plugin system for extending mypy."""
 
+import sys
+import os.path
+import types
+
 from abc import abstractmethod
 from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
@@ -16,7 +20,7 @@ from mypy.types import (
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
-
+import mypy.interpreted_plugin
 
 @trait
 class TypeAnalyzerPluginInterface:
@@ -220,6 +224,58 @@ class Plugin:
 
 
 T = TypeVar('T')
+
+
+class WrapperPlugin(Plugin):
+    """A plugin that wraps an interpreted plugin.
+
+    This is a ugly workaround the limitation that mypyc-compiled
+    classes can't be subclassed by interpreted ones, so instead we
+    create a new class for interpreted clients to inherit from and
+    dispatch to it from here.
+
+    Eventually mypyc ought to do something like this automatically.
+    """
+
+    def __init__(self, plugin: mypy.interpreted_plugin.InterpretedPlugin) -> None:
+        super().__init__(plugin.options)
+        self.plugin = plugin
+
+    def get_type_analyze_hook(self, fullname: str
+                              ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
+        return self.plugin.get_type_analyze_hook(fullname)
+
+    def get_function_hook(self, fullname: str
+                          ) -> Optional[Callable[[FunctionContext], Type]]:
+        return self.plugin.get_function_hook(fullname)
+
+    def get_method_signature_hook(self, fullname: str
+                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+        return self.plugin.get_method_signature_hook(fullname)
+
+    def get_method_hook(self, fullname: str
+                        ) -> Optional[Callable[[MethodContext], Type]]:
+        return self.plugin.get_method_hook(fullname)
+
+    def get_attribute_hook(self, fullname: str
+                           ) -> Optional[Callable[[AttributeContext], Type]]:
+        return self.plugin.get_attribute_hook(fullname)
+
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_class_decorator_hook(fullname)
+
+    def get_metaclass_hook(self, fullname: str
+                           ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_metaclass_hook(fullname)
+
+    def get_base_class_hook(self, fullname: str
+                            ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_base_class_hook(fullname)
+
+    def get_customize_class_mro_hook(self, fullname: str
+                                     ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_customize_class_mro_hook(fullname)
 
 
 class ChainedPlugin(Plugin):
@@ -444,3 +500,14 @@ def int_pow_callback(ctx: MethodContext) -> Type:
         else:
             return ctx.api.named_generic_type('builtins.float', [])
     return ctx.default_return_type
+
+
+# This is an incredibly frumious hack. If this module is compiled by mypyc,
+# set the module 'Plugin' attribute to point to InterpretedPlugin. This means
+# that anything interpreted that imports Plugin will get InterpretedPlugin
+# while anything compiled alongside this module will get the real Plugin.
+if isinstance(int_pow_callback, types.BuiltinFunctionType):
+    plugin_types = (Plugin, mypy.interpreted_plugin.InterpretedPlugin)  # type: Tuple[type, ...]
+    globals()['Plugin'] = mypy.interpreted_plugin.InterpretedPlugin
+else:
+    plugin_types = (Plugin,)
