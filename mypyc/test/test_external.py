@@ -36,8 +36,8 @@ class TestExternal(unittest.TestCase):
     def test_self_type_check(self) -> None:
         """Use the bundled mypy (in git submodule) to type check mypyc."""
         mypy_dir = os.path.join(base_dir, 'external', 'mypy')
-        if not os.path.exists(os.path.join(mypy_dir, 'typeshed', 'stdlib')):
-            raise AssertionError('Submodule mypy/typeshed not ready')
+        if not os.path.exists(os.path.join(mypy_dir, 'mypy', 'typeshed', 'stdlib')):
+            raise AssertionError('Submodule mypy/mypy/typeshed not ready')
         env = {'PYTHONPATH': mypy_dir,
                'MYPYPATH': '%s:%s' % (mypy_dir, base_dir)}
         status = subprocess.call(
