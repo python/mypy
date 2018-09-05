@@ -1021,21 +1021,11 @@ class MessageBuilder:
         self.fail('Overloaded function implementation cannot produce return type '
                   'of signature {}'.format(index), context)
 
-    def reverse_operator_method_never_called(self,
-                                             op: str,
-                                             forward_method: str,
-                                             reverse_type: Type,
-                                             reverse_method: str,
-                                             context: Context) -> None:
-        msg = "{rfunc} will not be called when evaluating '{cls} {op} {cls}': must define {ffunc}"
-        self.note(
-            msg.format(
-                op=op,
-                ffunc=forward_method,
-                rfunc=reverse_method,
-                cls=self.format_bare(reverse_type),
-            ),
-            context=context)
+    def warn_both_operands_are_from_unions(self, context: Context) -> None:
+        self.note('Both left and right operands are unions', context)
+
+    def warn_operand_was_from_union(self, side: str, original: Type, context: Context) -> None:
+        self.note('{} operand is of type {}'.format(side, self.format(original)), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,

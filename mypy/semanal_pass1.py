@@ -348,6 +348,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 if not (node.kind == MODULE_REF and
                         self.sem.locals[-1][name].node == node.node):
                     self.sem.name_already_defined(name, context, self.sem.locals[-1][name])
+                    return
             self.sem.locals[-1][name] = node
         else:
             assert self.sem.type is None  # Pass 1 doesn't look inside classes
@@ -364,5 +365,6 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     ok = True
                 if not ok:
                     self.sem.name_already_defined(name, context, existing)
+                    return
             elif not existing:
                 self.sem.globals[name] = node

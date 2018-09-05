@@ -3515,7 +3515,8 @@ from typing import Optional
 def foo() -> Optional[int]: return 0
 [out1]
 [out2]
-main:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+main:3: error: Unsupported operand types for + ("int" and "None")
+main:3: note: Right operand is of type "Optional[int]"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
@@ -4082,7 +4083,8 @@ class Baz:
         return 1
 [out]
 [out2]
-tmp/a.py:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+tmp/a.py:3: error: Unsupported operand types for + ("int" and "None")
+tmp/a.py:3: note: Right operand is of type "Optional[int]"
 
 [case testIncrementalMetaclassUpdate]
 import a
@@ -4977,6 +4979,149 @@ class C:
 [out]
 [out2]
 main:4: error: Cannot override final attribute "meth" (previously declared on base class "C")
+
+-- These tests should just not crash
+[case testOverrideByBadVar]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+s: Slow
+from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+A = Slow
+from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarClass]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+    s: Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarClassAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+    A = Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarExisting]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+s: Slow
+from cext import Slow  # type: ignore
+[file cext.py]
+Slow = 1
+[out]
+[out2]
+
+[case testOverrideByBadVarAliasExisting]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+A = Slow
+from cext import Slow  # type: ignore
+[file cext.py]
+Slow = 1
+[out]
+[out2]
+
+[case testOverrideByBadFunction]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+
+    s: Slow
+    def Slow() -> None: ...  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarLocal]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+def outer() -> None:
+    class Slow:
+        pass
+
+    s: Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
 
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip

@@ -127,7 +127,8 @@ f(None)
 
 [case testInferOptionalFromDefaultNone]
 def f(x: int = None) -> None:
-  x + 1  # E: Unsupported left operand type for + (some union)
+  x + 1  # E: Unsupported left operand type for + ("None") \
+         # N: Left operand is of type "Optional[int]"
 f(None)
 [out]
 
@@ -140,7 +141,8 @@ def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (defau
 [case testInferOptionalFromDefaultNoneComment]
 def f(x=None):
   # type: (int) -> None
-  x + 1  # E: Unsupported left operand type for + (some union)
+  x + 1  # E: Unsupported left operand type for + ("None") \
+         # N: Left operand is of type "Optional[int]"
 f(None)
 [out]
 
@@ -437,7 +439,8 @@ from typing import Optional
 x = None  # type: Optional[int]
 x + 1
 [out]
-tmp/a.py:3: error: Unsupported left operand type for + (some union)
+tmp/a.py:3: error: Unsupported left operand type for + ("None")
+tmp/a.py:3: note: Left operand is of type "Optional[str]"
 
 [case testNoneContextInference]
 from typing import Dict, List

@@ -46,7 +46,8 @@ from typing import Callable, Union
 x = 5  # type: Union[int, Callable[[], str], Callable[[], int]]
 
 if callable(x):
-    y = x() + 2 # E: Unsupported operand types for + (likely involving Union)
+    y = x() + 2 # E: Unsupported operand types for + ("str" and "int") \
+                # N: Left operand is of type "Union[str, int]"
 else:
     z = x + 6
 
@@ -60,7 +61,8 @@ x = 5  # type: Union[int, str, Callable[[], str]]
 if callable(x):
     y = x() + 'test'
 else:
-    z = x + 6  # E: Unsupported operand types for + (likely involving Union)
+    z = x + 6  # E: Unsupported operand types for + ("str" and "int") \
+               # N: Left operand is of type "Union[int, str]"
 
 [builtins fixtures/callable.pyi]
 
@@ -153,7 +155,8 @@ x = 5  # type: Union[int, Callable[[], str]]
 if callable(x) and x() == 'test':
     x()
 else:
-    x + 5  # E: Unsupported left operand type for + (some union)
+    x + 5  # E: Unsupported left operand type for + ("Callable[[], str]") \
+           # N: Left operand is of type "Union[int, Callable[[], str]]"
 
 [builtins fixtures/callable.pyi]
 
