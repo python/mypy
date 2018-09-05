@@ -2067,6 +2067,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #
             # We don't do the same for the base expression because it could lead to weird
             # type inference errors -- e.g. see 'testOperatorDoubleUnionSum'.
+            # TODO: Can we use `type_overrides_set()` here?
             right_variants = [(right_type, arg)]
             if isinstance(right_type, UnionType):
                 right_variants = [(item, TempNode(item)) for item in right_type.relevant_items()]
