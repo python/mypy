@@ -5087,3 +5087,33 @@ c = D()
 from a import Other
 class B: ...
 [out]
+
+[case testAllowPropertyAndInit1]
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x
+    @property
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, x: int) -> None: pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testAllowPropertyAndInit2]
+class C:
+    @property
+    def x(self) -> int: pass
+    @x.setter
+    def x(self, x: int) -> None: pass
+    def __init__(self, x: int) -> None:
+        self.x = x
+[builtins fixtures/property.pyi]
+
+[case testAllowPropertyAndInit3]
+class C:
+    def __init__(self, x: int) -> None:
+        self.x = x  # type: ignore
+    @property  # Should be no error here
+    def x(self) -> int: pass
+[builtins fixtures/property.pyi]
+[out]

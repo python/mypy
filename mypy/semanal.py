@@ -3293,7 +3293,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.locals[-1][name] = node
         elif self.type:
             existing = self.type.names.get(name)
-            if existing and existing.node != node.node:
+            if existing and isinstance(existing.node, TypeInfo) and existing.node != node.node:
                 self.name_already_defined(name, context, existing)
                 return
             self.type.names[name] = node
