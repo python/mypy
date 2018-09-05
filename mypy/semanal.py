@@ -387,10 +387,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             #   a common stack of namespaces. As the 3 kinds of namespaces have
             #   different semantics, this wouldn't always work, but it might still
             #   be a win.
+            #   Also we can re-use some logic in self.add_symbol().
             if self.is_class_scope():
                 # Method definition
                 assert self.type is not None, "Type not set at class scope"
                 defn.info = self.type
+                add_symbol = True
                 if not defn.is_decorated and not defn.is_overload:
                     if (defn.name() in self.type.names and
                             self.type.names[defn.name()].node != defn):
@@ -399,7 +401,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         if not self.set_original_def(n, defn):
                             self.name_already_defined(defn.name(), defn,
                                                       self.type.names[defn.name()])
-                    self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                            add_symbol = False
+                    if add_symbol:
+                        self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
@@ -3277,6 +3281,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                    context: Context) -> None:
         # NOTE: This logic mostly parallels SemanticAnalyzerPass1.add_symbol. If you change
         #     this, you may have to change the other method as well.
+        # TODO: Combine these methods in the first and second pass into a single one.
         if self.is_func_scope():
             assert self.locals[-1] is not None
             if name in self.locals[-1]:
@@ -3284,8 +3289,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if not (node.kind == MODULE_REF and
                         self.locals[-1][name].node == node.node):
                     self.name_already_defined(name, context, self.locals[-1][name])
+                    return
             self.locals[-1][name] = node
         elif self.type:
+            existing = self.type.names.get(name)
+            if existing and existing.node != node.node:
+                self.name_already_defined(name, context, existing)
+                return
             self.type.names[name] = node
         else:
             existing = self.globals.get(name)
@@ -3301,6 +3311,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     ok = True
                 if not ok:
                     self.name_already_defined(name, context, existing)
+                    return
             self.globals[name] = node
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
@@ -3308,6 +3319,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         name = node.name()
         if name in self.locals[-1]:
             self.name_already_defined(name, ctx, self.locals[-1][name])
+            return
         node._fullname = name
         self.locals[-1][name] = SymbolTableNode(LDEF, node)
 

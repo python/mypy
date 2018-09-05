@@ -1902,7 +1902,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
-        warn_about_uncalled_reverse_operator = False
         bias_right = is_proper_subtype(right_type, left_type)
         if op_name in nodes.op_methods_that_shortcut and is_same_type(left_type, right_type):
             # When we do "A() + A()", for example, Python will only call the __add__ method,
@@ -1914,8 +1913,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             variants_raw = [
                 (left_op, left_type, right_expr)
             ]
-            if right_op is not None:
-                warn_about_uncalled_reverse_operator = True
         elif (is_subtype(right_type, left_type)
                 and isinstance(left_type, Instance)
                 and isinstance(right_type, Instance)
@@ -2002,15 +1999,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # TODO: Remove this extra case
                 return result
 
-        msg.add_errors(errors[0])
-        if warn_about_uncalled_reverse_operator:
-            msg.reverse_operator_method_never_called(
-                nodes.op_methods_to_symbols[op_name],
-                op_name,
-                right_type,
-                rev_op_name,
-                context,
-            )
+        self.msg.add_errors(errors[0])
         if len(results) == 1:
             return results[0]
         else:
