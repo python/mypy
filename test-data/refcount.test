@@ -5,7 +5,7 @@ def f() -> int:
     return 1
 [out]
 def f():
-    r0 :: int
+    r0 :: short_int
 L0:
     r0 = 1
     return r0
@@ -16,7 +16,8 @@ def f() -> int:
     return x
 [out]
 def f():
-    r0, x :: int
+    r0 :: short_int
+    x :: int
 L0:
     r0 = 1
     x = r0
@@ -30,7 +31,8 @@ def f() -> int:
     return x
 [out]
 def f():
-    r0, x, y :: int
+    r0 :: short_int
+    x, y :: int
 L0:
     r0 = 1
     x = r0
@@ -46,7 +48,8 @@ def f() -> int:
     return y + z
 [out]
 def f():
-    r0, x, y, z, r1 :: int
+    r0 :: short_int
+    x, y, z, r1 :: int
 L0:
     r0 = 1
     x = r0
@@ -67,7 +70,11 @@ def f() -> int:
     return y
 [out]
 def f():
-    r0, x, r1, y, r2 :: int
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    y :: int
+    r2 :: short_int
     r3 :: bool
 L0:
     r0 = 1
@@ -76,7 +83,6 @@ L0:
     y = r1
     r2 = 1
     r3 = x == r2 :: int
-    dec_ref r2 :: int
     if r3 goto L3 else goto L4 :: bool
 L1:
     return x
@@ -96,11 +102,12 @@ def f(a: int, b: int) -> int:
     return y
 [out]
 def f(a, b):
-    a, b, r0, r1, x, r2, y :: int
+    a, b :: int
+    r0 :: short_int
+    r1, x, r2, y :: int
 L0:
     r0 = 1
     r1 = a + r0 :: int
-    dec_ref r0 :: int
     x = r1
     r2 = x + a :: int
     dec_ref x :: int
@@ -115,7 +122,9 @@ def f(a: int) -> int:
     return x + y
 [out]
 def f(a):
-    a, x, y, r0, r1 :: int
+    a, x, y :: int
+    r0 :: short_int
+    r1 :: int
 L0:
     inc_ref a :: int
     x = a
@@ -136,7 +145,9 @@ def f(a: int) -> int:
     return y
 [out]
 def f(a):
-    a, r0, y :: int
+    a :: int
+    r0 :: short_int
+    y :: int
 L0:
     r0 = 1
     a = r0
@@ -151,7 +162,8 @@ def f(a: int) -> int:
     return a
 [out]
 def f(a):
-    a, r0, r1, r2 :: int
+    a :: int
+    r0, r1, r2 :: short_int
 L0:
     r0 = 1
     a = r0
@@ -171,7 +183,9 @@ def f(a: int) -> int:
     return a
 [out]
 def f(a):
-    a, r0, x, y :: int
+    a :: int
+    r0 :: short_int
+    x, y :: int
 L0:
     r0 = 1
     x = r0
@@ -203,7 +217,10 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1, r2, x, r3, r4, y :: int
+    r1, r2 :: short_int
+    x :: int
+    r3 :: short_int
+    r4, y :: int
 L0:
     r0 = a == a :: int
     if r0 goto L1 else goto L2 :: bool
@@ -220,7 +237,6 @@ L3:
     r3 = 1
     r4 = a + r3 :: int
     dec_ref a :: int
-    dec_ref r3 :: int
     y = r4
     return y
 L4:
@@ -239,7 +255,10 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1, x, r2, r3, r4, y :: int
+    r1 :: short_int
+    x :: int
+    r2, r3 :: short_int
+    r4, y :: int
 L0:
     r0 = a == a :: int
     if r0 goto L1 else goto L2 :: bool
@@ -255,7 +274,6 @@ L3:
     r3 = 1
     r4 = a + r3 :: int
     dec_ref a :: int
-    dec_ref r3 :: int
     y = r4
     return y
 L4:
@@ -271,7 +289,7 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1 :: int
+    r1 :: short_int
 L0:
     r0 = a == a :: int
     if r0 goto L1 else goto L3 :: bool
@@ -293,7 +311,9 @@ def f(a: int) -> int:
 -- This is correct but bad code
 [out]
 def f(a):
-    a, r0, x, r1 :: int
+    a :: int
+    r0 :: short_int
+    x, r1 :: int
 L0:
     inc_ref a :: int
     a = a
@@ -315,18 +335,22 @@ def f(a: int) -> int:
     return a + x
 [out]
 def f(a):
-    a, r0, r1, r2, x, r3, r4, r5 :: int
+    a :: int
+    r0 :: short_int
+    r1 :: int
+    r2 :: short_int
+    x :: int
+    r3 :: short_int
+    r4, r5 :: int
 L0:
     r0 = 1
     r1 = a + r0 :: int
-    dec_ref r0 :: int
     a = r1
     r2 = 1
     x = r2
     r3 = 1
     r4 = x + r3 :: int
     dec_ref x :: int
-    dec_ref r3 :: int
     x = r4
     r5 = a + x :: int
     dec_ref a :: int
@@ -339,7 +363,10 @@ def f() -> None:
     x = x + 1
 [out]
 def f():
-    r0, x, r1, r2 :: int
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    r2 :: int
     r3 :: None
 L0:
     r0 = 1
@@ -347,7 +374,6 @@ L0:
     r1 = 1
     r2 = x + r1 :: int
     dec_ref x :: int
-    dec_ref r1 :: int
     x = r2
     dec_ref x :: int
     r3 = None
@@ -360,7 +386,10 @@ def f() -> None:
     x = y + 1
 [out]
 def f():
-    r0, y, r1, r2, x :: int
+    r0 :: short_int
+    y :: int
+    r1 :: short_int
+    r2, x :: int
     r3 :: None
 L0:
     r0 = 1
@@ -368,7 +397,6 @@ L0:
     r1 = 1
     r2 = y + r1 :: int
     dec_ref y :: int
-    dec_ref r1 :: int
     x = r2
     dec_ref x :: int
     r3 = None
@@ -416,7 +444,9 @@ def f(a: int) -> None:
     z = y + y
 [out]
 def f(a):
-    a, r0, x, r1, y, r2, z :: int
+    a, r0, x :: int
+    r1 :: short_int
+    y, r2, z :: int
     r3 :: None
 L0:
     r0 = a + a :: int
@@ -439,7 +469,9 @@ def f(a: int) -> None:
     x = x + x
 [out]
 def f(a):
-    a, r0, r1, x, r2 :: int
+    a, r0 :: int
+    r1 :: short_int
+    x, r2 :: int
     r3 :: None
 L0:
     r0 = a + a :: int
@@ -466,9 +498,15 @@ def f() -> int:
     return x + y - a
 [out]
 def f():
-    r0, x, r1, y, r2, z :: int
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    y :: int
+    r2 :: short_int
+    z :: int
     r3 :: bool
-    r4, a, r5, r6 :: int
+    r4 :: short_int
+    a, r5, r6 :: int
 L0:
     r0 = 1
     x = r0
@@ -508,9 +546,15 @@ def f(a: int) -> int:
     return sum
 [out]
 def f(a):
-    a, r0, sum, r1, i :: int
+    a :: int
+    r0 :: short_int
+    sum :: int
+    r1 :: short_int
+    i :: int
     r2 :: bool
-    r3, r4, r5 :: int
+    r3 :: int
+    r4 :: short_int
+    r5 :: int
 L0:
     r0 = 0
     sum = r0
@@ -526,7 +570,6 @@ L2:
     r4 = 1
     r5 = i + r4 :: int
     dec_ref i :: int
-    dec_ref r4 :: int
     i = r5
     goto L1
 L3:
@@ -540,11 +583,12 @@ def f(a: int) -> int:
     return f(a + 1)
 [out]
 def f(a):
-    a, r0, r1, r2 :: int
+    a :: int
+    r0 :: short_int
+    r1, r2 :: int
 L0:
     r0 = 1
     r1 = a + r0 :: int
-    dec_ref r0 :: int
     r2 = f(r1)
     dec_ref r1 :: int
     return r2
@@ -558,15 +602,15 @@ def f() -> int:
     return 0
 [out]
 def f():
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2, r3 :: object
     r4, a :: list
-    r5 :: int
+    r5 :: short_int
 L0:
     r0 = 0
     r1 = 1
-    r2 = box(int, r0)
-    r3 = box(int, r1)
+    r2 = box(short_int, r0)
+    r3 = box(short_int, r1)
     r4 = [r2, r3]
     a = r4
     dec_ref a
@@ -595,22 +639,21 @@ def f(a: List[int], b: List[int]) -> None:
 [out]
 def f(a, b):
     a, b :: list
-    r0 :: int
+    r0 :: short_int
     r1 :: object
-    r2, r3 :: int
+    r2 :: int
+    r3 :: short_int
     r4 :: object
     r5 :: bool
     r6 :: None
 L0:
     r0 = 0
     r1 = b[r0] :: list
-    dec_ref r0 :: int
     r2 = unbox(int, r1)
     dec_ref r1
     r3 = 0
     r4 = box(int, r2)
     r5 = a.__setitem__(r3, r4) :: list
-    dec_ref r3 :: int
     r6 = None
     inc_ref r6
     return r6
@@ -661,7 +704,7 @@ def f() -> None:
 def f():
     r0 :: C
     r1, a :: list
-    r2 :: int
+    r2 :: short_int
     r3 :: object
     r4, d :: C
     r5 :: None
@@ -672,7 +715,6 @@ L0:
     r2 = 0
     r3 = a[r2] :: list
     dec_ref a
-    dec_ref r2 :: int
     r4 = cast(C, r3)
     d = r4
     dec_ref d
@@ -688,7 +730,7 @@ def f(x: bool) -> int:
 [out]
 def f(x):
     x :: bool
-    r0, r1 :: int
+    r0, r1 :: short_int
 L0:
     if x goto L1 else goto L2 :: bool
 L1:
@@ -715,7 +757,7 @@ def g(x: str) -> int:
 [out]
 def g(x):
     x :: str
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: str
     r3 :: tuple[str]
@@ -730,7 +772,7 @@ L0:
     r2 = unicode_1 :: static  ('base')
     r3 = (x)
     r4 = {}
-    r5 = box(int, r0)
+    r5 = box(short_int, r0)
     r6 = r4.__setitem__(r2, r5) :: dict
     dec_ref r5
     r7 = box(tuple[str], r3)

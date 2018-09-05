@@ -15,7 +15,7 @@ L0:
     return x
 def g(x):
     x :: list
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: list
 L0:
@@ -52,10 +52,10 @@ def f() -> None:
 [out]
 def f():
     r0, c :: C
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: object
     r6, r7 :: int
     r8 :: None
@@ -63,7 +63,7 @@ L0:
     r0 = C()
     c = r0
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     c.x = r2; r3 = is_error
     r4 = 2
     r5 = c.x
@@ -115,10 +115,12 @@ L0:
 def f(x):
     x :: C
     r0 :: object
-    r1, y, r2, r3 :: int
+    r1, y :: int
+    r2 :: short_int
+    r3 :: int
     r4 :: object
     r5 :: None
-    r6 :: int
+    r6 :: short_int
     r7 :: object
     r8 :: C
     r9 :: None
@@ -131,7 +133,7 @@ L0:
     r4 = box(int, r3)
     r5 = x.set(r4)
     r6 = 2
-    r7 = box(int, r6)
+    r7 = box(short_int, r6)
     r8 = C(r7)
     x = r8
     r9 = None

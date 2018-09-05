@@ -341,9 +341,10 @@ def inner_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: inner_b_obj
     r0 :: b__env
     r1, inner :: object
-    r2 :: int
+    r2 :: short_int
     r3 :: bool
-    r4, foo, r5 :: int
+    r4 :: short_int
+    foo, r5 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.inner
@@ -356,7 +357,7 @@ L0:
     return r5
 def b():
     r0 :: b__env
-    r1 :: int
+    r1 :: short_int
     r2 :: bool
     r3 :: inner_b_obj
     r4, r5 :: bool
@@ -510,7 +511,9 @@ def b_a_obj.__call__(__mypyc_self__):
     r1, b :: object
     r2 :: b_a_env
     r3 :: bool
-    r4, r5, r6 :: int
+    r4 :: int
+    r5 :: short_int
+    r6 :: int
     r7 :: bool
     r8 :: c_a_b_obj
     r9, r10 :: bool
@@ -535,7 +538,7 @@ L0:
     return r13
 def a():
     r0 :: a__env
-    r1 :: int
+    r1 :: short_int
     r2 :: bool
     r3 :: b_a_obj
     r4, r5 :: bool
@@ -676,7 +679,9 @@ def foo_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: foo_f_obj
     r0 :: f__env
     r1, foo :: object
-    r2, r3, r4 :: int
+    r2 :: int
+    r3 :: short_int
+    r4 :: int
 L0:
     r0 = __mypyc_self__.__mypyc_env__
     r1 = r0.foo
@@ -731,9 +736,10 @@ def baz_f_obj.__call__(__mypyc_self__, n):
     n :: int
     r0 :: f__env
     r1, baz :: object
-    r2 :: int
+    r2 :: short_int
     r3 :: bool
-    r4, r5, r6 :: int
+    r4, r5 :: short_int
+    r6 :: int
     r7, r8 :: object
     r9, r10 :: int
 L0:
@@ -848,9 +854,11 @@ def baz(n: int) -> int:
 
 [out]
 def baz(n):
-    n, r0 :: int
+    n :: int
+    r0 :: short_int
     r1 :: bool
-    r2, r3, r4, r5, r6 :: int
+    r2, r3 :: short_int
+    r4, r5, r6 :: int
 L0:
     r0 = 0
     r1 = n == r0 :: int

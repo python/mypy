@@ -9,9 +9,14 @@ def f(a: int) -> None:
         z = 1
 [out]
 def f(a):
-    a, r0, x :: int
+    a :: int
+    r0 :: short_int
+    x :: int
     r1 :: bool
-    r2, y, r3, z :: int
+    r2 :: short_int
+    y :: int
+    r3 :: short_int
+    z :: int
     r4 :: None
 L0:
     r0 = 1
@@ -50,7 +55,10 @@ def f(a: int) -> int:
         return x
 [out]
 def f(a):
-    a, r0, x, r1 :: int
+    a :: int
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
     r2 :: bool
 L0:
     r0 = 1
@@ -81,7 +89,11 @@ def f() -> int:
     return x
 [out]
 def f():
-    r0, x, r1, y, r2 :: int
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    y :: int
+    r2 :: short_int
 L0:
     r0 = 1
     x = r0
@@ -106,7 +118,8 @@ def f(a: int) -> int:
     return a
 [out]
 def f(a):
-    a, r0, r1, r2 :: int
+    a :: int
+    r0, r1, r2 :: short_int
 L0:
     r0 = 1
     a = r0
@@ -132,9 +145,14 @@ def f(a: int) -> None:
         x = 2
 [out]
 def f(a):
-    a, r0 :: int
+    a :: int
+    r0 :: short_int
     r1 :: bool
-    r2, y, r3, x, r4 :: int
+    r2 :: short_int
+    y :: int
+    r3 :: short_int
+    x :: int
+    r4 :: short_int
     r5 :: None
 L0:
     r0 = 1
@@ -183,9 +201,11 @@ def f(n: int) -> None:
         m = n
 [out]
 def f(n):
-    n, r0 :: int
+    n :: int
+    r0 :: short_int
     r1 :: bool
-    r2, r3, m :: int
+    r2 :: short_int
+    r3, m :: int
     r4 :: None
 L0:
 L1:
@@ -224,11 +244,16 @@ def f(n: int) -> None:
             n = x
 [out]
 def f(n):
-    n, r0, x, r1, y, r2 :: int
+    n :: int
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    y :: int
+    r2 :: short_int
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: bool
-    r6 :: int
+    r6 :: short_int
     r7 :: None
 L0:
     r0 = 1
@@ -282,7 +307,9 @@ def f(x: int) -> int:
     return f(a) + a
 [out]
 def f(x):
-    x, r0, r1, a, r2, r3, r4 :: int
+    x :: int
+    r0 :: short_int
+    r1, a, r2, r3, r4 :: int
 L0:
     r0 = 1
     r1 = f(r0)
@@ -367,7 +394,8 @@ def f(a: int) -> int:
     return a
 [out]
 def f(a):
-    a, b, r0 :: int
+    a, b :: int
+    r0 :: short_int
 L0:
     b = a
     r0 = 1
@@ -390,7 +418,9 @@ def f(a: int) -> int:
 def f(a):
     a :: int
     r0 :: bool
-    r1, x, r2, r3 :: int
+    r1 :: short_int
+    x :: int
+    r2, r3 :: short_int
 L0:
     r0 = a == a :: int
     if r0 goto L1 else goto L2 :: bool
@@ -427,9 +457,15 @@ def f(a: int) -> int:
     return sum
 [out]
 def f(a):
-    a, r0, sum, r1, i :: int
+    a :: int
+    r0 :: short_int
+    sum :: int
+    r1 :: short_int
+    i :: int
     r2 :: bool
-    r3, r4, r5 :: int
+    r3 :: int
+    r4 :: short_int
+    r5 :: int
 L0:
     r0 = 0
     sum = r0
@@ -483,9 +519,11 @@ def lol(x):
     r7 :: str
     r8 :: object
     r9 :: bool
-    r10, r11 :: int
+    r10 :: short_int
+    r11 :: int
     r12, r13 :: bool
-    r14, r15, r16 :: int
+    r14 :: short_int
+    r15, r16 :: int
 L0:
 L1:
     r0 = builtins.module :: static

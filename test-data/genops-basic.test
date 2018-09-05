@@ -3,7 +3,7 @@ def f() -> int:
     return 1
 [out]
 def f():
-    r0 :: int
+    r0 :: short_int
 L0:
     r0 = 1
     return r0
@@ -44,7 +44,8 @@ def f() -> int:
     return y
 [out]
 def f():
-    r0, x, y :: int
+    r0 :: short_int
+    x, y :: int
 L0:
     r0 = 1
     x = r0
@@ -58,7 +59,9 @@ def f(x: int) -> None:
     return
 [out]
 def f(x):
-    x, r0, y :: int
+    x :: int
+    r0 :: short_int
+    y :: int
     r1 :: None
 L0:
     r0 = 1
@@ -72,7 +75,9 @@ def f(x: int, y: int) -> int:
     return x * (y + 1)
 [out]
 def f(x, y):
-    x, y, r0, r1, r2 :: int
+    x, y :: int
+    r0 :: short_int
+    r1, r2 :: int
 L0:
     r0 = 1
     r1 = y + r0 :: int
@@ -88,7 +93,7 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int
+    r1 :: short_int
 L0:
     r0 = x < y :: int
     if r0 goto L1 else goto L2 :: bool
@@ -109,7 +114,7 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2 :: int
+    r1, r2 :: short_int
 L0:
     r0 = x < y :: int
     if r0 goto L1 else goto L2 :: bool
@@ -134,7 +139,7 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0, r1 :: bool
-    r2, r3 :: int
+    r2, r3 :: short_int
 L0:
     r0 = x < y :: int
     if r0 goto L1 else goto L3 :: bool
@@ -184,7 +189,7 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0, r1 :: bool
-    r2, r3 :: int
+    r2, r3 :: short_int
 L0:
     r0 = x < y :: int
     if r0 goto L2 else goto L1 :: bool
@@ -232,7 +237,7 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1 :: int
+    r1 :: short_int
 L0:
     r0 = x < y :: int
     if r0 goto L2 else goto L1 :: bool
@@ -251,7 +256,7 @@ def f(x: int, y: int) -> int:
 def f(x, y):
     x, y :: int
     r0, r1 :: bool
-    r2 :: int
+    r2 :: short_int
 L0:
     r0 = x < y :: int
     if r0 goto L1 else goto L2 :: bool
@@ -293,7 +298,8 @@ def f(x: int, y: int) -> int:
     return x
 [out]
 def f(x, y):
-    x, y, r0 :: int
+    x, y :: int
+    r0 :: short_int
     r1 :: bool
     r2 :: int
 L0:
@@ -324,7 +330,8 @@ def f() -> None:
     x = 1
 [out]
 def f():
-    r0, x :: int
+    r0 :: short_int
+    x :: int
     r1 :: None
 L0:
     r0 = 1
@@ -342,7 +349,7 @@ def f(x: int, y: int) -> None:
 def f(x, y):
     x, y :: int
     r0 :: bool
-    r1, r2 :: int
+    r1, r2 :: short_int
     r3 :: None
 L0:
     r0 = x < y :: int
@@ -366,9 +373,13 @@ def f(n: int) -> int:
         return f(n - 1) + f(n - 2)
 [out]
 def f(n):
-    n, r0 :: int
+    n :: int
+    r0 :: short_int
     r1 :: bool
-    r2, r3, r4, r5, r6, r7, r8, r9 :: int
+    r2, r3 :: short_int
+    r4, r5 :: int
+    r6 :: short_int
+    r7, r8, r9 :: int
 L0:
     r0 = 1
     r1 = n <= r0 :: int
@@ -410,11 +421,14 @@ def f(n: int) -> int:
     return x
 [out]
 def f(n):
-    n, r0 :: int
+    n :: int
+    r0 :: short_int
     r1 :: bool
-    r2, x, r3 :: int
+    r2 :: short_int
+    x :: int
+    r3 :: short_int
     r4 :: bool
-    r5, r6 :: int
+    r5, r6 :: short_int
 L0:
     r0 = 0
     r1 = n < r0 :: int
@@ -443,7 +457,9 @@ def f(n: int) -> int:
     return -1
 [out]
 def f(n):
-    n, r0, r1 :: int
+    n :: int
+    r0 :: short_int
+    r1 :: int
 L0:
     r0 = 1
     r1 = -r0 :: int
@@ -454,9 +470,11 @@ def f(n: int) -> int:
     return 0 if n == 0 else 1
 [out]
 def f(n):
-    n, r0 :: int
+    n :: int
+    r0 :: short_int
     r1 :: bool
-    r2, r3, r4 :: int
+    r2 :: int
+    r3, r4 :: short_int
 L0:
     r0 = 0
     r1 = n == r0 :: int
@@ -478,7 +496,10 @@ def f() -> int:
     return x
 [out]
 def f():
-    r0, x, r1, r2 :: int
+    r0 :: short_int
+    x :: int
+    r1 :: short_int
+    r2 :: int
 L0:
     r0 = 0
     x = r0
@@ -588,7 +609,7 @@ def f(x):
     r0 :: object
     r1 :: str
     r2 :: object
-    r3 :: int
+    r3 :: short_int
     r4, r5 :: object
     r6, r7 :: None
 L0:
@@ -596,7 +617,7 @@ L0:
     r1 = unicode_1 :: static  ('print')
     r2 = getattr r0, r1
     r3 = 5
-    r4 = box(int, r3)
+    r4 = box(short_int, r3)
     r5 = py_call(r2, r4)
     r6 = cast(None, r5)
     r7 = None
@@ -608,7 +629,8 @@ def f(x: int) -> None:
     print(5)
 [out]
 def f(x):
-    x, r0 :: int
+    x :: int
+    r0 :: short_int
     r1 :: object
     r2 :: str
     r3, r4, r5 :: object
@@ -618,7 +640,7 @@ L0:
     r1 = builtins.module :: static
     r2 = unicode_1 :: static  ('print')
     r3 = getattr r1, r2
-    r4 = box(int, r0)
+    r4 = box(short_int, r0)
     r5 = py_call(r3, r4)
     r6 = cast(None, r5)
     r7 = None
@@ -683,14 +705,14 @@ def g(y: object) -> None:
 def g(y):
     y :: object
     r0 :: None
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: list
     r4, r5, r6, r7 :: None
 L0:
     r0 = g(y)
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = [r2]
     r4 = g(r3)
     r5 = None
@@ -708,20 +730,20 @@ def g(y: object) -> object:
 [out]
 def g(y):
     y :: object
-    r0 :: int
+    r0 :: short_int
     r1, r2 :: object
     r3, a :: list
-    r4, r5 :: int
+    r4, r5 :: short_int
     r6 :: tuple[int, int]
-    r7 :: int
+    r7 :: short_int
     r8 :: object
     r9, r10 :: bool
     r11 :: object
-    r12 :: int
+    r12 :: short_int
     r13 :: object
 L0:
     r0 = 1
-    r1 = box(int, r0)
+    r1 = box(short_int, r0)
     r2 = g(r1)
     r3 = [y]
     a = r3
@@ -735,7 +757,7 @@ L0:
     r11 = box(bool, r10)
     y = r11
     r12 = 3
-    r13 = box(int, r12)
+    r13 = box(short_int, r12)
     return r13
 
 [case testCoerceToObject2]
@@ -749,7 +771,7 @@ def f(a: A, o: object) -> None:
 def f(a, o):
     a :: A
     o :: object
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: bool
     r3 :: int
@@ -757,7 +779,7 @@ def f(a, o):
     r5 :: None
 L0:
     r0 = 1
-    r1 = box(int, r0)
+    r1 = box(short_int, r0)
     a.x = r1; r2 = is_error
     r3 = a.n
     r4 = box(int, r3)
@@ -930,7 +952,12 @@ def big_int() -> None:
     max_32_bit = 2147483647
 [out]
 def big_int():
-    r0, a_62_bit, r1, max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit, r6, max_32_bit :: int
+    r0 :: short_int
+    a_62_bit :: int
+    r1 :: short_int
+    max_62_bit, r2, b_63_bit, r3, c_63_bit, r4, max_63_bit, r5, d_64_bit :: int
+    r6 :: short_int
+    max_32_bit :: int
     r7 :: None
 L0:
     r0 = 4611686018427387902
@@ -972,7 +999,8 @@ def call_callable_type() -> float:
     return f()
 [out]
 def absolute_value(x):
-    x, r0 :: int
+    x :: int
+    r0 :: short_int
     r1 :: bool
     r2, r3 :: int
 L0:
@@ -1040,7 +1068,7 @@ def call_python_method_with_keyword_args(xs: List[int], first: int, second: int)
 [out]
 def call_python_function_with_keyword_arg(x):
     x :: str
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: str
     r3 :: tuple[str]
@@ -1055,7 +1083,7 @@ L0:
     r2 = unicode_3 :: static  ('base')
     r3 = (x)
     r4 = {}
-    r5 = box(int, r0)
+    r5 = box(short_int, r0)
     r6 = r4.__setitem__(r2, r5) :: dict
     r7 = box(tuple[str], r3)
     r8 = py_call_with_kwargs(r1, r7, r4)
@@ -1063,7 +1091,8 @@ L0:
     return r9
 def call_python_method_with_keyword_args(xs, first, second):
     xs :: list
-    first, second, r0 :: int
+    first, second :: int
+    r0 :: short_int
     r1 :: str
     r2 :: object
     r3 :: str
@@ -1073,7 +1102,7 @@ def call_python_method_with_keyword_args(xs, first, second):
     r7 :: bool
     r8, r9 :: object
     r10 :: None
-    r11 :: int
+    r11 :: short_int
     r12 :: str
     r13 :: object
     r14, r15 :: str
@@ -1106,7 +1135,7 @@ L0:
     r17 = {}
     r18 = box(int, second)
     r19 = r17.__setitem__(r14, r18) :: dict
-    r20 = box(int, r11)
+    r20 = box(short_int, r11)
     r21 = r17.__setitem__(r15, r20) :: dict
     r22 = box(tuple[], r16)
     r23 = py_call_with_kwargs(r13, r22, r17)
@@ -1137,7 +1166,7 @@ def lst(x: List[int]) -> int:
 def obj(x):
     x :: object
     r0 :: bool
-    r1, r2 :: int
+    r1, r2 :: short_int
 L0:
     r0 = bool x :: object
     if r0 goto L1 else goto L2 :: bool
@@ -1150,9 +1179,10 @@ L2:
 L3:
     unreachable
 def num(x):
-    x, r0 :: int
+    x :: int
+    r0 :: short_int
     r1 :: bool
-    r2, r3 :: int
+    r2, r3 :: short_int
 L0:
     r0 = 0
     r1 = x != r0 :: int
@@ -1167,13 +1197,13 @@ L3:
     unreachable
 def lst(x):
     x :: list
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2 :: bool
-    r3, r4 :: int
+    r3, r4 :: short_int
 L0:
     r0 = len x :: list
     r1 = 0
-    r2 = r0 != r1 :: int
+    r2 = r0 != r1 :: short_int
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = 1
@@ -1211,9 +1241,10 @@ def opt_int(x):
     x :: union[int, None]
     r0 :: None
     r1 :: bool
-    r2, r3 :: int
+    r2 :: int
+    r3 :: short_int
     r4 :: bool
-    r5, r6 :: int
+    r5, r6 :: short_int
 L0:
     r0 = None
     r1 = x is not r0
@@ -1235,7 +1266,7 @@ def opt_a(x):
     x :: union[A, None]
     r0 :: None
     r1 :: bool
-    r2, r3 :: int
+    r2, r3 :: short_int
 L0:
     r0 = None
     r1 = x is not r0
@@ -1254,7 +1285,7 @@ def opt_o(x):
     r1 :: bool
     r2 :: object
     r3 :: bool
-    r4, r5 :: int
+    r4, r5 :: short_int
 L0:
     r0 = None
     r1 = x is not r0
@@ -1338,7 +1369,7 @@ def __top_level__():
     r2 :: bool
     r3 :: str
     r4 :: object
-    r5 :: int
+    r5 :: short_int
     r6 :: object
     r7 :: str
     r8 :: object
@@ -1364,7 +1395,7 @@ L2:
     r5 = 1
     r6 = __main__.globals :: static
     r7 = unicode_1 :: static  ('x')
-    r8 = box(int, r5)
+    r8 = box(short_int, r5)
     r9 = r6.__setitem__(r7, r8) :: object
     r10 = __main__.globals :: static
     r11 = unicode_1 :: static  ('x')
@@ -1394,7 +1425,7 @@ def f():
     r0 :: object
     r1 :: str
     r2 :: object
-    r3 :: int
+    r3 :: short_int
     r4, r5 :: object
     r6 :: str
 L0:
@@ -1402,7 +1433,7 @@ L0:
     r1 = unicode_2 :: static  ('f')
     r2 = getattr r0, r1
     r3 = 1
-    r4 = box(int, r3)
+    r4 = box(short_int, r3)
     r5 = py_call(r2, r4)
     r6 = cast(str, r5)
     return r6
@@ -1423,9 +1454,9 @@ L0:
     return r0
 def g():
     r0 :: str
-    r1 :: int
+    r1 :: short_int
     r2 :: None
-    r3 :: int
+    r3 :: short_int
     r4 :: str
     r5, r6 :: None
 L0:
@@ -1457,9 +1488,9 @@ L0:
 def g(a):
     a :: A
     r0 :: str
-    r1 :: int
+    r1 :: short_int
     r2 :: None
-    r3 :: int
+    r3 :: short_int
     r4 :: str
     r5, r6 :: None
 L0:
@@ -1488,7 +1519,7 @@ L0:
     r0 = (a, b, c)
     return r0
 def g():
-    r0, r1, r2 :: int
+    r0, r1, r2 :: short_int
     r3 :: tuple[int, int, int]
     r4 :: object
     r5 :: str
@@ -1516,7 +1547,7 @@ L0:
     r13 = unbox(tuple[int, int, int], r12)
     return r13
 def h():
-    r0, r1, r2 :: int
+    r0, r1, r2 :: short_int
     r3 :: tuple[int, int]
     r4 :: object
     r5 :: str
@@ -1535,7 +1566,7 @@ L0:
     r4 = __main__.globals :: static
     r5 = unicode_3 :: static  ('f')
     r6 = r4[r5] :: dict
-    r7 = box(int, r0)
+    r7 = box(short_int, r0)
     r8 = [r7]
     r9 = box(tuple[int, int], r3)
     r10 = r8.extend(r9) :: list
@@ -1562,11 +1593,11 @@ L0:
     return r0
 def g():
     r0 :: str
-    r1 :: int
+    r1 :: short_int
     r2 :: str
-    r3 :: int
+    r3 :: short_int
     r4 :: str
-    r5 :: int
+    r5 :: short_int
     r6 :: dict
     r7 :: object
     r8 :: bool
@@ -1590,11 +1621,11 @@ L0:
     r4 = unicode_5 :: static  ('c')
     r5 = 3
     r6 = {}
-    r7 = box(int, r1)
+    r7 = box(short_int, r1)
     r8 = r6.__setitem__(r0, r7) :: dict
-    r9 = box(int, r3)
+    r9 = box(short_int, r3)
     r10 = r6.__setitem__(r2, r9) :: dict
-    r11 = box(int, r5)
+    r11 = box(short_int, r5)
     r12 = r6.__setitem__(r4, r11) :: dict
     r13 = __main__.globals :: static
     r14 = unicode_6 :: static  ('f')
@@ -1607,11 +1638,11 @@ L0:
     r21 = unbox(tuple[int, int, int], r20)
     return r21
 def h():
-    r0 :: int
+    r0 :: short_int
     r1 :: str
-    r2 :: int
+    r2 :: short_int
     r3 :: str
-    r4 :: int
+    r4 :: short_int
     r5 :: dict
     r6 :: object
     r7 :: bool
@@ -1632,9 +1663,9 @@ L0:
     r3 = unicode_5 :: static  ('c')
     r4 = 3
     r5 = {}
-    r6 = box(int, r2)
+    r6 = box(short_int, r2)
     r7 = r5.__setitem__(r1, r6) :: dict
-    r8 = box(int, r4)
+    r8 = box(short_int, r4)
     r9 = r5.__setitem__(r3, r8) :: dict
     r10 = __main__.globals :: static
     r11 = unicode_6 :: static  ('f')
@@ -1658,7 +1689,7 @@ def g() -> None:
 def f(x, y, z):
     x, y :: int
     z :: str
-    r0 :: int
+    r0 :: short_int
     r1 :: str
     r2 :: None
 L0:
@@ -1675,10 +1706,11 @@ L4:
     r2 = None
     return r2
 def g():
-    r0, r1 :: int
+    r0 :: short_int
+    r1 :: int
     r2 :: str
     r3 :: None
-    r4, r5 :: int
+    r4, r5 :: short_int
     r6 :: str
     r7, r8 :: None
 L0:
@@ -1707,7 +1739,7 @@ def A.f(self, x, y, z):
     self :: A
     x, y :: int
     z :: str
-    r0 :: int
+    r0 :: short_int
     r1 :: str
     r2 :: None
 L0:
@@ -1725,10 +1757,11 @@ L4:
     return r2
 def g():
     r0, a :: A
-    r1, r2 :: int
+    r1 :: short_int
+    r2 :: int
     r3 :: str
     r4 :: None
-    r5, r6 :: int
+    r5, r6 :: short_int
     r7 :: str
     r8, r9 :: None
 L0:
@@ -1753,34 +1786,35 @@ def f() -> List[int]:
 [out]
 def f():
     r0 :: list
-    r1, r2, r3 :: int
+    r1, r2, r3 :: short_int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10 :: int
+    r8, r9, r10 :: short_int
     r11 :: bool
     r12 :: object
-    x, r13, r14 :: int
+    x, r13 :: int
+    r14 :: short_int
     r15 :: bool
-    r16 :: int
+    r16 :: short_int
     r17 :: bool
     r18 :: int
     r19 :: object
     r20 :: bool
-    r21, r22 :: int
+    r21, r22 :: short_int
 L0:
     r0 = []
     r1 = 1
     r2 = 2
     r3 = 3
-    r4 = box(int, r1)
-    r5 = box(int, r2)
-    r6 = box(int, r3)
+    r4 = box(short_int, r1)
+    r5 = box(short_int, r2)
+    r6 = box(short_int, r3)
     r7 = [r4, r5, r6]
     r8 = 0
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = r9 < r10 :: int
+    r11 = r9 < r10 :: short_int
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: list
@@ -1803,7 +1837,7 @@ L6:
     r20 = r0.append(r19) :: list
 L7:
     r21 = 1
-    r22 = r9 + r21 :: int
+    r22 = r9 + r21 :: short_int
     r9 = r22
     goto L1
 L8:
@@ -1816,34 +1850,35 @@ def f() -> Dict[int, int]:
 [out]
 def f():
     r0 :: dict
-    r1, r2, r3 :: int
+    r1, r2, r3 :: short_int
     r4, r5, r6 :: object
     r7 :: list
-    r8, r9, r10 :: int
+    r8, r9, r10 :: short_int
     r11 :: bool
     r12 :: object
-    x, r13, r14 :: int
+    x, r13 :: int
+    r14 :: short_int
     r15 :: bool
-    r16 :: int
+    r16 :: short_int
     r17 :: bool
     r18 :: int
     r19, r20 :: object
     r21 :: bool
-    r22, r23 :: int
+    r22, r23 :: short_int
 L0:
     r0 = {}
     r1 = 1
     r2 = 2
     r3 = 3
-    r4 = box(int, r1)
-    r5 = box(int, r2)
-    r6 = box(int, r3)
+    r4 = box(short_int, r1)
+    r5 = box(short_int, r2)
+    r6 = box(short_int, r3)
     r7 = [r4, r5, r6]
     r8 = 0
     r9 = r8
 L1:
     r10 = len r7 :: list
-    r11 = r9 < r10 :: int
+    r11 = r9 < r10 :: short_int
     if r11 goto L2 else goto L8 :: bool
 L2:
     r12 = r7[r9] :: list
@@ -1867,7 +1902,7 @@ L6:
     r21 = r0.__setitem__(r19, r20) :: dict
 L7:
     r22 = 1
-    r23 = r9 + r22 :: int
+    r23 = r9 + r22 :: short_int
     r9 = r23
     goto L1
 L8:
@@ -1882,14 +1917,15 @@ def f(l: List[Tuple[int, int, int]]) -> List[int]:
 [out]
 def f(l):
     l :: list
-    r0, r1, r2 :: int
+    r0, r1, r2 :: short_int
     r3 :: bool
     r4 :: object
     x, y, z :: int
     r5 :: tuple[int, int, int]
-    r6, r7, r8, r9, r10 :: int
+    r6, r7, r8 :: int
+    r9, r10 :: short_int
     r11 :: list
-    r12, r13, r14 :: int
+    r12, r13, r14 :: short_int
     r15 :: bool
     r16 :: object
     x0, y0, z0 :: int
@@ -1897,13 +1933,13 @@ def f(l):
     r18, r19, r20, r21, r22 :: int
     r23 :: object
     r24 :: bool
-    r25, r26 :: int
+    r25, r26 :: short_int
 L0:
     r0 = 0
     r1 = r0
 L1:
     r2 = len l :: list
-    r3 = r1 < r2 :: int
+    r3 = r1 < r2 :: short_int
     if r3 goto L2 else goto L4 :: bool
 L2:
     r4 = l[r1] :: list
@@ -1916,7 +1952,7 @@ L2:
     z = r8
 L3:
     r9 = 1
-    r10 = r1 + r9 :: int
+    r10 = r1 + r9 :: short_int
     r1 = r10
     goto L1
 L4:
@@ -1925,7 +1961,7 @@ L4:
     r13 = r12
 L5:
     r14 = len l :: list
-    r15 = r13 < r14 :: int
+    r15 = r13 < r14 :: short_int
     if r15 goto L6 else goto L8 :: bool
 L6:
     r16 = l[r13] :: list
@@ -1942,7 +1978,7 @@ L6:
     r24 = r11.append(r23) :: list
 L7:
     r25 = 1
-    r26 = r13 + r25 :: int
+    r26 = r13 + r25 :: short_int
     r13 = r26
     goto L5
 L8:
@@ -1993,7 +2029,8 @@ L0:
     return r3
 def PropertyHolder.twice_value(self):
     self :: PropertyHolder
-    r0, r1, r2 :: int
+    r0 :: short_int
+    r1, r2 :: int
 L0:
     r0 = 2
     r1 = self.value
@@ -2063,7 +2100,9 @@ L0:
     return r1
 def BaseProperty.next(self):
     self :: BaseProperty
-    r0, r1, r2 :: int
+    r0 :: int
+    r1 :: short_int
+    r2 :: int
     r3 :: BaseProperty
 L0:
     r0 = self._incrementer
@@ -2220,11 +2259,11 @@ L0:
     return self
 def SubclassedTrait.boxed(self):
     self :: SubclassedTrait
-    r0 :: int
+    r0 :: short_int
     r1 :: object
 L0:
     r0 = 3
-    r1 = box(int, r0)
+    r1 = box(short_int, r0)
     return r1
 def DerivingObject.this(self):
     self :: DerivingObject
@@ -2237,7 +2276,7 @@ L0:
     return r0
 def DerivingObject.boxed(self):
     self :: DerivingObject
-    r0 :: int
+    r0 :: short_int
 L0:
     r0 = 5
     return r0
@@ -2322,7 +2361,7 @@ def __top_level__():
     r39, r40, r41 :: object
     r42 :: str
     r43 :: bool
-    r44 :: int
+    r44 :: short_int
     r45 :: str
     r46 :: object
     r47 :: str
@@ -2344,7 +2383,7 @@ def __top_level__():
     r69, r70, r71 :: object
     r72 :: str
     r73 :: bool
-    r74, r75, r76 :: int
+    r74, r75, r76 :: short_int
     r77, r78, r79 :: object
     r80 :: list
     r81 :: object
@@ -2411,7 +2450,7 @@ L4:
     r46 = __main__.globals :: static
     r47 = unicode_5 :: static  ('Lol')
     r48 = r46[r47] :: dict
-    r49 = box(int, r44)
+    r49 = box(short_int, r44)
     r50 = py_call(r48, r49, r45)
     r51 = cast(tuple, r50)
     r52 = __main__.globals :: static
@@ -2439,9 +2478,9 @@ L4:
     r74 = 1
     r75 = 2
     r76 = 3
-    r77 = box(int, r74)
-    r78 = box(int, r75)
-    r79 = box(int, r76)
+    r77 = box(short_int, r74)
+    r78 = box(short_int, r75)
+    r79 = box(short_int, r76)
     r80 = [r77, r78, r79]
     r81 = __main__.globals :: static
     r82 = unicode_12 :: static  ('Bar')
@@ -2945,7 +2984,8 @@ def call_any(l):
     l :: object
     r0, r1 :: bool
     r2, r3 :: object
-    i, r4, r5 :: int
+    i, r4 :: int
+    r5 :: short_int
     r6, r7, r8 :: bool
 L0:
     r1 = False
@@ -2975,7 +3015,8 @@ def call_all(l):
     l :: object
     r0, r1 :: bool
     r2, r3 :: object
-    i, r4, r5 :: int
+    i, r4 :: int
+    r5 :: short_int
     r6, r7, r8, r9 :: bool
 L0:
     r1 = True

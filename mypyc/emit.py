@@ -6,7 +6,8 @@ from typing import List, Set, Dict, Optional, List, Callable, Union
 from mypyc.common import REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX
 from mypyc.ops import (
     Any, AssignmentTarget, Environment, BasicBlock, Value, Register, RType, RTuple, RInstance,
-    RUnion, RPrimitive, RUnion, is_int_rprimitive, is_float_rprimitive, is_bool_rprimitive,
+    RUnion, RPrimitive, is_int_rprimitive, is_short_int_rprimitive,
+    is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
     FuncIR, FuncDecl, int_rprimitive, is_optional_type, optional_value_type
@@ -490,7 +491,7 @@ class Emitter:
         else:
             failure = [raise_exc,
                        '%s = %s;' % (dest, self.c_error_value(typ))]
-        if is_int_rprimitive(typ):
+        if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             if declare_dest:
                 self.emit_line('CPyTagged {};'.format(dest))
             self.emit_arg_check(src, dest, typ, '(PyLong_Check({}))'.format(src), optional)
@@ -565,7 +566,7 @@ class Emitter:
             declaration = 'PyObject *'
         else:
             declaration = ''
-        if is_int_rprimitive(typ):
+        if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             # Steal the existing reference if it exists.
             self.emit_line('{}{} = CPyTagged_StealAsObject({});'.format(declaration, dest, src))
         elif is_bool_rprimitive(typ):

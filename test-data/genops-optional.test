@@ -12,7 +12,7 @@ def f(x):
     x :: union[A, None]
     r0 :: None
     r1 :: bool
-    r2, r3 :: int
+    r2, r3 :: short_int
 L0:
     r0 = None
     r1 = x is r0
@@ -51,7 +51,7 @@ def f(x):
     r1 :: bool
     r2 :: A
     r3 :: bool
-    r4, r5 :: int
+    r4, r5 :: short_int
 L0:
     r0 = None
     r1 = x is not r0
@@ -81,7 +81,7 @@ def f(x):
     x :: union[A, None]
     r0 :: None
     r1, r2 :: bool
-    r3, r4 :: int
+    r3, r4 :: short_int
 L0:
     r0 = None
     r1 = x is r0
@@ -114,10 +114,10 @@ def f(x, y, z):
     z :: union[int, None]
     r0 :: None
     r1 :: A
-    r2 :: int
+    r2 :: short_int
     r3 :: object
     r4, a :: A
-    r5 :: int
+    r5 :: short_int
     r6 :: object
     r7 :: bool
     r8 :: None
@@ -130,12 +130,12 @@ L0:
     x = r1
     x = y
     r2 = 1
-    r3 = box(int, r2)
+    r3 = box(short_int, r2)
     z = r3
     r4 = A()
     a = r4
     r5 = 1
-    r6 = box(int, r5)
+    r6 = box(short_int, r5)
     a.a = r6; r7 = is_error
     r8 = None
     a.a = r8; r9 = is_error
@@ -151,17 +151,17 @@ def f(x: List[Optional[int]]) -> None:
 [out]
 def f(x):
     x :: list
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2 :: object
     r3 :: bool
     r4 :: None
-    r5 :: int
+    r5 :: short_int
     r6 :: bool
     r7 :: None
 L0:
     r0 = 0
     r1 = 0
-    r2 = box(int, r0)
+    r2 = box(short_int, r0)
     r3 = x.__setitem__(r1, r2) :: list
     r4 = None
     r5 = 1
@@ -214,7 +214,7 @@ def f(y):
     y :: int
     r0 :: None
     x :: union[int, None]
-    r1 :: int
+    r1 :: short_int
     r2 :: bool
     r3 :: object
     r4 :: None
@@ -258,7 +258,9 @@ def f(x):
     x :: union[int, A]
     r0 :: object
     r1 :: bool
-    r2, r3, r4 :: int
+    r2 :: int
+    r3 :: short_int
+    r4 :: int
     r5 :: A
     r6 :: int
 L0:
@@ -285,7 +287,7 @@ def f(x: List[Union[int, str]]) -> object:
 [out]
 def f(x):
     x :: list
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: union[int, str]
 L0:
@@ -373,13 +375,13 @@ L0:
 def C.f(self, x):
     self :: C
     x :: object
-    r0 :: int
+    r0 :: short_int
 L0:
     r0 = 0
     return r0
 def g(o):
     o :: union[A, B, C]
-    r0 :: int
+    r0 :: short_int
     r1, r2 :: object
     r3 :: bool
     r4 :: A
@@ -410,13 +412,13 @@ L2:
     if r8 goto L3 else goto L4 :: bool
 L3:
     r9 = cast(B, o)
-    r10 = box(int, r0)
+    r10 = box(short_int, r0)
     r11 = r9.f(r10)
     r1 = r11
     goto L5
 L4:
     r12 = cast(C, o)
-    r13 = box(int, r0)
+    r13 = box(short_int, r0)
     r14 = r12.f(r13)
     r15 = box(int, r14)
     r1 = r15

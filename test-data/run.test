@@ -59,6 +59,7 @@ from native import count, list_iter, count_between
 count(5)
 list_iter(list(reversed(range(5))))
 count_between(11, 15)
+count_between(10**20, 10**20+3)
 [out]
 0
 1
@@ -74,6 +75,9 @@ count_between(11, 15)
 12
 13
 14
+100000000000000000000
+100000000000000000001
+100000000000000000002
 
 [case testLoopElse]
 from typing import Iterator

@@ -5,7 +5,7 @@ def f(x: List[int]) -> int:
 [out]
 def f(x):
     x :: list
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: int
 L0:
@@ -21,7 +21,7 @@ def f(x: List[List[int]]) -> List[int]:
 [out]
 def f(x):
     x :: list
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: list
 L0:
@@ -37,10 +37,10 @@ def f(x: List[List[int]]) -> int:
 [out]
 def f(x):
     x :: list
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2 :: list
-    r3 :: int
+    r3 :: short_int
     r4 :: object
     r5 :: int
 L0:
@@ -59,14 +59,14 @@ def f(x: List[int]) -> None:
 [out]
 def f(x):
     x :: list
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2 :: object
     r3 :: bool
     r4 :: None
 L0:
     r0 = 1
     r1 = 0
-    r2 = box(int, r0)
+    r2 = box(short_int, r0)
     r3 = x.__setitem__(r1, r2) :: list
     r4 = None
     return r4
@@ -91,15 +91,15 @@ def f() -> None:
     x: List[int] = [1, 2]
 [out]
 def f():
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2, r3 :: object
     r4, x :: list
     r5 :: None
 L0:
     r0 = 1
     r1 = 2
-    r2 = box(int, r0)
-    r3 = box(int, r1)
+    r2 = box(short_int, r0)
+    r3 = box(short_int, r1)
     r4 = [r2, r3]
     x = r4
     r5 = None
@@ -113,9 +113,9 @@ def f(a: List[int]) -> None:
 [out]
 def f(a):
     a :: list
-    r0 :: int
+    r0 :: short_int
     r1, b :: list
-    r2, r3 :: int
+    r2, r3 :: short_int
     r4 :: object
     r5, r6 :: list
     r7 :: None
@@ -125,7 +125,7 @@ L0:
     b = r1
     r2 = 3
     r3 = 4
-    r4 = box(int, r3)
+    r4 = box(short_int, r3)
     r5 = [r4]
     r6 = r2 * r5 :: list
     b = r6
@@ -139,7 +139,7 @@ def f(a: List[int]) -> int:
 [out]
 def f(a):
     a :: list
-    r0 :: int
+    r0 :: short_int
 L0:
     r0 = len a :: list
     return r0
@@ -171,13 +171,14 @@ def increment(l: List[int]) -> List[int]:
 [out]
 def increment(l):
     l :: list
-    r0, r1, i :: int
+    r0, r1 :: short_int
+    i :: int
     r2 :: bool
     r3 :: object
-    r4 :: int
+    r4 :: short_int
     r5, r6 :: object
     r7 :: bool
-    r8, r9 :: int
+    r8, r9 :: short_int
 L0:
     r0 = 0
     r1 = len l :: list
@@ -188,12 +189,12 @@ L1:
 L2:
     r3 = l[i] :: list
     r4 = 1
-    r5 = box(int, r4)
+    r5 = box(short_int, r4)
     r6 = r3 += r5
     r7 = l.__setitem__(i, r6) :: list
 L3:
     r8 = 1
-    r9 = i + r8 :: int
+    r9 = i + r8 :: short_int
     i = r9
     goto L1
 L4:
@@ -206,7 +207,7 @@ def f() -> None:
 [out]
 def f():
     r0, x :: list
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
     r4, r5 :: None
@@ -214,7 +215,7 @@ L0:
     r0 = []
     x = r0
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = x.append(r2) :: list
     r4 = None
     r5 = None

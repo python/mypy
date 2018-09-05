@@ -5,25 +5,25 @@ def f() -> Set[int]:
 [out]
 def f():
     r0 :: set
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: object
     r6 :: bool
-    r7 :: int
+    r7 :: short_int
     r8 :: object
     r9 :: bool
 L0:
     r0 = set 
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = r0.add(r2) :: set
     r4 = 2
-    r5 = box(int, r4)
+    r5 = box(short_int, r4)
     r6 = r0.add(r5) :: set
     r7 = 3
-    r8 = box(int, r7)
+    r8 = box(short_int, r7)
     r9 = r0.add(r8) :: set
     return r0
 
@@ -57,26 +57,26 @@ def f() -> int:
 [out]
 def f():
     r0 :: set
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: object
     r6 :: bool
-    r7 :: int
+    r7 :: short_int
     r8 :: object
     r9 :: bool
     r10 :: int
 L0:
     r0 = set 
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = r0.add(r2) :: set
     r4 = 2
-    r5 = box(int, r4)
+    r5 = box(short_int, r4)
     r6 = r0.add(r5) :: set
     r7 = 3
-    r8 = box(int, r7)
+    r8 = box(short_int, r7)
     r9 = r0.add(r8) :: set
     r10 = len r0 :: set
     return r10
@@ -89,27 +89,27 @@ def f() -> bool:
 [out]
 def f():
     r0 :: set
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: object
     r6 :: bool
     x :: set
-    r7 :: int
+    r7 :: short_int
     r8 :: object
     r9 :: bool
 L0:
     r0 = set 
     r1 = 3
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = r0.add(r2) :: set
     r4 = 4
-    r5 = box(int, r4)
+    r5 = box(short_int, r4)
     r6 = r0.add(r5) :: set
     x = r0
     r7 = 5
-    r8 = box(int, r7)
+    r8 = box(short_int, r7)
     r9 = r8 in x :: set
     return r9
 
@@ -122,7 +122,7 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
     r4 :: None
@@ -130,7 +130,7 @@ L0:
     r0 = set 
     x = r0
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = x.remove(r2) :: set
     r4 = None
     return x
@@ -144,7 +144,7 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
     r4 :: None
@@ -152,7 +152,7 @@ L0:
     r0 = set 
     x = r0
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = x.discard(r2) :: set
     r4 = None
     return x
@@ -166,7 +166,7 @@ def f() -> Set[int]:
 [out]
 def f():
     r0, x :: set
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
     r4 :: None
@@ -174,7 +174,7 @@ L0:
     r0 = set 
     x = r0
     r1 = 1
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = x.add(r2) :: set
     r4 = None
     return x

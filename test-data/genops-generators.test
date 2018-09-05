@@ -13,27 +13,27 @@ def yield_three_times__gen.__mypyc_generator_helper__(__mypyc_self__, type, valu
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5 :: int
+    r5 :: short_int
     r6 :: object
-    r7 :: int
+    r7 :: short_int
     r8 :: bool
     r9 :: None
     r10, r11 :: bool
     r12 :: None
-    r13 :: int
+    r13 :: short_int
     r14 :: object
-    r15 :: int
+    r15 :: short_int
     r16 :: bool
     r17 :: None
     r18, r19 :: bool
     r20, r21 :: None
-    r22 :: int
+    r22 :: short_int
     r23, r24 :: bool
-    r25 :: int
+    r25 :: short_int
     r26 :: bool
-    r27 :: int
+    r27 :: short_int
     r28 :: bool
-    r29 :: int
+    r29 :: short_int
     r30, r31 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -49,7 +49,7 @@ L2:
 L3:
 L4:
     r5 = 1
-    r6 = box(int, r5)
+    r6 = box(short_int, r5)
     r7 = 1
     r0.__mypyc_next_label__ = r7; r8 = is_error
     return r6
@@ -64,7 +64,7 @@ L7:
     r12 = None
 L8:
     r13 = 2
-    r14 = box(int, r13)
+    r14 = box(short_int, r13)
     r15 = 2
     r0.__mypyc_next_label__ = r15; r16 = is_error
     return r14
@@ -131,7 +131,7 @@ def yield_three_times():
     r0 :: yield_three_times__env
     r1 :: yield_three_times__gen
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
 L0:
     r0 = yield_three_times__env()
@@ -158,25 +158,28 @@ def yield_while_loop__gen.__mypyc_generator_helper__(__mypyc_self__, type, value
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5 :: int
+    r5 :: short_int
     r6 :: bool
-    r7, r8 :: int
+    r7 :: int
+    r8 :: short_int
     r9 :: bool
     r10 :: int
     r11 :: object
-    r12 :: int
+    r12 :: short_int
     r13 :: bool
     r14 :: None
     r15, r16 :: bool
     r17 :: None
-    r18, r19, r20 :: int
+    r18 :: int
+    r19 :: short_int
+    r20 :: int
     r21 :: bool
     r22 :: None
-    r23 :: int
+    r23 :: short_int
     r24, r25 :: bool
-    r26 :: int
+    r26 :: short_int
     r27 :: bool
-    r28 :: int
+    r28 :: short_int
     r29, r30 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -269,7 +272,7 @@ def yield_while_loop():
     r0 :: yield_while_loop__env
     r1 :: yield_while_loop__gen
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
 L0:
     r0 = yield_while_loop__env()
@@ -304,36 +307,36 @@ def yield_for_loop_list__gen.__mypyc_generator_helper__(__mypyc_self__, type, va
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5 :: int
+    r5 :: short_int
     r6 :: object
     r7 :: str
     r8, r9, r10 :: object
     r11 :: list
     r12 :: bool
     r13 :: list
-    r14 :: int
+    r14 :: short_int
     r15, r16 :: bool
     r17 :: list
-    r18, r19 :: int
+    r18, r19 :: short_int
     r20 :: bool
     r21 :: list
-    r22 :: int
+    r22 :: short_int
     r23, r24 :: object
     r25 :: bool
     r26 :: object
-    r27 :: int
+    r27 :: short_int
     r28 :: bool
     r29 :: None
     r30, r31 :: bool
     r32 :: None
-    r33, r34, r35 :: int
+    r33, r34, r35 :: short_int
     r36 :: bool
     r37 :: None
-    r38 :: int
+    r38 :: short_int
     r39, r40 :: bool
-    r41 :: int
+    r41 :: short_int
     r42 :: bool
-    r43 :: int
+    r43 :: short_int
     r44, r45 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -351,7 +354,7 @@ L3:
     r6 = builtins.module :: static
     r7 = unicode_3 :: static  ('range')
     r8 = getattr r6, r7
-    r9 = box(int, r5)
+    r9 = box(short_int, r5)
     r10 = py_call(r8, r9)
     r11 = [r10]
     r0.l = r11; r12 = is_error
@@ -363,7 +366,7 @@ L4:
     r17 = r0.__mypyc_temp__0
     r18 = len r17 :: list
     r19 = r0.__mypyc_temp__1
-    r20 = r19 < r18 :: int
+    r20 = r19 < r18 :: short_int
     if r20 goto L5 else goto L11 :: bool
 L5:
     r21 = r0.__mypyc_temp__0
@@ -388,7 +391,7 @@ L9:
 L10:
     r33 = r0.__mypyc_temp__1
     r34 = 1
-    r35 = r33 + r34 :: int
+    r35 = r33 + r34 :: short_int
     r0.__mypyc_temp__1 = r35; r36 = is_error
     goto L4
 L11:
@@ -442,7 +445,7 @@ def yield_for_loop_list():
     r0 :: yield_for_loop_list__env
     r1 :: yield_for_loop_list__gen
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
 L0:
     r0 = yield_for_loop_list__env()
@@ -459,15 +462,17 @@ def yield_for_loop_dict__gen.__mypyc_generator_helper__(__mypyc_self__, type, va
     r2 :: None
     r3, r4 :: bool
     r5 :: dict
-    r6, r7 :: int
+    r6, r7 :: short_int
     r8, r9 :: bool
-    r10, r11 :: int
+    r10 :: int
+    r11 :: short_int
     r12 :: bool
     r13 :: int
     r14 :: None
     r15 :: object
     r16 :: bool
-    r17, r18, r19 :: int
+    r17 :: int
+    r18, r19 :: short_int
     r20, r21 :: bool
     r22 :: dict
     r23 :: object
@@ -477,18 +482,18 @@ def yield_for_loop_dict__gen.__mypyc_generator_helper__(__mypyc_self__, type, va
     r29 :: bool
     r30 :: int
     r31 :: object
-    r32 :: int
+    r32 :: short_int
     r33 :: bool
     r34 :: None
     r35, r36 :: bool
     r37 :: None
     r38 :: bool
     r39 :: None
-    r40 :: int
+    r40 :: short_int
     r41, r42 :: bool
-    r43 :: int
+    r43 :: short_int
     r44 :: bool
-    r45 :: int
+    r45 :: short_int
     r46, r47 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -520,7 +525,7 @@ L5:
 L6:
     r17 = r0.i
     r18 = 1
-    r19 = r17 + r18 :: int
+    r19 = r17 + r18 :: short_int
     r0.i = r19; r20 = is_error
     goto L4
 L7:
@@ -605,7 +610,7 @@ def yield_for_loop_dict():
     r0 :: yield_for_loop_dict__env
     r1 :: yield_for_loop_dict__gen
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
 L0:
     r0 = yield_for_loop_dict__env()
@@ -621,25 +626,27 @@ def yield_for_loop_range__gen.__mypyc_generator_helper__(__mypyc_self__, type, v
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5, r6 :: int
+    r5, r6 :: short_int
     r7, r8 :: bool
-    r9, r10 :: int
+    r9 :: int
+    r10 :: short_int
     r11 :: bool
     r12 :: int
     r13 :: object
-    r14 :: int
+    r14 :: short_int
     r15 :: bool
     r16 :: None
     r17, r18 :: bool
     r19 :: None
-    r20, r21, r22 :: int
+    r20 :: int
+    r21, r22 :: short_int
     r23 :: bool
     r24 :: None
-    r25 :: int
+    r25 :: short_int
     r26, r27 :: bool
-    r28 :: int
+    r28 :: short_int
     r29 :: bool
-    r30 :: int
+    r30 :: short_int
     r31, r32 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -681,7 +688,7 @@ L9:
 L10:
     r20 = r0.i
     r21 = 1
-    r22 = r20 + r21 :: int
+    r22 = r20 + r21 :: short_int
     r0.i = r22; r23 = is_error
     goto L4
 L11:
@@ -735,7 +742,7 @@ def yield_for_loop_range():
     r0 :: yield_for_loop_range__env
     r1 :: yield_for_loop_range__gen
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
 L0:
     r0 = yield_for_loop_range__env()
@@ -763,25 +770,27 @@ def yield_with_vars__gen.__mypyc_generator_helper__(__mypyc_self__, type, value,
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5 :: int
+    r5 :: short_int
     r6 :: bool
     r7, r8 :: int
     r9 :: bool
     r10 :: int
     r11 :: object
-    r12 :: int
+    r12 :: short_int
     r13 :: bool
     r14 :: None
     r15, r16 :: bool
     r17 :: None
-    r18, r19, r20 :: int
+    r18 :: int
+    r19 :: short_int
+    r20 :: int
     r21 :: bool
     r22 :: float
-    r23 :: int
+    r23 :: short_int
     r24, r25 :: bool
-    r26 :: int
+    r26 :: short_int
     r27 :: bool
-    r28 :: int
+    r28 :: short_int
     r29, r30 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -877,7 +886,7 @@ def yield_with_vars(a, b):
     r1, r2 :: bool
     r3 :: yield_with_vars__gen
     r4 :: bool
-    r5 :: int
+    r5 :: short_int
     r6 :: bool
 L0:
     r0 = yield_with_vars__env()
@@ -904,18 +913,18 @@ def generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, trace
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5 :: int
+    r5 :: short_int
     r6 :: object
-    r7 :: int
+    r7 :: short_int
     r8 :: bool
     r9 :: None
     r10, r11 :: bool
     r12, r13 :: None
-    r14 :: int
+    r14 :: short_int
     r15, r16 :: bool
-    r17 :: int
+    r17 :: short_int
     r18 :: bool
-    r19 :: int
+    r19 :: short_int
     r20, r21 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -931,7 +940,7 @@ L2:
 L3:
 L4:
     r5 = 0
-    r6 = box(int, r5)
+    r6 = box(short_int, r5)
     r7 = 1
     r0.__mypyc_next_label__ = r7; r8 = is_error
     return r6
@@ -996,7 +1005,7 @@ def A.generator(self):
     r1 :: bool
     r2 :: generator__gen
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: bool
 L0:
     r0 = generator__env()
@@ -1024,23 +1033,24 @@ def generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, trace
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5, r6 :: int
+    r5 :: int
+    r6 :: short_int
     r7 :: bool
     r8 :: int
     r9 :: object
-    r10 :: int
+    r10 :: short_int
     r11 :: bool
     r12 :: None
     r13, r14 :: bool
     r15, r16 :: None
-    r17 :: int
+    r17 :: short_int
     r18, r19 :: bool
     r20 :: None
-    r21 :: int
+    r21 :: short_int
     r22, r23 :: bool
-    r24 :: int
+    r24 :: short_int
     r25 :: bool
-    r26 :: int
+    r26 :: short_int
     r27, r28 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1135,7 +1145,7 @@ def generator(a):
     r1 :: bool
     r2 :: generator__gen
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: bool
 L0:
     r0 = generator__env()
@@ -1217,20 +1227,20 @@ def generator__gen.__mypyc_generator_helper__(__mypyc_self__, type, value, trace
     r3, r4 :: bool
     r5 :: normal_generator_obj
     r6, r7 :: bool
-    r8 :: int
+    r8 :: short_int
     r9, r10, r11 :: object
     r12 :: int
     r13 :: object
-    r14 :: int
+    r14 :: short_int
     r15 :: bool
     r16 :: None
     r17, r18 :: bool
     r19, r20 :: None
-    r21 :: int
+    r21 :: short_int
     r22, r23 :: bool
-    r24 :: int
+    r24 :: short_int
     r25 :: bool
-    r26 :: int
+    r26 :: short_int
     r27, r28 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1250,7 +1260,7 @@ L3:
 L4:
     r8 = 1
     r9 = r0.normal
-    r10 = box(int, r8)
+    r10 = box(short_int, r8)
     r11 = py_call(r9, r10)
     r12 = unbox(int, r11)
     r13 = box(int, r12)
@@ -1318,7 +1328,7 @@ def generator(a):
     r1 :: bool
     r2 :: generator__gen
     r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5 :: bool
 L0:
     r0 = generator__env()
@@ -1353,25 +1363,25 @@ def generator_normal_gen.__mypyc_generator_helper__(__mypyc_self__, type, value,
     r6, r7 :: bool
     r8 :: int
     r9 :: object
-    r10 :: int
+    r10 :: short_int
     r11 :: bool
     r12 :: None
     r13, r14 :: bool
     r15 :: None
     r16 :: int
     r17 :: object
-    r18 :: int
+    r18 :: short_int
     r19 :: bool
     r20 :: None
     r21, r22 :: bool
     r23, r24 :: None
-    r25 :: int
+    r25 :: short_int
     r26, r27 :: bool
-    r28 :: int
+    r28 :: short_int
     r29 :: bool
-    r30 :: int
+    r30 :: short_int
     r31 :: bool
-    r32 :: int
+    r32 :: short_int
     r33, r34 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1478,7 +1488,7 @@ def generator_normal_obj.__call__(__mypyc_self__, x):
     r3, r4 :: bool
     r5 :: generator_normal_gen
     r6 :: bool
-    r7 :: int
+    r7 :: short_int
     r8 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1540,7 +1550,9 @@ def inner_triple_generator_obj.__call__(__mypyc_self__):
     r0 :: generator_triple_env
     r1 :: triple__env
     r2, inner :: object
-    r3, r4, r5 :: int
+    r3 :: int
+    r4 :: short_int
+    r5 :: int
     r6 :: bool
     r7 :: int
 L0:
@@ -1563,25 +1575,26 @@ def generator_triple_gen.__mypyc_generator_helper__(__mypyc_self__, type, value,
     r4, generator :: object
     r5 :: None
     r6, r7 :: bool
-    r8 :: int
+    r8 :: short_int
     r9 :: bool
     r10 :: inner_triple_generator_obj
     r11, r12 :: bool
-    r13, r14 :: int
+    r13 :: int
+    r14 :: short_int
     r15 :: bool
     r16, r17 :: object
     r18 :: int
     r19 :: object
-    r20 :: int
+    r20 :: short_int
     r21 :: bool
     r22 :: None
     r23, r24 :: bool
     r25, r26 :: None
-    r27 :: int
+    r27 :: short_int
     r28, r29 :: bool
-    r30 :: int
+    r30 :: short_int
     r31 :: bool
-    r32 :: int
+    r32 :: short_int
     r33, r34 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1683,7 +1696,7 @@ def generator_triple_obj.__call__(__mypyc_self__):
     r3 :: bool
     r4 :: generator_triple_gen
     r5 :: bool
-    r6 :: int
+    r6 :: short_int
     r7 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1731,25 +1744,29 @@ def recursive_outer_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, 
     r4, recursive :: object
     r5 :: None
     r6, r7 :: bool
-    r8, r9 :: int
+    r8 :: int
+    r9 :: short_int
     r10 :: bool
-    r11, r12 :: int
+    r11 :: short_int
+    r12 :: int
     r13, r14 :: bool
     r15, r16 :: int
     r17 :: bool
     r18 :: int
     r19 :: object
-    r20 :: int
+    r20 :: short_int
     r21 :: bool
     r22 :: None
     r23, r24 :: bool
     r25 :: None
-    r26, r27, r28 :: int
+    r26 :: int
+    r27 :: short_int
+    r28 :: int
     r29 :: bool
     r30 :: None
-    r31 :: int
+    r31 :: short_int
     r32, r33 :: bool
-    r34 :: int
+    r34 :: short_int
     r35, r36, r37 :: object
     r38, r39 :: bool
     r40, r41 :: object
@@ -1757,20 +1774,20 @@ def recursive_outer_gen.__mypyc_generator_helper__(__mypyc_self__, type, value, 
     r43 :: bool
     r44 :: int
     r45 :: object
-    r46 :: int
+    r46 :: short_int
     r47 :: bool
     r48 :: None
     r49, r50 :: bool
     r51 :: None
     r52 :: bool
     r53 :: None
-    r54 :: int
+    r54 :: short_int
     r55, r56 :: bool
-    r57 :: int
+    r57 :: short_int
     r58 :: bool
-    r59 :: int
+    r59 :: short_int
     r60 :: bool
-    r61 :: int
+    r61 :: short_int
     r62, r63 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1833,7 +1850,7 @@ L13:
     unreachable
 L14:
     r34 = 5
-    r35 = box(int, r34)
+    r35 = box(short_int, r34)
     r36 = py_call(recursive, r35)
     r37 = iter r36 :: object
     r0.__mypyc_temp__1 = r36; r38 = is_error
@@ -1923,7 +1940,7 @@ def recursive_outer_obj.__call__(__mypyc_self__, n):
     r3, r4 :: bool
     r5 :: recursive_outer_gen
     r6 :: bool
-    r7 :: int
+    r7 :: short_int
     r8 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -1941,7 +1958,7 @@ def outer():
     r0 :: outer__env
     r1 :: recursive_outer_obj
     r2, r3 :: bool
-    r4 :: int
+    r4 :: short_int
     r5, r6, r7 :: object
 L0:
     r0 = outer__env()
@@ -1950,7 +1967,7 @@ L0:
     r0.recursive = r1; r3 = is_error
     r4 = 10
     r5 = r0.recursive
-    r6 = box(int, r4)
+    r6 = box(short_int, r4)
     r7 = py_call(r5, r6)
     return r7
 
@@ -1975,16 +1992,16 @@ def yield_try_finally__gen.__mypyc_generator_helper__(__mypyc_self__, type, valu
     r1 :: int
     r2 :: None
     r3, r4 :: bool
-    r5 :: int
+    r5 :: short_int
     r6 :: object
-    r7 :: int
+    r7 :: short_int
     r8 :: bool
     r9 :: None
     r10, r11 :: bool
     r12 :: None
-    r13 :: int
+    r13 :: short_int
     r14 :: object
-    r15 :: int
+    r15 :: short_int
     r16 :: bool
     r17 :: None
     r18, r19 :: bool
@@ -2007,16 +2024,16 @@ def yield_try_finally__gen.__mypyc_generator_helper__(__mypyc_self__, type, valu
     r39, r40 :: object
     r41 :: None
     r42 :: bool
-    r43 :: int
+    r43 :: short_int
     r44, r45, r46 :: bool
     r47 :: None
-    r48 :: int
+    r48 :: short_int
     r49, r50 :: bool
-    r51 :: int
+    r51 :: short_int
     r52 :: bool
-    r53 :: int
+    r53 :: short_int
     r54 :: bool
-    r55 :: int
+    r55 :: short_int
     r56, r57 :: bool
 L0:
     r0 = __mypyc_self__.__mypyc_env__
@@ -2034,7 +2051,7 @@ L4:
 L5:
 L6:
     r5 = 1
-    r6 = box(int, r5)
+    r6 = box(short_int, r5)
     r7 = 1
     r0.__mypyc_next_label__ = r7; r8 = is_error
     return r6
@@ -2049,7 +2066,7 @@ L9:
     r12 = None
 L10:
     r13 = 2
-    r14 = box(int, r13)
+    r14 = box(short_int, r13)
     r15 = 2
     r0.__mypyc_next_label__ = r15; r16 = is_error
     return r14
@@ -2183,7 +2200,7 @@ def yield_try_finally():
     r0 :: yield_try_finally__env
     r1 :: yield_try_finally__gen
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
 L0:
     r0 = yield_try_finally__env()

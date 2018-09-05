@@ -1,11 +1,12 @@
 from typing import List
 
 from mypyc.ops import (
-    PrimitiveOp, int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
+    PrimitiveOp,
+    int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive, short_int_rprimitive,
     RType, EmitterInterface, OpDescription,
     ERR_NEVER, ERR_MAGIC,
 )
-from mypyc.ops_primitive import name_ref_op, binary_op, unary_op, func_op, simple_emit
+from mypyc.ops_primitive import name_ref_op, binary_op, unary_op, func_op, custom_op, simple_emit
 
 # These int constructors produce object_rprimitives that then need to be unboxed
 # I guess unboxing ourselves would save a check and branch though?
@@ -38,6 +39,15 @@ def int_binary_op(op: str, c_func_name: str, result_type: RType = int_rprimitive
 
 def int_compare_op(op: str, c_func_name: str) -> None:
     int_binary_op(op, c_func_name, bool_rprimitive)
+    # Generate a straight compare if we know both sides are short
+    binary_op(op=op,
+              arg_types=[short_int_rprimitive, short_int_rprimitive],
+              result_type=bool_rprimitive,
+              error_kind=ERR_NEVER,
+              format_str='{dest} = {args[0]} %s {args[1]} :: short_int' % op,
+              emit=simple_emit(
+                  '{dest} = (CPySignedInt){args[0]} %s (CPySignedInt){args[1]};' % op),
+              priority=2)
 
 
 int_binary_op('+', 'CPyTagged_Add')
@@ -61,6 +71,13 @@ int_compare_op('<', 'CPyTagged_IsLt')
 int_compare_op('<=', 'CPyTagged_IsLe')
 int_compare_op('>', 'CPyTagged_IsGt')
 int_compare_op('>=', 'CPyTagged_IsGe')
+
+unsafe_short_add = custom_op(
+    arg_types=[int_rprimitive, int_rprimitive],
+    result_type=short_int_rprimitive,
+    error_kind=ERR_NEVER,
+    format_str='{dest} = {args[0]} + {args[1]} :: short_int',
+    emit=simple_emit('{dest} = {args[0]} + {args[1]};'))
 
 
 def int_unary_op(op: str, c_func_name: str) -> OpDescription:

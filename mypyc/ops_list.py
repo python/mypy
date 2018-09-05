@@ -3,7 +3,8 @@
 from typing import List
 
 from mypyc.ops import (
-    int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive, ERR_MAGIC, ERR_NEVER,
+    int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive, bool_rprimitive,
+    ERR_MAGIC, ERR_NEVER,
     ERR_FALSE, EmitterInterface, PrimitiveOp, Value
 )
 from mypyc.ops_primitive import (
@@ -42,6 +43,16 @@ list_get_item_op = method_op(
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = CPyList_GetItem({args[0]}, {args[1]});'))
+
+
+# Version with no int bounds check for when it is known to be short
+method_op(
+    name='__getitem__',
+    arg_types=[list_rprimitive, short_int_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = CPyList_GetItemShort({args[0]}, {args[1]});'),
+    priority=2)
 
 
 list_set_item_op = method_op(
@@ -110,6 +121,6 @@ def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
 
 list_len_op = func_op(name='builtins.len',
                       arg_types=[list_rprimitive],
-                      result_type=int_rprimitive,
+                      result_type=short_int_rprimitive,
                       error_kind=ERR_NEVER,
                       emit=emit_len)

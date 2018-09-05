@@ -5,12 +5,12 @@ def f(d: Dict[int, bool]) -> bool:
 [out]
 def f(d):
     d :: dict
-    r0 :: int
+    r0 :: short_int
     r1, r2 :: object
     r3 :: bool
 L0:
     r0 = 0
-    r1 = box(int, r0)
+    r1 = box(short_int, r0)
     r2 = d[r1] :: dict
     r3 = unbox(bool, r2)
     return r3
@@ -23,14 +23,14 @@ def f(d: Dict[int, bool]) -> None:
 def f(d):
     d :: dict
     r0 :: bool
-    r1 :: int
+    r1 :: short_int
     r2, r3 :: object
     r4 :: bool
     r5 :: None
 L0:
     r0 = False
     r1 = 0
-    r2 = box(int, r1)
+    r2 = box(short_int, r1)
     r3 = box(bool, r0)
     r4 = d.__setitem__(r2, r3) :: dict
     r5 = None
@@ -56,7 +56,7 @@ def f(x: object) -> None:
 [out]
 def f(x):
     x :: object
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2 :: str
     r3 :: dict
     r4, r5 :: object
@@ -68,8 +68,8 @@ L0:
     r1 = 2
     r2 = unicode_1 :: static
     r3 = {}
-    r4 = box(int, r0)
-    r5 = box(int, r1)
+    r4 = box(short_int, r0)
+    r5 = box(short_int, r1)
     r6 = r3.__setitem__(r4, r5) :: dict
     r7 = r3.__setitem__(r2, x) :: dict
     d = r3
@@ -86,12 +86,12 @@ def f(d: Dict[int, int]) -> bool:
 [out]
 def f(d):
     d :: dict
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2, r3, r4 :: bool
 L0:
     r0 = 4
-    r1 = box(int, r0)
+    r1 = box(short_int, r0)
     r2 = r1 in d :: dict
     if r2 goto L1 else goto L2 :: bool
 L1:
@@ -113,12 +113,12 @@ def f(d: Dict[int, int]) -> bool:
 [out]
 def f(d):
     d :: dict
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2, r3, r4, r5 :: bool
 L0:
     r0 = 4
-    r1 = box(int, r0)
+    r1 = box(short_int, r0)
     r2 = r1 in d :: dict
     r3 = !r2
     if r3 goto L1 else goto L2 :: bool
@@ -158,7 +158,7 @@ def increment(d):
     r0, r1 :: object
     k, r2 :: str
     r3 :: object
-    r4 :: int
+    r4 :: short_int
     r5, r6 :: object
     r7, r8 :: bool
 L0:
@@ -171,7 +171,7 @@ L2:
     k = r2
     r3 = d[k] :: dict
     r4 = 1
-    r5 = box(int, r4)
+    r5 = box(short_int, r4)
     r6 = r3 += r5
     r7 = d.__setitem__(k, r6) :: dict
     goto L1

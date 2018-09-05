@@ -5,9 +5,13 @@ def f() -> None:
         x = x + i
 [out]
 def f():
-    r0, x, r1, r2, i :: int
+    r0 :: short_int
+    x :: int
+    r1, r2 :: short_int
+    i :: int
     r3 :: bool
-    r4, r5, r6 :: int
+    r4 :: int
+    r5, r6 :: short_int
     r7 :: None
 L0:
     r0 = 0
@@ -23,7 +27,7 @@ L2:
     x = r4
 L3:
     r5 = 1
-    r6 = i + r5 :: int
+    r6 = i + r5 :: short_int
     i = r6
     goto L1
 L4:
@@ -37,7 +41,9 @@ def f() -> None:
       break
 [out]
 def f():
-    r0, n, r1 :: int
+    r0 :: short_int
+    n :: int
+    r1 :: short_int
     r2 :: bool
     r3 :: None
 L0:
@@ -58,9 +64,10 @@ def f() -> None:
         break
 [out]
 def f():
-    r0, r1, n :: int
+    r0, r1 :: short_int
+    n :: int
     r2 :: bool
-    r3, r4 :: int
+    r3, r4 :: short_int
     r5 :: None
 L0:
     r0 = 0
@@ -73,7 +80,7 @@ L2:
     goto L4
 L3:
     r3 = 1
-    r4 = n + r3 :: int
+    r4 = n + r3 :: short_int
     n = r4
     goto L1
 L4:
@@ -89,9 +96,11 @@ def f() -> None:
         break
 [out]
 def f():
-    r0, n, r1 :: int
+    r0 :: short_int
+    n :: int
+    r1 :: short_int
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
     r5 :: None
 L0:
@@ -119,7 +128,9 @@ def f() -> None:
       continue
 [out]
 def f():
-    r0, n, r1 :: int
+    r0 :: short_int
+    n :: int
+    r1 :: short_int
     r2 :: bool
     r3 :: None
 L0:
@@ -141,9 +152,10 @@ def f() -> None:
         continue
 [out]
 def f():
-    r0, r1, n :: int
+    r0, r1 :: short_int
+    n :: int
     r2 :: bool
-    r3, r4 :: int
+    r3, r4 :: short_int
     r5 :: None
 L0:
     r0 = 0
@@ -155,7 +167,7 @@ L1:
 L2:
 L3:
     r3 = 1
-    r4 = n + r3 :: int
+    r4 = n + r3 :: short_int
     n = r4
     goto L1
 L4:
@@ -171,9 +183,11 @@ def f() -> None:
         continue
 [out]
 def f():
-    r0, n, r1 :: int
+    r0 :: short_int
+    n :: int
+    r1 :: short_int
     r2 :: bool
-    r3 :: int
+    r3 :: short_int
     r4 :: bool
     r5 :: None
 L0:
@@ -207,10 +221,13 @@ def f(ls: List[int]) -> int:
 [out]
 def f(ls):
     ls :: list
-    r0, y, r1, r2, r3 :: int
+    r0 :: short_int
+    y :: int
+    r1, r2, r3 :: short_int
     r4 :: bool
     r5 :: object
-    x, r6, r7, r8, r9 :: int
+    x, r6, r7 :: int
+    r8, r9 :: short_int
 L0:
     r0 = 0
     y = r0
@@ -218,7 +235,7 @@ L0:
     r2 = r1
 L1:
     r3 = len ls :: list
-    r4 = r2 < r3 :: int
+    r4 = r2 < r3 :: short_int
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = ls[r2] :: list
@@ -228,7 +245,7 @@ L2:
     y = r7
 L3:
     r8 = 1
-    r9 = r2 + r8 :: int
+    r9 = r2 + r8 :: short_int
     r2 = r9
     goto L1
 L4:
@@ -280,11 +297,15 @@ def sum_over_even_values(d: Dict[int, int]) -> int:
 [out]
 def sum_over_even_values(d):
     d :: dict
-    r0, s :: int
+    r0 :: short_int
+    s :: int
     r1, r2 :: object
     key, r3 :: int
     r4, r5 :: object
-    r6, r7, r8, r9 :: int
+    r6 :: int
+    r7 :: short_int
+    r8 :: int
+    r9 :: short_int
     r10 :: bool
     r11, r12 :: object
     r13, r14 :: int
@@ -456,7 +477,9 @@ def multi_assign(t, a, l):
     t :: tuple[int, tuple[str, object]]
     a :: A
     l :: list
-    z, r0, r1 :: int
+    z :: int
+    r0 :: short_int
+    r1 :: int
     r2 :: bool
     r3 :: tuple[str, object]
     r4 :: str
@@ -493,7 +516,7 @@ def complex_msg(x: Optional[str], s: str) -> None:
 [out]
 def no_msg(x):
     x, r0 :: bool
-    r1 :: int
+    r1 :: short_int
 L0:
     if x goto L2 else goto L1 :: bool
 L1:
@@ -505,7 +528,7 @@ L2:
 def literal_msg(x):
     x :: object
     r0, r1 :: bool
-    r2 :: int
+    r2 :: short_int
 L0:
     r0 = bool x :: object
     if r0 goto L2 else goto L1 :: bool
@@ -571,30 +594,30 @@ def delAttributeMultiple() -> None:
     del dummy.x, dummy.y
 [out]
 def delList():
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2, r3 :: object
     r4, l :: list
-    r5 :: int
+    r5 :: short_int
     r6 :: object
     r7 :: bool
     r8 :: None
 L0:
     r0 = 1
     r1 = 2
-    r2 = box(int, r0)
-    r3 = box(int, r1)
+    r2 = box(short_int, r0)
+    r3 = box(short_int, r1)
     r4 = [r2, r3]
     l = r4
     r5 = 1
-    r6 = box(int, r5)
+    r6 = box(short_int, r5)
     r7 = l.__delitem__(r6) :: object
     r8 = None
     return r8
 def delDict():
     r0 :: str
-    r1 :: int
+    r1 :: short_int
     r2 :: str
-    r3 :: int
+    r3 :: short_int
     r4 :: dict
     r5 :: object
     r6 :: bool
@@ -610,9 +633,9 @@ L0:
     r2 = unicode_2 :: static  ('two')
     r3 = 2
     r4 = {}
-    r5 = box(int, r1)
+    r5 = box(short_int, r1)
     r6 = r4.__setitem__(r0, r5) :: dict
-    r7 = box(int, r3)
+    r7 = box(short_int, r3)
     r8 = r4.__setitem__(r2, r7) :: dict
     d = r4
     r9 = unicode_1 :: static  ('one')
@@ -620,16 +643,16 @@ L0:
     r11 = None
     return r11
 def delListMultiple():
-    r0, r1, r2, r3, r4, r5, r6 :: int
+    r0, r1, r2, r3, r4, r5, r6 :: short_int
     r7, r8, r9, r10, r11, r12, r13 :: object
     r14, l :: list
-    r15 :: int
+    r15 :: short_int
     r16 :: object
     r17 :: bool
-    r18 :: int
+    r18 :: short_int
     r19 :: object
     r20 :: bool
-    r21 :: int
+    r21 :: short_int
     r22 :: object
     r23 :: bool
     r24 :: None
@@ -641,35 +664,35 @@ L0:
     r4 = 5
     r5 = 6
     r6 = 7
-    r7 = box(int, r0)
-    r8 = box(int, r1)
-    r9 = box(int, r2)
-    r10 = box(int, r3)
-    r11 = box(int, r4)
-    r12 = box(int, r5)
-    r13 = box(int, r6)
+    r7 = box(short_int, r0)
+    r8 = box(short_int, r1)
+    r9 = box(short_int, r2)
+    r10 = box(short_int, r3)
+    r11 = box(short_int, r4)
+    r12 = box(short_int, r5)
+    r13 = box(short_int, r6)
     r14 = [r7, r8, r9, r10, r11, r12, r13]
     l = r14
     r15 = 1
-    r16 = box(int, r15)
+    r16 = box(short_int, r15)
     r17 = l.__delitem__(r16) :: object
     r18 = 2
-    r19 = box(int, r18)
+    r19 = box(short_int, r18)
     r20 = l.__delitem__(r19) :: object
     r21 = 3
-    r22 = box(int, r21)
+    r22 = box(short_int, r21)
     r23 = l.__delitem__(r22) :: object
     r24 = None
     return r24
 def delDictMultiple():
     r0 :: str
-    r1 :: int
+    r1 :: short_int
     r2 :: str
-    r3 :: int
+    r3 :: short_int
     r4 :: str
-    r5 :: int
+    r5 :: short_int
     r6 :: str
-    r7 :: int
+    r7 :: short_int
     r8 :: dict
     r9 :: object
     r10 :: bool
@@ -695,13 +718,13 @@ L0:
     r6 = unicode_4 :: static  ('four')
     r7 = 4
     r8 = {}
-    r9 = box(int, r1)
+    r9 = box(short_int, r1)
     r10 = r8.__setitem__(r0, r9) :: dict
-    r11 = box(int, r3)
+    r11 = box(short_int, r3)
     r12 = r8.__setitem__(r2, r11) :: dict
-    r13 = box(int, r5)
+    r13 = box(short_int, r5)
     r14 = r8.__setitem__(r4, r13) :: dict
-    r15 = box(int, r7)
+    r15 = box(short_int, r7)
     r16 = r8.__setitem__(r6, r15) :: dict
     d = r8
     r17 = unicode_1 :: static  ('one')
@@ -721,7 +744,7 @@ L0:
     r2 = None
     return r2
 def delAttribute():
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2, dummy :: Dummy
     r3 :: str
     r4 :: bool
@@ -736,7 +759,7 @@ L0:
     r5 = None
     return r5
 def delAttributeMultiple():
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2, dummy :: Dummy
     r3 :: str
     r4 :: bool

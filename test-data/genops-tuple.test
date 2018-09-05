@@ -22,7 +22,7 @@ def f() -> int:
 [out]
 def f():
     r0 :: bool
-    r1 :: int
+    r1 :: short_int
     r2, t :: tuple[bool, int]
     r3 :: int
 L0:
@@ -40,7 +40,7 @@ def f(x: Tuple[bool, bool, int]) -> int:
 [out]
 def f(x):
     x :: tuple[bool, bool, int]
-    r0 :: int
+    r0 :: short_int
 L0:
     r0 = 3
     return r0
@@ -53,7 +53,7 @@ def f(x: List[bool]) -> bool:
 def f(x):
     x :: list
     r0 :: tuple
-    r1 :: int
+    r1 :: short_int
     r2 :: object
     r3 :: bool
 L0:
@@ -82,11 +82,11 @@ def f() -> int:
     return t[1]
 [out]
 def f():
-    r0, r1 :: int
+    r0, r1 :: short_int
     r2 :: tuple[int, int]
     t :: tuple
     r3 :: object
-    r4 :: int
+    r4 :: short_int
     r5 :: object
     r6 :: int
 L0:

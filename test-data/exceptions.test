@@ -9,13 +9,12 @@ def f(x: List[int]) -> int:
 [out]
 def f(x):
     x :: list
-    r0 :: int
+    r0 :: short_int
     r1 :: object
     r2, r3 :: int
 L0:
     r0 = 0
     r1 = x[r0] :: list
-    dec_ref r0 :: int
     if is_error(r1) goto L3 (error at f:3) else goto L1
 L1:
     r2 = unbox(int, r1)
@@ -78,11 +77,12 @@ def f(x):
     x :: union[A, None]
     r0 :: None
     r1 :: bool
-    r2 :: int
+    r2 :: short_int
     r3 :: A
     r4 :: None
     r5, r6 :: bool
-    r7, r8, r9 :: int
+    r7, r8 :: short_int
+    r9 :: int
 L0:
     r0 = None
     r1 = x is r0
@@ -122,10 +122,16 @@ def sum(a: List[int], l: int) -> int:
 [out]
 def sum(a, l):
     a :: list
-    l, r0, sum, r1, i :: int
+    l :: int
+    r0 :: short_int
+    sum :: int
+    r1 :: short_int
+    i :: int
     r2 :: bool
     r3 :: object
-    r4, r5, r6, r7, r8 :: int
+    r4, r5 :: int
+    r6 :: short_int
+    r7, r8 :: int
 L0:
     r0 = 0
     sum = r0
@@ -149,7 +155,6 @@ L4:
     r6 = 1
     r7 = i + r6 :: int
     dec_ref i :: int
-    dec_ref r6 :: int
     i = r7
     goto L1
 L5:
@@ -381,9 +386,11 @@ def lol(x):
     r7 :: str
     r8 :: object
     r9 :: bool
-    r10, r11 :: int
+    r10 :: short_int
+    r11 :: int
     r12, r13 :: bool
-    r14, r15, r16 :: int
+    r14 :: short_int
+    r15, r16 :: int
 L0:
 L1:
     r0 = builtins.module :: static
@@ -414,7 +421,6 @@ L6:
 L7:
     r10 = 1
     r11 = -r10 :: int
-    dec_ref r10 :: int
     restore_exc_info r5
     dec_ref r5
     return r11
@@ -438,7 +444,6 @@ L13:
     r14 = 1
     r15 = st + r14 :: int
     dec_ref st :: int
-    dec_ref r14 :: int
     return r15
 L14:
     r16 = <error> :: int
