@@ -3515,7 +3515,8 @@ from typing import Optional
 def foo() -> Optional[int]: return 0
 [out1]
 [out2]
-main:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+main:3: error: Unsupported operand types for + ("int" and "None")
+main:3: note: Right operand is of type "Optional[int]"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
@@ -4082,7 +4083,8 @@ class Baz:
         return 1
 [out]
 [out2]
-tmp/a.py:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+tmp/a.py:3: error: Unsupported operand types for + ("int" and "None")
+tmp/a.py:3: note: Right operand is of type "Optional[int]"
 
 [case testIncrementalMetaclassUpdate]
 import a
