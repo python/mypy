@@ -42,16 +42,13 @@ def stat_proxy(path: str) -> os.stat_result:
         return st
 
 
-def main(script_path: Optional[str], args: Optional[List[str]] = None,
-         clean_exit: bool = False) -> None:
+def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
         be used.
-        clean_exit: If True, call sys.exit() on failure instead of killing
-            process.
     """
     # Check for known bad Python versions.
     if sys.version_info[:2] < (3, 4):
@@ -113,14 +110,13 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None,
     code = 0
     if messages:
         code = 2 if blockers else 1
-    if clean_exit:
-        # The API catches the SystemExit.
-        sys.exit(code)
-    else:
-        # Exit without freeing objects since it's faster.
+    if options.fast_exit:
+        # Exit without freeing objects -- it's faster.
         #
-        # NOTE: We can't rely on flushing all open files on exit (and running other destructors).
+        # NOTE: We don't flush all open files on exit (or run other destructors)!
         util.hard_exit(code)
+    elif code:
+        sys.exit(code)
 
 
 def find_bin_directory(script_path: str) -> str:
@@ -624,6 +620,8 @@ def process_options(args: List[str],
         dest='shadow_file', action='append',
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
+    add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
+                        group=internals_group)
 
     error_group = parser.add_argument_group(
         title='Error reporting',

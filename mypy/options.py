@@ -211,6 +211,8 @@ class Options:
         # if they don't have __init__.py.
         self.package_root = []  # type: List[str]
         self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
+        # Don't properly free objects on exit, just kill the current process.
+        self.fast_exit = False
 
     def snapshot(self) -> object:
         """Produce a comparable snapshot of this Option"""
