@@ -14,7 +14,7 @@ static CPyModule *CPyStatic_builtins_module = Py_None;
 static PyObject *CPyStatic_unicode_0;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
 static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw);
-static PyObject *CPyDef___top_level__(void);
+static char CPyDef___top_level__(void);
 static int CPyLiteralsInit(void)
 {
     static int is_initialized = 0;
@@ -56,10 +56,9 @@ PyMODINIT_FUNC PyInit_prog(void)
         return NULL;
     if (CPyLiteralsInit() < 0)
         return NULL;
-    PyObject *result = CPyDef___top_level__();
-    if (result == NULL)
+    char result = CPyDef___top_level__();
+    if (result == 2)
         return NULL;
-    Py_DECREF(result);
     Py_DECREF(modname);
     return CPyStatic_module;
 }
@@ -91,14 +90,14 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
     return retbox;
 }
 
-static PyObject *CPyDef___top_level__(void) {
+static char CPyDef___top_level__(void) {
     PyObject *cpy_r_r0;
     PyObject *cpy_r_r1;
     char cpy_r_r2;
     PyObject *cpy_r_r3;
     PyObject *cpy_r_r4;
-    PyObject *cpy_r_r5;
-    PyObject *cpy_r_r6;
+    char cpy_r_r5;
+    char cpy_r_r6;
 CPyL0: ;
     cpy_r_r0 = CPyStatic_builtins_module;
     cpy_r_r1 = Py_None;
@@ -121,11 +120,10 @@ CPyL2: ;
     CPy_DECREF(cpy_r_r4);
     goto CPyL3;
 CPyL3: ;
-    cpy_r_r5 = Py_None;
-    CPy_INCREF(cpy_r_r5);
+    cpy_r_r5 = 1; /* None */
     return cpy_r_r5;
 CPyL4: ;
-    cpy_r_r6 = NULL;
+    cpy_r_r6 = 2;
     return cpy_r_r6;
 }
 

@@ -284,10 +284,9 @@ class ModuleGenerator:
         for fn in reversed(module.functions):
             if fn.name == TOP_LEVEL_NAME:
                 emitter.emit_lines(
-                    'PyObject *result = {}();'.format(emitter.native_function_name(fn.decl)),
-                    'if (result == NULL)',
+                    'char result = {}();'.format(emitter.native_function_name(fn.decl)),
+                    'if (result == 2)',
                     '    return NULL;',
-                    'Py_DECREF(result);'
                 )
                 break
 

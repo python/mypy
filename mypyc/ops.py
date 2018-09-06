@@ -118,7 +118,8 @@ float_rprimitive = RPrimitive('builtins.float', is_unboxed=False, is_refcounted=
 
 bool_rprimitive = RPrimitive('builtins.bool', is_unboxed=True, is_refcounted=False, ctype='char')
 
-none_rprimitive = RPrimitive('builtins.None', is_unboxed=False, is_refcounted=True)
+none_rprimitive = RPrimitive('builtins.None', is_unboxed=True, is_refcounted=False,
+                             ctype='char')
 
 list_rprimitive = RPrimitive('builtins.list', is_unboxed=False, is_refcounted=True)
 
@@ -1199,6 +1200,9 @@ class Box(RegisterOp):
         super().__init__(line)
         self.src = src
         self.type = object_rprimitive
+        # When we box None values, we produce a borrowed result
+        if is_none_rprimitive(self.src.type):
+            self.is_borrowed = True
 
     def sources(self) -> List[Value]:
         return [self.src]

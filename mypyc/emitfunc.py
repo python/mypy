@@ -347,7 +347,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         self.emit_dec_ref(src, op.src.type)
 
     def visit_box(self, op: Box) -> None:
-        self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type)
+        self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
 
     def visit_cast(self, op: Cast) -> None:
         self.emitter.emit_cast(self.reg(op.src), self.reg(op), op.type,

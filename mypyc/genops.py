@@ -73,7 +73,8 @@ from mypyc.ops_tuple import list_tuple_op
 from mypyc.ops_dict import new_dict_op, dict_get_item_op, dict_set_item_op, dict_update_op
 from mypyc.ops_set import new_set_op, set_add_op
 from mypyc.ops_misc import (
-    none_op, true_op, false_op, iter_op, next_op, py_getattr_op, py_setattr_op, py_delattr_op,
+    none_op, none_object_op, true_op, false_op, iter_op, next_op,
+    py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
     type_op, pytype_from_template_op, import_op, ellipsis_op, method_new_op, type_is_op,
@@ -940,7 +941,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         needs_import, out = BasicBlock(), BasicBlock()
         first_load = self.add(LoadStatic(object_rprimitive, 'module', id))
-        comparison = self.binary_op(first_load, self.none(), 'is not', line)
+        comparison = self.binary_op(first_load, self.none_object(), 'is not', line)
         self.add_bool_branch(comparison, out, needs_import)
 
         self.activate_block(needs_import)
@@ -1278,7 +1279,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def add_implicit_return(self) -> None:
         block = self.blocks[-1][-1]
         if not block.ops or not isinstance(block.ops[-1], ControlOp):
-            retval = self.none()
+            retval = self.coerce(self.none(), self.ret_types[-1], -1)
             self.nonlocal_control[-1].gen_return(self, retval)
 
     def add_implicit_unreachable(self) -> None:
@@ -1296,9 +1297,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         if stmt.expr:
             retval = self.accept(stmt.expr)
-            retval = self.coerce(retval, self.ret_types[-1], stmt.line)
         else:
             retval = self.none()
+        retval = self.coerce(retval, self.ret_types[-1], stmt.line)
         self.nonlocal_control[-1].gen_return(self, retval)
 
     def disallow_class_assignments(self, lvalues: List[Lvalue]) -> None:
@@ -2174,7 +2175,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Handle data-driven special-cased primitive call ops.
         if callee.fullname is not None and expr.arg_kinds == [ARG_POS] * len(arg_values):
             ops = func_ops.get(callee.fullname, [])
-            target = self.matching_primitive_op(ops, arg_values, expr.line)
+            target = self.matching_primitive_op(ops, arg_values, expr.line, self.node_type(expr))
             if target:
                 return target
 
@@ -2529,7 +2530,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
-                is_none = self.binary_op(value, self.none(), 'is not', value.line)
+                is_none = self.binary_op(value, self.none_object(), 'is not', value.line)
                 branch = Branch(is_none, true, false, Branch.BOOL_EXPR)
                 self.add(branch)
                 if isinstance(value_type, RInstance) and not value_type.class_ir.has_bool:
@@ -2553,7 +2554,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_slice_expr(self, expr: SliceExpr) -> Value:
         def get_arg(arg: Optional[Expression]) -> Value:
             if arg is None:
-                return self.none()
+                return self.none_object()
             else:
                 return self.accept(arg)
 
@@ -2906,7 +2907,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             out_block, exit_block = BasicBlock(), BasicBlock()
             self.add(Branch(self.read(exc), exit_block, out_block, Branch.BOOL_EXPR))
             self.activate_block(exit_block)
-            none = self.none()
+            none = self.none_object()
             self.py_call(self.read(exit_), [self.read(mgr), none, none, none], line)
             self.goto_and_activate(out_block)
 
@@ -3151,9 +3152,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.goto_new_block()
         if expr.expr:
             retval = self.accept(expr.expr)
-            retval = self.coerce(retval, self.ret_types[-1], expr.line)
         else:
             retval = self.none()
+        retval = self.coerce(retval, self.ret_types[-1], expr.line)
 
         cls = self.fn_info.generator_class
         # Create a new block for the instructions immediately following the yield expression, and
@@ -3370,6 +3371,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
     def none(self) -> Value:
         return self.add(PrimitiveOp([], none_op, line=-1))
+
+    def none_object(self) -> Value:
+        return self.add(PrimitiveOp([], none_object_op, line=-1))
 
     def load_outer_env(self, base: Value, outer_env: Environment) -> Value:
         """Loads the environment class for a given base into a register.
@@ -3599,7 +3603,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # object. If accessed through an object, create a new bound
         # instance method object.
         instance_block, class_block = BasicBlock(), BasicBlock()
-        comparison = self.binary_op(self.read(instance), self.none(), 'is', line)
+        comparison = self.binary_op(self.read(instance), self.none_object(), 'is', line)
         self.add_bool_branch(comparison, class_block, instance_block)
 
         self.activate_block(class_block)
@@ -3754,7 +3758,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         """Generates the '__next__' method for a generator class."""
         self.enter(fn_info)
         self_reg = self.read(self.add_self_to_env(fn_info.generator_class.ir))
-        none_reg = self.none()
+        none_reg = self.none_object()
 
         # Call the helper function with error flags set to Py_None, and return that result.
         result = self.add(Call(fn_decl, [self_reg, none_reg, none_reg, none_reg],
@@ -3783,7 +3787,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         # Because the value and traceback arguments are optional and hence can be NULL if not
         # passed in, we have to assign them Py_None if they are not passed in.
-        none_reg = self.none()
+        none_reg = self.none_object()
         self.assign_if_null(val, lambda: none_reg, self.fn_info.fitem.line)
         self.assign_if_null(tb, lambda: none_reg, self.fn_info.fitem.line)
 
@@ -3859,7 +3863,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         # Check to see if an exception was raised.
         error_block = BasicBlock()
         ok_block = BasicBlock()
-        comparison = self.binary_op(exc_type, self.none(), 'is not', line)
+        comparison = self.binary_op(exc_type, self.none_object(), 'is not', line)
         self.add_bool_branch(comparison, error_block, ok_block)
 
         self.activate_block(error_block)

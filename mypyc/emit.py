@@ -511,6 +511,14 @@ class Emitter:
             self.emit_line('} else')
             conversion = 'PyObject_IsTrue({})'.format(src)
             self.emit_line('    {} = {};'.format(dest, conversion))
+        elif is_none_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            if declare_dest:
+                self.emit_line('char {};'.format(dest))
+            self.emit_arg_check(src, dest, typ, '({} != Py_None) {{'.format(src), optional)
+            self.emit_lines(*failure)
+            self.emit_line('} else')
+            self.emit_line('    {} = 1;'.format(dest))
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
@@ -554,7 +562,8 @@ class Emitter:
         else:
             assert False, 'Unboxing not implemented: %s' % typ
 
-    def emit_box(self, src: str, dest: str, typ: RType, declare_dest: bool = False) -> None:
+    def emit_box(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
+                 can_borrow: bool = False) -> None:
         """Emit code for boxing a value of give type.
 
         Generate a simple assignment if no boxing is needed.
@@ -573,6 +582,13 @@ class Emitter:
             # TODO: The Py_RETURN macros return the correct PyObject * with reference count
             #       handling. Relevant here?
             self.emit_lines('{}{} = PyBool_FromLong({});'.format(declaration, dest, src))
+        elif is_none_rprimitive(typ):
+            # N.B: None is special cased to produce a borrowed value
+            # after boxing, so we don't need to increment the refcount
+            # when this comes directly from a Box op.
+            self.emit_lines('{}{} = Py_None;'.format(declaration, dest))
+            if not can_borrow:
+                self.emit_inc_ref(dest, object_rprimitive)
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))

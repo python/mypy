@@ -31,7 +31,7 @@ L2: (handler for L1)
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
-    r10 = cast(None, r9)
+    r10 = unbox(None, r9)
 L3:
     restore_exc_info r4
     goto L5
@@ -88,7 +88,7 @@ L5: (handler for L1, L2, L3, L4)
     r9 = unicode_4 :: static  ('print')
     r10 = getattr r8, r9
     r11 = py_call(r10, r7)
-    r12 = cast(None, r11)
+    r12 = unbox(None, r11)
 L6:
     restore_exc_info r6
     goto L8
@@ -147,7 +147,7 @@ L1:
     r2 = unicode_2 :: static  ('print')
     r3 = getattr r1, r2
     r4 = py_call(r3, r0)
-    r5 = cast(None, r4)
+    r5 = unbox(None, r4)
 L2:
     r6 = builtins.module :: static
     r7 = unicode_3 :: static  ('object')
@@ -169,7 +169,7 @@ L4:
     r18 = unicode_2 :: static  ('print')
     r19 = getattr r17, r18
     r20 = py_call(r19, r16, e)
-    r21 = cast(None, r20)
+    r21 = unbox(None, r20)
     goto L6
 L5:
     reraise_exc; r22 = 0
@@ -190,7 +190,7 @@ L9: (handler for L1, L6, L7, L8)
     r27 = unicode_2 :: static  ('print')
     r28 = getattr r26, r27
     r29 = py_call(r28, r25)
-    r30 = cast(None, r29)
+    r30 = unbox(None, r29)
 L10:
     restore_exc_info r24
     goto L12
@@ -249,7 +249,7 @@ L3:
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
     r9 = py_call(r8, r5)
-    r10 = cast(None, r9)
+    r10 = unbox(None, r9)
     goto L7
 L4:
     r11 = builtins.module :: static
@@ -263,7 +263,7 @@ L5:
     r17 = unicode_3 :: static  ('print')
     r18 = getattr r16, r17
     r19 = py_call(r18, r15)
-    r20 = cast(None, r19)
+    r20 = unbox(None, r19)
     goto L7
 L6:
     reraise_exc; r21 = 0
@@ -328,7 +328,7 @@ L7:
     r11 = unicode_4 :: static  ('print')
     r12 = getattr r10, r11
     r13 = py_call(r12, r9)
-    r14 = cast(None, r13)
+    r14 = unbox(None, r13)
     if is_error(r6) goto L9 else goto L8
 L8:
     reraise_exc; r15 = 0
@@ -371,8 +371,7 @@ def foo(x):
     r18, r19, r20, r21 :: object
     r22, r23, r24 :: bool
     r25, r26, r27 :: tuple[object, object, object]
-    r28 :: None
-    r29 :: object
+    r28, r29 :: object
     r30, r31 :: bool
     r32 :: None
 L0:
@@ -393,7 +392,7 @@ L2:
     r11 = unicode_6 :: static  ('print')
     r12 = getattr r10, r11
     r13 = py_call(r12, r9)
-    r14 = cast(None, r13)
+    r14 = unbox(None, r13)
     goto L8
 L3: (handler for L2)
     r15 = error_catch
@@ -429,7 +428,7 @@ L11: (handler for L1, L6, L7, L8)
 L12:
     if r8 goto L13 else goto L14 :: bool
 L13:
-    r28 = None
+    r28 = builtins.None :: object
     r29 = py_call(r3, r0, r28, r28, r28)
 L14:
     if is_error(r25) goto L16 else goto L15

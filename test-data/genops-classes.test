@@ -127,28 +127,30 @@ def Node.length(self):
     self :: Node
     r0 :: union[Node, None]
     r1 :: None
-    r2, r3 :: bool
-    r4 :: short_int
-    r5 :: union[Node, None]
-    r6 :: Node
-    r7, r8 :: int
-    r9 :: short_int
+    r2 :: object
+    r3, r4 :: bool
+    r5 :: short_int
+    r6 :: union[Node, None]
+    r7 :: Node
+    r8, r9 :: int
+    r10 :: short_int
 L0:
     r0 = self.next
     r1 = None
-    r2 = r0 is r1
-    r3 = !r2
-    if r3 goto L1 else goto L2 :: bool
+    r2 = box(None, r1)
+    r3 = r0 is r2
+    r4 = !r3
+    if r4 goto L1 else goto L2 :: bool
 L1:
-    r4 = 1
-    r5 = self.next
-    r6 = cast(Node, r5)
-    r7 = r6.length()
-    r8 = r4 + r7 :: int
-    return r8
-L2:
-    r9 = 1
+    r5 = 1
+    r6 = self.next
+    r7 = cast(Node, r6)
+    r8 = r7.length()
+    r9 = r5 + r8 :: int
     return r9
+L2:
+    r10 = 1
+    return r10
 
 [case testSubclass]
 class A:
@@ -328,12 +330,10 @@ class D(C, S, Generic[T]):
 
 [out]
 def __top_level__():
-    r0 :: object
-    r1 :: None
+    r0, r1 :: object
     r2 :: bool
     r3 :: str
-    r4, r5 :: object
-    r6 :: None
+    r4, r5, r6 :: object
     r7 :: bool
     r8 :: str
     r9, r10, r11 :: object
@@ -345,8 +345,7 @@ def __top_level__():
     r17 :: object
     r18 :: str
     r19 :: bool
-    r20 :: object
-    r21 :: None
+    r20, r21 :: object
     r22 :: bool
     r23 :: str
     r24, r25, r26 :: object
@@ -393,7 +392,7 @@ def __top_level__():
     r76 :: None
 L0:
     r0 = builtins.module :: static
-    r1 = None
+    r1 = builtins.None :: object
     r2 = r0 is not r1
     if r2 goto L2 else goto L1 :: bool
 L1:
@@ -402,7 +401,7 @@ L1:
     builtins.module = r4 :: static
 L2:
     r5 = typing.module :: static
-    r6 = None
+    r6 = builtins.None :: object
     r7 = r5 is not r6
     if r7 goto L4 else goto L3 :: bool
 L3:
@@ -421,7 +420,7 @@ L4:
     r18 = unicode_3 :: static  ('Generic')
     r19 = r11.__setitem__(r18, r17) :: object
     r20 = mypy_extensions.module :: static
-    r21 = None
+    r21 = builtins.None :: object
     r22 = r20 is not r21
     if r22 goto L6 else goto L5 :: bool
 L5:
@@ -698,9 +697,10 @@ def B.__mypyc_defaults_setup(__mypyc_self__):
     r3 :: str
     r4 :: bool
     r5 :: None
-    r6, r7, r8 :: bool
-    r9 :: short_int
-    r10, r11 :: bool
+    r6 :: object
+    r7, r8, r9 :: bool
+    r10 :: short_int
+    r11, r12 :: bool
 L0:
     r0 = __main__.globals :: static
     r1 = unicode_7 :: static  ('LOL')
@@ -708,10 +708,11 @@ L0:
     r3 = cast(str, r2)
     __mypyc_self__.y = r3; r4 = is_error
     r5 = None
-    __mypyc_self__.z = r5; r6 = is_error
-    r7 = True
-    __mypyc_self__.b = r7; r8 = is_error
-    r9 = 10
-    __mypyc_self__.x = r9; r10 = is_error
-    r11 = True
-    return r11
+    r6 = box(None, r5)
+    __mypyc_self__.z = r6; r7 = is_error
+    r8 = True
+    __mypyc_self__.b = r8; r9 = is_error
+    r10 = 10
+    __mypyc_self__.x = r10; r11 = is_error
+    r12 = True
+    return r12

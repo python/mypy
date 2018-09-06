@@ -14,11 +14,17 @@ from mypyc.ops_primitive import (
 )
 
 
+none_object_op = custom_op(result_type=object_rprimitive,
+                           arg_types=[],
+                           error_kind=ERR_NEVER,
+                           format_str='{dest} = builtins.None :: object',
+                           emit=simple_emit('{dest} = Py_None;'),
+                           is_borrowed=True)
+
 none_op = name_ref_op('builtins.None',
                       result_type=none_rprimitive,
                       error_kind=ERR_NEVER,
-                      emit=simple_emit('{dest} = Py_None;'),
-                      is_borrowed=True)
+                      emit=simple_emit('{dest} = 1; /* None */'))
 
 true_op = name_ref_op('builtins.True',
                       result_type=bool_rprimitive,

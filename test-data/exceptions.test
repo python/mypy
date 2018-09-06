@@ -55,7 +55,6 @@ L1:
     if not r4 goto L3 (error at f:4) else goto L2 :: bool
 L2:
     r5 = None
-    inc_ref r5
     return r5
 L3:
     r6 = <error> :: None
@@ -76,39 +75,43 @@ def f(x: Optional[A]) -> int:
 def f(x):
     x :: union[A, None]
     r0 :: None
-    r1 :: bool
-    r2 :: short_int
-    r3 :: A
-    r4 :: None
-    r5, r6 :: bool
-    r7, r8 :: short_int
-    r9 :: int
+    r1 :: object
+    r2 :: bool
+    r3 :: short_int
+    r4 :: A
+    r5 :: None
+    r6 :: object
+    r7, r8 :: bool
+    r9, r10 :: short_int
+    r11 :: int
 L0:
     r0 = None
-    r1 = x is r0
-    if r1 goto L1 else goto L2 :: bool
+    r1 = box(None, r0)
+    r2 = x is r1
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r2 = 1
-    return r2
+    r3 = 1
+    return r3
 L2:
     inc_ref x
-    r3 = cast(A, x)
-    if is_error(r3) goto L6 (error at f:8) else goto L3
+    r4 = cast(A, x)
+    if is_error(r4) goto L6 (error at f:8) else goto L3
 L3:
-    r4 = None
-    r5 = r3 is r4
-    dec_ref r3
-    r6 = !r5
-    if r6 goto L4 else goto L5 :: bool
+    r5 = None
+    r6 = box(None, r5)
+    r7 = r4 is r6
+    dec_ref r4
+    r8 = !r7
+    if r8 goto L4 else goto L5 :: bool
 L4:
-    r7 = 2
-    return r7
-L5:
-    r8 = 3
-    return r8
-L6:
-    r9 = <error> :: int
+    r9 = 2
     return r9
+L5:
+    r10 = 3
+    return r10
+L6:
+    r11 = <error> :: int
+    return r11
 
 [case testListSum]
 from typing import List
@@ -211,8 +214,9 @@ L4:
     dec_ref r8
     if is_error(r9) goto L7 (error at g:5) else goto L5
 L5:
-    r10 = cast(None, r9)
-    if is_error(r10) goto L7 (error at g:5) else goto L12
+    r10 = unbox(None, r9)
+    dec_ref r9
+    if is_error(r10) goto L7 (error at g:5) else goto L6
 L6:
     restore_exc_info r4
     dec_ref r4
@@ -226,7 +230,6 @@ L8:
     unreachable
 L9:
     r12 = None
-    inc_ref r12
     return r12
 L10:
     r13 = <error> :: None
@@ -234,9 +237,6 @@ L10:
 L11:
     dec_ref r3
     goto L9
-L12:
-    dec_ref r10
-    goto L6
 
 [case testGenopsTryFinally]
 def a() -> str:
@@ -275,8 +275,9 @@ L2:
     dec_ref r2
     if is_error(r3) goto L6 (error at a:3) else goto L3
 L3:
-    r4 = cast(None, r3)
-    if is_error(r4) goto L6 (error at a:3) else goto L22
+    r4 = unbox(None, r3)
+    dec_ref r3
+    if is_error(r4) goto L6 (error at a:3) else goto L4
 L4:
     r5 = unicode_2 :: static  ('hi')
     inc_ref r5
@@ -301,13 +302,14 @@ L8:
     dec_ref r15
     if is_error(r16) goto L15 (error at a:6) else goto L9
 L9:
-    r17 = cast(None, r16)
-    if is_error(r17) goto L15 (error at a:6) else goto L23
+    r17 = unbox(None, r16)
+    dec_ref r16
+    if is_error(r17) goto L15 (error at a:6) else goto L10
 L10:
     if is_error(r7) goto L13 else goto L11
 L11:
     reraise_exc; r18 = 0
-    if not r18 goto L15 else goto L24 :: bool
+    if not r18 goto L15 else goto L22 :: bool
 L12:
     unreachable
 L13:
@@ -315,7 +317,7 @@ L13:
 L14:
     return r6
 L15:
-    if is_error(r6) goto L16 else goto L25
+    if is_error(r6) goto L16 else goto L23
 L16:
     if is_error(r7) goto L18 else goto L17
 L17:
@@ -332,16 +334,10 @@ L21:
     r20 = <error> :: str
     return r20
 L22:
-    dec_ref r4
-    goto L4
-L23:
-    dec_ref r17
-    goto L10
-L24:
     dec_ref r6
     dec_ref r7
     goto L12
-L25:
+L23:
     dec_ref r6
     goto L16
 
@@ -356,7 +352,6 @@ def lol():
 L0:
     r0 = unicode_1 :: static  ('Hello')
     r1 = None
-    inc_ref r1
     return r1
 
 [case testExceptUndefined]

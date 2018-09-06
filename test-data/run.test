@@ -3252,3 +3252,27 @@ assert call_all(mixed_110) == 1
 
 assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
+
+[case testNoneStuff]
+from typing import Optional
+class A:
+    x: int
+
+def lol(x: A) -> None:
+    setattr(x, 'x', 5)
+
+def none() -> None:
+    return
+
+def arg(x: Optional[A]) -> bool:
+    return x is None
+
+
+[file driver.py]
+import native
+native.lol(native.A())
+
+# Catch refcounting failures
+for i in range(10000):
+    native.none()
+    native.arg(None)

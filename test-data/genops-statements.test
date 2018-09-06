@@ -541,7 +541,7 @@ L2:
 def complex_msg(x, s):
     x :: union[str, None]
     s :: str
-    r0 :: None
+    r0 :: object
     r1 :: bool
     r2 :: str
     r3 :: bool
@@ -551,7 +551,7 @@ def complex_msg(x, s):
     r8 :: bool
     r9 :: None
 L0:
-    r0 = None
+    r0 = builtins.None :: object
     r1 = x is not r0
     if r1 goto L1 else goto L2 :: bool
 L1:

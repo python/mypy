@@ -365,11 +365,9 @@ def generate_constructor_for_class(cl: ClassIR,
     emitter.emit_line('    return NULL;')
     if init_fn is not None:
         args = ', '.join(['self'] + [REG_PREFIX + arg.name for arg in fn.sig.args])
-        emitter.emit_line('PyObject *res = {}{}({});'.format(
+        emitter.emit_line('char res = {}{}({});'.format(
             NATIVE_PREFIX, init_fn.cname(emitter.names), args))
-        emitter.emit_line('if (res) {')
-        emitter.emit_line('Py_DECREF(res);')
-        emitter.emit_line('} else {')
+        emitter.emit_line('if (res == 2) {')
         emitter.emit_line('Py_DECREF(self);')
         emitter.emit_line('return NULL;')
         emitter.emit_line('}')
