@@ -23,6 +23,7 @@ from mypyc.analysis import (
     analyze_must_defined_regs,
     analyze_live_regs,
     analyze_borrowed_arguments,
+    cleanup_cfg,
     AnalysisDict
 )
 from mypyc.ops import (
@@ -59,6 +60,8 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
                                           borrow.after,
                                           ir.env)
         transform_block(block, live.before, live.after, borrow.before, ir.env)
+
+    cleanup_cfg(ir.blocks)
 
 
 def maybe_append_dec_ref(ops: List[Op], dest: Value) -> None:

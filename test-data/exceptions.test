@@ -194,52 +194,49 @@ L1:
     r0 = builtins.module :: static
     r1 = unicode_1 :: static  ('object')
     r2 = getattr r0, r1
-    if is_error(r2) goto L4 (error at g:3) else goto L2
+    if is_error(r2) goto L3 (error at g:3) else goto L2
 L2:
     r3 = py_call(r2)
     dec_ref r2
-    if is_error(r3) goto L4 (error at g:3) else goto L13
+    if is_error(r3) goto L3 (error at g:3) else goto L11
 L3:
-    goto L11
-L4:
     r4 = error_catch
     r5 = unicode_2 :: static  ('weeee')
     r6 = builtins.module :: static
     r7 = unicode_3 :: static  ('print')
     r8 = getattr r6, r7
-    if is_error(r8) goto L9 (error at g:5) else goto L5
-L5:
+    if is_error(r8) goto L7 (error at g:5) else goto L4
+L4:
     r9 = py_call(r8, r5)
     dec_ref r8
-    if is_error(r9) goto L9 (error at g:5) else goto L6
-L6:
+    if is_error(r9) goto L7 (error at g:5) else goto L5
+L5:
     r10 = cast(None, r9)
-    if is_error(r10) goto L9 (error at g:5) else goto L14
-L7:
-L8:
+    if is_error(r10) goto L7 (error at g:5) else goto L12
+L6:
     restore_exc_info r4
     dec_ref r4
-    goto L11
-L9:
+    goto L9
+L7:
     restore_exc_info r4
     dec_ref r4
     r11 = keep_propagating
-    if not r11 goto L12 else goto L10 :: bool
-L10:
+    if not r11 goto L10 else goto L8 :: bool
+L8:
     unreachable
-L11:
+L9:
     r12 = None
     inc_ref r12
     return r12
-L12:
+L10:
     r13 = <error> :: None
     return r13
-L13:
+L11:
     dec_ref r3
-    goto L3
-L14:
+    goto L9
+L12:
     dec_ref r10
-    goto L7
+    goto L6
 
 [case testGenopsTryFinally]
 def a() -> str:
@@ -272,87 +269,81 @@ L1:
     r0 = builtins.module :: static
     r1 = unicode_1 :: static  ('print')
     r2 = getattr r0, r1
-    if is_error(r2) goto L7 (error at a:3) else goto L2
+    if is_error(r2) goto L6 (error at a:3) else goto L2
 L2:
     r3 = py_call(r2)
     dec_ref r2
-    if is_error(r3) goto L7 (error at a:3) else goto L3
+    if is_error(r3) goto L6 (error at a:3) else goto L3
 L3:
     r4 = cast(None, r3)
-    if is_error(r4) goto L7 (error at a:3) else goto L24
+    if is_error(r4) goto L6 (error at a:3) else goto L22
 L4:
     r5 = unicode_2 :: static  ('hi')
     inc_ref r5
     r6 = r5
-    goto L6
 L5:
-    r8 = <error> :: str
-    r6 = r8
-L6:
     r9 = <error> :: tuple[object, object, object]
     r7 = r9
-    goto L8
-L7:
+    goto L7
+L6:
     r10 = <error> :: str
     r6 = r10
     r11 = error_catch
     r7 = r11
-L8:
+L7:
     r12 = unicode_3 :: static  ('goodbye!')
     r13 = builtins.module :: static
     r14 = unicode_1 :: static  ('print')
     r15 = getattr r13, r14
-    if is_error(r15) goto L17 (error at a:6) else goto L9
-L9:
+    if is_error(r15) goto L15 (error at a:6) else goto L8
+L8:
     r16 = py_call(r15, r12)
     dec_ref r15
-    if is_error(r16) goto L17 (error at a:6) else goto L10
-L10:
+    if is_error(r16) goto L15 (error at a:6) else goto L9
+L9:
     r17 = cast(None, r16)
-    if is_error(r17) goto L17 (error at a:6) else goto L25
+    if is_error(r17) goto L15 (error at a:6) else goto L23
+L10:
+    if is_error(r7) goto L13 else goto L11
 L11:
-    if is_error(r7) goto L14 else goto L12
-L12:
     reraise_exc; r18 = 0
-    if not r18 goto L17 else goto L26 :: bool
-L13:
+    if not r18 goto L15 else goto L24 :: bool
+L12:
     unreachable
+L13:
+    if is_error(r6) goto L20 else goto L14
 L14:
-    if is_error(r6) goto L16 else goto L15
-L15:
     return r6
+L15:
+    if is_error(r6) goto L16 else goto L25
 L16:
-    goto L22
+    if is_error(r7) goto L18 else goto L17
 L17:
-    if is_error(r6) goto L18 else goto L27
-L18:
-    if is_error(r7) goto L20 else goto L19
-L19:
     restore_exc_info r7
     dec_ref r7
-L20:
+L18:
     r19 = keep_propagating
-    if not r19 goto L23 else goto L21 :: bool
+    if not r19 goto L21 else goto L19 :: bool
+L19:
+    unreachable
+L20:
+    unreachable
 L21:
-    unreachable
-L22:
-    unreachable
-L23:
     r20 = <error> :: str
     return r20
-L24:
+L22:
     dec_ref r4
     goto L4
-L25:
+L23:
     dec_ref r17
-    goto L11
-L26:
+    goto L10
+L24:
     dec_ref r6
     dec_ref r7
-    goto L13
-L27:
+    goto L12
+L25:
     dec_ref r6
-    goto L18
+    goto L16
 
 [case testDocstring1]
 def lol() -> None:
@@ -407,13 +398,13 @@ L3:
     if is_error(r4) goto L5 (error at lol:3) else goto L4
 L4:
     st = r4
-    goto L13
+    goto L12
 L5:
     r5 = error_catch
     r6 = builtins.module :: static
     r7 = unicode_2 :: static  ('Exception')
     r8 = getattr r6, r7
-    if is_error(r8) goto L11 (error at lol:4) else goto L6
+    if is_error(r8) goto L10 (error at lol:4) else goto L6
 L6:
     r9 = exc_matches r8
     dec_ref r8
@@ -426,28 +417,24 @@ L7:
     return r11
 L8:
     reraise_exc; r12 = 0
-    if not r12 goto L11 else goto L15 :: bool
+    if not r12 goto L10 else goto L14 :: bool
 L9:
     unreachable
 L10:
     restore_exc_info r5
     dec_ref r5
-    goto L13
-L11:
-    restore_exc_info r5
-    dec_ref r5
     r13 = keep_propagating
-    if not r13 goto L14 else goto L12 :: bool
-L12:
+    if not r13 goto L13 else goto L11 :: bool
+L11:
     unreachable
-L13:
+L12:
     r14 = 1
     r15 = st + r14 :: int
     dec_ref st :: int
     return r15
-L14:
+L13:
     r16 = <error> :: int
     return r16
-L15:
+L14:
     dec_ref r5
     goto L9

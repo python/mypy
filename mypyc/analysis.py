@@ -69,6 +69,43 @@ def get_cfg(blocks: List[BasicBlock]) -> CFG:
     return CFG(succ_map, pred_map, exits)
 
 
+def get_real_target(label: BasicBlock) -> BasicBlock:
+    if len(label.ops) == 1 and isinstance(label.ops[-1], Goto):
+        label = label.ops[-1].label
+    return label
+
+
+def cleanup_cfg(blocks: List[BasicBlock]) -> None:
+    """Cleanup the control flow graph.
+
+    This eliminates obviously dead basic blocks and eliminates blocks that contain
+    nothing but a single jump.
+
+    There is a lot more that could be done.
+    """
+    changed = True
+    while changed:
+        # First collapse any jumps to basic block that only contain a goto
+        for block in blocks:
+            term = block.ops[-1]
+            if isinstance(term, Goto):
+                term.label = get_real_target(term.label)
+            elif isinstance(term, Branch):
+                term.true = get_real_target(term.true)
+                term.false = get_real_target(term.false)
+
+        # Then delete any blocks that have no predecessors
+        changed = False
+        cfg = get_cfg(blocks)
+        orig_blocks = blocks[:]
+        blocks.clear()
+        for i, block in enumerate(orig_blocks):
+            if i == 0 or cfg.pred[block]:
+                blocks.append(block)
+            else:
+                changed = True
+
+
 T = TypeVar('T')
 
 AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
