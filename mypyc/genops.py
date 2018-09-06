@@ -3023,7 +3023,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.primitive_op(list_append_op, [list_ops, e], o.line)
 
         self.comprehension_helper(loop_params, gen_inner_stmts, o.line)
-        return list_ops
+        return self.primitive_op(iter_op, [list_ops], o.line)
 
     def comprehension_helper(self,
                              loop_params: List[Tuple[Lvalue, Expression, List[Expression]]],
