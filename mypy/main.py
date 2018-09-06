@@ -277,27 +277,31 @@ def infer_python_version_and_executable(options: Options,
     This function mutates options based on special_opts to infer the correct Python version and
     executable to use.
     """
+    # Check Options in case python_version is set in a config file, but prefer command
+    # line arguments.
+    python_version = special_opts.python_version or options.python_version
+
     # Infer Python version and/or executable if one is not given
 
     # TODO: (ethanhs) Look at folding these checks and the site packages subprocess calls into
     # one subprocess call for speed.
-    if special_opts.python_executable is not None and special_opts.python_version is not None:
+    if special_opts.python_executable is not None and python_version is not None:
         py_exe_ver = _python_version_from_executable(special_opts.python_executable)
-        if py_exe_ver != special_opts.python_version:
+        if py_exe_ver != python_version:
             raise PythonExecutableInferenceError(
                 'Python version {} did not match executable {}, got version {}.'.format(
-                    special_opts.python_version, special_opts.python_executable, py_exe_ver
+                    python_version, special_opts.python_executable, py_exe_ver
                 ))
         else:
-            options.python_version = special_opts.python_version
+            options.python_version = python_version
             options.python_executable = special_opts.python_executable
-    elif special_opts.python_executable is None and special_opts.python_version is not None:
-        options.python_version = special_opts.python_version
+    elif special_opts.python_executable is None and python_version is not None:
+        options.python_version = python_version
         py_exe = None
         if not special_opts.no_executable:
-            py_exe = _python_executable_from_version(special_opts.python_version)
+            py_exe = _python_executable_from_version(python_version)
         options.python_executable = py_exe
-    elif special_opts.python_version is None and special_opts.python_executable is not None:
+    elif python_version is None and special_opts.python_executable is not None:
         options.python_version = _python_version_from_executable(
             special_opts.python_executable)
         options.python_executable = special_opts.python_executable
@@ -454,7 +458,7 @@ def process_options(args: List[str],
         help='Type check code assuming it will be running on Python x.y',
         dest='special-opts:python_version')
     platform_group.add_argument(
-        '-2', '--py2', dest='python_version', action='store_const',
+        '-2', '--py2', dest='special-opts:python_version', action='store_const',
         const=defaults.PYTHON2_VERSION,
         help="Use Python 2 mode (same as --python-version 2.7)")
     platform_group.add_argument(
