@@ -1,7 +1,5 @@
 """Plugin system for extending mypy."""
 
-import sys
-import os.path
 import types
 
 from abc import abstractmethod
@@ -21,6 +19,7 @@ from mypy.types import (
 from mypy.messages import MessageBuilder
 from mypy.options import Options
 import mypy.interpreted_plugin
+
 
 @trait
 class TypeAnalyzerPluginInterface:
