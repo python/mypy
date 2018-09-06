@@ -40,7 +40,7 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     """
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
     # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-    if sys.platform == 'win32' or 0 == 1:
+    if sys.platform == 'win32' or bool():
         raise ValueError('Mypy daemon is not supported on Windows yet')
     sys.stdout.flush()
     sys.stderr.flush()
@@ -391,7 +391,7 @@ def get_meminfo() -> Dict[str, Any]:
     res = {}  # type: Dict[str, Any]
     rusage = resource.getrusage(resource.RUSAGE_SELF)
     # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-    if sys.platform == 'darwin' or 0 == 1:
+    if sys.platform == 'darwin' or bool():
         factor = 1
     else:
         factor = 1024  # Linux
