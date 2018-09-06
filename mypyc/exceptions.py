@@ -47,22 +47,25 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                            default_error_handler: BasicBlock,
                            func: str) -> List[BasicBlock]:
     new_blocks = []  # type: List[BasicBlock]
-    mapping = {}
-    partial_ops = set()
+
     # First split blocks on ops that may raise.
     for block in blocks:
         ops = block.ops
-        i0 = 0
-        i = 0
-        next_block = BasicBlock()
-        while i < len(ops) - 1:
-            op = ops[i]
+        block.ops = []
+        cur_block = block
+        new_blocks.append(cur_block)
+
+        # If the block has an error handler specified, use it. Otherwise
+        # fall back to the default.
+        error_label = block.error_handler or default_error_handler
+        block.error_handler = None
+
+        for op in ops:
+            cur_block.ops.append(op)
             if isinstance(op, RegisterOp) and op.error_kind != ERR_NEVER:
                 # Split
-                new_blocks.append(next_block)
-                new_block = next_block
-                next_block = BasicBlock()
-                new_block.ops.extend(ops[i0:i + 1])
+                new_block = BasicBlock()
+                new_blocks.append(new_block)
 
                 if op.error_kind == ERR_MAGIC:
                     # Op returns an error value on error that depends on result RType.
@@ -79,36 +82,15 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                 # indicated by a special value stored in a register.
                 assert not op.is_void, "void op generating errors?"
 
-                # If the block has an error handler specified, use it. Otherwise
-                # fall back to the default.
-                error_label = block.error_handler or default_error_handler
                 branch = Branch(op,
                                 true_label=error_label,
-                                false_label=next_block,
+                                false_label=new_block,
                                 op=variant,
                                 line=op.line)
                 branch.negated = negated
                 if op.line != NO_TRACEBACK_LINE_NO:
                     branch.traceback_entry = (func, op.line)
-                partial_ops.add(branch)  # Only tweak true label of these
-                new_block.ops.append(branch)
-                if i0 == 0:
-                    mapping[block] = new_block
-                i += 1
-                i0 = i
-            else:
-                i += 1
-        new_blocks.append(next_block)
-        next_block.ops.extend(ops[i0:i + 1])
-        if i0 == 0:
-            mapping[block] = next_block
-    # Adjust all labels to reflect the new blocks.
-    for block in new_blocks:
-        for op in block.ops:
-            if isinstance(op, Goto):
-                op.label = mapping[op.label]
-            elif isinstance(op, Branch):
-                if op not in partial_ops:
-                    op.false = mapping[op.false]
-                op.true = mapping[op.true]
+                cur_block.ops.append(branch)
+                cur_block = new_block
+
     return new_blocks
