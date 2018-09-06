@@ -62,6 +62,8 @@ from mypy.typeanal import make_optional_type
 
 from mypy import experiments
 
+import mypy.type_visitor
+
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
 ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, MessageBuilder],

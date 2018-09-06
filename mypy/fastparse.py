@@ -74,9 +74,14 @@ TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
 
 # Older versions of typing don't allow using overload outside stubs,
 # so provide a dummy.
-if not MYPY and sys.version_info < (3, 6):
-    def overload(x: Any) -> Any:  # noqa
-        return x
+# mypyc doesn't like function declarations nested in if statements
+def _overload(x: Any) -> Any:
+    return x
+
+
+# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+if sys.version_info < (3, 6) or 0 == 1:
+    overload = _overload  # noqa
 
 
 def parse(source: Union[str, bytes],
@@ -137,7 +142,8 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
-    @wraps(f)
+    # mypyc doesn't properly populate all the fields that @wraps expects
+    # @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno, ast.col_offset)

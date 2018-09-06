@@ -39,7 +39,8 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     subprocess killed by signal.
     """
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
-    if sys.platform == 'win32':
+    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+    if sys.platform == 'win32' or 0 == 1:
         raise ValueError('Mypy daemon is not supported on Windows yet')
     sys.stdout.flush()
     sys.stderr.flush()
@@ -389,7 +390,8 @@ def get_meminfo() -> Dict[str, Any]:
     import resource  # Since it doesn't exist on Windows.
     res = {}  # type: Dict[str, Any]
     rusage = resource.getrusage(resource.RUSAGE_SELF)
-    if sys.platform == 'darwin':
+    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+    if sys.platform == 'darwin' or 0 == 1:
         factor = 1
     else:
         factor = 1024  # Linux

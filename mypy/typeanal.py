@@ -789,7 +789,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_forwardref_type(self, t: ForwardRef) -> None:
         self.indicator['forward'] = True
-        if t.resolved is None:
+        # mypyc plays badly with the janky failure to realize
+        # t.resolved is changed, so keep it from figuring out that it
+        # is None
+        if (t.resolved is None) is True:
             resolved = self.anal_type(t.unbound)
             t.resolve(resolved)
             assert t.resolved is not None
