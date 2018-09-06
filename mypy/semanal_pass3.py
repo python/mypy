@@ -416,11 +416,11 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                                                                   node, warn)))
             self.patches.append((PRIORITY_FORWARD_REF, self.make_scoped_patch(patch)))
         if indicator.get('typevar'):
-            def patch() -> None:
+            def patch2() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(TypeVariableChecker(self.fail)))
 
-            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch)))
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch2)))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
