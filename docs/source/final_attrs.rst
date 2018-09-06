@@ -1,12 +1,6 @@
 Final attributes of classes and modules
 =======================================
 
-.. note::
-
-   This is an experimental feature. Some details might change in later
-   versions of mypy. The final qualifiers are available in ``typing_extensions``
-   module. When the semantics is stable, they will be added to ``typing``.
-
 You can declare a variable or attribute as final, which means that the variable
 must not be assigned a new value after initialization. This is often useful for
 module and class level constants as a way to prevent unintended modification.
@@ -43,22 +37,32 @@ instance attributes from overriding in a subclass:
    class User(Snowflake):
        id = uuid.uuid4()  # Error: can't override a final attribute
 
-Some other use cases might be solved by using ``@property``, but note that both
-above use cases can't be solved this way. For such situations, one might want
-to use ``typing_extensions.Final``.
+Some other use cases might be solved by using ``@property``, but note that
+neither of the above use cases can be solved with it.
+
+.. note::
+
+   This is an experimental feature. Some details might change in later
+   versions of mypy. The final qualifiers are available in ``typing_extensions``
+   module.
 
 Definition syntax
------------------
+*****************
 
 The ``typing_extensions.Final`` type qualifier indicates that a given name or
 attribute should never be re-assigned, re-defined, nor overridden. It can be
 used in one of these forms:
 
-* The simplest one is ``ID: Final = 1``. Note that unlike gor generic classes
-  this is *not* the same as ``Final[Any]``. Here mypy will infer type ``int``.
 
-* An explicit type ``ID: Final[float] = 1`` can be used as in any
-  normal assignment.
+* You can provide an explicit type using the syntax ``Final[<type>]``. Example:
+
+  .. code-block:: python
+
+     ID: Final[float] = 1
+
+* You can omit the type: ``ID: Final = 1``. Note that unlike for generic
+  classes this is *not* the same as ``Final[Any]``. Here mypy will infer
+  type ``int``.
 
 * In stub files one can omit the right hand side and just write
   ``ID: Final[float]``.
@@ -67,7 +71,7 @@ used in one of these forms:
   but this is allowed *only* in ``__init__`` methods.
 
 Definition rules
-----------------
+****************
 
 The are two rules that should be always followed when defining a final name:
 
@@ -122,16 +126,16 @@ The are two rules that should be always followed when defining a final name:
      def fun(x: Final[List[int]]) ->  None:  # Error!
          ...
 
-* ``Final`` and ``ClassVar`` should not be used together, mypy will infer
+* ``Final`` and ``ClassVar`` should not be used together. Mypy will infer
   the scope of a final declaration automatically depending on whether it was
   initialized in class body or in ``__init__``.
 
 .. note::
    Conditional final declarations and final declarations within loops are
-   not supported.
+   rejected.
 
 Using final attributes
-----------------------
+**********************
 
 As a result of a final declaration mypy strives to provide the
 two following guarantees:
@@ -206,7 +210,7 @@ two following guarantees:
    then re-exported.
 
 Final methods
--------------
+*************
 
 Like with attributes, sometimes it is useful to protect a method from
 overriding. In such situations one can use a ``typing_extensions.final``
@@ -229,9 +233,9 @@ decorator:
            ...
 
 This ``@final`` decorator can be used with instance methods, class methods,
-static methods, and properties (this includes overloaded methods). For overloaded
-methods it is enough to add ``@final`` on at leats one of overloads (or on
-the implementation) to make it final:
+static methods, and properties (this includes overloaded methods). For
+overloaded methods one should add ``@final`` on the implementation to make
+it final (or on the first overload in stubs):
 
 .. code-block:: python
    from typing import Any, overload
@@ -250,29 +254,27 @@ the implementation) to make it final:
             ...
 
 Final classes
--------------
+*************
 
-As a bonus, applying a ``typing_extensions.final`` decorator to a class indicates to mypy
-that it can't be subclassed. Mypy doesn't provide any additional features for
-final classes, but some other tools may use this information for their benefits.
-Plus it serves a verifiable documentation purpose:
+You can apply a ``typing_extensions.final`` decorator to a class indicates
+to mypy that it can't be subclassed. The decorator acts as a declaration
+for mypy (and as documentation for humans), but it doesn't prevent subclassing
+at runtime:
 
 .. code-block:: python
 
-   # file lib.pyi
    from typing_extensions import final
 
    @final
    class Leaf:
        ...
 
-   # file main.py
    from lib import Leaf
 
-   class MyLeaf(Leaf):  # Error: library author believes this is unsafe
+   class MyLeaf(Leaf):  # Error: Leaf can't be subclassed
        ...
 
-Some situations where this may be useful include:
+Here are some situations where using a final class may be useful:
 
 * A class wasn't designed to be subclassed. Perhaps subclassing does not
   work as expected, or it's error-prone.
