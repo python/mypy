@@ -969,6 +969,9 @@ class MessageBuilder:
     def protocol_members_cant_be_final(self, ctx: Context) -> None:
         self.fail("Protocol members can't be final", ctx)
 
+    def final_without_value(self, ctx: Context) -> None:
+        self.fail("Final name must be initialized with a value", ctx)
+
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(

@@ -614,10 +614,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # redefinitions already.
             return
 
-        # Check final status, if at least one item or the implementation is marked
-        # as @final, then the whole overloaded definition if @final.
+        # Check final status, if the implementation is marked
+        # as @final (or the first overload in stubs), then the whole overloaded
+        # definition if @final.
         if any(item.is_final for item in defn.items):
+            # We anyway mark it as final because it was probably the intention.
             defn.is_final = True
+            # Only show the error once per overload
+            bad_final = next(ov for ov in defn.items if ov.is_final)
+            if not self.is_stub_file:
+                self.fail("@final should be applied only to overload implementation",
+                          bad_final)
+            elif any(item.is_final for item in defn.items[1:]):
+                bad_final = next(ov for ov in defn.items[1:] if ov.is_final)
+                self.fail("In stub files @final should be applied only to the first overload",
+                          bad_final)
         if defn.impl is not None and defn.impl.is_final:
             defn.is_final = True
 
@@ -1754,7 +1765,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.msg.protocol_members_cant_be_final(s)
         if (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and
                 not self.is_stub_file and not self.is_class_scope()):
-            self.fail("Final name must be initialized with a value", s)
+            self.msg.final_without_value(s)
         return
 
     def check_final_implicit_def(self, s: AssignmentStmt) -> None:
