@@ -21,7 +21,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, LITERAL_TYPE, MDEF, GDEF,
-    CONTRAVARIANT, COVARIANT, INVARIANT
+    CONTRAVARIANT, COVARIANT, INVARIANT,
 )
 from mypy import nodes
 from mypy.literals import literal, literal_hash

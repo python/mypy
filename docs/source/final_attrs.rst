@@ -1,5 +1,5 @@
-Final attributes of classes and modules
-=======================================
+Final names, methods and classes
+================================
 
 You can declare a variable or attribute as final, which means that the variable
 must not be assigned a new value after initialization. This is often useful for
