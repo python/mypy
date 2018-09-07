@@ -3253,6 +3253,15 @@ assert call_all(mixed_110) == 1
 assert call_any_nested([[1, 1, 1], [1, 1], []]) == 1
 assert call_any_nested([[1, 1, 1], [0, 1], []]) == 0
 
+[case testAssignModule]
+import a
+assert a.x == 20
+a.x = 10
+[file a.py]
+x = 20
+[file driver.py]
+import native
+
 [case testNoneStuff]
 from typing import Optional
 class A:

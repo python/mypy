@@ -1873,6 +1873,9 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             assert desc.result_type is not None
             return self.add(PrimitiveOp([], desc, expr.line))
 
+        if isinstance(expr.node, MypyFile):
+            return self.load_module(expr.node.fullname())
+
         # If the expression is locally defined, then read the result from the corresponding
         # assignment target and return it. Otherwise if the expression is a global, load it from
         # the globals dictionary.
@@ -3924,13 +3927,16 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         static_symbol = self.mapper.literal_static_name(value)
         return self.add(LoadStatic(str_rprimitive, static_symbol, ann=value))
 
+    def load_module(self, name: str) -> Value:
+        return self.add(LoadStatic(object_rprimitive, 'module', name))
+
     def load_module_attr(self, expr: RefExpr) -> Value:
         assert expr.node, "RefExpr not resolved"
         return self.load_module_attr_by_fullname(expr.node.fullname(), expr.line)
 
     def load_module_attr_by_fullname(self, fullname: str, line: int) -> Value:
         module, _, name = fullname.rpartition('.')
-        left = self.add(LoadStatic(object_rprimitive, 'module', module))
+        left = self.load_module(module)
         return self.py_get_attr(left, name, line)
 
     def load_native_type_object(self, fullname: str) -> Value:
