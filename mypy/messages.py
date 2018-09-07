@@ -956,7 +956,7 @@ class MessageBuilder:
 
     def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
         self.fail('Cannot override final attribute "{}"'
-                  ' (previously declared on base class "{}")'.format(name, base_name), ctx)
+                  ' (previously declared in base class "{}")'.format(name, base_name), ctx)
 
     def cant_assign_to_final(self, name: str, attr_assign: bool, ctx: Context) -> None:
         """Warn about a prohibited assignment to a final attribute.

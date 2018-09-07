@@ -1683,7 +1683,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.unwrap_final(s)
 
         def final_cb() -> None:
-            self.fail("Final can't redefine an existing name, ignoring", s)
+            self.fail("Final can't redefine an existing name", s)
             s.is_final_def = False
 
         for lval in s.lvalues:
@@ -1743,18 +1743,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             s.type = s.type.args[0]
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
-            self.fail("Invalid final declaration, ignoring", s)
+            self.fail("Invalid final declaration", s)
             return
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
         s.is_final_def = True
         if self.loop_depth > 0:
-            self.fail("Final declarations are prohibited within loops", s)
+            self.fail("Cannot use Final inside a loop", s)
         if self.type and self.type.is_protocol:
             self.msg.protocol_members_cant_be_final(s)
         if (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and
                 not self.is_stub_file and not self.is_class_scope()):
-            self.fail("Final names outside stubs must have a value", s)
+            self.fail("Final name must be initialized with a value", s)
         return
 
     def check_final_implicit_def(self, s: AssignmentStmt) -> None:
@@ -1774,8 +1774,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             else:
                 assert self.function_stack
                 if self.function_stack[-1].name() != '__init__':
-                    self.fail("Can only declare final attributes in class body"
-                              " or __init__ method", s)
+                    self.fail("Can only declare final attributes in class body or __init__", s)
                     s.is_final_def = False
                     return
 
@@ -1950,6 +1949,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             nested: If true, the lvalue is within a tuple or list lvalue expression
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
+            final_cb: A callback to call in situation where a final declaration on `self`
+                overrides an existing name (only used by `analyze_member_lvalue`).
         """
         if isinstance(lval, NameExpr):
             # Top-level definitions within some statements (at least while) are
@@ -2071,6 +2072,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False,
                               final_cb: Optional[Callable[[], None]] = None) -> None:
+        """Analyze lvalue that is a member expression.
+
+        Arguments:
+            lval: The target lvalue
+            explicit_type: Assignment has type annotation
+            final_cb: A callback to call in situation where a final declaration on `self`
+                overrides an existing name.
+        """
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"

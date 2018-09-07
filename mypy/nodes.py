@@ -788,6 +788,8 @@ class Var(SymbolNode):
                 'type': None if self.type is None else self.type.serialize(),
                 'flags': get_flags(self, VAR_FLAGS),
                 }  # type: JsonDict
+        if self.final_value is not None:
+            data['final_value'] = self.final_value
         return data
 
     @classmethod
@@ -798,6 +800,7 @@ class Var(SymbolNode):
         v = Var(name, type)
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
+        v.final_value = data.get('final_value')
         return v
 
 

@@ -282,6 +282,7 @@ class NodeStripVisitor(TraverserVisitor):
         v.is_final = False
         v.final_unset_in_class = False
         v.final_set_in_init = False
+        v.final_value = None
 
     def visit_index_expr(self, node: IndexExpr) -> None:
         node.analyzed = None  # was a type alias

@@ -56,6 +56,7 @@ class Mapping(Generic[T_contra, T_co]):
 
 def runtime(cls: type) -> type: pass
 
+# This is an unofficial extension.
 def final(meth: T) -> T: pass
 
 TYPE_CHECKING = 1

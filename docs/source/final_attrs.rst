@@ -49,7 +49,7 @@ neither of the above use cases can be solved with it.
 Definition syntax
 *****************
 
-The ``typing_extensions.Final`` type qualifier indicates that a given name or
+The ``typing_extensions.Final`` qualifier indicates that a given name or
 attribute should never be re-assigned, re-defined, nor overridden. It can be
 used in one of these forms:
 
