@@ -364,3 +364,12 @@ f(x)
 [file mock.py]
 [builtins fixtures/isinstance.pyi]
 [out]
+
+[case testPartialTypeComments]
+def foo(
+    a,  # type: str
+    b,
+    args=None,
+):
+    # type: (...) -> None
+    pass

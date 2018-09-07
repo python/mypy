@@ -20,6 +20,16 @@ a = x[1]
 a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
 
+[case testNamedTupleUnicode_python2]
+from __future__ import unicode_literals
+from collections import namedtuple
+
+# This test is a regression test for a bug where mypyc-compiled mypy
+# would crash on namedtuple's with unicode arguments. Our test stubs
+# don't actually allow that, though, so we ignore the error and just
+# care we don't crash.
+X = namedtuple('X', ('x', 'y'))  # type: ignore
+
 [case testNamedTupleNoUnderscoreFields]
 from collections import namedtuple
 
@@ -55,9 +65,9 @@ a.y = 5 # E: Property "y" defined in "X" is read-only
 from typing import NamedTuple
 from typing_extensions import Protocol
 
-class HasX(Protocol): 
+class HasX(Protocol):
     x: str
-    
+
 class A(NamedTuple):
     x: str
 
