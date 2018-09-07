@@ -238,3 +238,13 @@ def replace_object_state(new: object, old: object, copy_dict: bool=False) -> Non
 def is_sub_path(path1: str, path2: str) -> bool:
     """Given two paths, return if path1 is a sub-path of path2."""
     return pathlib.Path(path2) in pathlib.Path(path1).parents
+
+
+def hard_exit(status: int = 0) -> None:
+    """Kill the current process without fully cleaning up.
+
+    This can be quite a bit faster than a normal exit() since objects are not freed.
+    """
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(status)
