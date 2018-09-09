@@ -902,8 +902,9 @@ class FindModuleCache:
     ) -> Optional[Tuple[str, bool]]:
         fscache = self.fscache
         pkgs2check = (
-            fscache.isfile(os.path.join(pkg_dir, *components[:count + 1], 'py.typed'))
-            for count in range(len(components))
+            fscache.isfile(
+                os.path.join(os.path.join(pkg_dir, *components[:count + 1]), 'py.typed')
+            ) for count in range(len(components))
         )
         if next(pkgs2check):
             return os.path.join(pkg_dir, *components[:-1]), True
