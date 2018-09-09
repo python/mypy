@@ -21,6 +21,17 @@ a = ex([''])
 reveal_type(a)
 """
 
+NAMESPACE_PROGRAM = """
+from macbeth_nested.nested_package.nested_module import nested_func
+from macbeth_namespace.inside_namespace_package.namespace_module import namespace_func
+
+nested_func("abc")
+namespace_func(False)
+
+nested_func(False)
+namespace_func(2)
+"""
+
 
 def check_mypy_run(cmd_line: List[str],
                    python_executable: str = sys.executable,
@@ -189,6 +200,75 @@ class TestPEP561(TestCase):
                 [self.tempfile],
                 python_executable,
                 expected_out=self.msg_tuple,
+                venv_dir=venv_dir,
+            )
+
+class TestPEP561Namespace(TestCase):
+
+    @contextmanager
+    def virtualenv(self,
+                   python_executable: str = sys.executable
+                   ) -> Generator[Tuple[str, str], None, None]:
+        """Context manager that creates a virtualenv in a temporary directory
+
+        returns the path to the created Python executable"""
+        # Sadly, we need virtualenv, as the Python 3 venv module does not support creating a venv
+        # for Python 2, and Python 2 does not have its own venv.
+        with tempfile.TemporaryDirectory() as venv_dir:
+            returncode, lines = run_command([sys.executable,
+                                             '-m',
+                                             'virtualenv',
+                                             '-p{}'.format(python_executable),
+                                            venv_dir], cwd=os.getcwd())
+            if returncode != 0:
+                err = '\n'.join(lines)
+                self.fail("Failed to create venv. Do you have virtualenv installed?\n" + err)
+            if sys.platform == 'win32':
+                yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
+            else:
+                yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'bin', 'python'))
+
+    def install_package(self, pkg: str,
+                        python_executable: str = sys.executable,
+                        use_pip: bool = True,
+                        editable: bool = False) -> None:
+        """Context manager to temporarily install a package from test-data/packages/pkg/"""
+        working_dir = os.path.join(package_path, pkg)
+        if use_pip:
+            install_cmd = [python_executable, '-m', 'pip', 'install']
+            if editable:
+                install_cmd.append('-e')
+            install_cmd.append('.')
+        else:
+            install_cmd = [python_executable, 'setup.py']
+            if editable:
+                install_cmd.append('develop')
+            else:
+                install_cmd.append('install')
+        returncode, lines = run_command(install_cmd, cwd=working_dir)
+        if returncode != 0:
+            self.fail('\n'.join(lines))
+
+    def setUp(self) -> None:
+        self.temp_file_dir = tempfile.TemporaryDirectory()
+        self.tempfile = os.path.join(self.temp_file_dir.name, 'namespace_program.py')
+        with open(self.tempfile, 'w+') as file:
+            file.write(NAMESPACE_PROGRAM)
+        self.msg_bool_str = '{0}:8: error: Argument 1 to "nested_func" has incompatible type "bool"; expected "str"\n'.format(self.tempfile)
+        self.msg_int_bool = '{0}:9: error: Argument 1 to "namespace_func" has incompatible type "int"; expected "bool"\n'.format(self.tempfile)
+
+    def tearDown(self) -> None:
+        self.temp_file_dir.cleanup()
+
+    def test_nested_and_namespace(self) -> None:
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('macbeth_nested', python_executable)
+            self.install_package('macbeth_namespace', python_executable)
+            check_mypy_run(
+                [self.tempfile],
+                python_executable,
+                expected_out=self.msg_bool_str+self.msg_int_bool,
                 venv_dir=venv_dir,
             )
 

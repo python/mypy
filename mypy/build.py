@@ -895,6 +895,19 @@ class FindModuleCache:
             self.results[key] = self._find_module(id, search_paths, python_executable)
         return self.results[key]
 
+    def _find_module_non_stub_helper(
+        self,
+        components: List[str],
+        pkg_dir: str
+    ) -> Optional[str]:
+        fscache = self.fscache
+        for count in range(len(components)):
+            typed_file = os.path.join(pkg_dir, *components[:count+1], 'py.typed')
+            _print('BETA ', typed_file)
+            if fscache.isfile(typed_file):
+                return os.path.join(pkg_dir, *components[:-1])
+        return None
+
     def _find_module(self, id: str, search_paths: SearchPaths,
                      python_executable: Optional[str]) -> Optional[str]:
         fscache = self.fscache
@@ -934,9 +947,12 @@ class FindModuleCache:
                         third_party_stubs_dirs.append((path, False))
                     else:
                         third_party_stubs_dirs.append((path, True))
-            elif fscache.isfile(typed_file):
-                path = os.path.join(pkg_dir, dir_chain)
-                third_party_inline_dirs.append((path, True))
+            non_stub_match = self._find_module_non_stub_helper(
+                components,
+                pkg_dir
+            )
+            if non_stub_match:
+                third_party_inline_dirs.append((non_stub_match, True))
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
@@ -2356,11 +2372,13 @@ def find_module_and_diagnose(manager: BuildManager,
             if not (options.ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id)
             raise ModuleNotFound
-        else:
+        elif root_source:
             # If we can't find a root source it's always fatal.
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
             raise CompileError(["mypy: can't find module '%s'" % id])
+        else:
+            raise ModuleNotFound
 
 
 def exist_added_packages(suppressed: List[str],
@@ -2678,7 +2696,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             # they will be taken care of during fine grained update. See also
             # comment about this in `State.__init__()`.
             added = []
-        for dep in st.ancestors + dependencies + st.suppressed:
+        all_deps_to_check = st.ancestors + dependencies + st.suppressed
+        for dep in all_deps_to_check:
             ignored = dep in st.suppressed and dep not in entry_points
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
