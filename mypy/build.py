@@ -899,12 +899,16 @@ class FindModuleCache:
         self,
         components: List[str],
         pkg_dir: str
-    ) -> Optional[str]:
+    ) -> Optional[Tuple[str, bool]]:
         fscache = self.fscache
-        for count in range(len(components)):
-            typed_file = os.path.join(pkg_dir, *components[:count + 1], 'py.typed')
-            if fscache.isfile(typed_file):
-                return os.path.join(pkg_dir, *components[:-1])
+        pkgs2check = (
+            fscache.isfile(os.path.join(pkg_dir, *components[:count + 1], 'py.typed'))
+            for count in range(len(components))
+        )
+        if next(pkgs2check):
+            return os.path.join(pkg_dir, *components[:-1]), True
+        if any(pkgs2check):
+            return os.path.join(pkg_dir, *components[:-1]), False
         return None
 
     def _find_module(self, id: str, search_paths: SearchPaths,
@@ -950,7 +954,7 @@ class FindModuleCache:
                 pkg_dir
             )
             if non_stub_match:
-                third_party_inline_dirs.append((non_stub_match, True))
+                third_party_inline_dirs.append(non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()

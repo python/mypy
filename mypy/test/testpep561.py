@@ -22,14 +22,14 @@ reveal_type(a)
 """
 
 NAMESPACE_PROGRAM = """
-from macbeth_nested.nested_package.nested_module import nested_func
-from macbeth_namespace.inside_namespace_package.namespace_module import namespace_func
+from typedpkg_nested.nested_package.nested_module import nested_func
+from typedpkg_namespace.alpha.alpha_module import alpha_func
 
 nested_func("abc")
-namespace_func(False)
+alpha_func(False)
 
 nested_func(False)
-namespace_func(2)
+alpha_func(2)
 """
 
 
@@ -260,7 +260,7 @@ class TestPEP561Namespace(TestCase):
             'expected "str"\n'.format(self.tempfile)
         )
         self.msg_int_bool = (
-            '{0}:9: error: Argument 1 to "namespace_func" has incompatible type "int"; '
+            '{0}:9: error: Argument 1 to "alpha_func" has incompatible type "int"; '
             'expected "bool"\n'.format(self.tempfile)
         )
 
@@ -270,8 +270,8 @@ class TestPEP561Namespace(TestCase):
     def test_nested_and_namespace(self) -> None:
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
-            self.install_package('macbeth_nested', python_executable)
-            self.install_package('macbeth_namespace', python_executable)
+            self.install_package('typedpkg_nested', python_executable)
+            self.install_package('typedpkg_namespace.alpha', python_executable)
             check_mypy_run(
                 [self.tempfile],
                 python_executable,
