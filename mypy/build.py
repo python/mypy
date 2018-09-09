@@ -903,7 +903,6 @@ class FindModuleCache:
         fscache = self.fscache
         for count in range(len(components)):
             typed_file = os.path.join(pkg_dir, *components[:count+1], 'py.typed')
-            _print('BETA ', typed_file)
             if fscache.isfile(typed_file):
                 return os.path.join(pkg_dir, *components[:-1])
         return None
