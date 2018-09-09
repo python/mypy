@@ -203,6 +203,7 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+
 class TestPEP561Namespace(TestCase):
 
     @contextmanager
@@ -254,8 +255,14 @@ class TestPEP561Namespace(TestCase):
         self.tempfile = os.path.join(self.temp_file_dir.name, 'namespace_program.py')
         with open(self.tempfile, 'w+') as file:
             file.write(NAMESPACE_PROGRAM)
-        self.msg_bool_str = '{0}:8: error: Argument 1 to "nested_func" has incompatible type "bool"; expected "str"\n'.format(self.tempfile)
-        self.msg_int_bool = '{0}:9: error: Argument 1 to "namespace_func" has incompatible type "int"; expected "bool"\n'.format(self.tempfile)
+        self.msg_bool_str = (
+            '{0}:8: error: Argument 1 to "nested_func" has incompatible type "bool"; '
+            'expected "str"\n'.format(self.tempfile)
+        )
+        self.msg_int_bool = (
+            '{0}:9: error: Argument 1 to "namespace_func" has incompatible type "int"; '
+            'expected "bool"\n'.format(self.tempfile)
+        )
 
     def tearDown(self) -> None:
         self.temp_file_dir.cleanup()
@@ -268,7 +275,7 @@ class TestPEP561Namespace(TestCase):
             check_mypy_run(
                 [self.tempfile],
                 python_executable,
-                expected_out=self.msg_bool_str+self.msg_int_bool,
+                expected_out=self.msg_bool_str + self.msg_int_bool,
                 venv_dir=venv_dir,
             )
 

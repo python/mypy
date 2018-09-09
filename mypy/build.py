@@ -902,7 +902,7 @@ class FindModuleCache:
     ) -> Optional[str]:
         fscache = self.fscache
         for count in range(len(components)):
-            typed_file = os.path.join(pkg_dir, *components[:count+1], 'py.typed')
+            typed_file = os.path.join(pkg_dir, *components[:count + 1], 'py.typed')
             if fscache.isfile(typed_file):
                 return os.path.join(pkg_dir, *components[:-1])
         return None
@@ -926,7 +926,6 @@ class FindModuleCache:
         # Third-party stub/typed packages
         for pkg_dir in search_paths.package_path:
             stub_name = components[0] + '-stubs'
-            typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_dir = os.path.join(pkg_dir, stub_name)
             if fscache.isdir(stub_dir):
                 stub_typed_file = os.path.join(stub_dir, 'py.typed')
