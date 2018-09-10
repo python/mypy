@@ -97,7 +97,7 @@ def build_shared_lib_for_modules(cpath: str, modules: List[str],
 
 
 def include_dir() -> str:
-    return os.path.join(os.path.dirname(__file__), '..', 'lib-rt')
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'lib-rt')
 
 
 # TODO: Make compiler arguments platform-specific.
