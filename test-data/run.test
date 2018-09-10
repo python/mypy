@@ -3285,3 +3285,24 @@ native.lol(native.A())
 for i in range(10000):
     native.none()
     native.arg(None)
+
+[case testForZipAndEnumerate]
+from typing import Iterable, List, Any
+def f(a: Iterable[int], b: List[int]) -> List[Any]:
+    res = []
+    for (x, y), z in zip(enumerate(a), b):
+        res.append((x, y, z))
+    return res
+def g(a: Iterable[int], b: Iterable[str]) -> List[Any]:
+    res = []
+    for x, (y, z) in enumerate(zip(a, b)):
+        res.append((x, y, z))
+    return res
+
+[file driver.py]
+from native import f, g
+
+assert f([6, 7], [8, 9]) == [(0, 6, 8), (1, 7, 9)]
+assert g([6, 7], ['a', 'b']) == [(0, 6, 'a'), (1, 7, 'b')]
+assert f([6, 7], [8]) == [(0, 6, 8)]
+assert f([6], [8, 9]) == [(0, 6, 8)]

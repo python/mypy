@@ -270,17 +270,18 @@ L0:
     r0 = iter d :: object
 L1:
     r1 = next r0 :: object
-    if is_error(r1) goto L3 else goto L2
+    if is_error(r1) goto L4 else goto L2
 L2:
     r2 = unbox(int, r1)
     key = r2
     r3 = box(int, key)
     r4 = d[r3] :: dict
     r5 = unbox(int, r4)
-    goto L1
 L3:
-    r6 = no_err_occurred
+    goto L1
 L4:
+    r6 = no_err_occurred
+L5:
     r7 = None
     return r7
 
@@ -316,7 +317,7 @@ L0:
     r1 = iter d :: object
 L1:
     r2 = next r1 :: object
-    if is_error(r2) goto L5 else goto L2
+    if is_error(r2) goto L6 else goto L2
 L2:
     r3 = unbox(int, r2)
     key = r3
@@ -329,17 +330,18 @@ L2:
     r10 = r8 != r9 :: int
     if r10 goto L3 else goto L4 :: bool
 L3:
-    goto L1
+    goto L5
 L4:
     r11 = box(int, key)
     r12 = d[r11] :: dict
     r13 = unbox(int, r12)
     r14 = s + r13 :: int
     s = r14
-    goto L1
 L5:
-    r15 = no_err_occurred
+    goto L1
 L6:
+    r15 = no_err_occurred
+L7:
     return s
 
 [case testMultipleAssignment]
@@ -777,3 +779,190 @@ L0:
     r6 = delattr dummy, r5
     r7 = None
     return r7
+
+[case testForEnumerate]
+from typing import List, Iterable
+
+def f(a: List[int]) -> None:
+    for i, x in enumerate(a):
+        i + x
+def g(x: Iterable[int]) -> None:
+    for i, n in enumerate(x):
+        pass
+[out]
+def f(a):
+    a :: list
+    i :: int
+    r0, r1, r2, r3 :: short_int
+    r4 :: bool
+    r5 :: object
+    x, r6, r7 :: int
+    r8, r9, r10, r11 :: short_int
+    r12 :: None
+L0:
+    r0 = 0
+    i = r0
+    r1 = 0
+    r2 = r1
+L1:
+    r3 = len a :: list
+    r4 = r2 < r3 :: short_int
+    if r4 goto L2 else goto L4 :: bool
+L2:
+    r5 = a[r2] :: list
+    r6 = unbox(int, r5)
+    x = r6
+    r7 = i + x :: int
+L3:
+    r8 = 1
+    r9 = i + r8 :: short_int
+    i = r9
+    r10 = 1
+    r11 = r2 + r10 :: short_int
+    r2 = r11
+    goto L1
+L4:
+L5:
+    r12 = None
+    return r12
+def g(x):
+    x :: object
+    i :: int
+    r0 :: short_int
+    r1, r2 :: object
+    n, r3 :: int
+    r4, r5 :: short_int
+    r6 :: bool
+    r7 :: None
+L0:
+    r0 = 0
+    i = r0
+    r1 = iter x :: object
+L1:
+    r2 = next r1 :: object
+    if is_error(r2) goto L4 else goto L2
+L2:
+    r3 = unbox(int, r2)
+    n = r3
+L3:
+    r4 = 1
+    r5 = i + r4 :: short_int
+    i = r5
+    goto L1
+L4:
+    r6 = no_err_occurred
+L5:
+    r7 = None
+    return r7
+
+[case testForZip]
+from typing import List, Iterable
+
+def f(a: List[int], b: Iterable[bool]) -> None:
+    for x, y in zip(a, b):
+        if b:
+            x = 1
+
+def g(a: Iterable[bool], b: List[int]) -> None:
+    for x, y, z in zip(a, b, range(5)):
+        x = False
+[out]
+def f(a, b):
+    a :: list
+    b :: object
+    r0, r1 :: short_int
+    r2 :: object
+    r3 :: short_int
+    r4 :: bool
+    r5, r6 :: object
+    x, r7 :: int
+    y, r8, r9 :: bool
+    r10, r11, r12 :: short_int
+    r13 :: bool
+    r14 :: None
+L0:
+    r0 = 0
+    r1 = r0
+    r2 = iter b :: object
+L1:
+    r3 = len a :: list
+    r4 = r1 < r3 :: short_int
+    if r4 goto L2 else goto L7 :: bool
+L2:
+    r5 = next r2 :: object
+    if is_error(r5) goto L7 else goto L3
+L3:
+    r6 = a[r1] :: list
+    r7 = unbox(int, r6)
+    x = r7
+    r8 = unbox(bool, r5)
+    y = r8
+    r9 = bool b :: object
+    if r9 goto L4 else goto L5 :: bool
+L4:
+    r10 = 1
+    x = r10
+L5:
+L6:
+    r11 = 1
+    r12 = r1 + r11 :: short_int
+    r1 = r12
+    goto L1
+L7:
+    r13 = no_err_occurred
+L8:
+    r14 = None
+    return r14
+def g(a, b):
+    a :: object
+    b :: list
+    r0 :: object
+    r1, r2, r3, r4 :: short_int
+    z :: int
+    r5 :: object
+    r6 :: short_int
+    r7, r8, x, r9 :: bool
+    r10 :: object
+    y, r11 :: int
+    r12 :: bool
+    r13, r14, r15, r16 :: short_int
+    r17 :: bool
+    r18 :: None
+L0:
+    r0 = iter a :: object
+    r1 = 0
+    r2 = r1
+    r3 = 0
+    r4 = 5
+    z = r3
+L1:
+    r5 = next r0 :: object
+    if is_error(r5) goto L6 else goto L2
+L2:
+    r6 = len b :: list
+    r7 = r2 < r6 :: short_int
+    if r7 goto L3 else goto L6 :: bool
+L3:
+    r8 = z < r4 :: int
+    if r8 goto L4 else goto L6 :: bool
+L4:
+    r9 = unbox(bool, r5)
+    x = r9
+    r10 = b[r2] :: list
+    r11 = unbox(int, r10)
+    y = r11
+    r12 = False
+    x = r12
+L5:
+    r13 = 1
+    r14 = r2 + r13 :: short_int
+    r2 = r14
+    r15 = 1
+    r16 = z + r15 :: short_int
+    z = r16
+    goto L1
+L6:
+    r17 = no_err_occurred
+L7:
+    r18 = None
+    return r18

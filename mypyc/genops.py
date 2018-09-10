@@ -84,6 +84,7 @@ from mypyc.ops_exc import (
     error_catch_op, restore_exc_info_op, exc_matches_op, get_exc_value_op,
     get_exc_info_op, keep_propagating_op,
 )
+from mypyc.genops_for import ForGenerator, ForRange, ForList, ForIterable, ForEnumerate, ForZip
 from mypyc.rt_subtype import is_runtime_subtype
 from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type, is_same_method_signature
@@ -1603,151 +1604,45 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                         line: int) -> None:
         """Generate IR for a loop.
 
-        "index" is the loop index Lvalue
-        "expr" is the expression to iterate over
-        "body_insts" is a function to generate the body of the loop.
+        Args:
+            index: the loop index Lvalue
+            expr: the expression to iterate over
+            body_insts: a function that generates the body of the loop
+            else_insts: a function that generates the else block instructions
         """
-        body_block, increment_block = BasicBlock(), BasicBlock()
-        # Block for the else clause, if we need it.
+        # Body of the loop
+        body_block = BasicBlock()
+        # Block that steps to the next item
+        step_block = BasicBlock()
+        # Block for the else clause, if we need it
         else_block = BasicBlock()
+        # Block executed after the loop
         exit_block = BasicBlock()
 
         # Determine where we want to exit, if our condition check fails.
         normal_loop_exit = else_block if else_insts is not None else exit_block
 
-        # Only support 1 and 2 arg forms for now
-        if (isinstance(expr, CallExpr)
-                and isinstance(expr.callee, RefExpr)
-                and expr.callee.fullname == 'builtins.range'
-                and len(expr.args) <= 2):
+        for_gen = self.make_for_loop_generator(index, expr, body_block, normal_loop_exit, line)
 
-            condition_block = BasicBlock()
-            self.push_loop_stack(increment_block, exit_block)
+        self.push_loop_stack(step_block, exit_block)
+        condition_block = self.goto_new_block()
 
-            # Special case for x in range(...)
-            # TODO: Check argument counts and kinds; check the lvalue
-            if len(expr.args) == 1:
-                start_reg = self.add(LoadInt(0))
-                end_reg = self.accept(expr.args[0])
-            else:
-                start_reg = self.accept(expr.args[0])
-                end_reg = self.accept(expr.args[1])
+        # Add loop condition check.
+        for_gen.gen_condition()
 
-            end_target = self.maybe_spill(end_reg)
+        # Generate loop body.
+        self.activate_block(body_block)
+        for_gen.begin_body()
+        body_insts()
 
-            # Initialize loop index to 0. Assert that the index target is assignable.
-            index_target = self.get_assignment_target(
-                index)  # type: Union[Register, AssignmentTarget]
-            self.assign(index_target, start_reg, line)
-            self.goto(condition_block)
+        # We generate a separate step block (which might be empty).
+        self.goto_and_activate(step_block)
+        for_gen.gen_step()
+        # Go back to loop condition.
+        self.goto(condition_block)
 
-            # Add loop condition check.
-            self.activate_block(condition_block)
-            comparison = self.binary_op(self.read(index_target, line),
-                                        self.read(end_target, line), '<', line)
-            self.add_bool_branch(comparison, body_block, normal_loop_exit)
-
-            self.activate_block(body_block)
-            body_insts()
-
-            self.goto_and_activate(increment_block)
-
-            # Increment index register. If the range is known to fit in short ints, use
-            # short ints.
-            if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
-                new_val = self.primitive_op(
-                    unsafe_short_add, [self.read(index_target, line), self.add(LoadInt(1))], line)
-            else:
-                new_val = self.binary_op(
-                    self.read(index_target, line), self.add(LoadInt(1)), '+', line)
-            self.assign(index_target, new_val, line)
-
-            # Go back to loop condition check.
-            self.goto(condition_block)
-
-            self.pop_loop_stack()
-
-        elif is_list_rprimitive(self.node_type(expr)):
-            self.push_loop_stack(increment_block, exit_block)
-
-            # Define targets to contain the expression, along with the index that will be used
-            # for the for-loop. If we are inside of a generator function, spill these into the
-            # environment class.
-            expr_reg = self.accept(expr)
-            index_reg = self.add(LoadInt(0))
-            expr_target = self.maybe_spill(expr_reg)
-            index_target = self.maybe_spill_assignable(index_reg)
-
-            condition_block = self.goto_new_block()
-
-            # For compatibility with python semantics we recalculate the length
-            # at every iteration.
-            len_reg = self.add(PrimitiveOp([self.read(expr_target, line)], list_len_op, line))
-            comparison = self.binary_op(self.read(index_target, line), len_reg, '<', line)
-            self.add_bool_branch(comparison, body_block, normal_loop_exit)
-
-            self.activate_block(body_block)
-            target_list_type = self.types[expr]
-            assert isinstance(target_list_type, Instance)
-            target_type = self.type_to_rtype(target_list_type.args[0])
-
-            value_box = self.translate_special_method_call(
-                self.read(expr_target, line), '__getitem__',
-                [self.read(index_target, line)], None, line)
-            assert value_box
-
-            self.assign(self.get_assignment_target(index),
-                        self.unbox_or_cast(value_box, target_type, line), line)
-
-            body_insts()
-
-            self.goto_and_activate(increment_block)
-            self.assign(index_target, self.primitive_op(
-                unsafe_short_add,
-                [self.read(index_target, line), self.add(LoadInt(1))], line), line)
-            self.goto(condition_block)
-
-            self.pop_loop_stack()
-
-        else:
-            error_check_block = BasicBlock()
-
-            self.push_loop_stack(increment_block, exit_block)
-
-            # Define targets to contain the expression, along with the iterator that will be used
-            # for the for-loop. If we are inside of a generator function, spill these into the
-            # environment class.
-            expr_reg = self.accept(expr)
-            iter_reg = self.primitive_op(iter_op, [expr_reg], line)
-            expr_target = self.maybe_spill(expr_reg)
-            iter_target = self.maybe_spill(iter_reg)
-
-            # Create a block for where the __next__ function will be called on the iterator and
-            # checked to see if the value returned is NULL, which would signal either the end of
-            # the Iterable being traversed or an exception being raised. Note that Branch.IS_ERROR
-            # checks only for NULL (an exception does not necessarily have to be raised).
-            self.goto_and_activate(increment_block)
-            next_reg = self.primitive_op(next_op, [self.read(iter_target, line)], line)
-            self.add(Branch(next_reg, error_check_block, body_block, Branch.IS_ERROR))
-
-            # Create a new block for the body of the loop. Set the previous branch to go here if
-            # the conditional evaluates to false. Assign the value obtained from __next__ to the
-            # lvalue so that it can be referenced by code in the body of the loop. At the end of
-            # the body, goto the label that calls the iterator's __next__ function again.
-            self.activate_block(body_block)
-            self.assign(self.get_assignment_target(index), next_reg, line)
-            body_insts()
-            self.goto(increment_block)
-
-            # Create a new block for when the loop is finished. Set the branch to go here if the
-            # conditional evaluates to true. If an exception was raised during the loop, then
-            # err_reg wil be set to True. If no_err_occurred_op returns False, then the exception
-            # will be propagated using the ERR_FALSE flag.
-            self.activate_block(error_check_block)
-            self.primitive_op(no_err_occurred_op, [], line)
-            self.goto(normal_loop_exit)
-
-            self.pop_loop_stack()
+        for_gen.add_cleanup(normal_loop_exit)
+        self.pop_loop_stack()
 
         if else_insts is not None:
             self.activate_block(else_block)
@@ -1755,6 +1650,76 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             self.goto(exit_block)
 
         self.activate_block(exit_block)
+
+    def make_for_loop_generator(self,
+                                index: Lvalue,
+                                expr: Expression,
+                                body_block: BasicBlock,
+                                loop_exit: BasicBlock,
+                                line: int,
+                                nested: bool = False) -> ForGenerator:
+        """Return helper object for generating a for loop over an iterable.
+
+        If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".
+        """
+
+        if is_list_rprimitive(self.node_type(expr)):
+            # Special case "for x in <list>".
+            expr_reg = self.accept(expr)
+            target_list_type = self.types[expr]
+            assert isinstance(target_list_type, Instance)
+            target_type = self.type_to_rtype(target_list_type.args[0])
+
+            for_list = ForList(self, index, body_block, loop_exit, line, nested)
+            for_list.init(expr_reg, target_type)
+            return for_list
+
+        if (isinstance(expr, CallExpr)
+                and isinstance(expr.callee, RefExpr)):
+            if (expr.callee.fullname == 'builtins.range'
+                    and len(expr.args) <= 2
+                    and set(expr.arg_kinds) == {ARG_POS}):
+                # Special case "for x in range(...)".
+                # Only support 1 and 2 arg forms for now.
+                if len(expr.args) == 1:
+                    start_reg = self.add(LoadInt(0))
+                    end_reg = self.accept(expr.args[0])
+                else:
+                    start_reg = self.accept(expr.args[0])
+                    end_reg = self.accept(expr.args[1])
+
+                for_range = ForRange(self, index, body_block, loop_exit, line, nested)
+                for_range.init(start_reg, end_reg)
+                return for_range
+
+            elif (expr.callee.fullname == 'builtins.enumerate'
+                    and len(expr.args) == 1
+                    and expr.arg_kinds == [ARG_POS]
+                    and isinstance(index, TupleExpr)
+                    and len(index.items) == 2):
+                # Special case "for i, x in enumerate(y)".
+                lvalue1 = index.items[0]
+                lvalue2 = index.items[1]
+                for_enumerate = ForEnumerate(self, index, body_block, loop_exit, line,
+                                             nested)
+                for_enumerate.init(lvalue1, lvalue2, expr.args[0])
+                return for_enumerate
+
+            elif (expr.callee.fullname == 'builtins.zip'
+                    and len(expr.args) >= 2
+                    and set(expr.arg_kinds) == {ARG_POS}
+                    and isinstance(index, TupleExpr)
+                    and len(index.items) == len(expr.args)):
+                # Special case "for x, y in zip(a, b)".
+                for_zip = ForZip(self, index, body_block, loop_exit, line, nested)
+                for_zip.init(index.items, expr.args)
+                return for_zip
+
+        # Default to a generic for loop.
+        expr_reg = self.accept(expr)
+        for_obj = ForIterable(self, index, body_block, loop_exit, line, nested)
+        for_obj.init(expr_reg)
+        return for_obj
 
     def visit_break_stmt(self, node: BreakStmt) -> None:
         self.nonlocal_control[-1].gen_break(self)

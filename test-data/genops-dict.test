@@ -165,7 +165,7 @@ L0:
     r0 = iter d :: object
 L1:
     r1 = next r0 :: object
-    if is_error(r1) goto L3 else goto L2
+    if is_error(r1) goto L4 else goto L2
 L2:
     r2 = cast(str, r1)
     k = r2
@@ -174,8 +174,9 @@ L2:
     r5 = box(short_int, r4)
     r6 = r3 += r5
     r7 = d.__setitem__(k, r6) :: dict
-    goto L1
 L3:
-    r8 = no_err_occurred
+    goto L1
 L4:
+    r8 = no_err_occurred
+L5:
     return d
