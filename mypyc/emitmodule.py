@@ -16,6 +16,7 @@ from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
 from mypyc.ops import FuncIR, ClassIR, ModuleIR, LiteralsMap, format_func
+from mypyc.uninit import insert_uninit_checks
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
@@ -48,6 +49,10 @@ def compile_modules_to_c(result: BuildResult, module_names: List[str],
     # Generate basic IR, with missing exception and refcount handling.
     file_nodes = [result.files[name] for name in module_names]
     literals, modules = genops.build_ir(file_nodes, result.graph, result.types)
+    # Insert uninit checks.
+    for _, module in modules:
+        for fn in module.functions:
+            insert_uninit_checks(fn)
     # Insert exception handling.
     for _, module in modules:
         for fn in module.functions:

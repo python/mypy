@@ -11,6 +11,7 @@ from mypy.errors import CompileError
 
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ops import format_func
+from mypyc.uninit import insert_uninit_checks
 from mypyc.exceptions import insert_exception_handling
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.test.testutil import (
@@ -42,6 +43,7 @@ class TestExceptionTransform(MypycDataSuite):
                     if (fn.name == TOP_LEVEL_NAME
                             and not testcase.name.endswith('_toplevel')):
                         continue
+                    insert_uninit_checks(fn)
                     insert_exception_handling(fn)
                     insert_ref_count_opcodes(fn)
                     actual.extend(format_func(fn))

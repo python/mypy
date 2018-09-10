@@ -24,6 +24,7 @@ from mypyc.analysis import (
     analyze_live_regs,
     analyze_borrowed_arguments,
     cleanup_cfg,
+    analyze_must_defined_regs,
     AnalysisDict
 )
 from mypyc.ops import (
@@ -32,7 +33,7 @@ from mypyc.ops import (
 )
 
 
-DecIncs = Tuple[Tuple[Value, ...], Tuple[Value, ...]]
+DecIncs = Tuple[Tuple[Tuple[Value, bool], ...], Tuple[Value, ...]]
 
 # A of basic blocks that decrement and increment specific values and
 # then jump to some target block. This lets us cut down on how much
@@ -47,8 +48,11 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     """
     cfg = get_cfg(ir.blocks)
     borrowed = set(reg for reg in ir.env.regs() if reg.is_borrowed)
+    args = set(reg for reg in ir.env.regs() if ir.env.indexes[reg] < len(ir.args))
+    regs = [reg for reg in ir.env.regs() if isinstance(reg, Register)]
     live = analyze_live_regs(ir.blocks, cfg)
     borrow = analyze_borrowed_arguments(ir.blocks, cfg, borrowed)
+    defined = analyze_must_defined_regs(ir.blocks, cfg, args, regs)
     cache = {}  # type: BlockCache
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
@@ -58,15 +62,28 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
                                           live.before,
                                           borrow.before,
                                           borrow.after,
+                                          defined.after,
                                           ir.env)
-        transform_block(block, live.before, live.after, borrow.before, ir.env)
+        transform_block(block, live.before, live.after, borrow.before, defined.after, ir.env)
+
+    # Find all the xdecs we inserted and note the registers down as
+    # needing to be initialized.
+    for block in ir.blocks:
+        for op in block.ops:
+            if isinstance(op, DecRef) and op.is_xdec:
+                ir.env.vars_needing_init.add(op.src)
 
     cleanup_cfg(ir.blocks)
 
 
-def maybe_append_dec_ref(ops: List[Op], dest: Value) -> None:
+def is_maybe_undefined(post_must_defined: Set[Value], src: Value) -> bool:
+    return isinstance(src, Register) and src not in post_must_defined
+
+
+def maybe_append_dec_ref(ops: List[Op], dest: Value,
+                         defined: AnalysisDict[Value], key: Tuple[BasicBlock, int]) -> None:
     if dest.type.is_refcounted:
-        ops.append(DecRef(dest))
+        ops.append(DecRef(dest, is_xdec=is_maybe_undefined(defined[key], dest)))
 
 
 def maybe_append_inc_ref(ops: List[Op], dest: Value) -> None:
@@ -78,6 +95,7 @@ def transform_block(block: BasicBlock,
                     pre_live: AnalysisDict[Value],
                     post_live: AnalysisDict[Value],
                     pre_borrow: AnalysisDict[Value],
+                    post_must_defined: AnalysisDict[Value],
                     env: Environment) -> None:
     old_ops = block.ops
     ops = []  # type: List[Op]
@@ -97,7 +115,7 @@ def transform_block(block: BasicBlock,
                 # decref the old value.
                 if (dest not in pre_borrow[key] and dest in pre_live[key]):
                     assert isinstance(op, Assign)
-                    maybe_append_dec_ref(ops, dest)
+                    maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
         ops.append(op)
 
@@ -109,12 +127,12 @@ def transform_block(block: BasicBlock,
         for src in op.unique_sources():
             # Decrement source that won't be live afterwards.
             if src not in post_live[key] and src not in pre_borrow[key] and src not in stolen:
-                maybe_append_dec_ref(ops, src)
+                maybe_append_dec_ref(ops, src, post_must_defined, key)
         # Decrement the destination if it is dead after the op and
         # wasn't a borrowed RegisterOp
         if (not dest.is_void and dest not in post_live[key]
                 and not (isinstance(op, RegisterOp) and dest.is_borrowed)):
-            maybe_append_dec_ref(ops, dest)
+            maybe_append_dec_ref(ops, dest, post_must_defined, key)
     block.ops = ops
 
 
@@ -125,6 +143,7 @@ def insert_branch_inc_and_decrefs(
         pre_live: AnalysisDict[Value],
         pre_borrow: AnalysisDict[Value],
         post_borrow: AnalysisDict[Value],
+        post_must_defined: AnalysisDict[Value],
         env: Environment) -> None:
     """Insert inc_refs and/or dec_refs after a branch/goto.
 
@@ -145,6 +164,7 @@ def insert_branch_inc_and_decrefs(
     prev_key = (block, len(block.ops) - 1)
     source_live_regs = pre_live[prev_key]
     source_borrowed = post_borrow[prev_key]
+    source_defined = post_must_defined[prev_key]
     if isinstance(block.ops[-1], Branch):
         branch = block.ops[-1]
         # HAX: After we've checked against an error value the value we must not touch the
@@ -157,14 +177,15 @@ def insert_branch_inc_and_decrefs(
             omitted = set()
         true_decincs = (
             after_branch_decrefs(
-                branch.true, pre_live, source_borrowed, source_live_regs, env, omitted),
+                branch.true, pre_live, source_defined,
+                source_borrowed, source_live_regs, env, omitted),
             after_branch_increfs(
                 branch.true, pre_borrow, source_borrowed, env))
         branch.true = add_block(true_decincs, cache, blocks, branch.true)
 
         false_decincs = (
             after_branch_decrefs(
-                branch.false, pre_live, source_borrowed, source_live_regs, env),
+                branch.false, pre_live, source_defined, source_borrowed, source_live_regs, env),
             after_branch_increfs(
                 branch.false, pre_borrow, source_borrowed, env))
         branch.false = add_block(false_decincs, cache, blocks, branch.false)
@@ -177,14 +198,15 @@ def insert_branch_inc_and_decrefs(
 
 def after_branch_decrefs(label: BasicBlock,
                          pre_live: AnalysisDict[Value],
+                         source_defined: Set[Value],
                          source_borrowed: Set[Value],
                          source_live_regs: Set[Value],
                          env: Environment,
-                         omitted: Iterable[Value] = ()) -> Tuple[Value, ...]:
+                         omitted: Iterable[Value] = ()) -> Tuple[Tuple[Value, bool], ...]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
     if decref:
-        return tuple(reg
+        return tuple((reg, is_maybe_undefined(source_defined, reg))
                      for reg in sorted(decref, key=lambda r: env.indexes[r])
                      if reg.type.is_refcounted and reg not in omitted)
     return ()
@@ -215,7 +237,7 @@ def add_block(decincs: DecIncs, cache: BlockCache,
 
     block = BasicBlock()
     blocks.append(block)
-    block.ops.extend(DecRef(reg) for reg in decs)
+    block.ops.extend(DecRef(reg, is_xdec=xdec) for reg, xdec in decs)
     block.ops.extend(IncRef(reg) for reg in incs)
     block.ops.append(Goto(label))
     cache[label, decincs] = block

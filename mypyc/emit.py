@@ -254,19 +254,20 @@ class Emitter:
             self.emit_line('CPy_INCREF(%s);' % dest)
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
-    def emit_dec_ref(self, dest: str, rtype: RType) -> None:
+    def emit_dec_ref(self, dest: str, rtype: RType, is_xdec: bool = False) -> None:
         """Decrement reference count of C expression `dest`.
 
         For composite unboxed structures (e.g. tuples) recursively
         decrement reference counts for each component.
         """
+        x = 'X' if is_xdec else ''
         if is_int_rprimitive(rtype):
-            self.emit_line('CPyTagged_DecRef(%s);' % dest)
+            self.emit_line('CPyTagged_%sDecRef(%s);' % (x, dest))
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
-                self.emit_dec_ref('{}.f{}'.format(dest, i), item_type)
+                self.emit_dec_ref('{}.f{}'.format(dest, i), item_type, is_xdec)
         elif not rtype.is_unboxed:
-            self.emit_line('CPy_DECREF(%s);' % dest)
+            self.emit_line('CPy_%sDECREF(%s);' % (x, dest))
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:

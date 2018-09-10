@@ -62,9 +62,13 @@ def generate_native_function(fn: FuncIR,
         if i < len(fn.args):
             continue  # skip the arguments
         ctype = emitter.ctype_spaced(r.type)
-        declarations.emit_line('{ctype}{prefix}{name};'.format(ctype=ctype,
-                                                               prefix=REG_PREFIX,
-                                                               name=r.name))
+        init = ''
+        if r in fn.env.vars_needing_init:
+            init = ' = {}'.format(declarations.c_error_value(r.type))
+        declarations.emit_line('{ctype}{prefix}{name}{init};'.format(ctype=ctype,
+                                                                     prefix=REG_PREFIX,
+                                                                     name=r.name,
+                                                                     init=init))
 
     # Before we emit the blocks, give them all labels
     for i, block in enumerate(fn.blocks):
@@ -344,7 +348,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
 
     def visit_dec_ref(self, op: DecRef) -> None:
         src = self.reg(op.src)
-        self.emit_dec_ref(src, op.src.type)
+        self.emit_dec_ref(src, op.src.type, op.is_xdec)
 
     def visit_box(self, op: Box) -> None:
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
@@ -402,8 +406,8 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
     def emit_inc_ref(self, dest: str, rtype: RType) -> None:
         self.emitter.emit_inc_ref(dest, rtype)
 
-    def emit_dec_ref(self, dest: str, rtype: RType) -> None:
-        self.emitter.emit_dec_ref(dest, rtype)
+    def emit_dec_ref(self, dest: str, rtype: RType, is_xdec: bool) -> None:
+        self.emitter.emit_dec_ref(dest, rtype, is_xdec)
 
     def emit_declaration(self, line: str) -> None:
         self.declarations.emit_line(line)

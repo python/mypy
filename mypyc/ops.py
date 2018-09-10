@@ -351,6 +351,7 @@ class Environment:
         self.symtable = {}  # type: Dict[SymbolNode, AssignmentTarget]
         self.temp_index = 0
         self.names = {}  # type: Dict[str, int]
+        self.vars_needing_init = set()  # type: Set[Value]
 
     def regs(self) -> Iterable['Value']:
         return self.indexes.keys()
@@ -718,20 +719,25 @@ class IncRef(RegisterOp):
 
 
 class DecRef(RegisterOp):
-    """dec_ref r"""
+    """dec_ref r
+
+    The is_xdec flag says to use an XDECREF, which checks if the
+    pointer is NULL first.
+    """
 
     error_kind = ERR_NEVER
 
-    def __init__(self, src: Value, line: int = -1) -> None:
+    def __init__(self, src: Value, is_xdec: bool = False, line: int = -1) -> None:
         assert src.type.is_refcounted
         super().__init__(line)
         self.src = src
+        self.is_xdec = is_xdec
 
     def __repr__(self) -> str:
-        return '<DecRef %r>' % self.src
+        return '<%sDecRef %r>' % ('X' if self.is_xdec else '', self.src)
 
     def to_str(self, env: Environment) -> str:
-        s = env.format('dec_ref %r', self.src)
+        s = env.format('%sdec_ref %r', 'x' if self.is_xdec else '', self.src)
         if is_bool_rprimitive(self.src.type) or is_int_rprimitive(self.src.type):
             s += ' :: {}'.format(short_name(self.src.type.name))
         return s
@@ -1255,6 +1261,7 @@ class RaiseStandardError(RegisterOp):
     VALUE_ERROR = 'ValueError'
     ASSERTION_ERROR = 'AssertionError'
     STOP_ITERATION = 'StopIteration'
+    UNBOUND_LOCAL_ERROR = 'UnboundLocalError'
 
     def __init__(self, class_name: str, value: Optional[Union[str, Value]], line: int) -> None:
         super().__init__(line)

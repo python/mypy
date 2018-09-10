@@ -45,6 +45,8 @@ static void CPyDebug_Print(const char *msg) {
 // I'm honestly kind of surprised that this isn't done by default.
 #define CPy_INCREF(p) do { assert(p); Py_INCREF(p); } while (0)
 #define CPy_DECREF(p) do { assert(p); Py_DECREF(p); } while (0)
+// Here just for consistency
+#define CPy_XDECREF(p) Py_XDECREF(p)
 
 // Search backwards through the trait part of a vtable (which sits *before*
 // the start of the vtable proper) looking for the subvtable describing a trait
@@ -380,6 +382,12 @@ static inline void CPyTagged_IncRef(CPyTagged x) {
 static inline void CPyTagged_DecRef(CPyTagged x) {
     if (CPyTagged_CheckLong(x)) {
         Py_DECREF(CPyTagged_LongAsObject(x));
+    }
+}
+
+static inline void CPyTagged_XDecRef(CPyTagged x) {
+    if (CPyTagged_CheckLong(x)) {
+        Py_XDECREF(CPyTagged_LongAsObject(x));
     }
 }
 
