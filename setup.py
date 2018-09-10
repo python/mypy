@@ -71,6 +71,45 @@ package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.
 
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
 
+if len(sys.argv) > 1 and sys.argv[1] == '--use-mypyc':
+    sys.argv.pop(1)
+    USE_MYPYC = True
+else:
+    USE_MYPYC = False
+
+if USE_MYPYC:
+    MYPYC_BLACKLIST = (
+        'mypyc_hacks.py',
+        'interpreted_plugin.py',
+
+        '__main__.py',
+        'bogus_type.py',
+        'dmypy.py',
+        'gclogger.py',
+        'main.py',
+        'memprofile.py',
+        'version.py',
+    )
+
+    everything = find_package_data('mypy', ['*.py'])
+    # Start with all the .py files
+    all_real_pys = [x for x in everything if not x.startswith('typeshed/')]
+    # Strip out anything in our blacklist
+    mypyc_targets = [x for x in all_real_pys if not x in MYPYC_BLACKLIST]
+    # Strip out any test code
+    mypyc_targets = [x for x in mypyc_targets if not x.startswith('test/')]
+    # ... and add back in the one test module we need
+    mypyc_targets.append('test/visitors.py')
+
+    # Fix the paths to be full
+    mypyc_targets = [os.path.join('mypy', x) for x in mypyc_targets]
+
+    from mypyc.build import mypycify
+    opt_level = os.getenv('MYPYC_OPT_LEVEL', '')
+    extra_dict = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
+else:
+    extra_dict = {}
+
 
 classifiers = [
     'Development Status :: 3 - Alpha',
@@ -84,7 +123,9 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
-setup(name='mypy',
+extra_dict.setdefault('cmdclass', {})['build_py'] = CustomPythonBuild
+
+setup(name='mypy' if not USE_MYPYC else 'mypy-mypyc',
       version=version,
       description=description,
       long_description=long_description,
@@ -100,7 +141,6 @@ setup(name='mypy',
                                         'dmypy=mypy.dmypy:main',
                                         ]},
       classifiers=classifiers,
-      cmdclass={'build_py': CustomPythonBuild},
       install_requires = ['typed-ast >= 1.1.0, < 1.2.0',
                           'mypy_extensions >= 0.4.0, < 0.5.0',
                           ],
@@ -109,4 +149,5 @@ setup(name='mypy',
           'dmypy': 'psutil >= 5.4.0, < 5.5.0; sys_platform!="win32"',
       },
       include_package_data=True,
+      **extra_dict,
       )
