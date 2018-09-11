@@ -4887,6 +4887,99 @@ def f(x: str) -> None: pass
 [out2]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
+-- Test cases for final qualifier
+
+[case testFinalAddFinalVarAssign]
+import mod
+from a import D
+from mod import x
+
+mod.x = 2  # This an all below are errors.
+x = 2
+d: D
+d.y = 2
+d.z = 2
+D.y = 2
+[file a.py]
+import mod
+
+class D(mod.C):
+    pass
+[file mod.py]
+x = 1
+class C:
+    y = 1
+    def __init__(self) -> None:
+        self.z = 1
+
+[file mod.py.2]
+from typing import Final
+
+x: Final = 1
+class C:
+    y: Final = 1
+    def __init__(self) -> None:
+        self.z: Final = 1
+[out]
+[out2]
+main:5: error: Cannot assign to final name "x"
+main:6: error: Cannot assign to final name "x"
+main:8: error: Cannot assign to final attribute "y"
+main:9: error: Cannot assign to final attribute "z"
+main:10: error: Cannot assign to final attribute "y"
+
+[case testFinalAddFinalVarOverride]
+from mod import C
+
+class D(C):
+    x = 2
+    def __init__(self) -> None:
+        self.y = 2
+class E(C):
+    y = 2
+    def __init__(self) -> None:
+        self.x = 2
+
+[file mod.py]
+class C:
+    x = 1
+    def __init__(self) -> None:
+        self.y = 1
+
+[file mod.py.2]
+from typing import Final
+
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+[out]
+[out2]
+main:4: error: Cannot assign to final name "x"
+main:6: error: Cannot assign to final attribute "y"
+main:8: error: Cannot assign to final name "y"
+main:10: error: Cannot assign to final attribute "x"
+
+[case testFinalAddFinalMethodOverride]
+from mod import C
+
+class D(C):
+    def meth(self) -> int: ...
+
+[file mod.py]
+class C:
+    def meth(self) -> int: ...
+
+[file mod.py.2]
+from typing import final
+
+class C:
+    @final
+    def meth(self) -> int: ...
+[out]
+[out2]
+main:4: error: Cannot override final attribute "meth" (previously declared in base class "C")
+
 -- These tests should just not crash
 [case testOverrideByBadVar]
 import a

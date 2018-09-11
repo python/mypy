@@ -378,7 +378,7 @@ class ImportedName(SymbolNode):
 
 
 FUNCBASE_FLAGS = [
-    'is_property', 'is_class', 'is_static',
+    'is_property', 'is_class', 'is_static', 'is_final'
 ]
 
 
@@ -390,7 +390,8 @@ class FuncBase(Node):
                  'info',
                  'is_property',
                  'is_class',        # Uses "@classmethod"
-                 'is_static',       # USes "@staticmethod"
+                 'is_static',       # Uses "@staticmethod"
+                 'is_final',        # Uses "@final"
                  '_fullname',
                  )
 
@@ -407,6 +408,7 @@ class FuncBase(Node):
         self.is_property = False
         self.is_class = False
         self.is_static = False
+        self.is_final = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(Bogus[str], None)
@@ -442,6 +444,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.set_line(items[0].line)
+        self.is_final = False
 
     def name(self) -> str:
         if self.items:
@@ -593,6 +596,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.is_abstract = False
+        self.is_final = False
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
@@ -668,6 +672,10 @@ class Decorator(SymbolNode, Statement):
         return self.func.fullname()
 
     @property
+    def is_final(self) -> bool:
+        return self.func.is_final
+
+    @property
     def info(self) -> 'TypeInfo':
         return self.func.info
 
@@ -698,7 +706,7 @@ class Decorator(SymbolNode, Statement):
 VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-    'is_classvar', 'is_abstract_var'
+    'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init'
 ]
 
 
@@ -712,6 +720,7 @@ class Var(SymbolNode):
                  '_fullname',
                  'info',
                  'type',
+                 'final_value',
                  'is_self',
                  'is_ready',
                  'is_inferred',
@@ -722,6 +731,9 @@ class Var(SymbolNode):
                  'is_settable_property',
                  'is_classvar',
                  'is_abstract_var',
+                 'is_final',
+                 'final_unset_in_class',
+                 'final_set_in_init',
                  'is_suppressed_import',
                  )
 
@@ -748,6 +760,15 @@ class Var(SymbolNode):
         # Set to true when this variable refers to a module we were unable to
         # parse for some reason (eg a silenced module)
         self.is_suppressed_import = False
+        # Was this "variable" (rather a constant) defined as Final[...]?
+        self.is_final = False
+        # If constant value is a simple literal,
+        # store the literal value (unboxed) for the benefit of
+        # tools like mypyc.
+        self.final_value = None  # type: Optional[Union[int, float, bool, str]]
+        # Where the value was set (only for class attributes)
+        self.final_unset_in_class = False
+        self.final_set_in_init = False
 
     def name(self) -> str:
         return self._name
@@ -767,6 +788,8 @@ class Var(SymbolNode):
                 'type': None if self.type is None else self.type.serialize(),
                 'flags': get_flags(self, VAR_FLAGS),
                 }  # type: JsonDict
+        if self.final_value is not None:
+            data['final_value'] = self.final_value
         return data
 
     @classmethod
@@ -777,6 +800,7 @@ class Var(SymbolNode):
         v = Var(name, type)
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
+        v.final_value = data.get('final_value')
         return v
 
 
@@ -919,6 +943,13 @@ class AssignmentStmt(Statement):
     new_syntax = False  # type: bool
     # Does this assignment define a type alias?
     is_alias_def = False
+    # Is this a final definition?
+    # Final attributes can't be re-assigned once set, and can't be overridden
+    # in a subclass. This flag is not set if an attempted declaration was found to
+    # be invalid during semantic analysis. It is still set to `True` if
+    # a final declaration overrides another final declaration (this is checked
+    # during type checking when MROs are known).
+    is_final_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
@@ -2191,7 +2222,7 @@ class TypeInfo(SymbolNode):
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_newtype', 'is_protocol', 'runtime_protocol'
+        'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
     ]  # type: ClassVar[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
@@ -2211,6 +2242,7 @@ class TypeInfo(SymbolNode):
         self.inferring = []
         self.add_type_vars()
         self.metadata = {}
+        self.is_final = False
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:

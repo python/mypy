@@ -1,0 +1,1011 @@
+-- Test cases for final qualifier
+--
+
+-- Definitions
+
+[case testFinalDefiningModuleVar]
+from typing import Final
+
+x: Final = int()
+y: Final[float] = int()
+z: Final[int] = int()
+bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+reveal_type(y)  # E: Revealed type is 'builtins.float'
+reveal_type(z)  # E: Revealed type is 'builtins.int'
+[out]
+
+[case testFinalDefiningInstanceVar]
+from typing import Final
+
+class C:
+    x: Final = int()
+    y: Final[float] = int()
+    z: Final[int] = int()
+    bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+class D(C): pass
+
+reveal_type(D.x)  # E: Revealed type is 'builtins.int'
+reveal_type(D.y)  # E: Revealed type is 'builtins.float'
+reveal_type(D.z)  # E: Revealed type is 'builtins.int'
+reveal_type(D().x)  # E: Revealed type is 'builtins.int'
+reveal_type(D().y)  # E: Revealed type is 'builtins.float'
+reveal_type(D().z)  # E: Revealed type is 'builtins.int'
+[out]
+
+[case testFinalDefiningInstanceVarImplicit]
+from typing import Final, Tuple, Any
+
+class C:
+    def __init__(self, x: Tuple[int, Any]) -> None:
+        self.x: Final = x
+        self.y: Final[float] = 1
+reveal_type(C((1, 2)).x)  # E: Revealed type is 'Tuple[builtins.int, Any]'
+reveal_type(C((1, 2)).y)  # E: Revealed type is 'builtins.float'
+[out]
+
+[case testFinalBadDefinitionTooManyArgs]
+from typing import Final
+
+x: Final[int, str]  # E: Final name must be initialized with a value \
+                    # E: Final[...] takes at most one type argument
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+
+class C:
+    def __init__(self) -> None:
+        self.x: Final[float, float] = 1  # E: Final[...] takes at most one type argument
+reveal_type(C().x)  # E: Revealed type is 'builtins.float'
+[out]
+
+[case testFinalInvalidDefinitions]
+from typing import Final, Any
+
+x = y = 1  # type: Final[float]  # E: Invalid final declaration
+z: Any
+z[0]: Final[int]  # E: Unexpected type declaration \
+                  # E: Invalid final declaration
+[out]
+
+[case testFinalDefiningInstanceVarStubs]
+# Allow skipping r.h.s.
+import mod
+[file mod.pyi]
+from typing import Final
+
+x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
+y: Final[int]
+class C:
+    x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
+    y: Final[int]
+    def __init__(self) -> None:
+        self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer
+
+reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(C.x)  # E: Revealed type is 'Any'
+v: C
+reveal_type(v.z)  # E: Revealed type is 'Any'
+[out]
+
+[case testFinalDefiningFunc]
+from typing import final
+
+@final  # E: @final cannot be used with non-method functions
+def f(x: int) -> None: ...
+[out]
+
+[case testFinalDefiningFuncOverloaded]
+from typing import final, overload
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> str: ...
+@final  # E: @final cannot be used with non-method functions
+def f(x):
+    pass
+[out]
+
+[case testFinalDefiningMeth]
+from typing import final
+
+class C:
+    @final
+    def f(self, x: int) -> None: ...
+reveal_type(C().f)  # E: Revealed type is 'def (x: builtins.int)'
+[out]
+
+[case testFinalDefiningMethOverloaded]
+from typing import final, overload
+
+class C:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    @final
+    def f(self, x):
+        pass
+
+    @overload
+    def bad(self, x: int) -> int: ...
+    @final  # E: @final should be applied only to overload implementation
+    @overload
+    def bad(self, x: str) -> str: ...
+    def bad(self, x):
+        pass
+
+reveal_type(C().f)  # E: Revealed type is 'Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)'
+[out]
+
+[case testFinalDefiningMethOverloadedStubs]
+from mod import C
+
+reveal_type(C().f)
+[file mod.pyi]
+from typing import final, overload
+
+class C:
+    @final
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+
+    @overload
+    def bad(self, x: int) -> int: ...
+    @final  # Error!
+    @overload
+    def bad(self, x: str) -> str: ...
+[out]
+tmp/mod.pyi:12: error: In a stub file @final must be applied only to the first overload
+main:3: error: Revealed type is 'Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)'
+
+[case testFinalDefiningProperty]
+from typing import final
+
+class C:
+    @final
+    @property
+    def f(self) -> int: pass
+    @property
+    @final
+    def g(self) -> int: pass
+reveal_type(C().f)  # E: Revealed type is 'builtins.int'
+reveal_type(C().g)  # E: Revealed type is 'builtins.int'
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalDefiningOuterOnly]
+from typing import Final, Callable, Tuple, Any
+x: Tuple[Final]  # E: Final can be only used as an outermost qualifier in a variable annotation
+y: Callable[[], Tuple[Final[int]]]  # E: Final can be only used as an outermost qualifier in a variable annotation
+[out]
+
+[case testFinalDefiningNotInMethod]
+from typing import Final
+
+def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
+def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
+[out]
+
+[case testFinalDefiningNotInMethodExtensions]
+from typing_extensions import Final
+
+def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
+def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
+[out]
+
+[case testFinalDefiningNoRhs]
+from typing import Final
+x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
+y: Final[int]  # E: Final name must be initialized with a value
+class C:
+    x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
+    y: Final[int]  # E: Final name must be initialized with a value
+    def __init__(self) -> None:
+        self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer
+reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+reveal_type(C().x)  # E: Revealed type is 'Any'
+reveal_type(C().y)  # E: Revealed type is 'builtins.int'
+reveal_type(C().z)  # E: Revealed type is 'Any'
+[out]
+
+[case testFinalDefiningNoRhsSubclass]
+from typing import Final
+
+class A:
+    x: Final[int]  # E: Final name must be initialized with a value
+
+class B(A):
+    x = 1  # E: Cannot assign to final name "x"
+    def __init__(self) -> None:
+        self.x = 1  # E: Cannot assign to final attribute "x"
+[out]
+
+[case testFinalDefiningNoTypevarsExplicit]
+from typing import Final, TypeVar, Generic, Tuple, Any
+
+T = TypeVar('T')
+d: Any
+
+class C(Generic[T]):
+    x: Final[Tuple[T, T]] = d  # E: Final name declared in class body cannot depend on type variables
+[out]
+
+[case testFinalDefiningTypevarsImplicit]
+from typing import Final, TypeVar, Generic, Tuple, Any
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    def __init__(self, x: Tuple[T, T]) -> None:
+        self.x: Final = x
+        self.y: Final = 1
+
+reveal_type(C((1, 2)).x)  # E: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
+C.x  # E: Cannot access final instance attribute "x" on class object \
+     # E: Access to generic instance variables via class is ambiguous
+C.y  # E: Cannot access final instance attribute "y" on class object
+[out]
+
+[case testFinalDefiningNotInOtherMethod]
+from typing import Final, Any, Tuple
+
+class C:
+    def meth(self, x: Tuple[int, Any]) -> None:
+        self.x: Final = x  # E: Can only declare a final attribute in class body or __init__
+        self.y: Final[float] = 1  # E: Can only declare a final attribute in class body or __init__
+[out]
+
+[case testFinalDefiningOnlyOnSelf]
+from typing import Final, Any, Tuple
+
+class U:
+    x: Any
+    y: Any
+class C:
+    def __init__(self, x: Tuple[int, Any]) -> None:
+        slf = U()
+        slf.x: Final = x  # E: Final can be only applied to a name or an attribute on self
+        slf.y: Final[float] = 1  # E: Type cannot be declared in assignment to non-self attribute \
+                                 # E: Final can be only applied to a name or an attribute on self
+[out]
+
+[case testFinalNotInProtocol]
+from typing import Final, final, Protocol, overload
+
+class P(Protocol):
+    x: Final[float] = 1  # E: Protocol member cannot be final
+    @final  # E: Protocol member cannot be final
+    def meth(self, x) -> int:
+        pass
+    @overload
+    def other(self, x: int) -> int: ...
+    @overload
+    def other(self, x: str) -> str: ...
+    @final  # E: Protocol member cannot be final
+    def other(self, x):
+        pass
+[out]
+
+[case testFinalNotInLoops]
+from typing import Final
+
+for i in [1, 2, 3]:
+    x: Final = i  # E: Cannot use Final inside a loop
+
+while True:
+    y: Final = True  # E: Cannot use Final inside a loop
+[builtins fixtures/list.pyi]
+[out]
+
+[case testFinalDelayedDefinition]
+from typing import Final
+
+class C:
+    x: Final[int]  # OK, defined in __init__
+    bad: Final[int]  # E: Final name must be initialized with a value
+
+    def __init__(self, x: int) -> None:
+        self.x = x  # OK, deferred definition
+        self.x = 2  # E: Cannot assign to final attribute "x"
+
+    def meth(self) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
+
+c: C
+c.x = 3  # E: Cannot assign to final attribute "x"
+class D(C):
+    x = 4  # E: Cannot assign to final name "x"
+d: D
+d.x = 5  # E: Cannot assign to final attribute "x"
+[out]
+
+[case testFinalDelayedDefinitionOtherMethod]
+from typing import Final
+
+class C:
+    x: Final[int]  # E: Final name must be initialized with a value
+
+    def meth(self) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
+[out]
+
+-- Reassignments
+
+[case testFinalReassignModuleVar]
+from typing import Final
+
+x: Final = 1
+x = 2  # E: Cannot assign to final name "x"
+def f() -> int:
+    global x
+    x = 3  # E: Cannot assign to final name "x"
+    return x
+
+y = 1
+y: Final = 2  # E: Name 'y' already defined on line 10 \
+              # E: Cannot redefine an existing name as final
+y = 3  # No error here, first definition wins
+
+z: Final = 1
+z: Final = 2  # E: Name 'z' already defined on line 14 \
+              # E: Cannot redefine an existing name as final
+z = 3  # E: Cannot assign to final name "z"
+[out]
+
+[case testFinalReassignModuleReexport]
+from typing import Final
+
+from lib import X
+from lib.mod import ID
+
+X = 1  # Error!
+ID: Final = 1  # Two errors!
+ID = 1  # Error!
+[file lib/__init__.pyi]
+from lib.const import X as X
+
+[file lib/mod.pyi]
+from lib.const import *
+
+[file lib/const.pyi]
+from typing import Final
+
+ID: Final  # Error!
+X: Final[int]
+[out]
+tmp/lib/const.pyi:3: error: Type in Final[...] can only be omitted if there is an initializer
+main:6: error: Cannot assign to final name "X"
+main:7: error: Name 'ID' already defined (possibly by an import)
+main:7: error: Cannot redefine an existing name as final
+main:8: error: Cannot assign to final name "ID"
+
+
+[case testFinalReassignFuncScope]
+from typing import Final
+
+def f() -> None:
+    nl: Final = 0
+    x: Final = 1
+    x = 1  # E: Cannot assign to final name "x"
+
+    y: Final = 1
+    y: Final = 2  # E: Cannot redefine an existing name as final
+    def nested() -> None:
+        nonlocal nl
+        nl = 1  # E: Cannot assign to final name "nl"
+[out]
+
+[case testFinalReassignModuleVarExternal]
+import mod
+mod.x = 2  # E: Cannot assign to final name "x"
+[file mod.pyi]
+from typing import Final
+x: Final[int]
+[out]
+
+[case testFinalReassignInstanceVarClassBody]
+from typing import Final
+
+class C:
+    x: Final = 1
+    x = 2  # E: Cannot assign to final name "x"
+
+    y = 1
+    y: Final = 2  # E: Cannot redefine an existing name as final
+[out]
+
+[case testFinalReassignInstanceVarInit]
+from typing import Final
+
+class C:
+    def __init__(self) -> None:
+        self.x: Final = 1
+        self.y = 1
+        self.y: Final = 2  # E: Cannot redefine an existing name as final
+    def meth(self) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
+[out]
+
+[case testFinalReassignInstanceVarClassVsInit]
+from typing import Final
+
+class C:
+    y: Final = 1
+    def __init__(self) -> None:
+        self.x: Final = 1
+        self.y = 2  # E: Cannot assign to final attribute "y"
+    x = 2  # E: Cannot assign to final name "x"
+[out]
+
+[case testFinalReassignInstanceVarMethod]
+from typing import Final
+
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+    def meth(self) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
+        self.y = 2  # E: Cannot assign to final attribute "y"
+    def other(self) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
+        self.y = 2  # E: Cannot assign to final attribute "y"
+    @classmethod
+    def cm(cls) -> None:
+        cls.x = 2  # E: Cannot assign to final attribute "x"
+        cls.y  # E: Cannot access final instance attribute "y" on class object
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testFinalReassignInstanceVarExternalClass]
+from typing import Final
+
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+
+class D(C): pass
+
+C.x = 2  # E: Cannot assign to final attribute "x"
+D.x = 2  # E: Cannot assign to final attribute "x"
+D.y = 2  # E: Cannot access final instance attribute "y" on class object \
+         # E: Cannot assign to final attribute "y"
+[out]
+
+[case testFinalReassignInstanceVarExternalInstance]
+from typing import Final
+
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+
+class D(C): pass
+
+C().x = 2  # E: Cannot assign to final attribute "x"
+D().x = 2  # E: Cannot assign to final attribute "x"
+D().y = 2  # E: Cannot assign to final attribute "y"
+[out]
+
+[case testFinalWorksWithComplexTargets]
+from typing import Final, Any
+
+y: Final[Any] = 1
+x = a, (b, y), c = 2, (2, 2), 2  # E: Cannot assign to final name "y"
+t, *y, s = u = [2, 2, 2]  # E: Cannot assign to final name "y"
+[builtins fixtures/list.pyi]
+[out]
+
+[case testFinalInplaceAssign]
+from typing import Final
+
+class A:  # no such things in fixtures
+    def __add__(self, other: A) -> A: ...
+class B:
+    def __add__(self, other: B) -> B: ...
+    def __iadd__(self, other: B) -> B: ...
+
+a: Final = A()
+b: Final = B()
+class C:
+    a: Final = A()
+    b: Final = B()
+class D(C):
+    pass
+
+a += A()  # E: Cannot assign to final name "a"
+b += B()  # E: Cannot assign to final name "b"
+D().a += A()  # E: Cannot assign to final attribute "a"
+D().b += B()  # E: Cannot assign to final attribute "b"
+[out]
+
+-- Overriding
+
+[case testFinalOverridingVarClassBody]
+from typing import Final
+
+# We use properties in this tests and below because we want to check
+# that any existing variable before final doesn't affect logic of
+# subsequent overrides but writable attributes cannot be overridden by final.
+class A:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    x: int = 2  # E: Cannot assign to final name "x"
+    y: int = 2  # E: Cannot assign to final name "y"
+    x = 3  # E: Cannot assign to final name "x"
+    y = 3  # E: Cannot assign to final name "y"
+class D(C):
+    pass
+D.x = 4  # E: Cannot assign to final attribute "x"
+D.y = 4  # E: Cannot assign to final attribute "y"
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarClassBodyExplicit]
+from typing import Final
+
+class A:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B")
+    y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B")
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarInit]
+from typing import Final
+
+class A:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    def __init__(self) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
+        self.y = 2  # E: Cannot assign to final attribute "y"
+    def meth(self) -> None:
+        self.x = 3  # E: Cannot assign to final attribute "x"
+        self.y = 3  # E: Cannot assign to final attribute "y"
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarInit2]
+from typing import Final
+
+class A:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    def __init__(self) -> None:
+        self.x: Final = 2  # E: Cannot override final attribute "x" (previously declared in base class "B")
+        self.y: Final = 2  # E: Cannot override final attribute "y" (previously declared in base class "B")
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarOtherMethod]
+from typing import Final
+
+class A:
+    @property
+    def x(self) -> int: ...
+    @property
+    def y(self) -> int: ...
+class B(A):
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+class C(B):
+    def meth(self) -> None:
+        self.x: int = 2    # E: Cannot assign to final attribute "x"
+        self.y: int = 2    # E: Cannot assign to final attribute "y"
+
+        self.x = 3  # E: Cannot assign to final attribute "x"
+        self.y = 3  # E: Cannot assign to final attribute "y"
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarMultipleInheritanceClass]
+from typing import Final, Any
+
+class A:
+    x: Final[Any] = 1
+class B:
+    @property
+    def x(self) -> int: ...
+class C(A, B): ...
+class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared in base class "A")
+C.x = 3  # E: Cannot assign to final attribute "x"
+C().x = 4  # E: Cannot assign to final attribute "x"
+D().x = 4  # E: Cannot assign to final attribute "x" \
+           # E: Property "x" defined in "B" is read-only
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarMultipleInheritanceInit]
+from typing import Final, Any
+
+class A:
+    def __init__(self) -> None:
+        self.x: Final[Any] = 1
+class B:
+    @property
+    def x(self) -> int: ...
+class C(A, B): ...
+class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared in base class "A")
+C.x = 3  # E: Cannot access final instance attribute "x" on class object \
+         # E: Cannot assign to final attribute "x"
+C().x = 4  # E: Cannot assign to final attribute "x"
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarMultipleInheritanceMixed]
+from typing import Final
+
+class A:
+    x: Final = 1
+class B:
+    def __init__(self) -> None:
+        self.x = 2
+class C(A, B): ...  # E: Cannot override writable attribute "x" with a final one
+class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared in base class "A")
+C.x = 3  # E: Cannot assign to final attribute "x"
+D.x = 3  # E: Cannot assign to final attribute "x"
+C().x = 4  # E: Cannot assign to final attribute "x"
+D().x = 4  # E: Cannot assign to final attribute "x"
+[out]
+
+[case testFinalOverridingVarWithMethod]
+from typing import Final, Any
+
+class A:
+    x: Final[Any] = 1
+    def __init__(self) -> None:
+        self.y: Final[Any] = 1
+
+class B(A):
+    def x(self) -> None: pass  # E: Cannot override final attribute "x" (previously declared in base class "A")
+    def y(self) -> None: pass  # E: Cannot override final attribute "y" (previously declared in base class "A")
+
+class C(A):
+    @property  # E: Cannot override final attribute "x" (previously declared in base class "A")
+    def x(self) -> None: pass
+    @property  # E: Cannot override final attribute "y" (previously declared in base class "A")
+    def y(self) -> None: pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingVarWithMethodClass]
+from typing import Final, Any
+
+class A:
+    x: Final[Any] = 1
+    def __init__(self) -> None:
+        self.y: Final[Any] = 1
+
+class B(A):
+    @classmethod  # E: Cannot override final attribute "x" (previously declared in base class "A")
+    def x(self) -> None: pass
+    @classmethod  # E: Cannot override final attribute "y" (previously declared in base class "A")
+    def y(self) -> None: pass
+
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testFinalOverridingMethodRegular]
+from typing import final
+
+class B:
+    @final
+    def meth(self) -> None: ...
+class C(B):
+    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" (previously declared in base class "B")
+[out]
+
+[case testFinalOverridingMethodInitNew]
+from typing import final
+
+class B:
+    @final
+    def __init__(self) -> None: ...
+    @final
+    def __new__(cls) -> B: ...
+class C(B):
+    def __init__(self) -> None: ...  # E: Cannot override final attribute "__init__" (previously declared in base class "B")
+    def __new__(cls) -> B: ...  # E: Cannot override final attribute "__new__" (previously declared in base class "B")
+[out]
+
+[case testFinalOverridingMethodWithVar]
+from typing import final, Final, Any
+
+a: Any
+
+class A:
+    @final
+    def f(self) -> None: pass
+    @final
+    @property
+    def p(self) -> int: pass
+
+class B(A):
+    f = a  # E: Cannot override final attribute "f" (previously declared in base class "A")
+    p = a  # E: Cannot override final attribute "p" (previously declared in base class "A")
+class C(A):
+    f: Any  # E: Cannot override final attribute "f" (previously declared in base class "A")
+    p: Any  # E: Cannot override final attribute "p" (previously declared in base class "A")
+class D(A):
+    f: Final = a  # E: Cannot override final attribute "f" (previously declared in base class "A")
+    p: Final = a  # E: Cannot override final attribute "p" (previously declared in base class "A")
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingMethodWithVarImplicit]
+from typing import final, Any, Final
+
+a: Any
+
+class A:
+    @final
+    def f(self) -> None: pass
+    @final
+    @classmethod
+    def c(cls) -> int: pass
+
+class B(A):
+    def __init__(self) -> None:
+        self.f: Any  # E: Cannot assign to final attribute "f" \
+                     # E: Cannot override final attribute "f" (previously declared in base class "A")
+        self.c: Any  # E: Cannot assign to final attribute "c" \
+                     # E: Cannot override final attribute "c" (previously declared in base class "A")
+
+B().f = a  # E: Cannot assign to final attribute "f"
+B().c = a  # E: Cannot assign to final attribute "c"
+
+class C(A):
+    def __init__(self) -> None:
+        self.f: Final = a  # E: Cannot override final attribute "f" (previously declared in base class "A")
+        self.c: Final = a  # E: Cannot override final attribute "c" (previously declared in base class "A")
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testFinalCanOverrideMethodWithFinal]
+from typing import final
+
+class B:
+    def meth(self) -> None: ...
+class C(B):
+    @final  # OK
+    def meth(self) -> None: ...
+[out]
+
+[case testFinalOverridingMethodMultipleInheritance]
+from typing import final
+
+class A:
+    def m(self) -> int: pass
+class B:
+    @final
+    def m(self) -> int: pass
+
+class C(A, B): pass  # E: Cannot override final attribute "m" (previously declared in base class "B")
+class D(B, A): pass
+[out]
+
+[case testFinalOverridingMethodMultipleInheritanceVar]
+from typing import final, Any
+
+class A:
+    m: Any
+class B:
+    @final
+    def m(self) -> int: pass
+
+class C(A, B): pass  # E: Cannot override final attribute "m" (previously declared in base class "B")
+class D(B, A): pass  # E: Cannot override writable attribute "m" with a final one
+[out]
+
+[case testFinalOverridingClassMethod]
+from typing import final
+
+class B:
+    @classmethod
+    @final
+    def f(cls) -> int: pass
+
+class C(B):
+    @classmethod  # E: Cannot override final attribute "f" (previously declared in base class "B")
+    def f(cls) -> int: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+
+[case testFinalOverridingStaticMethod]
+from typing import final
+
+class B:
+    @staticmethod
+    @final
+    def f() -> int: pass
+    @final
+    @staticmethod
+    def g() -> int: pass
+
+class C(B):
+    @staticmethod  # E: Cannot override final attribute "f" (previously declared in base class "B")
+    def f() -> int: pass
+    @staticmethod  # E: Cannot override final attribute "g" (previously declared in base class "B")
+    def g() -> int: pass
+[builtins fixtures/staticmethod.pyi]
+[out]
+
+[case testFinalOverridingProperty]
+from typing import final
+
+class B:
+    @final
+    @property
+    def f(self) -> int: pass
+    @property
+    @final
+    def g(self) -> int: pass
+
+class C(B):
+    @property  # E: Cannot override final attribute "f" (previously declared in base class "B")
+    def f(self) -> int: pass
+    @property  # E: Cannot override final attribute "g" (previously declared in base class "B")
+    def g(self) -> int: pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalOverridingMethodOverloads]
+from typing import final, overload
+
+class B:
+    @overload
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    @final
+    def f(self, x):
+        pass
+
+class C(B):
+    @overload  # E: Cannot override final attribute "f" (previously declared in base class "B")
+    def f(self, x: int) -> int: ...
+    @overload
+    def f(self, x: str) -> str: ...
+    def f(self, x):
+        pass
+[out]
+
+[case testFinalClassNoInheritance]
+from typing import final
+
+@final
+class B: ...
+class C(B):  # E: Cannot inherit from final class "B"
+    pass
+class D(C):  # E: Cannot inherit from final class "B"
+    pass
+[out]
+
+[case testFinalClassNoInheritanceMulti]
+from typing import final
+
+class A: ...
+@final
+class B: ...
+class C(B, A):  # E: Cannot inherit from final class "B"
+    pass
+class D(A, B):  # E: Cannot inherit from final class "B"
+    pass
+[out]
+
+[case testFinalCantOverrideWriteable]
+from typing import Any, Final, final
+
+class B:
+    x: Any
+    @property
+    def y(self) -> Any: ...
+    @y.setter
+    def y(self, x: Any) -> None: ...
+
+class C(B):
+    x: Final = 1  # E: Cannot override writable attribute "x" with a final one
+    y: Final = 1  # E: Cannot override writable attribute "y" with a final one
+
+class D(B):
+    @final  # E: Cannot override writable attribute "x" with a final one
+    def x(self) -> int: ...
+    @final  # E: Cannot override writable attribute "y" with a final one
+    def y(self) -> int: ...
+[builtins fixtures/property.pyi]
+[out]
+
+[case testFinalCanUseTypingExtensions]
+from typing_extensions import final, Final
+
+x: Final = 1
+x = 2  # E: Cannot assign to final name "x"
+
+class S:
+    x: Final = 1
+S.x = 2  # E: Cannot assign to final attribute "x"
+
+class B:
+    @final
+    def meth(self) -> None: ...
+class C(B):
+    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" (previously declared in base class "B")
+
+@final
+class F: ...
+class E(F): ...  # E: Cannot inherit from final class "F"
+[out]
+
+[case testFinalCanUseTypingExtensionsAliased]
+from typing_extensions import final as f, Final as F
+
+x: F = 1
+x = 2  # E: Cannot assign to final name "x"
+
+class S:
+    x: F = 1
+S.x = 2  # E: Cannot assign to final attribute "x"
+
+class B:
+    @f
+    def meth(self) -> None: ...
+class C(B):
+    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" (previously declared in base class "B")
+
+@f
+class D(C): ...
+class E(D): ...  # E: Cannot inherit from final class "D"
+[out]
+
+[case testFinalMultiassignAllowed]
+from typing import Final
+
+class A:
+    x: Final[int]
+    y: Final[int]
+    def __init__(self) -> None:
+        self.x, self.y = 1, 2
+
+class B:
+    x: Final[int]
+    y: Final[int]
+    def __init__(self) -> None:
+        self.x = self.y = 1
+[out]

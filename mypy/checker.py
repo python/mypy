@@ -217,6 +217,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # If True, process function definitions. If False, don't. This is used
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
+        # This internal flag is used to track whether we a currently type-checking
+        # a final declaration (assignment), so that some errors should be suppressed.
+        # Should not be set manually, use get_final_context/enter_final_context instead.
+        # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
+        # argument through various `checker` and `checkmember` functions.
+        self._is_final_def = False
 
     def reset(self) -> None:
         """Cleanup stale state that might be left over from a typechecking run.
@@ -1254,6 +1260,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Check if method definition is compatible with a base class."""
         if base:
             name = defn.name()
+            base_attr = base.names.get(name)
+            if base_attr:
+                # First, check if we override a final (always an error, even with Any types).
+                if (isinstance(base_attr.node, (Var, FuncBase, Decorator))
+                        and base_attr.node.is_final):
+                    self.msg.cant_override_final(name, base.name(), defn)
+                # Second, final can't override anything writeable independently of types.
+                if defn.is_final:
+                    self.check_no_writable(name, base_attr.node, defn)
+
+            # Check the type of override.
             if name not in ('__init__', '__new__', '__init_subclass__'):
                 # Check method override
                 # (__init__, __new__, __init_subclass__ are special).
@@ -1280,6 +1297,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 context = defn
             else:
                 context = defn.func
+
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):
                 typ = self.function_type(defn)  # type: Type
@@ -1453,6 +1471,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         typ = defn.info
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+        for base in typ.mro[1:]:
+            if base.is_final:
+                self.fail('Cannot inherit from final class "{}"'.format(base.name()), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1564,6 +1585,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
+        # Final attributes can never be overridden, but can override
+        # non-final read-only attributes.
+        if isinstance(second.node, (Var, FuncBase, Decorator)) and second.node.is_final:
+            self.msg.cant_override_final(name, base2.name(), ctx)
+        if isinstance(first.node, (Var, FuncBase, Decorator)) and first.node.is_final:
+            self.check_no_writable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True
@@ -1611,7 +1638,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         Handle all kinds of assignment statements (simple, indexed, multiple).
         """
-        self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
+        with self.enter_final_context(s.is_final_def):
+            self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
         if (s.type is not None and
                 self.options.disallow_any_unimported and
@@ -1632,7 +1660,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.expr_checker.accept(s.rvalue)
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
-                self.check_assignment(lv, rvalue, s.type is None)
+                with self.enter_final_context(s.is_final_def):
+                    self.check_assignment(lv, rvalue, s.type is None)
+
+        self.check_final(s)
+        if (s.is_final_def and s.type and not has_no_typevars(s.type)
+                and self.scope.active_class() is not None):
+            self.fail("Final name declared in class body cannot depend on type variables", s)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
@@ -1739,6 +1773,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if not self.check_compatibility_classvar_super(lvalue_node,
                                                                    base,
                                                                    tnode.node):
+                        # Show only one error per variable
+                        break
+
+                    if not self.check_compatibility_final_super(lvalue_node,
+                                                                base,
+                                                                tnode.node):
                         # Show only one error per variable
                         break
 
@@ -1852,6 +1892,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # value, not the Callable
                     if base_node.is_property:
                         base_type = base_type.ret_type
+                if isinstance(base_type, FunctionLike) and isinstance(base_node,
+                                                                      OverloadedFuncDef):
+                    # Same for properties with setter
+                    if base_node.is_property:
+                        base_type = base_type.items()[0].ret_type
 
                 return base_type, base_node
 
@@ -1872,6 +1917,109 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       'with instance variable' % base.name(), node)
             return False
         return True
+
+    def check_compatibility_final_super(self, node: Var,
+                                        base: TypeInfo, base_node: Optional[Node]) -> bool:
+        """Check if an assignment overrides a final attribute in a base class.
+
+        This only checks situations where either a node in base class is not a variable
+        but a final method, or where override is explicitly declared as final.
+        In these cases we give a more detailed error message. In addition, we check that
+        a final variable doesn't override writeable attribute, which is not safe.
+
+        Other situations are checked in `check_final()`.
+        """
+        if not isinstance(base_node, (Var, FuncBase, Decorator)):
+            return True
+        if base_node.is_final and (node.is_final or not isinstance(base_node, Var)):
+            # Give this error only for explicit override attempt with `Final`, or
+            # if we are overriding a final method with variable.
+            # Other override attempts will be flagged as assignment to constant
+            # in `check_final()`.
+            self.msg.cant_override_final(node.name(), base.name(), node)
+            return False
+        if node.is_final:
+            self.check_no_writable(node.name(), base_node, node)
+        return True
+
+    def check_no_writable(self, name: str, base_node: Optional[Node], ctx: Context) -> None:
+        """Check that a final variable doesn't override writeable attribute.
+
+        This is done to prevent situations like this:
+            class C:
+                attr = 1
+            class D(C):
+                attr: Final = 2
+
+            x: C = D()
+            x.attr = 3  # Oops!
+        """
+        if isinstance(base_node, Var):
+            ok = False
+        elif isinstance(base_node, OverloadedFuncDef) and base_node.is_property:
+            first_item = cast(Decorator, base_node.items[0])
+            ok = not first_item.var.is_settable_property
+        else:
+            ok = True
+        if not ok:
+            self.msg.final_cant_override_writable(name, ctx)
+
+    def get_final_context(self) -> bool:
+        """Check whether we a currently checking a final declaration."""
+        return self._is_final_def
+
+    @contextmanager
+    def enter_final_context(self, is_final_def: bool) -> Iterator[None]:
+        """Store whether the current checked assignment is a final declaration."""
+        old_ctx = self._is_final_def
+        self._is_final_def = is_final_def
+        try:
+            yield
+        finally:
+            self._is_final_def = old_ctx
+
+    def check_final(self, s: Union[AssignmentStmt, OperatorAssignmentStmt]) -> None:
+        """Check if this assignment does not assign to a final attribute.
+
+        This function performs the check only for name assignments at module
+        and class scope. The assignments to `obj.attr` and `Cls.attr` are checked
+        in checkmember.py.
+        """
+        if isinstance(s, AssignmentStmt):
+            lvs = self.flatten_lvalues(s.lvalues)
+        else:
+            lvs = [s.lvalue]
+        is_final_decl = s.is_final_def if isinstance(s, AssignmentStmt) else False
+        if is_final_decl and self.scope.active_class():
+            lv = lvs[0]
+            assert isinstance(lv, RefExpr)
+            assert isinstance(lv.node, Var)
+            if (lv.node.final_unset_in_class and not lv.node.final_set_in_init and
+                    not self.is_stub and  # It is OK to skip initializer in stub files.
+                    # Avoid extra error messages, if there is no type in Final[...],
+                    # then we already reported the error about missing r.h.s.
+                    isinstance(s, AssignmentStmt) and s.type is not None):
+                self.msg.final_without_value(s)
+        for lv in lvs:
+            if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
+                name = lv.node.name()
+                cls = self.scope.active_class()
+                if cls is not None:
+                    # Theses additional checks exist to give more error messages
+                    # even if the final attribute was overridden with a new symbol
+                    # (which is itself an error)...
+                    for base in cls.mro[1:]:
+                        sym = base.names.get(name)
+                        # We only give this error if base node is variable,
+                        # overriding final method will be caught in
+                        # `check_compatibility_final_super()`.
+                        if sym and isinstance(sym.node, Var):
+                            if sym.node.is_final and not is_final_decl:
+                                self.msg.cant_assign_to_final(name, sym.node.info is None, s)
+                                # ...but only once
+                                break
+                if lv.node.is_final and not is_final_decl:
+                    self.msg.cant_assign_to_final(name, lv.node.info is None, s)
 
     def check_assignment_to_multiple_lvalues(self, lvalues: List[Lvalue], rvalue: Expression,
                                              context: Context,
@@ -2520,7 +2668,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_operator_assignment_stmt(self,
                                        s: OperatorAssignmentStmt) -> None:
         """Type check an operator assignment statement, e.g. x += 1."""
-        lvalue_type = self.expr_checker.accept(s.lvalue)
+        if isinstance(s.lvalue, MemberExpr):
+            # Special case, some additional errors may be given for
+            # assignments to read-only or final attributes.
+            lvalue_type = self.expr_checker.visit_member_expr(s.lvalue, True)
+        else:
+            lvalue_type = self.expr_checker.accept(s.lvalue)
         inplace, method = infer_operator_assignment_method(lvalue_type, s.op)
         if inplace:
             # There is __ifoo__, treat as x = x.__ifoo__(y)
@@ -2534,6 +2687,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             expr.set_line(s)
             self.check_assignment(lvalue=s.lvalue, rvalue=expr,
                                   infer_lvalue_type=True, new_syntax=False)
+        self.check_final(s)
 
     def visit_assert_stmt(self, s: AssertStmt) -> None:
         self.expr_checker.accept(s.expr)
