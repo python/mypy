@@ -22,6 +22,7 @@ ATTR_BLACKLIST = {
     '__name__',
     '__class__',
     '__dict__',
+    '__path__',
 }
 
 # Instances of these types can't have references to other objects

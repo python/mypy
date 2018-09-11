@@ -124,6 +124,11 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     # Maybe add 'bool' to all fixtures?
                     literal_types.append(('True', AnyType(TypeOfAny.special_form)))
 
+                # We are running tests without 'list' in builtins.
+                # TODO: Maybe optionally choose an default fixture stub per test file?
+                if 'list' not in self.sem.globals:
+                    literal_types.append(('list', AnyType(TypeOfAny.special_form)))
+
                 for name, typ in literal_types:
                     v = Var(name, typ)
                     v._fullname = self.sem.qualified_name(name)

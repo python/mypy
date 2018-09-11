@@ -38,7 +38,8 @@ def module_to_json(m):
                     '__doc__',
                     '__name__',
                     '__builtins__',
-                    '__package__'):
+                    '__package__',
+                    '__path__'):
             continue
 
         if name == '__all__':
