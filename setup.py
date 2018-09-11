@@ -65,6 +65,8 @@ class CustomPythonBuild(build_py):
         build_py.run(self)
 
 
+cmdclass={'build_py': CustomPythonBuild}
+
 package_data = ['py.typed']
 
 package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.pyi'])
@@ -104,11 +106,12 @@ if USE_MYPYC:
     # Fix the paths to be full
     mypyc_targets = [os.path.join('mypy', x) for x in mypyc_targets]
 
-    from mypyc.build import mypycify
+    from mypyc.build import mypycify, MypycifyBuildExt
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '')
-    extra_dict = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
+    ext_modules = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
+    cmdclass['build_ext'] = MypycifyBuildExt
 else:
-    extra_dict = {}
+    ext_modules = []
 
 
 classifiers = [
@@ -123,8 +126,6 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
-extra_dict.setdefault('cmdclass', {})['build_py'] = CustomPythonBuild
-
 setup(name='mypy' if not USE_MYPYC else 'mypy-mypyc',
       version=version,
       description=description,
@@ -134,6 +135,7 @@ setup(name='mypy' if not USE_MYPYC else 'mypy-mypyc',
       url='http://www.mypy-lang.org/',
       license='MIT License',
       py_modules=[],
+      ext_modules=ext_modules,
       packages=['mypy', 'mypy.test', 'mypy.server', 'mypy.plugins'],
       package_data={'mypy': package_data},
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
@@ -141,6 +143,7 @@ setup(name='mypy' if not USE_MYPYC else 'mypy-mypyc',
                                         'dmypy=mypy.dmypy:main',
                                         ]},
       classifiers=classifiers,
+      cmdclass=cmdclass,
       install_requires = ['typed-ast >= 1.1.0, < 1.2.0',
                           'mypy_extensions >= 0.4.0, < 0.5.0',
                           ],
@@ -149,5 +152,4 @@ setup(name='mypy' if not USE_MYPYC else 'mypy-mypyc',
           'dmypy': 'psutil >= 5.4.0, < 5.5.0; sys_platform!="win32"',
       },
       include_package_data=True,
-      **extra_dict,
       )
