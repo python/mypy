@@ -17,7 +17,7 @@ SubtypeRelationship = Tuple[Instance, Instance]
 
 # A tuple encoding the specific conditions under which we performed the subtype check.
 # (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
-SubtypeKind = Tuple[Any, ...]
+SubtypeKind = Tuple[bool, ...]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
