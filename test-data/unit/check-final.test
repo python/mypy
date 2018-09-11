@@ -215,6 +215,18 @@ reveal_type(C().y)  # E: Revealed type is 'builtins.int'
 reveal_type(C().z)  # E: Revealed type is 'Any'
 [out]
 
+[case testFinalDefiningNoRhsSubclass]
+from typing import Final
+
+class A:
+    x: Final[int]  # E: Final name must be initialized with a value
+
+class B(A):
+    x = 1  # E: Cannot assign to final name "x"
+    def __init__(self) -> None:
+        self.x = 1  # E: Cannot assign to final attribute "x"
+[out]
+
 [case testFinalDefiningNoTypevarsExplicit]
 from typing import Final, TypeVar, Generic, Tuple, Any
 
