@@ -3,22 +3,23 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Any, Dict, Set, Tuple, Optional
+from typing import Any, Dict, Set, Tuple, Optional, Callable
 
 MYPY = False
 if MYPY:
     from typing import ClassVar
-    from mypy.subtypes import TypeParameterChecker
 from mypy.nodes import TypeInfo
-from mypy.types import Instance
+from mypy.types import Instance, Type
 from mypy.server.trigger import make_trigger
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship = Tuple[Instance, Instance]
 
+TypeParameterChecker = Callable[[Type, Type, int], bool]
+
 # A tuple encoding the specific conditions under which we performed the subtype check.
 # (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
-SubtypeKind = Tuple[str, Optional['TypeParameterChecker'], bool, bool, bool]
+SubtypeKind = Tuple[str, Optional[TypeParameterChecker], bool, bool, bool]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
