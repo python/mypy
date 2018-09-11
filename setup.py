@@ -106,6 +106,15 @@ if USE_MYPYC:
     # Fix the paths to be full
     mypyc_targets = [os.path.join('mypy', x) for x in mypyc_targets]
 
+    # This bit is super unfortunate: we want to use the mypy packaged
+    # with mypyc. It will arrange for the path to be setup so it can
+    # find it, but we've already imported parts, so we remove the
+    # modules that we've imported already, which will let the right
+    # versions be imported by mypyc.
+    del sys.modules['mypy']
+    del sys.modules['mypy.version']
+    del sys.modules['mypy.git']
+
     from mypyc.build import mypycify, MypycifyBuildExt
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '')
     ext_modules = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
