@@ -125,7 +125,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         self.ignore_declared_variance = ignore_declared_variance
         self.ignore_promotions = ignore_promotions
         self.check_type_parameter = (ignore_type_parameter if ignore_type_params else
-                                       check_type_parameter)
+                                     check_type_parameter)
         self._subtype_kind = SubtypeVisitor.build_subtype_kind(
             ignore_type_params=ignore_type_params,
             ignore_pos_arg_names=ignore_pos_arg_names,
