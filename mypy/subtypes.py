@@ -143,12 +143,6 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 ignore_declared_variance,
                 ignore_promotions)
 
-    def _lookup_cache(self, left: Instance, right: Instance) -> bool:
-        return TypeState.is_cached_subtype_check(self._subtype_kind, left, right)
-
-    def _record_cache(self, left: Instance, right: Instance) -> None:
-        TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
-
     def _is_subtype(self, left: Type, right: Type) -> bool:
         return is_subtype(left, right,
                           ignore_type_params=self.ignore_type_params,
@@ -196,12 +190,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TupleType) and right.fallback.type.is_enum:
             return self._is_subtype(left, right.fallback)
         if isinstance(right, Instance):
-            if self._lookup_cache(left, right):
+            if TypeState.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
             if not self.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and self._is_subtype(base._promote, self.right):
-                        self._record_cache(left, right)
+                        TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
             rname = right.type.fullname()
             # Always try a nominal check if possible,
@@ -214,7 +208,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                               for lefta, righta, tvar in
                               zip(t.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    self._record_cache(left, right)
+                    TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(left, right):
                 return True
@@ -1042,12 +1036,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def build_subtype_kind(*, ignore_promotions: bool = False) -> SubtypeKind:
         return (True, ignore_promotions)
 
-    def _lookup_cache(self, left: Instance, right: Instance) -> bool:
-        return TypeState.is_cached_subtype_check(self._subtype_kind, left, right)
-
-    def _record_cache(self, left: Instance, right: Instance) -> None:
-        TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
-
     def _is_proper_subtype(self, left: Type, right: Type) -> bool:
         return is_proper_subtype(left, right, ignore_promotions=self.ignore_promotions)
 
@@ -1080,12 +1068,12 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_instance(self, left: Instance) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if self._lookup_cache(left, right):
+            if TypeState.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
             if not self.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and self._is_proper_subtype(base._promote, right):
-                        self._record_cache(left, right)
+                        TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
 
             if left.type.has_base(right.type.fullname()):
@@ -1102,7 +1090,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 nominal = all(check_argument(ta, ra, tvar.variance) for ta, ra, tvar in
                               zip(left.args, right.args, right.type.defn.type_vars))
                 if nominal:
-                    self._record_cache(left, right)
+                    TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if (right.type.is_protocol and
                     is_protocol_implementation(left, right, proper_subtype=True)):
