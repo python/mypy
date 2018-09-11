@@ -180,6 +180,13 @@ def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost ty
 def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost type qualifier in assignments
 [out]
 
+[case testFinalDefiningNotInMethodExtensions]
+from typing_extensions import Final
+
+def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost type qualifier in assignments
+def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost type qualifier in assignments
+[out]
+
 [case testFinalDefiningNoRhs]
 from typing import Final
 x: Final  # E: Final name must be initialized with a value
@@ -309,13 +316,12 @@ def f() -> int:
 
 y = 1
 y: Final = 2  # E: Name 'y' already defined on line 10 \
-              # E: Final can't redefine an existing name
+              # E: Cannot redefine an existing name as final
 y = 3  # No error here, first definition wins
 
 z: Final = 1
 z: Final = 2  # E: Name 'z' already defined on line 14 \
-              # E: Final can't redefine an existing name \
-              # E: Can't assign to constant "z"
+              # E: Cannot redefine an existing name as final
 z = 3  # E: Can't assign to constant "z"
 [out]
 
@@ -327,8 +333,7 @@ from lib.mod import ID
 
 X = 1  # E: Can't assign to constant "X"
 ID: Final = 1  # E: Name 'ID' already defined (possibly by an import) \
-               # E: Final can't redefine an existing name \
-               # E: Can't assign to constant "ID"
+               # E: Cannot redefine an existing name as final
 ID = 1  # E: Can't assign to constant "ID"
 [file lib/__init__.pyi]
 from lib.const import X as X
@@ -352,8 +357,7 @@ def f() -> None:
     x = 1  # E: Can't assign to constant "x"
 
     y: Final = 1
-    y: Final = 2  # E: Final can't redefine an existing name \
-                  # E: Can't assign to constant "y"
+    y: Final = 2  # E: Cannot redefine an existing name as final
     def nested() -> None:
         nonlocal nl
         nl = 1  # E: Can't assign to constant "nl"
@@ -375,7 +379,7 @@ class C:
     x = 2  # E: Can't assign to constant "x"
 
     y = 1
-    y: Final = 2  # E: Final can't redefine an existing name
+    y: Final = 2  # E: Cannot redefine an existing name as final
 [out]
 
 [case testFinalReassignInstanceVarInit]
@@ -385,7 +389,7 @@ class C:
     def __init__(self) -> None:
         self.x: Final = 1
         self.y = 1
-        self.y: Final = 2  # E: Final can't redefine an existing name
+        self.y: Final = 2  # E: Cannot redefine an existing name as final
     def meth(self) -> None:
         self.x = 2  # E: Can't assign to final attribute "x"
 [out]
@@ -682,6 +686,29 @@ class B(A):
 [builtins fixtures/classmethod.pyi]
 [out]
 
+[case testFinalOverridingMethodRegular]
+from typing import final
+
+class B:
+    @final
+    def meth(self) -> None: ...
+class C(B):
+    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" (previously declared in base class "B")
+[out]
+
+[case testFinalOverridingMethodInitNew]
+from typing import final
+
+class B:
+    @final
+    def __init__(self) -> None: ...
+    @final
+    def __new__(cls) -> B: ...
+class C(B):
+    def __init__(self) -> None: ...  # E: Cannot override final attribute "__init__" (previously declared in base class "B")
+    def __new__(cls) -> B: ...  # E: Cannot override final attribute "__new__" (previously declared in base class "B")
+[out]
+
 [case testFinalOverridingMethodWithVar]
 from typing import final, Final, Any
 
@@ -898,4 +925,25 @@ class C(B):
 @final
 class F: ...
 class E(F): ...  # E: Can't inherit from final class "F"
+[out]
+
+[case testFinalCanUseTypingExtensionsAliased]
+from typing_extensions import final as f, Final as F
+
+x: F = 1
+x = 2  # E: Can't assign to constant "x"
+
+class S:
+    x: F = 1
+S.x = 2  # E: Can't assign to final attribute "x"
+
+class B:
+    @f
+    def meth(self) -> None: ...
+class C(B):
+    def meth(self) -> None: ...  # E: Cannot override final attribute "meth" (previously declared in base class "B")
+
+@f
+class D(C): ...
+class E(D): ...  # E: Can't inherit from final class "D"
 [out]

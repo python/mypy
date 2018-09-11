@@ -1260,6 +1260,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Check if method definition is compatible with a base class."""
         if base:
             name = defn.name()
+            base_attr = base.names.get(name)
+            if base_attr:
+                # First, check if we override a final (always an error, even with Any types).
+                if (isinstance(base_attr.node, (Var, FuncBase, Decorator))
+                        and base_attr.node.is_final):
+                    self.msg.cant_override_final(name, base.name(), defn)
+                # Second, final can't override anything writeable independently of types.
+                if defn.is_final:
+                    self.check_no_writeable(name, base_attr.node, defn)
+
+            # Check the type of override.
             if name not in ('__init__', '__new__', '__init_subclass__'):
                 # Check method override
                 # (__init__, __new__, __init_subclass__ are special).
@@ -1286,13 +1297,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 context = defn
             else:
                 context = defn.func
-
-            # First, check if we override a final (always an error, even with Any types).
-            if isinstance(base_attr.node, (Var, FuncBase, Decorator)) and base_attr.node.is_final:
-                self.msg.cant_override_final(name, base.name(), defn)
-            # Second, final can't override anything writeable independently of types.
-            if defn.is_final:
-                self.check_no_writeable(name, base_attr.node, defn)
 
             # Construct the type of the overriding method.
             if isinstance(defn, FuncBase):

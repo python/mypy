@@ -228,7 +228,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType(TypeOfAny.explicit)
-            elif fullname == 'typing.Final':
+            elif fullname in ('typing.Final', 'typing_extensions.Final'):
                 self.fail("Final can be only used as an outermost type qualifier"
                           " in assignments", t)
                 return AnyType(TypeOfAny.from_error)

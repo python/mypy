@@ -1693,9 +1693,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.unwrap_final(s)
 
-        def final_cb() -> None:
-            self.fail("Final can't redefine an existing name", s)
-            s.is_final_def = False
+        def final_cb(keep_final: bool) -> None:
+            self.fail("Cannot redefine an existing name as final", s)
+            if not keep_final:
+                s.is_final_def = False
 
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None,
@@ -1952,7 +1953,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False,
-                       final_cb: Optional[Callable[[], None]] = None) -> None:
+                       final_cb: Optional[Callable[[bool], None]] = None) -> None:
         """Analyze an lvalue or assignment target.
 
         Args:
@@ -1961,7 +1962,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
             final_cb: A callback to call in situation where a final declaration on `self`
-                overrides an existing name (only used by `analyze_member_lvalue`).
+                overrides an existing name.
         """
         if isinstance(lval, NameExpr):
             # Top-level definitions within some statements (at least while) are
@@ -2018,8 +2019,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 lval.kind = MDEF
                 lval.fullname = lval.name
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
-            elif explicit_type:
-                # Don't re-bind types
+            else:
+                # An existing name, try to find the original definition.
                 global_def = self.globals.get(lval.name)
                 if self.locals:
                     locals_last = self.locals[-1]
@@ -2032,15 +2033,21 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 type_def = self.type.names.get(lval.name) if self.type else None
 
                 original_def = global_def or local_def or type_def
-                self.name_already_defined(lval.name, lval, original_def)
+
+                # Redefining an existing name with final is always an error.
                 if final_cb is not None:
-                    final_cb()
-            else:
-                # Bind to an existing name.
-                if final_cb is not None:
-                    final_cb()
-                lval.accept(self)
-                self.check_lvalue_validity(lval.node, lval)
+                    # We avoid extra errors if the original definition is also final
+                    # by keeping the final status of this assignment.
+                    keep_final = (original_def and isinstance(original_def.node, Var) and
+                                  original_def.node.is_final)
+                    final_cb(keep_final)
+                if explicit_type:
+                    # Don't re-bind types
+                    self.name_already_defined(lval.name, lval, original_def)
+                else:
+                    # Bind to an existing name.
+                    lval.accept(self)
+                    self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval, explicit_type, final_cb=final_cb)
@@ -2098,7 +2105,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             node = self.type.get(lval.name)
             if cur_node and final_cb is not None:
                 # Overrides will be checked in type checker.
-                final_cb()
+                final_cb(False)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
