@@ -8,6 +8,7 @@ from typing import Any, Dict, Set, Tuple, Optional
 MYPY = False
 if MYPY:
     from typing import ClassVar
+    from mypy.subtypes import TypeParameterChecker
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
 from mypy.server.trigger import make_trigger
@@ -17,11 +18,11 @@ SubtypeRelationship = Tuple[Instance, Instance]
 
 # A tuple encoding the specific conditions under which we performed the subtype check.
 # (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
-SubtypeKind = Tuple[Any, ...]
+SubtypeKind = Tuple[str, Optional['TypeParameterChecker'], bool, bool, bool]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
-SubtypeCache = Dict[TypeInfo, Dict[SubtypeKind, Set[SubtypeRelationship]]]
+SubtypeCache = Dict[SubtypeKind, Dict[TypeInfo, Set[SubtypeRelationship]]]
 
 
 class TypeState:
@@ -83,7 +84,9 @@ class TypeState:
     @classmethod
     def reset_subtype_caches_for(cls, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo."""
-        cls._subtype_caches.setdefault(info, dict()).clear()
+        for cache in cls._subtype_caches.values():
+            if info in cache:
+                cache[info].clear()
 
     @classmethod
     def reset_all_subtype_caches_for(cls, info: TypeInfo) -> None:
@@ -93,14 +96,19 @@ class TypeState:
 
     @classmethod
     def is_cached_subtype_check(cls, kind: SubtypeKind, left: Instance, right: Instance) -> bool:
-        subtype_kinds = cls._subtype_caches.setdefault(right.type, dict())
-        return (left, right) in subtype_kinds.setdefault(kind, set())
+        if kind not in cls._subtype_caches:
+            return False
+        cache = cls._subtype_caches[kind]
+        info = right.type
+        if info not in cache:
+            return False
+        return (left, right) in cache[info]
 
     @classmethod
     def record_subtype_cache_entry(cls, kind: SubtypeKind,
                                    left: Instance, right: Instance) -> None:
-        subtype_kinds = cls._subtype_caches.setdefault(right.type, dict())
-        subtype_kinds.setdefault(kind, set()).add((left, right))
+        cache = cls._subtype_caches.setdefault(kind, dict())
+        cache.setdefault(right.type, set()).add((left, right))
 
     @classmethod
     def reset_protocol_deps(cls) -> None:

@@ -89,9 +89,11 @@ def is_subtype(left: Type, right: Type,
                                       ignore_promotions=ignore_promotions))
 
 
+def ignore_tvars(s: Type, t: Type, v: int) -> bool:
+    return True
+
+
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
-    def ignore_tvars(s: Type, t: Type, v: int) -> bool:
-        return True
     return is_subtype(left, right, ignore_tvars)
 
 
@@ -1033,7 +1035,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     @staticmethod
     def build_subtype_kind(*, ignore_promotions: bool = False) -> SubtypeKind:
-        return ('subtype_proper', ignore_promotions)
+        return ('subtype_proper', None, False, False, ignore_promotions)
 
     def _lookup_cache(self, left: Instance, right: Instance) -> bool:
         return TypeState.is_cached_subtype_check(self._subtype_kind, left, right)
