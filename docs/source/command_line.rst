@@ -126,6 +126,8 @@ imports.
     compliant packages. Adding this flag will disable this behavior.
 
 
+.. _platform-configuration:
+
 Platform configuration
 **********************
 
@@ -208,8 +210,6 @@ The following options are available:
     ``dict``) become disallowed as you should use their aliases from the typing
     module (such as ``List[int]`` and ``Dict[str, str]``).
 
-.. _disallow-subclassing-any:
-
 ``--disallow-subclassing-any`` 
     This flag reports an error whenever a class subclasses a value of 
     type ``Any``.  This may occur when the base class is imported from 
@@ -239,8 +239,6 @@ definitions or calls.
     This flag reports an error whenever it encounters a function definition
     without type annotations.
 
-.. _disallow-incomplete-defs:
-
 ``--disallow-incomplete-defs`` 
     This flag reports an error whenever it encounters a partly annotated
     function definition.
@@ -258,6 +256,7 @@ definitions or calls.
     This flag reports an error whenever a function with type annotations
     is decorated with a decorator without annotations.
 
+.. _none-and-optional-handling:
 
 None and Optional handling
 **************************
@@ -299,6 +298,7 @@ For more details, see :ref:`no_strict_optional`.
     mypy 0.600, and in previous versions it had to be explicitly enabled
     using ``--strict-optional`` (which is still accepted).
 
+.. _configuring-warnings:
 
 Configuring warnings
 ********************
@@ -352,6 +352,8 @@ of the above sections.
 
     Note: the exact list of flags enabled by running ``--strict`` may change
     over time.
+
+.. _configuring-error-messages:
 
 Configuring error messages
 **************************
@@ -439,6 +441,8 @@ beyond what incremental mode can offer, try running mypy in
 
     We recommend that you try using the :ref:`mypy_daemon` before
     attempting to use this feature.
+
+.. _advanced-flags:
 
 Advanced flags
 **************
