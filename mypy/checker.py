@@ -1994,8 +1994,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             lv = lvs[0]
             assert isinstance(lv, RefExpr)
             assert isinstance(lv.node, Var)
-            if (lv.node.final_unset_in_class and not
-                    lv.node.final_set_in_init and not self.is_stub):
+            if (lv.node.final_unset_in_class and not lv.node.final_set_in_init and
+                    not self.is_stub and  # It is OK to skip initializer in stub files.
+                    # Avoid extra error messages, if there is no type in Final[...],
+                    # then we already reported the error about missing r.h.s.
+                    s.type is not None):
                 self.msg.final_without_value(s)
         for lv in lvs:
             if isinstance(lv, RefExpr) and isinstance(lv.node, Var):

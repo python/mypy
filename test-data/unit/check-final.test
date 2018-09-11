@@ -198,16 +198,13 @@ def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qu
 
 [case testFinalDefiningNoRhs]
 from typing import Final
-x: Final  # E: Type in Final[...] can only be omitted if there is an initializer \
-          # E: Final name must be initialized with a value
+x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
 y: Final[int]  # E: Final name must be initialized with a value
 class C:
-    x: Final  # E: Type in Final[...] can only be omitted if there is an initializer \
-              # E: Final name must be initialized with a value
+    x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
     y: Final[int]  # E: Final name must be initialized with a value
     def __init__(self) -> None:
-        self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer \
-                       # E: Final name must be initialized with a value
+        self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer
 reveal_type(x)  # E: Revealed type is 'Any'
 reveal_type(y)  # E: Revealed type is 'builtins.int'
 reveal_type(C().x)  # E: Revealed type is 'Any'
@@ -324,6 +321,16 @@ class D(C):
     x = 4  # E: Cannot assign to final name "x"
 d: D
 d.x = 5  # E: Cannot assign to final attribute "x"
+[out]
+
+[case testFinalDelayedDefinitionOtherMethod]
+from typing import Final
+
+class C:
+    x: Final[int]  # E: Final name must be initialized with a value
+
+    def meth(self) -> None:
+        self.x = 2  # E: Cannot assign to final attribute "x"
 [out]
 
 -- Reassignments

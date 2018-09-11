@@ -1750,9 +1750,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         assert isinstance(s.type, UnboundType)
         if len(s.type.args) > 1:
             self.fail("Final[...] takes at most one type argument", s.type)
+        invalid_bare_final = False
         if not s.type.args:
             s.type = None
             if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+                invalid_bare_final = True
                 self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
             s.type = s.type.args[0]
@@ -1768,7 +1770,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.msg.protocol_members_cant_be_final(s)
         if (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and
                 not self.is_stub_file and not self.is_class_scope()):
-            self.msg.final_without_value(s)
+            if not invalid_bare_final:  # Skip extra error messages.
+                self.msg.final_without_value(s)
         return
 
     def check_final_implicit_def(self, s: AssignmentStmt) -> None:
