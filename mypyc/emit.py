@@ -3,14 +3,16 @@
 from collections import OrderedDict
 from typing import List, Set, Dict, Optional, List, Callable, Union
 
-from mypyc.common import REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX
+from mypyc.common import (
+    REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX, NATIVE_PREFIX, FAST_ISINSTANCE_MAX_SUBCLASSES
+)
 from mypyc.ops import (
     Any, AssignmentTarget, Environment, BasicBlock, Value, Register, RType, RTuple, RInstance,
     RUnion, RPrimitive, is_int_rprimitive, is_short_int_rprimitive,
     is_float_rprimitive, is_bool_rprimitive,
     short_name, is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive, ClassIR,
-    FuncIR, FuncDecl, int_rprimitive, is_optional_type, optional_value_type
+    FuncIR, FuncDecl, int_rprimitive, is_optional_type, optional_value_type, all_concrete_classes
 )
 from mypyc.namegen import NameGenerator
 from mypyc.sametype import is_same_type
@@ -361,13 +363,20 @@ class Emitter:
         elif isinstance(typ, RInstance):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
-            if typ.class_ir.children:
+            concrete = all_concrete_classes(typ.class_ir)
+            n_types = len(concrete)
+            if n_types > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
                 check = '(PyObject_TypeCheck({}, {}))'.format(
                     src, self.type_struct_name(typ.class_ir))
             else:
-                # If the class has no children, just check the type directly
-                check = '(Py_TYPE({}) == {})'.format(
-                    src, self.type_struct_name(typ.class_ir))
+                assert concrete, "Can only cast to a concrete class"
+                full_str = '(Py_TYPE({src}) == {targets[0]})'
+                for i in range(1, n_types):
+                    full_str += ' || (Py_TYPE({src}) == {targets[%d]})' % i
+                if n_types > 1:
+                    full_str = '(%s)' % full_str
+                check = full_str.format(
+                    src=src, targets=[self.type_struct_name(ir) for ir in concrete])
             self.emit_arg_check(src, dest, typ, check, optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
@@ -445,7 +454,8 @@ class Emitter:
             'goto {};'.format(out_label),
             '}')
         for i, item in enumerate(typ.types):
-            self.emit_cast('PyTuple_GetItem({}, {})'.format(src, i),
+            # Since we did the checks above this should never fail
+            self.emit_cast('PyTuple_GET_ITEM({}, {})'.format(src, i),
                            dest,
                            item,
                            declare_dest=False,

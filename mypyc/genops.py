@@ -47,7 +47,8 @@ from mypy.checkexpr import map_actuals_to_formals
 
 from mypyc.common import (
     ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, TEMP_ATTR_NAME, LAMBDA_NAME,
-    MAX_SHORT_INT, TOP_LEVEL_NAME, SELF_NAME, decorator_helper_name
+    MAX_SHORT_INT, TOP_LEVEL_NAME, SELF_NAME, decorator_helper_name,
+    FAST_ISINSTANCE_MAX_SUBCLASSES
 )
 from mypyc.prebuildvisitor import PreBuildVisitor
 from mypyc.ops import (
@@ -62,7 +63,7 @@ from mypyc.ops import (
     is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
     FUNC_NORMAL, FUNC_STATICMETHOD, FUNC_CLASSMETHOD,
-    RUnion, is_optional_type, optional_value_type, is_short_int_rprimitive,
+    RUnion, is_optional_type, optional_value_type, is_short_int_rprimitive, all_concrete_classes
 )
 from mypyc.ops_primitive import binary_ops, unary_ops, func_ops, method_ops, name_ref_ops
 from mypyc.ops_int import unsafe_short_add
@@ -108,7 +109,8 @@ def build_ir(modules: List[MypyFile],
     # Collect all class mappings so that we can bind arbitrary class name
     # references even if there are import cycles.
     for module, cdef in classes:
-        class_ir = ClassIR(cdef.name, module.fullname(), is_trait(cdef))
+        class_ir = ClassIR(cdef.name, module.fullname(), is_trait(cdef),
+                           is_abstract=cdef.info.is_abstract)
         mapper.type_to_ir[cdef.info] = class_ir
 
     # Populate structural information in class IR.
@@ -1918,7 +1920,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             more_types = i < len(fast_items) - 1 or rest_items
             if more_types:
                 # We are not at the final item so we need one more branch
-                op = self.isinstance(obj, item, line)
+                op = self.isinstance_native(obj, item.class_ir, line)
                 true_block, false_block = BasicBlock(), BasicBlock()
                 self.add_bool_branch(op, true_block, false_block)
                 self.activate_block(true_block)
@@ -1940,11 +1942,42 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.activate_block(exit_block)
         return result
 
-    def isinstance(self, obj: Value, rtype: RInstance, line: int) -> Value:
-        class_ir = rtype.class_ir
-        fullname = '%s.%s' % (class_ir.module_name, class_ir.name)
-        type_obj = self.load_native_type_object(fullname)
-        return self.primitive_op(fast_isinstance_op, [obj, type_obj], line)
+    def isinstance_helper(self, obj: Value, class_irs: List[ClassIR], line: int) -> Value:
+        """Fast path for isinstance() that checks against a list of native classes."""
+        if not class_irs:
+            return self.primitive_op(false_op, [], line)
+        ret = self.isinstance_native(obj, class_irs[0], line)
+        for class_ir in class_irs[1:]:
+            def other() -> Value:
+                return self.isinstance_native(obj, class_ir, line)
+            ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
+        return ret
+
+    def isinstance_native(self, obj: Value, class_ir: ClassIR, line: int) -> Value:
+        """Fast isinstance() check for a native class.
+
+        If there three or less concrete (non-trait) classes among the class and all
+        its children, use even faster type comparison checks `type(obj) is typ`.
+        """
+        concrete = all_concrete_classes(class_ir)
+        if len(concrete) > FAST_ISINSTANCE_MAX_SUBCLASSES + 1:
+            return self.primitive_op(fast_isinstance_op,
+                                     [obj, self.get_native_type(class_ir)],
+                                     line)
+        if not concrete:
+            # There can't be any concrete instance that matches this.
+            return self.primitive_op(false_op, [], line)
+        type_obj = self.get_native_type(concrete[0])
+        ret = self.primitive_op(type_is_op, [obj, type_obj], line)
+        for c in concrete[1:]:
+            def other() -> Value:
+                return self.primitive_op(type_is_op, [obj, self.get_native_type(c)], line)
+            ret = self.shortcircuit_helper('or', bool_rprimitive, lambda: ret, other, line)
+        return ret
+
+    def get_native_type(self, cls: ClassIR) -> Value:
+        fullname = '%s.%s' % (cls.module_name, cls.name)
+        return self.load_native_type_object(fullname)
 
     def py_get_attr(self, obj: Value, attr: str, line: int) -> Value:
         key = self.load_static_unicode(attr)
@@ -2111,6 +2144,15 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                                        lambda x: self.unary_op(x, 'not', expr.line),
                                        false_op)
 
+        # Special case builtins.isinstance
+        if (callee.fullname == 'builtins.isinstance' and
+                len(expr.args) == 2 and
+                expr.arg_kinds == [ARG_POS, ARG_POS] and
+                isinstance(expr.args[1], (RefExpr, TupleExpr))):
+            irs = self.flatten_classes(expr.args[1])
+            if irs is not None:
+                return self.isinstance_helper(self.accept(expr.args[0]), irs, expr.line)
+
         # Gen the argument values
         arg_values = [self.accept(arg) for arg in expr.args]
 
@@ -2122,18 +2164,6 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             if isinstance(expr_rtype, RTuple):
                 # len() of fixed-length tuple can be trivially determined statically.
                 return self.add(LoadInt(len(expr_rtype.types)))
-
-        # Special case builtins.isinstance
-        if (callee.fullname == 'builtins.isinstance'
-                and len(expr.args) == 2
-                and expr.arg_kinds == [ARG_POS, ARG_POS]
-                and isinstance(expr.args[1], RefExpr)
-                and isinstance(expr.args[1].node, TypeInfo)
-                and self.is_native_module_ref_expr(expr.args[1])):
-            # Special case native isinstance() checks as this makes them much faster.
-            ir = self.mapper.type_to_ir.get(expr.args[1].node)
-            op = type_is_op if ir and not ir.children else fast_isinstance_op
-            return self.primitive_op(op, arg_values, expr.line)
 
         # Special case builtins.globals
         if (callee.fullname == 'builtins.globals'
@@ -2161,6 +2191,29 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         function = self.accept(callee)
         return self.py_call(function, arg_values, expr.line,
                             arg_kinds=expr.arg_kinds, arg_names=expr.arg_names)
+
+    def flatten_classes(self, arg: Union[RefExpr, TupleExpr]) -> Optional[List[ClassIR]]:
+        """Flatten classes in isinstance(obj, (A, (B, C))).
+
+        If at least one item is not a reference to a native class, return None.
+        """
+        if isinstance(arg, RefExpr):
+            if isinstance(arg.node, TypeInfo) and self.is_native_module_ref_expr(arg):
+                ir = self.mapper.type_to_ir.get(arg.node)
+                if ir:
+                    return [ir]
+            return None
+        else:
+            res = []  # type: List[ClassIR]
+            for item in arg.items:
+                if isinstance(item, (RefExpr, TupleExpr)):
+                    item_part = self.flatten_classes(item)
+                    if item_part is None:
+                        return None
+                    res.extend(item_part)
+                else:
+                    return None
+            return res
 
     def missing_args_to_error_values(self,
                                      args: List[Optional[Value]],

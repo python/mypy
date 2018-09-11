@@ -510,6 +510,150 @@ L2:
     r3 = B()
     return r3
 
+[case testIsInstanceTuple]
+from typing import Union
+class R: pass
+class A(R): pass
+class B(R): pass
+class C(R): pass
+
+def f(x: R) -> Union[A, B]:
+    if isinstance(x, (A, B)):
+        return x
+    return A()
+[out]
+def f(x):
+    x :: R
+    r0 :: object
+    r1, r2 :: bool
+    r3 :: object
+    r4 :: bool
+    r5 :: union[A, B]
+    r6 :: A
+L0:
+    r0 = __main__.A :: type
+    r1 = type_is x, r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = r1
+    goto L3
+L2:
+    r3 = __main__.B :: type
+    r4 = type_is x, r3
+    r2 = r4
+L3:
+    if r2 goto L4 else goto L5 :: bool
+L4:
+    r5 = cast(union[A, B], x)
+    return r5
+L5:
+    r6 = A()
+    return r6
+
+[case testIsInstanceFewSubclasses]
+class R: pass
+class A(R): pass
+
+def f(x: object) -> R:
+    if isinstance(x, R):
+        return x
+    return A()
+[out]
+def f(x):
+    x, r0 :: object
+    r1, r2 :: bool
+    r3 :: object
+    r4 :: bool
+    r5 :: R
+    r6 :: A
+L0:
+    r0 = __main__.A :: type
+    r1 = type_is x, r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = r1
+    goto L3
+L2:
+    r3 = __main__.R :: type
+    r4 = type_is x, r3
+    r2 = r4
+L3:
+    if r2 goto L4 else goto L5 :: bool
+L4:
+    r5 = cast(R, x)
+    return r5
+L5:
+    r6 = A()
+    return r6
+
+[case testIsInstanceFewSubclassesTrait]
+from mypy_extensions import trait
+class B: pass
+@trait
+class R: pass
+class A(B, R): pass
+class C(B, R): pass
+
+def f(x: object) -> R:
+    if isinstance(x, R):
+        return x
+    return A()
+[out]
+def f(x):
+    x, r0 :: object
+    r1, r2 :: bool
+    r3 :: object
+    r4 :: bool
+    r5 :: R
+    r6 :: A
+L0:
+    r0 = __main__.A :: type
+    r1 = type_is x, r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = r1
+    goto L3
+L2:
+    r3 = __main__.C :: type
+    r4 = type_is x, r3
+    r2 = r4
+L3:
+    if r2 goto L4 else goto L5 :: bool
+L4:
+    r5 = cast(R, x)
+    return r5
+L5:
+    r6 = A()
+    return r6
+
+
+[case testIsInstanceManySubclasses]
+class R: pass
+class A(R): pass
+class B(R): pass
+class C(R): pass
+
+def f(x: object) -> R:
+    if isinstance(x, R):
+        return x
+    return B()
+[out]
+def f(x):
+    x, r0 :: object
+    r1 :: bool
+    r2 :: R
+    r3 :: B
+L0:
+    r0 = __main__.R :: type
+    r1 = isinstance x, r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = cast(R, x)
+    return r2
+L2:
+    r3 = B()
+    return r3
+
 [case testFakeSuper]
 class A:
     def __init__(self, x: int) -> None:

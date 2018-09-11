@@ -336,7 +336,7 @@ def get(o):
     r8 :: None
 L0:
     r1 = __main__.A :: type
-    r2 = isinstance o, r1
+    r2 = type_is o, r1
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = cast(A, o)
@@ -414,7 +414,7 @@ def g(o):
 L0:
     r0 = 1
     r2 = __main__.A :: type
-    r3 = isinstance o, r2
+    r3 = type_is o, r2
     if r3 goto L1 else goto L2 :: bool
 L1:
     r4 = cast(A, o)
@@ -424,7 +424,7 @@ L1:
     goto L5
 L2:
     r7 = __main__.B :: type
-    r8 = isinstance o, r7
+    r8 = type_is o, r7
     if r8 goto L3 else goto L4 :: bool
 L3:
     r9 = cast(B, o)
@@ -475,7 +475,7 @@ def f(o):
     r9 :: None
 L0:
     r1 = __main__.A :: type
-    r2 = isinstance o, r1
+    r2 = type_is o, r1
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = cast(A, o)
@@ -505,7 +505,7 @@ def g(o):
     r9 :: None
 L0:
     r1 = __main__.A :: type
-    r2 = isinstance o, r1
+    r2 = type_is o, r1
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = cast(A, o)
