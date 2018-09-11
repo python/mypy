@@ -20,7 +20,7 @@ from mypy.nodes import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.sametypes import is_same_type
-from mypy.typestate import TypeState, SubtypeKind, TypeParameterChecker
+from mypy.typestate import TypeState, SubtypeKind
 
 from mypy import experiments
 
@@ -29,6 +29,8 @@ from mypy import experiments
 IS_SETTABLE = 1
 IS_CLASSVAR = 2
 IS_CLASS_OR_STATIC = 3
+
+TypeParameterChecker = Callable[[Type, Type, int], bool]
 
 
 def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
@@ -1032,7 +1034,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     @staticmethod
     def build_subtype_kind(*, ignore_promotions: bool = False) -> SubtypeKind:
-        return ('subtype_proper', None, False, False, ignore_promotions)
+        return ('subtype_proper', ignore_promotions)
 
     def _lookup_cache(self, left: Instance, right: Instance) -> bool:
         return TypeState.is_cached_subtype_check(self._subtype_kind, left, right)
