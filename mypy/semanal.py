@@ -1752,6 +1752,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.fail("Final[...] takes at most one type argument", s.type)
         if not s.type.args:
             s.type = None
+            if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+                self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
         else:
             s.type = s.type.args[0]
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):

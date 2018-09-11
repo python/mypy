@@ -63,8 +63,8 @@ from typing import Final, Any
 
 x = y = 1  # type: Final[float]  # E: Invalid final declaration
 z: Any
-z[0]: Final  # E: Unexpected type declaration \
-             # E: Invalid final declaration
+z[0]: Final[int]  # E: Unexpected type declaration \
+                  # E: Invalid final declaration
 [out]
 
 [case testFinalDefiningInstanceVarStubs]
@@ -73,13 +73,13 @@ import mod
 [file mod.pyi]
 from typing import Final
 
-x: Final
+x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
 y: Final[int]
 class C:
-    x: Final
+    x: Final  # E: Type in Final[...] can only be omitted if there is an initializer
     y: Final[int]
     def __init__(self) -> None:
-        self.z: Final
+        self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer
 
 reveal_type(x)  # E: Revealed type is 'Any'
 reveal_type(C.x)  # E: Revealed type is 'Any'
@@ -198,13 +198,16 @@ def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qu
 
 [case testFinalDefiningNoRhs]
 from typing import Final
-x: Final  # E: Final name must be initialized with a value
+x: Final  # E: Type in Final[...] can only be omitted if there is an initializer \
+          # E: Final name must be initialized with a value
 y: Final[int]  # E: Final name must be initialized with a value
 class C:
-    x: Final  # E: Final name must be initialized with a value
+    x: Final  # E: Type in Final[...] can only be omitted if there is an initializer \
+              # E: Final name must be initialized with a value
     y: Final[int]  # E: Final name must be initialized with a value
     def __init__(self) -> None:
-        self.z: Final  # E: Final name must be initialized with a value
+        self.z: Final  # E: Type in Final[...] can only be omitted if there is an initializer \
+                       # E: Final name must be initialized with a value
 reveal_type(x)  # E: Revealed type is 'Any'
 reveal_type(y)  # E: Revealed type is 'builtins.int'
 reveal_type(C().x)  # E: Revealed type is 'Any'
@@ -340,10 +343,9 @@ from typing import Final
 from lib import X
 from lib.mod import ID
 
-X = 1  # E: Cannot assign to final name "X"
-ID: Final = 1  # E: Name 'ID' already defined (possibly by an import) \
-               # E: Cannot redefine an existing name as final
-ID = 1  # E: Cannot assign to final name "ID"
+X = 1  # Error!
+ID: Final = 1  # Two errors!
+ID = 1  # Error!
 [file lib/__init__.pyi]
 from lib.const import X as X
 
@@ -353,9 +355,15 @@ from lib.const import *
 [file lib/const.pyi]
 from typing import Final
 
-ID: Final
+ID: Final  # Error!
 X: Final[int]
 [out]
+tmp/lib/const.pyi:3: error: Type in Final[...] can only be omitted if there is an initializer
+main:6: error: Cannot assign to final name "X"
+main:7: error: Name 'ID' already defined (possibly by an import)
+main:7: error: Cannot redefine an existing name as final
+main:8: error: Cannot assign to final name "ID"
+
 
 [case testFinalReassignFuncScope]
 from typing import Final
