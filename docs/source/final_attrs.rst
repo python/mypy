@@ -43,11 +43,11 @@ neither of the above use cases can be solved with it.
 .. note::
 
    This is an experimental feature. Some details might change in later
-   versions of mypy. The final qualifiers are available in ``typing_extensions``
-   module.
+   versions of mypy. The final qualifiers are available in the
+   ``typing_extensions`` package available on PyPI.
 
-Definition syntax
-*****************
+Syntax variants
+***************
 
 The ``typing_extensions.Final`` qualifier indicates that a given name or
 attribute should never be re-assigned, re-defined, nor overridden. It can be
@@ -64,10 +64,10 @@ used in one of these forms:
   classes this is *not* the same as ``Final[Any]``. Here mypy will infer
   type ``int``.
 
-* In stub files one can omit the right hand side and just write
+* In stub files you can omit the right hand side and just write
   ``ID: Final[float]``.
 
-* Finally, one can define ``self.id: Final = 1`` (also with a type argument),
+* Finally, you can define ``self.id: Final = 1`` (also with a type argument),
   but this is allowed *only* in ``__init__`` methods.
 
 Definition rules
@@ -104,14 +104,15 @@ The are two rules that should be always followed when defining a final name:
          ID = 1
          ID: Final = 2  # Error!
 
-* A final attribute declared in class body without r.h.s. must be initialized
-  in the ``__init__`` method (one can skip initializer in stub files):
+* A final attribute declared in class body without an initializer must
+  be initialized in the ``__init__`` method (you can skip the initializer
+  in stub files):
 
   .. code-block:: python
 
      class SomeCls:
-         x: Final
-         y: Final  # Error: final attribute without an initializer
+         x: Final[int]
+         y: Final[int]  # Error: final attribute without an initializer
          def __init__(self) -> None:
              self.x = 1  # Good
 

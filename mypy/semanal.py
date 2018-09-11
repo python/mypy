@@ -2049,8 +2049,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 if final_cb is not None:
                     # We avoid extra errors if the original definition is also final
                     # by keeping the final status of this assignment.
-                    keep_final = (original_def and isinstance(original_def.node, Var) and
-                                  original_def.node.is_final)
+                    keep_final = bool(original_def and isinstance(original_def.node, Var) and
+                                      original_def.node.is_final)
                     final_cb(keep_final)
                 if explicit_type:
                     # Don't re-bind types
@@ -2100,7 +2100,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                     explicit_type=explicit_type)
 
     def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False,
-                              final_cb: Optional[Callable[[], None]] = None) -> None:
+                              final_cb: Optional[Callable[[bool], None]] = None) -> None:
         """Analyze lvalue that is a member expression.
 
         Arguments:
