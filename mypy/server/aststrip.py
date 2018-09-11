@@ -116,6 +116,8 @@ class NodeStripVisitor(TraverserVisitor):
             return
         node.expanded = []
         node.type = node.unanalyzed_type
+        # All nodes are non-final after the first pass.
+        node.is_final = False
         # Type variable binder binds tvars before the type is analyzed.
         # It should be refactored, before that we just undo this change here.
         # TODO: this will be not necessary when #4814 is fixed.
@@ -130,6 +132,9 @@ class NodeStripVisitor(TraverserVisitor):
         for expr in node.decorators:
             expr.accept(self)
         if self.recurse_into_functions:
+            # Only touch the final status if we re-process
+            # a method target
+            node.var.is_final = False
             node.func.accept(self)
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
@@ -137,6 +142,7 @@ class NodeStripVisitor(TraverserVisitor):
             return
         # Revert change made during semantic analysis pass 2.
         node.items = node.unanalyzed_items.copy()
+        node.is_final = False
         super().visit_overloaded_func_def(node)
 
     @contextlib.contextmanager
@@ -165,6 +171,7 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
+        node.is_final_def = False
         if self.type and not self.is_class_body:
             for lvalue in node.lvalues:
                 self.process_lvalue_in_method(lvalue)
@@ -252,6 +259,7 @@ class NodeStripVisitor(TraverserVisitor):
         # [*] although we always strip type, thus returning the Var to the state after pass 1.
         if isinstance(node.node, Var):
             node.node.type = None
+            self._reset_var_final_flags(node.node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
@@ -266,7 +274,15 @@ class NodeStripVisitor(TraverserVisitor):
             # definition.
             self.strip_class_attr(node.name)
             node.def_var = None
+        if isinstance(node.node, Var):
+            self._reset_var_final_flags(node.node)
         super().visit_member_expr(node)
+
+    def _reset_var_final_flags(self, v: Var) -> None:
+        v.is_final = False
+        v.final_unset_in_class = False
+        v.final_set_in_init = False
+        v.final_value = None
 
     def visit_index_expr(self, node: IndexExpr) -> None:
         node.analyzed = None  # was a type alias

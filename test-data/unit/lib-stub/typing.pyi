@@ -16,6 +16,7 @@ NamedTuple = 0
 Type = 0
 no_type_check = 0
 ClassVar = 0
+Final = 0
 NoReturn = 0
 NewType = 0
 
@@ -54,5 +55,8 @@ class Mapping(Generic[T_contra, T_co]):
     def __getitem__(self, key: T_contra) -> T_co: pass
 
 def runtime(cls: type) -> type: pass
+
+# This is an unofficial extension.
+def final(meth: T) -> T: pass
 
 TYPE_CHECKING = 1

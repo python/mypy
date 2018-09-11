@@ -614,6 +614,24 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # redefinitions already.
             return
 
+        # Check final status, if the implementation is marked
+        # as @final (or the first overload in stubs), then the whole overloaded
+        # definition if @final.
+        if any(item.is_final for item in defn.items):
+            # We anyway mark it as final because it was probably the intention.
+            defn.is_final = True
+            # Only show the error once per overload
+            bad_final = next(ov for ov in defn.items if ov.is_final)
+            if not self.is_stub_file:
+                self.fail("@final should be applied only to overload implementation",
+                          bad_final)
+            elif any(item.is_final for item in defn.items[1:]):
+                bad_final = next(ov for ov in defn.items[1:] if ov.is_final)
+                self.fail("In a stub file @final must be applied only to the first overload",
+                          bad_final)
+        if defn.impl is not None and defn.impl.is_final:
+            defn.is_final = True
+
         # We know this is an overload def -- let's handle classmethod and staticmethod
         class_status = []
         static_status = []
@@ -855,12 +873,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_class_decorator(self, defn: ClassDef, decorator: Expression) -> None:
         decorator.accept(self)
-        if (isinstance(decorator, RefExpr) and
-                decorator.fullname in ('typing.runtime', 'typing_extensions.runtime')):
-            if defn.info.is_protocol:
-                defn.info.runtime_protocol = True
-            else:
-                self.fail('@runtime can only be used with protocol classes', defn)
+        if isinstance(decorator, RefExpr):
+            if decorator.fullname in ('typing.runtime', 'typing_extensions.runtime'):
+                if defn.info.is_protocol:
+                    defn.info.runtime_protocol = True
+                else:
+                    self.fail('@runtime can only be used with protocol classes', defn)
+            elif decorator.fullname in ('typing.final',
+                                        'typing_extensions.final'):
+                defn.info.is_final = True
 
     def calculate_abstract_status(self, typ: TypeInfo) -> None:
         """Calculate abstract status of a class.
@@ -1469,6 +1490,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # 'from m import x as x' exports x in a stub file.
                 module_public = not self.is_stub_file or as_id is not None
                 module_hidden = not module_public and possible_module_id not in self.modules
+                # NOTE: we take the original node even for final `Var`s. This is to support
+                # a common pattern when constants are re-exported (same applies to import *).
                 symbol = SymbolTableNode(node.kind, node.node,
                                          module_public=module_public,
                                          module_hidden=module_hidden)
@@ -1668,8 +1691,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.cur_mod_node.alias_deps[target].update(aliases_used)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
+        self.unwrap_final(s)
+
+        def final_cb(keep_final: bool) -> None:
+            self.fail("Cannot redefine an existing name as final", s)
+            if not keep_final:
+                s.is_final_def = False
+
         for lval in s.lvalues:
-            self.analyze_lvalue(lval, explicit_type=s.type is not None)
+            self.analyze_lvalue(lval, explicit_type=s.type is not None,
+                                final_cb=final_cb if s.is_final_def else None)
+        self.check_final_implicit_def(s)
         self.check_classvar(s)
         s.rvalue.accept(self)
         if s.type:
@@ -1697,6 +1729,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.named_tuple_analyzer.process_namedtuple_definition(s, self.is_func_scope())
         self.typed_dict_analyzer.process_typeddict_definition(s, self.is_func_scope())
         self.enum_call_analyzer.process_enum_call(s, self.is_func_scope())
+        self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
 
@@ -1704,6 +1737,108 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 s.lvalues[0].name == '__all__' and s.lvalues[0].kind == GDEF and
                 isinstance(s.rvalue, (ListExpr, TupleExpr))):
             self.add_exports(s.rvalue.items)
+
+    def unwrap_final(self, s: AssignmentStmt) -> None:
+        """Strip Final[...] if present in an assignment.
+
+        This is done to invoke type inference during type checking phase for this
+        assignment. Also, Final[...] desn't affect type in any way, it is rather an
+        access qualifier for given `Var`.
+        """
+        if not s.type or not self.is_final_type(s.type):
+            return
+        assert isinstance(s.type, UnboundType)
+        if len(s.type.args) > 1:
+            self.fail("Final[...] takes at most one type argument", s.type)
+        invalid_bare_final = False
+        if not s.type.args:
+            s.type = None
+            if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
+                invalid_bare_final = True
+                self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
+        else:
+            s.type = s.type.args[0]
+        if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
+            self.fail("Invalid final declaration", s)
+            return
+        lval = s.lvalues[0]
+        assert isinstance(lval, RefExpr)
+        s.is_final_def = True
+        if self.loop_depth > 0:
+            self.fail("Cannot use Final inside a loop", s)
+        if self.type and self.type.is_protocol:
+            self.msg.protocol_members_cant_be_final(s)
+        if (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and
+                not self.is_stub_file and not self.is_class_scope()):
+            if not invalid_bare_final:  # Skip extra error messages.
+                self.msg.final_without_value(s)
+        return
+
+    def check_final_implicit_def(self, s: AssignmentStmt) -> None:
+        """Do basic checks for final declaration on self in __init__.
+
+        Additional re-definition checks are performed by `analyze_lvalue`.
+        """
+        if not s.is_final_def:
+            return
+        lval = s.lvalues[0]
+        assert isinstance(lval, RefExpr)
+        if isinstance(lval, MemberExpr):
+            if not self.is_self_member_ref(lval):
+                self.fail("Final can be only applied to a name or an attribute on self", s)
+                s.is_final_def = False
+                return
+            else:
+                assert self.function_stack
+                if self.function_stack[-1].name() != '__init__':
+                    self.fail("Can only declare a final attribute in class body or __init__", s)
+                    s.is_final_def = False
+                    return
+
+    def store_final_status(self, s: AssignmentStmt) -> None:
+        """If this is a locally valid final declaration, set the corresponding flag on `Var`."""
+        if s.is_final_def:
+            if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
+                node = s.lvalues[0].node
+                if isinstance(node, Var):
+                    node.is_final = True
+                    node.final_value = self.unbox_literal(s.rvalue)
+                    if (self.is_class_scope() and
+                            (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                        node.final_unset_in_class = True
+        else:
+            # Special case: deferred initialization of a final attribute in __init__.
+            # In this case we just pretend this is a valid final definition to suppress
+            # errors about assigning to final attribute.
+            for lval in self.flatten_lvalues(s.lvalues):
+                if isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
+                    assert self.type, "Self member outside a class"
+                    cur_node = self.type.names.get(lval.name, None)
+                    if cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_final:
+                        assert self.function_stack
+                        top_function = self.function_stack[-1]
+                        if (top_function.name() == '__init__' and
+                                cur_node.node.final_unset_in_class and
+                                not cur_node.node.final_set_in_init and
+                                not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                            cur_node.node.final_set_in_init = True
+                            s.is_final_def = True
+
+    def flatten_lvalues(self, lvalues: List[Expression]) -> List[Expression]:
+        res = []  # type: List[Expression]
+        for lv in lvalues:
+            if isinstance(lv, (TupleExpr, ListExpr)):
+                res.extend(self.flatten_lvalues(lv.items))
+            else:
+                res.append(lv)
+        return res
+
+    def unbox_literal(self, e: Expression) -> Optional[Union[int, float, bool, str]]:
+        if isinstance(e, (IntExpr, FloatExpr, StrExpr)):
+            return e.value
+        elif isinstance(e, NameExpr) and e.name in ('True', 'False'):
+            return True if e.name == 'True' else False
+        return None
 
     def analyze_simple_literal_type(self, rvalue: Expression) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc."""
@@ -1831,7 +1966,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
-                       explicit_type: bool = False) -> None:
+                       explicit_type: bool = False,
+                       final_cb: Optional[Callable[[bool], None]] = None) -> None:
         """Analyze an lvalue or assignment target.
 
         Args:
@@ -1839,6 +1975,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             nested: If true, the lvalue is within a tuple or list lvalue expression
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
+            final_cb: A callback to call in situation where a final declaration on `self`
+                overrides an existing name.
         """
         if isinstance(lval, NameExpr):
             # Top-level definitions within some statements (at least while) are
@@ -1895,8 +2033,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 lval.kind = MDEF
                 lval.fullname = lval.name
                 self.type.names[lval.name] = SymbolTableNode(MDEF, v)
-            elif explicit_type:
-                # Don't re-bind types
+            else:
+                # An existing name, try to find the original definition.
                 global_def = self.globals.get(lval.name)
                 if self.locals:
                     locals_last = self.locals[-1]
@@ -1909,14 +2047,24 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 type_def = self.type.names.get(lval.name) if self.type else None
 
                 original_def = global_def or local_def or type_def
-                self.name_already_defined(lval.name, lval, original_def)
-            else:
-                # Bind to an existing name.
-                lval.accept(self)
-                self.check_lvalue_validity(lval.node, lval)
+
+                # Redefining an existing name with final is always an error.
+                if final_cb is not None:
+                    # We avoid extra errors if the original definition is also final
+                    # by keeping the final status of this assignment.
+                    keep_final = bool(original_def and isinstance(original_def.node, Var) and
+                                      original_def.node.is_final)
+                    final_cb(keep_final)
+                if explicit_type:
+                    # Don't re-bind types
+                    self.name_already_defined(lval.name, lval, original_def)
+                else:
+                    # Bind to an existing name.
+                    lval.accept(self)
+                    self.check_lvalue_validity(lval.node, lval)
         elif isinstance(lval, MemberExpr):
             if not add_global:
-                self.analyze_member_lvalue(lval, explicit_type)
+                self.analyze_member_lvalue(lval, explicit_type, final_cb=final_cb)
             if explicit_type and not self.is_self_member_ref(lval):
                 self.fail('Type cannot be declared in assignment to non-self '
                           'attribute', lval)
@@ -1952,18 +2100,32 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 star_exprs[0].valid = True
             for i in items:
                 self.analyze_lvalue(i, nested=True, add_global=add_global,
-                                    explicit_type = explicit_type)
+                                    explicit_type=explicit_type)
 
-    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False) -> None:
+    def analyze_member_lvalue(self, lval: MemberExpr, explicit_type: bool = False,
+                              final_cb: Optional[Callable[[bool], None]] = None) -> None:
+        """Analyze lvalue that is a member expression.
+
+        Arguments:
+            lval: The target lvalue
+            explicit_type: Assignment has type annotation
+            final_cb: A callback to call in situation where a final declaration on `self`
+                overrides an existing name.
+        """
         lval.accept(self)
         if self.is_self_member_ref(lval):
             assert self.type, "Self member outside a class"
             cur_node = self.type.names.get(lval.name, None)
             node = self.type.get(lval.name)
+            if cur_node and final_cb is not None:
+                # Overrides will be checked in type checker.
+                final_cb(False)
             # If the attribute of self is not defined in superclasses, create a new Var, ...
             if ((node is None or isinstance(node.node, Var) and node.node.is_abstract_var) or
                     # ... also an explicit declaration on self also creates a new Var.
-                    (cur_node is None and explicit_type)):
+                    # Note that `explicit_type` might has been erased for bare `Final`,
+                    # so we also check if `final_cb` is passed.
+                    (cur_node is None and (explicit_type or final_cb is not None))):
                 if self.type.is_protocol and node is None:
                     self.fail("Protocol members cannot be defined via assignment to self", lval)
                 else:
@@ -2231,6 +2393,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return False
         return sym.node.fullname() == 'typing.ClassVar'
 
+    def is_final_type(self, typ: Type) -> bool:
+        if not isinstance(typ, UnboundType):
+            return False
+        sym = self.lookup_qualified(typ.name, typ)
+        if not sym or not sym.node:
+            return False
+        return sym.node.fullname() in ('typing.Final',
+                                       'typing_extensions.Final')
+
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail('ClassVar can only be used for assignments in class body', context)
 
@@ -2333,6 +2504,18 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
+            elif (refers_to_fullname(d, 'typing.final') or
+                  refers_to_fullname(d, 'typing_extensions.final')):
+                if self.is_class_scope():
+                    assert self.type is not None, "No type set at class scope"
+                    if self.type.is_protocol:
+                        self.msg.protocol_members_cant_be_final(d)
+                    else:
+                        dec.func.is_final = True
+                        dec.var.is_final = True
+                    removed.append(i)
+                else:
+                    self.fail("@final cannot be used with non-method functions", d)
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:

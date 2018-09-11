@@ -951,6 +951,27 @@ class MessageBuilder:
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
+    def final_cant_override_writable(self, name: str, ctx: Context) -> None:
+        self.fail('Cannot override writable attribute "{}" with a final one'.format(name), ctx)
+
+    def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
+        self.fail('Cannot override final attribute "{}"'
+                  ' (previously declared in base class "{}")'.format(name, base_name), ctx)
+
+    def cant_assign_to_final(self, name: str, attr_assign: bool, ctx: Context) -> None:
+        """Warn about a prohibited assignment to a final attribute.
+
+        Pass `attr_assign=True` if the assignment assigns to an attribute.
+        """
+        kind = "attribute" if attr_assign else "name"
+        self.fail('Cannot assign to final {} "{}"'.format(kind, name), ctx)
+
+    def protocol_members_cant_be_final(self, ctx: Context) -> None:
+        self.fail("Protocol member cannot be final", ctx)
+
+    def final_without_value(self, ctx: Context) -> None:
+        self.fail("Final name must be initialized with a value", ctx)
+
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
