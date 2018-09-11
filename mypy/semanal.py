@@ -627,7 +627,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                           bad_final)
             elif any(item.is_final for item in defn.items[1:]):
                 bad_final = next(ov for ov in defn.items[1:] if ov.is_final)
-                self.fail("In stub files @final should be applied only to the first overload",
+                self.fail("In a stub file @final must be applied only to the first overload",
                           bad_final)
         if defn.impl is not None and defn.impl.is_final:
             defn.is_final = True
@@ -1786,7 +1786,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             else:
                 assert self.function_stack
                 if self.function_stack[-1].name() != '__init__':
-                    self.fail("Can only declare final attributes in class body or __init__", s)
+                    self.fail("Can only declare a final attribute in class body or __init__", s)
                     s.is_final_def = False
                     return
 
@@ -1801,23 +1801,32 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     if (self.is_class_scope() and
                             (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
                         node.final_unset_in_class = True
-        elif len(s.lvalues) == 1 and isinstance(s.lvalues[0], MemberExpr):
+        else:
             # Special case: deferred initialization of a final attribute in __init__.
             # In this case we just pretend this is a valid final definition to suppress
             # errors about assigning to final attribute.
-            lval = s.lvalues[0]
-            if self.is_self_member_ref(lval):
-                assert self.type, "Self member outside a class"
-                cur_node = self.type.names.get(lval.name, None)
-                if cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_final:
-                    assert self.function_stack
-                    top_function = self.function_stack[-1]
-                    if (top_function.name() == '__init__' and
-                            cur_node.node.final_unset_in_class and
-                            not cur_node.node.final_set_in_init and
-                            not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
-                        cur_node.node.final_set_in_init = True
-                        s.is_final_def = True
+            for lval in self.flatten_lvalues(s.lvalues):
+                if isinstance(lval, MemberExpr) and self.is_self_member_ref(lval):
+                    assert self.type, "Self member outside a class"
+                    cur_node = self.type.names.get(lval.name, None)
+                    if cur_node and isinstance(cur_node.node, Var) and cur_node.node.is_final:
+                        assert self.function_stack
+                        top_function = self.function_stack[-1]
+                        if (top_function.name() == '__init__' and
+                                cur_node.node.final_unset_in_class and
+                                not cur_node.node.final_set_in_init and
+                                not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                            cur_node.node.final_set_in_init = True
+                            s.is_final_def = True
+
+    def flatten_lvalues(self, lvalues: List[Expression]) -> List[Expression]:
+        res = []  # type: List[Expression]
+        for lv in lvalues:
+            if isinstance(lv, (TupleExpr, ListExpr)):
+                res.extend(self.flatten_lvalues(lv.items))
+            else:
+                res.append(lv)
+        return res
 
     def unbox_literal(self, e: Expression) -> Optional[Union[int, float, bool, str]]:
         if isinstance(e, (IntExpr, FloatExpr, StrExpr)):
@@ -2501,7 +2510,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         dec.var.is_final = True
                     removed.append(i)
                 else:
-                    self.fail("@final can't be used with non-method functions", d)
+                    self.fail("@final cannot be used with non-method functions", d)
         for i in reversed(removed):
             del dec.decorators[i]
         if not dec.is_overload or dec.var.is_property:

@@ -1268,7 +1268,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.cant_override_final(name, base.name(), defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
-                    self.check_no_writeable(name, base_attr.node, defn)
+                    self.check_no_writable(name, base_attr.node, defn)
 
             # Check the type of override.
             if name not in ('__init__', '__new__', '__init_subclass__'):
@@ -1473,7 +1473,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_protocol_variance(defn)
         for base in typ.mro[1:]:
             if base.is_final:
-                self.fail('Can\'t inherit from final class "{}"'.format(base.name()), defn)
+                self.fail('Cannot inherit from final class "{}"'.format(base.name()), defn)
         with self.tscope.class_scope(defn.info), self.enter_partial_types(is_class=True):
             old_binder = self.binder
             self.binder = ConditionalTypeBinder()
@@ -1590,7 +1590,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(second.node, (Var, FuncBase, Decorator)) and second.node.is_final:
             self.msg.cant_override_final(name, base2.name(), ctx)
         if isinstance(first.node, (Var, FuncBase, Decorator)) and first.node.is_final:
-            self.check_no_writeable(name, second.node, ctx)
+            self.check_no_writable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
             ok = True
@@ -1660,12 +1660,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.expr_checker.accept(s.rvalue)
             rvalue = self.temp_node(self.type_map[s.rvalue], s)
             for lv in s.lvalues[:-1]:
-                self.check_assignment(lv, rvalue, s.type is None)
+                with self.enter_final_context(s.is_final_def):
+                    self.check_assignment(lv, rvalue, s.type is None)
 
         self.check_final(s)
         if (s.is_final_def and s.type and not has_no_typevars(s.type)
                 and self.scope.active_class() is not None):
-            self.fail("Constant declared in class body can't depend on type variables", s)
+            self.fail("Final name declared in class body cannot depend on type variables", s)
 
     def check_assignment(self, lvalue: Lvalue, rvalue: Expression, infer_lvalue_type: bool = True,
                          new_syntax: bool = False) -> None:
@@ -1938,10 +1939,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(node.name(), base.name(), node)
             return False
         if node.is_final:
-            self.check_no_writeable(node.name(), base_node, node)
+            self.check_no_writable(node.name(), base_node, node)
         return True
 
-    def check_no_writeable(self, name: str, base_node: Optional[Node], ctx: Context) -> None:
+    def check_no_writable(self, name: str, base_node: Optional[Node], ctx: Context) -> None:
         """Check that a final variable doesn't override writeable attribute.
 
         This is done to prevent situations like this:
@@ -1961,7 +1962,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             ok = True
         if not ok:
-            self.msg.final_cant_override_writeable(name, ctx)
+            self.msg.final_cant_override_writable(name, ctx)
 
     def get_final_context(self) -> bool:
         """Check whether we a currently checking a final declaration."""

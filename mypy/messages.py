@@ -951,8 +951,8 @@ class MessageBuilder:
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
-    def final_cant_override_writeable(self, name: str, ctx: Context) -> None:
-        self.fail('Can\'t override writeable attribute "{}" with a final one'.format(name), ctx)
+    def final_cant_override_writable(self, name: str, ctx: Context) -> None:
+        self.fail('Cannot override writable attribute "{}" with a final one'.format(name), ctx)
 
     def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
         self.fail('Cannot override final attribute "{}"'
@@ -963,11 +963,11 @@ class MessageBuilder:
 
         Pass `attr_assign=True` if the assignment assigns to an attribute.
         """
-        kind = "final attribute" if attr_assign else "constant"
-        self.fail('Can\'t assign to {} "{}"'.format(kind, name), ctx)
+        kind = "attribute" if attr_assign else "name"
+        self.fail('Cannot assign to final {} "{}"'.format(kind, name), ctx)
 
     def protocol_members_cant_be_final(self, ctx: Context) -> None:
-        self.fail("Protocol members can't be final", ctx)
+        self.fail("Protocol member cannot be final", ctx)
 
     def final_without_value(self, ctx: Context) -> None:
         self.fail("Final name must be initialized with a value", ctx)

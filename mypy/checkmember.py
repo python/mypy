@@ -549,10 +549,11 @@ def analyze_class_attribute_access(itype: Instance,
         if isinstance(node.node, TypeInfo):
             msg.fail(messages.CANNOT_ASSIGN_TO_TYPE, context)
 
-    # If a constant was declared on `self` in `__init__`, then it
+    # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.
     if node.implicit and isinstance(node.node, Var) and node.node.is_final:
-        msg.fail("Can't access instance constant on class object", context)
+        msg.fail('Cannot access final instance '
+                 'attribute "{}" on class object'.format(node.node.name()), context)
 
     # An assignment to final attribute on class object is also always an error,
     # independently of types.

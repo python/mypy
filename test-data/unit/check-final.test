@@ -9,7 +9,7 @@ from typing import Final
 x: Final = int()
 y: Final[float] = int()
 z: Final[int] = int()
-bad: Final[str] = str()
+bad: Final[str] = int()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 reveal_type(x)  # E: Revealed type is 'builtins.int'
 reveal_type(y)  # E: Revealed type is 'builtins.float'
@@ -80,12 +80,17 @@ class C:
     y: Final[int]
     def __init__(self) -> None:
         self.z: Final
+
+reveal_type(x)  # E: Revealed type is 'Any'
+reveal_type(C.x)  # E: Revealed type is 'Any'
+v: C
+reveal_type(v.z)  # E: Revealed type is 'Any'
 [out]
 
 [case testFinalDefiningFunc]
 from typing import final
 
-@final  # E: @final can't be used with non-method functions
+@final  # E: @final cannot be used with non-method functions
 def f(x: int) -> None: ...
 [out]
 
@@ -96,7 +101,7 @@ from typing import final, overload
 def f(x: int) -> int: ...
 @overload
 def f(x: str) -> str: ...
-@final  # E: @final can't be used with non-method functions
+@final  # E: @final cannot be used with non-method functions
 def f(x):
     pass
 [out]
@@ -153,7 +158,7 @@ class C:
     @overload
     def bad(self, x: str) -> str: ...
 [out]
-tmp/mod.pyi:12: error: In stub files @final should be applied only to the first overload
+tmp/mod.pyi:12: error: In a stub file @final must be applied only to the first overload
 main:3: error: Revealed type is 'Overload(def (x: builtins.int) -> builtins.int, def (x: builtins.str) -> builtins.str)'
 
 [case testFinalDefiningProperty]
@@ -163,28 +168,32 @@ class C:
     @final
     @property
     def f(self) -> int: pass
+    @property
+    @final
+    def g(self) -> int: pass
 reveal_type(C().f)  # E: Revealed type is 'builtins.int'
+reveal_type(C().g)  # E: Revealed type is 'builtins.int'
 [builtins fixtures/property.pyi]
 [out]
 
 [case testFinalDefiningOuterOnly]
 from typing import Final, Callable, Tuple, Any
-x: Tuple[Final]  # E: Final can be only used as an outermost type qualifier in assignments
-y: Callable[[], Tuple[Final[int]]]  # E: Final can be only used as an outermost type qualifier in assignments
+x: Tuple[Final]  # E: Final can be only used as an outermost qualifier in a variable annotation
+y: Callable[[], Tuple[Final[int]]]  # E: Final can be only used as an outermost qualifier in a variable annotation
 [out]
 
 [case testFinalDefiningNotInMethod]
 from typing import Final
 
-def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost type qualifier in assignments
-def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost type qualifier in assignments
+def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
+def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
 [out]
 
 [case testFinalDefiningNotInMethodExtensions]
 from typing_extensions import Final
 
-def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost type qualifier in assignments
-def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost type qualifier in assignments
+def f(x: Final[int]) -> int: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
+def g(x: int) -> Final[int]: ...  # E: Final can be only used as an outermost qualifier in a variable annotation
 [out]
 
 [case testFinalDefiningNoRhs]
@@ -210,7 +219,7 @@ T = TypeVar('T')
 d: Any
 
 class C(Generic[T]):
-    x: Final[Tuple[T, T]] = d  # E: Constant declared in class body can't depend on type variables
+    x: Final[Tuple[T, T]] = d  # E: Final name declared in class body cannot depend on type variables
 [out]
 
 [case testFinalDefiningTypevarsImplicit]
@@ -224,9 +233,9 @@ class C(Generic[T]):
         self.y: Final = 1
 
 reveal_type(C((1, 2)).x)  # E: Revealed type is 'Tuple[builtins.int*, builtins.int*]'
-C.x  # E: Can't access instance constant on class object \
+C.x  # E: Cannot access final instance attribute "x" on class object \
      # E: Access to generic instance variables via class is ambiguous
-C.y  # E: Can't access instance constant on class object
+C.y  # E: Cannot access final instance attribute "y" on class object
 [out]
 
 [case testFinalDefiningNotInOtherMethod]
@@ -234,8 +243,8 @@ from typing import Final, Any, Tuple
 
 class C:
     def meth(self, x: Tuple[int, Any]) -> None:
-        self.x: Final = x  # E: Can only declare final attributes in class body or __init__
-        self.y: Final[float] = 1  # E: Can only declare final attributes in class body or __init__
+        self.x: Final = x  # E: Can only declare a final attribute in class body or __init__
+        self.y: Final[float] = 1  # E: Can only declare a final attribute in class body or __init__
 [out]
 
 [case testFinalDefiningOnlyOnSelf]
@@ -256,15 +265,15 @@ class C:
 from typing import Final, final, Protocol, overload
 
 class P(Protocol):
-    x: Final[float] = 1  # E: Protocol members can't be final
-    @final  # E: Protocol members can't be final
+    x: Final[float] = 1  # E: Protocol member cannot be final
+    @final  # E: Protocol member cannot be final
     def meth(self, x) -> int:
         pass
     @overload
     def other(self, x: int) -> int: ...
     @overload
     def other(self, x: str) -> str: ...
-    @final  # E: Protocol members can't be final
+    @final  # E: Protocol member cannot be final
     def other(self, x):
         pass
 [out]
@@ -289,17 +298,17 @@ class C:
 
     def __init__(self, x: int) -> None:
         self.x = x  # OK, deferred definition
-        self.x = 2  # E: Can't assign to final attribute "x"
+        self.x = 2  # E: Cannot assign to final attribute "x"
 
     def meth(self) -> None:
-        self.x = 2  # E: Can't assign to final attribute "x"
+        self.x = 2  # E: Cannot assign to final attribute "x"
 
 c: C
-c.x = 3  # E: Can't assign to final attribute "x"
+c.x = 3  # E: Cannot assign to final attribute "x"
 class D(C):
-    x = 4  # E: Can't assign to constant "x"
+    x = 4  # E: Cannot assign to final name "x"
 d: D
-d.x = 5  # E: Can't assign to final attribute "x"
+d.x = 5  # E: Cannot assign to final attribute "x"
 [out]
 
 -- Reassignments
@@ -308,10 +317,10 @@ d.x = 5  # E: Can't assign to final attribute "x"
 from typing import Final
 
 x: Final = 1
-x = 2  # E: Can't assign to constant "x"
+x = 2  # E: Cannot assign to final name "x"
 def f() -> int:
     global x
-    x = 3  # E: Can't assign to constant "x"
+    x = 3  # E: Cannot assign to final name "x"
     return x
 
 y = 1
@@ -322,7 +331,7 @@ y = 3  # No error here, first definition wins
 z: Final = 1
 z: Final = 2  # E: Name 'z' already defined on line 14 \
               # E: Cannot redefine an existing name as final
-z = 3  # E: Can't assign to constant "z"
+z = 3  # E: Cannot assign to final name "z"
 [out]
 
 [case testFinalReassignModuleReexport]
@@ -331,10 +340,10 @@ from typing import Final
 from lib import X
 from lib.mod import ID
 
-X = 1  # E: Can't assign to constant "X"
+X = 1  # E: Cannot assign to final name "X"
 ID: Final = 1  # E: Name 'ID' already defined (possibly by an import) \
                # E: Cannot redefine an existing name as final
-ID = 1  # E: Can't assign to constant "ID"
+ID = 1  # E: Cannot assign to final name "ID"
 [file lib/__init__.pyi]
 from lib.const import X as X
 
@@ -354,18 +363,18 @@ from typing import Final
 def f() -> None:
     nl: Final = 0
     x: Final = 1
-    x = 1  # E: Can't assign to constant "x"
+    x = 1  # E: Cannot assign to final name "x"
 
     y: Final = 1
     y: Final = 2  # E: Cannot redefine an existing name as final
     def nested() -> None:
         nonlocal nl
-        nl = 1  # E: Can't assign to constant "nl"
+        nl = 1  # E: Cannot assign to final name "nl"
 [out]
 
 [case testFinalReassignModuleVarExternal]
 import mod
-mod.x = 2  # E: Can't assign to constant "x"
+mod.x = 2  # E: Cannot assign to final name "x"
 [file mod.pyi]
 from typing import Final
 x: Final[int]
@@ -376,7 +385,7 @@ from typing import Final
 
 class C:
     x: Final = 1
-    x = 2  # E: Can't assign to constant "x"
+    x = 2  # E: Cannot assign to final name "x"
 
     y = 1
     y: Final = 2  # E: Cannot redefine an existing name as final
@@ -391,7 +400,7 @@ class C:
         self.y = 1
         self.y: Final = 2  # E: Cannot redefine an existing name as final
     def meth(self) -> None:
-        self.x = 2  # E: Can't assign to final attribute "x"
+        self.x = 2  # E: Cannot assign to final attribute "x"
 [out]
 
 [case testFinalReassignInstanceVarClassVsInit]
@@ -401,8 +410,8 @@ class C:
     y: Final = 1
     def __init__(self) -> None:
         self.x: Final = 1
-        self.y = 2  # E: Can't assign to final attribute "y"
-    x = 2  # E: Can't assign to constant "x"
+        self.y = 2  # E: Cannot assign to final attribute "y"
+    x = 2  # E: Cannot assign to final name "x"
 [out]
 
 [case testFinalReassignInstanceVarMethod]
@@ -413,15 +422,15 @@ class C:
     def __init__(self) -> None:
         self.y: Final = 1
     def meth(self) -> None:
-        self.x = 2  # E: Can't assign to final attribute "x"
-        self.y = 2  # E: Can't assign to final attribute "y"
+        self.x = 2  # E: Cannot assign to final attribute "x"
+        self.y = 2  # E: Cannot assign to final attribute "y"
     def other(self) -> None:
-        self.x = 2  # E: Can't assign to final attribute "x"
-        self.y = 2  # E: Can't assign to final attribute "y"
+        self.x = 2  # E: Cannot assign to final attribute "x"
+        self.y = 2  # E: Cannot assign to final attribute "y"
     @classmethod
     def cm(cls) -> None:
-        cls.x = 2  # E: Can't assign to final attribute "x"
-        cls.y  # E: Can't access instance constant on class object
+        cls.x = 2  # E: Cannot assign to final attribute "x"
+        cls.y  # E: Cannot access final instance attribute "y" on class object
 [builtins fixtures/classmethod.pyi]
 [out]
 
@@ -435,10 +444,10 @@ class C:
 
 class D(C): pass
 
-C.x = 2  # E: Can't assign to final attribute "x"
-D.x = 2  # E: Can't assign to final attribute "x"
-D.y = 2  # E: Can't access instance constant on class object \
-         # E: Can't assign to final attribute "y"
+C.x = 2  # E: Cannot assign to final attribute "x"
+D.x = 2  # E: Cannot assign to final attribute "x"
+D.y = 2  # E: Cannot access final instance attribute "y" on class object \
+         # E: Cannot assign to final attribute "y"
 [out]
 
 [case testFinalReassignInstanceVarExternalInstance]
@@ -451,17 +460,17 @@ class C:
 
 class D(C): pass
 
-C().x = 2  # E: Can't assign to final attribute "x"
-D().x = 2  # E: Can't assign to final attribute "x"
-D().y = 2  # E: Can't assign to final attribute "y"
+C().x = 2  # E: Cannot assign to final attribute "x"
+D().x = 2  # E: Cannot assign to final attribute "x"
+D().y = 2  # E: Cannot assign to final attribute "y"
 [out]
 
 [case testFinalWorksWithComplexTargets]
 from typing import Final, Any
 
 y: Final[Any] = 1
-x = a, (b, y), c = 2, (2, 2), 2  # E: Can't assign to constant "y"
-t, *y, s = u = [2, 2, 2]  # E: Can't assign to constant "y"
+x = a, (b, y), c = 2, (2, 2), 2  # E: Cannot assign to final name "y"
+t, *y, s = u = [2, 2, 2]  # E: Cannot assign to final name "y"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -482,10 +491,10 @@ class C:
 class D(C):
     pass
 
-a += A()  # E: Can't assign to constant "a"
-b += B()  # E: Can't assign to constant "b"
-D().a += A()  # E: Can't assign to final attribute "a"
-D().b += B()  # E: Can't assign to final attribute "b"
+a += A()  # E: Cannot assign to final name "a"
+b += B()  # E: Cannot assign to final name "b"
+D().a += A()  # E: Cannot assign to final attribute "a"
+D().b += B()  # E: Cannot assign to final attribute "b"
 [out]
 
 -- Overriding
@@ -495,7 +504,7 @@ from typing import Final
 
 # We use properties in this tests and below because we want to check
 # that any existing variable before final doesn't affect logic of
-# subsequent overrides but writable attributes can't be overridden by final.
+# subsequent overrides but writable attributes cannot be overridden by final.
 class A:
     @property
     def x(self) -> int: ...
@@ -507,14 +516,14 @@ class B(A):
     def __init__(self) -> None:
         self.y: Final = 1
 class C(B):
-    x: int = 2  # E: Can't assign to constant "x"
-    y: int = 2  # E: Can't assign to constant "y"
-    x = 3  # E: Can't assign to constant "x"
-    y = 3  # E: Can't assign to constant "y"
+    x: int = 2  # E: Cannot assign to final name "x"
+    y: int = 2  # E: Cannot assign to final name "y"
+    x = 3  # E: Cannot assign to final name "x"
+    y = 3  # E: Cannot assign to final name "y"
 class D(C):
     pass
-D.x = 4  # E: Can't assign to final attribute "x"
-D.y = 4  # E: Can't assign to final attribute "y"
+D.x = 4  # E: Cannot assign to final attribute "x"
+D.y = 4  # E: Cannot assign to final attribute "y"
 [builtins fixtures/property.pyi]
 [out]
 
@@ -550,11 +559,11 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def __init__(self) -> None:
-        self.x = 2  # E: Can't assign to final attribute "x"
-        self.y = 2  # E: Can't assign to final attribute "y"
+        self.x = 2  # E: Cannot assign to final attribute "x"
+        self.y = 2  # E: Cannot assign to final attribute "y"
     def meth(self) -> None:
-        self.x = 3  # E: Can't assign to final attribute "x"
-        self.y = 3  # E: Can't assign to final attribute "y"
+        self.x = 3  # E: Cannot assign to final attribute "x"
+        self.y = 3  # E: Cannot assign to final attribute "y"
 [builtins fixtures/property.pyi]
 [out]
 
@@ -591,11 +600,11 @@ class B(A):
         self.y: Final = 1
 class C(B):
     def meth(self) -> None:
-        self.x: int = 2    # E: Can't assign to final attribute "x"
-        self.y: int = 2    # E: Can't assign to final attribute "y"
+        self.x: int = 2    # E: Cannot assign to final attribute "x"
+        self.y: int = 2    # E: Cannot assign to final attribute "y"
 
-        self.x = 3  # E: Can't assign to final attribute "x"
-        self.y = 3  # E: Can't assign to final attribute "y"
+        self.x = 3  # E: Cannot assign to final attribute "x"
+        self.y = 3  # E: Cannot assign to final attribute "y"
 [builtins fixtures/property.pyi]
 [out]
 
@@ -609,9 +618,9 @@ class B:
     def x(self) -> int: ...
 class C(A, B): ...
 class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared in base class "A")
-C.x = 3  # E: Can't assign to final attribute "x"
-C().x = 4  # E: Can't assign to final attribute "x"
-D().x = 4  # E: Can't assign to final attribute "x" \
+C.x = 3  # E: Cannot assign to final attribute "x"
+C().x = 4  # E: Cannot assign to final attribute "x"
+D().x = 4  # E: Cannot assign to final attribute "x" \
            # E: Property "x" defined in "B" is read-only
 [builtins fixtures/property.pyi]
 [out]
@@ -627,9 +636,9 @@ class B:
     def x(self) -> int: ...
 class C(A, B): ...
 class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared in base class "A")
-C.x = 3  # E: Can't access instance constant on class object \
-         # E: Can't assign to final attribute "x"
-C().x = 4  # E: Can't assign to final attribute "x"
+C.x = 3  # E: Cannot access final instance attribute "x" on class object \
+         # E: Cannot assign to final attribute "x"
+C().x = 4  # E: Cannot assign to final attribute "x"
 [builtins fixtures/property.pyi]
 [out]
 
@@ -641,12 +650,12 @@ class A:
 class B:
     def __init__(self) -> None:
         self.x = 2
-class C(A, B): ...  # E: Can't override writeable attribute "x" with a final one
+class C(A, B): ...  # E: Cannot override writable attribute "x" with a final one
 class D(B, A): ...  # E: Cannot override final attribute "x" (previously declared in base class "A")
-C.x = 3  # E: Can't assign to final attribute "x"
-D.x = 3  # E: Can't assign to final attribute "x"
-C().x = 4  # E: Can't assign to final attribute "x"
-D().x = 4  # E: Can't assign to final attribute "x"
+C.x = 3  # E: Cannot assign to final attribute "x"
+D.x = 3  # E: Cannot assign to final attribute "x"
+C().x = 4  # E: Cannot assign to final attribute "x"
+D().x = 4  # E: Cannot assign to final attribute "x"
 [out]
 
 [case testFinalOverridingVarWithMethod]
@@ -747,13 +756,13 @@ class A:
 
 class B(A):
     def __init__(self) -> None:
-        self.f: Any  # E: Can't assign to final attribute "f" \
+        self.f: Any  # E: Cannot assign to final attribute "f" \
                      # E: Cannot override final attribute "f" (previously declared in base class "A")
-        self.c: Any  # E: Can't assign to final attribute "c" \
+        self.c: Any  # E: Cannot assign to final attribute "c" \
                      # E: Cannot override final attribute "c" (previously declared in base class "A")
 
-B().f = a  # E: Can't assign to final attribute "f"
-B().c = a  # E: Can't assign to final attribute "c"
+B().f = a  # E: Cannot assign to final attribute "f"
+B().c = a  # E: Cannot assign to final attribute "c"
 
 class C(A):
     def __init__(self) -> None:
@@ -795,7 +804,7 @@ class B:
     def m(self) -> int: pass
 
 class C(A, B): pass  # E: Cannot override final attribute "m" (previously declared in base class "B")
-class D(B, A): pass  # E: Can't override writeable attribute "m" with a final one
+class D(B, A): pass  # E: Cannot override writable attribute "m" with a final one
 [out]
 
 [case testFinalOverridingClassMethod]
@@ -819,10 +828,15 @@ class B:
     @staticmethod
     @final
     def f() -> int: pass
+    @final
+    @staticmethod
+    def g() -> int: pass
 
 class C(B):
     @staticmethod  # E: Cannot override final attribute "f" (previously declared in base class "B")
     def f() -> int: pass
+    @staticmethod  # E: Cannot override final attribute "g" (previously declared in base class "B")
+    def g() -> int: pass
 [builtins fixtures/staticmethod.pyi]
 [out]
 
@@ -833,10 +847,15 @@ class B:
     @final
     @property
     def f(self) -> int: pass
+    @property
+    @final
+    def g(self) -> int: pass
 
 class C(B):
     @property  # E: Cannot override final attribute "f" (previously declared in base class "B")
     def f(self) -> int: pass
+    @property  # E: Cannot override final attribute "g" (previously declared in base class "B")
+    def g(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
 
@@ -866,9 +885,9 @@ from typing import final
 
 @final
 class B: ...
-class C(B):  # E: Can't inherit from final class "B"
+class C(B):  # E: Cannot inherit from final class "B"
     pass
-class D(C):  # E: Can't inherit from final class "B"
+class D(C):  # E: Cannot inherit from final class "B"
     pass
 [out]
 
@@ -878,9 +897,9 @@ from typing import final
 class A: ...
 @final
 class B: ...
-class C(B, A):  # E: Can't inherit from final class "B"
+class C(B, A):  # E: Cannot inherit from final class "B"
     pass
-class D(A, B):  # E: Can't inherit from final class "B"
+class D(A, B):  # E: Cannot inherit from final class "B"
     pass
 [out]
 
@@ -895,13 +914,13 @@ class B:
     def y(self, x: Any) -> None: ...
 
 class C(B):
-    x: Final = 1  # E: Can't override writeable attribute "x" with a final one
-    y: Final = 1  # E: Can't override writeable attribute "y" with a final one
+    x: Final = 1  # E: Cannot override writable attribute "x" with a final one
+    y: Final = 1  # E: Cannot override writable attribute "y" with a final one
 
 class D(B):
-    @final  # E: Can't override writeable attribute "x" with a final one
+    @final  # E: Cannot override writable attribute "x" with a final one
     def x(self) -> int: ...
-    @final  # E: Can't override writeable attribute "y" with a final one
+    @final  # E: Cannot override writable attribute "y" with a final one
     def y(self) -> int: ...
 [builtins fixtures/property.pyi]
 [out]
@@ -910,11 +929,11 @@ class D(B):
 from typing_extensions import final, Final
 
 x: Final = 1
-x = 2  # E: Can't assign to constant "x"
+x = 2  # E: Cannot assign to final name "x"
 
 class S:
     x: Final = 1
-S.x = 2  # E: Can't assign to final attribute "x"
+S.x = 2  # E: Cannot assign to final attribute "x"
 
 class B:
     @final
@@ -924,18 +943,18 @@ class C(B):
 
 @final
 class F: ...
-class E(F): ...  # E: Can't inherit from final class "F"
+class E(F): ...  # E: Cannot inherit from final class "F"
 [out]
 
 [case testFinalCanUseTypingExtensionsAliased]
 from typing_extensions import final as f, Final as F
 
 x: F = 1
-x = 2  # E: Can't assign to constant "x"
+x = 2  # E: Cannot assign to final name "x"
 
 class S:
     x: F = 1
-S.x = 2  # E: Can't assign to final attribute "x"
+S.x = 2  # E: Cannot assign to final attribute "x"
 
 class B:
     @f
@@ -945,5 +964,21 @@ class C(B):
 
 @f
 class D(C): ...
-class E(D): ...  # E: Can't inherit from final class "D"
+class E(D): ...  # E: Cannot inherit from final class "D"
+[out]
+
+[case testFinalMultiassignAllowed]
+from typing import Final
+
+class A:
+    x: Final[int]
+    y: Final[int]
+    def __init__(self) -> None:
+        self.x, self.y = 1, 2
+
+class B:
+    x: Final[int]
+    y: Final[int]
+    def __init__(self) -> None:
+        self.x = self.y = 1
 [out]

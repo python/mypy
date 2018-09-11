@@ -229,8 +229,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType(TypeOfAny.explicit)
             elif fullname in ('typing.Final', 'typing_extensions.Final'):
-                self.fail("Final can be only used as an outermost type qualifier"
-                          " in assignments", t)
+                self.fail("Final can be only used as an outermost qualifier"
+                          " in a variable annotation", t)
                 return AnyType(TypeOfAny.from_error)
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:

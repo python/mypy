@@ -115,10 +115,9 @@ The are two rules that should be always followed when defining a final name:
          def __init__(self) -> None:
              self.x = 1  # Good
 
-* ``Final`` can be only used as an outermost type in assignments, using it in
-  any other position is an error. In particular, ``Final`` can't be used in
-  annotations for function arguments because this may cause confusions about
-  what are the guarantees in this case:
+* ``Final`` can be only used as an outermost type in assignments or variable
+  annotations. using it in any other position is an error. In particular,
+  ``Final`` can't be used in annotations for function arguments:
 
   .. code-block:: python
 
@@ -128,11 +127,7 @@ The are two rules that should be always followed when defining a final name:
 
 * ``Final`` and ``ClassVar`` should not be used together. Mypy will infer
   the scope of a final declaration automatically depending on whether it was
-  initialized in class body or in ``__init__``.
-
-.. note::
-   Conditional final declarations and final declarations within loops are
-   rejected.
+  initialized in the class body or in ``__init__``.
 
 Using final attributes
 **********************
@@ -202,18 +197,11 @@ two following guarantees:
      y.append('x')  # Error: Sequance is immutable
      z: Final = ('a', 'b')  # Also an option
 
-.. note::
-
-   Mypy treats re-exported final names as final. In other words, once declared,
-   the final status can't be "stripped". Such behaviour is typically desired
-   for larger libraries where constants are defined in a separate module and
-   then re-exported.
-
 Final methods
 *************
 
 Like with attributes, sometimes it is useful to protect a method from
-overriding. In such situations one can use a ``typing_extensions.final``
+overriding. In such situations one can use the ``typing_extensions.final``
 decorator:
 
 .. code-block:: python
@@ -228,8 +216,7 @@ decorator:
    # 1000 lines later
 
    class Derived(Base):
-       def common_name(self) -> None:  # Error: this overriding might break
-                                       # invariants in the base class.
+       def common_name(self) -> None:  # Error: cannot override a final method
            ...
 
 This ``@final`` decorator can be used with instance methods, class methods,
@@ -249,14 +236,10 @@ it final (or on the first overload in stubs):
        def meth(self, x=None):
            ...
 
-    class Derived(Base):
-        def meth(self, x: Any = None) -> Any:  # Error: can't override final method
-            ...
-
 Final classes
 *************
 
-You can apply a ``typing_extensions.final`` decorator to a class indicates
+You can apply a ``typing_extensions.final`` decorator to a class to indicate
 to mypy that it can't be subclassed. The decorator acts as a declaration
 for mypy (and as documentation for humans), but it doesn't prevent subclassing
 at runtime:
@@ -268,8 +251,6 @@ at runtime:
    @final
    class Leaf:
        ...
-
-   from lib import Leaf
 
    class MyLeaf(Leaf):  # Error: Leaf can't be subclassed
        ...

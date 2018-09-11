@@ -7568,11 +7568,11 @@ class C:
         self.z: Final = 1
 [out]
 ==
-main:5: error: Can't assign to constant "x"
-main:7: error: Can't assign to constant "x"
-main:10: error: Can't assign to final attribute "y"
-main:11: error: Can't assign to final attribute "z"
-main:12: error: Can't assign to final attribute "y"
+main:5: error: Cannot assign to final name "x"
+main:7: error: Cannot assign to final name "x"
+main:10: error: Cannot assign to final attribute "y"
+main:11: error: Cannot assign to final attribute "z"
+main:12: error: Cannot assign to final attribute "y"
 
 [case testFinalAddFinalVarOverrideFine]
 from mod import C
@@ -7601,10 +7601,10 @@ class C:
         self.y: Final = 1
 [out]
 ==
-main:4: error: Can't assign to constant "x"
-main:6: error: Can't assign to final attribute "y"
-main:8: error: Can't assign to constant "y"
-main:10: error: Can't assign to final attribute "x"
+main:4: error: Cannot assign to final name "x"
+main:6: error: Cannot assign to final attribute "y"
+main:8: error: Cannot assign to final name "y"
+main:10: error: Cannot assign to final attribute "x"
 
 [case testFinalAddFinalMethodOverrideFine]
 from mod import C
@@ -7651,7 +7651,7 @@ class C:
 [out]
 ==
 main:5: error: Cannot override final attribute "meth" (previously declared in base class "C")
-main:7: error: Can't assign to final attribute "other"
+main:7: error: Cannot assign to final attribute "other"
 main:7: error: Cannot override final attribute "other" (previously declared in base class "C")
 
 [case testFinalAddFinalMethodOverrideOverloadFine]
@@ -7716,7 +7716,7 @@ class C:
 [out]
 ==
 main:5: error: Cannot override final attribute "p" (previously declared in base class "C")
-main:8: error: Can't assign to final attribute "p"
+main:8: error: Cannot assign to final attribute "p"
 main:8: error: Cannot override final attribute "p" (previously declared in base class "C")
 
 [case testIfMypyUnreachableClass]
