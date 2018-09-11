@@ -1922,7 +1922,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                         base: TypeInfo, base_node: Optional[Node]) -> bool:
         """Check if an assignment overrides a final attribute in a base class.
 
-        This only check situations where either a node in base class is not a variable
+        This only checks situations where either a node in base class is not a variable
         but a final method, or where override is explicitly declared as final.
         In these cases we give a more detailed error message. In addition, we check that
         a final variable doesn't override writeable attribute, which is not safe.
