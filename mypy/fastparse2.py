@@ -122,7 +122,8 @@ def parse(source: Union[str, bytes],
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
-    @wraps(f)
+    # mypyc doesn't properly populate all the fields that @wraps expects
+    # @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno, ast.col_offset)
@@ -404,7 +405,7 @@ class ASTConverter(ast27.NodeTransformer):
                        n: ast27.arguments,
                        line: int,
                        ) -> Tuple[List[Argument], List[Statement]]:
-        type_comments = n.type_comments
+        type_comments = n.type_comments  # type: Sequence[Optional[str]]
         converter = TypeConverter(self.errors, line=line)
         decompose_stmts = []  # type: List[Statement]
 
@@ -431,8 +432,10 @@ class ASTConverter(ast27.NodeTransformer):
             return Var(v)
 
         def get_type(i: int) -> Optional[Type]:
-            if i < len(type_comments) and type_comments[i] is not None:
-                return converter.visit_raw_str(type_comments[i])
+            if i < len(type_comments):
+                comment = type_comments[i]
+                if comment is not None:
+                    return converter.visit_raw_str(comment)
             return None
 
         args = [(convert_arg(i, arg), get_type(i)) for i, arg in enumerate(n.args)]

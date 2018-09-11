@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from mypy.nodes import (
     ARG_POS, MDEF, Argument, Block, CallExpr, Expression, FuncBase,
@@ -47,11 +47,15 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
     #
     # Note: I'm not hard-coding the index so that in the future we can support other
     # attrib and class makers.
+    if not isinstance(call.callee, RefExpr):
+        return None
+
     callee_type = None
-    if (isinstance(call.callee, RefExpr)
-            and isinstance(call.callee.node, (Var, FuncBase))
-            and call.callee.node.type):
-        callee_node_type = call.callee.node.type
+    # mypyc hack to workaround mypy misunderstanding multiple inheritance (#3603)
+    callee_node = call.callee.node  # type: Any
+    if (isinstance(callee_node, (Var, FuncBase))
+            and callee_node.type):
+        callee_node_type = callee_node.type
         if isinstance(callee_node_type, Overloaded):
             # We take the last overload.
             callee_type = callee_node_type.items()[-1]

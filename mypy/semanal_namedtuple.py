@@ -239,7 +239,8 @@ class NamedTupleAnalyzer:
                        for item in listexpr.items):
                     return self.fail_namedtuple_arg("String literal expected as namedtuple() item",
                                                     call)
-                items = [cast(StrExpr, item).value for item in listexpr.items]
+                items = [cast(Union[StrExpr, BytesExpr, UnicodeExpr], item).value
+                         for item in listexpr.items]
             else:
                 # The fields argument contains (name, type) tuples.
                 items, types, _, ok = self.parse_namedtuple_fields_with_types(listexpr.items, call)

@@ -107,8 +107,15 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
 
+    code = 0
     if messages:
         code = 2 if blockers else 1
+    if options.fast_exit:
+        # Exit without freeing objects -- it's faster.
+        #
+        # NOTE: We don't flush all open files on exit (or run other destructors)!
+        util.hard_exit(code)
+    elif code:
         sys.exit(code)
 
 
@@ -613,6 +620,8 @@ def process_options(args: List[str],
         dest='shadow_file', action='append',
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
+    add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
+                        group=internals_group)
 
     error_group = parser.add_argument_group(
         title='Error reporting',
