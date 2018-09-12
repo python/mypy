@@ -14,6 +14,7 @@ if False:
     # break import cycle only needed for mypy
     import mypy.checker
     import mypy.checkexpr
+    from typing import Final
 from mypy import messages
 from mypy.messages import MessageBuilder
 
@@ -32,7 +33,7 @@ def compile_format_re() -> Pattern[str]:
     return re.compile(format_re)
 
 
-FORMAT_RE = compile_format_re()
+FORMAT_RE = compile_format_re()  # type: Final
 
 
 class ConversionSpecifier:

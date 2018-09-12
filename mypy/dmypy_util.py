@@ -7,8 +7,10 @@ import json
 import socket
 
 from typing import Any
+if False:
+    from typing import Final
 
-STATUS_FILE = '.dmypy.json'
+STATUS_FILE = '.dmypy.json'  # type: Final
 
 
 def receive(sock: socket.socket) -> Any:

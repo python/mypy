@@ -10,7 +10,7 @@ from typing import (
 
 MYPY = False
 if MYPY:
-    from typing import ClassVar
+    from typing import ClassVar, Final
 
 import mypy.nodes
 from mypy import experiments
@@ -22,8 +22,6 @@ from mypy.sharedparse import argument_elide_name
 from mypy.util import IdMapper, replace_object_state
 from mypy.bogus_type import Bogus
 
-from mypy.mypyc_hacks import TypeOfAny
-
 T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
@@ -33,6 +31,30 @@ JsonDict = Dict[str, Any]
 # times in different places.
 if MYPY:
     from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+
+
+class TypeOfAny:
+    """
+    This class describes different types of Any. Each 'Any' can be of only one type at a time.
+    """
+    # Was this Any type was inferred without a type annotation?
+    unannotated = 'unannotated'  # type: Final
+    # Does this Any come from an explicit type annotation?
+    explicit = 'explicit'  # type: Final
+    # Does this come from an unfollowed import? See --disallow-any-unimported option
+    from_unimported_type = 'from_unimported_type'  # type: Final
+    # Does this Any type come from omitted generics?
+    from_omitted_generics = 'from_omitted_generics'  # type: Final
+    # Does this Any come from an error?
+    from_error = 'from_error'  # type: Final
+    # Is this a type that can't be represented in mypy's type system? For instance, type of
+    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    # Also used for variables named '_'.
+    special_form = 'special_form'  # type: Final
+    # Does this Any come from interaction with another Any?
+    from_another_any = 'from_another_any'  # type: Final
+    # Does this Any come from an implementation limitation/bug?
+    implementation_artifact = 'implementation_artifact'  # type: Final
 
 
 def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
@@ -296,7 +318,7 @@ class AnyType(Type):
     __slots__ = ('type_of_any', 'source_any', 'missing_import_name')
 
     def __init__(self,
-                 type_of_any: TypeOfAny,
+                 type_of_any: str,
                  source_any: Optional['AnyType'] = None,
                  missing_import_name: Optional[str] = None,
                  line: int = -1,
@@ -327,7 +349,7 @@ class AnyType(Type):
 
     def copy_modified(self,
                       # Mark with Bogus because _dummy is just an object (with type Any)
-                      type_of_any: Bogus[TypeOfAny] = _dummy,
+                      type_of_any: Bogus[str] = _dummy,
                       original_any: Bogus[Optional['AnyType']] = _dummy,
                       ) -> 'AnyType':
         if type_of_any is _dummy:
@@ -345,7 +367,7 @@ class AnyType(Type):
         return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType', 'type_of_any': self.type_of_any.name,
+        return {'.class': 'AnyType', 'type_of_any': self.type_of_any,
                 'source_any': self.source_any.serialize() if self.source_any is not None else None,
                 'missing_import_name': self.missing_import_name}
 
@@ -353,7 +375,7 @@ class AnyType(Type):
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
         source = data['source_any']
-        return AnyType(TypeOfAny[data['type_of_any']],
+        return AnyType(data['type_of_any'],
                        AnyType.deserialize(source) if source is not None else None,
                        data['missing_import_name'])
 
@@ -476,7 +498,7 @@ class DeletedType(Type):
 
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
-NOT_READY = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')
+NOT_READY = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')  # type: Final
 
 
 class Instance(Type):
@@ -1903,10 +1925,10 @@ def union_items(typ: Type) -> List[Type]:
         return [typ]
 
 
-names = globals().copy()
+names = globals().copy()  # type: Final
 names.pop('NOT_READY', None)
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in names.items()
     if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
-}
+}  # type: Final

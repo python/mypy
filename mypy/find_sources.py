@@ -9,7 +9,10 @@ from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
 
-PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)
+if False:
+    from typing import Final
+
+PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)  # type: Final
 
 
 class InvalidSourceList(Exception):

@@ -1,8 +1,12 @@
 """AST triggers that are used for fine-grained dependency handling."""
 
+if False:
+    from typing import Final
+
 # Used as a suffix for triggers to handle "from m import *" dependencies (see also
 # make_wildcard_trigger)
-WILDCARD_TAG = '[wildcard]'
+
+WILDCARD_TAG = '[wildcard]'  # type: Final
 
 
 def make_trigger(name: str) -> str:

@@ -10,7 +10,7 @@ from mypy_extensions import trait
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict, ClassVar
+    from typing import DefaultDict, Final
 
 import mypy.strconv
 from mypy.util import short_type
@@ -64,29 +64,29 @@ JsonDict = Dict[str, Any]
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: int
-GDEF = 1  # type: int
-MDEF = 2  # type: int
-MODULE_REF = 3  # type: int
+LDEF = 0  # type: Final[int]
+GDEF = 1  # type: Final[int]
+MDEF = 2  # type: Final[int]
+MODULE_REF = 3  # type: Final[int]
 # Type variable declared using TypeVar(...) has kind TVAR. It's not
 # valid as a type unless bound in a TypeVarScope.  That happens within:
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-TVAR = 4  # type: int
+TVAR = 4  # type: Final[int]
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 5  # type: int
+UNBOUND_IMPORTED = 5  # type: Final[int]
 
 # RevealExpr node kinds
-REVEAL_TYPE = 0  # type: int
-REVEAL_LOCALS = 1  # type: int
+REVEAL_TYPE = 0  # type: Final[int]
+REVEAL_LOCALS = 1  # type: Final[int]
 
-LITERAL_YES = 2
-LITERAL_TYPE = 1
-LITERAL_NO = 0
+LITERAL_YES = 2  # type: Final
+LITERAL_TYPE = 1  # type: Final
+LITERAL_NO = 0  # type: Final
 
 node_kinds = {
     LDEF: 'Ldef',
@@ -95,14 +95,14 @@ node_kinds = {
     MODULE_REF: 'ModuleRef',
     TVAR: 'Tvar',
     UNBOUND_IMPORTED: 'UnboundImported',
-}
-inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}
+}  # type: Final
+inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}  # type: Final
 
 
 implicit_module_attrs = {'__name__': '__builtins__.str',
                          '__doc__': None,  # depends on Python version, see semanal.py
                          '__file__': '__builtins__.str',
-                         '__package__': '__builtins__.str'}
+                         '__package__': '__builtins__.str'}  # type: Final
 
 
 # These aliases exist because built-in class objects are not subscriptable.
@@ -116,17 +116,17 @@ type_aliases = {
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
-}
+}  # type: Final
 
 reverse_builtin_aliases = {
     'builtins.list': 'typing.List',
     'builtins.dict': 'typing.Dict',
     'builtins.set': 'typing.Set',
     'builtins.frozenset': 'typing.FrozenSet',
-}
+}  # type: Final
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                   'builtins.enumerate': ''}
+                   'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
 
@@ -379,7 +379,7 @@ class ImportedName(SymbolNode):
 
 FUNCBASE_FLAGS = [
     'is_property', 'is_class', 'is_static', 'is_final'
-]
+]  # type: Final
 
 
 class FuncBase(Node):
@@ -510,7 +510,7 @@ class Argument(Node):
 FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
     'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
     'is_awaitable_coroutine',
-]
+]  # type: Final
 
 
 class FuncItem(FuncBase):
@@ -570,7 +570,7 @@ class FuncItem(FuncBase):
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
     'is_decorated', 'is_conditional', 'is_abstract',
-]
+]  # type: Final
 
 
 class FuncDef(FuncItem, SymbolNode, Statement):
@@ -707,7 +707,7 @@ VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init'
-]
+]  # type: Final
 
 
 class Var(SymbolNode):
@@ -1372,17 +1372,17 @@ class MemberExpr(RefExpr):
 # Kinds of arguments
 
 # Positional argument
-ARG_POS = 0  # type: int
+ARG_POS = 0  # type: Final[int]
 # Positional, optional argument (functions only, not calls)
-ARG_OPT = 1  # type: int
+ARG_OPT = 1  # type: Final[int]
 # *arg argument
-ARG_STAR = 2  # type: int
+ARG_STAR = 2  # type: Final[int]
 # Keyword argument x=y in call, or keyword-only function arg
-ARG_NAMED = 3  # type: int
+ARG_NAMED = 3  # type: Final[int]
 # **arg argument
-ARG_STAR2 = 4  # type: int
+ARG_STAR2 = 4  # type: Final[int]
 # In an argument list, keyword-only and also optional
-ARG_NAMED_OPT = 5
+ARG_NAMED_OPT = 5  # type: Final[int]
 
 
 class CallExpr(Expression):
@@ -1891,9 +1891,9 @@ class TypeApplication(Expression):
 #
 # If T is contravariant in Foo[T], Foo[object] is a subtype of
 # Foo[int], but not vice versa.
-INVARIANT = 0  # type: int
-COVARIANT = 1  # type: int
-CONTRAVARIANT = 2  # type: int
+INVARIANT = 0  # type: Final[int]
+COVARIANT = 1  # type: Final[int]
+CONTRAVARIANT = 2  # type: Final[int]
 
 
 class TypeVarExpr(SymbolNode, Expression):
@@ -2223,7 +2223,7 @@ class TypeInfo(SymbolNode):
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
         'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
-    ]  # type: ClassVar[List[str]]
+    ]  # type: Final[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
@@ -2484,9 +2484,9 @@ class FakeInfo(TypeInfo):
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
-VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: TypeInfo
-CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: TypeInfo
-FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: TypeInfo
+VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: Final[TypeInfo]
+CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: Final[TypeInfo]
+FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: Final[TypeInfo]
 
 
 class TypeAlias(SymbolNode):
@@ -2879,7 +2879,7 @@ deserialize_map = {
     for key, obj in globals().items()
     if type(obj) is not FakeInfo
     and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
-}
+}  # type: Final
 
 
 def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T], None]) -> None:

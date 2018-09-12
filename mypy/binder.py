@@ -4,7 +4,7 @@ from collections import defaultdict
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict
+    from typing import DefaultDict, Final
 
 from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny
 from mypy.subtypes import is_subtype
@@ -15,7 +15,7 @@ from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
-BindableTypes = (IndexExpr, MemberExpr, NameExpr)
+BindableTypes = (IndexExpr, MemberExpr, NameExpr)  # type: Final
 BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 
 

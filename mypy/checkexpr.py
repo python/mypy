@@ -8,7 +8,7 @@ from typing import (
 )
 MYPY = False
 if MYPY:
-    from typing import ClassVar
+    from typing import ClassVar, Final
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -71,7 +71,7 @@ ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, M
 # may cause performance issues. The reason is that although union math algorithm we use
 # nicely captures most corner cases, its worst case complexity is exponential,
 # see https://github.com/python/mypy/pull/5255#discussion_r196896335 for discussion.
-MAX_UNIONS = 5
+MAX_UNIONS = 5  # type: Final
 
 
 class TooManyUnions(Exception):
