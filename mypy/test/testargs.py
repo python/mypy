@@ -60,6 +60,20 @@ class ArgSuite(Suite):
         assert str(e.value) == 'Python version (2, 10) did not match executable {}, got' \
                                ' version {}.'.format(sys.executable, sys.version_info[:2])
 
+        # If a configuration file specifies python_version, it will be set on options.
+        # Use that to figure out how to determine a value for python_executable, when
+        # special_opts.python_version is None.
+        special_opts = argparse.Namespace()
+        special_opts.python_executable = None
+        special_opts.python_version = None
+        special_opts.no_executable = None
+        options = Options()
+        options.python_executable = None
+        options.python_version = sys.version_info[:2]
+        infer_python_version_and_executable(options, special_opts)
+        assert options.python_version == sys.version_info[:2]
+        assert options.python_executable == sys.executable
+
         # test that --no-site-packages will disable executable inference
         matching_version = base + ['--python-version={}'.format(sys_ver_str),
                                    '--no-site-packages']
