@@ -4,83 +4,131 @@ Getting started
 ===============
 
 This chapter introduces some core concepts of mypy, including function
-annotations, the ``typing`` module and library stubs. Read it carefully,
-as the rest of documentation may not make much sense otherwise.
+annotations, the ``typing`` module, library stubs, and more.
 
-Installing mypy
-***************
+Be sure to read this chapter carefully, as the rest of the documentation
+may not make much sense otherwise.
+
+Installing and running mypy
+***************************
 
 Mypy requires Python 3.4 or later to run.  Once you've
 `installed Python 3 <https://www.python.org/downloads/>`_,
-you can install mypy using pip:
+install mypy using pip:
 
-.. code-block:: text
+.. code-block:: shell
 
-    python3 -m pip install mypy
+    $ python3 -m pip install mypy
 
-Note that even though you need Python 3 to run ``mypy``, type checking
-Python 2 code is fully supported, as discussed later in :ref:`python2`.
+Once mypy is installed, run it by using the ``mypy`` tool:
 
-Running mypy
-************
+.. code-block:: shell
 
-You can type check a program by using the ``mypy`` tool, which is
-basically a linter -- it checks your program for errors without actually
-running it::
+    $ mypy program.py
 
-   $ mypy program.py
+This command makes mypy *type check* your ``program.py`` file and print
+out any errors it finds. Mypy will type check your code *statically*: this
+means that it will check for error without ever running your code, just
+like a linter.
 
-All errors reported by mypy are essentially warnings that you are free
-to ignore, if you so wish.
+This means that you are always free to ignore the errors mypy reports and
+treat them as just warnings, if you so wish: mypy runs independently from
+Python itself.
+
+However, if you try running mypy on your existing Python code, it will most
+likely report little to no errors: you must add *type annotations* to your
+code to take full advantage of mypy. See the section below for details.
 
 .. note::
 
-   Depending on how mypy is configured, you may have to run mypy like
-   this::
+  Although you must install Python 3 to run mypy, mypy is fully capable of
+  type checking Python 2 code as well: just pass in the ``--py2`` flag. See
+  :ref:`python2` for more details.
 
-     $ python3 -m mypy program.py
+  .. code-block:: shell
 
-If you haven't added any type annotations to your program yet, you
-should add some first, as mypy won't report many errors in unannotated
-functions. Don't worry if you aren't familiar with type annotations --
-we'll discuss them in detail in much of the rest of this guide.
+      $ mypy --py2 program.py
 
-Mypy supports many command line options that you can use to tweak how
-mypy behaves.  They are documented in :ref:`command-line`.
 
-Function signatures
-*******************
+.. note::
 
-A function without a type annotation is considered *dynamically typed* by
-mypy:
+  Depending on how mypy is configured, you may have to run mypy like this:
+
+  .. code-block:: shell
+
+    $ python3 -m mypy program.py
+
+    # Or on Windows
+    $ py -3 -m mypy program.py
+
+Function signatures and dynamic vs static typing
+************************************************
+
+A function without type annotations is considered to be *dynamically typed* by mypy:
 
 .. code-block:: python
 
    def greeting(name):
-       return 'Hello, {}'.format(name)
+       return 'Hello ' + name
 
-You can declare the signature of a function using the Python 3
-annotation syntax (Python 2 is discussed later in :ref:`python2`).
-This makes the function statically typed, which causes mypy to
-report type errors within the function.
+By default, mypy will **not** type check dynamically typed functions. This means
+that with a few exceptions, mypy will not report any errors with regular unannotated Python.
 
-Here's a version of the above function that is statically typed and
-will be type checked:
+This is the case even if we misuse the function: for example, mypy would currently
+not report any errors if we tried running ``greeting(3)`` or ``greeting(b"Alice")``
+even though those function calls would result in errors at runtime.
 
-.. code-block:: python
-
-   def greeting(name: str) -> str:
-       return 'Hello, {}'.format(name)
-
-Now mypy will reject the following call, since the argument has an
-incompatible type:
+We can teach mypy to detect these kinds of bugs by adding *type annotations* (also
+known as *type hints*). For example, we can teach mypy that ``greeting`` both accepts
+and returns a string like so:
 
 .. code-block:: python
 
    def greeting(name: str) -> str:
-       return 'Hello, {}'.format(name)
+       return 'Hello ' + name
 
+Our function is now *statically typed*: mypy can use the provided type hints to detect
+incorrect ussages of the ``greeting`` function. For example, it will reject the following
+calls since the arguments have invalid types:
+
+.. code-block:: python
+
+   def greeting(name: str) -> str:
+       return 'Hello ' + name
+
+   greeting(3)         # Argument 1 to "greeting" has incompatible type "int"; expected "str"
    greeting(b'Alice')  # Argument 1 to "greeting" has incompatible type "bytes"; expected "str"
+
+Note that this is all still valid Python 3 code! The function annotation syntax
+shown above was added to Python `as a part of Python 3.0 <pep3107_>`_.
+
+If you are trying to type-check Python 2 code, you can add type hints
+using a comment-based syntax instead of the Python 3 annotation syntax.
+See our section on :ref:`typing Python 2 code <python2>` for more details.
+
+.. _pep3107: https://www.python.org/dev/peps/pep-3107/
+
+Being able to pick whether you want a function to be dynamically or statically
+typed can be very helpful. For example, if you are migrating an existing
+Python codebase to use static types, it's usually easier to migrate by incrementally
+adding type hints to your code rather then adding them all at once. Similarly,
+when you are prototyping a new feature, it may be convenient to initially implement
+the code using dynamic typing and only add type hints later once the code is more stable.
+
+Once you are finished migrating or prototying your code, you can make mypy warn you
+if you add a dynamic function by mistake by using the ``--disallow-unchecked-defs``
+flag. See :ref:`command-line` for more information on configuring mypy.
+
+.. note::
+
+   The earlier stages of mypy, known as the semantic analysis, may
+   report errors even for dynamically typed functions. However, you
+   should not rely on this, as this may change in the future.
+
+More function signatures
+************************
+
+Here are a few more examples of adding type hints to function signatures.
 
 If a function does not explicitly return a value we give the return
 type as ``None``. Using a ``None`` result in a statically typed
@@ -93,23 +141,8 @@ context results in a type check error:
 
    a = p()  # Error: "p" does not return a value
 
-Arguments with default values can be annotated as follows:
-
-.. code-block:: python
-
-   def greeting(name: str, excited: bool = False) -> str:
-       message = 'Hello, {}'.format(name)
-       if excited:
-           message += '!!!'
-       return message
-
-Mixing dynamic and static typing within a single file is often
-useful. For example, if you are migrating existing Python code to
-static typing, it may be easiest to do this incrementally, such as by
-migrating a few functions at a time. Also, when prototyping a new
-feature, you may decide to first implement the relevant code using
-dynamic typing and only add type signatures later, when the code is
-more stable.
+Make sure to remember to include ``None``: if we don't, the function
+will be dynamically typed. For example:
 
 .. code-block:: python
 
@@ -119,18 +152,61 @@ more stable.
    def g() -> None:
        1 + 'x'  # Type check error (statically typed)
 
-.. note::
+Arguments with default values can be annotated like so:
 
-   The earlier stages of mypy, known as the semantic analysis, may
-   report errors even for dynamically typed functions. However, you
-   should not rely on this, as this may change in the future.
+.. code-block:: python
+
+   def greeting(name: str, excited: bool = False) -> str:
+       message = 'Hello, {}'.format(name)
+       if excited:
+           message += '!!!'
+       return message
+
+``*args`` and ``**kwargs`` arguments can be annotated like so:
+
+.. code-block:: python
+
+   def stars(*names: str, **kwargs: float) -> float:
+       output = 0.0
+       for arg in args:
+           output += kwargs[arg]
+       return output
 
 The typing module
 *****************
 
-The ``typing`` module contains many definitions that are useful in
-statically typed code. You typically use ``from ... import`` to import
-them (we'll explain ``Iterable`` later in this document):
+So far, we've added type hints that use only basic concrete types like
+``str`` and ``float``. What if we want to express more complex types,
+such as "a list of strings" or "an iterable of ints"? 
+
+We can find many of these more complex static types inside of the ``typing``
+module. For example, if we want to indicate that some function can accept
+a list of strings, we can use the ``List`` type from the ``typing`` module:
+
+.. code-block:: python
+
+   from typing import List
+
+   def greet_all(names: List[str]) -> None:
+       for name in names:
+           print('Hello ' + name)
+
+   names = ["Alice", "Bob", "Charlie"]
+   ages = [10, 20, 30]
+   
+   greet_all(names)   # Ok!
+   greet_all(ages)    # Error due to incompatible types
+
+The ``List`` type is an example of something called a *generic type*: it can
+accept one or more *type parameters*. In this case, we *parameterized* ``List``
+by writing ``List[str]``. This lets mypy know that ``greet_all`` accepts specifically
+lists containing strings, and not lists containing ints or any other type.
+
+In this particular case, our type signature is perhaps a little too rigid.
+After all, there's no reason why this function must accept *specifically* a list --
+it would run just fine if we pass in a tuple, a set, or any custom iterable.
+
+We can express this idea by using the ``Iterable`` type instead of ``List``:
 
 .. code-block:: python
 
@@ -138,11 +214,77 @@ them (we'll explain ``Iterable`` later in this document):
 
    def greet_all(names: Iterable[str]) -> None:
        for name in names:
-           print('Hello, {}'.format(name))
+           print('Hello ' + name)
 
-For brevity, we often omit the ``typing`` import in code examples, but
+As a final example, suppose want to write a function that can accept *either*
+ints or strings, but no other types. We can express this using the ``Union`` type:
+
+.. code-block:: python
+
+   from typing import Union
+
+   def normalize_id(user_id: Union[int, str]) -> str:
+       if isinstance(user_id, int):
+           return 'user-{}'.format(100000 + user_id)
+       else:
+           return user_id
+
+The ``typing`` module contains many other useful types. You can find a
+quick overview by looking through the :ref:`mypy cheatsheets <overview-cheat-sheets>` 
+and a more detailed overview (including information on how to make your own
+generic types) by looking through the
+:ref:`type system reference <overview-type-system-reference>`.
+
+One final note: when adding types, the convention is to import types 
+using the form ``from typing import Iterable`` (as opposed to doing
+just ``import typing`` or ``import typing as t`` or ``from typing import *``).
+
+For brevity, we often omit these ``typing`` imports in code examples, but
 mypy will give an error if you use definitions such as ``Iterable``
 without first importing them.
+
+Local type inference
+********************
+
+Once you have added type hints to a function (e.g. made it statically typed),
+mypy will automatically type check that function's body. While doing so,
+mypy will try and *infer* as many details as possible. 
+
+We saw an example of this in the ``normalize_id`` function above -- mypy understands
+basic ``isinstance`` checks and so can infer that the ``user_id`` variable was of
+type ``int`` in the if-branch and of type ``str`` in the else-branch.
+
+As another example, consider the following function. Mypy can type-check this function
+without a problem: it will use the available context and deduce that ``output`` must be
+of type ``List[float]`` and that ``num`` must be of type ``float``:
+
+.. code-block:: python
+
+   def nums_below(numbers: Iterable[float], limit: float) -> List[float]:
+       output = []
+       for num in numbers:
+           if num < limit:
+               output.append(num)
+       return output
+
+Mypy will warn you if it is unable to determine what the type of some variable is.
+For example, suppose we assign an empty dictionary to some global variable:
+
+.. code-block:: python
+
+    my_global_dict = {}  # Error: Need type annotation for 'my_global_dict'
+
+We can teach mypy what type ``my_global_dict`` is meant to have by giving it
+a type hint. For example, if we knew this variable is supposed to be a dict
+of ints to floats, we could annotate it like so:
+
+.. code-block:: python
+
+   # If you are using Python 3.6+, you can use *variable annotations*:
+   my_global_dict: Dict[int, float] = {}
+
+   # If you are using older versions of Python, you can use the comment-based syntax:
+   my_global_dict = {}  # type: Dict[int, float]
 
 .. _stubs-intro:
 
@@ -171,7 +313,28 @@ library module that you import. Some modules ship with stubs that mypy
 can automatically find, or you can install a 3rd party module with
 additional stubs (see :ref:`installed-packages` for details).  You can
 also :ref:`create stubs <stub-files>` easily. We discuss ways of
-silencing complaints about missing stubs in :ref:`existing-code`.
+silencing complaints about missing stubs in :ref:`ignore-missing-imports`.
+
+Configuring mypy
+****************
+
+Mypy supports many command line options that you can use to tweak how
+mypy behaves.  They are documented in :ref:`command-line`.
+
+For example, suppose you want to make sure *all* functions within your
+codebase are using static typing and make mypy report an error if you
+add a dynamically-typed function by mistake. You can make mypy do this
+by running mypy with the ``--disallow-untyped-defs`` flag.
+
+One particularly useful command is the ``--strict`` flag. Running
+``$ mypy --strict program.py`` will enable many (though not all) of the
+available strictness options (including ``--disallow-untyped-defs``).
+
+This flag is very helpful if you're starting a new project from scratch and
+want to maintain a high degree of type safety in your codebase from day one.
+However, this flag will probably be too aggressive if you are trying to add
+static types to a large existing codebase -- see :ref:`existing-code` for
+more suggestions on what to do in this case.
 
 Next steps
 **********

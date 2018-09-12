@@ -336,7 +336,7 @@ potentially problematic or redundant in some way.
     a ``# type: ignore`` comment on a line that is not actually
     generating an error message.
 
-    This flag, along with the ``--warn-unsued-casts`` flag, are both
+    This flag, along with the ``--warn-unused-casts`` flag, are both
     particularly useful when you are upgrading mypy. Previously,
     you may have needed to add casts or ``# type: ignore`` annotations
     to work around bugs in mypy or missing stubs for 3rd party libraries.
