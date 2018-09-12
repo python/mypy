@@ -17,7 +17,7 @@ SubtypeRelationship = Tuple[Instance, Instance]
 
 # A tuple encoding the specific conditions under which we performed the subtype check.
 # (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
-SubtypeKind = Tuple[Any, ...]
+SubtypeKind = Tuple[bool, ...]
 
 # A cache that keeps track of whether the given TypeInfo is a part of a particular
 # subtype relationship
@@ -83,7 +83,8 @@ class TypeState:
     @classmethod
     def reset_subtype_caches_for(cls, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo."""
-        cls._subtype_caches.setdefault(info, dict()).clear()
+        if info in cls._subtype_caches:
+            cls._subtype_caches[info].clear()
 
     @classmethod
     def reset_all_subtype_caches_for(cls, info: TypeInfo) -> None:
@@ -93,14 +94,19 @@ class TypeState:
 
     @classmethod
     def is_cached_subtype_check(cls, kind: SubtypeKind, left: Instance, right: Instance) -> bool:
-        subtype_kinds = cls._subtype_caches.setdefault(right.type, dict())
-        return (left, right) in subtype_kinds.setdefault(kind, set())
+        info = right.type
+        if info not in cls._subtype_caches:
+            return False
+        cache = cls._subtype_caches[info]
+        if kind not in cache:
+            return False
+        return (left, right) in cache[kind]
 
     @classmethod
     def record_subtype_cache_entry(cls, kind: SubtypeKind,
                                    left: Instance, right: Instance) -> None:
-        subtype_kinds = cls._subtype_caches.setdefault(right.type, dict())
-        subtype_kinds.setdefault(kind, set()).add((left, right))
+        cache = cls._subtype_caches.setdefault(right.type, dict())
+        cache.setdefault(kind, set()).add((left, right))
 
     @classmethod
     def reset_protocol_deps(cls) -> None:
