@@ -55,7 +55,6 @@ MypyFile:1(
     TupleExpr:1()
     IntExpr(1)))
 
-
 [case testAccessingGlobalNameBeforeDefinition]
 x
 f()
