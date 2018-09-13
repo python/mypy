@@ -1,6 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, List, Optional, TypeVar
+from typing import cast, Callable, List, Optional, TypeVar, Any
 
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike, TypeVarDef,
@@ -314,7 +314,9 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
     """Give an error if the name being assigned was declared as final."""
     for base in info.mro:
         sym = base.names.get(name)
-        if sym and isinstance(sym.node, (Var, FuncBase, Decorator)) and sym.node.is_final:
+        # mypyc hack to workaround mypy misunderstanding multiple inheritance, see #3603
+        sym_node = sym.node  # type: Any
+        if sym and isinstance(sym_node, (Var, FuncBase, Decorator)) and sym_node.is_final:
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 

@@ -1262,9 +1262,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             name = defn.name()
             base_attr = base.names.get(name)
             if base_attr:
+                # mypyc hack to workaround mypy misunderstanding multiple inheritance, see #3603
+                base_attr_node = base_attr.node  # type: Any
                 # First, check if we override a final (always an error, even with Any types).
-                if (isinstance(base_attr.node, (Var, FuncBase, Decorator))
-                        and base_attr.node.is_final):
+                if (isinstance(base_attr_node, (Var, FuncBase, Decorator))
+                        and base_attr_node.is_final):
                     self.msg.cant_override_final(name, base.name(), defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
@@ -1585,11 +1587,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if second_type is None:
                 self.msg.cannot_determine_type_in_base(name, base2.name(), ctx)
             ok = True
+        # mypyc hack to workaround mypy misunderstanding multiple inheritance, see #3603
+        first_node = first.node  # type: Any
+        second_node = second.node  # type: Any
         # Final attributes can never be overridden, but can override
         # non-final read-only attributes.
-        if isinstance(second.node, (Var, FuncBase, Decorator)) and second.node.is_final:
+        if isinstance(second_node, (Var, FuncBase, Decorator)) and second_node.is_final:
             self.msg.cant_override_final(name, base2.name(), ctx)
-        if isinstance(first.node, (Var, FuncBase, Decorator)) and first.node.is_final:
+        if isinstance(first_node, (Var, FuncBase, Decorator)) and first_node.is_final:
             self.check_no_writable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
