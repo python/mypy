@@ -1330,10 +1330,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
-                # mypyc hack to workaround mypy misunderstanding multiple inheritance (#3603)
-                base_attr_node = base_attr.node  # type: Any
-                if (isinstance(base_attr_node, (FuncBase, Decorator))
-                        and not is_static(base_attr_node)):
+                if (isinstance(base_attr.node, (FuncDef, OverloadedFuncDef, Decorator))
+                        and not is_static(base_attr.node)):
                     bound = bind_self(original_type, self.scope.active_self_type())
                 else:
                     bound = original_type
