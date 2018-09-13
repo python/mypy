@@ -73,11 +73,12 @@ package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.
 
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
 
+USE_MYPYC = False
 if len(sys.argv) > 1 and sys.argv[1] == '--use-mypyc':
     sys.argv.pop(1)
     USE_MYPYC = True
-else:
-    USE_MYPYC = False
+if os.getenv('MYPY_USE_MYPYC', None) == '1':
+    USE_MYPYC = True
 
 if USE_MYPYC:
     MYPYC_BLACKLIST = (
