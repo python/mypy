@@ -47,6 +47,15 @@ MypyFile:1(
       NameExpr(f [__main__.f])
       Args())))
 
+[case testAssignEmptyTuple]
+() = 1
+[out]
+MypyFile:1(
+  AssignmentStmt:1(
+    TupleExpr:1()
+    IntExpr(1)))
+
+
 [case testAccessingGlobalNameBeforeDefinition]
 x
 f()
