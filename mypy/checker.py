@@ -37,7 +37,7 @@ from mypy.messages import MessageBuilder, make_inferred_type_note
 import mypy.checkexpr
 from mypy.checkmember import (
     map_type_from_supertype, bind_self, erase_to_bound, type_object_type,
-    analyze_descriptor_access
+    analyze_descriptor_access, is_final_node
 )
 from mypy import messages
 from mypy.subtypes import (
@@ -1263,8 +1263,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             base_attr = base.names.get(name)
             if base_attr:
                 # First, check if we override a final (always an error, even with Any types).
-                if (isinstance(base_attr.node, (Var, FuncDef, OverloadedFuncDef, Decorator))
-                        and base_attr.node.is_final):
+                if is_final_node(base_attr.node):
                     self.msg.cant_override_final(name, base.name(), defn)
                 # Second, final can't override anything writeable independently of types.
                 if defn.is_final:
@@ -1585,11 +1584,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             ok = True
         # Final attributes can never be overridden, but can override
         # non-final read-only attributes.
-        if (isinstance(second.node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and
-                second.node.is_final):
+        if is_final_node(second.node):
             self.msg.cant_override_final(name, base2.name(), ctx)
-        if (isinstance(first.node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and
-                first.node.is_final):
+        if is_final_node(first.node):
             self.check_no_writable(name, second.node, ctx)
         # __slots__ is special and the type can vary across class hierarchy.
         if name == '__slots__':
