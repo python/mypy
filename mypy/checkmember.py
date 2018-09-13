@@ -314,10 +314,11 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
     """Give an error if the name being assigned was declared as final."""
     for base in info.mro:
         sym = base.names.get(name)
-        # mypyc hack to workaround mypy misunderstanding multiple inheritance, see #3603
-        sym_node = sym.node  # type: Any
-        if sym and isinstance(sym_node, (Var, FuncBase, Decorator)) and sym_node.is_final:
-            msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
+        if sym:
+            # mypyc hack to workaround mypy misunderstanding multiple inheritance, see #3603
+            sym_node = sym.node  # type: Any
+            if isinstance(sym_node, (Var, FuncBase, Decorator)) and sym_node.is_final:
+                msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
 def analyze_descriptor_access(instance_type: Type, descriptor_type: Type,
