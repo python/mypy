@@ -314,7 +314,7 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
     """Give an error if the name being assigned was declared as final."""
     for base in info.mro:
         sym = base.names.get(name)
-        if sym and isinstance(sym.node, (Var, FuncBase, Decorator)) and sym.node.is_final:
+        if sym and is_final_node(sym.node):
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
@@ -839,3 +839,8 @@ def erase_to_bound(t: Type) -> Type:
         if isinstance(t.item, TypeVarType):
             return TypeType.make_normalized(t.item.upper_bound)
     return t
+
+
+def is_final_node(node: Optional[SymbolNode]) -> bool:
+    """Check whether `node` corresponds to a final attribute."""
+    return isinstance(node, (Var, FuncDef, OverloadedFuncDef, Decorator)) and node.is_final

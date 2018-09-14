@@ -80,7 +80,7 @@ def _overload(x: Any) -> Any:
 
 
 # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
-if sys.version_info < (3, 6) or bool():
+if bool() or sys.version_info < (3, 6):
     overload = _overload  # noqa
 
 
