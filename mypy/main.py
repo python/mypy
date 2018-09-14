@@ -469,8 +469,8 @@ def process_options(args: List[str],
         help="Additional variable to be considered False (may be repeated)")
 
     disallow_any_group = parser.add_argument_group(
-        title='Any type restrictions',
-        description="Disallow the use of the 'Any' type under certain conditions.")
+        title='Dynamic typing',
+        description="Disallow the use of the dynamic 'Any' type under certain conditions.")
     disallow_any_group.add_argument(
         '--disallow-any-unimported', default=False, action='store_true',
         help="Disallow Any types resulting from unfollowed imports")

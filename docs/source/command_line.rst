@@ -171,12 +171,15 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
     compile-time constants that are always false.  This flag may
     be repeated.
 
-.. _disallow-any:
+.. _disallow-dynamic-typing:
 
-Disallow Any 
-************
+Disallow dynamic typing
+***********************
 
-The ``--disallow-any`` family of flags disallows various types of ``Any`` in a module.
+The ``Any`` type is used represent a value that has a :ref:`dynamic type <dynamic-typing>`.
+The ``--disallow-any`` family of flags will disallow various uses of the ``Any`` type in
+a module -- this lets us strategically disallow the use of dynamic typing in a controlled way.
+
 The following options are available:
 
 ``--disallow-any-unimported``
