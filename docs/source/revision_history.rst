@@ -82,7 +82,7 @@ detailed release notes):
         of the analysis (i.e. the ``--python-version`` flag).
 
       * Split ``--disallow-any`` flag into
-        :ref:`separate boolean flags <disallow-any>`.
+        :ref:`separate boolean flags <disallow-dynamic-typing>`.
 
       * The ``--old-html-report`` flag was removed.
 
@@ -107,7 +107,7 @@ detailed release notes):
 
     * Publish ``mypy`` version 0.520 on PyPI.
 
-    * Add :ref:`fine-grained control of Any types <disallow-any>`.
+    * Add :ref:`fine-grained control of Any types <disallow-dynamic-typing>`.
 
     * Add :ref:`typeddict`.
 
