@@ -66,7 +66,7 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line_map = {}  # type: Dict[int, int]
 
-        self.type_of_any_counter = Counter()  # type: typing.Counter[str]
+        self.type_of_any_counter = Counter()  # type: typing.Counter[int]
         self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
         self.output = []  # type: List[str]

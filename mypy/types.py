@@ -38,23 +38,23 @@ class TypeOfAny:
     This class describes different types of Any. Each 'Any' can be of only one type at a time.
     """
     # Was this Any type was inferred without a type annotation?
-    unannotated = 'unannotated'  # type: Final
+    unannotated = 1  # type: Final
     # Does this Any come from an explicit type annotation?
-    explicit = 'explicit'  # type: Final
+    explicit = 2  # type: Final
     # Does this come from an unfollowed import? See --disallow-any-unimported option
-    from_unimported_type = 'from_unimported_type'  # type: Final
+    from_unimported_type = 3  # type: Final
     # Does this Any type come from omitted generics?
-    from_omitted_generics = 'from_omitted_generics'  # type: Final
+    from_omitted_generics = 4  # type: Final
     # Does this Any come from an error?
-    from_error = 'from_error'  # type: Final
+    from_error = 5  # type: Final
     # Is this a type that can't be represented in mypy's type system? For instance, type of
     # call to NewType...). Even though these types aren't real Anys, we treat them as such.
     # Also used for variables named '_'.
-    special_form = 'special_form'  # type: Final
+    special_form = 6  # type: Final
     # Does this Any come from interaction with another Any?
-    from_another_any = 'from_another_any'  # type: Final
+    from_another_any = 7  # type: Final
     # Does this Any come from an implementation limitation/bug?
-    implementation_artifact = 'implementation_artifact'  # type: Final
+    implementation_artifact = 8  # type: Final
 
 
 def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
@@ -318,7 +318,7 @@ class AnyType(Type):
     __slots__ = ('type_of_any', 'source_any', 'missing_import_name')
 
     def __init__(self,
-                 type_of_any: str,
+                 type_of_any: int,
                  source_any: Optional['AnyType'] = None,
                  missing_import_name: Optional[str] = None,
                  line: int = -1,
@@ -349,7 +349,7 @@ class AnyType(Type):
 
     def copy_modified(self,
                       # Mark with Bogus because _dummy is just an object (with type Any)
-                      type_of_any: Bogus[str] = _dummy,
+                      type_of_any: Bogus[int] = _dummy,
                       original_any: Bogus[Optional['AnyType']] = _dummy,
                       ) -> 'AnyType':
         if type_of_any is _dummy:
