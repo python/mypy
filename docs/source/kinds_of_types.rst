@@ -93,7 +93,7 @@ the error:
    if wait(2) > 1:   # Error: can't compare None and int
        ...
 
-The ``Any`` type is discussed in more detail in section :ref:`dynamic_typing`.
+The ``Any`` type is discussed in more detail in section :ref:`dynamic-typing`.
 
 .. note::
 

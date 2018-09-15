@@ -122,8 +122,8 @@ assume here is some 3rd party library you've installed and are importing. These 
     package -- that is, only for function definitions defined in the
     ``mycode/foo`` directory.
     
-2.  Selectively *disable* the "function is returning any" warnings within only
-    ``mycode.bar``. This overrides the global default we set earlier.
+2.  Selectively *disable* the "function is returning any" warnings within 
+    ``mycode.bar`` only. This overrides the global default we set earlier.
 
 3.  Suppress any error messages generated when your codebase tries importing the
     module ``somelibrary``. This is useful if ``somelibrary`` is some 3rd party library
@@ -139,7 +139,7 @@ or on a per-module basis (in sections like ``[mypy-foo.bar]``).
 
 If you set an option both globally and for a specific module, the module configuration
 options take precedence. This lets you set global defaults and override them on a
-module-by-module basis. If multiple pattern sections match a module, the :ref:`options from the
+module-by-module basis. If multiple pattern sections match a module, :ref:`the options from the
 most specific section are used where they disagree <config-precedence>`.
 
 .. _config-file-import-discovery-per-module:
@@ -356,7 +356,7 @@ section of the command line docs.
     Enables :ref:`incremental mode <incremental>`.
 
 ``cache_dir`` (string, default ``.mypy_cache``) 
-    Specifies the location mypy will store incremental cache info in.
+    Specifies the location where mypy stores incremental cache info.
     Note that the cache is only read when incremental mode is enabled
     but is always written to, unless the value is set to ``/dev/nul``
     (UNIX) or ``nul`` (Windows).

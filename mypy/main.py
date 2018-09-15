@@ -776,7 +776,7 @@ def process_options(args: List[str],
     # Process deprecated options
     if special_opts.disallow_any:
         print("--disallow-any option was split up into multiple flags. "
-              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-any-flags")
+              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-dynamic-typing")
     if options.strict_boolean:
         print("Warning: --strict-boolean is deprecated; "
               "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
