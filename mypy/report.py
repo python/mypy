@@ -47,7 +47,9 @@ type_of_any_name_map = collections.OrderedDict([
     (TypeOfAny.implementation_artifact, "Implementation Artifact"),
 ])  # type: Final[collections.OrderedDict[int, str]]
 
-reporter_classes = {}  # type: Final[Dict[str, Tuple[Callable[[Reports, str], AbstractReporter], bool]]]
+ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
+
+reporter_classes = {}  # type: Final[ReporterClasses]
 
 
 class Reports:

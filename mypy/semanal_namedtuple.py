@@ -34,6 +34,7 @@ NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs
 NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
                         'expected "field_name: field_type [= default]"')  # type: Final
 
+
 class NamedTupleAnalyzer:
     def __init__(self, options: Options, api: SemanticAnalyzerInterface) -> None:
         self.options = options

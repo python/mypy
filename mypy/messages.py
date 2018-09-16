@@ -46,24 +46,29 @@ NO_RETURN_EXPECTED = 'Return statement in function which does not return'  # typ
 INVALID_EXCEPTION = 'Exception must be derived from BaseException'  # type: Final
 INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'  # type: Final
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
-    'The return type of a generator function should be "Generator" or one of its supertypes'  # type: Final
+    'The return type of a generator function should be "Generator"' \
+    ' or one of its supertypes'  # type: Final
 INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR = \
     'The return type of an async generator function should be "AsyncGenerator" or one of its ' \
     'supertypes'  # type: Final
 INVALID_GENERATOR_RETURN_ITEM_TYPE = \
-    'The return type of a generator function must be None in its third type parameter in Python 2'  # type: Final
+    'The return type of a generator function must be None in' \
+    ' its third type parameter in Python 2'  # type: Final
 YIELD_VALUE_EXPECTED = 'Yield value expected'  # type: Final
 INCOMPATIBLE_TYPES = 'Incompatible types'  # type: Final
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'  # type: Final
 INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'  # type: Final
 INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'  # type: Final
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = 'Incompatible types in "async with" for "__aenter__"'  # type: Final
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = 'Incompatible types in "async with" for "__aexit__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = \
+    'Incompatible types in "async with" for "__aenter__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = \
+    'Incompatible types in "async with" for "__aexit__"'  # type: Final
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'  # type: Final
 
 INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'  # type: Final
 INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'  # type: Final
-INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'  # type: Final
+INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = \
+    'Incompatible types in string interpolation'  # type: Final
 MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'  # type: Final
 INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'  # type: Final
 TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
@@ -78,13 +83,16 @@ INCONSISTENT_ABSTRACT_OVERLOAD = \
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
     'Read-only property cannot override read-write property'  # type: Final
 FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'  # type: Final
-RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"  # type: Final
-FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"  # type: Final
+RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = \
+    "Cannot use a contravariant type variable as return type"  # type: Final
+FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = \
+    "Cannot use a covariant type variable as a parameter"  # type: Final
 INCOMPATIBLE_IMPORT_OF = "Incompatible import of"  # type: Final
 FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"  # type: Final
 ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"  # type: Final
 RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"  # type: Final
-ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"  # type: Final
+ARGUMENT_TYPE_EXPECTED = \
+    "Function is missing a type annotation for one or more arguments"  # type: Final
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
     'Keyword argument only valid with "str" key type in call to "dict"'  # type: Final
 ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'  # type: Final
@@ -95,11 +103,13 @@ TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
 MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # type: Final
 NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'  # type: Final
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
-GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'  # type: Final
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
+    'Access to generic instance variables via class is ambiguous'  # type: Final
 CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'  # type: Final
 CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'  # type: Final
 BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
-IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
+IMPLICIT_GENERIC_ANY_BUILTIN = \
+    'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
 INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'  # type: Final
 UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'  # type: Final
 
