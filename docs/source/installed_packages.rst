@@ -3,7 +3,7 @@
 Using installed packages
 ========================
 
-`PEP 561 <https://www.python.org/dev/peps/pep-0561/>`_ specifies how to mark
+`PEP 561 <https://www.python.org/dev/peps/pep-0561/>`__ specifies how to mark
 a package as supporting type checking. Below is a summary of how to create
 PEP 561 compatible packages and have mypy use them in type checking.
 
@@ -31,7 +31,7 @@ If you do not want to use typed packages, use the ``--no-site-packages`` flag
 to disable searching.
 
 Note that stub-only packages (defined in
-`PEP 561 <https://www.python.org/dev/peps/pep-0561/#stub-only-packages>`_)
+`PEP 561 <https://www.python.org/dev/peps/pep-0561/#stub-only-packages>`__)
 cannot be used with ``MYPYPATH``. If you want mypy to find the package, it must
 be installed. For a package ``foo``, the name of the stub-only package
 (``foo-stubs``) is not a legal package name, so mypy will not find it, unless
