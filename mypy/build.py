@@ -34,7 +34,8 @@ from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
 MYPY = False
 if MYPY:
-    from typing import ClassVar, Final
+    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy import sitepkgs
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)

@@ -24,8 +24,9 @@ from mypy.typestate import TypeState, SubtypeKind
 
 from mypy import experiments
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 # Flags for detected protocol members

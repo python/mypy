@@ -7,7 +7,8 @@ from typing import Any, Dict, Set, Tuple, Optional
 
 MYPY = False
 if MYPY:
-    from typing import ClassVar, Final
+    from typing import ClassVar
+    from typing_extensions import Final
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
 from mypy.server.trigger import make_trigger

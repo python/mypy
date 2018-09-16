@@ -30,8 +30,9 @@ from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy import nodes, messages
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 

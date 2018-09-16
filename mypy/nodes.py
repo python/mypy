@@ -10,7 +10,8 @@ from mypy_extensions import trait
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict, Final
+    from typing import DefaultDict
+    from typing_extensions import Final
 
 import mypy.strconv
 from mypy.util import short_type

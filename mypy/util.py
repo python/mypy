@@ -11,7 +11,8 @@ from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
 MYPY = False
 if MYPY:
-    from typing import Type, Final
+    from typing import Type
+    from typing_extensions import Final
 
 T = TypeVar('T')
 

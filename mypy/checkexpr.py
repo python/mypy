@@ -8,7 +8,8 @@ from typing import (
 )
 MYPY = False
 if MYPY:
-    from typing import ClassVar, Final
+    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (

@@ -73,8 +73,9 @@ from mypy.types import (
 )
 from mypy.visitor import NodeVisitor
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),

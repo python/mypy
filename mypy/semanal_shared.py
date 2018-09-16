@@ -11,8 +11,9 @@ from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance
 from mypy.tvar_scope import TypeVarScope
 
+MYPY = False
 if False:
-    from typing import Final
+    from typing_extensions import Final
 
 # Priorities for ordering of patches within the final "patch" phase of semantic analysis
 # (after pass 3):

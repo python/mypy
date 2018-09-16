@@ -19,8 +19,9 @@ from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
 from mypy import join
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
                       'expected "field_name: field_type"')  # type: Final

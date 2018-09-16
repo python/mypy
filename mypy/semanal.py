@@ -90,8 +90,9 @@ from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.typestate import TypeState
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 

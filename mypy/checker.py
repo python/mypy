@@ -65,7 +65,7 @@ from mypy import experiments
 
 MYPY = False
 if MYPY:
-    from typing import Final
+    from typing_extensions import Final
 
 
 T = TypeVar('T')

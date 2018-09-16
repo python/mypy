@@ -13,8 +13,9 @@ import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 SUBTYPE_OF = 0  # type: Final[int]

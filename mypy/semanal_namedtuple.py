@@ -20,8 +20,9 @@ from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy import join
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.

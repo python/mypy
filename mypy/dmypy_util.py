@@ -7,8 +7,10 @@ import json
 import socket
 
 from typing import Any
-if False:
-    from typing import Final
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 STATUS_FILE = '.dmypy.json'  # type: Final
 

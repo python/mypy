@@ -24,8 +24,9 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 try:
     # mypyc doesn't properly handle import from of submodules that we

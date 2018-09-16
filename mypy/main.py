@@ -24,8 +24,9 @@ from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 orig_stat = os.stat  # type: Final

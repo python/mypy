@@ -8,9 +8,9 @@ from mypy.build import BuildSource, PYTHON_EXTENSIONS
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
-
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)  # type: Final
 

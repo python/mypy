@@ -5,8 +5,9 @@ from typing import Dict, List, Tuple
 from mypy.nodes import SymbolNode, Var, Decorator, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 # If True, print more verbose output on failure.

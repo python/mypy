@@ -14,8 +14,9 @@ no stub for a module.
 
 from typing import Set
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 third_party_modules = {

@@ -18,8 +18,9 @@ from mypy.nodes import (
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef
 )
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 TYPE_EMPTY = 0  # type: Final

@@ -10,7 +10,8 @@ from typing import (
 
 MYPY = False
 if MYPY:
-    from typing import ClassVar, Final
+    from typing import ClassVar
+    from typing_extensions import Final
 
 import mypy.nodes
 from mypy import experiments

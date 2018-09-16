@@ -141,8 +141,9 @@ from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
 from mypy.typestate import TypeState
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 MAX_ITER = 1000  # type: Final

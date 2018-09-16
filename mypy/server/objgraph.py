@@ -5,8 +5,9 @@ from typing import List, Dict, Iterator, Tuple, Mapping
 import weakref
 import types
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 method_descriptor_type = type(object.__dir__)  # type: Final

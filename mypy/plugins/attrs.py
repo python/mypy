@@ -20,8 +20,9 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 # The names of the different functions that create classes or arguments.

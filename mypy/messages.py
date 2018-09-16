@@ -30,8 +30,9 @@ from mypy.nodes import (
     CallExpr
 )
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.

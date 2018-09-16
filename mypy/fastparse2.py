@@ -21,7 +21,7 @@ from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dic
 MYPY = False
 if MYPY:
     import typing  # for typing.Type, which conflicts with types.Type
-    from typing import Final
+    from typing_extensions import Final
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,

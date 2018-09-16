@@ -6,7 +6,7 @@ import sys
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
 MYPY = False
 if MYPY:
-    from typing import ClassVar, Final
+    from typing_extensions import Final
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state

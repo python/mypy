@@ -28,8 +28,9 @@ from mypy.options import Options
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 
-if False:
-    from typing import Final
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
