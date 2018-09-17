@@ -1504,22 +1504,22 @@ op_methods = {
     '>': '__gt__',
     '<=': '__le__',
     'in': '__contains__',
-}  # type: Dict[str, str]
+}  # type: Final[Dict[str, str]]
 
-op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}
+op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}  # type: Final
 op_methods_to_symbols['__div__'] = '/'
 
-comparison_fallback_method = '__cmp__'
+comparison_fallback_method = '__cmp__'  # type: Final
 ops_falling_back_to_cmp = {'__ne__', '__eq__',
                            '__lt__', '__le__',
-                           '__gt__', '__ge__'}
+                           '__gt__', '__ge__'}  # type: Final
 
 
 ops_with_inplace_method = {
-    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}
+    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}  # type: Final
 
 inplace_operator_methods = set(
-    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)
+    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)  # type: Final
 
 reverse_op_methods = {
     '__add__': '__radd__',
@@ -1542,7 +1542,7 @@ reverse_op_methods = {
     '__ge__': '__le__',
     '__gt__': '__lt__',
     '__le__': '__ge__',
-}
+}  # type: Final
 
 # Suppose we have some class A. When we do A() + A(), Python will only check
 # the output of A().__add__(A()) and skip calling the __radd__ method entirely.
@@ -1563,16 +1563,16 @@ op_methods_that_shortcut = {
     '__xor__',
     '__lshift__',
     '__rshift__',
-}
+}  # type: Final
 
-normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
-reverse_op_method_set = set(reverse_op_methods.values())
+normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())  # type: Final
+reverse_op_method_set = set(reverse_op_methods.values())  # type: Final
 
 unary_op_methods = {
     '-': '__neg__',
     '+': '__pos__',
     '~': '__invert__',
-}
+}  # type: Final
 
 
 class OpExpr(Expression):
