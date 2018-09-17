@@ -6,11 +6,9 @@ Usage:
     $ mypyc foo.py [...]
     $ python3 -c 'import foo'  # Uses compiled 'foo'
 
-Limitations:
 
-* Can only compile top-level modules
-* There's no easy way to look at the generated code as the C file gets
-  deleted at the end
+This is just a thin wrapper that generates a setup.py file that uses
+mypycify, suitable for prototyping and testing.
 """
 
 import os
@@ -20,139 +18,34 @@ import tempfile
 import time
 
 base_path = os.path.join(os.path.dirname(__file__), '..')
+sys.path.append(base_path)
 
-sys.path.extend([os.path.join(base_path, 'external/mypy'), base_path])
+from distutils.core import run_setup
 
-import shutil
-from typing import List, Optional, IO
+setup_format = """\
+from distutils.core import setup
+from mypyc.build import mypycify, MypycifyBuildExt
 
-from mypy.errors import CompileError
-from mypy.options import Options
-from mypy.build import BuildSource
-from mypy.main import process_options
-from mypy import build
-
-from mypyc import emitmodule
-from mypyc.buildc import (
-    BuildError, build_shared_lib_for_modules, build_c_extension_shim, build_c_extension
+setup(name='mypyc_output',
+      ext_modules=mypycify([], {}, {}),
+      cmdclass={{'build_ext': MypycifyBuildExt}},
 )
-
-
-def handle_build_error(err: BuildError, c_path: Optional[str]) -> None:
-    print(err.output.decode('utf8'))
-    if c_path is not None:
-        extra = ' (%s)' % c_path
-    else:
-        extra = ''
-    sys.exit('Internal error: C compilation failed' + extra)
-
-
-def build_using_shared_lib(dirname: str, common_path: str, module_names: List[str],
-                           sources: List[BuildSource]) -> None:
-    try:
-        shared_lib_path = build_shared_lib_for_modules(common_path, module_names, dirname)
-        shutil.copy(shared_lib_path, os.path.basename(shared_lib_path))
-    except BuildError as err:
-        handle_build_error(err, common_path)
-
-    for source in sources:
-        module = source.module
-        module_path = module.replace('.', '/')
-        is_package = source.path is not None and os.path.split(source.path)[1] == '__init__.py'
-        if is_package:
-            module_path = os.path.join(module_path, '__init__')
-        so_path = '%s.so' % module_path
-        try:
-            native_lib_path = build_c_extension_shim(module, shared_lib_path, dirname, is_package)
-        except BuildError as err:
-            handle_build_error(err, None)
-        shutil.copy(native_lib_path, so_path)
-
-
-def build_single_module(dirname: str, c_path: str, module: str) -> None:
-    so_path = '%s.so' % module
-
-    try:
-        native_lib_path = build_c_extension(c_path, module, dirname)
-    except BuildError as err:
-        handle_build_error(err, c_path)
-
-    shutil.copy(native_lib_path, so_path)
-
+"""
 
 def main() -> None:
-    sources, options = process_options(sys.argv[1:])
-    if options.python_version[0] == 2:
-        sys.exit('Python 2 not supported')
-    if not options.strict_optional:
-        sys.exit('Disabling strict optional checking not supported')
-    options.show_traceback = True
-    # Needed to get types for all AST nodes
-    options.export_types = True
-    # TODO: Support incremental checking
-    options.incremental = False
-
-    module_names = [source.module for source in sources]
-    # We generate a shared lib if there are multiple modules or if any
-    # of the modules are in package. (Because I didn't want to fuss
-    # around with making the single module code handle packages.)
-    use_shared_lib = len(module_names) > 1 or any('.' in x for x in module_names)
-
-    # XXX: This is not the right way to pass in command line args
-    opt_level = os.getenv("MYPYC_OPT_LEVEL", None)
-    if opt_level:
-        import mypyc.buildc
-        mypyc.buildc.OPT_LEVEL = opt_level
-
-    save_dir = os.getenv("MYPYC_DIR", None)
-
-    ops = [] if save_dir else None  # type: Optional[List[str]]
-
-    t0 = time.time()
+    build_dir = 'build'  # can this be overridden??
     try:
-        result = emitmodule.parse_and_typecheck(sources, options)
-    except CompileError as e:
-        for line in e.messages:
-            print(line)
-        sys.exit(1)
+        os.mkdir(build_dir)
+    except FileExistsError:
+        pass
 
-    t1 = time.time()
-    print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
+    opt_level = os.getenv("MYPYC_OPT_LEVEL", '')
 
-    ctext = emitmodule.compile_modules_to_c(result, module_names, use_shared_lib, ops=ops)
+    setup_file = os.path.join(build_dir, 'setup.py')
+    with open(setup_file, 'w') as f:
+        f.write(setup_format.format(sys.argv[1:], opt_level))
 
-    t2 = time.time()
-    print("Compiled to C in {:.3f}s".format(t2 - t1))
-
-    if save_dir:
-        try:
-            os.mkdir(save_dir)
-        except FileExistsError:
-            pass
-        if ops:
-            with open(os.path.join(save_dir, 'ops.txt'), 'w') as f:
-                f.write('\n'.join(ops))
-
-        dir = os.path.abspath(save_dir)
-    else:
-        dir = tempfile.mkdtemp(prefix='mypyc-')
-
-    try:
-        cfile = os.path.join(dir, '__native.c')
-        with open(cfile, 'w') as f:
-            f.write(ctext)
-
-        if use_shared_lib:
-            build_using_shared_lib(dir, cfile, module_names, sources)
-        else:
-            build_single_module(dir, cfile, module_names[0])
-    finally:
-        if not save_dir:
-            shutil.rmtree(dir)
-
-    t3 = time.time()
-    print("Generated binary in {:.3f}s".format(t3 - t2))
-
+    run_setup(setup_file, ['build_ext', '--inplace'])
 
 if __name__ == '__main__':
     main()

@@ -3,8 +3,9 @@
 import os.path
 import platform
 import subprocess
+import contextlib
 import sys
-from typing import List
+from typing import List, Iterator
 
 from mypy import build
 from mypy.test.data import parse_test_cases, DataDrivenTestCase
@@ -14,11 +15,12 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc import emitmodule
-from mypyc import buildc
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output,
     show_c_error, heading,
 )
+
+from distutils.core import run_setup
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -32,6 +34,26 @@ files = [
     'run-mypy-sim.test',
 ]
 
+setup_format = """\
+from distutils.core import setup
+from mypyc.build import mypycify, MypycifyBuildExt
+
+setup(name='test_run_output',
+      ext_modules=mypycify({}, skip_cgen=True),
+      cmdclass={{'build_ext': MypycifyBuildExt}},
+)
+"""
+
+
+@contextlib.contextmanager
+def chdir_manager(target: str) -> Iterator[None]:
+    dir = os.getcwd()
+    os.chdir(target)
+    try:
+        yield
+    finally:
+        os.chdir(dir)
+
 
 class TestRun(MypycDataSuite):
     """Test cases that build a C extension and run code."""
@@ -42,7 +64,10 @@ class TestRun(MypycDataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
 
-        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase):
+        # setup.py wants to be run from the root directory of the package, which we accommodate
+        # by chdiring into tmp/
+        with use_custom_builtins(os.path.join(self.data_prefix, ICODE_GEN_BUILTINS), testcase), (
+                chdir_manager('tmp')):
             text = '\n'.join(testcase.input)
 
             options = Options()
@@ -55,31 +80,34 @@ class TestRun(MypycDataSuite):
             workdir = 'build'
             os.mkdir(workdir)
 
-            os.mkdir('tmp/py')
-            source_path = 'tmp/py/native.py'
+            source_path = 'native.py'
             with open(source_path, 'w') as f:
                 f.write(text)
-            with open('tmp/interpreted.py', 'w') as f:
+            with open('interpreted.py', 'w') as f:
                 f.write(text)
 
             source = build.BuildSource(source_path, 'native', text)
             sources = [source]
             module_names = ['native']
+            module_paths = [os.path.abspath('native.py')]
 
             # Hard code another module name to compile in the same compilation unit.
             to_delete = []
             for fn, text in testcase.files:
+                fn = os.path.relpath(fn, test_temp_dir)
+
                 if os.path.basename(fn).startswith('other'):
                     name = os.path.basename(fn).split('.')[0]
                     module_names.append(name)
                     sources.append(build.BuildSource(fn, name, text))
                     to_delete.append(fn)
+                    module_paths.append(os.path.abspath(fn))
 
             try:
                 result = emitmodule.parse_and_typecheck(
                     sources=sources,
                     options=options,
-                    alt_lib_path=test_temp_dir)
+                    alt_lib_path='.')
                 ctext = emitmodule.compile_modules_to_c(
                     result,
                     module_names=module_names,
@@ -89,49 +117,22 @@ class TestRun(MypycDataSuite):
                     print(line)
                 assert False, 'Compile error'
 
-            # If compiling more than one native module, compile a shared
-            # library that contains all the modules. Also generate shims that
-            # just call into the shared lib.
-            use_shared_lib = len(module_names) > 1
+            cpath = os.path.abspath(os.path.join(workdir, '__native.c'))
+            with open(cpath, 'w') as f:
+                f.write(ctext)
 
-            if use_shared_lib:
-                common_path = os.path.abspath(os.path.join(test_temp_dir, '__shared_stuff.c'))
-                with open(common_path, 'w') as f:
-                    f.write(ctext)
-                try:
-                    shared_lib = buildc.build_shared_lib_for_modules(common_path, module_names,
-                                                                     workdir)
-                except buildc.BuildError as err:
-                    show_c_error(common_path, err.output)
-                    raise
+            setup_file = os.path.abspath(os.path.join(workdir, 'setup.py'))
+            with open(setup_file, 'w') as f:
+                f.write(setup_format.format(module_paths))
 
-            for mod in module_names:
-                cpath = os.path.abspath(os.path.join(test_temp_dir, '%s.c' % mod))
-                with open(cpath, 'w') as f:
-                    f.write(ctext)
-
-                try:
-                    if use_shared_lib:
-                        native_lib_path = buildc.build_c_extension_shim(mod, shared_lib, workdir)
-                    else:
-                        native_lib_path = buildc.build_c_extension(cpath, mod, workdir)
-                except buildc.BuildError as err:
-                    show_c_error(cpath, err.output)
-                    raise
-
-            # # TODO: is the location of the shared lib good?
-            # shared_lib = buildc.build_shared_lib_for_modules(cpath)
+            run_setup(setup_file, ['build_ext', '--inplace'])
 
             for p in to_delete:
                 os.remove(p)
 
-            driver_path = os.path.join(test_temp_dir, 'driver.py')
+            driver_path = 'driver.py'
             env = os.environ.copy()
-            path = [os.path.dirname(native_lib_path), os.path.join(PREFIX, 'extensions')]
-            env['PYTHONPATH'] = ':'.join(path)
             env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
-            lib_env = 'DYLD_LIBRARY_PATH' if sys.platform == 'darwin' else 'LD_LIBRARY_PATH'
-            env[lib_env] = workdir
 
             # XXX: This is an ugly hack.
             if 'MYPYC_RUN_GDB' in os.environ:

@@ -44,7 +44,7 @@ def use_custom_builtins(builtins_path: str, testcase: DataDrivenTestCase) -> Ite
             break
     else:
         # Use default builtins.
-        builtins = os.path.join(test_temp_dir, 'builtins.pyi')
+        builtins = os.path.abspath(os.path.join(test_temp_dir, 'builtins.pyi'))
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 

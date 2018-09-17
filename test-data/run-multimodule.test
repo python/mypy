@@ -205,16 +205,16 @@ except IndexError:
     traceback.print_exc()
 [out]
 Traceback (most recent call last):
-  File "tmp/driver.py", line 6, in <module>
+  File "driver.py", line 6, in <module>
     other.fail2()
-  File "tmp/other.py", line 3, in fail2
+  File "other.py", line 3, in fail2
 IndexError: list assignment index out of range
 Traceback (most recent call last):
-  File "tmp/driver.py", line 12, in <module>
+  File "driver.py", line 12, in <module>
     native.fail()
-  File "tmp/py/native.py", line 4, in fail
+  File "native.py", line 4, in fail
     fail2()
-  File "tmp/other.py", line 3, in fail2
+  File "other.py", line 3, in fail2
 IndexError: list assignment index out of range
 
 [case testMultiModuleCycle]

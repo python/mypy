@@ -860,35 +860,35 @@ except Exception:
     traceback.print_exc()
 [out]
 Traceback (most recent call last):
-  File "tmp/driver.py", line 4, in <module>
+  File "driver.py", line 4, in <module>
     f([])
-  File "tmp/py/native.py", line 3, in f
+  File "native.py", line 3, in f
     g(x)
-  File "tmp/py/native.py", line 6, in g
+  File "native.py", line 6, in g
     x[5] = 2
 IndexError: list assignment index out of range
 Traceback (most recent call last):
-  File "tmp/driver.py", line 8, in <module>
+  File "driver.py", line 8, in <module>
     r1()
-  File "tmp/py/native.py", line 10, in r1
+  File "native.py", line 10, in r1
     q1()
-  File "tmp/py/native.py", line 13, in q1
+  File "native.py", line 13, in q1
     raise Exception("test")
 Exception: test
 Traceback (most recent call last):
-  File "tmp/driver.py", line 12, in <module>
+  File "driver.py", line 12, in <module>
     r2()
-  File "tmp/py/native.py", line 16, in r2
+  File "native.py", line 16, in r2
     q2()
-  File "tmp/py/native.py", line 19, in q2
+  File "native.py", line 19, in q2
     raise Exception
 Exception
 Traceback (most recent call last):
-  File "tmp/driver.py", line 16, in <module>
+  File "driver.py", line 16, in <module>
     hey()
-  File "tmp/py/native.py", line 26, in hey
+  File "native.py", line 26, in hey
     A()
-  File "tmp/py/native.py", line 23, in __init__
+  File "native.py", line 23, in __init__
     raise Exception
 Exception
 
@@ -1020,29 +1020,29 @@ m('lol')
 == i ==
 <class 'IndexError'>
 Traceback (most recent call last):
-  File "tmp/driver.py", line 6, in <module>
+  File "driver.py", line 6, in <module>
     i()
-  File "tmp/py/native.py", line 42, in i
+  File "native.py", line 42, in i
     r(0)
-  File "tmp/py/native.py", line 15, in r
+  File "native.py", line 15, in r
     [0][1]
 IndexError: list index out of range
 == k ==
 Traceback (most recent call last):
-  File "tmp/py/native.py", line 57, in k
+  File "native.py", line 57, in k
     r(1)
-  File "tmp/py/native.py", line 17, in r
+  File "native.py", line 17, in r
     raise Exception('hi')
 Exception: hi
 
 During handling of the above exception, another exception occurred:
 
 Traceback (most recent call last):
-  File "tmp/driver.py", line 12, in <module>
+  File "driver.py", line 12, in <module>
     k()
-  File "tmp/py/native.py", line 59, in k
+  File "native.py", line 59, in k
     r(0)
-  File "tmp/py/native.py", line 15, in r
+  File "native.py", line 15, in r
     [0][1]
 IndexError: list index out of range
 == g ==
@@ -1651,23 +1651,23 @@ except RuntimeError:
 iterate_over_tuple((1, 2, 3))
 [out]
 Traceback (most recent call last):
-  File "tmp/driver.py", line 16, in <module>
+  File "driver.py", line 16, in <module>
     iterate_over_any(5)
-  File "tmp/py/native.py", line 3, in iterate_over_any
+  File "native.py", line 3, in iterate_over_any
     for element in a:
 TypeError: 'int' object is not iterable
 Traceback (most recent call last):
-  File "tmp/driver.py", line 20, in <module>
+  File "driver.py", line 20, in <module>
     iterate_over_iterable(broken_generator(5))
-  File "tmp/py/native.py", line 7, in iterate_over_iterable
+  File "native.py", line 7, in iterate_over_iterable
     for element in iterable:
-  File "tmp/driver.py", line 8, in broken_generator
+  File "driver.py", line 8, in broken_generator
     raise Exception('Exception Manually Raised')
 Exception: Exception Manually Raised
 Traceback (most recent call last):
-  File "tmp/driver.py", line 24, in <module>
+  File "driver.py", line 24, in <module>
     iterate_and_delete(d)
-  File "tmp/py/native.py", line 11, in iterate_and_delete
+  File "native.py", line 11, in iterate_and_delete
     for key in d:
 RuntimeError: dictionary changed size during iteration
 15
@@ -2161,9 +2161,9 @@ else:
 
 [out]
 Traceback (most recent call last):
-  File "tmp/driver.py", line 3, in <module>
+  File "driver.py", line 3, in <module>
     import native
-  File "tmp/py/native.py", line 6, in <module>
+  File "native.py", line 6, in <module>
     f(y)
 TypeError: int object expected
 
@@ -2524,9 +2524,9 @@ Printer().print_value()
 print (Printer().value)
 [out]
 Traceback (most recent call last):
-  File "tmp/driver.py", line 5, in <module>
+  File "driver.py", line 5, in <module>
     print (x.rankine)
-  File "tmp/py/native.py", line 16, in rankine
+  File "native.py", line 16, in rankine
     raise NotImplementedError
 NotImplementedError
 0.0
@@ -3075,13 +3075,13 @@ with ctx_manager() as c:
     raise Exception('exception')
 
 [out]
-  File "tmp/py/native.py", line 10, in __mypyc_generator_helper__
+  File "native.py", line 10, in __mypyc_generator_helper__
     yield 3
-  File "tmp/py/native.py", line 9, in __mypyc_generator_helper__
+  File "native.py", line 9, in __mypyc_generator_helper__
     yield 2
-  File "tmp/py/native.py", line 8, in __mypyc_generator_helper__
+  File "native.py", line 8, in __mypyc_generator_helper__
     yield 1
-  File "tmp/driver.py", line 31, in <module>
+  File "driver.py", line 31, in <module>
     raise Exception
 caught exception without value
 caught exception with value some string

@@ -419,7 +419,7 @@ except AttributeError:
     traceback.print_exc()
 [out]
 Traceback (most recent call last):
-  File "tmp/driver.py", line 4, in <module>
+  File "driver.py", line 4, in <module>
     A().x
 AttributeError: attribute 'x' of 'X' undefined
 
