@@ -117,7 +117,7 @@ if USE_MYPYC:
     del sys.modules['mypy.git']
 
     from mypyc.build import mypycify, MypycifyBuildExt
-    opt_level = os.getenv('MYPYC_OPT_LEVEL', '')
+    opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
     ext_modules = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
     cmdclass['build_ext'] = MypycifyBuildExt
 else:
