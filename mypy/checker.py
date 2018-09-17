@@ -63,10 +63,14 @@ from mypy.scope import Scope
 
 from mypy import experiments
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 
 T = TypeVar('T')
 
-DEFAULT_LAST_PASS = 1  # Pass numbers start at 0
+DEFAULT_LAST_PASS = 1  # type: Final  # Pass numbers start at 0
 
 
 # A node which is postponed to be processed during the next pass.

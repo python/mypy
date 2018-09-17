@@ -8,6 +8,7 @@ from typing import Any, Dict, Set, Tuple, Optional
 MYPY = False
 if MYPY:
     from typing import ClassVar
+    from typing_extensions import Final
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
 from mypy.server.trigger import make_trigger
@@ -38,7 +39,7 @@ class TypeState:
     # instances of the given TypeInfo. The cache also keeps track of the specific
     # *kind* of subtyping relationship, which we represent as an arbitrary hashable tuple.
     # We need the caches, since subtype checks for structural types are very slow.
-    _subtype_caches = {}  # type: ClassVar[SubtypeCache]
+    _subtype_caches = {}  # type: Final[SubtypeCache]
 
     # This contains protocol dependencies generated after running a full build,
     # or after an update. These dependencies are special because:
@@ -59,13 +60,13 @@ class TypeState:
     # of type a.A to a function expecting something compatible with protocol p.P,
     # we'd have 'a.A' -> {'p.P', ...} in the map. This map is flushed after every incremental
     # update.
-    _attempted_protocols = {}  # type: ClassVar[Dict[str, Set[str]]]
+    _attempted_protocols = {}  # type: Final[Dict[str, Set[str]]]
     # We also snapshot protocol members of the above protocols. For example, if we pass
     # a value of type a.A to a function expecting something compatible with Iterable, we'd have
     # 'a.A' -> {'__iter__', ...} in the map. This map is also flushed after every incremental
     # update. This map is needed to only generate dependencies like <a.A.__iter__> -> <a.A>
     # instead of a wildcard to avoid unnecessarily invalidating classes.
-    _checked_against_members = {}  # type: ClassVar[Dict[str, Set[str]]]
+    _checked_against_members = {}  # type: Final[Dict[str, Set[str]]]
     # TypeInfos that appeared as a left type (subtype) in a subtype check since latest
     # dependency snapshot update. This is an optimisation for fine grained mode; during a full
     # run we only take a dependency snapshot at the very end, so this set will contain all
@@ -73,12 +74,12 @@ class TypeState:
     # dependencies generated from (typically) few TypeInfos that were subtype-checked
     # (i.e. appeared as r.h.s. in an assignment or an argument in a function call in
     # a re-checked target) during the update.
-    _rechecked_types = set()  # type: ClassVar[Set[TypeInfo]]
+    _rechecked_types = set()  # type: Final[Set[TypeInfo]]
 
     @classmethod
     def reset_all_subtype_caches(cls) -> None:
         """Completely reset all known subtype caches."""
-        cls._subtype_caches = {}
+        cls._subtype_caches.clear()
 
     @classmethod
     def reset_subtype_caches_for(cls, info: TypeInfo) -> None:
@@ -112,9 +113,9 @@ class TypeState:
     def reset_protocol_deps(cls) -> None:
         """Reset dependencies after a full run or before a daemon shutdown."""
         cls.proto_deps = {}
-        cls._attempted_protocols = {}
-        cls._checked_against_members = {}
-        cls._rechecked_types = set()
+        cls._attempted_protocols.clear()
+        cls._checked_against_members.clear()
+        cls._rechecked_types.clear()
 
     @classmethod
     def record_protocol_subtype_check(cls, left_type: TypeInfo, right_type: TypeInfo) -> None:

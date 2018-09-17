@@ -13,9 +13,13 @@ import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-SUBTYPE_OF = 0  # type: int
-SUPERTYPE_OF = 1  # type: int
+
+SUBTYPE_OF = 0  # type: Final[int]
+SUPERTYPE_OF = 1  # type: Final[int]
 
 
 class Constraint:

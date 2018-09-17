@@ -24,11 +24,15 @@ from mypy.typestate import TypeState, SubtypeKind
 
 from mypy import experiments
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 
 # Flags for detected protocol members
-IS_SETTABLE = 1
-IS_CLASSVAR = 2
-IS_CLASS_OR_STATIC = 3
+IS_SETTABLE = 1  # type: Final
+IS_CLASSVAR = 2  # type: Final
+IS_CLASS_OR_STATIC = 3  # type: Final
 
 
 TypeParameterChecker = Callable[[Type, Type, int], bool]

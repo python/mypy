@@ -20,12 +20,19 @@ from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy import join
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.
 NAMEDTUPLE_PROHIBITED_NAMES = ('__new__', '__init__', '__slots__', '__getnewargs__',
                                '_fields', '_field_defaults', '_field_types',
                                '_make', '_replace', '_asdict', '_source',
-                               '__annotations__')
+                               '__annotations__')  # type: Final
+
+NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
+                        'expected "field_name: field_type [= default]"')  # type: Final
 
 
 class NamedTupleAnalyzer:
@@ -56,8 +63,6 @@ class NamedTupleAnalyzer:
 
     def check_namedtuple_classdef(
             self, defn: ClassDef) -> Tuple[List[str], List[Type], Dict[str, Expression]]:
-        NAMEDTUP_CLASS_ERROR = ('Invalid statement in NamedTuple definition; '
-                                'expected "field_name: field_type [= default]"')
         if self.options.python_version < (3, 6):
             self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
             return [], [], {}

@@ -18,12 +18,16 @@ from mypy.nodes import (
     MemberExpr, OpExpr, ComparisonExpr, IndexExpr, UnaryExpr, YieldFromExpr, RefExpr, ClassDef
 )
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-TYPE_EMPTY = 0
-TYPE_UNANALYZED = 1  # type of non-typechecked code
-TYPE_PRECISE = 2
-TYPE_IMPRECISE = 3
-TYPE_ANY = 4
+
+TYPE_EMPTY = 0  # type: Final
+TYPE_UNANALYZED = 1  # type: Final  # type of non-typechecked code
+TYPE_PRECISE = 2  # type: Final
+TYPE_IMPRECISE = 3  # type: Final
+TYPE_ANY = 4  # type: Final
 
 precision_names = [
     'empty',
@@ -31,7 +35,7 @@ precision_names = [
     'precise',
     'imprecise',
     'any',
-]
+]  # type: Final
 
 
 class StatisticsVisitor(TraverserVisitor):
@@ -63,7 +67,7 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line_map = {}  # type: Dict[int, int]
 
-        self.type_of_any_counter = Counter()  # type: typing.Counter[TypeOfAny]
+        self.type_of_any_counter = Counter()  # type: typing.Counter[int]
         self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
         self.output = []  # type: List[str]

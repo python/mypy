@@ -90,16 +90,19 @@ from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.typestate import TypeState
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
 
 # Inferred truth value of an expression.
-ALWAYS_TRUE = 1
-MYPY_TRUE = 2  # True in mypy, False at runtime
-ALWAYS_FALSE = 3
-MYPY_FALSE = 4  # False in mypy, True at runtime
-TRUTH_VALUE_UNKNOWN = 5
+ALWAYS_TRUE = 1  # type: Final
+MYPY_TRUE = 2  # type: Final  # True in mypy, False at runtime
+ALWAYS_FALSE = 3  # type: Final
+MYPY_FALSE = 4  # type: Final  # False in mypy, True at runtime
+TRUTH_VALUE_UNKNOWN = 5  # type: Final
 
 inverted_truth_mapping = {
     ALWAYS_TRUE: ALWAYS_FALSE,
@@ -107,13 +110,13 @@ inverted_truth_mapping = {
     TRUTH_VALUE_UNKNOWN: TRUTH_VALUE_UNKNOWN,
     MYPY_TRUE: MYPY_FALSE,
     MYPY_FALSE: MYPY_TRUE,
-}
+}  # type: Final
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
     'typing.Function': 'typing.Callable',
     'typing.typevar': 'typing.TypeVar',
-}
+}  # type: Final
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,
@@ -122,14 +125,14 @@ obsolete_name_mapping = {
 TYPE_PROMOTIONS = {
     'builtins.int': 'builtins.float',
     'builtins.float': 'builtins.complex',
-}
+}  # type: Final
 
 # Hard coded type promotions for Python 3.
 #
 # Note that the bytearray -> bytes promotion is a little unsafe
 # as some functions only accept bytes objects. Here convenience
 # trumps safety.
-TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON3 = TYPE_PROMOTIONS.copy()  # type: Final
 TYPE_PROMOTIONS_PYTHON3.update({
     'builtins.bytearray': 'builtins.bytes',
 })
@@ -139,7 +142,7 @@ TYPE_PROMOTIONS_PYTHON3.update({
 # These promotions are unsafe, but we are doing them anyway
 # for convenience and also for Python 3 compatibility
 # (bytearray -> str).
-TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()
+TYPE_PROMOTIONS_PYTHON2 = TYPE_PROMOTIONS.copy()  # type: Final
 TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'builtins.unicode',
     'builtins.bytearray': 'builtins.str',
@@ -150,9 +153,9 @@ TYPE_PROMOTIONS_PYTHON2.update({
 # nested functions. In the first phase we add the function to the symbol table
 # but don't process body. In the second phase we process function body. This
 # way we can have mutually recursive nested functions.
-FUNCTION_BOTH_PHASES = 0  # Everything in one go
-FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # Add to symbol table but postpone body
-FUNCTION_SECOND_PHASE = 2  # Only analyze body
+FUNCTION_BOTH_PHASES = 0  # type: Final  # Everything in one go
+FUNCTION_FIRST_PHASE_POSTPONE_SECOND = 1  # type: Final  # Add to symbol table but postpone body
+FUNCTION_SECOND_PHASE = 2  # type: Final  # Only analyze body
 
 # Map from the full name of a missing definition to the test fixture (under
 # test-data/unit/fixtures/) that provides the definition. This is used for
@@ -167,7 +170,7 @@ SUGGESTED_TEST_FIXTURES = {
     'builtins.isinstance': 'isinstancelist.pyi',
     'builtins.property': 'property.pyi',
     'builtins.classmethod': 'classmethod.pyi',
-}
+}  # type: Final
 
 
 class SemanticAnalyzerPass2(NodeVisitor[None],

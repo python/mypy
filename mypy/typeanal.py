@@ -30,6 +30,9 @@ from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy import nodes, messages
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
@@ -40,7 +43,7 @@ type_constructors = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
-}
+}  # type: Final
 
 ARG_KINDS_BY_CONSTRUCTOR = {
     'mypy_extensions.Arg': ARG_POS,
@@ -49,7 +52,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
     'mypy_extensions.DefaultNamedArg': ARG_NAMED_OPT,
     'mypy_extensions.VarArg': ARG_STAR,
     'mypy_extensions.KwArg': ARG_STAR2,
-}
+}  # type: Final
 
 
 def analyze_type_alias(node: Expression,

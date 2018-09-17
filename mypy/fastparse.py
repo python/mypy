@@ -7,7 +7,7 @@ from typing import (
 MYPY = False
 if MYPY:
     import typing  # for typing.Type, which conflicts with types.Type
-    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -65,11 +65,11 @@ V = TypeVar('V')
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")
-_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)
+MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # type: Final
+_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
-TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
-TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
+TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
+TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'  # type: Final
 
 
 # Older versions of typing don't allow using overload outside stubs,
@@ -223,7 +223,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }  # type: ClassVar[Dict[typing.Type[ast3.AST], str]]
+    }  # type: Final[Dict[typing.Type[ast3.AST], str]]
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -243,7 +243,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }  # type: ClassVar[Dict[typing.Type[ast3.AST], str]]
+    }  # type: Final[Dict[typing.Type[ast3.AST], str]]
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))

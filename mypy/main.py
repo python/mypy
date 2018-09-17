@@ -24,10 +24,14 @@ from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-orig_stat = os.stat
 
-MEM_PROFILE = False  # If True, dump memory profile
+orig_stat = os.stat  # type: Final
+
+MEM_PROFILE = False  # type: Final  # If True, dump memory profile
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -217,8 +221,8 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 flag_prefix_pairs = [
     ('allow', 'disallow'),
     ('show', 'hide'),
-]
-flag_prefix_map = {}  # type: Dict[str, str]
+]  # type: Final
+flag_prefix_map = {}  # type: Final[Dict[str, str]]
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a
@@ -311,7 +315,7 @@ def infer_python_version_and_executable(options: Options,
 
 
 HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""  # type: Final
 
 
 DESCRIPTION = """
@@ -335,10 +339,10 @@ You can also use a config file to configure mypy instead of using
 command line flags. For more details, see:
 
 - http://mypy.readthedocs.io/en/latest/config_file.html
-"""
+"""  # type: Final
 
 FOOTER = """Environment variables:
-  Define MYPYPATH for additional module search path entries."""
+  Define MYPYPATH for additional module search path entries."""  # type: Final
 
 
 def process_options(args: List[str],
@@ -973,7 +977,7 @@ config_types = {
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
-}
+}  # type: Final
 
 
 def parse_config_file(options: Options, filename: Optional[str]) -> None:

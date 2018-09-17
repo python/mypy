@@ -15,7 +15,6 @@ from mypy.literals import Key, literal, literal_hash, subkeys
 from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 
 
-BindableTypes = (IndexExpr, MemberExpr, NameExpr)
 BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 
 
@@ -129,7 +128,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        if not isinstance(expr, BindableTypes):
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return
         if not literal(expr):
             return
@@ -248,7 +247,7 @@ class ConditionalTypeBinder:
             # just collect the types.
             self.type_assignments[expr].append((type, declared_type))
             return
-        if not isinstance(expr, BindableTypes):
+        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
             return None
         if not literal(expr):
             return

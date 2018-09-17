@@ -12,12 +12,15 @@ from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 MYPY = False
 if MYPY:
     from typing import Type
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
-ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
+ENCODING_RE = \
+    re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
-default_python2_interpreter = ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']
+default_python2_interpreter = \
+    ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -121,7 +124,7 @@ PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
   <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
   </testcase>
 </testsuite>
-"""
+"""  # type: Final
 
 FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
@@ -129,7 +132,7 @@ FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
-"""
+"""  # type: Final
 
 ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
@@ -137,7 +140,7 @@ ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
-"""
+"""  # type: Final
 
 
 def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) -> None:
@@ -193,7 +196,7 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-fields_cache = {}  # type: Dict[Type[object], List[str]]
+fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
 
 
 def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:

@@ -10,10 +10,13 @@ from mypy.types import (
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
 )
-if False:
+
+MYPY = False
+if MYPY:
     # break import cycle only needed for mypy
     import mypy.checker
     import mypy.checkexpr
+    from typing_extensions import Final
 from mypy import messages
 from mypy.messages import MessageBuilder
 
@@ -32,7 +35,7 @@ def compile_format_re() -> Pattern[str]:
     return re.compile(format_re)
 
 
-FORMAT_RE = compile_format_re()
+FORMAT_RE = compile_format_re()  # type: Final
 
 
 class ConversionSpecifier:
