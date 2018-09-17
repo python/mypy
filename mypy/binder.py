@@ -271,11 +271,10 @@ class ConditionalTypeBinder:
                 and not restrict_any):
             # If x is Any and y is int, after x = y we do not infer that x is int.
             # This could be changed.
-            if not isinstance(type, AnyType):
-                # We narrowed type from Any in a recent frame (probably an
-                # isinstance check), but now it is reassigned, so broaden back
-                # to Any (which is the most recent enclosing type)
-                self.put(expr, enclosing_type)
+            # Instead, since we narrowed type from Any in a recent frame (probably an
+            # isinstance check), but now it is reassigned, we broaden back
+            # to Any (which is the most recent enclosing type)
+            self.put(expr, enclosing_type)
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
                        and any(isinstance(item, AnyType) for item in declared_type.items))):

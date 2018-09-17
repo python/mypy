@@ -965,4 +965,14 @@ def union_test2(x):
         return x
     else:
         return x[0]
+
+def f(): return 0
+
+def union_test3():
+    # type: () -> int
+    x = f()
+    assert x is None
+    x = f()
+    return x + 1
+
 [builtins fixtures/isinstancelist.pyi]
