@@ -65,7 +65,7 @@ class CustomPythonBuild(build_py):
         build_py.run(self)
 
 
-cmdclass={'build_py': CustomPythonBuild}
+cmdclass = {'build_py': CustomPythonBuild}
 
 package_data = ['py.typed']
 
@@ -99,7 +99,7 @@ if USE_MYPYC:
     # Start with all the .py files
     all_real_pys = [x for x in everything if not x.startswith('typeshed/')]
     # Strip out anything in our blacklist
-    mypyc_targets = [x for x in all_real_pys if not x in MYPYC_BLACKLIST]
+    mypyc_targets = [x for x in all_real_pys if x not in MYPYC_BLACKLIST]
     # Strip out any test code
     mypyc_targets = [x for x in mypyc_targets if not x.startswith('test/')]
     # ... and add back in the one test module we need
