@@ -310,7 +310,7 @@ class TypeList(Type):
         assert False, "Synthetic types don't serialize"
 
 
-_dummy = object()  # type: Any
+_dummy = object()  # type: Final[Any]
 
 
 class AnyType(Type):
