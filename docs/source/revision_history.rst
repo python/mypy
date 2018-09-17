@@ -7,15 +7,15 @@ detailed release notes):
 - September 2018
     * Publish ``mypy`` version 0.630 on PyPI.
 
-      * Recategorize and document ``--warn-incomplete-stub`` (:ref:`docs <warn-incomplete-stub>`).
+      * Document ``--warn-incomplete-stub`` (:ref:`docs <warn-incomplete-stub>`).
 
-      * Document stub-only packages incompatibility with ``MYPYPATH``
+      * Document incompatibility of stub-only packages and ``MYPYPATH``
         (:ref:`docs <installed-packages>`).
 
       * Reorganize command line :ref:`documentation <command-line>`
         (see also :ref:`docs <running-mypy>` and :ref:`more docs <extending-mypy>`).
 
-      * Document callback :ref:`protocols <callback_protocols>`.
+      * Document :ref:`callback protocols <callback_protocols>`.
 
 - July 2018
     * Publish ``mypy`` version 0.620 on PyPI.
