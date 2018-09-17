@@ -170,7 +170,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_unbox(self) -> None:
         self.assert_emit(Unbox(self.m, int_rprimitive, 55),
-                         """if (PyLong_Check(cpy_r_m))
+                         """if (likely(PyLong_Check(cpy_r_m)))
                                 cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
                             else {
                                 PyErr_SetString(PyExc_TypeError, "int object expected");

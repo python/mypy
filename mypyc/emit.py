@@ -281,7 +281,8 @@ class Emitter:
 
     def emit_cast(self, src: str, dest: str, typ: RType, declare_dest: bool = False,
                   custom_message: Optional[str] = None, optional: bool = False,
-                  src_type: Optional[RType] = None) -> None:
+                  src_type: Optional[RType] = None,
+                  likely: bool = True) -> None:
         """Emit code for casting a value of given type.
 
         Somewhat strangely, this supports unboxed types but only
@@ -297,7 +298,7 @@ class Emitter:
             dest: Name of target C variable
             typ: Type of value
             declare_dest: If True, also declare the variable 'dest'
-
+            likely: If the cast is likely to succeed (can be False for unions)
         """
         if custom_message is not None:
             err = custom_message
@@ -312,7 +313,10 @@ class Emitter:
             if is_same_type(value_type, typ):
                 if declare_dest:
                     self.emit_line('PyObject *{};'.format(dest))
-                self.emit_arg_check(src, dest, typ, '({} != Py_None)'.format(src), optional)
+                check = '({} != Py_None)'
+                if likely:
+                    check = '(likely{})'.format(check)
+                self.emit_arg_check(src, dest, typ, check.format(src), optional)
                 self.emit_lines(
                     '    {} = {};'.format(dest, src),
                     'else {',
@@ -342,8 +346,11 @@ class Emitter:
             elif is_bool_rprimitive(typ):
                 prefix = 'PyBool'
             else:
-                assert False, prefix
-            self.emit_arg_check(src, dest, typ, '({}_Check({}))'.format(prefix, src), optional)
+                assert False, 'unexpected primitive type'
+            check = '({}_Check({}))'
+            if likely:
+                check = '(likely{})'.format(check)
+            self.emit_arg_check(src, dest, typ, check.format(prefix, src), optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
                 'else {',
@@ -353,7 +360,11 @@ class Emitter:
         elif is_tuple_rprimitive(typ):
             if declare_dest:
                 self.emit_line('{} {};'.format(self.ctype(typ), dest))
-            self.emit_arg_check(src, dest, typ, '(PyTuple_Check({}))'.format(src), optional)
+            check = '(PyTuple_Check({}))'
+            if likely:
+                check = '(likely{})'.format(check)
+            self.emit_arg_check(src, dest, typ,
+                                check.format(src), optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
                 'else {',
@@ -377,6 +388,8 @@ class Emitter:
                     full_str = '(%s)' % full_str
                 check = full_str.format(
                     src=src, targets=[self.type_struct_name(ir) for ir in concrete])
+            if likely:
+                check = '(likely{})'.format(check)
             self.emit_arg_check(src, dest, typ, check, optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
@@ -387,7 +400,11 @@ class Emitter:
         elif is_none_rprimitive(typ):
             if declare_dest:
                 self.emit_line('PyObject *{};'.format(dest))
-            self.emit_arg_check(src, dest, typ, '({} == Py_None)'.format(src), optional)
+            check = '({} == Py_None)'
+            if likely:
+                check = '(likely{})'.format(check)
+            self.emit_arg_check(src, dest, typ,
+                                check.format(src), optional)
             self.emit_lines(
                 '    {} = {};'.format(dest, src),
                 'else {',
@@ -429,7 +446,8 @@ class Emitter:
                            item,
                            declare_dest=False,
                            custom_message='',
-                           optional=False)
+                           optional=False,
+                           likely=False)
             self.emit_line('if ({} != NULL) goto {};'.format(dest, good_label))
         # Handle cast failure.
         self.emit_line(err)
@@ -448,7 +466,7 @@ class Emitter:
         # invalid.
         out_label = self.new_label()
         self.emit_lines(
-            'if (!(PyTuple_Check({r}) && PyTuple_GET_SIZE({r}) == {size})) {{'.format(
+            'if (unlikely(!(PyTuple_Check({r}) && PyTuple_GET_SIZE({r}) == {size}))) {{'.format(
                 r=src, size=len(typ.types)),
             '{} = NULL;'.format(dest),
             'goto {};'.format(out_label),
@@ -505,7 +523,8 @@ class Emitter:
         if is_int_rprimitive(typ) or is_short_int_rprimitive(typ):
             if declare_dest:
                 self.emit_line('CPyTagged {};'.format(dest))
-            self.emit_arg_check(src, dest, typ, '(PyLong_Check({}))'.format(src), optional)
+            self.emit_arg_check(src, dest, typ, '(likely(PyLong_Check({})))'.format(src),
+                                optional)
             if borrow:
                 self.emit_line('    {} = CPyTagged_BorrowFromObject({});'.format(dest, src))
             else:
@@ -517,7 +536,8 @@ class Emitter:
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line('char {};'.format(dest))
-            self.emit_arg_check(src, dest, typ, '(!PyBool_Check({})) {{'.format(src), optional)
+            self.emit_arg_check(src, dest, typ, '(unlikely(!PyBool_Check({}))) {{'.format(src),
+                                optional)
             self.emit_lines(*failure)
             self.emit_line('} else')
             conversion = 'PyObject_IsTrue({})'.format(src)
@@ -526,7 +546,8 @@ class Emitter:
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
                 self.emit_line('char {};'.format(dest))
-            self.emit_arg_check(src, dest, typ, '({} != Py_None) {{'.format(src), optional)
+            self.emit_arg_check(src, dest, typ, '(unlikely({} != Py_None)) {{'.format(src),
+                                optional)
             self.emit_lines(*failure)
             self.emit_line('} else')
             self.emit_line('    {} = 1;'.format(dest))
@@ -544,7 +565,7 @@ class Emitter:
 
             cast_temp = self.temp_name()
             self.emit_tuple_cast(src, cast_temp, typ, declare_dest=True, err='', src_type=None)
-            self.emit_line('if ({} == NULL) {{'.format(cast_temp))
+            self.emit_line('if (unlikely({} == NULL)) {{'.format(cast_temp))
 
             # self.emit_arg_check(src, dest, typ,
             #     '(!PyTuple_Check({}) || PyTuple_Size({}) != {}) {{'.format(
@@ -555,7 +576,8 @@ class Emitter:
                 self.emit_line('{}.empty_struct_error_flag = 0;'.format(dest))
             for i, item_type in enumerate(typ.types):
                 temp = self.temp_name()
-                self.emit_line('PyObject *{} = PyTuple_GetItem({}, {});'.format(temp, src, i))
+                # emit_tuple_cast above checks the size, so this should not fail
+                self.emit_line('PyObject *{} = PyTuple_GET_ITEM({}, {});'.format(temp, src, i))
                 temp2 = self.temp_name()
                 # Unbox or check the item.
                 if item_type.is_unboxed:
@@ -603,17 +625,17 @@ class Emitter:
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             self.emit_line('{}{} = PyTuple_New({});'.format(declaration, dest, len(typ.types)))
-            self.emit_line('if ({} == NULL)'.format(dest))
+            self.emit_line('if (unlikely({} == NULL))'.format(dest))
             self.emit_line('    CPyError_OutOfMemory();')
             # TODO: Fail if dest is None
             for i in range(0, len(typ.types)):
                 if not typ.is_unboxed:
-                    self.emit_line('PyTuple_SetItem({}, {}, {}.f{}'.format(dest, i, src, i))
+                    self.emit_line('PyTuple_SET_ITEM({}, {}, {}.f{}'.format(dest, i, src, i))
                 else:
                     inner_name = self.temp_name()
                     self.emit_box('{}.f{}'.format(src, i), inner_name, typ.types[i],
                                   declare_dest=True)
-                    self.emit_line('PyTuple_SetItem({}, {}, {});'.format(dest, i, inner_name, i))
+                    self.emit_line('PyTuple_SET_ITEM({}, {}, {});'.format(dest, i, inner_name, i))
         else:
             assert not typ.is_unboxed
             # Type is boxed -- trivially just assign.

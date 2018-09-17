@@ -76,7 +76,7 @@ static PyObject *CPyPy_f(PyObject *self, PyObject *args, PyObject *kw) {
         return NULL;
     }
     CPyTagged arg_x;
-    if (PyLong_Check(obj_x))
+    if (likely(PyLong_Check(obj_x)))
         arg_x = CPyTagged_BorrowFromObject(obj_x);
     else {
         PyErr_SetString(PyExc_TypeError, "int object expected");

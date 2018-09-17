@@ -18,7 +18,7 @@ class TestArgCheck(unittest.TestCase):
         lines = emitter.fragments
         self.assert_lines([
             'PyObject *arg_x;',
-            'if (PyList_Check(obj_x))',
+            'if (likely(PyList_Check(obj_x)))',
             '    arg_x = obj_x;',
             'else {',
             '    PyErr_SetString(PyExc_TypeError, "list object expected");',
@@ -34,7 +34,7 @@ class TestArgCheck(unittest.TestCase):
         lines = emitter.fragments
         self.assert_lines([
             'CPyTagged arg_x;',
-            'if (PyLong_Check(obj_x))',
+            'if (likely(PyLong_Check(obj_x)))',
             '    arg_x = CPyTagged_BorrowFromObject(obj_x);',
             'else {',
             '    PyErr_SetString(PyExc_TypeError, "int object expected");',
@@ -43,7 +43,7 @@ class TestArgCheck(unittest.TestCase):
             'CPyTagged arg_y;',
             'if (obj_y == NULL) {',
             '    arg_y = CPY_INT_TAG;',
-            '} else if (PyLong_Check(obj_y))',
+            '} else if (likely(PyLong_Check(obj_y)))',
             '    arg_y = CPyTagged_BorrowFromObject(obj_y);',
             'else {',
             '    PyErr_SetString(PyExc_TypeError, "int object expected");',
