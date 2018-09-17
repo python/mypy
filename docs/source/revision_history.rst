@@ -4,6 +4,19 @@ Revision history
 List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
 detailed release notes):
 
+- September 2018
+    * Publish ``mypy`` version 0.630 on PyPI.
+
+      * Recategorize and document ``--warn-incomplete-stub`` (:ref:`docs <warn-incomplete-stub>`).
+
+      * Document stub-only packages incompatibility with ``MYPYPATH``
+        (:ref:`docs <installed-packages>`).
+
+      * Reorganize command line :ref:`documentation <command-line>`
+        (see also :ref:`docs <running-mypy>` and :ref:`more docs <extending-mypy>`).
+
+      * Document callback :ref:`protocols <callback_protocols>`.
+
 - July 2018
     * Publish ``mypy`` version 0.620 on PyPI.
 
