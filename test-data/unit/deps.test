@@ -1244,9 +1244,6 @@ class C:
 [out]
 <m.D.x> -> m
 <m.D> -> m.D
-<mod.C.(abstract)> -> <m.D.__init__>, m
-<mod.C.__init__> -> <m.D.__init__>
-<mod.C.__new__> -> <m.D.__new__>
 <mod.C.x> -> <m.D.x>
 <mod.C> -> m, m.D
 
@@ -1292,3 +1289,29 @@ def gg(x: C) -> None:
 <foo.bar.C.y> -> m.gg
 <foo.bar.C> -> <m.gg>, m, m.g, m.gg
 <foo.bar.f> -> m, m.g
+
+[case testLogical__init__]
+# flags: --logical-deps
+class A:
+    def __init__(self) -> None: pass
+class B(A): pass
+class C(B): pass
+class D(A):
+    def __init__(self, x: int) -> None: pass
+def f() -> None:
+    A()
+def g() -> None:
+    C()
+def h() -> None:
+    D(1)
+[out]
+<m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
+<m.A> -> m, m.A, m.B, m.D, m.f
+<m.B> -> m, m.B, m.C
+<m.C.__init__> -> m.g
+<m.C.__new__> -> m.g
+<m.C> -> m.C, m.g
+<m.D.__init__> -> m.h
+<m.D.__new__> -> m.h
+<m.D> -> m.D, m.h

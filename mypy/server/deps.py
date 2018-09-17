@@ -190,7 +190,10 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_dependency(trigger, target=make_trigger(target))
         if o.info:
             for base in non_trivial_bases(o.info):
-                self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
+                # Base class __init__/__new__ doesn't generate a logical
+                # dependency since the override can be incompatible.
+                if not self.use_logical_deps() or o.name() not in ('__init__', '__new__'):
+                    self.add_dependency(make_trigger(base.fullname() + '.' + o.name()))
         self.add_type_alias_deps(self.scope.current_target())
         super().visit_func_def(o)
         variants = set(o.expanded) - {o}
@@ -295,24 +298,32 @@ class DependencyVisitor(TraverserVisitor):
                     # doesn't affect precision of Liskov checking.
                     if name not in info.names:
                         continue
+                    # __init__ and __new__ can be overridden with different signatures, so no
+                    # logical depedency.
+                    if name in ('__init__', '__new__'):
+                        continue
                 self.add_dependency(make_trigger(base_info.fullname() + '.' + name),
                                     target=make_trigger(info.fullname() + '.' + name))
-            self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
-                                target=make_trigger(info.fullname() + '.__init__'))
-            self.add_dependency(make_trigger(base_info.fullname() + '.__new__'),
-                                target=make_trigger(info.fullname() + '.__new__'))
-            # If the set of abstract attributes change, this may invalidate class
-            # instantiation, or change the generated error message, since Python checks
-            # class abstract status when creating an instance.
-            #
-            # TODO: We should probably add this dependency only from the __init__ of the
-            #     current class, and independent of bases (to trigger changes in message
-            #     wording, as errors may enumerate all abstract attributes).
-            self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'),
-                                target=make_trigger(info.fullname() + '.__init__'))
-            # If the base class abstract attributes change, subclass abstract
-            # attributes need to be recalculated.
-            self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'))
+            if not self.use_logical_deps():
+                # These dependencies are only useful for propagating changes --
+                # they aren't logical dependencies since __init__ and __new__ can be
+                # overridden with a different signature.
+                self.add_dependency(make_trigger(base_info.fullname() + '.__init__'),
+                                    target=make_trigger(info.fullname() + '.__init__'))
+                self.add_dependency(make_trigger(base_info.fullname() + '.__new__'),
+                                    target=make_trigger(info.fullname() + '.__new__'))
+                # If the set of abstract attributes change, this may invalidate class
+                # instantiation, or change the generated error message, since Python checks
+                # class abstract status when creating an instance.
+                #
+                # TODO: We should probably add this dependency only from the __init__ of the
+                #     current class, and independent of bases (to trigger changes in message
+                #     wording, as errors may enumerate all abstract attributes).
+                self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'),
+                                    target=make_trigger(info.fullname() + '.__init__'))
+                # If the base class abstract attributes change, subclass abstract
+                # attributes need to be recalculated.
+                self.add_dependency(make_trigger(base_info.fullname() + '.(abstract)'))
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:

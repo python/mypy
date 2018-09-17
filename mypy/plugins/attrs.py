@@ -20,21 +20,25 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 
 # The names of the different functions that create classes or arguments.
 attr_class_makers = {
     'attr.s',
     'attr.attrs',
     'attr.attributes',
-}
+}  # type: Final
 attr_dataclass_makers = {
     'attr.dataclass',
-}
+}  # type: Final
 attr_attrib_makers = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
-}
+}  # type: Final
 
 
 class Converter:

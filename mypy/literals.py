@@ -11,6 +11,10 @@ from mypy.nodes import (
 )
 from mypy.visitor import ExpressionVisitor
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 # [Note Literals and literal_hash]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
@@ -231,4 +235,4 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
 
-_hasher = _Hasher()
+_hasher = _Hasher()  # type: Final

@@ -19,6 +19,13 @@ from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
 from mypy import join
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
+TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
+                      'expected "field_name: field_type"')  # type: Final
+
 
 class TypedDictAnalyzer:
     def __init__(self,
@@ -97,8 +104,6 @@ class TypedDictAnalyzer:
                                  oldfields: Optional[List[str]] = None) -> Tuple[List[str],
                                                                                  List[Type],
                                                                                  Set[str]]:
-        TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
-                              'expected "field_name: field_type"')
         if self.options.python_version < (3, 6):
             self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
             return [], [], set()

@@ -21,7 +21,7 @@ from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dic
 MYPY = False
 if MYPY:
     import typing  # for typing.Type, which conflicts with types.Type
-    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
@@ -76,11 +76,11 @@ V = TypeVar('V')
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")
-_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)
+MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # type: Final
+_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
-TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
-TYPE_COMMENT_AST_ERROR = 'invalid type comment'
+TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
+TYPE_COMMENT_AST_ERROR = 'invalid type comment'  # type: Final
 
 
 def parse(source: Union[str, bytes],
@@ -199,7 +199,7 @@ class ASTConverter(ast27.NodeTransformer):
         ast27.BitXor: '^',
         ast27.BitAnd: '&',
         ast27.FloorDiv: '//'
-    }  # type: ClassVar[Dict[typing.Type[ast27.AST], str]]
+    }  # type: Final[Dict[typing.Type[ast27.AST], str]]
 
     def from_operator(self, op: ast27.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -221,7 +221,7 @@ class ASTConverter(ast27.NodeTransformer):
         ast27.IsNot: 'is not',
         ast27.In: 'in',
         ast27.NotIn: 'not in'
-    }  # type: ClassVar[Dict[typing.Type[ast27.AST], str]]
+    }  # type: Final[Dict[typing.Type[ast27.AST], str]]
 
     def from_comp_operator(self, op: ast27.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))

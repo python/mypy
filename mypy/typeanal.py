@@ -30,6 +30,9 @@ from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy import nodes, messages
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
@@ -40,7 +43,7 @@ type_constructors = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
-}
+}  # type: Final
 
 ARG_KINDS_BY_CONSTRUCTOR = {
     'mypy_extensions.Arg': ARG_POS,
@@ -49,7 +52,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
     'mypy_extensions.DefaultNamedArg': ARG_NAMED_OPT,
     'mypy_extensions.VarArg': ARG_STAR,
     'mypy_extensions.KwArg': ARG_STAR2,
-}
+}  # type: Final
 
 
 def analyze_type_alias(node: Expression,
@@ -228,6 +231,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType(TypeOfAny.explicit)
+            elif fullname in ('typing.Final', 'typing_extensions.Final'):
+                self.fail("Final can be only used as an outermost qualifier"
+                          " in a variable annotation", t)
+                return AnyType(TypeOfAny.from_error)
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'

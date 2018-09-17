@@ -1,4 +1,4 @@
-.. _dynamic_typing:
+.. _dynamic-typing:
 
 
 Dynamically typed code

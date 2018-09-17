@@ -10,7 +10,8 @@ from mypy_extensions import trait
 
 MYPY = False
 if MYPY:
-    from typing import DefaultDict, ClassVar
+    from typing import DefaultDict
+    from typing_extensions import Final
 
 import mypy.strconv
 from mypy.util import short_type
@@ -64,29 +65,29 @@ JsonDict = Dict[str, Any]
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: int
-GDEF = 1  # type: int
-MDEF = 2  # type: int
-MODULE_REF = 3  # type: int
+LDEF = 0  # type: Final[int]
+GDEF = 1  # type: Final[int]
+MDEF = 2  # type: Final[int]
+MODULE_REF = 3  # type: Final[int]
 # Type variable declared using TypeVar(...) has kind TVAR. It's not
 # valid as a type unless bound in a TypeVarScope.  That happens within:
 # (1) a generic class that uses the type variable as a type argument or
 # (2) a generic function that refers to the type variable in its signature.
-TVAR = 4  # type: int
+TVAR = 4  # type: Final[int]
 
 # Placeholder for a name imported via 'from ... import'. Second phase of
 # semantic will replace this the actual imported reference. This is
 # needed so that we can detect whether a name has been imported during
 # XXX what?
-UNBOUND_IMPORTED = 5  # type: int
+UNBOUND_IMPORTED = 5  # type: Final[int]
 
 # RevealExpr node kinds
-REVEAL_TYPE = 0  # type: int
-REVEAL_LOCALS = 1  # type: int
+REVEAL_TYPE = 0  # type: Final[int]
+REVEAL_LOCALS = 1  # type: Final[int]
 
-LITERAL_YES = 2
-LITERAL_TYPE = 1
-LITERAL_NO = 0
+LITERAL_YES = 2  # type: Final
+LITERAL_TYPE = 1  # type: Final
+LITERAL_NO = 0  # type: Final
 
 node_kinds = {
     LDEF: 'Ldef',
@@ -95,14 +96,14 @@ node_kinds = {
     MODULE_REF: 'ModuleRef',
     TVAR: 'Tvar',
     UNBOUND_IMPORTED: 'UnboundImported',
-}
-inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}
+}  # type: Final
+inverse_node_kinds = {_kind: _name for _name, _kind in node_kinds.items()}  # type: Final
 
 
 implicit_module_attrs = {'__name__': '__builtins__.str',
                          '__doc__': None,  # depends on Python version, see semanal.py
                          '__file__': '__builtins__.str',
-                         '__package__': '__builtins__.str'}
+                         '__package__': '__builtins__.str'}  # type: Final
 
 
 # These aliases exist because built-in class objects are not subscriptable.
@@ -116,17 +117,17 @@ type_aliases = {
     'typing.Counter': 'collections.Counter',
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
-}
+}  # type: Final
 
 reverse_builtin_aliases = {
     'builtins.list': 'typing.List',
     'builtins.dict': 'typing.Dict',
     'builtins.set': 'typing.Set',
     'builtins.frozenset': 'typing.FrozenSet',
-}
+}  # type: Final
 
 nongen_builtins = {'builtins.tuple': 'typing.Tuple',
-                   'builtins.enumerate': ''}
+                   'builtins.enumerate': ''}  # type: Final
 nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 
 
@@ -378,8 +379,8 @@ class ImportedName(SymbolNode):
 
 
 FUNCBASE_FLAGS = [
-    'is_property', 'is_class', 'is_static',
-]
+    'is_property', 'is_class', 'is_static', 'is_final'
+]  # type: Final
 
 
 class FuncBase(Node):
@@ -390,7 +391,8 @@ class FuncBase(Node):
                  'info',
                  'is_property',
                  'is_class',        # Uses "@classmethod"
-                 'is_static',       # USes "@staticmethod"
+                 'is_static',       # Uses "@staticmethod"
+                 'is_final',        # Uses "@final"
                  '_fullname',
                  )
 
@@ -407,6 +409,7 @@ class FuncBase(Node):
         self.is_property = False
         self.is_class = False
         self.is_static = False
+        self.is_final = False
         # Name with module prefix
         # TODO: Type should be Optional[str]
         self._fullname = cast(Bogus[str], None)
@@ -442,6 +445,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         self.set_line(items[0].line)
+        self.is_final = False
 
     def name(self) -> str:
         if self.items:
@@ -507,7 +511,7 @@ class Argument(Node):
 FUNCITEM_FLAGS = FUNCBASE_FLAGS + [
     'is_overload', 'is_generator', 'is_coroutine', 'is_async_generator',
     'is_awaitable_coroutine',
-]
+]  # type: Final
 
 
 class FuncItem(FuncBase):
@@ -567,7 +571,7 @@ class FuncItem(FuncBase):
 
 FUNCDEF_FLAGS = FUNCITEM_FLAGS + [
     'is_decorated', 'is_conditional', 'is_abstract',
-]
+]  # type: Final
 
 
 class FuncDef(FuncItem, SymbolNode, Statement):
@@ -593,6 +597,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
         self.is_abstract = False
+        self.is_final = False
         # Original conditional definition
         self.original_def = None  # type: Union[None, FuncDef, Var, Decorator]
 
@@ -668,6 +673,10 @@ class Decorator(SymbolNode, Statement):
         return self.func.fullname()
 
     @property
+    def is_final(self) -> bool:
+        return self.func.is_final
+
+    @property
     def info(self) -> 'TypeInfo':
         return self.func.info
 
@@ -698,8 +707,8 @@ class Decorator(SymbolNode, Statement):
 VAR_FLAGS = [
     'is_self', 'is_initialized_in_class', 'is_staticmethod',
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
-    'is_classvar', 'is_abstract_var'
-]
+    'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init'
+]  # type: Final
 
 
 class Var(SymbolNode):
@@ -712,6 +721,7 @@ class Var(SymbolNode):
                  '_fullname',
                  'info',
                  'type',
+                 'final_value',
                  'is_self',
                  'is_ready',
                  'is_inferred',
@@ -722,6 +732,9 @@ class Var(SymbolNode):
                  'is_settable_property',
                  'is_classvar',
                  'is_abstract_var',
+                 'is_final',
+                 'final_unset_in_class',
+                 'final_set_in_init',
                  'is_suppressed_import',
                  )
 
@@ -748,6 +761,15 @@ class Var(SymbolNode):
         # Set to true when this variable refers to a module we were unable to
         # parse for some reason (eg a silenced module)
         self.is_suppressed_import = False
+        # Was this "variable" (rather a constant) defined as Final[...]?
+        self.is_final = False
+        # If constant value is a simple literal,
+        # store the literal value (unboxed) for the benefit of
+        # tools like mypyc.
+        self.final_value = None  # type: Optional[Union[int, float, bool, str]]
+        # Where the value was set (only for class attributes)
+        self.final_unset_in_class = False
+        self.final_set_in_init = False
 
     def name(self) -> str:
         return self._name
@@ -767,6 +789,8 @@ class Var(SymbolNode):
                 'type': None if self.type is None else self.type.serialize(),
                 'flags': get_flags(self, VAR_FLAGS),
                 }  # type: JsonDict
+        if self.final_value is not None:
+            data['final_value'] = self.final_value
         return data
 
     @classmethod
@@ -777,6 +801,7 @@ class Var(SymbolNode):
         v = Var(name, type)
         v._fullname = data['fullname']
         set_flags(v, data['flags'])
+        v.final_value = data.get('final_value')
         return v
 
 
@@ -919,6 +944,13 @@ class AssignmentStmt(Statement):
     new_syntax = False  # type: bool
     # Does this assignment define a type alias?
     is_alias_def = False
+    # Is this a final definition?
+    # Final attributes can't be re-assigned once set, and can't be overridden
+    # in a subclass. This flag is not set if an attempted declaration was found to
+    # be invalid during semantic analysis. It is still set to `True` if
+    # a final declaration overrides another final declaration (this is checked
+    # during type checking when MROs are known).
+    is_final_def = False
 
     def __init__(self, lvalues: List[Lvalue], rvalue: Expression,
                  type: 'Optional[mypy.types.Type]' = None, new_syntax: bool = False) -> None:
@@ -1341,17 +1373,17 @@ class MemberExpr(RefExpr):
 # Kinds of arguments
 
 # Positional argument
-ARG_POS = 0  # type: int
+ARG_POS = 0  # type: Final[int]
 # Positional, optional argument (functions only, not calls)
-ARG_OPT = 1  # type: int
+ARG_OPT = 1  # type: Final[int]
 # *arg argument
-ARG_STAR = 2  # type: int
+ARG_STAR = 2  # type: Final[int]
 # Keyword argument x=y in call, or keyword-only function arg
-ARG_NAMED = 3  # type: int
+ARG_NAMED = 3  # type: Final[int]
 # **arg argument
-ARG_STAR2 = 4  # type: int
+ARG_STAR2 = 4  # type: Final[int]
 # In an argument list, keyword-only and also optional
-ARG_NAMED_OPT = 5
+ARG_NAMED_OPT = 5  # type: Final[int]
 
 
 class CallExpr(Expression):
@@ -1472,22 +1504,22 @@ op_methods = {
     '>': '__gt__',
     '<=': '__le__',
     'in': '__contains__',
-}  # type: Dict[str, str]
+}  # type: Final[Dict[str, str]]
 
-op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}
+op_methods_to_symbols = {v: k for (k, v) in op_methods.items()}  # type: Final
 op_methods_to_symbols['__div__'] = '/'
 
-comparison_fallback_method = '__cmp__'
+comparison_fallback_method = '__cmp__'  # type: Final
 ops_falling_back_to_cmp = {'__ne__', '__eq__',
                            '__lt__', '__le__',
-                           '__gt__', '__ge__'}
+                           '__gt__', '__ge__'}  # type: Final
 
 
 ops_with_inplace_method = {
-    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}
+    '+', '-', '*', '/', '%', '//', '**', '@', '&', '|', '^', '<<', '>>'}  # type: Final
 
 inplace_operator_methods = set(
-    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)
+    '__i' + op_methods[op][2:] for op in ops_with_inplace_method)  # type: Final
 
 reverse_op_methods = {
     '__add__': '__radd__',
@@ -1510,7 +1542,7 @@ reverse_op_methods = {
     '__ge__': '__le__',
     '__gt__': '__lt__',
     '__le__': '__ge__',
-}
+}  # type: Final
 
 # Suppose we have some class A. When we do A() + A(), Python will only check
 # the output of A().__add__(A()) and skip calling the __radd__ method entirely.
@@ -1531,16 +1563,16 @@ op_methods_that_shortcut = {
     '__xor__',
     '__lshift__',
     '__rshift__',
-}
+}  # type: Final
 
-normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())
-reverse_op_method_set = set(reverse_op_methods.values())
+normal_from_reverse_op = dict((m, n) for n, m in reverse_op_methods.items())  # type: Final
+reverse_op_method_set = set(reverse_op_methods.values())  # type: Final
 
 unary_op_methods = {
     '-': '__neg__',
     '+': '__pos__',
     '~': '__invert__',
-}
+}  # type: Final
 
 
 class OpExpr(Expression):
@@ -1860,9 +1892,9 @@ class TypeApplication(Expression):
 #
 # If T is contravariant in Foo[T], Foo[object] is a subtype of
 # Foo[int], but not vice versa.
-INVARIANT = 0  # type: int
-COVARIANT = 1  # type: int
-CONTRAVARIANT = 2  # type: int
+INVARIANT = 0  # type: Final[int]
+COVARIANT = 1  # type: Final[int]
+CONTRAVARIANT = 2  # type: Final[int]
 
 
 class TypeVarExpr(SymbolNode, Expression):
@@ -2191,8 +2223,8 @@ class TypeInfo(SymbolNode):
 
     FLAGS = [
         'is_abstract', 'is_enum', 'fallback_to_any', 'is_named_tuple',
-        'is_newtype', 'is_protocol', 'runtime_protocol'
-    ]  # type: ClassVar[List[str]]
+        'is_newtype', 'is_protocol', 'runtime_protocol', 'is_final',
+    ]  # type: Final[List[str]]
 
     def __init__(self, names: 'SymbolTable', defn: ClassDef, module_name: str) -> None:
         """Initialize a TypeInfo."""
@@ -2211,6 +2243,7 @@ class TypeInfo(SymbolNode):
         self.inferring = []
         self.add_type_vars()
         self.metadata = {}
+        self.is_final = False
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
@@ -2452,9 +2485,9 @@ class FakeInfo(TypeInfo):
         raise AssertionError(object.__getattribute__(self, 'msg'))
 
 
-VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: TypeInfo
-CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: TypeInfo
-FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: TypeInfo
+VAR_NO_INFO = FakeInfo('Var is lacking info')  # type: Final[TypeInfo]
+CLASSDEF_NO_INFO = FakeInfo('ClassDef is lacking info')  # type: Final[TypeInfo]
+FUNC_NO_INFO = FakeInfo('FuncBase for non-methods lack info')  # type: Final[TypeInfo]
 
 
 class TypeAlias(SymbolNode):
@@ -2847,7 +2880,7 @@ deserialize_map = {
     for key, obj in globals().items()
     if type(obj) is not FakeInfo
     and isinstance(obj, type) and issubclass(obj, SymbolNode) and obj is not SymbolNode
-}
+}  # type: Final
 
 
 def check_arg_kinds(arg_kinds: List[int], nodes: List[T], fail: Callable[[str, T], None]) -> None:

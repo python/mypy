@@ -6,16 +6,16 @@ import sys
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
 MYPY = False
 if MYPY:
-    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
 
 
 class BuildType:
-    STANDARD = 0  # type: ClassVar[int]
-    MODULE = 1  # type: ClassVar[int]
-    PROGRAM_TEXT = 2  # type: ClassVar[int]
+    STANDARD = 0  # type: Final[int]
+    MODULE = 1  # type: Final[int]
+    PROGRAM_TEXT = 2  # type: Final[int]
 
 
 PER_MODULE_OPTIONS = {
@@ -47,11 +47,11 @@ PER_MODULE_OPTIONS = {
     "warn_no_return",
     "warn_return_any",
     "warn_unused_ignores",
-}
+}  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
                             {"quick_and_dirty", "platform", "bazel"})
-                           - {"debug_cache"})
+                           - {"debug_cache"})  # type: Final
 
 
 class Options:

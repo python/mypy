@@ -28,8 +28,12 @@ from mypy.options import Options
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-MEM_PROFILE = False  # If True, dump memory profile after initialization
+
+MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -83,7 +87,7 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 
 # Server code.
 
-SOCKET_NAME = 'dmypy.sock'
+SOCKET_NAME = 'dmypy.sock'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -382,7 +386,7 @@ class Server:
 # Misc utilities.
 
 
-MiB = 2**20
+MiB = 2**20  # type: Final
 
 
 def get_meminfo() -> Dict[str, Any]:

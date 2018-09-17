@@ -73,6 +73,10 @@ from mypy.types import (
 )
 from mypy.visitor import NodeVisitor
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),
                                  ('doc_dir', str),
@@ -236,12 +240,12 @@ def generate_stub(path: str,
 
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
-EMPTY = 'EMPTY'
-FUNC = 'FUNC'
-CLASS = 'CLASS'
-EMPTY_CLASS = 'EMPTY_CLASS'
-VAR = 'VAR'
-NOT_IN_ALL = 'NOT_IN_ALL'
+EMPTY = 'EMPTY'  # type: Final
+FUNC = 'FUNC'  # type: Final
+CLASS = 'CLASS'  # type: Final
+EMPTY_CLASS = 'EMPTY_CLASS'  # type: Final
+VAR = 'VAR'  # type: Final
+NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
 
 
 class AnnotationPrinter(TypeStrVisitor):
