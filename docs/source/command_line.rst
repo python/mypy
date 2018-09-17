@@ -472,6 +472,8 @@ in developing or debugging mypy internals.
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
 
+.. _warn-incomplete-stub:
+
 ``--warn-incomplete-stub``
     This flag modifies both the ``--disallow-untyped-defs`` and 
     ``--disallow-incomplete-defs`` flags so they also report errors
