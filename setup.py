@@ -120,6 +120,7 @@ if USE_MYPYC:
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
     ext_modules = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
     cmdclass['build_ext'] = MypycifyBuildExt
+    description += " (mypyc-compiled version)"
 else:
     ext_modules = []
 
