@@ -74,6 +74,7 @@ package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
 
 USE_MYPYC = False
+# To compile with mypyc, a mypyc checkout must be present on the PYTHONPATH
 if len(sys.argv) > 1 and sys.argv[1] == '--use-mypyc':
     sys.argv.pop(1)
     USE_MYPYC = True
