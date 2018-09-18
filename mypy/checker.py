@@ -336,7 +336,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         assert not self.current_node_deferred
         # TODO: Handle __all__
 
-    def defer_node(self, node: DeferredNodeType, enclosing_class: TypeInfo) -> None:
+    def defer_node(self, node: DeferredNodeType, enclosing_class: Optional[TypeInfo]) -> None:
         if self.errors.type_name:
             type_name = self.errors.type_name[-1]
         else:
@@ -1290,6 +1290,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     #      necessary; now it's "just in case"
                     return self.check_method_override_for_base_with_name(defn, method,
                                                                          base)
+        return False
 
     def check_method_override_for_base_with_name(
             self, defn: Union[FuncBase, Decorator], name: str, base: TypeInfo) -> bool:
