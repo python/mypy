@@ -65,11 +65,65 @@ class CustomPythonBuild(build_py):
         build_py.run(self)
 
 
+cmdclass = {'build_py': CustomPythonBuild}
+
 package_data = ['py.typed']
 
 package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.pyi'])
 
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
+
+USE_MYPYC = False
+# To compile with mypyc, a mypyc checkout must be present on the PYTHONPATH
+if len(sys.argv) > 1 and sys.argv[1] == '--use-mypyc':
+    sys.argv.pop(1)
+    USE_MYPYC = True
+if os.getenv('MYPY_USE_MYPYC', None) == '1':
+    USE_MYPYC = True
+
+if USE_MYPYC:
+    MYPYC_BLACKLIST = (
+        'mypyc_hacks.py',
+        'interpreted_plugin.py',
+
+        '__main__.py',
+        'bogus_type.py',
+        'dmypy.py',
+        'gclogger.py',
+        'main.py',
+        'memprofile.py',
+        'version.py',
+    )
+
+    everything = find_package_data('mypy', ['*.py'])
+    # Start with all the .py files
+    all_real_pys = [x for x in everything if not x.startswith('typeshed/')]
+    # Strip out anything in our blacklist
+    mypyc_targets = [x for x in all_real_pys if x not in MYPYC_BLACKLIST]
+    # Strip out any test code
+    mypyc_targets = [x for x in mypyc_targets if not x.startswith('test/')]
+    # ... and add back in the one test module we need
+    mypyc_targets.append('test/visitors.py')
+
+    # Fix the paths to be full
+    mypyc_targets = [os.path.join('mypy', x) for x in mypyc_targets]
+
+    # This bit is super unfortunate: we want to use the mypy packaged
+    # with mypyc. It will arrange for the path to be setup so it can
+    # find it, but we've already imported parts, so we remove the
+    # modules that we've imported already, which will let the right
+    # versions be imported by mypyc.
+    del sys.modules['mypy']
+    del sys.modules['mypy.version']
+    del sys.modules['mypy.git']
+
+    from mypyc.build import mypycify, MypycifyBuildExt
+    opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
+    ext_modules = mypycify(mypyc_targets, ['--config-file=mypy_bootstrap.ini'], opt_level)
+    cmdclass['build_ext'] = MypycifyBuildExt
+    description += " (mypyc-compiled version)"
+else:
+    ext_modules = []
 
 
 classifiers = [
@@ -84,7 +138,7 @@ classifiers = [
     'Topic :: Software Development',
 ]
 
-setup(name='mypy',
+setup(name='mypy' if not USE_MYPYC else 'mypy-mypyc',
       version=version,
       description=description,
       long_description=long_description,
@@ -93,6 +147,7 @@ setup(name='mypy',
       url='http://www.mypy-lang.org/',
       license='MIT License',
       py_modules=[],
+      ext_modules=ext_modules,
       packages=['mypy', 'mypy.test', 'mypy.server', 'mypy.plugins'],
       package_data={'mypy': package_data},
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
@@ -100,7 +155,7 @@ setup(name='mypy',
                                         'dmypy=mypy.dmypy:main',
                                         ]},
       classifiers=classifiers,
-      cmdclass={'build_py': CustomPythonBuild},
+      cmdclass=cmdclass,
       install_requires = ['typed-ast >= 1.1.0, < 1.2.0',
                           'mypy_extensions >= 0.4.0, < 0.5.0',
                           ],
