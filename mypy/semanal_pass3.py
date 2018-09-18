@@ -77,8 +77,12 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     def update_imported_vars(self) -> None:
         for sym in self.cur_mod_node.names.values():
             if sym and isinstance(sym.node, Var):
-                var = sym.node
-                mod_name, _, name = var.fullname().rpartition('.')
+                fullname = sym.node.fullname()
+                if '.' not in fullname:
+                    continue
+                mod_name, _, name = fullname.rpartition('.')
+                if mod_name not in self.sem.modules:
+                    continue
                 if mod_name != self.sem.cur_mod_id:  # imported
                     new_sym = self.sem.modules[mod_name].names.get(name)
                     if isinstance(new_sym.node, (TypeInfo, TypeAlias)):
