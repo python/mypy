@@ -691,6 +691,23 @@ my_eval(A([B(1), B(2)])) # OK
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testNamedTupleImportCycle]
+import b
+[file a.py]
+class C:
+    pass
+
+from b import tp
+x: tp
+reveal_type(x.x)  # E: Revealed type is 'builtins.int'
+
+[file b.py]
+from a import C
+from typing import NamedTuple
+
+tp = NamedTuple('tp', [('x', int)])
+[out]
+
 [case testUnsafeOverlappingNamedTuple]
 from typing import NamedTuple
 

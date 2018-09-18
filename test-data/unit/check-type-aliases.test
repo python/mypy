@@ -461,22 +461,6 @@ class Parameter:
     type: _ConvertibleType
 [out]
 
-[case testNamedTupleImportCycle]
-import b
-[file a.py]
-class C:
-    pass
-
-from b import tp
-x: tp
-
-[file b.py]
-from a import C
-from typing import NamedTuple
-
-tp = NamedTuple('tp', [('x', int)])
-[out]
-
 [case testFlexibleAlias1]
 from typing import TypeVar, List, Tuple
 from mypy_extensions import FlexibleAlias

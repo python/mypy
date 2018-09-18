@@ -5123,6 +5123,50 @@ def outer() -> None:
 [out]
 [out2]
 
+[case testRecursiveAliasImported]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x)
+[file lib.pyi]
+from typing import List
+from other import B
+A = List[B]  # type: ignore
+[file other.pyi]
+from typing import List
+from lib import A
+B = List[A]
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'builtins.list[builtins.list[builtins.list[Any]]]'
+
+[case testRecursiveNamedTupleTypedDict]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x.x['x'])
+[file lib.pyi]
+from typing import NamedTuple
+from other import B
+A = NamedTuple('A', [('x', B)])  # type: ignore
+[file other.pyi]
+from mypy_extensions import TypedDict
+from lib import A
+B = TypedDict('B', {'x': A})
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[TypedDict('other.B', {'x': Any}), fallback=lib.A]'
+
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip
 # cmd: mypy -m main
