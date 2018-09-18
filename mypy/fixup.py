@@ -236,7 +236,10 @@ def lookup_qualified_typeinfo(modules: Dict[str, MypyFile], name: str,
         return node
     else:
         # Looks like a missing TypeInfo in quick mode, put something there
-        assert quick_and_dirty, "Should never get here in normal mode"
+        assert quick_and_dirty, "Should never get here in normal mode," \
+                                " got {}:{} instead of TypeInfo".format(type(node).__name__,
+                                                                        node.fullname() if node
+                                                                        else '')
         return stale_info(modules)
 
 

@@ -1931,6 +1931,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         res, alias_tvars, depends_on, qualified_tvars = self.analyze_alias(rvalue)
         if not res:
             return
+        if (isinstance(res, Instance) and res.type.name() == lvalue.name and
+                res.type.module_name == self.cur_mod_id):
+            # Aliases like C = C is a no-op.
+            return
         s.is_alias_def = True
         node = self.lookup(lvalue.name, lvalue)
         assert node is not None
