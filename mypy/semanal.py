@@ -2020,15 +2020,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                          not self.type)
         if (add_global or nested_global) and lval.name not in self.globals:
             # Define new global name.
-            v = Var(lval.name)
-            v.set_line(lval)
-            v._fullname = self.qualified_name(lval.name)
-            v.is_ready = False  # Type not inferred yet
-            lval.node = v
-            lval.is_new_def = True
-            lval.is_inferred_def = True
-            lval.kind = GDEF
-            lval.fullname = v._fullname
+            v = self.make_name_lvalue_var(lval, GDEF)
             self.globals[lval.name] = SymbolTableNode(GDEF, v)
         elif isinstance(lval.node, Var) and lval.is_new_def:
             if lval.kind == GDEF:
@@ -2040,13 +2032,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
               lval.name not in self.global_decls[-1] and
               lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
-            v = Var(lval.name)
-            v.set_line(lval)
-            lval.node = v
-            lval.is_new_def = True
-            lval.is_inferred_def = True
-            lval.kind = LDEF
-            lval.fullname = lval.name
+            v = self.make_name_lvalue_var(lval, LDEF)
             self.add_local(v, lval)
             if lval.name == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
@@ -2055,17 +2041,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif not self.is_func_scope() and (self.type and
                                            lval.name not in self.type.names):
             # Define a new attribute within class body.
-            v = Var(lval.name)
-            v.info = self.type
-            v.is_initialized_in_class = True
+            v = self.make_name_lvalue_var(lval, MDEF)
             v.is_inferred = not explicit_type
-            v.set_line(lval)
-            v._fullname = self.qualified_name(lval.name)
-            lval.node = v
-            lval.is_new_def = True
-            lval.is_inferred_def = True
-            lval.kind = MDEF
-            lval.fullname = lval.name
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
             # An existing name, try to find the original definition.
@@ -2096,6 +2073,28 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # Bind to an existing name.
                 lval.accept(self)
                 self.check_lvalue_validity(lval.node, lval)
+
+    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int) -> Var:
+        """Return a Var node for an lvalue that is a name expression."""
+        v = Var(lvalue.name)
+        v.set_line(lvalue)
+        if kind == MDEF:
+            assert self.type is not None
+            v.info = self.type
+            v.is_initialized_in_class = True
+        if kind != LDEF:
+            v._fullname = self.qualified_name(lvalue.name)
+        if kind == GDEF:
+            v.is_ready = False  # Type not inferred yet
+        lvalue.node = v
+        lvalue.is_new_def = True
+        lvalue.is_inferred_def = True
+        lvalue.kind = kind
+        if kind == GDEF:
+            lvalue.fullname = v._fullname
+        else:
+            lvalue.fullname = lvalue.name
+        return v
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
                                      add_global: bool = False,
