@@ -1263,7 +1263,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_method_or_accessor_override_for_base(self, defn: Union[FuncBase, Decorator],
                                                    base: TypeInfo) -> bool:
-        """Check if method definition is compatible with a base class."""
+        """Check if method definition is compatible with a base class.
+
+        Return True if the node was deferred because one of the corresponding
+        superclass nodes is not ready.
+        """
         if base:
             name = defn.name()
             base_attr = base.names.get(name)
