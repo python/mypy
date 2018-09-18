@@ -1243,7 +1243,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if tvar.values:
                 subst.append([(tvar.id, value)
                               for value in tvar.values])
-        if subst:
+        # Make a copy of the function to check for each combination of
+        # value restricted type variables. (Except when running mypyc,
+        # where we need one canonical version of the function.)
+        if subst and not self.options.mypyc:
             result = []  # type: List[Tuple[FuncItem, CallableType]]
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)

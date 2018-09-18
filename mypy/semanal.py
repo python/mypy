@@ -2235,6 +2235,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         for t in values + [upper_bound]:
             check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,
                                    context=s)
+
+        # mypyc suppresses making copies of a function to check each
+        # possible type, so set the upper bound to Any to prevent that
+        # from causing errors.
+        if values and self.options.mypyc:
+            upper_bound = AnyType(TypeOfAny.implementation_artifact)
+
         # Yes, it's a valid type variable definition! Add it to the symbol table.
         node = self.lookup(name, s)
         assert node is not None
