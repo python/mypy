@@ -2007,7 +2007,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             self.fail('Invalid assignment target', lval)
 
-    def analyze_name_lvalue(self, lval: NameExpr, add_global: bool, explicit_type: bool,
+    def analyze_name_lvalue(self,
+                            lval: NameExpr,
+                            add_global: bool,
+                            explicit_type: bool,
                             final_cb: Optional[Callable[[bool], None]]) -> None:
         """Analyze an lvalue that targets a name expression.
 
@@ -2045,34 +2048,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             v.is_inferred = not explicit_type
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
-            # An existing name, try to find the original definition.
-            global_def = self.globals.get(lval.name)
-            if self.locals:
-                locals_last = self.locals[-1]
-                if locals_last:
-                    local_def = locals_last.get(lval.name)
-                else:
-                    local_def = None
-            else:
-                local_def = None
-            type_def = self.type.names.get(lval.name) if self.type else None
-
-            original_def = global_def or local_def or type_def
-
-            # Redefining an existing name with final is always an error.
-            if final_cb is not None:
-                # We avoid extra errors if the original definition is also final
-                # by keeping the final status of this assignment.
-                keep_final = bool(original_def and isinstance(original_def.node, Var) and
-                                  original_def.node.is_final)
-                final_cb(keep_final)
-            if explicit_type:
-                # Don't re-bind types
-                self.name_already_defined(lval.name, lval, original_def)
-            else:
-                # Bind to an existing name.
-                lval.accept(self)
-                self.check_lvalue_validity(lval.node, lval)
+            self.make_name_lvalue_point_to_existing_def(lval, explicit_type, final_cb)
 
     def make_name_lvalue_var(self, lvalue: NameExpr, kind: int) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
@@ -2095,6 +2071,40 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         else:
             lvalue.fullname = lvalue.name
         return v
+
+    def make_name_lvalue_point_to_existing_def(
+            self,
+            lval: NameExpr,
+            explicit_type: bool,
+            final_cb: Optional[Callable[[bool], None]]) -> None:
+        # Assume that an existing name exists. Try to find the original definition.
+        global_def = self.globals.get(lval.name)
+        if self.locals:
+            locals_last = self.locals[-1]
+            if locals_last:
+                local_def = locals_last.get(lval.name)
+            else:
+                local_def = None
+        else:
+            local_def = None
+        type_def = self.type.names.get(lval.name) if self.type else None
+
+        original_def = global_def or local_def or type_def
+
+        # Redefining an existing name with final is always an error.
+        if final_cb is not None:
+            # We avoid extra errors if the original definition is also final
+            # by keeping the final status of this assignment.
+            keep_final = bool(original_def and isinstance(original_def.node, Var) and
+                              original_def.node.is_final)
+            final_cb(keep_final)
+        if explicit_type:
+            # Don't re-bind types
+            self.name_already_defined(lval.name, lval, original_def)
+        else:
+            # Bind to an existing name.
+            lval.accept(self)
+            self.check_lvalue_validity(lval.node, lval)
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
                                      add_global: bool = False,
