@@ -1058,7 +1058,7 @@ def is_verbose(manager: BuildManager) -> bool:
 
 
 def target_from_node(module: str,
-                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]
+                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr, Decorator]
                      ) -> Optional[str]:
     """Return the target name corresponding to a deferred node.
 
@@ -1079,4 +1079,5 @@ def target_from_node(module: str,
         else:
             return '%s.%s' % (module, node.name())
     else:
-        assert False, "Lambda expressions can't be deferred in fine-grained incremental mode"
+        assert False, "Lambda expressions and decorators can't be deferred in" \
+                      " fine-grained incremental mode"

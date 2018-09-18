@@ -5117,3 +5117,39 @@ class C:
     def x(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
+
+[case testCyclicDecorator]
+import b
+[file a.py]
+import b
+import c
+
+class A(b.B):
+    @c.deco
+    def meth(self) -> int: ...
+[file b.py]
+import a
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int: ...
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[out]
+
+[case testCyclicOverride]
+import a
+[file b.py]
+import a
+class Sub(a.Base):
+    def x(self) -> int: pass
+
+[file a.py]
+import b
+class Base:
+    def __init__(self):
+        self.x = 1
+[out]

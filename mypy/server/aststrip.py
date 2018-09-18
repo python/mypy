@@ -52,7 +52,7 @@ from mypy.types import CallableType
 from mypy.typestate import TypeState
 
 
-def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
+def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef, Decorator]) -> None:
     """Reset a fine-grained incremental target to state after semantic analysis pass 1.
 
     NOTE: Currently we opportunistically only reset changes that are known to otherwise
