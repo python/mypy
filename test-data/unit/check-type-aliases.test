@@ -556,3 +556,4 @@ try:
 except E as e:
     reveal_type(e)  # E: Revealed type is '__main__.E'
 [builtins fixtures/exception.pyi]
+[out]

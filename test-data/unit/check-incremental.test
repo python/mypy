@@ -5261,6 +5261,7 @@ x: C
 class C:
     pass
 [out]
+[out2]
 
 [case testOverrideByIdemAliasImportedReversed]
 import a
@@ -5277,15 +5278,22 @@ from other import C
 class C:
     pass
 [out]
+[out2]
 
 [case testConditionalExceptionAliasOverride]
 import a
 [file a.py]
 import lib
-x = 1
+try:
+    x = 1
+except lib.Exception as e:
+    pass
 [file a.py.2]
 import lib
-x = 2
+try:
+    x = 2
+except lib.Exception as e:
+    pass
 [file lib.py]
 try:
     Exception = Exception
@@ -5297,3 +5305,5 @@ try:
 except Exception as e:
     pass
 [builtins fixtures/exception.pyi]
+[out]
+[out2]
