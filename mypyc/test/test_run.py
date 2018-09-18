@@ -103,6 +103,9 @@ class TestRun(MypycDataSuite):
                     to_delete.append(fn)
                     module_paths.append(os.path.abspath(fn))
 
+            for source in sources:
+                options.per_module_options.setdefault(source.module, {})['mypyc'] = True
+
             try:
                 result = emitmodule.parse_and_typecheck(
                     sources=sources,

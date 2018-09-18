@@ -117,6 +117,9 @@ def get_mypy_config(paths: List[str],
     # TODO: Support incremental checking
     options.incremental = False
 
+    for source in sources:
+        options.per_module_options.setdefault(source.module, {})['mypyc'] = True
+
     return sources, options
 
 

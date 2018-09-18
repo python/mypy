@@ -3253,3 +3253,23 @@ L2:
     r3 = 1
     r4 = r2 - r3 :: int
     return r4
+
+[case testFinalRestrictedTypeVar]
+from typing import TypeVar
+if False:
+    from typing import Final
+
+FOO = 10  # type: Final
+
+Targ = TypeVar('Targ', int, str)
+def foo(z: Targ) -> None:
+    FOO
+[out]
+def foo(z):
+    z :: object
+    r0 :: short_int
+    r1 :: None
+L0:
+    r0 = 10
+    r1 = None
+    return r1
