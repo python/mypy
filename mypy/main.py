@@ -465,7 +465,7 @@ def process_options(args: List[str],
         help='Type check code assuming it will be running on Python x.y',
         dest='special-opts:python_version')
     platform_group.add_argument(
-        '-2', '--py2', dest='python_version', action='store_const',
+        '-2', '--py2', dest='special-opts:python_version', action='store_const',
         const=defaults.PYTHON2_VERSION,
         help="Use Python 2 mode (same as --python-version 2.7)")
     platform_group.add_argument(

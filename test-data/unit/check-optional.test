@@ -698,3 +698,52 @@ def g(x: str) -> None: pass
 
 y = int()
 [builtins fixtures/bool.pyi]
+
+[case testOptionalAssignAny1]
+from typing import Optional
+def f():
+    return 0
+
+def g(x: Optional[int]) -> int:
+    if x is None:
+        reveal_type(x)  # E: Revealed type is 'None'
+        # As a special case for Unions containing None, during
+        x = f()
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+    return x
+
+[builtins fixtures/bool.pyi]
+
+[case testOptionalAssignAny2]
+from typing import Optional
+def f():
+    return 0
+
+def g(x: Optional[int]) -> int:
+    if x is None:
+        reveal_type(x)  # E: Revealed type is 'None'
+        x = 1
+        reveal_type(x)  # E: Revealed type is 'builtins.int'
+        # Since we've assigned to x, the special case None behavior shouldn't happen
+        x = f()
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, None]'
+    return x  # E: Incompatible return value type (got "Optional[int]", expected "int")
+
+[builtins fixtures/bool.pyi]
+
+[case testOptionalAssignAny3]
+from typing import Optional
+def f():
+    return 0
+
+def g(x: Optional[int]) -> int:
+    if x is not None:
+        return x
+    reveal_type(x)  # E: Revealed type is 'None'
+    x = f()
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+    return x
+
+[builtins fixtures/bool.pyi]
