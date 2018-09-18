@@ -67,11 +67,24 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
+            self.update_imported_vars()
             self.accept(file_node)
             self.analyze_symbol_table(file_node.names)
             self.scope.leave()
         del self.cur_mod_node
         self.patches = []
+
+    def update_imported_vars(self) -> None:
+        for sym in self.cur_mod_node.names.values():
+            if sym and isinstance(sym.node, Var):
+                var = sym.node
+                mod_name, _, name = var.fullname().rpartition('.')
+                if mod_name != self.sem.cur_mod_id:  # imported
+                    new_sym = self.sem.modules[mod_name].names.get(name)
+                    if isinstance(new_sym.node, (TypeInfo, TypeAlias)):
+                        # This Var was replaced with a class (like named tuple)
+                        # or alias, update this.
+                        sym.node = new_sym.node
 
     def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
