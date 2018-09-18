@@ -85,7 +85,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     continue
                 if mod_name != self.sem.cur_mod_id:  # imported
                     new_sym = self.sem.modules[mod_name].names.get(name)
-                    if isinstance(new_sym.node, (TypeInfo, TypeAlias)):
+                    if new_sym and isinstance(new_sym.node, (TypeInfo, TypeAlias)):
                         # This Var was replaced with a class (like named tuple)
                         # or alias, update this.
                         sym.node = new_sym.node
