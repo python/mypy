@@ -427,6 +427,56 @@ reveal_type(D().meth(1))  # E: Revealed type is 'Union[__main__.D*, builtins.int
 [builtins fixtures/classmethod.pyi]
 [out]
 
+[case testAliasInImportCycle]
+# cmd: mypy -m t t2
+[file t.py]
+MYPY = False
+if MYPY:
+    from t2 import A
+x: A
+[file t2.py]
+import t
+from typing import Callable
+A = Callable[[], None]
+[builtins fixtures/bool.pyi]
+[out]
+
+[case testAliasInImportCycle2]
+import a
+[file a.pyi]
+from b import Parameter
+
+class _ParamType:
+    p: Parameter
+
+_ConvertibleType = _ParamType
+
+def convert_type(ty: _ConvertibleType):
+    ...
+
+[file b.pyi]
+from a import _ConvertibleType
+
+class Parameter:
+    type: _ConvertibleType
+[out]
+
+[case testNamedTupleImportCycle]
+import b
+[file a.py]
+class C:
+    pass
+
+from b import tp
+x: tp
+
+[file b.py]
+from a import C
+from typing import NamedTuple
+
+tp = NamedTuple('tp', [('x', int)])
+[out]
+
 [case testFlexibleAlias1]
 from typing import TypeVar, List, Tuple
 from mypy_extensions import FlexibleAlias
