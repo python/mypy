@@ -117,6 +117,7 @@ class ModuleGenerator:
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
             self.declare_imports(module.imports, emitter)
+            self.declare_finals(module.final_names, emitter)
 
         for identifier in self.literals.values():
             self.declare_static_pyobject(identifier, emitter)
@@ -349,6 +350,11 @@ class ModuleGenerator:
     def declare_imports(self, imps: Iterable[str], emitter: Emitter) -> None:
         for imp in imps:
             self.declare_module(imp, emitter)
+
+    def declare_finals(self, final_names: Iterable[str], emitter: Emitter) -> None:
+        for name in final_names:
+            static_name = emitter.static_name(name, 'final')
+            self.declare_global('PyObject *', static_name, initializer='NULL')
 
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
         symbol = emitter.static_name(identifier, None)

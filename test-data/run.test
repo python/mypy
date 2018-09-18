@@ -3356,3 +3356,53 @@ assert f([6, 7], [8, 9]) == [(0, 6, 8), (1, 7, 9)]
 assert g([6, 7], ['a', 'b']) == [(0, 6, 'a'), (1, 7, 'b')]
 assert f([6, 7], [8]) == [(0, 6, 8)]
 assert f([6], [8, 9]) == [(0, 6, 8)]
+
+[case testFinalStaticRunFail]
+if False:
+    from typing import Final
+
+if bool():
+    x: 'Final' = [1]
+
+def f() -> int:
+    return x[0]
+
+[file driver.py]
+from native import f
+try:
+    print(f())
+except ValueError as e:
+    print(e.args[0])
+[out]
+value for final name "x" was not set
+
+[case testFinalStaticRunListTupleInt]
+if False:
+    from typing import Final
+
+x: 'Final' = [1]
+y: 'Final' = (1, 2)
+z: 'Final' = 1 + 1
+
+def f() -> int:
+    return x[0]
+def g() -> int:
+    return y[0]
+def h() -> int:
+    return z - 1
+
+[file driver.py]
+from native import f, g, h, x, y, z
+print(f())
+print(x[0])
+print(g())
+print(y)
+print(h())
+print(z)
+[out]
+1
+1
+1
+(1, 2)
+1
+2

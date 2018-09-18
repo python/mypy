@@ -130,7 +130,7 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
             assert False, "Invalid branch"
 
         # For error checks, tell the compiler the branch is unlikely
-        if op.traceback_entry is not None:
+        if op.traceback_entry is not None or op.rare:
             cond = 'unlikely({})'.format(cond)
 
         self.emit_line('if ({}) {{'.format(cond))
