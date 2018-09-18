@@ -6,7 +6,7 @@ MYPY = False
 if MYPY:
     from typing import DefaultDict
 
-from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny
+from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneTyp
 from mypy.subtypes import is_subtype
 from mypy.join import join_simple
 from mypy.sametypes import is_same_type
@@ -276,6 +276,20 @@ class ConditionalTypeBinder:
                 # isinstance check), but now it is reassigned, so broaden back
                 # to Any (which is the most recent enclosing type)
                 self.put(expr, enclosing_type)
+        # As a special case, when assigning Any to a variable with a
+        # declared Optional type that has been narrowed to None,
+        # replace all the Nones in the declared Union type with Any.
+        # This overrides the normal behavior of ignoring Any assignments to variables
+        # in order to prevent false positives.
+        # (See discussion in #3526)
+        elif (isinstance(type, AnyType)
+              and isinstance(declared_type, UnionType)
+              and any(isinstance(item, NoneTyp) for item in declared_type.items)
+              and isinstance(self.most_recent_enclosing_type(expr, NoneTyp()), NoneTyp)):
+            # Replace any Nones in the union type with Any
+            new_items = [type if isinstance(item, NoneTyp) else item
+                         for item in declared_type.items]
+            self.put(expr, UnionType(new_items))
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
                        and any(isinstance(item, AnyType) for item in declared_type.items))):
