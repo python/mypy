@@ -496,10 +496,6 @@ class TypeMeetVisitor(TypeVisitor[Type]):
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
                 return t
-        elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
-            # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
-            # Do something reasonable until that bug is fixed.
-            return t
         return self.default(self.s)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
