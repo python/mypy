@@ -347,8 +347,9 @@ class NamedTupleAnalyzer:
                        args: List[Argument],
                        name: Optional[str] = None,
                        is_classmethod: bool = False,
+                       is_new: bool = False,
                        ) -> None:
-            if is_classmethod:
+            if is_classmethod or is_new:
                 first = [Argument(Var('cls'), TypeType.make_normalized(selftype), None, ARG_POS)]
             else:
                 first = [Argument(Var('self'), selftype, None, ARG_POS)]
@@ -384,8 +385,9 @@ class NamedTupleAnalyzer:
             kind = ARG_POS if default is None else ARG_OPT
             return Argument(var, var.type, default, kind)
 
-        add_method('__init__', ret=NoneTyp(), name=info.name(),
-                   args=[make_init_arg(var) for var in vars])
+        add_method('__new__', ret=selftype, name=info.name(),
+                   args=[make_init_arg(var) for var in vars],
+                   is_new=True)
         add_method('_asdict', args=[], ret=ordereddictype)
         special_form_any = AnyType(TypeOfAny.special_form)
         add_method('_make', ret=selftype, is_classmethod=True,

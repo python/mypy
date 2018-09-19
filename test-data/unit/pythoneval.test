@@ -26,6 +26,7 @@ print(list(reversed(A())))
 [[3, 2, 1]
 [['c', 'b', 'a']
 [['f', 'o', 'o']
+-- ]]]]]
 
 [case testIntAndFloatConversion]
 from typing import SupportsInt, SupportsFloat
@@ -90,6 +91,7 @@ import typing
 print(list.__add__([1, 2], [3, 4]))
 [out]
 [[1, 2, 3, 4]
+-- ]
 
 [case testInheritedClassAttribute]
 import typing
@@ -1047,7 +1049,7 @@ _testTypedDictGet.py:9: error: TypedDict "D" has no key 'z'
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
 _testTypedDictGet.py:10: note:     def get(self, k: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, k: str, default: object) -> object 
+_testTypedDictGet.py:10: note:     def [_T] get(self, k: str, default: object) -> object
 _testTypedDictGet.py:12: error: Revealed type is 'builtins.object*'
 
 [case testTypedDictMappingMethods]
@@ -1317,3 +1319,24 @@ def g(ms: 'T[M]') -> None:
     reduce(f, ms)
 T = Iterable
 [out]
+
+[case testNamedTupleNew]
+# This is an eval test because there was a snag found only with full stubs
+from typing import NamedTuple
+
+Base = NamedTuple('Base', [('param', int)])
+
+class Child(Base):
+    def __new__(cls, param: int = 1) -> 'Child':
+        return Base.__new__(cls, param)
+
+Base(param=10)
+Child(param=10)
+reveal_type(Child())
+
+from collections import namedtuple
+X = namedtuple('X', ['a', 'b'])
+x = X(a=1, b='s')
+
+[out]
+_testNamedTupleNew.py:12: error: Revealed type is 'Tuple[builtins.int, fallback=_testNamedTupleNew.Child]'
