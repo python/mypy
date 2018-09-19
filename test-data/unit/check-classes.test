@@ -5124,11 +5124,10 @@ class A:
         pass
 
 class B(A):
-    def __new__(cls) -> 'B':
-        ...
+    def __new__(cls) -> int:
+        return 10
 
 B()
-reveal_type(B)  # E: Revealed type is 'def () -> __main__.B'
 
 [case testNewAndInit2]
 from typing import Any
