@@ -1986,89 +1986,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 overrides an existing name.
         """
         if isinstance(lval, NameExpr):
-            # Top-level definitions within some statements (at least while) are
-            # not handled in the first pass, so they have to be added now.
-            nested_global = (not self.is_func_scope() and
-                             self.block_depth[-1] > 0 and
-                             not self.type)
-            if (add_global or nested_global) and lval.name not in self.globals:
-                # Define new global name.
-                v = Var(lval.name)
-                v.set_line(lval)
-                v._fullname = self.qualified_name(lval.name)
-                v.is_ready = False  # Type not inferred yet
-                lval.node = v
-                lval.is_new_def = True
-                lval.is_inferred_def = True
-                lval.kind = GDEF
-                lval.fullname = v._fullname
-                self.globals[lval.name] = SymbolTableNode(GDEF, v)
-            elif isinstance(lval.node, Var) and lval.is_new_def:
-                if lval.kind == GDEF:
-                    # Since the is_new_def flag is set, this must have been analyzed
-                    # already in the first pass and added to the symbol table.
-                    # An exception is typing module with incomplete test fixtures.
-                    assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
-            elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
-                  lval.name not in self.global_decls[-1] and
-                  lval.name not in self.nonlocal_decls[-1]):
-                # Define new local name.
-                v = Var(lval.name)
-                v.set_line(lval)
-                lval.node = v
-                lval.is_new_def = True
-                lval.is_inferred_def = True
-                lval.kind = LDEF
-                lval.fullname = lval.name
-                self.add_local(v, lval)
-                if lval.name == '_':
-                    # Special case for assignment to local named '_': always infer 'Any'.
-                    typ = AnyType(TypeOfAny.special_form)
-                    self.store_declared_types(lval, typ)
-            elif not self.is_func_scope() and (self.type and
-                                               lval.name not in self.type.names):
-                # Define a new attribute within class body.
-                v = Var(lval.name)
-                v.info = self.type
-                v.is_initialized_in_class = True
-                v.is_inferred = not explicit_type
-                v.set_line(lval)
-                v._fullname = self.qualified_name(lval.name)
-                lval.node = v
-                lval.is_new_def = True
-                lval.is_inferred_def = True
-                lval.kind = MDEF
-                lval.fullname = lval.name
-                self.type.names[lval.name] = SymbolTableNode(MDEF, v)
-            else:
-                # An existing name, try to find the original definition.
-                global_def = self.globals.get(lval.name)
-                if self.locals:
-                    locals_last = self.locals[-1]
-                    if locals_last:
-                        local_def = locals_last.get(lval.name)
-                    else:
-                        local_def = None
-                else:
-                    local_def = None
-                type_def = self.type.names.get(lval.name) if self.type else None
-
-                original_def = global_def or local_def or type_def
-
-                # Redefining an existing name with final is always an error.
-                if final_cb is not None:
-                    # We avoid extra errors if the original definition is also final
-                    # by keeping the final status of this assignment.
-                    keep_final = bool(original_def and isinstance(original_def.node, Var) and
-                                      original_def.node.is_final)
-                    final_cb(keep_final)
-                if explicit_type:
-                    # Don't re-bind types
-                    self.name_already_defined(lval.name, lval, original_def)
-                else:
-                    # Bind to an existing name.
-                    lval.accept(self)
-                    self.check_lvalue_validity(lval.node, lval)
+            self.analyze_name_lvalue(lval, add_global, explicit_type, final_cb)
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval, explicit_type, final_cb=final_cb)
@@ -2092,6 +2010,105 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 self.fail('Starred assignment target must be in a list or tuple', lval)
         else:
             self.fail('Invalid assignment target', lval)
+
+    def analyze_name_lvalue(self,
+                            lval: NameExpr,
+                            add_global: bool,
+                            explicit_type: bool,
+                            final_cb: Optional[Callable[[bool], None]]) -> None:
+        """Analyze an lvalue that targets a name expression.
+
+        Arguments are similar to "analyze_lvalue".
+        """
+        # Top-level definitions within some statements (at least while) are
+        # not handled in the first pass, so they have to be added now.
+        nested_global = (not self.is_func_scope() and
+                         self.block_depth[-1] > 0 and
+                         not self.type)
+        if (add_global or nested_global) and lval.name not in self.globals:
+            # Define new global name.
+            v = self.make_name_lvalue_var(lval, GDEF)
+            self.globals[lval.name] = SymbolTableNode(GDEF, v)
+        elif isinstance(lval.node, Var) and lval.is_new_def:
+            if lval.kind == GDEF:
+                # Since the is_new_def flag is set, this must have been analyzed
+                # already in the first pass and added to the symbol table.
+                # An exception is typing module with incomplete test fixtures.
+                assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
+        elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
+              lval.name not in self.global_decls[-1] and
+              lval.name not in self.nonlocal_decls[-1]):
+            # Define new local name.
+            v = self.make_name_lvalue_var(lval, LDEF)
+            self.add_local(v, lval)
+            if lval.name == '_':
+                # Special case for assignment to local named '_': always infer 'Any'.
+                typ = AnyType(TypeOfAny.special_form)
+                self.store_declared_types(lval, typ)
+        elif not self.is_func_scope() and (self.type and
+                                           lval.name not in self.type.names):
+            # Define a new attribute within class body.
+            v = self.make_name_lvalue_var(lval, MDEF)
+            v.is_inferred = not explicit_type
+            self.type.names[lval.name] = SymbolTableNode(MDEF, v)
+        else:
+            self.make_name_lvalue_point_to_existing_def(lval, explicit_type, final_cb)
+
+    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int) -> Var:
+        """Return a Var node for an lvalue that is a name expression."""
+        v = Var(lvalue.name)
+        v.set_line(lvalue)
+        if kind == MDEF:
+            assert self.type is not None
+            v.info = self.type
+            v.is_initialized_in_class = True
+        if kind != LDEF:
+            v._fullname = self.qualified_name(lvalue.name)
+        if kind == GDEF:
+            v.is_ready = False  # Type not inferred yet
+        lvalue.node = v
+        lvalue.is_new_def = True
+        lvalue.is_inferred_def = True
+        lvalue.kind = kind
+        if kind == GDEF:
+            lvalue.fullname = v._fullname
+        else:
+            lvalue.fullname = lvalue.name
+        return v
+
+    def make_name_lvalue_point_to_existing_def(
+            self,
+            lval: NameExpr,
+            explicit_type: bool,
+            final_cb: Optional[Callable[[bool], None]]) -> None:
+        # Assume that an existing name exists. Try to find the original definition.
+        global_def = self.globals.get(lval.name)
+        if self.locals:
+            locals_last = self.locals[-1]
+            if locals_last:
+                local_def = locals_last.get(lval.name)
+            else:
+                local_def = None
+        else:
+            local_def = None
+        type_def = self.type.names.get(lval.name) if self.type else None
+
+        original_def = global_def or local_def or type_def
+
+        # Redefining an existing name with final is always an error.
+        if final_cb is not None:
+            # We avoid extra errors if the original definition is also final
+            # by keeping the final status of this assignment.
+            keep_final = bool(original_def and isinstance(original_def.node, Var) and
+                              original_def.node.is_final)
+            final_cb(keep_final)
+        if explicit_type:
+            # Don't re-bind types
+            self.name_already_defined(lval.name, lval, original_def)
+        else:
+            # Bind to an existing name.
+            lval.accept(self)
+            self.check_lvalue_validity(lval.node, lval)
 
     def analyze_tuple_or_list_lvalue(self, lval: TupleExpr,
                                      add_global: bool = False,
