@@ -51,7 +51,7 @@ class NamedTupleAnalyzer:
                         node.kind = GDEF  # TODO in process_namedtuple_definition also applies here
                         items, types, default_items = self.check_namedtuple_classdef(defn)
                         info = self.build_namedtuple_typeinfo(
-                            defn.name, items, types, default_items, defn.line)
+                            defn.name, items, types, default_items)
                         node.node = info
                         defn.info.replaced = info
                         defn.info = info
@@ -160,7 +160,7 @@ class NamedTupleAnalyzer:
                 name = var_name
             else:
                 name = 'namedtuple@' + str(call.line)
-            info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
+            info = self.build_namedtuple_typeinfo(name, [], [], {})
             self.store_namedtuple_info(info, name, call, is_typed)
             return info
         name = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
@@ -174,7 +174,7 @@ class NamedTupleAnalyzer:
             }
         else:
             default_items = {}
-        info = self.build_namedtuple_typeinfo(name, items, types, default_items, node.line)
+        info = self.build_namedtuple_typeinfo(name, items, types, default_items)
         # Store it as a global just in case it would remain anonymous.
         # (Or in the nearest class if there is one.)
         self.store_namedtuple_info(info, name, call, is_typed)
@@ -290,8 +290,7 @@ class NamedTupleAnalyzer:
         return [], [], [], False
 
     def build_namedtuple_typeinfo(self, name: str, items: List[str], types: List[Type],
-                                  default_items: Mapping[str, Expression],
-                                  line: int) -> TypeInfo:
+                                  default_items: Mapping[str, Expression]) -> TypeInfo:
         strtype = self.api.named_type('__builtins__.str')
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.api.named_type('__builtins__.tuple', [implicit_any])
@@ -364,7 +363,6 @@ class NamedTupleAnalyzer:
                                      function_type)
             signature.variables = [tvd]
             func = FuncDef(funcname, args, Block([]))
-            func.line = line
             func.info = info
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
