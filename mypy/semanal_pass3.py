@@ -352,7 +352,9 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     new_bases.append(alt_base)
             node.bases = new_bases
             if node.tuple_type:
-                node.tuple_type = transform(node.tuple_type)
+                new_tuple_type = transform(node.tuple_type)
+                assert isinstance(new_tuple_type, TupleType)
+                node.tuple_type = new_tuple_type
 
     def transform_types_in_lvalue(self, lvalue: Lvalue,
                                   transform: Callable[[Type], Type]) -> None:
