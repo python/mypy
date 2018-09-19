@@ -127,6 +127,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     types.append(tvar.upper_bound)
                 if tvar.values:
                     types.extend(tvar.values)
+            if tdef.info.tuple_type:
+                types.append(tdef.info.tuple_type)
             self.analyze_types(types, tdef.info)
             for type in tdef.info.bases:
                 if tdef.info.is_protocol:
@@ -349,6 +351,10 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     alt_base = Instance(base.type, [transform(a) for a in base.args])
                     new_bases.append(alt_base)
             node.bases = new_bases
+            if node.tuple_type:
+                new_tuple_type = transform(node.tuple_type)
+                assert isinstance(new_tuple_type, TupleType)
+                node.tuple_type = new_tuple_type
 
     def transform_types_in_lvalue(self, lvalue: Lvalue,
                                   transform: Callable[[Type], Type]) -> None:
@@ -593,17 +599,20 @@ class ForwardReferenceResolver(TypeTranslator):
                 # The key idea is that when we recursively return to a type already traversed,
                 # then we break the cycle and put AnyType as a leaf.
                 return AnyType(TypeOfAny.from_error)
-            return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+            return tp.copy_modified(fallback=Instance(info.replaced, [],
+                                                      line=t.line)).accept(self)
         # Same as above but for TypedDicts.
         if info.replaced and info.replaced.typeddict_type:
             td = info.replaced.typeddict_type
             if self.check_recursion(td):
                 # We also break the cycles for TypedDicts as explained above for NamedTuples.
                 return AnyType(TypeOfAny.from_error)
-            return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+            return td.copy_modified(fallback=Instance(info.replaced, [],
+                                                      line=t.line)).accept(self)
         if self.check_recursion(t):
             # We also need to break a potential cycle with normal (non-synthetic) instance types.
-            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
+            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars),
+                            line=t.line)
         return super().visit_instance(t)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
