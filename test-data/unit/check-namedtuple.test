@@ -700,8 +700,8 @@ class Command(NamedTuple):  # type: ignore
 class HelpCommand(Command):
     pass
 
-HelpCommand(subcommands=[])
-reveal_type(HelpCommand)  # E: Revealed type is 'def (subcommands: builtins.list[Any]) -> Tuple[builtins.list[Tuple[builtins.list[Any], fallback=__main__.Command]], fallback=__main__.HelpCommand]'
+hc = HelpCommand(subcommands=[])
+reveal_type(hc)  # E: Revealed type is 'Tuple[builtins.list[Tuple[builtins.list[Any], fallback=__main__.Command]], fallback=__main__.HelpCommand]'
 [builtins fixtures/list.pyi]
 [out]
 
