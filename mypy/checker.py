@@ -1563,8 +1563,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         a direct subclass relationship (i.e., the compatibility requirement only derives from
         multiple inheritance).
         """
-        if name == '__init__':
-            # __init__ can be incompatible -- it's a special case.
+        if name in ('__init__', '__new__', '__init_subclass__'):
+            # __init__ and friends can be incompatible -- it's a special case.
             return
         first = base1[name]
         second = base2[name]

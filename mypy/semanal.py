@@ -776,7 +776,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 nt_names = named_tuple_info.names
                 named_tuple_info.names = SymbolTable()
                 # This is needed for the cls argument to classmethods to get bound correctly.
-                named_tuple_info.names['__init__'] = nt_names['__init__']
+                named_tuple_info.names['__new__'] = nt_names['__new__']
 
                 self.enter_class(named_tuple_info)
 
