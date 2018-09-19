@@ -5193,3 +5193,117 @@ def f(x: str) -> None: pass
 [out]
 [out2]
 tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testOverrideByIdemAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C
+class C:  # type: ignore
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    pass
+C = C  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasGeneric]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    pass
+C = C[int]  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImported]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from other import C
+C = C  # type: ignore
+x: C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImportedReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C  # type: ignore
+from other import C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testConditionalExceptionAliasOverride]
+import a
+[file a.py]
+import lib
+try:
+    x = 1
+except lib.Exception as e:
+    pass
+[file a.py.2]
+import lib
+try:
+    x = 2
+except lib.Exception as e:
+    pass
+[file lib.py]
+try:
+    Exception = Exception
+except BaseException:
+    class Exception(BaseException): pass  # type: ignore
+
+try:
+    pass
+except Exception as e:
+    pass
+[builtins fixtures/exception.pyi]
+[out]
+[out2]

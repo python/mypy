@@ -518,3 +518,42 @@ def foo(x: Bogus[int]) -> None:
     reveal_type(x)  # E: Revealed type is 'builtins.int'
 
 [builtins fixtures/dict.pyi]
+
+[case testOverrideByIdemAliasCorrectType]
+C = C
+class C:  # type: ignore
+    pass
+x: C
+reveal_type(x)  # E: Revealed type is '__main__.C'
+[out]
+
+[case testOverrideByIdemAliasCorrectTypeReversed]
+class C:
+    pass
+C = C  # type: ignore
+x: C
+reveal_type(x)  # E: Revealed type is '__main__.C'
+[out]
+
+[case testOverrideByIdemAliasCorrectTypeImported]
+from other import C as B
+C = B
+x: C
+reveal_type(x)  # E: Revealed type is 'other.C'
+[file other.py]
+class C:
+    pass
+[out]
+
+[case testConditionalExceptionAlias]
+try:
+    E = E
+except BaseException:
+    class E(BaseException): pass  # type: ignore
+
+try:
+    pass
+except E as e:
+    reveal_type(e)  # E: Revealed type is '__main__.E'
+[builtins fixtures/exception.pyi]
+[out]
