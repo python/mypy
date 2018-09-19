@@ -609,7 +609,8 @@ class ForwardReferenceResolver(TypeTranslator):
                                                       line=t.line)).accept(self)
         if self.check_recursion(t):
             # We also need to break a potential cycle with normal (non-synthetic) instance types.
-            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
+            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars),
+                            line=t.line)
         return super().visit_instance(t)
 
     def visit_type_var(self, t: TypeVarType) -> Type:
