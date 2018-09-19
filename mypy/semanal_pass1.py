@@ -3,7 +3,7 @@
 This sets up externally visible names defined in a module but doesn't
 follow imports and mostly ignores local definitions.  It helps enable
 (some) cyclic references between modules, such as module 'a' that
-imports module 'b' and used names defined in b *and* vice versa.  The
+imports module 'b' and used names defined in 'b' *and* vice versa.  The
 first pass can be performed before dependent modules have been
 processed.
 
@@ -37,7 +37,8 @@ from mypy.visitor import NodeVisitor
 class SemanticAnalyzerPass1(NodeVisitor[None]):
     """First phase of semantic analysis.
 
-    See docstring of 'analyze()' below for a description of what this does.
+    See docstring of 'visit_file()' below and the module docstring for a
+    description of what this does.
     """
 
     def __init__(self, sem: SemanticAnalyzerPass2) -> None:

@@ -185,7 +185,7 @@ class DependencyVisitor(TraverserVisitor):
                 signature = bind_self(o.type)  # type: Type
             else:
                 signature = o.type
-            for trigger in get_type_triggers(signature):
+            for trigger in self.get_type_triggers(signature):
                 self.add_dependency(trigger)
                 self.add_dependency(trigger, target=make_trigger(target))
         if o.info:
@@ -409,7 +409,7 @@ class DependencyVisitor(TraverserVisitor):
                 if isinstance(lvalue, TupleExpr):
                     self.add_attribute_dependency_for_expr(rvalue, '__iter__')
             if o.type:
-                for trigger in get_type_triggers(o.type):
+                for trigger in self.get_type_triggers(o.type):
                     self.add_dependency(trigger)
         if self.use_logical_deps() and o.unanalyzed_type is None:
             # Special case: for definitions without an explicit type like this:
@@ -443,7 +443,7 @@ class DependencyVisitor(TraverserVisitor):
                 # Assignment to an attribute in the class body, or direct assignment to a
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
-                type_triggers = get_type_triggers(lvalue_type)
+                type_triggers = self.get_type_triggers(lvalue_type)
                 attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
                                                        lvalue.name))
                 for type_trigger in type_triggers:
@@ -463,7 +463,7 @@ class DependencyVisitor(TraverserVisitor):
                     return
                 object_type = self.type_map[lvalue.expr]
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
-                type_triggers = get_type_triggers(lvalue_type)
+                type_triggers = self.get_type_triggers(lvalue_type)
                 for attr_trigger in self.attribute_triggers(object_type, lvalue.name):
                     for type_trigger in type_triggers:
                         self.add_dependency(type_trigger, attr_trigger)
@@ -768,7 +768,7 @@ class DependencyVisitor(TraverserVisitor):
         """
         # TODO: Use this method in more places where get_type_triggers() + add_dependency()
         #       are called together.
-        for trigger in get_type_triggers(typ):
+        for trigger in self.get_type_triggers(typ):
             self.add_dependency(trigger, target)
 
     def add_attribute_dependency(self, typ: Type, name: str) -> None:
@@ -819,21 +819,28 @@ class DependencyVisitor(TraverserVisitor):
     def use_logical_deps(self) -> bool:
         return self.options is not None and self.options.logical_deps
 
+    def get_type_triggers(self, typ: Type) -> List[str]:
+        return get_type_triggers(typ, self.use_logical_deps())
 
-def get_type_triggers(typ: Type) -> List[str]:
+
+def get_type_triggers(typ: Type, use_logical_deps: bool) -> List[str]:
     """Return all triggers that correspond to a type becoming stale."""
-    return typ.accept(TypeTriggersVisitor())
+    return typ.accept(TypeTriggersVisitor(use_logical_deps))
 
 
 class TypeTriggersVisitor(TypeVisitor[List[str]]):
-    def __init__(self) -> None:
+    def __init__(self, use_logical_deps: bool) -> None:
         self.deps = []  # type: List[str]
+        self.use_logical_deps = use_logical_deps
+
+    def get_type_triggers(self, typ: Type) -> List[str]:
+        return get_type_triggers(typ, self.use_logical_deps)
 
     def visit_instance(self, typ: Instance) -> List[str]:
         trigger = make_trigger(typ.type.fullname())
         triggers = [trigger]
         for arg in typ.args:
-            triggers.extend(get_type_triggers(arg))
+            triggers.extend(self.get_type_triggers(arg))
         return triggers
 
     def visit_any(self, typ: AnyType) -> List[str]:
@@ -847,8 +854,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def visit_callable_type(self, typ: CallableType) -> List[str]:
         triggers = []
         for arg in typ.arg_types:
-            triggers.extend(get_type_triggers(arg))
-        triggers.extend(get_type_triggers(typ.ret_type))
+            triggers.extend(self.get_type_triggers(arg))
+        triggers.extend(self.get_type_triggers(typ.ret_type))
         # fallback is a metaclass type for class objects, and is
         # processed separately.
         return triggers
@@ -856,7 +863,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def visit_overloaded(self, typ: Overloaded) -> List[str]:
         triggers = []
         for item in typ.items():
-            triggers.extend(get_type_triggers(item))
+            triggers.extend(self.get_type_triggers(item))
         return triggers
 
     def visit_deleted_type(self, typ: DeletedType) -> List[str]:
@@ -868,12 +875,18 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def visit_tuple_type(self, typ: TupleType) -> List[str]:
         triggers = []
         for item in typ.items:
-            triggers.extend(get_type_triggers(item))
-        triggers.extend(get_type_triggers(typ.fallback))
+            triggers.extend(self.get_type_triggers(item))
+        triggers.extend(self.get_type_triggers(typ.fallback))
         return triggers
 
     def visit_type_type(self, typ: TypeType) -> List[str]:
-        return get_type_triggers(typ.item)
+        triggers = self.get_type_triggers(typ.item)
+        if not self.use_logical_deps:
+            old_triggers = triggers[:]
+            for trigger in old_triggers:
+                triggers.append(trigger.rstrip('>') + '.__init__>')
+                triggers.append(trigger.rstrip('>') + '.__new__>')
+        return triggers
 
     def visit_forwardref_type(self, typ: ForwardRef) -> List[str]:
         assert False, 'Internal error: Leaked forward reference object {}'.format(typ)
@@ -883,16 +896,16 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
         if typ.upper_bound:
-            triggers.extend(get_type_triggers(typ.upper_bound))
+            triggers.extend(self.get_type_triggers(typ.upper_bound))
         for val in typ.values:
-            triggers.extend(get_type_triggers(val))
+            triggers.extend(self.get_type_triggers(val))
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
         triggers = []
         for item in typ.items.values():
-            triggers.extend(get_type_triggers(item))
-        triggers.extend(get_type_triggers(typ.fallback))
+            triggers.extend(self.get_type_triggers(item))
+        triggers.extend(self.get_type_triggers(typ.fallback))
         return triggers
 
     def visit_unbound_type(self, typ: UnboundType) -> List[str]:
@@ -904,7 +917,7 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
     def visit_union_type(self, typ: UnionType) -> List[str]:
         triggers = []
         for item in typ.items:
-            triggers.extend(get_type_triggers(item))
+            triggers.extend(self.get_type_triggers(item))
         return triggers
 
 

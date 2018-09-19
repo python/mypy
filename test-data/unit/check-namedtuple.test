@@ -732,3 +732,31 @@ class CallableTuple(Thing):
 
 o = CallableTuple('hello ', 12)
 o()
+
+[case testNamedTupleSubclassMulti]
+from typing import NamedTuple
+
+class Base:
+    pass
+class BaseTuple(NamedTuple):
+    value: float
+class MyTuple(BaseTuple, Base):
+    pass
+
+def f(o: Base) -> None:
+    if isinstance(o, MyTuple):
+        reveal_type(o.value)  # E: Revealed type is 'builtins.float'
+[builtins fixtures/isinstance.pyi]
+[out]
+
+[case testNamedTupleNew]
+from typing import NamedTuple
+
+Base = NamedTuple('Base', [('param', int)])
+
+class Child(Base):
+    def __new__(cls, param: int = 1) -> 'Child':
+        return Base.__new__(cls, param)
+
+Base(param=10)
+Child(param=10)
