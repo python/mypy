@@ -687,7 +687,7 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
         # Otherwise prefer __init__ in a tie. It isn't clear that this
         # is the right thing, but __new__ caused problems with
         # typeshed (#5647).
-        method = new_method
+        method = init_method
     # Construct callable type based on signature of __init__. Adjust
     # return type and insert type arguments.
     return type_object_type_from_function(method, info, fallback)
