@@ -4072,7 +4072,7 @@ class Wrapper:
 
     @classmethod    # E: Overloaded function implementation cannot produce return type of signature 1
     def foo(cls, x: Union[int, str]) -> str:
-        reveal_type(cls)          # E: Revealed type is 'def () -> __main__.Wrapper'
+        reveal_type(cls)          # E: Revealed type is 'Type[__main__.Wrapper]'
         reveal_type(cls.other())  # E: Revealed type is 'builtins.str'
         return "..."
 

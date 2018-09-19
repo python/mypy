@@ -495,23 +495,6 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
         [attribute.argument(ctx) for attribute in attributes if attribute.init],
         NoneTyp()
     )
-    for stmt in ctx.cls.defs.body:
-        # The type of classmethods will be wrong because it's based on the parent's __init__.
-        # Set it correctly.
-        if isinstance(stmt, Decorator) and stmt.func.is_class:
-            func_type = stmt.func.type
-            if isinstance(func_type, CallableType):
-                func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
-        if isinstance(stmt, OverloadedFuncDef) and stmt.is_class:
-            func_type = stmt.type
-            if isinstance(func_type, Overloaded):
-                class_type = ctx.api.class_type(ctx.cls.info)
-                for item in func_type.items():
-                    item.arg_types[0] = class_type
-                if stmt.impl is not None:
-                    assert isinstance(stmt.impl, Decorator)
-                    if isinstance(stmt.impl.func.type, CallableType):
-                        stmt.impl.func.type.arg_types[0] = class_type
 
 
 class MethodAdder:

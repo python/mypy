@@ -345,11 +345,11 @@ class D:
 
 class E:
     def __new__(cls) -> E:
-        reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
         return cls()
 
     def __init_subclass__(cls) -> None:
-        reveal_type(cls)  # E: Revealed type is 'def () -> __main__.E'
+        reveal_type(cls)  # E: Revealed type is 'Type[__main__.E]'
 
 [case testSelfTypePropertyUnion]
 from typing import Union

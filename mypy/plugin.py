@@ -14,7 +14,7 @@ from mypy.nodes import (
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
-    AnyType, TypeList, UnboundType, TypeOfAny
+    AnyType, TypeList, UnboundType, TypeOfAny, TypeType,
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
@@ -93,7 +93,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def class_type(self, info: TypeInfo) -> Type:
+    def class_type(self, self_type: Type) -> Type:
         raise NotImplementedError
 
     @abstractmethod

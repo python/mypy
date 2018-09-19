@@ -339,6 +339,19 @@ class B(A):
     def __new__(cls) -> int:
         return 1
 
+[case testOverride__new__AndCallObject]
+from typing import TypeVar, Generic
+
+class A:
+    def __new__(cls, x: int) -> 'A':
+        return object.__new__(cls)
+
+T = TypeVar('T')
+class B(Generic[T]):
+    def __new__(cls, foo: T) -> 'B[T]':
+        return object.__new__(cls)
+[builtins fixtures/__new__.pyi]
+
 [case testInnerFunctionNotOverriding]
 class A:
     def f(self) -> int: pass
@@ -1828,7 +1841,7 @@ class Num1:
 
 class Num2(Num1):
     @overload
-    def __add__(self, other: Num2) -> Num2: ...  
+    def __add__(self, other: Num2) -> Num2: ...
     @overload
     def __add__(self, other: Num1) -> Num2: ...
     def __add__(self, other): pass
@@ -3001,7 +3014,7 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: Unsupported type Type["N"]
+main:4: error: Too few arguments for "N"
 
 [case testTypeUsingTypeCJoin]
 from typing import Type
@@ -5117,3 +5130,15 @@ class C:
     def x(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
+
+[case testClassMethodBeforeInit]
+class Foo(object):
+    @classmethod
+    def bar(cls):
+        # type: () -> Foo
+        return cls("bar")
+
+    def __init__(self, baz):
+        # type: (str) -> None
+        self.baz = baz
+[builtins fixtures/classmethod.pyi]

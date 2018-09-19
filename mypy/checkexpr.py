@@ -602,16 +602,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return callee.ret_type, callee
 
             if (callee.is_type_obj() and callee.type_object().is_abstract
-                    # Exceptions for Type[...] and classmethod first argument
-                    and not callee.from_type_type and not callee.is_classmethod_class
+                    # Exception for Type[...]
+                    and not callee.from_type_type
                     and not callee.type_object().fallback_to_any):
                 type = callee.type_object()
                 self.msg.cannot_instantiate_abstract_class(
                     callee.type_object().name(), type.abstract_attributes,
                     context)
             elif (callee.is_type_obj() and callee.type_object().is_protocol
-                  # Exceptions for Type[...] and classmethod first argument
-                  and not callee.from_type_type and not callee.is_classmethod_class):
+                  # Exception for Type[...]
+                  and not callee.from_type_type):
                 self.chk.fail('Cannot instantiate protocol class "{}"'
                               .format(callee.type_object().name()), context)
 
@@ -737,6 +737,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                      for c in callee.items()])
             if callee:
                 return callee
+        # We support Type of namedtuples but not of tuples in general
+        if isinstance(item, TupleType) and item.fallback.type.fullname() != 'builtins.tuple':
+            return self.analyze_type_type_callee(item.fallback, context)
 
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
@@ -1133,9 +1136,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               caller_type.is_type_obj() and
               (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol) and
               isinstance(callee_type.item, Instance) and
-              (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol) and
-              # ...except for classmethod first argument
-              not caller_type.is_classmethod_class):
+              (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):

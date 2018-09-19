@@ -367,6 +367,19 @@ A([1], '2')  # E: Cannot infer type argument 1 of "A"
 
 [builtins fixtures/list.pyi]
 
+[case testAttrsGenericClassmethod]
+from typing import TypeVar, Generic, Optional
+import attr
+T = TypeVar('T')
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    x: Optional[T]
+    @classmethod
+    def clsmeth(cls) -> None:
+       reveal_type(cls)  # E: Revealed type is 'Type[__main__.A[T`1]]'
+
+[builtins fixtures/classmethod.pyi]
+
 [case testAttrsForwardReference]
 import attr
 @attr.s(auto_attribs=True)
@@ -416,7 +429,7 @@ class A:
     b: str = attr.ib()
     @classmethod
     def new(cls) -> A:
-       reveal_type(cls)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
+       reveal_type(cls)  # E: Revealed type is 'Type[__main__.A]'
        return cls(6, 'hello')
     @classmethod
     def bad(cls) -> A:
@@ -451,7 +464,7 @@ class A:
 
     @classmethod
     def foo(cls, x: Union[int, str]) -> Union[int, str]:
-        reveal_type(cls)            # E: Revealed type is 'def (a: Any, b: Any =) -> __main__.A'
+        reveal_type(cls)            # E: Revealed type is 'Type[__main__.A]'
         reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
         return x
 
