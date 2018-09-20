@@ -148,6 +148,12 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
     def visit_func_def(self, func: FuncDef, decorated: bool = False) -> None:
+        """Process a func def.
+
+        decorated is true if we are processing a func def in a
+        Decorator that needs a _fullname and to have its body analyzed but
+        does not need to be added to the symbol table.
+        """
         sem = self.sem
         if sem.type is not None:
             # Don't process methods during pass 1.
