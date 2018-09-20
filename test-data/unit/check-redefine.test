@@ -212,3 +212,39 @@ def f() -> None:
                 y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         x = ''
     z = ''
+
+[case testCannotRedefineVarAsFunction]
+def f() -> None:
+    def x(): pass
+    x = 1 # E: Name 'x' already defined on line 2
+    reveal_type(x) # E: Revealed type is 'def () -> Any'
+    y = 1
+    def y(): pass # E: Name 'y' already defined on line 5
+
+[case testCannotRedefineVarAsClass]
+def f() -> None:
+    class x: pass
+    x = 1 # E: Name 'x' already defined (possibly by an import)
+    y = 1
+    class y: pass # E: Name 'y' already defined on line 4
+
+[case testCannotRedefineVarAsTypeVar]
+from typing import TypeVar
+def f() -> None:
+    x = TypeVar('x')
+    x = 1 # E: Name 'x' already defined on line 3
+    def g(a: x) -> x: pass
+    reveal_type(g(1)) # E: Revealed type is 'builtins.int*'
+    y = 1
+    # This is arguably inconsistent -- we accept this since it looks like an assignment.
+    y = TypeVar('y')
+    def h(a: y) -> y: return a
+    reveal_type(h('')) # E: Revealed type is 'builtins.str*'
+
+[case testCannotRedefineVarAsModule]
+def f() -> None:
+    import typing as m
+    m = 1 # E: Name 'm' already defined (by an import)
+    n = 1
+    import typing as n # E: Name 'n' already defined on line 4
+[builtins fixtures/module.pyi]

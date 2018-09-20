@@ -387,8 +387,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
-            self.function_stack.append(defn)
             # First phase of analysis for function.
+            self.function_stack.append(defn)
             if not defn._fullname:
                 defn._fullname = self.qualified_name(defn.name())
             if defn.type:
@@ -3535,12 +3535,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def add_symbol(self, name: str, node: SymbolTableNode,
                    context: Context) -> None:
+        """Add symbol to the currently active symbol table."""
         # NOTE: This logic mostly parallels SemanticAnalyzerPass1.add_symbol. If you change
         #     this, you may have to change the other method as well.
         # TODO: Combine these methods in the first and second pass into a single one.
         if self.is_func_scope():
             assert self.locals[-1] is not None
-            is_new = self.var_def_analyzer.process_assignment(name, can_be_redefined=False)
+            is_new = (isinstance(node.node, Var)
+                      and self.var_def_analyzer.process_assignment(name, can_be_redefined=False))
             if name in self.locals[-1] and not is_new:
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
@@ -3573,9 +3575,15 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context,
                   allow_redefine: bool = False) -> None:
+        """Add local variable or function.
+
+        Args:
+            allow_redefine: If true, override any existing local symbol with the same name
+        """
         assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
-        if name in self.locals[-1] and not allow_redefine:
+        if name in self.locals[-1] and (not allow_redefine or
+                                        not isinstance(self.locals[-1][name].node, Var)):
             self.name_already_defined(name, ctx, self.locals[-1][name])
             return
         node._fullname = name

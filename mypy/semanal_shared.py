@@ -224,7 +224,11 @@ class VarDefAnalyzer:
                 var_blocks[key] = -1
 
     def process_assignment(self, name: str, can_be_redefined: bool) -> bool:
-        """Record assignment to given name and return True if it defines a new name."""
+        """Record assignment to given name and return True if it defines a new name.
+
+        Args:
+            can_be_redefined: If True, allows assignment in the same block to redefine the name
+        """
         if self.disallow_redef_depth > 0:
             can_be_redefined = False
         block = self.current_block()

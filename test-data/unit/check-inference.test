@@ -2423,12 +2423,12 @@ _ = 0  # E: Incompatible types in assignment (expression has type "int", variabl
 def foo() -> None:
     import _
     _.f()
-    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+    _ = 0  # E: Name '_' already defined (by an import)
 [file b.py]
 def foo() -> None:
     import m as _
     _.f()
-    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+    _ = 0  # E: Name '_' already defined (by an import)
 [file c.py]
 def foo() -> None:
     from m import _
@@ -2438,7 +2438,7 @@ def foo() -> None:
 def foo() -> None:
     from m import f as _
     _()
-    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+    _ = 0  # E: Name '_' already defined on line 1
 [builtins fixtures/module.pyi]
 
 [case testUnusedTargetNotClass]
