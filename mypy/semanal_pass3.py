@@ -75,6 +75,32 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         self.patches = []
 
     def update_imported_vars(self) -> None:
+        """Update nodes for imported names, if they got updated from Var to TypeInfo or TypeAlias.
+
+        This is a simple band-aid fix for "Invalid type" error in import cycles where type
+        aliases, named tuples, or typed dicts appear. The root cause is that during first pass
+        definitions like:
+
+            A = List[int]
+
+        Are seen by mypy as variables, because it doesn't know yet that `List` refers to a type.
+        In the second pass, such `Var` is replaced with a `TypeAlias`. But in import cycle,
+        import of `A` will still refer to the old `Var` node. Therefore we need to update it.
+
+        Note that this a partial fix that only fixes the "Invalid type" error when a type alias
+        etc. appears in type context. This doesn't fix errors (e.g. "Cannot determine type of A")
+        that may appear if the type alias etc. appear in runtime context.
+
+        The motivation for partial fix is two-fold:
+          * The "Invalid type" error often appears in stub files (especially for large
+            libraries/frameworks) where we have more import cycles, but no runtime
+            context at all.
+          * Ideally we should refactor semantic analysis to have deferred nodes, and process
+            them in smaller passes when there is more info (like we do in type checking phase).
+            But this is _much_ harder since this requires a large refactoring. Also an alternative
+            fix of updating node of every `NameExpr` and `MemberExpr` in third pass is costly
+            from performance point of view.
+        """
         for sym in self.cur_mod_node.names.values():
             if sym and isinstance(sym.node, Var):
                 fullname = sym.node.fullname()
