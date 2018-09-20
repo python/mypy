@@ -742,8 +742,9 @@ def g(x: Optional[int]) -> int:
     if x is not None:
         return x
     reveal_type(x)  # E: Revealed type is 'None'
-    x = f()
-    reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
-    return x
+    if 1:
+        x = f()
+        reveal_type(x)  # E: Revealed type is 'Union[builtins.int, Any]'
+        return x
 
 [builtins fixtures/bool.pyi]

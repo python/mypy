@@ -76,6 +76,7 @@ typecheck_files = [
     'check-attr.test',
     'check-dataclasses.test',
     'check-final.test',
+    'check-redefine.test',
 ]
 
 

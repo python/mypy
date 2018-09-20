@@ -818,9 +818,10 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
 
 def f(p: Point) -> None:
-    p = {'x': 2, 'y': 3}
-    p = {'x': 2}  # E: Key 'y' missing for TypedDict "Point"
-    p = dict(x=2, y=3)
+    if 1:
+        p = {'x': 2, 'y': 3}
+        p = {'x': 2}  # E: Key 'y' missing for TypedDict "Point"
+        p = dict(x=2, y=3)
 
 f({'x': 1, 'y': 3})
 f({'x': 1, 'y': 'z'})  # E: Incompatible types (expression has type "str", TypedDict item "y" has type "int")

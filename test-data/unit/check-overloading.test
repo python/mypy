@@ -186,7 +186,8 @@ def f(x: 'B') -> 'A': ...
 
 def f(x: Any) -> Any:
     foo = 1
-    foo = "bar"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    if 1:
+        foo = "bar"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 @overload
 def g(x: 'A') -> 'B': ...
@@ -195,7 +196,8 @@ def g(x: 'B') -> 'A': ...
 
 def g(x):
     foo = 1
-    foo = "bar"
+    if 1:
+        foo = "bar"
 
 reveal_type(f(A()))  # E: Revealed type is '__main__.B'
 reveal_type(f(B()))  # E: Revealed type is '__main__.A'
@@ -398,12 +400,14 @@ from foo import *
 from typing import overload
 @overload
 def f(x: 'A'):
-    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    x = A()
+    if 1:
+        x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        x = A()
 @overload
 def f(x: 'B'):
-    x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    x = B()
+    if 1:
+        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        x = B()
 class A: pass
 class B: pass
 [out]
@@ -415,12 +419,14 @@ from typing import overload
 class A:
     @overload
     def f(self, x: 'A'):
-        x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        x = A()
+        if 1:
+            x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+            x = A()
     @overload
     def f(self, x: 'B'):
-        x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-        x = B()
+        if 1:
+            x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+            x = B()
 class B: pass
 [out]
 

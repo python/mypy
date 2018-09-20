@@ -21,15 +21,14 @@ import typing
 def f() -> None:
   x = A()
   y = B()
-  x = B() # Fail
-  x = A()
-  x = y   # Fail
-  x = x
+  if 1:
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    x = A()
+    x = y   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    x = x
 class A: pass
 class B: pass
 [out]
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:7: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLvarInitializedToVoid]
 import typing
@@ -44,9 +43,10 @@ def g() -> None: pass
 import typing
 def f(a: 'A') -> None:
     b = a
-    b = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    b = a
-    a = b
+    if 1:
+        b = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        b = a
+        a = b
 
 class A: pass
 class B: pass
@@ -58,8 +58,9 @@ g = None # type: B
 
 def f() -> None:
     a = g
-    a = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    a = B()
+    if 1:
+        a = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        a = B()
 
 class A: pass
 class B: pass
@@ -96,10 +97,11 @@ def f() -> None:
     a = A(), B()
     aa = None # type: A
     bb = None # type: B
-    bb = a[0] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    aa = a[1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    aa = a[0]
-    bb = a[1]
+    if 1:
+        bb = a[0] # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        aa = a[1] # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        aa = a[0]
+        bb = a[1]
 
 class A: pass
 class B: pass
@@ -126,8 +128,9 @@ a_s = None # type: A[str]
 def f() -> None:
     a_int = A() # type: A[int]
     a = a_int
-    a = a_s # E: Incompatible types in assignment (expression has type "A[str]", variable has type "A[int]")
-    a = a_i
+    if 1:
+        a = a_s # E: Incompatible types in assignment (expression has type "A[str]", variable has type "A[int]")
+        a = a_i
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -164,12 +167,13 @@ class A: pass
 import typing
 def f() -> None:
     a, b = A(), B()
-    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    if 1:
+        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-    a = A()
-    b = B()
+        a = A()
+        b = B()
 
 class A: pass
 class B: pass
@@ -180,12 +184,13 @@ from typing import Tuple
 def f() -> None:
     t = None # type: Tuple[A, B]
     a, b = t
-    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    if 1:
+        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-    a = A()
-    b = B()
+        a = A()
+        b = B()
 
 class A: pass
 class B: pass
@@ -196,12 +201,13 @@ from typing import Tuple
 def f() -> None:
     t = None # type: Tuple[A, B]
     a1, (a, b) = A(), t
-    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    if 1:
+        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-    a = A()
-    b = B()
+        a = A()
+        b = B()
 
 class A: pass
 class B: pass
@@ -211,14 +217,15 @@ class B: pass
 import typing
 def f() -> None:
     a, (b, c) = A(), (B(), C())
-    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    c = A() # E: Incompatible types in assignment (expression has type "A", variable has type "C")
+    if 1:
+        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        c = A() # E: Incompatible types in assignment (expression has type "A", variable has type "C")
 
-    a = A()
-    b = B()
-    c = C()
+        a = A()
+        b = B()
+        c = C()
 
 class A: pass
 class B: pass
@@ -229,14 +236,15 @@ class C: pass
 import typing
 def f() -> None:
     a, (b, c) = A(), [B(), C()]
-    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    c = A() # E: Incompatible types in assignment (expression has type "A", variable has type "C")
+    if 1:
+        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        b = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        c = A() # E: Incompatible types in assignment (expression has type "A", variable has type "C")
 
-    a = A()
-    b = B()
-    c = C()
+        a = A()
+        b = B()
+        c = C()
 
 class A: pass
 class B: pass
@@ -302,20 +310,21 @@ def f() -> None:
     list_d = [D()]
     a, b = list_c
     c, d, e = list_d
-    a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
-    b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
-    c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
-    b = c   # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+    if 1:
+        a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+        b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+        c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+        b = c   # E: Incompatible types in assignment (expression has type "D", variable has type "C")
 
-    a = C()
-    b = C()
-    c = D()
-    d = D()
-    e = D()
+        a = C()
+        b = C()
+        c = D()
+        d = D()
+        e = D()
 
-    a = b
-    c = d
-    d = e
+        a = b
+        c = d
+        d = e
 [builtins fixtures/for.pyi]
 [out]
 
@@ -330,20 +339,21 @@ def f() -> None:
     list_d = [D()]
     c1, (a, b) = C(), list_c
     c2, (c, d, e) = C(), list_d
-    a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
-    b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
-    c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
-    b = c   # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+    if 1:
+        a = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+        b = D() # E: Incompatible types in assignment (expression has type "D", variable has type "C")
+        c = C() # E: Incompatible types in assignment (expression has type "C", variable has type "D")
+        b = c   # E: Incompatible types in assignment (expression has type "D", variable has type "C")
 
-    a = C()
-    b = C()
-    c = D()
-    d = D()
-    e = D()
+        a = C()
+        b = C()
+        c = D()
+        d = D()
+        e = D()
 
-    a = b
-    c = d
-    d = e
+        a = b
+        c = d
+        d = e
 [builtins fixtures/for.pyi]
 [out]
 
@@ -406,9 +416,10 @@ def f() -> None:
     a = id
     b = None # type: int
     c = None # type: str
-    b = a(c) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-    b = a(b)
-    c = a(c)
+    if 1:
+        b = a(c) # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        b = a(b)
+        c = a(c)
 def id(x: T) -> T:
     return x
 [out]
@@ -999,14 +1010,17 @@ class B: pass
 [builtins fixtures/for.pyi]
 
 [case testReusingInferredForIndex2]
-import typing
 def f() -> None:
     for a in [A()]: pass
     a = A()
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    for a in []: pass
+    if 1:
+        a = B() \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    for a in []: pass # E: Need type annotation for 'a'
     a = A()
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    if 1:
+        a = B() \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
 [builtins fixtures/for.pyi]

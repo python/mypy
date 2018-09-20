@@ -57,12 +57,11 @@ main:4:15: error: Unsupported operand types for + ("str" and "int")
 # flags: --show-column-numbers
 import typing
 def f(x: object, n: int, s: str) -> None:
-    n = x # E:5: Incompatible types in assignment (expression has type "object", variable has type "int")
-    if isinstance(x, int):
-        n = x
-        s = x # E:9: Incompatible types in assignment (expression has type "int", variable has type "str")
-    n = x # E:5: Incompatible types in assignment (expression has type "object", variable has type "int")
+    if int():
+        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
+        if isinstance(x, int):
+            n = x
+            s = x # E:13: Incompatible types in assignment (expression has type "int", variable has type "str")
+        n = x # E:9: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 [out]
-
-

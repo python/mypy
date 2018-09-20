@@ -133,10 +133,12 @@ x + 1    # E: Unsupported operand types for + ("str" and "int")
 from typing import Union
 
 def f(x: Union[int, str]) -> None:
-    x = 1
-    if x:
-        x = 'a'
+    if 1: # Without this, the assignment below would create a new variable "x" of type "int"
         x = 1
+        if x:
+            x = 'a'
+            x = 1
+        x + 1
     x + 1
 [builtins fixtures/isinstancelist.pyi]
 
@@ -2153,7 +2155,7 @@ def bar(x: Union[List[str], List[int], None]) -> None:
 from typing import Union, Optional, List
 
 # This test is the same as the one above, except for strict-optional.
-# It isn't testing anything explicitly and mostly exists for the sake 
+# It isn't testing anything explicitly and mostly exists for the sake
 # of completeness.
 
 def foo(x: Optional[List[str]]) -> None:
@@ -2166,4 +2168,3 @@ def bar(x: Union[List[str], List[int], None]) -> None:
     assert isinstance(x, list)
     reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
 [builtins fixtures/isinstancelist.pyi]
-

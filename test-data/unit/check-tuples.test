@@ -255,16 +255,17 @@ def avoid_confusing_test_parser() -> None:
     reveal_type(a1)  # E: Revealed type is '__main__.A'
     reveal_type(b1)  # E: Revealed type is '__main__.B'
 
-    [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    if int():
+        [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-    [a, b] = t1
-    [a, b, a1] = t2
+        [a, b] = t1
+        [a, b, a1] = t2
 
-    [a2, b2] = t1
-    reveal_type(a2)  # E: Revealed type is '__main__.A'
-    reveal_type(b2)  # E: Revealed type is '__main__.B'
+        [a2, b2] = t1
+        reveal_type(a2)  # E: Revealed type is '__main__.A'
+        reveal_type(b2)  # E: Revealed type is '__main__.B'
 
 class A: pass
 class B: pass
@@ -284,16 +285,17 @@ def avoid_confusing_test_parser():
     reveal_type(a1)  # E: Revealed type is '__main__.A'
     reveal_type(b1)  # E: Revealed type is '__main__.B'
 
-    [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-    [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+    if int():
+        [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 
-    [a, b] = t1
-    [a, b, a1] = t2
+        [a, b] = t1
+        [a, b, a1] = t2
 
-    [a2, b2] = t1
-    reveal_type(a2)  # E: Revealed type is '__main__.A'
-    reveal_type(b2)  # E: Revealed type is '__main__.B'
+        [a2, b2] = t1
+        reveal_type(a2)  # E: Revealed type is '__main__.A'
+        reveal_type(b2)  # E: Revealed type is '__main__.B'
 
 class A: pass
 class B: pass
@@ -754,14 +756,15 @@ from typing import Tuple
 class A(Tuple[int, str]):
     def f(self, x: int) -> None:
         a, b = 1, ''
-        a, b = self
-        b, a = self  # Error
+        if int():
+            a, b = self
+            b, a = self  # Error
         self.f('')   # Error
 [builtins fixtures/tuple.pyi]
 [out]
-tmp/m.pyi:6: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-tmp/m.pyi:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-tmp/m.pyi:7: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
+tmp/m.pyi:7: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+tmp/m.pyi:7: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/m.pyi:8: error: Argument 1 to "f" of "A" has incompatible type "str"; expected "int"
 
 [case testValidTupleBaseClass2]
 from typing import Tuple

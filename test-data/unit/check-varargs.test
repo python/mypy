@@ -10,10 +10,11 @@ from typing import Tuple
 def f( *b: 'B') -> None:
     ab = None # type: Tuple[B, ...]
     ac = None # type: Tuple[C, ...]
-    b = ac # E: Incompatible types in assignment (expression has type "Tuple[C, ...]", variable has type "Tuple[B, ...]")
-    ac = b # E: Incompatible types in assignment (expression has type "Tuple[B, ...]", variable has type "Tuple[C, ...]")
-    b = ab
-    ab = b
+    if int():
+        b = ac # E: Incompatible types in assignment (expression has type "Tuple[C, ...]", variable has type "Tuple[B, ...]")
+        ac = b # E: Incompatible types in assignment (expression has type "Tuple[B, ...]", variable has type "Tuple[C, ...]")
+        b = ab
+        ab = b
 
 class B: pass
 class C: pass

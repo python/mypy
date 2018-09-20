@@ -56,7 +56,7 @@ from mypy.nodes import (
     YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
     IntExpr, FloatExpr, UnicodeExpr, TempNode, ImportedName,
     COVARIANT, CONTRAVARIANT, INVARIANT, UNBOUND_IMPORTED, LITERAL_YES, nongen_builtins,
-    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS
+    get_member_expr_fullname, REVEAL_TYPE, REVEAL_LOCALS, is_final_node
 )
 from mypy.literals import literal
 from mypy.tvar_scope import TypeVarScope
@@ -82,7 +82,7 @@ from mypy.options import Options
 from mypy import experiments
 from mypy.plugin import Plugin, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.util import get_prefix, correct_relative_import
-from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name
+from mypy.semanal_shared import SemanticAnalyzerInterface, set_callable_name, VarDefAnalyzer
 from mypy.scope import Scope
 from mypy.semanal_namedtuple import NamedTupleAnalyzer, NAMEDTUPLE_PROHIBITED_NAMES
 from mypy.semanal_typeddict import TypedDictAnalyzer
@@ -255,6 +255,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # for processing module top levels in fine-grained incremental mode.
         self.recurse_into_functions = True
         self.scope = Scope()
+        self.var_def_analyzer = VarDefAnalyzer()
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make it a property
@@ -283,6 +284,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         self.typed_dict_analyzer = TypedDictAnalyzer(options, self, self.msg)
         self.enum_call_analyzer = EnumCallAnalyzer(options, self)
         self.newtype_analyzer = NewTypeAnalyzer(options, self, self.msg)
+        self.var_def_analyzer.clear()
 
         with experiments.strict_optional_set(options.strict_optional):
             if 'builtins' in self.modules:
@@ -298,8 +300,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
             defs = file_node.defs
             self.scope.enter_file(file_node.fullname())
+            self.var_def_analyzer.enter_block()
             for d in defs:
                 self.accept(d)
+            self.var_def_analyzer.leave_block()
             self.scope.leave()
 
             if self.cur_mod_id == 'builtins':
@@ -321,11 +325,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
+        self.var_def_analyzer.enter_block()
         if isinstance(node, MypyFile):
             self.refresh_top_level(node)
         else:
             self.recurse_into_functions = True
             self.accept(node)
+        self.var_def_analyzer.leave_block()
         del self.patches
 
     def refresh_top_level(self, file_node: MypyFile) -> None:
@@ -704,6 +710,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.function_stack.append(defn)
             self.enter()
             for arg in defn.arguments:
+                self.var_def_analyzer.process_assignment(arg.variable.name(), True)
                 self.add_local(arg.variable, defn)
 
             # The first argument of a non-static, non-class method is like 'self'
@@ -715,7 +722,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # First analyze body of the function but ignore nested functions.
             self.postpone_nested_functions_stack.append(FUNCTION_FIRST_PHASE_POSTPONE_SECOND)
             self.postponed_functions_stack.append([])
-            defn.body.accept(self)
+            self.visit_block(defn.body, new_var_scope=False)
 
             # Analyze nested functions (if any) as a second phase.
             self.postpone_nested_functions_stack[-1] = FUNCTION_SECOND_PHASE
@@ -1437,6 +1444,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def add_module_symbol(self, id: str, as_id: str, module_public: bool,
                           context: Context, module_hidden: bool = False) -> None:
+        """Add symbol that is a reference to a module object."""
         if id in self.modules:
             m = self.modules[id]
             self.add_symbol(as_id, SymbolTableNode(MODULE_REF, m,
@@ -1633,13 +1641,17 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     # Statements
     #
 
-    def visit_block(self, b: Block) -> None:
+    def visit_block(self, b: Block, new_var_scope: bool = True) -> None:
         if b.is_unreachable:
             return
         self.block_depth[-1] += 1
+        if new_var_scope:
+            self.var_def_analyzer.enter_block()
         for s in b.body:
             self.accept(s)
         self.block_depth[-1] -= 1
+        if new_var_scope:
+            self.var_def_analyzer.leave_block()
 
     def visit_block_maybe(self, b: Optional[Block]) -> None:
         if b:
@@ -1701,9 +1713,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             if not keep_final:
                 s.is_final_def = False
 
+        has_initializer = not isinstance(s.rvalue, TempNode)
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None,
-                                final_cb=final_cb if s.is_final_def else None)
+                                final_cb=final_cb if s.is_final_def else None,
+                                has_initializer=has_initializer)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         s.rvalue.accept(self)
@@ -1974,7 +1988,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False,
-                       final_cb: Optional[Callable[[bool], None]] = None) -> None:
+                       final_cb: Optional[Callable[[bool], None]] = None,
+                       has_initializer: bool = True) -> None:
         """Analyze an lvalue or assignment target.
 
         Args:
@@ -1984,9 +1999,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             explicit_type: Assignment has type annotation
             final_cb: A callback to call in situation where a final declaration on `self`
                 overrides an existing name.
+            has_initializer: Is there a rvalue (i.e. not just "x: t")?
         """
         if isinstance(lval, NameExpr):
-            self.analyze_name_lvalue(lval, add_global, explicit_type, final_cb)
+            self.analyze_name_lvalue(lval, add_global, explicit_type, final_cb, has_initializer)
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval, explicit_type, final_cb=final_cb)
@@ -2015,11 +2031,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             lval: NameExpr,
                             add_global: bool,
                             explicit_type: bool,
-                            final_cb: Optional[Callable[[bool], None]]) -> None:
+                            final_cb: Optional[Callable[[bool], None]],
+                            has_initializer: bool) -> None:
         """Analyze an lvalue that targets a name expression.
 
         Arguments are similar to "analyze_lvalue".
         """
+        is_new = self.var_def_analyzer.process_assignment(lval.name, has_initializer)
         # Top-level definitions within some statements (at least while) are
         # not handled in the first pass, so they have to be added now.
         nested_global = (not self.is_func_scope() and
@@ -2035,12 +2053,14 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # already in the first pass and added to the symbol table.
                 # An exception is typing module with incomplete test fixtures.
                 assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
-        elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
-              lval.name not in self.global_decls[-1] and
-              lval.name not in self.nonlocal_decls[-1]):
+        elif (self.locals[-1] is not None
+              and (lval.name not in self.locals[-1]
+                   or (is_new and not self.is_local_final(lval.name)))
+              and lval.name not in self.global_decls[-1]
+              and lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
             v = self.make_name_lvalue_var(lval, LDEF)
-            self.add_local(v, lval)
+            self.add_local(v, lval, allow_redefine=is_new)
             if lval.name == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
                 typ = AnyType(TypeOfAny.special_form)
@@ -2053,6 +2073,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, final_cb)
+
+    def is_local_final(self, name: str) -> bool:
+        return is_final_node(self.locals[-1][name].node)
 
     def make_name_lvalue_var(self, lvalue: NameExpr, kind: int) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
@@ -3498,7 +3521,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # TODO: Combine these methods in the first and second pass into a single one.
         if self.is_func_scope():
             assert self.locals[-1] is not None
-            if name in self.locals[-1]:
+            is_new = self.var_def_analyzer.process_assignment(name, can_be_redefined=False)
+            if name in self.locals[-1] and not is_new:
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.locals[-1][name].node == node.node):
@@ -3528,10 +3552,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     return
             self.globals[name] = node
 
-    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context,
+                  allow_redefine: bool = False) -> None:
         assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
-        if name in self.locals[-1]:
+        if name in self.locals[-1] and not allow_redefine:
             self.name_already_defined(name, ctx, self.locals[-1][name])
             return
         node._fullname = name

@@ -607,16 +607,15 @@ a.g(a) # E: Too many arguments
 import typing
 def f(a: 'A') -> None:
     def g(b: 'B') -> None:
-         b = a # fail
-         aa = a # type: A # ok
-         b = B()
-    g(a) # fail
+        if int():
+            b = a \
+            # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+            aa = a # type: A # ok
+            b = B()
+    g(a) # E: Argument 1 to "g" has incompatible type "A"; expected "B"
     g(B())
 class A: pass
 class B: pass
-[out]
-main:4: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:7: error: Argument 1 to "g" has incompatible type "A"; expected "B"
 
 [case testReturnAndNestedFunction]
 import typing
@@ -752,7 +751,8 @@ def dec(f): pass
 @dec
 def f(x: 'A') -> None:
     a = x # type: A
-    x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    if int():
+        x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 class A: pass
 [out]
 
@@ -1235,18 +1235,16 @@ x = None # type: Any
 def top() -> None:
     if x:
         def f(x: int) -> None:
-            x = 'x'   # fail
-            x = 1
+            if int():
+                x = 'x'  # E: Incompatible types in assignment \
+                          (expression has type "str", variable has type "int")
+                x = 1
     else:
         def f(x: int) -> None:
-            x + 'x'   # fail
+            x + 'x'   # E: Unsupported operand types for + ("int" and "str")
             x = 1
     f(1)
-    f('x') # fail
-[out]
-main:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")
-main:10: error: Unsupported operand types for + ("int" and "str")
-main:13: error: Argument 1 to "f" has incompatible type "str"; expected "int"
+    f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 [case testUnconditionalRedefinitionOfConditionalFunction]
 from typing import Any
@@ -1817,7 +1815,8 @@ f(x=4) + '' # E: Unsupported operand types for + ("int" and "str")
 [case testCallableWithArbitraryArgsInErrorMessage]
 from typing import Callable
 def f(x: Callable[..., int]) -> None:
-    x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[..., int]")
+    if int():
+        x = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[..., int]")
 [out]
 
 [case testCallableWithArbitraryArgsInGenericFunction]

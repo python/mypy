@@ -74,11 +74,13 @@ def g() -> None:
     b = None # type: B
 
     x = f(o)
-    ab = x # E: Incompatible types in assignment (expression has type "A[object]", variable has type "A[B]")
-    ao = x
+    if 1:
+        ab = x # E: Incompatible types in assignment (expression has type "A[object]", variable has type "A[B]")
+        ao = x
     y = f(b)
-    ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ab = y
+    if 1:
+        ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ab = y
 
 def f(a: T) -> 'A[T]': pass
 
@@ -104,10 +106,11 @@ def g() -> None:
     ab = None # type: A[B]
     b = None # type: B
     x, y = f(b), f(b)
-    ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ab = x
-    ab = y
+    if 1:
+        ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ab = x
+        ab = y
 
 def f(a: T) -> 'A[T]': pass
 class A(Generic[T]): pass
@@ -122,10 +125,11 @@ def h() -> None:
     ab = None # type: A[B]
     b = None # type: B
     x, y = g(f(b))
-    ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
-    ab = x
-    ab = y
+    if 1:
+        ao = x # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ao = y # E: Incompatible types in assignment (expression has type "A[B]", variable has type "A[object]")
+        ab = x
+        ab = y
 
 def f(a: T) -> 'A[T]': pass
 def g(a: T) -> List[T]: pass
@@ -387,8 +391,9 @@ def f() -> None:
     a = []     # E: Need type annotation for 'a'
     b = [None]
     c = [B()]
-    c = [object()] # E: List item 0 has incompatible type "object"; expected "B"
-    c = [B()]
+    if 1:
+        c = [object()] # E: List item 0 has incompatible type "object"; expected "B"
+        c = [B()]
 class B: pass
 [builtins fixtures/list.pyi]
 [out]

@@ -92,8 +92,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v)
 
+            self.sem.var_def_analyzer.enter_block()
             for d in defs:
                 d.accept(self)
+            self.sem.var_def_analyzer.leave_block()
 
             # Add implicit definition of literals/keywords to builtins, as we
             # cannot define a variable with them explicitly.
@@ -138,8 +140,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         if b.is_unreachable:
             return
         self.sem.block_depth[-1] += 1
+        self.sem.var_def_analyzer.enter_block()
         for node in b.body:
             node.accept(self)
+        self.sem.var_def_analyzer.leave_block()
         self.sem.block_depth[-1] -= 1
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

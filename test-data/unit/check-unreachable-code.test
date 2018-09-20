@@ -581,13 +581,14 @@ class Child(Parent):
         return 3
 
     def bar(self) -> int:
-        self = super(Child, self).something()
-        reveal_type(self)       # E: Revealed type is '__main__.Child'
-        if self is None:
-            reveal_type(self)
-            return None
-        reveal_type(self)       # E: Revealed type is '__main__.Child'
-        return 3
+        if 1:
+            self = super(Child, self).something()
+            reveal_type(self)       # E: Revealed type is '__main__.Child'
+            if self is None:
+                reveal_type(self)
+                return None
+            reveal_type(self)       # E: Revealed type is '__main__.Child'
+            return 3
 [builtins fixtures/isinstance.pyi]
 
 [case testUnreachableWhenSuperclassIsAnyNoStrictOptional]

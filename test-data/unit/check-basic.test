@@ -122,40 +122,34 @@ main:4: error: Too many arguments for "f"
 
 
 [case testLocalVariables]
-
 def f() -> None:
   x = None # type: A
   y = None # type: B
-  x = x
-  x = y # Fail
+  if 1:
+      x = x
+      x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
-[out]
-main:6: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableScope]
-
 def f() -> None:
-  x = None # type: A
+  x: A
   x = A()
 def g() -> None:
-  x = None # type: B
-  x = A() # Fail
+  x: B
+  x = A() # E: Incompatible types in assignment (expression has type "A", variable has type "B")
 class A: pass
 class B: pass
-[out]
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testFunctionArguments]
 import typing
 def f(x: 'A', y: 'B') -> None:
-  x = y # Fail
-  x = x
-  y = B()
+  if 1:
+    x = y # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    x = x
+    y = B()
 class A: pass
 class B: pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testLocalVariableInitialization]
 import typing
@@ -245,21 +239,19 @@ a = __file__ # type: int  # E: Incompatible types in assignment (expression has 
 [case testLocalVariableShadowing]
 
 a = None # type: A
-a = B()       # Fail
-a = A()
+if 1:
+    a = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    a = A()
 def f() -> None:
   a = None # type: B
-  a = A()     # Fail
-  a = B()
-a = B()       # Fail
+  if 1:
+      a = A()     # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+      a = B()
+a = B()       # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 a = A()
 
 class A: pass
 class B: pass
-[out]
-main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
-main:7: error: Incompatible types in assignment (expression has type "A", variable has type "B")
-main:9: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testGlobalDefinedInBlockWithType]
 

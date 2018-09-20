@@ -80,12 +80,15 @@ def f() -> None: pass
 import typing
 def f() -> None:
     from m import a, b, f, A, B
-    a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    a = a
-    f()
-    f(a)    # E: Too many arguments for "f"
-    a = A()
-    a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    if 1:
+        a = b \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        a = a
+        f()
+        f(a)    # E: Too many arguments for "f"
+        a = A()
+        a = B() \
+            # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
 class A: pass
 class B: pass
@@ -99,12 +102,13 @@ import typing
 class C:
     def f(self) -> None:
         from m import *
-        a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        a = a
-        f()
-        f(a)    # E: Too many arguments for "f"
-        a = A()
-        a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        if 1:
+            a = b   # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+            a = a
+            f()
+            f(a)    # E: Too many arguments for "f"
+            a = A()
+            a = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 [file m.py]
 class A: pass
 class B: pass
