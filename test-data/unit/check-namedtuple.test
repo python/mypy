@@ -700,6 +700,7 @@ class C:
 from b import tp
 x: tp
 reveal_type(x.x)  # E: Revealed type is 'builtins.int'
+[out]
 
 # Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
 reveal_type(tp)  # E: Revealed type is 'Any' \
@@ -711,6 +712,19 @@ from a import C
 from typing import NamedTuple
 
 tp = NamedTuple('tp', [('x', int)])
+
+[case testSubclassOfRecursiveNamedTuple]
+from typing import List, NamedTuple
+
+class Command(NamedTuple):  # type: ignore
+    subcommands: List['Command']
+
+class HelpCommand(Command):
+    pass
+
+hc = HelpCommand(subcommands=[])
+reveal_type(hc)  # E: Revealed type is 'Tuple[builtins.list[Tuple[builtins.list[Any], fallback=__main__.Command]], fallback=__main__.HelpCommand]'
+[builtins fixtures/list.pyi]
 [out]
 
 [case testUnsafeOverlappingNamedTuple]
@@ -754,3 +768,31 @@ class CallableTuple(Thing):
 
 o = CallableTuple('hello ', 12)
 o()
+
+[case testNamedTupleSubclassMulti]
+from typing import NamedTuple
+
+class Base:
+    pass
+class BaseTuple(NamedTuple):
+    value: float
+class MyTuple(BaseTuple, Base):
+    pass
+
+def f(o: Base) -> None:
+    if isinstance(o, MyTuple):
+        reveal_type(o.value)  # E: Revealed type is 'builtins.float'
+[builtins fixtures/isinstance.pyi]
+[out]
+
+[case testNamedTupleNew]
+from typing import NamedTuple
+
+Base = NamedTuple('Base', [('param', int)])
+
+class Child(Base):
+    def __new__(cls, param: int = 1) -> 'Child':
+        return Base.__new__(cls, param)
+
+Base(param=10)
+Child(param=10)
