@@ -5,7 +5,8 @@ import fnmatch
 from contextlib import contextmanager
 
 from typing import (
-    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable, Any
+    Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator, Iterable,
+    Sequence
 )
 
 from mypy.errors import Errors, report_internal_error
@@ -72,19 +73,31 @@ T = TypeVar('T')
 
 DEFAULT_LAST_PASS = 1  # type: Final  # Pass numbers start at 0
 
+DeferredNodeType = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
+FineGrainedDeferredNodeType = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
 # A node which is postponed to be processed during the next pass.
-# This is used for both batch mode and fine-grained incremental mode.
+# In normal mode one can defer functions and methods (also decorated and/or overloaded)
+# and lambda expressions. Nested functions can't be deferred -- only top-level functions
+# and methods of classes not defined within a function can be deferred.
 DeferredNode = NamedTuple(
     'DeferredNode',
     [
-        # In batch mode only FuncDef and LambdaExpr are supported
-        ('node', Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]),
+        ('node', DeferredNodeType),
         ('context_type_name', Optional[str]),  # Name of the surrounding class (for error messages)
         ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
                                                   # self type handling)
     ])
 
+# Same as above, but for fine-grained mode targets. Only top-level functions/methods
+# and module top levels are allowed as such.
+FineGrainedDeferredNode = NamedTuple(
+    'FineDeferredNode',
+    [
+        ('node', FineGrainedDeferredNodeType),
+        ('context_type_name', Optional[str]),
+        ('active_typeinfo', Optional[TypeInfo]),
+    ])
 
 # Data structure returned by find_isinstance_check representing
 # information learned from the truth or falsehood of a condition.  The
@@ -283,7 +296,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             self.tscope.leave()
 
-    def check_second_pass(self, todo: Optional[List[DeferredNode]] = None) -> bool:
+    def check_second_pass(self,
+                          todo: Optional[Sequence[Union[DeferredNode,
+                                                        FineGrainedDeferredNode]]] = None
+                          ) -> bool:
         """Run second or following pass of type checking.
 
         This goes through deferred nodes, returning True if there were any.
@@ -300,7 +316,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 assert not self.deferred_nodes
             self.deferred_nodes = []
-            done = set()  # type: Set[Union[FuncDef, LambdaExpr, MypyFile, OverloadedFuncDef]]
+            done = set()  # type: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]]
             for node, type_name, active_typeinfo in todo:
                 if node in done:
                     continue
@@ -314,10 +330,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.tscope.leave()
             return True
 
-    def check_partial(self, node: Union[FuncDef,
-                                        LambdaExpr,
-                                        MypyFile,
-                                        OverloadedFuncDef]) -> None:
+    def check_partial(self, node: Union[DeferredNodeType, FineGrainedDeferredNodeType]) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
         else:
@@ -338,6 +351,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         assert not self.current_node_deferred
         # TODO: Handle __all__
 
+    def defer_node(self, node: DeferredNodeType, enclosing_class: Optional[TypeInfo]) -> None:
+        """Defer a node for processing during next type-checking pass.
+
+        Args:
+            node: function/method being deferred
+            enclosing_class: for methods, the class where the method is defined
+        NOTE: this can't handle nested functions/methods.
+        """
+        if self.errors.type_name:
+            type_name = self.errors.type_name[-1]
+        else:
+            type_name = None
+        # We don't freeze the entire scope since only top-level functions and methods
+        # can be deferred. Only module/class level scope information is needed.
+        # Module-level scope information is preserved in the TypeChecker instance.
+        self.deferred_nodes.append(DeferredNode(node, type_name, enclosing_class))
+
     def handle_cannot_determine_type(self, name: str, context: Context) -> None:
         node = self.scope.top_non_lambda_function()
         if self.pass_num < self.last_pass and isinstance(node, FuncDef):
@@ -345,13 +375,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # lambdas because they are coupled to the surrounding function
             # through the binder and the inferred type of the lambda, so it
             # would get messy.
-            if self.errors.type_name:
-                type_name = self.errors.type_name[-1]
-            else:
-                type_name = None
-            # Shouldn't we freeze the entire scope?
             enclosing_class = self.scope.enclosing_class()
-            self.deferred_nodes.append(DeferredNode(node, type_name, enclosing_class))
+            self.defer_node(node, enclosing_class)
             # Set a marker so that we won't infer additional types in this
             # function. Any inferred types could be bogus, because there's at
             # least one type that we don't know.
@@ -1256,15 +1281,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             return [(defn, typ)]
 
-    def check_method_override(self, defn: Union[FuncBase, Decorator]) -> None:
-        """Check if function definition is compatible with base classes."""
+    def check_method_override(self, defn: Union[FuncDef, OverloadedFuncDef, Decorator]) -> None:
+        """Check if function definition is compatible with base classes.
+
+        This may defer the method if a signature is not available in at least one base class.
+        """
         # Check against definitions in base classes.
         for base in defn.info.mro[1:]:
-            self.check_method_or_accessor_override_for_base(defn, base)
+            if self.check_method_or_accessor_override_for_base(defn, base):
+                # Node was deferred, we will have another attempt later.
+                return
 
-    def check_method_or_accessor_override_for_base(self, defn: Union[FuncBase, Decorator],
-                                                   base: TypeInfo) -> None:
-        """Check if method definition is compatible with a base class."""
+    def check_method_or_accessor_override_for_base(self, defn: Union[FuncDef,
+                                                                     OverloadedFuncDef,
+                                                                     Decorator],
+                                                   base: TypeInfo) -> bool:
+        """Check if method definition is compatible with a base class.
+
+        Return True if the node was deferred because one of the corresponding
+        superclass nodes is not ready.
+        """
         if base:
             name = defn.name()
             base_attr = base.names.get(name)
@@ -1280,7 +1316,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if name not in ('__init__', '__new__', '__init_subclass__'):
                 # Check method override
                 # (__init__, __new__, __init_subclass__ are special).
-                self.check_method_override_for_base_with_name(defn, name, base)
+                if self.check_method_override_for_base_with_name(defn, name, base):
+                    return True
                 if name in nodes.inplace_operator_methods:
                     # Figure out the name of the corresponding operator method.
                     method = '__' + name[3:]
@@ -1288,11 +1325,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # always introduced safely if a base class defined __add__.
                     # TODO can't come up with an example where this is
                     #      necessary; now it's "just in case"
-                    self.check_method_override_for_base_with_name(defn, method,
-                                                                  base)
+                    return self.check_method_override_for_base_with_name(defn, method,
+                                                                         base)
+        return False
 
     def check_method_override_for_base_with_name(
-            self, defn: Union[FuncBase, Decorator], name: str, base: TypeInfo) -> None:
+            self, defn: Union[FuncDef, OverloadedFuncDef, Decorator],
+            name: str, base: TypeInfo) -> bool:
+        """Check if overriding an attribute `name` of `base` with `defn` is valid.
+
+        Return True if the supertype node was not analysed yet, and `defn` was deferred.
+        """
         base_attr = base.names.get(name)
         if base_attr:
             # The name of the method is defined in the base class.
@@ -1305,7 +1348,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 context = defn.func
 
             # Construct the type of the overriding method.
-            if isinstance(defn, FuncBase):
+            if isinstance(defn, (FuncDef, OverloadedFuncDef)):
                 typ = self.function_type(defn)  # type: Type
                 override_class_or_static = defn.is_class or defn.is_static
             else:
@@ -1320,13 +1363,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             original_type = base_attr.type
             original_node = base_attr.node
             if original_type is None:
-                if isinstance(original_node, FuncBase):
+                if self.pass_num < self.last_pass:
+                    # If there are passes left, defer this node until next pass,
+                    # otherwise try reconstructing the method type from available information.
+                    self.defer_node(defn, defn.info)
+                    return True
+                elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                     original_type = self.function_type(original_node)
                 elif isinstance(original_node, Decorator):
                     original_type = self.function_type(original_node.func)
                 else:
                     assert False, str(base_attr.node)
-            if isinstance(original_node, FuncBase):
+            if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                 original_class_or_static = original_node.is_class or original_node.is_static
             elif isinstance(original_node, Decorator):
                 fdef = original_node.func
@@ -1362,6 +1410,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 self.msg.signature_incompatible_with_supertype(
                     defn.name(), name, base.name(), context)
+        return False
 
     def get_op_other_domain(self, tp: FunctionLike) -> Optional[Type]:
         if isinstance(tp, CallableType):

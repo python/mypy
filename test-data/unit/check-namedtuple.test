@@ -691,6 +691,20 @@ my_eval(A([B(1), B(2)])) # OK
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testSubclassOfRecursiveNamedTuple]
+from typing import List, NamedTuple
+
+class Command(NamedTuple):  # type: ignore
+    subcommands: List['Command']
+
+class HelpCommand(Command):
+    pass
+
+hc = HelpCommand(subcommands=[])
+reveal_type(hc)  # E: Revealed type is 'Tuple[builtins.list[Tuple[builtins.list[Any], fallback=__main__.Command]], fallback=__main__.HelpCommand]'
+[builtins fixtures/list.pyi]
+[out]
+
 [case testUnsafeOverlappingNamedTuple]
 from typing import NamedTuple
 

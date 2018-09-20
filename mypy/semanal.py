@@ -317,7 +317,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             del self.cur_mod_node
             del self.globals
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+    def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
