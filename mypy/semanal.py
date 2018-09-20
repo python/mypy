@@ -373,8 +373,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_func_def(self, defn: FuncDef) -> None:
         if not self.recurse_into_functions:
             return
+
+        # Conservatively do not allow variable defined before a function to
+        # be redefined later, since function could refer to either definition.
+        self.var_def_analyzer.reject_redefinition_of_vars_in_scope()
+        self.var_def_analyzer.enter_scope()
+
         with self.scope.function_scope(defn):
             self._visit_func_def(defn)
+
+        self.var_def_analyzer.leave_scope()
 
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
@@ -2666,7 +2674,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[None],
                          add_global: bool = False) -> None:
+        self.var_def_analyzer.enter_with_or_try()
         s.body.accept(visitor)
+        self.var_def_analyzer.leave_with_or_try()
         for type, var, handler in zip(s.types, s.vars, s.handlers):
             if type:
                 type.accept(visitor)
@@ -2723,7 +2733,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(s.target_type, TupleType):
                 s.target_type = s.target_type.copy_modified(items=new_types)
 
+        self.var_def_analyzer.enter_with_or_try()
         self.visit_block(s.body)
+        self.var_def_analyzer.leave_with_or_try()
 
     def visit_del_stmt(self, s: DelStmt) -> None:
         s.expr.accept(self)

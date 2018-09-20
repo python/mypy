@@ -1,23 +1,26 @@
--- Redefinition of variable with a different type
--- ----------------------------------------------
+-- Test cases for the redefinition of variable with a different type.
+
+
+-- Redefine local variable
+-- -----------------------
 
 
 [case testRedefineLocalWithDifferentType]
 def f() -> None:
     x = 0
-    reveal_type(x)  # E: Revealed type is 'builtins.int'
+    reveal_type(x) # E: Revealed type is 'builtins.int'
     x = ''
-    reveal_type(x)  # E: Revealed type is 'builtins.str'
+    reveal_type(x) # E: Revealed type is 'builtins.str'
 
 [case testCannotConditionallyRedefineLocalWithDifferentType]
 def f() -> None:
     y = 0
-    reveal_type(y)  # E: Revealed type is 'builtins.int'
+    reveal_type(y) # E: Revealed type is 'builtins.int'
     if int():
         y = ''  \
         # E: Incompatible types in assignment (expression has type "str", variable has type "int")
         reveal_type(y)  # E: Revealed type is 'builtins.int'
-    reveal_type(y)  # E: Revealed type is 'builtins.int'
+    reveal_type(y) # E: Revealed type is 'builtins.int'
 
 [case testRedefineFunctionArg]
 def f(x: int) -> None:
@@ -33,9 +36,9 @@ def f() -> None:
     x: int
     x = '' \
         # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-    reveal_type(x)  # E: Revealed type is 'builtins.int'
+    reveal_type(x) # E: Revealed type is 'builtins.int'
 def g() -> None:
-    x: int  # This syntax prevents redefinition through assignment
+    x: int # This syntax prevents redefinition through assignment
     x = 1
     x = '' \
         # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -53,3 +56,96 @@ def f(x: int) -> None:
     reveal_type(y)  # E: Revealed type is 'Union[builtins.int*, builtins.str]'
 
 def g(x: T) -> Union[T, str]: pass
+
+[case testRedefineLocalForLoopIndexVariable]
+from typing import Iterable
+def f(a: Iterable[int], b: Iterable[str]) -> None:
+    for x in a:
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # E: Revealed type is 'builtins.int*'
+    for x in b:
+        x = 1 \
+        # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+    reveal_type(x) # E: Revealed type is 'builtins.str*'
+
+def g(a: Iterable[int]) -> None:
+    for x in a: pass
+    x = ''
+
+def h(a: Iterable[int]) -> None:
+    x = ''
+    for x in a: pass
+
+[case testCannotRedefineLocalWithinTry]
+def f() -> None:
+    try:
+        x = 0
+        g()  # Might raise an exception
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    except:
+        pass
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+    y = 0
+    y = ''
+
+def g(): pass
+
+[case testCannotRedefineLocalWithinWith]
+def f() -> None:
+    with g():
+        x = 0
+        g()  # Might raise an exception
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+    y = 0
+    y = ''
+
+def g(): pass
+
+[case testCannotRedefineAcrossNestedFunction]
+def f() -> None:
+    x = 0
+    def g() -> None:
+        x
+    g()
+    x = '' \
+    # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    g()
+    y = 0
+    y = ''
+
+[case testCannotRedefineAcrossNestedDecoratedFunction]
+def dec(f): return f
+
+def f() -> None:
+    x = 0
+    @dec
+    def g() -> None:
+        x
+    g()
+    x = '' \
+    # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    g()
+    y = 0
+    y = ''
+
+[case testCannotRedefineAcrossNestedOverloadedFunction]
+from typing import overload
+
+def f() -> None:
+    x = 0
+    @overload
+    def g() -> None: pass
+    @overload
+    def g(x: int) -> None: pass
+    def g(x=0):
+        pass
+    g()
+    x = '' \
+    # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    g()
+    y = 0
+    y = ''

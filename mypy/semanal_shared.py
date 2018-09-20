@@ -166,12 +166,13 @@ class VarDefAnalyzer:
 
     def __init__(self) -> None:
         self.block_id = 0
+        self.disallow_redef_depth = 0
         self.blocks = []  # type: List[int]
-        self.var_blocks = {}  # type: Dict[str, int]
+        self.var_blocks = [{}]  # type: List[Dict[str, int]]
 
     def clear(self) -> None:
         self.blocks = []
-        self.var_blocks = {}
+        self.var_blocks = [{}]
 
     def enter_block(self) -> None:
         self.block_id += 1
@@ -180,14 +181,20 @@ class VarDefAnalyzer:
     def leave_block(self) -> None:
         self.blocks.pop()
 
+    def enter_with_or_try(self) -> None:
+        self.disallow_redef_depth += 1
+
+    def leave_with_or_try(self) -> None:
+        self.disallow_redef_depth -= 1
+
     def current_block(self) -> int:
         return self.blocks[-1]
 
     def enter_scope(self) -> None:
-        pass  # TODO
+        self.var_blocks.append({})
 
     def leave_scope(self) -> None:
-        pass  # TODO
+        self.var_blocks.pop()
 
     def reject_redefinition_of_vars_in_scope(self) -> None:
         """Make it impossible to redefine defined variables in the current scope.
@@ -195,22 +202,26 @@ class VarDefAnalyzer:
         This is used if we encounter a function definition or break/continue that
         can make it ambiguous which definition is live.
         """
-        for key in self.var_blocks:
-            self.var_blocks[key] = -1
+        var_blocks = self.var_blocks[-1]
+        for key in var_blocks:
+            var_blocks[key] = -1
 
     def process_assignment(self, name: str, can_be_redefined: bool) -> bool:
         """Record assignment to given name and return True if it defines a new name."""
+        if self.disallow_redef_depth > 0:
+            can_be_redefined = False
         block = self.current_block()
-        if name not in self.var_blocks:
+        var_blocks = self.var_blocks[-1]
+        if name not in var_blocks:
             # New definition
             if can_be_redefined:
-                self.var_blocks[name] = block
+                var_blocks[name] = block
             else:
                 # This doesn't support arbitrary redefinition.
                 # TODO: Make this less restricted.
-                self.var_blocks[name] = -1
+                var_blocks[name] = -1
             return True
-        elif self.var_blocks[name] == block:
+        elif var_blocks[name] == block:
             # Redefinition
             return True
         else:
