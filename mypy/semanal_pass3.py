@@ -77,7 +77,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     def update_imported_vars(self) -> None:
         """Update nodes for imported names, if they got updated from Var to TypeInfo or TypeAlias.
 
-        This is a simple band-aid fix for "Invalid type" error in import cycles where type
+        This is a simple _band-aid_ fix for "Invalid type" error in import cycles where type
         aliases, named tuples, or typed dicts appear. The root cause is that during first pass
         definitions like:
 
@@ -99,7 +99,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
             them in smaller passes when there is more info (like we do in type checking phase).
             But this is _much_ harder since this requires a large refactoring. Also an alternative
             fix of updating node of every `NameExpr` and `MemberExpr` in third pass is costly
-            from performance point of view.
+            from performance point of view, and still nontrivial.
         """
         for sym in self.cur_mod_node.names.values():
             if sym and isinstance(sym.node, Var):

@@ -1386,6 +1386,11 @@ from b import tp
 x: tp
 reveal_type(x['x'])  # E: Revealed type is 'builtins.int'
 
+# Unfortunately runtime part doesn't work yet, see comment in SemanticAnalyzerPass3.update_imported_vars()
+reveal_type(tp)  # E: Revealed type is 'Any' \
+                 # E: Cannot determine type of 'tp'
+tp('x')  # E: Cannot determine type of 'tp'
+
 [file b.py]
 from a import C
 from mypy_extensions import TypedDict
