@@ -2425,6 +2425,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         return None
 
     def check_classvar(self, s: AssignmentStmt) -> None:
+        """Check if assignment defines a class variable."""
         lvalue = s.lvalues[0]
         if len(s.lvalues) != 1 or not isinstance(lvalue, RefExpr):
             return
