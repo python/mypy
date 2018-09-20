@@ -39,3 +39,17 @@ def g() -> None:
     x = 1
     x = '' \
         # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testRedefineLocalUsingOldValue]
+from typing import TypeVar, Union
+
+T = TypeVar('T')
+
+def f(x: int) -> None:
+    x = g(x)
+    reveal_type(x)  # E: Revealed type is 'Union[builtins.int*, builtins.str]'
+    y = 1
+    y = g(y)
+    reveal_type(y)  # E: Revealed type is 'Union[builtins.int*, builtins.str]'
+
+def g(x: T) -> Union[T, str]: pass

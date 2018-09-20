@@ -1707,6 +1707,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         self.unwrap_final(s)
+        s.rvalue.accept(self)
 
         def final_cb(keep_final: bool) -> None:
             self.fail("Cannot redefine an existing name as final", s)
@@ -1720,7 +1721,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                                 has_initializer=has_initializer)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
-        s.rvalue.accept(self)
         if s.type:
             allow_tuple_literal = isinstance(s.lvalues[-1], TupleExpr)
             s.type = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
