@@ -5162,7 +5162,7 @@ class B:
     def meth(self, x: str) -> str: ...
 [out]
 
-[case testCyclicOverloadDoubleDeferred]
+[case testCyclicOverloadDeferred]
 import b
 [file a.py]
 import b
@@ -5277,7 +5277,7 @@ class Sub(a.Base):
     def x(self) -> int: pass
 
 [file a.py]
-import b
+from b import Sub
 import c
 class Base:
     def __init__(self) -> None:
@@ -5307,7 +5307,7 @@ class Other:
         self.x = f()
 def f() -> int: ...
 [file b.py]
-import a
+from a import A
 import c
 
 class B:
@@ -5333,7 +5333,7 @@ class A(b.B):
         reveal_type(y)  # E: Revealed type is 'Tuple[builtins.int*, builtins.int]'
         return 0
 [file b.py]
-import a
+from a import A
 import c
 
 class B:
@@ -5357,7 +5357,7 @@ class A(b.B):
     def meth(self) -> int:
         pass
 [file b.py]
-import a
+from a import A
 import c
 
 class B:
@@ -5397,7 +5397,7 @@ class Other:
         self.x = f()
 def f() -> int: ...
 [file b.py]
-import a
+from a import A
 import c
 
 class B:

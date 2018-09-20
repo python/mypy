@@ -74,7 +74,7 @@ T = TypeVar('T')
 DEFAULT_LAST_PASS = 1  # type: Final  # Pass numbers start at 0
 
 DeferredNodeType = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
-FineDeferredNodeType = Union[FuncDef, MypyFile, OverloadedFuncDef]
+FineGrainedDeferredNodeType = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
 # A node which is postponed to be processed during the next pass.
 # In normal mode one can defer functions and methods (also decorated and/or overloaded)
@@ -91,10 +91,10 @@ DeferredNode = NamedTuple(
 
 # Same as above, but for fine-grained mode targets. Only top-level functions/methods
 # and module top levels are allowed as such.
-FineDeferredNode = NamedTuple(
+FineGrainedDeferredNode = NamedTuple(
     'FineDeferredNode',
     [
-        ('node', FineDeferredNodeType),
+        ('node', FineGrainedDeferredNodeType),
         ('context_type_name', Optional[str]),
         ('active_typeinfo', Optional[TypeInfo]),
     ])
@@ -296,8 +296,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             self.tscope.leave()
 
-    def check_second_pass(self, todo: Optional[Sequence[Union[DeferredNode,
-                                                              FineDeferredNode]]] = None) -> bool:
+    def check_second_pass(self,
+                          todo: Optional[Sequence[Union[DeferredNode,
+                                                        FineGrainedDeferredNode]]] = None
+                          ) -> bool:
         """Run second or following pass of type checking.
 
         This goes through deferred nodes, returning True if there were any.
@@ -314,7 +316,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             else:
                 assert not self.deferred_nodes
             self.deferred_nodes = []
-            done = set()  # type: Set[Union[DeferredNodeType, FineDeferredNodeType]]
+            done = set()  # type: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]]
             for node, type_name, active_typeinfo in todo:
                 if node in done:
                     continue
@@ -328,7 +330,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.tscope.leave()
             return True
 
-    def check_partial(self, node: Union[DeferredNodeType, FineDeferredNodeType]) -> None:
+    def check_partial(self, node: Union[DeferredNodeType, FineGrainedDeferredNodeType]) -> None:
         if isinstance(node, MypyFile):
             self.check_top_level(node)
         else:
@@ -1279,7 +1281,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_method_override(self, defn: Union[FuncDef, OverloadedFuncDef, Decorator]) -> None:
         """Check if function definition is compatible with base classes.
 
-        This may defer the method if a signature is not available in at least on base class.
+        This may defer the method if a signature is not available in at least one base class.
         """
         # Check against definitions in base classes.
         for base in defn.info.mro[1:]:
