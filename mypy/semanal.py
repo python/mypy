@@ -2632,7 +2632,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.expr.accept(self)
         self.loop_depth += 1
+        self.var_def_analyzer.enter_loop()
         s.body.accept(self)
+        self.var_def_analyzer.leave_loop()
         self.loop_depth -= 1
         self.visit_block_maybe(s.else_body)
 
@@ -2649,16 +2651,20 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.store_declared_types(s.index, s.index_type)
 
         self.loop_depth += 1
+        self.var_def_analyzer.enter_loop()
         self.visit_block(s.body)
+        self.var_def_analyzer.leave_loop()
         self.loop_depth -= 1
 
         self.visit_block_maybe(s.else_body)
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
+        self.var_def_analyzer.reject_redefinition_of_vars_in_loop()
         if self.loop_depth == 0:
             self.fail("'break' outside loop", s, True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
+        self.var_def_analyzer.reject_redefinition_of_vars_in_loop()
         if self.loop_depth == 0:
             self.fail("'continue' outside loop", s, True, blocker=True)
 

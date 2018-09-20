@@ -167,7 +167,11 @@ class VarDefAnalyzer:
     def __init__(self) -> None:
         self.block_id = 0
         self.disallow_redef_depth = 0
+        self.loop_depth = 0
+        # Map block id to loop depth.
+        self.block_loop_depth = {}  # type: Dict[int, int]
         self.blocks = []  # type: List[int]
+        # List of scopes; each scope maps short name to block id.
         self.var_blocks = [{}]  # type: List[Dict[str, int]]
 
     def clear(self) -> None:
@@ -177,6 +181,7 @@ class VarDefAnalyzer:
     def enter_block(self) -> None:
         self.block_id += 1
         self.blocks.append(self.block_id)
+        self.block_loop_depth[self.block_id] = self.loop_depth
 
     def leave_block(self) -> None:
         self.blocks.pop()
@@ -186,6 +191,12 @@ class VarDefAnalyzer:
 
     def leave_with_or_try(self) -> None:
         self.disallow_redef_depth -= 1
+
+    def enter_loop(self) -> None:
+        self.loop_depth += 1
+
+    def leave_loop(self) -> None:
+        self.loop_depth -= 1
 
     def current_block(self) -> int:
         return self.blocks[-1]
@@ -205,6 +216,12 @@ class VarDefAnalyzer:
         var_blocks = self.var_blocks[-1]
         for key in var_blocks:
             var_blocks[key] = -1
+
+    def reject_redefinition_of_vars_in_loop(self) -> None:
+        var_blocks = self.var_blocks[-1]
+        for key, block in var_blocks.items():
+            if self.block_loop_depth[block] == self.loop_depth:
+                var_blocks[key] = -1
 
     def process_assignment(self, name: str, can_be_redefined: bool) -> bool:
         """Record assignment to given name and return True if it defines a new name."""

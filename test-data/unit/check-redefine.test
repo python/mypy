@@ -169,3 +169,46 @@ def f() -> None:
     if 1:
         _, _ = '', 1
         reveal_type(_) # E: Revealed type is 'Any'
+
+[case testRedefineWithBreakAndContinue]
+def f() -> None:
+    y = 0
+    while int():
+        z = 0
+        z = ''
+        x = 0
+        if int():
+            break
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+    y = ''
+
+def g() -> None:
+    y = 0
+    for a in h():
+        z = 0
+        z = ''
+        x = 0
+        if int():
+            continue
+        x = '' \
+        # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    reveal_type(x) # E: Revealed type is 'builtins.int'
+    y = ''
+
+def h(): pass
+
+[case testRedefineLocalAndNestedLoops]
+def f() -> None:
+    z = 0
+    while int():
+        x = 0
+        while int():
+            if 1:
+                y = 1
+                if int():
+                    break
+                y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+        x = ''
+    z = ''
