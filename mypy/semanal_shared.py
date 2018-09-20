@@ -220,7 +220,7 @@ class VarDefAnalyzer:
     def reject_redefinition_of_vars_in_loop(self) -> None:
         var_blocks = self.var_blocks[-1]
         for key, block in var_blocks.items():
-            if self.block_loop_depth[block] == self.loop_depth:
+            if self.block_loop_depth.get(block) == self.loop_depth:
                 var_blocks[key] = -1
 
     def process_assignment(self, name: str, can_be_redefined: bool) -> bool:
