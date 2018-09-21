@@ -83,11 +83,11 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
 
             A = List[int]
 
-        Are seen by mypy as variables, because it doesn't know yet that `List` refers to a type.
+        are seen by mypy as variables, because it doesn't know yet that `List` refers to a type.
         In the second pass, such `Var` is replaced with a `TypeAlias`. But in import cycle,
         import of `A` will still refer to the old `Var` node. Therefore we need to update it.
 
-        Note that this a partial fix that only fixes the "Invalid type" error when a type alias
+        Note that this is a partial fix that only fixes the "Invalid type" error when a type alias
         etc. appears in type context. This doesn't fix errors (e.g. "Cannot determine type of A")
         that may appear if the type alias etc. appear in runtime context.
 
