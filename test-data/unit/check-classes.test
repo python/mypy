@@ -339,6 +339,23 @@ class B(A):
     def __new__(cls) -> int:
         return 1
 
+[case testOverride__new__AndCallObject]
+from typing import TypeVar, Generic
+
+class A:
+    def __new__(cls, x: int) -> 'A':
+        return object.__new__(cls)
+
+T = TypeVar('T')
+class B(Generic[T]):
+    def __new__(cls, foo: T) -> 'B[T]':
+        x = object.__new__(cls)
+        # object.__new__ doesn't have a great type :(
+        reveal_type(x)  # E: Revealed type is 'Any'
+        return x
+
+[builtins fixtures/__new__.pyi]
+
 [case testInnerFunctionNotOverriding]
 class A:
     def f(self) -> int: pass
@@ -3001,7 +3018,7 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: Unsupported type Type["N"]
+main:4: error: Too few arguments for "N"
 
 [case testTypeUsingTypeCJoin]
 from typing import Type
@@ -5117,6 +5134,46 @@ class C:
     def x(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
+
+[case testClassMethodBeforeInit1]
+class Foo:
+    @classmethod
+    def bar(cls) -> Foo:
+        return cls("bar")
+
+    def __init__(self, baz: str) -> None:
+        self.baz = baz
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodBeforeInit2]
+class Foo:
+    @classmethod
+    def bar(cls) -> Foo:
+        return cls(Bar())
+
+    def __init__(self, baz: 'Bar') -> None:
+        self.baz = baz
+
+class Bar: pass
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodBeforeInit3]
+from typing import overload
+class Foo:
+    @classmethod
+    @overload
+    def bar(cls, x: int) -> Foo: ...
+    @classmethod
+    @overload
+    def bar(cls, x: str) -> Foo: ...
+    @classmethod
+    def bar(cls, x: object) -> Foo:
+        return cls(x)
+
+    def __init__(self, baz: object) -> None:
+        self.baz = baz
+
+[builtins fixtures/classmethod.pyi]
 
 [case testNewAndInit1]
 class A:

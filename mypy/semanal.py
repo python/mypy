@@ -68,7 +68,7 @@ from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType,
-    TypeTranslator, TypeOfAny
+    TypeTranslator, TypeOfAny, TypeType,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -479,10 +479,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(functype, CallableType):
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
+                    leading_type = fill_typevars(info)  # type: Type
                     if func.is_class or func.name() in ('__new__', '__init_subclass__'):
-                        leading_type = self.class_type(info)
-                    else:
-                        leading_type = fill_typevars(info)
+                        leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
     def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
@@ -775,8 +774,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # that were already set in build_namedtuple_typeinfo.
                 nt_names = named_tuple_info.names
                 named_tuple_info.names = SymbolTable()
-                # This is needed for the cls argument to classmethods to get bound correctly.
-                named_tuple_info.names['__new__'] = nt_names['__new__']
 
                 self.enter_class(named_tuple_info)
 
@@ -1343,15 +1340,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def str_type(self) -> Instance:
         return self.named_type('__builtins__.str')
 
-    def class_type(self, info: TypeInfo) -> Type:
-        # Construct a function type whose fallback is cls.
-        from mypy import checkmember  # To avoid import cycle.
-        leading_type = checkmember.type_object_type(info, self.builtin_type)
-        if isinstance(leading_type, Overloaded):
-            # Overloaded __init__ is too complex to handle.  Plus it's stubs only.
-            return AnyType(TypeOfAny.special_form)
-        else:
-            return leading_type
+    def class_type(self, self_type: Type) -> Type:
+        return TypeType.make_normalized(self_type)
 
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, Context())

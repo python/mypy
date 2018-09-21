@@ -892,8 +892,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.fail(msg, defn)
                             if note:
                                 self.note(note, defn)
-                        if defn.is_class and isinstance(arg_type, CallableType):
-                            arg_type.is_classmethod_class = True
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables

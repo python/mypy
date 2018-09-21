@@ -706,7 +706,6 @@ class CallableType(FunctionLike):
                  column: int = -1,
                  is_ellipsis_args: bool = False,
                  implicit: bool = False,
-                 is_classmethod_class: bool = False,
                  special_sig: Optional[str] = None,
                  from_type_type: bool = False,
                  bound_args: Sequence[Optional[Type]] = (),
@@ -730,7 +729,6 @@ class CallableType(FunctionLike):
         self.variables = variables
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
-        self.is_classmethod_class = is_classmethod_class
         self.special_sig = special_sig
         self.from_type_type = from_type_type
         if not bound_args:
@@ -780,7 +778,6 @@ class CallableType(FunctionLike):
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
             implicit=implicit if implicit is not _dummy else self.implicit,
-            is_classmethod_class=self.is_classmethod_class,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
@@ -815,9 +812,6 @@ class CallableType(FunctionLike):
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass()
-
-    def is_concrete_type_obj(self) -> bool:
-        return self.is_type_obj() and self.is_classmethod_class
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
@@ -990,7 +984,6 @@ class CallableType(FunctionLike):
                 'variables': [v.serialize() for v in self.variables],
                 'is_ellipsis_args': self.is_ellipsis_args,
                 'implicit': self.implicit,
-                'is_classmethod_class': self.is_classmethod_class,
                 'bound_args': [(None if t is None else t.serialize())
                                for t in self.bound_args],
                 'def_extras': dict(self.def_extras),
@@ -1009,7 +1002,6 @@ class CallableType(FunctionLike):
                             variables=[TypeVarDef.deserialize(v) for v in data['variables']],
                             is_ellipsis_args=data['is_ellipsis_args'],
                             implicit=data['implicit'],
-                            is_classmethod_class=data['is_classmethod_class'],
                             bound_args=[(None if t is None else deserialize_type(t))
                                         for t in data['bound_args']],
                             def_extras=data['def_extras']
