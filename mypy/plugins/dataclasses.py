@@ -12,11 +12,15 @@ from mypy.types import (
     CallableType, Instance, NoneTyp, Overloaded, TypeVarDef, TypeVarType,
 )
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 # The set of decorators that generate dataclasses.
 dataclass_makers = {
     'dataclass',
     'dataclasses.dataclass',
-}
+}  # type: Final
 
 
 class DataclassAttribute:

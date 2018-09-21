@@ -6,16 +6,16 @@ import sys
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple
 MYPY = False
 if MYPY:
-    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
 
 
 class BuildType:
-    STANDARD = 0  # type: ClassVar[int]
-    MODULE = 1  # type: ClassVar[int]
-    PROGRAM_TEXT = 2  # type: ClassVar[int]
+    STANDARD = 0  # type: Final[int]
+    MODULE = 1  # type: Final[int]
+    PROGRAM_TEXT = 2  # type: Final[int]
 
 
 PER_MODULE_OPTIONS = {
@@ -39,6 +39,7 @@ PER_MODULE_OPTIONS = {
     "ignore_errors",
     "ignore_missing_imports",
     "local_partial_types",
+    "mypyc",
     "no_implicit_optional",
     "show_none_errors",
     "strict_boolean",
@@ -47,11 +48,11 @@ PER_MODULE_OPTIONS = {
     "warn_no_return",
     "warn_return_any",
     "warn_unused_ignores",
-}
+}  # type: Final
 
 OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
                             {"quick_and_dirty", "platform", "bazel"})
-                           - {"debug_cache"})
+                           - {"debug_cache"})  # type: Final
 
 
 class Options:
@@ -172,6 +173,10 @@ class Options:
         self.cache_fine_grained = False
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
+
+        # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
+        # in modules being compiled. Not in the config file or command line.
+        self.mypyc = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]

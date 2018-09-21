@@ -8,7 +8,11 @@ import socket
 
 from typing import Any
 
-STATUS_FILE = '.dmypy.json'
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
+STATUS_FILE = '.dmypy.json'  # type: Final
 
 
 def receive(sock: socket.socket) -> Any:

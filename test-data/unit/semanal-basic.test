@@ -454,3 +454,39 @@ MypyFile:1(
           AssignmentStmt:3(
             NameExpr(x* [l])
             IntExpr(1)))))))
+
+[case testFinalValuesOnVar]
+from typing import Final, Any
+
+def func() -> Any: ...
+x: Final = 1
+y: Final = 1.0
+s: Final = "hi"
+t: Final = True
+n: Final = func()
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [Final, Any])
+  FuncDef:3(
+    func
+    def () -> Any
+    Block:3(
+      ExpressionStmt:3(
+        Ellipsis)))
+  AssignmentStmt:4(
+    NameExpr(x* [__main__.x] = 1)
+    IntExpr(1))
+  AssignmentStmt:5(
+    NameExpr(y* [__main__.y] = 1.0)
+    FloatExpr(1.0))
+  AssignmentStmt:6(
+    NameExpr(s* [__main__.s] = hi)
+    StrExpr(hi))
+  AssignmentStmt:7(
+    NameExpr(t* [__main__.t] = True)
+    NameExpr(True [builtins.True]))
+  AssignmentStmt:8(
+    NameExpr(n* [__main__.n] = None)
+    CallExpr:8(
+      NameExpr(func [__main__.func])
+      Args())))

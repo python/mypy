@@ -489,17 +489,14 @@ class TypeMeetVisitor(TypeVisitor[Type]):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, t.fallback)
-        # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
-        elif (isinstance(self.s, Instance) and
-              (self.s.type.fullname() == 'builtins.tuple' or is_proper_subtype(t, self.s))
-              and self.s.args):
-            return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
-        elif (isinstance(self.s, Instance) and t.fallback.type == self.s.type):
-            # Uh oh, a broken named tuple type (https://github.com/python/mypy/issues/3016).
-            # Do something reasonable until that bug is fixed.
-            return t
-        else:
-            return self.default(self.s)
+        elif isinstance(self.s, Instance):
+            # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
+            if self.s.type.fullname() == 'builtins.tuple' and self.s.args:
+                return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
+            elif is_proper_subtype(t, self.s):
+                # A named tuple that inherits from a normal class
+                return t
+        return self.default(self.s)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         if isinstance(self.s, TypedDictType):

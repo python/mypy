@@ -9,6 +9,7 @@ from typing import (
 MYPY = False
 if MYPY:
     from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy.errors import report_internal_error
 from mypy.typeanal import (
@@ -71,7 +72,7 @@ ArgChecker = Callable[[Type, Type, int, Type, int, int, CallableType, Context, M
 # may cause performance issues. The reason is that although union math algorithm we use
 # nicely captures most corner cases, its worst case complexity is exponential,
 # see https://github.com/python/mypy/pull/5255#discussion_r196896335 for discussion.
-MAX_UNIONS = 5
+MAX_UNIONS = 5  # type: Final
 
 
 class TooManyUnions(Exception):
@@ -1609,10 +1610,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
         return applytype.apply_generic_arguments(callable, types, self.msg, context)
 
-    def visit_member_expr(self, e: MemberExpr) -> Type:
+    def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
         self.chk.module_refs.update(extract_refexpr_names(e))
-        result = self.analyze_ordinary_member_access(e, False)
+        result = self.analyze_ordinary_member_access(e, is_lvalue)
         return self.narrow_type_from_binder(e, result)
 
     def analyze_ordinary_member_access(self, e: MemberExpr,

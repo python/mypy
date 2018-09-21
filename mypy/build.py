@@ -35,6 +35,7 @@ from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
 MYPY = False
 if MYPY:
     from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy import sitepkgs
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
@@ -67,10 +68,10 @@ from mypy.mypyc_hacks import BuildManagerBase
 # mode only that is useful during development. This produces only a subset of
 # output compared to --verbose output. We use a global flag to enable this so
 # that it's easy to enable this when running tests.
-DEBUG_FINE_GRAINED = False
+DEBUG_FINE_GRAINED = False  # type: Final
 
 
-PYTHON_EXTENSIONS = ['.pyi', '.py']
+PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
 
 
 Graph = Dict[str, 'State']
@@ -484,12 +485,12 @@ def cache_meta_from_dict(meta: Dict[str, Any],
 # Priorities used for imports.  (Here, top-level includes inside a class.)
 # These are used to determine a more predictable order in which the
 # nodes in an import cycle are processed.
-PRI_HIGH = 5  # top-level "from X import blah"
-PRI_MED = 10  # top-level "import X"
-PRI_LOW = 20  # either form inside a function
-PRI_MYPY = 25  # inside "if MYPY" or "if TYPE_CHECKING"
-PRI_INDIRECT = 30  # an indirect dependency
-PRI_ALL = 99  # include all priorities
+PRI_HIGH = 5  # type: Final  # top-level "from X import blah"
+PRI_MED = 10  # type: Final  # top-level "import X"
+PRI_LOW = 20  # type: Final  # either form inside a function
+PRI_MYPY = 25  # type: Final  # inside "if MYPY" or "if TYPE_CHECKING"
+PRI_INDIRECT = 30  # type: Final  # an indirect dependency
+PRI_ALL = 99  # type: Final  # include all priorities
 
 
 def import_priority(imp: ImportBase, toplevel_priority: int) -> int:

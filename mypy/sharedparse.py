@@ -1,5 +1,9 @@
 from typing import Optional
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 """Shared logic between our three mypy parser files."""
 
 
@@ -36,14 +40,14 @@ _NON_BINARY_MAGIC_METHODS = {
     "__setitem__",
     "__str__",
     "__unicode__",
-}
+}  # type: Final
 
 MAGIC_METHODS_ALLOWING_KWARGS = {
     "__init__",
     "__init_subclass__",
     "__new__",
     "__call__",
-}
+}  # type: Final
 
 BINARY_MAGIC_METHODS = {
     "__add__",
@@ -90,13 +94,13 @@ BINARY_MAGIC_METHODS = {
     "__rxor__",
     "__sub__",
     "__xor__",
-}
+}  # type: Final
 
 assert not (_NON_BINARY_MAGIC_METHODS & BINARY_MAGIC_METHODS)
 
-MAGIC_METHODS = _NON_BINARY_MAGIC_METHODS | BINARY_MAGIC_METHODS
+MAGIC_METHODS = _NON_BINARY_MAGIC_METHODS | BINARY_MAGIC_METHODS  # type: Final
 
-MAGIC_METHODS_POS_ARGS_ONLY = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS
+MAGIC_METHODS_POS_ARGS_ONLY = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWARGS  # type: Final
 
 
 def special_function_elide_names(name: str) -> bool:
