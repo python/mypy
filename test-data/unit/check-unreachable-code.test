@@ -618,7 +618,7 @@ class Child(Parent):
     def foo(self) -> int:
         reveal_type(self)       # E: Revealed type is '__main__.Child'
         if self is None:
-            reveal_type(self)   # E: Revealed type is '__main__.Child'
+            reveal_type(self)   # E: Revealed type is 'None'
             return None
         reveal_type(self)       # E: Revealed type is '__main__.Child'
         return 3

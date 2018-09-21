@@ -948,3 +948,31 @@ MYTYPE = List[Union[str, "MYTYPE"]]
 [builtins fixtures/list.pyi]
 [out]
 main:2: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testNonStrictOptional]
+from typing import Optional, List
+
+def union_test1(x):
+    # type: (Optional[List[int]]) -> Optional[int]
+    if x is None:
+        return x
+    else:
+        return x[0]
+
+def union_test2(x):
+    # type: (Optional[List[int]]) -> Optional[int]
+    if isinstance(x, type(None)):
+        return x
+    else:
+        return x[0]
+
+def f(): return 0
+
+def union_test3():
+    # type: () -> int
+    x = f()
+    assert x is None
+    x = f()
+    return x + 1
+
+[builtins fixtures/isinstancelist.pyi]

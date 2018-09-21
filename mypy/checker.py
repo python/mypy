@@ -3328,7 +3328,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if literal(expr) == LITERAL_TYPE:
                     vartype = type_map[expr]
                     return self.conditional_callable_type_map(expr, vartype)
-        elif isinstance(node, ComparisonExpr) and experiments.STRICT_OPTIONAL:
+        elif isinstance(node, ComparisonExpr):
             # Check for `x is None` and `x is not None`.
             is_not = node.operators == ['is not']
             if any(is_literal_none(n) for n in node.operands) and (
