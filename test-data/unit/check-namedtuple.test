@@ -691,6 +691,28 @@ my_eval(A([B(1), B(2)])) # OK
 [builtins fixtures/isinstancelist.pyi]
 [out]
 
+[case testNamedTupleImportCycle]
+import b
+[file a.py]
+class C:
+    pass
+
+from b import tp
+x: tp
+reveal_type(x.x)  # E: Revealed type is 'builtins.int'
+
+# Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
+reveal_type(tp)  # E: Revealed type is 'Any' \
+                 # E: Cannot determine type of 'tp'
+tp('x')  # E: Cannot determine type of 'tp'
+
+[file b.py]
+from a import C
+from typing import NamedTuple
+
+tp = NamedTuple('tp', [('x', int)])
+[out]
+
 [case testSubclassOfRecursiveNamedTuple]
 from typing import List, NamedTuple
 
