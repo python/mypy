@@ -1390,3 +1390,26 @@ def f(x: a.N) -> None:
 [out]
 tmp/b.py:4: error: Revealed type is 'TypedDict('a.N', {'a': builtins.str})'
 tmp/b.py:5: error: Revealed type is 'builtins.str'
+
+[case testTypedDictImportCycle]
+import b
+[file a.py]
+class C:
+    pass
+
+from b import tp
+x: tp
+reveal_type(x['x'])  # E: Revealed type is 'builtins.int'
+
+# Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
+reveal_type(tp)  # E: Revealed type is 'Any' \
+                 # E: Cannot determine type of 'tp'
+tp('x')  # E: Cannot determine type of 'tp'
+
+[file b.py]
+from a import C
+from mypy_extensions import TypedDict
+
+tp = TypedDict('tp', {'x': int})
+[builtins fixtures/dict.pyi]
+[out]

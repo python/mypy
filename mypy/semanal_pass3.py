@@ -67,11 +67,54 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
+            self.update_imported_vars()
             self.accept(file_node)
             self.analyze_symbol_table(file_node.names)
             self.scope.leave()
         del self.cur_mod_node
         self.patches = []
+
+    def update_imported_vars(self) -> None:
+        """Update nodes for imported names, if they got updated from Var to TypeInfo or TypeAlias.
+
+        This is a simple _band-aid_ fix for "Invalid type" error in import cycles where type
+        aliases, named tuples, or typed dicts appear. The root cause is that during first pass
+        definitions like:
+
+            A = List[int]
+
+        are seen by mypy as variables, because it doesn't know yet that `List` refers to a type.
+        In the second pass, such `Var` is replaced with a `TypeAlias`. But in import cycle,
+        import of `A` will still refer to the old `Var` node. Therefore we need to update it.
+
+        Note that this is a partial fix that only fixes the "Invalid type" error when a type alias
+        etc. appears in type context. This doesn't fix errors (e.g. "Cannot determine type of A")
+        that may appear if the type alias etc. appear in runtime context.
+
+        The motivation for partial fix is two-fold:
+          * The "Invalid type" error often appears in stub files (especially for large
+            libraries/frameworks) where we have more import cycles, but no runtime
+            context at all.
+          * Ideally we should refactor semantic analysis to have deferred nodes, and process
+            them in smaller passes when there is more info (like we do in type checking phase).
+            But this is _much_ harder since this requires a large refactoring. Also an alternative
+            fix of updating node of every `NameExpr` and `MemberExpr` in third pass is costly
+            from performance point of view, and still nontrivial.
+        """
+        for sym in self.cur_mod_node.names.values():
+            if sym and isinstance(sym.node, Var):
+                fullname = sym.node.fullname()
+                if '.' not in fullname:
+                    continue
+                mod_name, _, name = fullname.rpartition('.')
+                if mod_name not in self.sem.modules:
+                    continue
+                if mod_name != self.sem.cur_mod_id:  # imported
+                    new_sym = self.sem.modules[mod_name].names.get(name)
+                    if new_sym and isinstance(new_sym.node, (TypeInfo, TypeAlias)):
+                        # This Var was replaced with a class (like named tuple)
+                        # or alias, update this.
+                        sym.node = new_sym.node
 
     def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
