@@ -1828,7 +1828,7 @@ class Num1:
 
 class Num2(Num1):
     @overload
-    def __add__(self, other: Num2) -> Num2: ...  
+    def __add__(self, other: Num2) -> Num2: ...
     @overload
     def __add__(self, other: Num1) -> Num2: ...
     def __add__(self, other): pass
@@ -5117,6 +5117,41 @@ class C:
     def x(self) -> int: pass
 [builtins fixtures/property.pyi]
 [out]
+
+[case testNewAndInit1]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+
+class B(A):
+    def __new__(cls) -> int:
+        return 10
+
+B()
+
+[case testNewAndInit2]
+from typing import Any
+
+class A:
+    def __new__(cls, *args: Any) -> 'A':
+        ...
+
+class B(A):
+    def __init__(self, x: int) -> None:
+        pass
+
+reveal_type(B)  # E: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testNewAndInit3]
+from typing import Any
+
+class A:
+    def __new__(cls, *args: Any) -> 'A':
+        ...
+    def __init__(self, x: int) -> None:
+        pass
+
+reveal_type(A)  # E: Revealed type is 'def (x: builtins.int) -> __main__.A'
 
 [case testCyclicDecorator]
 import b

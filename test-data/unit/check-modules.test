@@ -733,6 +733,27 @@ import m.a
 [file m/a.py]
 [out]
 
+[case testCheckDecoratedFuncAsAnnotWithImportCycle]
+import a
+[file a.py]
+from typing import TypeVar
+import b
+
+T = TypeVar('T')
+def idf(x: T) -> T: return x
+
+@idf
+def Session() -> None: pass
+
+[file b.py]
+MYPY = False
+if MYPY:
+    from a import Session
+
+def f(self, session: Session) -> None:  # E: Invalid type "a.Session"
+    pass
+[builtins fixtures/bool.pyi]
+
 
 -- Checks dealing with submodules and different kinds of imports
 -- -------------------------------------------------------------
