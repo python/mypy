@@ -44,3 +44,6 @@ install:
 
 script:
 - tox -- $EXTRA_ARGS
+
+after_success:
+  - test $TRAVIS_BRANCH = "master" && test $TRAVIS_PULL_REQUEST = "false" && ./misc/trigger_wheel_build.sh
