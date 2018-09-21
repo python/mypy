@@ -147,14 +147,20 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             for lval in s.lvalues:
                 self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
-    def visit_func_def(self, func: FuncDef) -> None:
+    def visit_func_def(self, func: FuncDef, decorated: bool = False) -> None:
+        """Process a func def.
+
+        decorated is true if we are processing a func def in a
+        Decorator that needs a _fullname and to have its body analyzed but
+        does not need to be added to the symbol table.
+        """
         sem = self.sem
         if sem.type is not None:
             # Don't process methods during pass 1.
             return
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
-        at_module = sem.is_module_scope()
+        at_module = sem.is_module_scope() and not decorated
         if (at_module and func.name() == '__getattr__' and
                 self.sem.cur_mod_node.is_package_init_file() and self.sem.cur_mod_node.is_stub):
             if isinstance(func.type, CallableType):
@@ -311,6 +317,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             return
         d.var._fullname = self.sem.qualified_name(d.var.name())
         self.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d), d)
+        self.visit_func_def(d.func, decorated=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, self.sem.options)
