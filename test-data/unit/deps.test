@@ -29,6 +29,19 @@ class A:
 <m.A.g> -> m.f
 <m.A> -> <m.f>, m.A, m.f
 
+[case testCallClassMethod]
+def f() -> None:
+    A.g()
+class A:
+    @classmethod
+    def g(cls) -> None: pass
+[out]
+<m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
+<m.A.g> -> m, m.f
+<m.A> -> m.A, m.f
+[builtins fixtures/classmethod.pyi]
+
 [case testAccessAttribute]
 def f(a: A) -> None:
     a.x
