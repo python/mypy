@@ -349,7 +349,11 @@ class A:
 T = TypeVar('T')
 class B(Generic[T]):
     def __new__(cls, foo: T) -> 'B[T]':
-        return object.__new__(cls)
+        x = object.__new__(cls)
+        # object.__new__ doesn't have a great type :(
+        reveal_type(x)  # E: Revealed type is 'Any'
+        return x
+
 [builtins fixtures/__new__.pyi]
 
 [case testInnerFunctionNotOverriding]
@@ -5131,14 +5135,42 @@ class C:
 [builtins fixtures/property.pyi]
 [out]
 
-[case testClassMethodBeforeInit]
-class Foo(object):
+[case testClassMethodBeforeInit1]
+class Foo:
     @classmethod
-    def bar(cls):
-        # type: () -> Foo
+    def bar(cls) -> Foo:
         return cls("bar")
 
-    def __init__(self, baz):
-        # type: (str) -> None
+    def __init__(self, baz: str) -> None:
         self.baz = baz
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodBeforeInit2]
+class Foo:
+    @classmethod
+    def bar(cls) -> Foo:
+        return cls(Bar())
+
+    def __init__(self, baz: 'Bar') -> None:
+        self.baz = baz
+
+class Bar: pass
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodBeforeInit3]
+from typing import overload
+class Foo:
+    @classmethod
+    @overload
+    def bar(cls, x: int) -> Foo: ...
+    @classmethod
+    @overload
+    def bar(cls, x: str) -> Foo: ...
+    @classmethod
+    def bar(cls, x: object) -> Foo:
+        return cls(x)
+
+    def __init__(self, baz: object) -> None:
+        self.baz = baz
+
 [builtins fixtures/classmethod.pyi]

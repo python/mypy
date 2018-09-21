@@ -434,7 +434,9 @@ class A(Generic[T]):
 
   @classmethod
   def foo(cls) -> None:
-      reveal_type(cls)            # E: Revealed type is 'Type[__main__.A[T`1]]'
+      reveal_type(cls)  # E: Revealed type is 'Type[__main__.A[T`1]]'
+      reveal_type(cls(1))  # E: Revealed type is '__main__.A[builtins.int*]'
+      reveal_type(cls('wooooo'))  # E: Revealed type is '__main__.A[builtins.str*]'
 
 [builtins fixtures/classmethod.pyi]
 
@@ -494,5 +496,7 @@ T = TypeVar('T', bound='A')
 class A:
     @classmethod
     def make(cls: Type[T]) -> T:
+        reveal_type(cls)  # E: Revealed type is 'Type[T`-1]'
+        reveal_type(cls())  # E: Revealed type is 'T`-1'
         return cls()
 [builtins fixtures/classmethod.pyi]
