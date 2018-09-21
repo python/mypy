@@ -267,7 +267,7 @@ class ConditionalTypeBinder:
             return
 
         enclosing_type = self.most_recent_enclosing_type(expr, type)
-        if (isinstance(enclosing_type, AnyType) and not restrict_any):
+        if isinstance(enclosing_type, AnyType) and not restrict_any:
             # If x is Any and y is int, after x = y we do not infer that x is int.
             # This could be changed.
             # Instead, since we narrowed type from Any in a recent frame (probably an
