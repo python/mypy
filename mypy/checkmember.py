@@ -650,18 +650,28 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
     where ... are argument types for the __init__/__new__ method (without the self
     argument). Also, the fallback type will be 'type' instead of 'function'.
     """
+
+    # We take the type from whichever of __init__ and __new__ is first
+    # in the MRO, preferring __init__ if there is a tie.
     init_method = info.get_method('__init__')
+    new_method = info.get_method('__new__')
     if not init_method:
         # Must be an invalid class definition.
         return AnyType(TypeOfAny.from_error)
+    # There *should* always be a __new__ method except the test stubs
+    # lack it, so just copy init_method in that situation
+    new_method = new_method or init_method
+
+    init_index = info.mro.index(init_method.info)
+    new_index = info.mro.index(new_method.info)
+
+    fallback = info.metaclass_type or builtin_type('builtins.type')
+    if init_index < new_index:
+        method = init_method
+    elif init_index > new_index:
+        method = new_method
     else:
-        fallback = info.metaclass_type or builtin_type('builtins.type')
         if init_method.info.fullname() == 'builtins.object':
-            # No non-default __init__ -> look at __new__ instead.
-            new_method = info.get_method('__new__')
-            if new_method and new_method.info.fullname() != 'builtins.object':
-                # Found one! Get signature from __new__.
-                return type_object_type_from_function(new_method, info, fallback)
             # Both are defined by object.  But if we've got a bogus
             # base class, we can't know for sure, so check for that.
             if info.fallback_to_any:
@@ -673,9 +683,14 @@ def type_object_type(info: TypeInfo, builtin_type: Callable[[str], Instance]) ->
                                    ret_type=any_type,
                                    fallback=builtin_type('builtins.function'))
                 return class_callable(sig, info, fallback, None)
-        # Construct callable type based on signature of __init__. Adjust
-        # return type and insert type arguments.
-        return type_object_type_from_function(init_method, info, fallback)
+
+        # Otherwise prefer __init__ in a tie. It isn't clear that this
+        # is the right thing, but __new__ caused problems with
+        # typeshed (#5647).
+        method = init_method
+    # Construct callable type based on signature of __init__. Adjust
+    # return type and insert type arguments.
+    return type_object_type_from_function(method, info, fallback)
 
 
 def type_object_type_from_function(init_or_new: FuncBase, info: TypeInfo,

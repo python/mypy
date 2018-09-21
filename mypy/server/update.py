@@ -122,7 +122,7 @@ from mypy.build import (
     BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
     process_fresh_modules, DEBUG_FINE_GRAINED,
 )
-from mypy.checker import DeferredNode
+from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
 from mypy.nodes import (
     MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
@@ -780,7 +780,7 @@ def find_targets_recursive(
         graph: Graph,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[DeferredNode]],
+        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[FineGrainedDeferredNode]],
                                                Set[str], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
@@ -788,7 +788,7 @@ def find_targets_recursive(
      * Dictionary from module id to a set of stale targets.
      * A set of module ids for unparsed modules with stale targets.
     """
-    result = {}  # type: Dict[str, Set[DeferredNode]]
+    result = {}  # type: Dict[str, Set[FineGrainedDeferredNode]]
     worklist = triggers
     processed = set()  # type: Set[str]
     stale_protos = set()  # type: Set[TypeInfo]
@@ -834,7 +834,7 @@ def find_targets_recursive(
 def reprocess_nodes(manager: BuildManager,
                     graph: Dict[str, State],
                     module_id: str,
-                    nodeset: Set[DeferredNode],
+                    nodeset: Set[FineGrainedDeferredNode],
                     deps: Dict[str, Set[str]]) -> Set[str]:
     """Reprocess a set of nodes within a single module.
 
@@ -850,7 +850,7 @@ def reprocess_nodes(manager: BuildManager,
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
     old_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
 
-    def key(node: DeferredNode) -> int:
+    def key(node: FineGrainedDeferredNode) -> int:
         # Unlike modules which are sorted by name within SCC,
         # nodes within the same module are sorted by line number, because
         # this is how they are processed in normal mode.
@@ -959,7 +959,7 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str,
 
 
 def update_deps(module_id: str,
-                nodes: List[DeferredNode],
+                nodes: List[FineGrainedDeferredNode],
                 graph: Dict[str, State],
                 deps: Dict[str, Set[str]],
                 options: Options) -> None:
@@ -977,7 +977,7 @@ def update_deps(module_id: str,
 
 
 def lookup_target(manager: BuildManager,
-                  target: str) -> Tuple[List[DeferredNode], Optional[TypeInfo]]:
+                  target: str) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
     """Look up a target by fully-qualified name.
 
     The first item in the return tuple is a list of deferred nodes that
@@ -1025,7 +1025,7 @@ def lookup_target(manager: BuildManager,
             # a deserialized TypeInfo with missing attributes.
             not_found()
             return [], None
-        result = [DeferredNode(file, None, None)]
+        result = [FineGrainedDeferredNode(file, None, None)]
         stale_info = None  # type: Optional[TypeInfo]
         if node.is_protocol:
             stale_info = node
@@ -1050,7 +1050,7 @@ def lookup_target(manager: BuildManager,
         # context will be wrong and it could be a partially initialized deserialized node.
         not_found()
         return [], None
-    return [DeferredNode(node, active_class_name, active_class)], None
+    return [FineGrainedDeferredNode(node, active_class_name, active_class)], None
 
 
 def is_verbose(manager: BuildManager) -> bool:
@@ -1058,7 +1058,7 @@ def is_verbose(manager: BuildManager) -> bool:
 
 
 def target_from_node(module: str,
-                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]
+                     node: Union[FuncDef, MypyFile, OverloadedFuncDef]
                      ) -> Optional[str]:
     """Return the target name corresponding to a deferred node.
 
@@ -1073,10 +1073,8 @@ def target_from_node(module: str,
             # Actually a reference to another module -- likely a stale dependency.
             return None
         return module
-    elif isinstance(node, (OverloadedFuncDef, FuncDef)):
+    else:  # OverloadedFuncDef or FuncDef
         if node.info:
             return '%s.%s' % (node.info.fullname(), node.name())
         else:
             return '%s.%s' % (module, node.name())
-    else:
-        assert False, "Lambda expressions can't be deferred in fine-grained incremental mode"

@@ -39,6 +39,7 @@ PER_MODULE_OPTIONS = {
     "ignore_errors",
     "ignore_missing_imports",
     "local_partial_types",
+    "mypyc",
     "no_implicit_optional",
     "show_none_errors",
     "strict_boolean",
@@ -172,6 +173,10 @@ class Options:
         self.cache_fine_grained = False
         # Read cache files in fine-grained incremental mode (cache must include dependencies)
         self.use_fine_grained_cache = False
+
+        # Tune certain behaviors when being used as a front-end to mypyc. Set per-module
+        # in modules being compiled. Not in the config file or command line.
+        self.mypyc = False
 
         # Paths of user plugins
         self.plugins = []  # type: List[str]

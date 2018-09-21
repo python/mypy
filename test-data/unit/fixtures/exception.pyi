@@ -14,3 +14,4 @@ class bool: pass
 class ellipsis: pass
 
 class BaseException: pass
+class Exception(BaseException): pass

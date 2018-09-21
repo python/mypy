@@ -58,6 +58,8 @@ def f() -> None:
     x: Type[A]
     y: Type[int]
 [out]
+<m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 
 [case testTypeTypeAttribute]
@@ -71,6 +73,8 @@ def f(x: Type[A]) -> None:
     x.f()
 [builtins fixtures/staticmethod.pyi]
 [out]
+<m.A.__init__> -> <m.f>, m.f
+<m.A.__new__> -> <m.f>, m.f
 <m.A.f> -> m, m.f
 <m.A> -> <m.f>, m.A, m.f
 
@@ -84,6 +88,8 @@ class C: pass
 def f() -> None:
     x: Union[int, Callable[[Type[A]], B], C]
 [out]
+<m.A.__init__> -> m.f
+<m.A.__new__> -> m.f
 <m.A> -> m.A, m.f
 <m.B> -> m.B, m.f
 <m.C> -> m.C, m.f
@@ -164,6 +170,8 @@ class M(type):
 class C(metaclass=M):
     pass
 [out]
+<mod.C.__init__> -> <m.f>, m.f
+<mod.C.__new__> -> <m.f>, m.f
 <mod.C.x> -> m.f
 <mod.C> -> <m.f>, m, m.f
 <mod.M.x> -> m.f
@@ -196,6 +204,8 @@ class M(type):
 class C(metaclass=M):
     pass
 [out]
+<mod.C.__init__> -> <m.f>, m.f
+<mod.C.__new__> -> <m.f>, m.f
 <mod.C> -> <m.f>, m, m.f
 <mod.M.__add__> -> m.f
 <mod.M.__radd__> -> m.f
@@ -271,6 +281,8 @@ class M(type):
 class C:
     __metaclass__ = M
 [out]
+<mod.C.__init__> -> <m.f>, m.f
+<mod.C.__new__> -> <m.f>, m.f
 <mod.C.x> -> m.f
 <mod.C> -> <m.f>, m, m.f
 <mod.M.x> -> m.f

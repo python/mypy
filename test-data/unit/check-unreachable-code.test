@@ -416,6 +416,25 @@ x = 1
 [builtins fixtures/ops.pyi]
 [out]
 
+[case testSysPlatformInFunctionImport3]
+from typing import Callable
+import sys
+
+def idf(x: Callable[[], None]) -> Callable[[], None]: return x
+
+@idf
+def foo() -> None:
+    if sys.platform == 'fictional':
+        import b as a
+    else:
+        import a
+    a.x
+[file a.py]
+x = 1
+[builtins fixtures/ops.pyi]
+[out]
+
+
 [case testSysPlatformInMethodImport2]
 import sys
 class A:

@@ -5123,6 +5123,50 @@ def outer() -> None:
 [out]
 [out2]
 
+[case testRecursiveAliasImported]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x)
+[file lib.pyi]
+from typing import List
+from other import B
+A = List[B]  # type: ignore
+[file other.pyi]
+from typing import List
+from lib import A
+B = List[A]
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'builtins.list[builtins.list[builtins.list[Any]]]'
+
+[case testRecursiveNamedTupleTypedDict]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x.x['x'])
+[file lib.pyi]
+from typing import NamedTuple
+from other import B
+A = NamedTuple('A', [('x', B)])  # type: ignore
+[file other.pyi]
+from mypy_extensions import TypedDict
+from lib import A
+B = TypedDict('B', {'x': A})
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[TypedDict('other.B', {'x': Any}), fallback=lib.A]'
+
 [case testFollowImportSkipNotInvalidatedOnPresent]
 # flags: --follow-imports=skip
 # cmd: mypy -m main
@@ -5193,3 +5237,117 @@ def f(x: str) -> None: pass
 [out]
 [out2]
 tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testOverrideByIdemAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C
+class C:  # type: ignore
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    pass
+C = C  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasGeneric]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    pass
+C = C[int]  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImported]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from other import C
+C = C  # type: ignore
+x: C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImportedReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C  # type: ignore
+from other import C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testConditionalExceptionAliasOverride]
+import a
+[file a.py]
+import lib
+try:
+    x = 1
+except lib.Exception as e:
+    pass
+[file a.py.2]
+import lib
+try:
+    x = 2
+except lib.Exception as e:
+    pass
+[file lib.py]
+try:
+    Exception = Exception
+except BaseException:
+    class Exception(BaseException): pass  # type: ignore
+
+try:
+    pass
+except Exception as e:
+    pass
+[builtins fixtures/exception.pyi]
+[out]
+[out2]
