@@ -4849,3 +4849,27 @@ reveal_type(b)                   # E: Revealed type is 'builtins.int'
 c = single_plausible([Other()])  # E: List item 0 has incompatible type "Other"; expected "str"
 reveal_type(c)                   # E: Revealed type is 'builtins.str'
 [builtins fixtures/list.pyi]
+
+[case testDisallowUntypedDecoratorsOverload]
+# flags: --disallow-untyped-decorators
+from typing import Any, Callable, overload, TypeVar
+
+F = TypeVar('F', bound=Callable[..., Any])
+
+@overload
+def dec(x: F) -> F: ...
+@overload
+def dec(x: str) -> Callable[[F], F]: ...
+def dec(x) -> Any:
+    pass
+
+@dec
+def f(name: str) -> int:
+    return 0
+
+@dec('abc')
+def g(name: str) -> int:
+    return 0
+
+reveal_type(f)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
+reveal_type(g)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
