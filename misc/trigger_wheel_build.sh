@@ -3,7 +3,7 @@
 REPO=travis-testing
 
 set -x
-git clone --recurse-submodules https://${GH_TOKEN}@github.com/$REPO.git
+git clone --recurse-submodules https://${GH_TOKEN}@github.com/msullivan/$REPO.git
 
 git config --global user.email "nobody"
 git config --global user.name "mypy wheels autopush"
