@@ -36,6 +36,10 @@ jobs:
     env:
     - TOXENV=lint
     - EXTRA_ARGS=
+  - name: "trigger a build of wheels"
+    python: 3.7
+    stage: deploy
+    script: test $TRAVIS_BRANCH = "master" && test $TRAVIS_PULL_REQUEST = "false" && ./misc/trigger_wheel_build.sh
 
 install:
 - pip install -U pip setuptools
@@ -45,8 +49,3 @@ install:
 script:
 - # tox -- $EXTRA_ARGS
 - true
-
-after_success:
-  - echo $TRAVIS_BRANCH
-  - echo $TRAVIS_PULL_REQUEST
-  - test $TRAVIS_BRANCH = "master" && test $TRAVIS_PULL_REQUEST = "false" && ./misc/trigger_wheel_build.sh
