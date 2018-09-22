@@ -12,7 +12,8 @@ COMMIT=$(git rev-parse HEAD)
 cd $REPO/mypy
 git fetch
 git checkout $COMMIT
-V=$(python3 -m mypy --version| cut -d" " -f2)
+V=$(python3 -m mypy --version)
+V=$(echo "$V" | cut -d" " -f2)
 cd ..
 git commit -am "Build wheels for mypy $V"
 git tag v$V
