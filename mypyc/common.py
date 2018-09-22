@@ -10,6 +10,7 @@ NEXT_LABEL_ATTR_NAME = '__mypyc_next_label__'
 TEMP_ATTR_NAME = '__mypyc_temp__'
 LAMBDA_NAME = '__mypyc_lambda__'
 SELF_NAME = '__mypyc_self__'
+INT_PREFIX = '__tmp_literal_int_'
 
 MAX_SHORT_INT = (1 << 62) - 1
 

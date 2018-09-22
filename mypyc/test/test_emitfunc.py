@@ -181,7 +181,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_new_list(self) -> None:
         self.assert_emit(PrimitiveOp([self.n, self.m], new_list_op, 55),
                          """cpy_r_r0 = PyList_New(2);
-                            if (cpy_r_r0 != NULL) {
+                            if (likely(cpy_r_r0 != NULL)) {
                                 PyList_SET_ITEM(cpy_r_r0, 0, cpy_r_n);
                                 PyList_SET_ITEM(cpy_r_r0, 1, cpy_r_m);
                             }

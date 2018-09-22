@@ -1597,7 +1597,7 @@ class ModuleIR:
             imports: List[str],
             functions: List[FuncIR],
             classes: List[ClassIR],
-            final_names: List[str]) -> None:
+            final_names: List[Tuple[str, RType]]) -> None:
         self.imports = imports[:]
         self.functions = functions
         self.classes = classes

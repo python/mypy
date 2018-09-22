@@ -265,24 +265,21 @@ class FunctionEmitterVisitor(OpVisitor[None], EmitterInterface):
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             name = '(PyObject *)%s' % name
-        if is_int_rprimitive(op.type):
-            self.emit_line('%s = CPyTagged_FromObject(%s);' % (dest, name))
-        else:
-            ann = ''
-            if op.ann:
-                s = repr(op.ann)
-                if not any(x in s for x in ('/*', '*/', '\0')):
-                    ann = ' /* %s */' % s
-            self.emit_line('%s = %s;%s' % (dest, name, ann))
+        ann = ''
+        if op.ann:
+            s = repr(op.ann)
+            if not any(x in s for x in ('/*', '*/', '\0')):
+                ann = ' /* %s */' % s
+        self.emit_line('%s = %s;%s' % (dest, name, ann))
 
     def visit_init_static(self, op: InitStatic) -> None:
         value = self.reg(op.value)
         prefix = self.PREFIX_MAP[op.namespace]
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
-        self.emit_line('Py_INCREF(%s);' % value)
         if op.namespace == NAMESPACE_TYPE:
             value = '(PyTypeObject *)%s' % value
         self.emit_line('%s = %s;' % (name, value))
+        self.emit_inc_ref(name, op.value.type)
 
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)

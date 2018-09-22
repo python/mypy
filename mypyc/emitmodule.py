@@ -8,14 +8,14 @@ from mypy.errors import CompileError
 from mypy.options import Options
 
 from mypyc import genops
-from mypyc.common import PREFIX, TOP_LEVEL_NAME
+from mypyc.common import PREFIX, TOP_LEVEL_NAME, INT_PREFIX
 from mypyc.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.emitfunc import generate_native_function, native_function_header
 from mypyc.emitclass import generate_class_type_decl, generate_class
 from mypyc.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
 )
-from mypyc.ops import FuncIR, ClassIR, ModuleIR, LiteralsMap, format_func
+from mypyc.ops import FuncIR, ClassIR, ModuleIR, LiteralsMap, format_func, RType, RTuple
 from mypyc.uninit import insert_uninit_checks
 from mypyc.refcount import insert_ref_count_opcodes
 from mypyc.exceptions import insert_exception_handling
@@ -117,10 +117,17 @@ class ModuleGenerator:
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
             self.declare_imports(module.imports, emitter)
-            self.declare_finals(module.final_names, emitter)
 
-        for identifier in self.literals.values():
-            self.declare_static_pyobject(identifier, emitter)
+        for (_, literal), identifier in self.literals.items():
+            if isinstance(literal, int):
+                symbol = emitter.static_name(identifier, None)
+                self.declare_global('CPyTagged ', symbol)
+            else:
+                self.declare_static_pyobject(identifier, emitter)
+
+        for module_name, module in self.modules:
+            # Finals must be last (types can depend on declared above)
+            self.declare_finals(module.final_names, emitter)
 
         for module in module_irs:
             for fn in module.functions:
@@ -177,8 +184,10 @@ class ModuleGenerator:
         for (_, literal), identifier in self.literals.items():
             symbol = emitter.static_name(identifier, None)
             if isinstance(literal, int):
+                actual_symbol = symbol
+                symbol = INT_PREFIX + symbol
                 emitter.emit_line(
-                    '{} = PyLong_FromString(\"{}\", NULL, 10);'.format(
+                    'PyObject * {} = PyLong_FromString(\"{}\", NULL, 10);'.format(
                         symbol, str(literal))
                 )
             elif isinstance(literal, float):
@@ -198,8 +207,13 @@ class ModuleGenerator:
             else:
                 assert False, ('Literals must be integers, floating point numbers, or strings,',
                                'but the provided literal is of type {}'.format(type(literal)))
-            emitter.emit_lines('if ({} == NULL)'.format(symbol),
+            emitter.emit_lines('if (unlikely({} == NULL))'.format(symbol),
                                '    return -1;')
+            # Ints have an unboxed representation.
+            if isinstance(literal, int):
+                emitter.emit_line(
+                    '{} = CPyTagged_FromObject({});'.format(actual_symbol, symbol)
+                )
 
         emitter.emit_lines(
             'is_initialized = 1;',
@@ -253,7 +267,7 @@ class ModuleGenerator:
                            '}')
 
         emitter.emit_lines('{} = PyModule_Create(&{}module);'.format(module_static, module_prefix),
-                           'if ({} == NULL)'.format(module_static),
+                           'if (unlikely({} == NULL))'.format(module_static),
                            '    return NULL;')
         emitter.emit_line(
             'PyObject *modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
@@ -261,7 +275,7 @@ class ModuleGenerator:
 
         module_globals = emitter.static_name('globals', module_name)
         emitter.emit_lines('{} = PyModule_GetDict({});'.format(module_globals, module_static),
-                           'if ({} == NULL)'.format(module_globals),
+                           'if (unlikely({} == NULL))'.format(module_globals),
                            '    return NULL;')
 
         # HACK: Manually instantiate generated classes here
@@ -271,7 +285,7 @@ class ModuleGenerator:
                 emitter.emit_lines(
                     '{t} = (PyTypeObject *)CPyType_FromTemplate({t}_template, NULL, modname);'.
                     format(t=type_struct))
-                emitter.emit_lines('if (!{})'.format(type_struct),
+                emitter.emit_lines('if (unlikely(!{}))'.format(type_struct),
                                    '    return NULL;')
 
         emitter.emit_lines('if (CPyLiteralsInit() < 0)',
@@ -351,10 +365,17 @@ class ModuleGenerator:
         for imp in imps:
             self.declare_module(imp, emitter)
 
-    def declare_finals(self, final_names: Iterable[str], emitter: Emitter) -> None:
-        for name in final_names:
+    def declare_finals(self, final_names: Iterable[Tuple[str, RType]], emitter: Emitter) -> None:
+        for name, typ in final_names:
             static_name = emitter.static_name(name, 'final')
-            self.declare_global('PyObject *', static_name, initializer='NULL')
+            # Here we rely on the fact that undefined value and error value are always the same
+            if isinstance(typ, RTuple):
+                # We need to inline because initializer must be static
+                undefined = '{{ {} }}'.format(''.join(emitter.tuple_undefined_value_helper(typ)))
+            else:
+                undefined = emitter.c_undefined_value(typ)
+            emitter.emit_line('static {}{} = {};'.format(emitter.ctype_spaced(typ), static_name,
+                                                         undefined))
 
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
         symbol = emitter.static_name(identifier, None)

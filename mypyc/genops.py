@@ -675,7 +675,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         self.blocks = []  # type: List[List[BasicBlock]]
         self.functions = []  # type: List[FuncIR]
         self.classes = []  # type: List[ClassIR]
-        self.final_names = []  # type: List[str]
+        self.final_names = []  # type: List[Tuple[str, RType]]
         self.modules = set(modules)
         self.callable_class_names = set()  # type: Set[str]
 
@@ -1336,24 +1336,22 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             else:
                 name = '{}.{}'.format(class_name, lvalue.name)
             assert name is not None, "Full name not set for variable"
-            self.final_names.append(name)
-            boxed = self.coerce(rvalue_reg, object_rprimitive, lvalue.line)
-            self.add(InitStatic(boxed, name, 'final'))
+            self.final_names.append((name, rvalue_reg.type))
+            self.add(InitStatic(rvalue_reg, name, 'final'))
 
     def load_final_static(self, fullname: str, typ: RType, line: int,
                           error_name: Optional[str] = None) -> Value:
         if error_name is None:
             error_name = fullname
         ok_block, error_block = BasicBlock(), BasicBlock()
-        boxed = self.add(LoadStatic(object_rprimitive, fullname, 'final', line=line))
-        self.add(Branch(boxed, error_block, ok_block, Branch.IS_ERROR, rare=True))
+        value = self.add(LoadStatic(typ, fullname, 'final', line=line))
+        self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
         self.activate_block(error_block)
         self.add(RaiseStandardError(RaiseStandardError.VALUE_ERROR,
                                     'value for final name "{}" was not set'.format(error_name),
                                     line))
         self.add(Unreachable())
         self.activate_block(ok_block)
-        value = self.coerce(boxed, typ, line)
         return value
 
     def load_final_literal_value(self, val: Union[int, str, bytes, float, bool],
