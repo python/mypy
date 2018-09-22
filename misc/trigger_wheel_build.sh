@@ -12,6 +12,7 @@ COMMIT=$(git rev-parse HEAD)
 cd $REPO/mypy
 git fetch
 git checkout $COMMIT
+pip install -r test-requirements.txt
 V=$(python3 -m mypy --version)
 V=$(echo "$V" | cut -d" " -f2)
 cd ..
