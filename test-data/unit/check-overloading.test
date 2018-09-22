@@ -4873,3 +4873,36 @@ def g(name: str) -> int:
 
 reveal_type(f)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
 reveal_type(g)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
+
+[case testOverloadBadArgumentsInferredToAny1]
+from typing import Union, Any, overload
+
+def bar(x: int) -> Union[int, Any]: ...
+
+@overload
+def foo(x: str) -> None: ...
+@overload
+def foo(x: int) -> None: ...
+def foo(x) -> None: pass
+
+foo(bar('lol'))  # E: Argument 1 to "bar" has incompatible type "str"; expected "int"
+
+[case testOverloadBadArgumentsInferredToAny2]
+from typing import Union, Iterable, Tuple, TypeVar, Generic, overload, Any
+
+class A:
+    def foo(self) -> Iterable[int]: pass
+
+def bar(x: int) -> Union[A, int]: ...
+
+_T = TypeVar('_T')
+
+@overload
+def foo() -> None: ...
+@overload
+def foo(iterable: Iterable[_T]) -> None: ...
+def foo(iterable = None) -> None: pass
+
+foo(bar('lol').foo())  # E: Argument 1 to "bar" has incompatible type "str"; expected "int" \
+                       # E: Item "int" of "Union[A, int]" has no attribute "foo"
+
