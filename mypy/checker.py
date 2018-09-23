@@ -1360,16 +1360,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # it can be checked for compatibility.
             original_type = base_attr.type
             original_node = base_attr.node
+            if isinstance(original_node, TypeAlias):
+                # Overriding a type alias is always an error, it is static by nature.
+                self.msg.cannot_overide_alias(original_node.name(), base.name(), defn)
+                return False
             if original_type is None:
                 if self.pass_num < self.last_pass:
-                    # If there are passes left, defer this node until next pass,
-                    # otherwise try reconstructing the method type from available information.
+                    # If there are passes left, defer this node until next pass...
                     self.defer_node(defn, defn.info)
                     return True
+                # ...otherwise try reconstructing the supertype from available information.
                 elif isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                     original_type = self.function_type(original_node)
                 elif isinstance(original_node, Decorator):
                     original_type = self.function_type(original_node.func)
+                elif isinstance(original_node, Var):
+                    original_type = AnyType(TypeOfAny.implementation_artifact)
                 else:
                     assert False, str(base_attr.node)
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
@@ -1845,6 +1851,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
 
+                if isinstance(base_node, TypeAlias):
+                    # Overriding a type alias is always an error, it is static by nature.
+                    self.msg.cannot_overide_alias(base_node.name(), base.name(), lvalue)
+                    return True
+
                 if base_type:
                     assert base_node is not None
                     if not self.check_compatibility_super(lvalue,
@@ -1923,6 +1934,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if base_var:
             base_node = base_var.node
             base_type = base_var.type
+
+            if isinstance(base_node, TypeAlias):
+                return None, base_node
+
             if isinstance(base_node, Decorator):
                 base_node = base_node.func
                 base_type = base_node.type

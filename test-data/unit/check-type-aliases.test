@@ -611,3 +611,33 @@ except E as e:
     reveal_type(e)  # E: Revealed type is '__main__.E'
 [builtins fixtures/exception.pyi]
 [out]
+
+[case testNoOverrideAliasInSubclassMethod]
+from typing import Any, Callable
+
+class Parent:
+    foo = Callable[..., int]
+
+class Child(Parent):
+    def foo(self, val: int) -> int: ...  # E: Cannot override type alias "foo" defined in base class "Parent"
+[out]
+
+[case testNoOverrideAliasInSubclassVar]
+from typing import Any, Callable
+
+class Parent:
+    foo = Callable[..., int]
+
+class Child(Parent):
+    foo: Callable[..., int]  # E: Cannot override type alias "foo" defined in base class "Parent"
+[out]
+
+[case testNoOverrideAliasInSubclassAlias]
+from typing import Any, Callable
+
+class Parent:
+    foo = Callable[..., int]
+
+class Child(Parent):
+    foo = Callable[..., int]  # E: Cannot override type alias "foo" defined in base class "Parent"
+[out]

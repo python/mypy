@@ -868,6 +868,10 @@ class MessageBuilder:
                 ' to Union' if isinstance(item, UnionType) else '')
         self.fail('The type alias{} is invalid in runtime context'.format(kind), ctx)
 
+    def cannot_overide_alias(self, name: str, base: str, ctx: Context) -> None:
+        self.fail('Cannot override type alias "{}" defined'
+                  ' in base class "{}"'.format(name, base), ctx)
+
     def could_not_infer_type_arguments(self, callee_type: CallableType, n: int,
                                        context: Context) -> None:
         callee_name = callable_name(callee_type)
