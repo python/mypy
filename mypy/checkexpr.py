@@ -329,7 +329,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
-        if not allow_none_return and isinstance(ret_type, NoneTyp):
+        if (not allow_none_return and isinstance(ret_type, NoneTyp) and
+                ret_type.explicit and not isinstance(callee_type, Overloaded)):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
@@ -3171,9 +3172,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(actual_item_type, AnyType):
                 expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
             else:
-                expr_type = NoneTyp()
+                # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
+                expr_type = NoneTyp(explicit=True)
 
-        if not allow_none_return and isinstance(expr_type, NoneTyp):
+        if not allow_none_return and isinstance(expr_type, NoneTyp) and expr_type.explicit:
             self.chk.msg.does_not_return_value(None, e)
         return expr_type
 

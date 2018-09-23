@@ -436,10 +436,13 @@ class NoneTyp(Type):
     This type can be written by users as 'None'.
     """
 
-    __slots__ = ()
+    __slots__ = ('explicit',)
 
-    def __init__(self, line: int = -1, column: int = -1) -> None:
+    def __init__(self, explicit: bool = False, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
+        # Does this `None` appears in an explicit type annotation?
+        # For all inferred `None` types this must be `False`.
+        self.explicit = explicit
 
     def can_be_true_default(self) -> bool:
         return False
@@ -454,12 +457,13 @@ class NoneTyp(Type):
         return visitor.visit_none_type(self)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'NoneTyp'}
+        return {'.class': 'NoneTyp',
+                'explicit': self.explicit}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'NoneTyp':
         assert data['.class'] == 'NoneTyp'
-        return NoneTyp()
+        return NoneTyp(data['explicit'])
 
 
 class ErasedType(Type):
