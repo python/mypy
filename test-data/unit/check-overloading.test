@@ -4873,3 +4873,76 @@ def g(name: str) -> int:
 
 reveal_type(f)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
 reveal_type(g)  # E: Revealed type is 'def (name: builtins.str) -> builtins.int'
+
+[case testOverloadBadArgumentsInferredToAny1]
+from typing import Union, Any, overload
+
+def bar(x: int) -> Union[int, Any]: ...
+
+@overload
+def foo(x: str) -> None: ...
+@overload
+def foo(x: int) -> None: ...
+def foo(x) -> None: pass
+
+foo(bar('lol'))  # E: Argument 1 to "bar" has incompatible type "str"; expected "int"
+
+[case testOverloadBadArgumentsInferredToAny2]
+from typing import Union, Iterable, Tuple, TypeVar, Generic, overload, Any
+
+class A:
+    def foo(self) -> Iterable[int]: pass
+
+def bar(x: int) -> Union[A, int]: ...
+
+_T = TypeVar('_T')
+
+@overload
+def foo() -> None: ...
+@overload
+def foo(iterable: Iterable[_T]) -> None: ...
+def foo(iterable = None) -> None: pass
+
+foo(bar('lol').foo())  # E: Argument 1 to "bar" has incompatible type "str"; expected "int" \
+                       # E: Item "int" of "Union[A, int]" has no attribute "foo"
+
+[case testOverloadInferringArgumentsUsingContext1]
+from typing import Optional, List, overload, TypeVar
+T = TypeVar('T')
+
+def g(x: Optional[T] = None) -> List[T]: ...
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: List[int]) -> List[int]: ...
+def f(x): pass
+
+reveal_type(f(g()))  # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testOverloadInferringArgumentsUsingContext2-skip]
+# This test case ought to work, but is maybe blocked by 
+# https://github.com/python/mypy/issues/4872?
+#
+# See https://github.com/python/mypy/pull/5660#discussion_r219669409 for
+# more context.
+
+from typing import Optional, List, overload, TypeVar
+T = TypeVar('T')
+@overload
+def g(x: List[str]) -> List[str]: ...
+@overload
+def g(x: List[int]) -> List[int]: ...
+def g(x):
+    pass
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: List[int]) -> List[int]: ...
+def f(x):
+    pass
+
+reveal_type(f(g([])))  # E: Revealed type is 'builtins.list[builtins.int]'
+[builtins fixtures/list.pyi]

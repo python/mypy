@@ -627,7 +627,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee = self.infer_function_type_arguments(
                     callee, args, arg_kinds, formal_to_actual, context)
 
-            arg_types = self.infer_arg_types_in_context2(
+            arg_types = self.infer_arg_types_in_context(
                 callee, args, arg_kinds, formal_to_actual)
 
             self.check_argument_count(callee, arg_types, arg_kinds,
@@ -655,13 +655,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee = callee.copy_modified(ret_type=ret_type)
             return callee.ret_type, callee
         elif isinstance(callee, Overloaded):
-            # Type check arguments in empty context. They will be checked again
-            # later in a context derived from the signature; these types are
-            # only used to pick a signature variant.
-            self.msg.disable_errors()
-            arg_types = self.infer_arg_types_in_context(None, args)
-            self.msg.enable_errors()
-
+            arg_types = self.infer_arg_types_in_empty_context(args)
             return self.check_overload_call(callee=callee,
                                             args=args,
                                             arg_types=arg_types,
@@ -672,7 +666,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                             context=context,
                                             arg_messages=arg_messages)
         elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
-            self.infer_arg_types_in_context(None, args)
+            self.infer_arg_types_in_empty_context(args)
             if isinstance(callee, AnyType):
                 return (AnyType(TypeOfAny.from_another_any, source_any=callee),
                         AnyType(TypeOfAny.from_another_any, source_any=callee))
@@ -744,38 +738,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
 
-    def infer_arg_types_in_context(self, callee: Optional[CallableType],
-                                   args: List[Expression]) -> List[Type]:
-        """Infer argument expression types using a callable type as context.
+    def infer_arg_types_in_empty_context(self, args: List[Expression]) -> List[Type]:
+        """Infer argument expression types in an empty context.
 
-        For example, if callee argument 2 has type List[int], infer the
-        argument expression with List[int] type context.
+        In short, we basically recurse on each argument without considering
+        in what context the argument was called.
         """
-        # TODO Always called with callee as None, i.e. empty context.
         res = []  # type: List[Type]
 
-        fixed = len(args)
-        if callee:
-            fixed = min(fixed, callee.max_fixed_args())
-
-        ctx = None
-        for i, arg in enumerate(args):
-            if i < fixed:
-                if callee and i < len(callee.arg_types):
-                    ctx = callee.arg_types[i]
-                arg_type = self.accept(arg, ctx)
-            else:
-                if callee and callee.is_var_arg:
-                    arg_type = self.accept(arg, callee.arg_types[-1])
-                else:
-                    arg_type = self.accept(arg)
+        for arg in args:
+            arg_type = self.accept(arg)
             if has_erased_component(arg_type):
                 res.append(NoneTyp())
             else:
                 res.append(arg_type)
         return res
 
-    def infer_arg_types_in_context2(
+    def infer_arg_types_in_context(
             self, callee: CallableType, args: List[Expression], arg_kinds: List[int],
             formal_to_actual: List[List[int]]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
@@ -859,7 +838,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # inferred again later.
             self.msg.disable_errors()
 
-            arg_types = self.infer_arg_types_in_context2(
+            arg_types = self.infer_arg_types_in_context(
                 callee_type, args, arg_kinds, formal_to_actual)
 
             self.msg.enable_errors()
@@ -933,7 +912,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 inferred_args[i] = None
         callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
 
-        arg_types = self.infer_arg_types_in_context2(
+        arg_types = self.infer_arg_types_in_context(
             callee_type, args, arg_kinds, formal_to_actual)
 
         inferred_args = infer_function_type_arguments(
