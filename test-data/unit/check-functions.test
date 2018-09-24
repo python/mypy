@@ -2246,8 +2246,7 @@ def h() -> Dict[Union[str, int], str]:
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[int, float]]"
+    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]")
 
 [builtins fixtures/dict.pyi]
 

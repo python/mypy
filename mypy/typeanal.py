@@ -228,7 +228,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         t.name), t)
                 return TypeVarType(tvar_def, t.line)
             elif fullname == 'builtins.None':
-                return NoneTyp(explicit=True)
+                return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType(TypeOfAny.explicit)
             elif fullname in ('typing.Final', 'typing_extensions.Final'):

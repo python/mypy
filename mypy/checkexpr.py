@@ -329,11 +329,24 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
-        if (not allow_none_return and isinstance(ret_type, NoneTyp) and
-                ret_type.explicit and not isinstance(callee_type, Overloaded)):
+        if (not allow_none_return and
+                isinstance(e.callee, RefExpr) and self.always_returns_none(e.callee)):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def always_returns_none(self, node: RefExpr) -> bool:
+        """Check if `node` refers to something explicitly annotated as _only_ returning None."""
+        if isinstance(node.node, FuncDef):
+            return (isinstance(node.node.type, CallableType) and
+                    isinstance(node.node.type.ret_type, NoneTyp))
+        if isinstance(node.node, OverloadedFuncDef):
+            return all(isinstance(item.type, CallableType) and
+                       isinstance(item.type.ret_type, NoneTyp) for item in node.node.items)
+        if isinstance(node.node, Var):
+            return (not node.node.is_inferred and isinstance(node.node.type, CallableType) and
+                    isinstance(node.node.type.ret_type, NoneTyp))
+        return False
 
     def check_runtime_protocol_test(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
@@ -3173,9 +3186,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
             else:
                 # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
-                expr_type = NoneTyp(explicit=True)
+                expr_type = NoneTyp()
 
-        if not allow_none_return and isinstance(expr_type, NoneTyp) and expr_type.explicit:
+        if not allow_none_return and isinstance(expr_type, NoneTyp):
             self.chk.msg.does_not_return_value(None, e)
         return expr_type
 
