@@ -744,7 +744,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         In short, we basically recurse on each argument without considering
         in what context the argument was called.
         """
-        # TODO Always called with callee as None, i.e. empty context.
         res = []  # type: List[Type]
 
         for arg in args:
