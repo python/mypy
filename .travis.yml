@@ -39,7 +39,7 @@ jobs:
   - name: "trigger a build of wheels"
     stage: deploy
     python: 3.7
-    script: test $TRAVIS_BRANCH = "master" && test $TRAVIS_PULL_REQUEST = "false" && ./misc/trigger_wheel_build.sh
+    script: if [[ $TRAVIS_BRANCH = "master" && $TRAVIS_PULL_REQUEST = "false" ]]; then ./misc/trigger_wheel_build.sh; fi
 
 install:
 - pip install -U pip setuptools
