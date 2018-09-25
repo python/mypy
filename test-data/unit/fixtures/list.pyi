@@ -1,6 +1,6 @@
 # Builtins stub used in list-related test cases.
 
-from typing import TypeVar, Generic, Iterable, Iterator, overload
+from typing import TypeVar, Generic, Iterable, Iterator, Sequence, overload
 
 T = TypeVar('T')
 
@@ -10,7 +10,7 @@ class object:
 class type: pass
 class ellipsis: pass
 
-class list(Generic[T]):
+class list(Sequence[T]):
     @overload
     def __init__(self) -> None: pass
     @overload

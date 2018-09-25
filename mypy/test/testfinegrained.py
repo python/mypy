@@ -5,18 +5,22 @@ incremental steps. We verify that each step produces the expected output.
 
 See the comment at the top of test-data/unit/fine-grained.test for more
 information.
+
+N.B.: Unlike most of the other test suites, testfinegrained does not
+rely on an alt_lib_path for finding source files. This means that they
+can test interactions with the lib_path that is built implicitly based
+on specified sources.
 """
 
 import os
 import re
 
-from typing import List, Set, Tuple, Optional, cast
+from typing import List, cast
 
 from mypy import build
-from mypy.build import BuildManager, BuildSource
+from mypy.build import BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.server.update import FineGrainedBuildManager
 from mypy.test.config import test_temp_dir
 from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile
@@ -28,7 +32,6 @@ from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_server import Server
 from mypy.main import parse_config_file
 from mypy.find_sources import create_source_list
-from mypy.fscache import FileSystemMetaCache
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -43,8 +46,6 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-blockers.test',
         'fine-grained-modules.test',
     ]
-    base_path = test_temp_dir
-    optional_out = True
     # Whether to use the fine-grained cache in the testing. This is overridden
     # by a trivial subclass to produce a suite that uses the cache.
     use_cache = False
@@ -77,22 +78,13 @@ class FineGrainedSuite(DataSuite):
             f.write(main_src)
 
         options = self.get_options(main_src, testcase, build_cache=False)
-        for name, _ in testcase.files:
-            if 'mypy.ini' in name:
-                config = name  # type: Optional[str]
-                break
-        else:
-            config = None
-        if config:
-            parse_config_file(options, config)
-        server = Server(options, alt_lib_path=test_temp_dir)
+        build_options = self.get_options(main_src, testcase, build_cache=True)
+        server = Server(options)
 
+        num_regular_incremental_steps = self.get_build_steps(main_src)
         step = 1
         sources = self.parse_sources(main_src, step, options)
-        if self.use_cache:
-            build_options = self.get_options(main_src, testcase, build_cache=True)
-            if config:
-                parse_config_file(build_options, config)
+        if step <= num_regular_incremental_steps:
             messages = self.build(build_options, sources)
         else:
             messages = self.run_check(server, sources)
@@ -118,7 +110,11 @@ class FineGrainedSuite(DataSuite):
                     # Delete file
                     os.remove(op.path)
             sources = self.parse_sources(main_src, step, options)
-            new_messages = self.run_check(server, sources)
+
+            if step <= num_regular_incremental_steps:
+                new_messages = self.build(build_options, sources)
+            else:
+                new_messages = self.run_check(server, sources)
 
             updated = []  # type: List[str]
             changed = []  # type: List[str]
@@ -175,6 +171,11 @@ class FineGrainedSuite(DataSuite):
         if options.follow_imports == 'normal':
             options.follow_imports = 'error'
 
+        for name, _ in testcase.files:
+            if 'mypy.ini' in name:
+                parse_config_file(options, name)
+                break
+
         return options
 
     def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
@@ -187,8 +188,7 @@ class FineGrainedSuite(DataSuite):
               sources: List[BuildSource]) -> List[str]:
         try:
             result = build.build(sources=sources,
-                                 options=options,
-                                 alt_lib_path=test_temp_dir)
+                                 options=options)
         except CompileError as e:
             return e.messages
         return result.errors
@@ -201,6 +201,15 @@ class FineGrainedSuite(DataSuite):
             filtered = sorted(filtered)
             result.append(('%d: %s' % (n + 2, ', '.join(filtered))).strip())
         return result
+
+    def get_build_steps(self, program_text: str) -> int:
+        """Get the number of regular incremental steps to run, from the test source"""
+        if not self.use_cache:
+            return 0
+        m = re.search('# num_build_steps: ([0-9]+)$', program_text, flags=re.MULTILINE)
+        if m is not None:
+            return int(m.group(1))
+        return 1
 
     def parse_sources(self, program_text: str,
                       incremental_step: int,

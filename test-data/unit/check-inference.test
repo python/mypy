@@ -856,12 +856,58 @@ s = s_s() # E: Incompatible types in assignment (expression has type "Set[str]",
 [builtins fixtures/set.pyi]
 
 [case testSetWithStarExpr]
-
 s = {1, 2, *(3, 4)}
 t = {1, 2, *s}
 reveal_type(s)  # E: Revealed type is 'builtins.set[builtins.int*]'
 reveal_type(t)  # E: Revealed type is 'builtins.set[builtins.int*]'
 [builtins fixtures/set.pyi]
+
+[case testListLiteralWithFunctionsErasesNames]
+def f1(x: int) -> int: ...
+def g1(y: int) -> int: ...
+def h1(x: int) -> int: ...
+
+list_1 = [f1, g1]
+list_2 = [f1, h1]
+reveal_type(list_1)  # E: Revealed type is 'builtins.list[def (builtins.int) -> builtins.int]'
+reveal_type(list_2)  # E: Revealed type is 'builtins.list[def (x: builtins.int) -> builtins.int]'
+
+def f2(x: int, z: str) -> int: ...
+def g2(y: int, z: str) -> int: ...
+def h2(x: int, z: str) -> int: ...
+
+list_3 = [f2, g2]
+list_4 = [f2, h2]
+reveal_type(list_3)  # E: Revealed type is 'builtins.list[def (builtins.int, z: builtins.str) -> builtins.int]'
+reveal_type(list_4)  # E: Revealed type is 'builtins.list[def (x: builtins.int, z: builtins.str) -> builtins.int]'
+[builtins fixtures/list.pyi]
+
+[case testListLiteralWithSimilarFunctionsErasesName]
+from typing import Union
+
+class A: ...
+class B(A): ...
+class C: ...
+class D: ...
+
+def f(x: Union[A, C], y: B) -> A: ...
+def g(z: Union[B, D], y: A) -> B: ...
+def h(x: Union[B, D], y: A) -> B: ...
+
+list_1 = [f, g]
+list_2 = [f, h]
+reveal_type(list_1)  # E: Revealed type is 'builtins.list[def (__main__.B, y: __main__.B) -> __main__.A]'
+reveal_type(list_2)  # E: Revealed type is 'builtins.list[def (x: __main__.B, y: __main__.B) -> __main__.A]'
+[builtins fixtures/list.pyi]
+
+[case testListLiteralWithNameOnlyArgsDoesNotEraseNames]
+def f(*, x: int) -> int: ...
+def g(*, y: int) -> int: ...
+def h(*, x: int) -> int: ...
+
+list_1 = [f, g]  # E: List item 0 has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[NamedArg(int, 'y')], int]"
+list_2 = [f, h]
+[builtins fixtures/list.pyi]
 
 
 -- For statements
@@ -1424,7 +1470,10 @@ def f(blocks: Any): # E: Name 'Any' is not defined
 [case testSpecialCaseEmptyListInitialization2]
 def f(blocks: object):
     to_process = [] # E: Need type annotation for 'to_process'
-    to_process = list(blocks) # E: No overload variant of "list" matches argument types [builtins.object]
+    to_process = list(blocks) # E: No overload variant of "list" matches argument type "object" \
+                              # N: Possible overload variant: \
+                              # N:     def [T] __init__(self, x: Iterable[T]) -> List[T] \
+                              # N:     <1 more non-matching overload not shown>
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1505,7 +1554,7 @@ if object():
 [case testPartiallyInitializedVariableDoesNotEscapeScope1]
 def f() -> None:
     x = None
-    reveal_type(x)  # E: Revealed type is 'builtins.None'
+    reveal_type(x)  # E: Revealed type is 'None'
 x = 1
 [out]
 
@@ -1563,7 +1612,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:5: error: "None" has no attribute "__iter__"
+main:5: error: "None" has no attribute "__iter__" (not iterable)
 
 [case testPartialTypeErrorSpecialCase2]
 # This used to crash.
@@ -1584,7 +1633,7 @@ class A:
             pass
 [builtins fixtures/for.pyi]
 [out]
-main:4: error: "None" has no attribute "__iter__"
+main:4: error: "None" has no attribute "__iter__" (not iterable)
 
 
 -- Multipass
@@ -2042,7 +2091,7 @@ def f() -> None:
     x = 1
 
 # TODO: "Any" could be a better type here to avoid multiple error messages
-reveal_type(x) # E: Revealed type is 'builtins.None'
+reveal_type(x) # E: Revealed type is 'None'
 
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types
@@ -2053,10 +2102,10 @@ def f():
     x = 1
 
 # TODO: "Any" could be a better type here to avoid multiple error messages
-reveal_type(x) # E: Revealed type is 'builtins.None'
+reveal_type(x) # E: Revealed type is 'None'
 
 [case testLocalPartialTypesWithGlobalInitializedToNone3]
-# flags: --local-partial-types
+# flags: --local-partial-types --no-strict-optional
 x = None
 
 def f() -> None:
@@ -2076,10 +2125,10 @@ def f() -> None:
 
 x = ''
 def g() -> None:
-    reveal_type(x) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+    reveal_type(x) # E: Revealed type is 'Union[builtins.str, None]'
 
 [case testLocalPartialTypesWithGlobalInitializedToNone4]
-# flags: --local-partial-types
+# flags: --local-partial-types --no-strict-optional
 a = None
 
 def f() -> None:
@@ -2087,7 +2136,7 @@ def f() -> None:
 
 # TODO: This should probably be 'builtins.str', since there could be a
 #     call that causes a non-None value to be assigned
-reveal_type(a)  # E: Revealed type is 'builtins.None'
+reveal_type(a)  # E: Revealed type is 'None'
 a = ''
 reveal_type(a)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/list.pyi]
@@ -2197,7 +2246,7 @@ def f() -> None:
 [builtins fixtures/list.pyi]
 
 [case testLocalPartialTypesWithNestedFunction3]
-# flags: --local-partial-types
+# flags: --local-partial-types --no-strict-optional
 def f() -> None:
     a = None
     def g() -> None:
@@ -2216,7 +2265,7 @@ class A:
 class B(A):
     x = None
 
-reveal_type(B.x) # E: Revealed type is 'builtins.None'
+reveal_type(B.x) # E: Revealed type is 'None'
 
 [case testLocalPartialTypesWithInheritance2]
 # flags: --local-partial-types --strict-optional
@@ -2252,8 +2301,8 @@ class C(B):
     x = None
 
 # TODO: Inferring None below is unsafe (https://github.com/python/mypy/issues/3208)
-reveal_type(B.x)  # E: Revealed type is 'builtins.None'
-reveal_type(C.x)  # E: Revealed type is 'builtins.None'
+reveal_type(B.x)  # E: Revealed type is 'None'
+reveal_type(C.x)  # E: Revealed type is 'None'
 
 [case testLocalPartialTypesWithInheritance2-skip]
 # flags: --local-partial-types
@@ -2270,7 +2319,7 @@ class B(A):
     x = None
     x = Y()
 
-reveal_type(B.x) # E: revealed type is 'Union[__main__.Y, builtins.None]'
+reveal_type(B.x) # E: revealed type is 'Union[__main__.Y, None]'
 
 [case testLocalPartialTypesBinderSpecialCase]
 # flags: --local-partial-types
@@ -2303,3 +2352,118 @@ class C:
     def f(self, x) -> None:
         # TODO: It would be better for the type to be Any here
         self.a.y  # E: "None" has no attribute "y"
+
+-- Special case for assignment to '_'
+-- ----------------------------------
+
+[case testUnusedTargetLocal]
+def foo() -> None:
+    _ = 0
+    _ = ''
+
+[case testUnusedTargetNotGlobal]
+_ = 0
+_ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testUnusedTargetNotClass]
+class C:
+    _ = 0
+    _ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testUnusedTargetTupleUnpacking]
+def foo() -> None:
+    _, _ = (0, '')
+    _ = 0
+    _ = ''
+def bar() -> None:
+    t = (0, '')
+    _, _ = t
+    _ = 0
+    _ = ''
+
+[case testUnusedTargetMultipleTargets]
+def foo() -> None:
+    _ = x = 0
+    _ = y = ''
+    _ = 0
+    _ = ''
+def bar() -> None:
+    x = _ = 0
+    y = _ = ''
+    _ = 0
+    _ = ''
+    x + 0
+    y + ''
+    x + ''  # E: Unsupported operand types for + ("int" and "str")
+    y + 0  # E: Unsupported operand types for + ("str" and "int")
+
+[case testUnusedTargetNotImport]
+import d, c, b, a
+[file _.py]
+def f(): pass
+[file m.py]
+def f(): pass
+_ = f
+_ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+[file a.py]
+def foo() -> None:
+    import _
+    _.f()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+[file b.py]
+def foo() -> None:
+    import m as _
+    _.f()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type Module)
+[file c.py]
+def foo() -> None:
+    from m import _
+    _()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+[file d.py]
+def foo() -> None:
+    from m import f as _
+    _()
+    _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+[builtins fixtures/module.pyi]
+
+[case testUnusedTargetNotClass]
+def foo() -> None:
+    class _:
+        pass
+    _().method()  # E: "_" has no attribute "method"
+
+[case testUnusedTargetNotDef]
+def foo() -> None:
+    def _() -> int:
+        pass
+    _() + ''  # E: Unsupported operand types for + ("int" and "str")
+
+[case testUnusedTargetForLoop]
+def f() -> None:
+    a = [(0, '', 0)]
+    for _, _, x in a:
+        x = 0
+        x = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    _ = 0
+    _ = ''
+[builtins fixtures/list.pyi]
+
+[case testUnusedTargetWithClause]
+class C:
+    def __enter__(self) -> int: pass
+    def __exit__(self, *args): pass
+def f() -> None:
+    with C() as _: pass
+    _ = 0
+    _ = ''
+
+[case testUnusedTargetNotExceptClause]
+# Things don't work for except clauses.
+# This is due to the implementation, but it's just as well.
+def f() -> None:
+    try: pass
+    except BaseException as _:
+        _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "BaseException")
+        _ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "BaseException")
+[builtins fixtures/exception.pyi]

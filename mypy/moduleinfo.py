@@ -14,6 +14,10 @@ no stub for a module.
 
 from typing import Set
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 
 third_party_modules = {
     # From Python 3 Wall of Superpowers (https://python3wos.appspot.com/)
@@ -228,7 +232,7 @@ third_party_modules = {
 
     # for use in tests
     '__dummy_third_party1',
-}
+}  # type: Final
 
 # Modules and packages common to Python 2.7 and 3.x.
 common_std_lib_modules = {
@@ -270,9 +274,11 @@ common_std_lib_modules = {
     'decimal',
     'difflib',
     'dis',
+    'distutils',
     'doctest',
     'dummy_threading',
     'email',
+    'encodings',
     'fcntl',
     'filecmp',
     'fileinput',
@@ -428,7 +434,7 @@ common_std_lib_modules = {
     # fake names to use in tests
     '__dummy_stdlib1',
     '__dummy_stdlib2',
-}
+}  # type: Final
 
 # Python 2 standard library modules.
 python2_std_lib_modules = common_std_lib_modules | {
@@ -504,7 +510,7 @@ python2_std_lib_modules = common_std_lib_modules | {
     'whichdb',
     'xmllib',
     'xmlrpclib',
-}
+}  # type: Final
 
 # Python 3 standard library modules (based on Python 3.5.0).
 python3_std_lib_modules = common_std_lib_modules | {
@@ -545,7 +551,7 @@ python3_std_lib_modules = common_std_lib_modules | {
     'xmlrpc',
     'xxlimited',
     'zipapp',
-}
+}  # type: Final
 
 
 def is_third_party_module(id: str) -> bool:

@@ -106,10 +106,10 @@ class Errors:
     import_ctx = None  # type: List[Tuple[str, int]]
 
     # Path name prefix that is removed from all paths, if set.
-    ignore_prefix = None  # type: str
+    ignore_prefix = None  # type: Optional[str]
 
     # Path to current file.
-    file = None  # type: str
+    file = ''  # type: str
 
     # Ignore errors on these lines of each file.
     ignored_lines = None  # type: Dict[str, Set[int]]
@@ -506,7 +506,7 @@ class Errors:
             while (j >= 0 and errors[j][0] == errors[i][0] and
                     errors[j][1] == errors[i][1]):
                 if (errors[j][3] == errors[i][3] and
-                        # Allow duplicate notes in overload conficts reporting
+                        # Allow duplicate notes in overload conflicts reporting.
                         not (errors[i][3] == 'note' and
                              errors[i][4].strip() in allowed_duplicates
                              or errors[i][4].strip().startswith('def ')) and
@@ -548,7 +548,7 @@ class CompileError(Exception):
         self.module_with_blocker = module_with_blocker
 
 
-def remove_path_prefix(path: str, prefix: str) -> str:
+def remove_path_prefix(path: str, prefix: Optional[str]) -> str:
     """If path starts with prefix, return copy of path with the prefix removed.
     Otherwise, return path. If path is None, return None.
     """

@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import List, Tuple, Optional, cast
+from typing import List, Tuple, Optional, Union, cast
 
 from mypy.nodes import (
     Expression, Context, TypeInfo, AssignmentStmt, NameExpr, CallExpr, RefExpr, StrExpr,
@@ -63,7 +63,7 @@ class EnumCallAnalyzer:
         if not ok:
             # Error. Construct dummy return value.
             return self.build_enum_call_typeinfo('Enum', [], fullname)
-        name = cast(StrExpr, call.args[0]).value
+        name = cast(Union[StrExpr, UnicodeExpr], call.args[0]).value
         if name != var_name or is_func_scope:
             # Give it a unique name derived from the line number.
             name += '@' + str(call.line)
@@ -80,6 +80,7 @@ class EnumCallAnalyzer:
         base = self.api.named_type_or_none(fullname)
         assert base is not None
         info = self.api.basic_new_typeinfo(name, base)
+        info.metaclass_type = info.calculate_metaclass_type()
         info.is_enum = True
         for item in items:
             var = Var(item)
@@ -111,7 +112,8 @@ class EnumCallAnalyzer:
         elif isinstance(args[1], (TupleExpr, ListExpr)):
             seq_items = args[1].items
             if all(isinstance(seq_item, (StrExpr, UnicodeExpr)) for seq_item in seq_items):
-                items = [cast(StrExpr, seq_item).value for seq_item in seq_items]
+                items = [cast(Union[StrExpr, UnicodeExpr], seq_item).value
+                         for seq_item in seq_items]
             elif all(isinstance(seq_item, (TupleExpr, ListExpr))
                      and len(seq_item.items) == 2
                      and isinstance(seq_item.items[0], (StrExpr, UnicodeExpr))

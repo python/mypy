@@ -2,6 +2,7 @@
 
 from abc import abstractmethod, abstractproperty
 from typing import Optional, List, Callable
+from mypy_extensions import trait
 
 from mypy.nodes import (
     Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF
@@ -10,18 +11,22 @@ from mypy.util import correct_relative_import
 from mypy.types import Type, FunctionLike, Instance
 from mypy.tvar_scope import TypeVarScope
 
+MYPY = False
+if False:
+    from typing_extensions import Final
 
 # Priorities for ordering of patches within the final "patch" phase of semantic analysis
 # (after pass 3):
 
 # Fix forward references (needs to happen first)
-PRIORITY_FORWARD_REF = 0
+PRIORITY_FORWARD_REF = 0  # type: Final
 # Fix fallbacks (does joins)
-PRIORITY_FALLBACKS = 1
+PRIORITY_FALLBACKS = 1  # type: Final
 # Checks type var values (does subtype checks)
-PRIORITY_TYPEVAR_VALUES = 2
+PRIORITY_TYPEVAR_VALUES = 2  # type: Final
 
 
+@trait
 class SemanticAnalyzerCoreInterface:
     """A core abstract interface to generic semantic analyzer functionality.
 
@@ -52,6 +57,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
 
+@trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     """A limited abstract interface to some generic semantic analyzer pass 2 functionality.
 
@@ -84,7 +90,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
-                  aliasing: bool = False,
+                  allow_unbound_tvars: bool = False,
                   third_pass: bool = False) -> Type:
         raise NotImplementedError
 

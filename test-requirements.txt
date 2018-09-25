@@ -1,11 +1,15 @@
+attrs>=18.0
 flake8
 flake8-bugbear; python_version >= '3.5'
 flake8-pyi; python_version >= '3.6'
-lxml==4.1.1
+lxml==4.2.4
+mypy_extensions==0.4.0
 psutil==5.4.0
-pytest>=3.0
-pytest-xdist>=1.18
+pytest>=3.4
+pytest-xdist>=1.22
 pytest-cov>=2.4.0
 typed-ast>=1.1.0,<1.2.0
 typing>=3.5.2; python_version < '3.5'
 py>=1.5.2
+virtualenv
+setuptools

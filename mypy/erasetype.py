@@ -3,22 +3,21 @@ from typing import Optional, Container, Callable
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, TypeTranslator, TypeList, UninhabitedType, TypeType, TypeOfAny
+    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny
 )
-from mypy import experiments
+from mypy.nodes import ARG_STAR, ARG_STAR2
 
 
 def erase_type(typ: Type) -> Type:
     """Erase any type variables from a type.
 
-    Also replace tuple types with the corresponding concrete types. Replace
-    callable types with empty callable types.
+    Also replace tuple types with the corresponding concrete types.
 
     Examples:
       A -> A
       B[X] -> B[Any]
       Tuple[A, B] -> tuple
-      Callable[...] -> Callable[[], None]
+      Callable[[A1, A2, ...], R] -> Callable[..., Any]
       Type[X] -> Type[Any]
     """
 
@@ -28,7 +27,8 @@ def erase_type(typ: Type) -> Type:
 class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_unbound_type(self, t: UnboundType) -> Type:
-        assert False, 'Not supported'
+        # TODO: replace with an assert after UnboundType can't leak from semantic analysis.
+        return AnyType(TypeOfAny.from_error)
 
     def visit_any(self, t: AnyType) -> Type:
         return t
@@ -58,11 +58,19 @@ class EraseTypeVisitor(TypeVisitor[Type]):
 
     def visit_callable_type(self, t: CallableType) -> Type:
         # We must preserve the fallback type for overload resolution to work.
-        ret_type = NoneTyp()  # type: Type
-        return CallableType([], [], [], ret_type, t.fallback)
+        any_type = AnyType(TypeOfAny.special_form)
+        return CallableType(
+            arg_types=[any_type, any_type],
+            arg_kinds=[ARG_STAR, ARG_STAR2],
+            arg_names=[None, None],
+            ret_type=any_type,
+            fallback=t.fallback,
+            is_ellipsis_args=True,
+            implicit=True,
+        )
 
     def visit_overloaded(self, t: Overloaded) -> Type:
-        return t.items()[0].accept(self)
+        return t.fallback.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
         return t.fallback.accept(self)

@@ -293,8 +293,14 @@ class A:
     @overload
     def __init__(self, x: str) -> None: pass
 [out2]
-tmp/a.py:2: error: No overload variant of "A" matches argument types [builtins.object]
-tmp/a.py:7: error: No overload variant of "__init__" of "A" matches argument types [builtins.object]
+tmp/a.py:2: error: No overload variant of "A" matches argument type "object"
+tmp/a.py:2: note: Possible overload variants:
+tmp/a.py:2: note:     def A(self, x: int) -> A
+tmp/a.py:2: note:     def A(self, x: str) -> A
+tmp/a.py:7: error: No overload variant of "__init__" of "A" matches argument type "object"
+tmp/a.py:7: note: Possible overload variants:
+tmp/a.py:7: note:     def __init__(self, x: int) -> None
+tmp/a.py:7: note:     def __init__(self, x: str) -> None
 
 [case testSerialize__new__]
 import a
@@ -728,7 +734,7 @@ from typing import Optional
 x: Optional[int]
 def f(x: int) -> None: pass
 [out2]
-tmp/a.py:2: error: Revealed type is 'Union[builtins.int, builtins.None]'
+tmp/a.py:2: error: Revealed type is 'Union[builtins.int, None]'
 tmp/a.py:3: error: Argument 1 to "f" has incompatible type "Optional[int]"; expected "int"
 
 --
@@ -1017,7 +1023,7 @@ reveal_type(b.x)
 [file b.py]
 x: None
 [out2]
-tmp/a.py:2: error: Revealed type is 'builtins.None'
+tmp/a.py:2: error: Revealed type is 'None'
 
 --
 -- TypedDict
@@ -1314,3 +1320,16 @@ C = str
 [out2]
 -- TODO: Should be 'builtins.str'
 tmp/a.py:2: error: Revealed type is 'Any'
+
+[case testSerializeNestedClassStuff]
+# flags: --verbose
+import a
+[file a.py]
+import b
+[file a.py.2]
+import b
+#
+[file b.py]
+def foo() -> None:
+    class Foo:
+        class Bar: pass

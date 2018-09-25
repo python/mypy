@@ -1,18 +1,19 @@
 """Calculation of the least upper bound types (joins)."""
 
 from collections import OrderedDict
-from typing import cast, List, Optional
+from typing import List, Optional
 
 from mypy.types import (
     Type, AnyType, NoneTyp, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
-    TupleType, TypedDictType, ErasedType, TypeList, UnionType, FunctionLike, Overloaded,
+    TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded,
     PartialType, DeletedType, UninhabitedType, TypeType, true_or_false, TypeOfAny
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
-    is_protocol_implementation
+    is_protocol_implementation, find_member
 )
+from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT
 
 from mypy import experiments
 
@@ -153,6 +154,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 return nominal
             return structural
         elif isinstance(self.s, FunctionLike):
+            if t.type.is_protocol:
+                call = unpack_callback_protocol(t)
+                if call:
+                    return join_types(call, self.s)
             return join_types(t, self.s.fallback)
         elif isinstance(self.s, TypeType):
             return join_types(t, self.s)
@@ -173,8 +178,11 @@ class TypeJoinVisitor(TypeVisitor[Type]):
         elif isinstance(self.s, Overloaded):
             # Switch the order of arguments to that we'll get to visit_overloaded.
             return join_types(t, self.s)
-        else:
-            return join_types(t.fallback, self.s)
+        elif isinstance(self.s, Instance) and self.s.type.is_protocol:
+            call = unpack_callback_protocol(self.s)
+            if call:
+                return join_types(t, call)
+        return join_types(t.fallback, self.s)
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         # This is more complex than most other cases. Here are some
@@ -223,6 +231,10 @@ class TypeJoinVisitor(TypeVisitor[Type]):
                 else:
                     return Overloaded(result)
             return join_types(t.fallback, s.fallback)
+        elif isinstance(s, Instance) and s.type.is_protocol:
+            call = unpack_callback_protocol(s)
+            if call:
+                return join_types(t, call)
         return join_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
@@ -348,7 +360,6 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     """Return True if t and s have identical numbers of
     arguments, default arguments and varargs.
     """
-
     return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args and
             t.is_var_arg == s.is_var_arg)
 
@@ -366,6 +377,7 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     else:
         fallback = s.fallback
     return t.copy_modified(arg_types=arg_types,
+                           arg_names=combine_arg_names(t, s),
                            ret_type=join_types(t.ret_type, s.ret_type),
                            fallback=fallback,
                            name=None)
@@ -383,9 +395,40 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     else:
         fallback = s.fallback
     return t.copy_modified(arg_types=arg_types,
+                           arg_names=combine_arg_names(t, s),
                            ret_type=join_types(t.ret_type, s.ret_type),
                            fallback=fallback,
                            name=None)
+
+
+def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
+    """Produces a list of argument names compatible with both callables.
+
+    For example, suppose 't' and 's' have the following signatures:
+
+    - t: (a: int, b: str, X: str) -> None
+    - s: (a: int, b: str, Y: str) -> None
+
+    This function would return ["a", "b", None]. This information
+    is then used above to compute the join of t and s, which results
+    in a signature of (a: int, b: str, str) -> None.
+
+    Note that the third argument's name is omitted and 't' and 's'
+    are both valid subtypes of this inferred signature.
+
+    Precondition: is_similar_types(t, s) is true.
+    """
+    num_args = len(t.arg_types)
+    new_names = []
+    named = (ARG_NAMED, ARG_NAMED_OPT)
+    for i in range(num_args):
+        t_name = t.arg_names[i]
+        s_name = s.arg_names[i]
+        if t_name == s_name or t.arg_kinds[i] in named or s.arg_kinds[i] in named:
+            new_names.append(t_name)
+        else:
+            new_names.append(None)
+    return new_names
 
 
 def object_from_instance(instance: Instance) -> Instance:
@@ -404,3 +447,10 @@ def join_type_list(types: List[Type]) -> Type:
     for t in types[1:]:
         joined = join_types(joined, t)
     return joined
+
+
+def unpack_callback_protocol(t: Instance) -> Optional[Type]:
+    assert t.type.is_protocol
+    if t.type.protocol_members == ['__call__']:
+        return find_member('__call__', t, t)
+    return None

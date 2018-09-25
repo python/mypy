@@ -48,13 +48,14 @@ import traceback
 from collections import defaultdict
 
 from typing import (
-    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, Union, cast
+    Any, List, Dict, Tuple, Iterable, Iterator, Mapping, Optional, NamedTuple, Set, cast
 )
 
 import mypy.build
 import mypy.parse
 import mypy.errors
 import mypy.traverser
+import mypy.util
 from mypy import defaults
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
@@ -63,14 +64,18 @@ from mypy.nodes import (
     IfStmt, ReturnStmt, ImportAll, ImportFrom, Import, FuncDef, FuncBase, TempNode,
     ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, ARG_NAMED_OPT,
 )
-from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
-from mypy.stubutil import is_c_module, write_header
+from mypy.stubgenc import generate_stub_for_c_module
+from mypy.stubutil import is_c_module, write_header, parse_all_signatures, find_unique_signatures
 from mypy.options import Options as MypyOptions
 from mypy.types import (
-    Type, TypeStrVisitor, AnyType, CallableType,
+    Type, TypeStrVisitor, CallableType,
     UnboundType, NoneTyp, TupleType, TypeList,
 )
 from mypy.visitor import NodeVisitor
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 Options = NamedTuple('Options', [('pyversion', Tuple[int, int]),
                                  ('no_import', bool),
@@ -160,7 +165,9 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        module_path = mypy.build.FindModuleCache().find_module(module, ['.'] + search_path)
+        search_paths = mypy.build.SearchPaths(('.',) + tuple(search_path), (), (), ())
+        module_path = mypy.build.FindModuleCache().find_module(module, search_paths,
+                                                               interpreter)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))
@@ -205,7 +212,9 @@ def generate_stub(path: str,
                   include_private: bool = False
                   ) -> None:
 
-    source, _ = mypy.util.read_with_python_encoding(path, pyversion)
+    with open(path, 'rb') as f:
+        data = f.read()
+    source = mypy.util.decode_python_encoding(data, pyversion)
     options = MypyOptions()
     options.python_version = pyversion
     try:
@@ -231,12 +240,12 @@ def generate_stub(path: str,
 
 # What was generated previously in the stub file. We keep track of these to generate
 # nicely formatted output (add empty line between non-empty classes, for example).
-EMPTY = 'EMPTY'
-FUNC = 'FUNC'
-CLASS = 'CLASS'
-EMPTY_CLASS = 'EMPTY_CLASS'
-VAR = 'VAR'
-NOT_IN_ALL = 'NOT_IN_ALL'
+EMPTY = 'EMPTY'  # type: Final
+FUNC = 'FUNC'  # type: Final
+CLASS = 'CLASS'  # type: Final
+EMPTY_CLASS = 'EMPTY_CLASS'  # type: Final
+VAR = 'VAR'  # type: Final
+NOT_IN_ALL = 'NOT_IN_ALL'  # type: Final
 
 
 class AnnotationPrinter(TypeStrVisitor):
@@ -814,28 +823,33 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         return self.is_top_level() and name in self._toplevel_names
 
 
+class SelfTraverser(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        self.results = []  # type: List[Tuple[str, Expression]]
+
+    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        lvalue = o.lvalues[0]
+        if (isinstance(lvalue, MemberExpr) and
+                isinstance(lvalue.expr, NameExpr) and
+                lvalue.expr.name == 'self'):
+            self.results.append((lvalue.name, o.rvalue))
+
+
 def find_self_initializers(fdef: FuncBase) -> List[Tuple[str, Expression]]:
-    results = []  # type: List[Tuple[str, Expression]]
+    traverser = SelfTraverser()
+    fdef.accept(traverser)
+    return traverser.results
 
-    class SelfTraverser(mypy.traverser.TraverserVisitor):
-        def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-            lvalue = o.lvalues[0]
-            if (isinstance(lvalue, MemberExpr) and
-                    isinstance(lvalue.expr, NameExpr) and
-                    lvalue.expr.name == 'self'):
-                results.append((lvalue.name, o.rvalue))
 
-    fdef.accept(SelfTraverser())
-    return results
+class ReturnSeeker(mypy.traverser.TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        self.found = True
 
 
 def has_return_statement(fdef: FuncBase) -> bool:
-    class ReturnSeeker(mypy.traverser.TraverserVisitor):
-        def __init__(self) -> None:
-            self.found = False
-
-        def visit_return_stmt(self, o: ReturnStmt) -> None:
-            self.found = True
 
     seeker = ReturnSeeker()
     fdef.accept(seeker)
@@ -995,7 +1009,7 @@ def usage(exit_nonzero: bool=True) -> None:
                           respect __all__)
           --include-private
                           generate stubs for objects and members considered private
-                          (single leading undescore and no trailing underscores)
+                          (single leading underscore and no trailing underscores)
           --doc-dir PATH  use .rst documentation in PATH (this may result in
                           better stubs in some cases; consider setting this to
                           DIR/Python-X.Y.Z/Doc/library)

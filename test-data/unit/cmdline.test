@@ -5,6 +5,9 @@
 --
 --   # cmd: mypy <options>
 --
+-- Note that # flags: --some-flag IS NOT SUPPORTED.
+-- Use # cmd: mypy --some-flag ...
+--
 -- '== Return code: <value>' is added to the output when the process return code
 -- is "nonobvious" -- that is, when it is something other than 0 if there are no
 -- messages and 1 if there are.
@@ -94,6 +97,7 @@ sub.pkg is not a valid Python package name
 mypy: can't decode file 'a.py': unknown encoding: uft-8
 == Return code: 2
 
+-- '
 [case testCannotIgnoreDuplicateModule]
 # cmd: mypy one/mod/__init__.py two/mod/__init__.py
 [file one/mod/__init__.py]
@@ -157,9 +161,9 @@ def f():
 [file mypy.ini]
 [[mypy]
 disallow_untyped_defs = True
-[[mypy-y*]
+[[mypy-y]
 disallow_untyped_defs = False
-[[mypy-z*]
+[[mypy-z]
 disallow_untyped_calls = True
 [file x.py]
 def f(a):
@@ -181,7 +185,7 @@ z.py:1: error: Function is missing a type annotation
 z.py:4: error: Call to untyped function "f" in typed context
 x.py:1: error: Function is missing a type annotation
 
-[case testPerFileConfigSectionMultipleMatches]
+[case testPerFileConfigSectionMultipleMatchesDisallowed]
 # cmd: mypy xx.py xy.py yx.py yy.py
 [file mypy.ini]
 [[mypy]
@@ -202,18 +206,15 @@ def g(a: int) -> int: return f(a)
 def f(a): pass
 def g(a: int) -> int: return f(a)
 [out]
-yy.py:2: error: Call to untyped function "f" in typed context
-yx.py:1: error: Function is missing a type annotation
-yx.py:2: error: Call to untyped function "f" in typed context
-xy.py:1: error: Function is missing a type annotation
-xy.py:2: error: Call to untyped function "f" in typed context
-xx.py:1: error: Function is missing a type annotation
+mypy.ini: [mypy-*x*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+mypy.ini: [mypy-*y*]: Patterns must be fully-qualified module names, optionally with '*' in some components (e.g spam.*.eggs.*)
+== Return code: 0
 
 [case testMultipleGlobConfigSection]
 # cmd: mypy x.py y.py z.py
 [file mypy.ini]
 [[mypy]
-[[mypy-x*,z*]
+[[mypy-x.*,z.*]
 disallow_untyped_defs = True
 [file x.py]
 def f(a): pass
@@ -507,13 +508,13 @@ python_version = 2.6
 mypy.ini: [mypy]: python_version: Python 2.6 is not supported (must be 2.7)
 == Return code: 0
 
-[case testPythonVersionTooOld32]
+[case testPythonVersionTooOld33]
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-python_version = 3.2
+python_version = 3.3
 [out]
-mypy.ini: [mypy]: python_version: Python 3.2 is not supported (must be 3.3 or higher)
+mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or higher)
 == Return code: 0
 
 [case testPythonVersionTooNew28]
@@ -541,11 +542,11 @@ mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be
 python_version = 2.7
 [out]
 
-[case testPythonVersionAccepted33]
+[case testPythonVersionAccepted34]
 # cmd: mypy -c pass
 [file mypy.ini]
 [[mypy]
-python_version = 3.3
+python_version = 3.4
 [out]
 
 [case testPythonVersionAccepted36]
@@ -572,7 +573,7 @@ main.py:3: error: Argument 1 to "f" becomes "Any" due to an unfollowed import
 # cmd: mypy m.py
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -597,7 +598,7 @@ m.py:9: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -617,7 +618,7 @@ m.py:5: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -631,7 +632,7 @@ m.py:2: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -651,7 +652,7 @@ m.py:6: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -673,7 +674,7 @@ m.py:4: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -698,7 +699,7 @@ m.py:10: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -716,7 +717,7 @@ m.py:5: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -733,7 +734,7 @@ m.py:3: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -748,7 +749,7 @@ m.py:3: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -766,7 +767,7 @@ m.py:4: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -784,7 +785,7 @@ m.py:4: error: Explicit "Any" is not allowed
 
 [file mypy.ini]
 [[mypy]
-[[mypy-m*]
+[[mypy-m]
 disallow_any_explicit = True
 
 [file m.py]
@@ -1008,28 +1009,40 @@ class ShouldNotBeFine(x): ...
 [out]
 y.py:5: error: Class cannot subclass 'x' (has type 'Any')
 
-[case testDeterministicSectionOrdering]
+[case testSectionInheritance]
 # cmd: mypy a
 [file a/__init__.py]
+0()
+[file a/foo.py]
+0()
 [file a/b/__init__.py]
 [file a/b/c/__init__.py]
+0()
 [file a/b/c/d/__init__.py]
 [file a/b/c/d/e/__init__.py]
-0()
+from typing import List
+def g(x: List) -> None: pass
+g(None)
 [file mypy.ini]
 [[mypy]
+disallow_any_generics = False
 [[mypy-a.*]
 ignore_errors = True
 [[mypy-a.b.*]
+disallow_any_generics = True
 ignore_errors = True
 [[mypy-a.b.c.*]
 ignore_errors = True
 [[mypy-a.b.c.d.*]
 ignore_errors = True
+[[mypy-a.b.c.d.e.*]
+ignore_errors = True
+strict_optional = True
 [[mypy-a.b.c.d.e]
 ignore_errors = False
 [out]
-a/b/c/d/e/__init__.py:1: error: "int" not callable
+a/b/c/d/e/__init__.py:2: error: Missing type parameters for generic type
+a/b/c/d/e/__init__.py:3: error: Argument 1 to "g" has incompatible type "None"; expected "List[Any]"
 
 [case testDisallowUntypedDefsAndGenerics]
 # cmd: mypy a.py
@@ -1048,6 +1061,7 @@ a.py:1: error: Function is missing a type annotation
 [out]
 mypy: can't read file 'nope.py': No such file or directory
 == Return code: 2
+--'
 
 [case testParseError]
 # cmd: mypy a.py
@@ -1113,3 +1127,136 @@ follow_imports_for_stubs = True
 [file main.py]
 import math
 math.frobnicate()
+
+[case testShadowFile1]
+# cmd: mypy --shadow-file source.py shadow.py source.py
+[file source.py]
+def foo() -> str:
+    return "bar"
+[file shadow.py]
+def bar() -> str:
+    return 14
+[out]
+source.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testShadowFile2]
+# cmd: mypy --shadow-file s1.py shad1.py --shadow-file s2.py shad2.py --shadow-file s3.py shad3.py s1.py s2.py s3.py s4.py
+[file s1.py]
+def foo() -> str:
+    return "bar"
+[file shad1.py]
+def bar() -> str:
+    return 14
+[file s2.py]
+def baz() -> str:
+    return 14
+[file shad2.py]
+def baz() -> int:
+    return 14
+[file s3.py]
+def qux() -> str:
+    return "bar"
+[file shad3.py]
+def foo() -> int:
+    return [42]
+[file s4.py]
+def foo() -> str:
+    return 9
+[out]
+s4.py:2: error: Incompatible return value type (got "int", expected "str")
+s3.py:2: error: Incompatible return value type (got "List[int]", expected "int")
+s1.py:2: error: Incompatible return value type (got "int", expected "str")
+
+[case testConfigWarnUnusedSection1]
+# cmd: mypy foo.py quux.py spam/eggs.py
+[file mypy.ini]
+[[mypy]
+warn_unused_configs = True
+[[mypy-bar]
+[[mypy-foo]
+[[mypy-baz.*]
+[[mypy-quux.*]
+[[mypy-spam.*]
+[[mypy-spam.eggs]
+[[mypy-emarg.*]
+[[mypy-emarg.hatch]
+-- Currently we don't treat an unstructured pattern like a.*.b as unused
+-- if it matches another section (like a.x.b). This would be reasonable
+-- to change. '
+[[mypy-a.*.b]
+[[mypy-a.*.c]
+[[mypy-a.x.b]
+[file foo.py]
+[file quux.py]
+[file spam/__init__.py]
+[file spam/eggs.py]
+[out]
+Warning: unused section(s) in mypy.ini: [mypy-bar], [mypy-baz.*], [mypy-emarg.*], [mypy-emarg.hatch], [mypy-a.*.c], [mypy-a.x.b]
+== Return code: 0
+
+[case testConfigUnstructuredGlob]
+# cmd: mypy emarg foo
+[file mypy.ini]
+[[mypy]
+ignore_errors = true
+[[mypy-*.lol]
+ignore_errors = false
+[[mypy-emarg.*]
+ignore_errors = false
+[[mypy-emarg.*.villip.*]
+ignore_errors = true
+[[mypy-emarg.hatch.villip.mankangulisk]
+ignore_errors = false
+[file emarg/__init__.py]
+[file emarg/foo.py]
+fail
+[file emarg/villip.py]
+fail
+[file emarg/hatch/__init__.py]
+[file emarg/hatch/villip/__init__.py]
+[file emarg/hatch/villip/nus.py]
+fail
+[file emarg/hatch/villip/mankangulisk.py]
+fail
+[file foo/__init__.py]
+[file foo/lol.py]
+fail
+[out]
+foo/lol.py:1: error: Name 'fail' is not defined
+emarg/foo.py:1: error: Name 'fail' is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
+
+[case testPackageRootEmpty]
+# cmd: mypy --package-root= a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import a.b.c
+
+[case testPackageRootNonEmpty]
+# cmd: mypy --package-root=a/ a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import b.c
+
+[case testPackageRootMultiple1]
+# cmd: mypy --package-root=. --package-root=a a/b/c.py d.py main.py
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
+[case testPackageRootMultiple2]
+# cmd: mypy --package-root=a/ --package-root=./ a/b/c.py d.py main.py
+[file a/b/c.py]
+[file d.py]
+[file main.py]
+import b.c
+import d
+
+[case testCacheMap]
+-- This just checks that a valid --cache-map triple is accepted.
+-- (Errors are too verbose to check.)
+# cmd: mypy a.py --cache-map a.py a.meta.json a.data.json
+[file a.py]
+[out]

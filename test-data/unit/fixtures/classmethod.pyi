@@ -12,8 +12,8 @@ class type:
 class function: pass
 
 # Dummy definitions.
-classmethod = object()
-staticmethod = object()
+class classmethod: pass
+class staticmethod: pass
 
 class int:
     @classmethod

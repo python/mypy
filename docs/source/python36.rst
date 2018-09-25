@@ -3,44 +3,36 @@
 New features in Python 3.6
 ==========================
 
-Python 3.6 was `released
-<https://www.python.org/downloads/release/python-360/>`_ in
-December 2016.  As of mypy 0.510 all language features new in Python
-3.6 are supported.
+Mypy has supported all language features new in Python 3.6 starting with mypy
+0.510. This section introduces Python 3.6 features that interact with
+type checking.
 
 Syntax for variable annotations (`PEP 526 <https://www.python.org/dev/peps/pep-0526>`_)
 ---------------------------------------------------------------------------------------
 
-Python 3.6 feature: variables (in global, class or local scope) can
-now have type annotations using either of the two forms:
+Python 3.6 introduced a new syntax for variable annotations (in
+global, class and local scopes).  There are two variants of the
+syntax, with or without an initializer expression:
 
 .. code-block:: python
 
    from typing import Optional
-   foo: Optional[int]
-   bar: List[str] = []
-
-Mypy fully supports this syntax, interpreting them as equivalent to
-
-.. code-block:: python
-
-   foo = None  # type: Optional[int]
-   bar = []  # type: List[str]
+   foo: Optional[int]  # No initializer
+   bar: List[str] = []  # Initializer
 
 .. _class-var:
 
-An additional feature defined in PEP 526 is also supported: you can
-mark names intended to be used as class variables with ``ClassVar``.
-In a pinch you can also use ClassVar in ``# type`` comments.
-Example:
+You can also mark names intended to be used as class variables with
+``ClassVar``.  In a pinch you can also use ClassVar in ``# type``
+comments.  Example:
 
 .. code-block:: python
 
    from typing import ClassVar
 
    class C:
-       x: int  # instance variable
-       y: ClassVar[int]  # class variable
+       x: int  # Instance variable
+       y: ClassVar[int]  # Class variable
        z = None  # type: ClassVar[int]
 
        def foo(self) -> None:
@@ -50,37 +42,15 @@ Example:
    C.y = 0  # This is OK
 
 
-Literal string formatting (`PEP 498 <https://www.python.org/dev/peps/pep-0498>`_)
----------------------------------------------------------------------------------
-
-Python 3.6 feature: string literals of the form
-``f"text {expression} text"`` evaluate ``expression`` using the
-current evaluation context (locals and globals).
-
-Mypy fully supports this syntax and type-checks the ``expression``.
-
-Underscores in numeric literals (`PEP 515 <https://www.python.org/dev/peps/pep-0515>`_)
----------------------------------------------------------------------------------------
-
-Python 3.6 feature: numeric literals can contain underscores,
-e.g. ``1_000_000``.
-
-Mypy fully supports this syntax:
-
-.. code-block:: python
-
-   precise_val = 1_000_000.000_000_1
-   hexes: List[int] = []
-   hexes.append(0x_FF_FF_FF_FF)
-
 .. _async_generators_and_comprehensions:
 
 Asynchronous generators (`PEP 525 <https://www.python.org/dev/peps/pep-0525>`_) and comprehensions (`PEP 530 <https://www.python.org/dev/peps/pep-0530>`_)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Python 3.6 allows coroutines defined with ``async def`` (PEP 492) to be
-generators, i.e. contain ``yield`` expressions, and introduces a syntax for
-asynchronous comprehensions. Mypy fully supports these features, for example:
+generators, i.e. contain ``yield`` expressions. It also introduced a syntax for
+asynchronous comprehensions. This example uses the ``AsyncIterator`` type to
+define an async generator:
 
 .. code-block:: python
 
@@ -93,4 +63,5 @@ asynchronous comprehensions. Mypy fully supports these features, for example:
 New named tuple syntax
 ----------------------
 
-Python 3.6 supports an alternative syntax for named tuples. See :ref:`named-tuples`.
+Python 3.6 supports an alternative, class-based syntax for named tuples.
+See :ref:`named-tuples` for the details.

@@ -4,11 +4,13 @@ import subprocess
 import sys
 import time
 import shutil
+from os.path import dirname
 
 from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional
 
 from mypy import defaults
 from mypy.test.config import test_temp_dir
+import mypy.api as api
 
 import pytest  # type: ignore  # no pytest in typeshed
 
@@ -25,6 +27,17 @@ skip = pytest.mark.skip
 # AssertStringArraysEqual displays special line alignment helper messages if
 # the first different line has at least this many characters,
 MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
+
+
+def run_mypy(args: List[str]) -> None:
+    __tracebackhide__ = True
+    outval, errval, status = api.run(args + ['--show-traceback',
+                                             '--no-site-packages',
+                                             '--no-silence-site-packages'])
+    if status != 0:
+        sys.stdout.write(outval)
+        sys.stderr.write(errval)
+        pytest.fail(msg="Sample check failed", pytrace=False)
 
 
 def assert_string_arrays_equal(expected: List[str], actual: List[str],
@@ -332,17 +345,23 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
     flag_list = None
     if flags:
         flag_list = flags.group(1).split()
+        flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
         targets, options = process_options(flag_list, require_targets=False)
         if targets:
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError('Specifying targets via the flags pragma is not supported.')
     else:
         options = Options()
+        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
+        options.strict_optional = False
 
     # Allow custom python version to override testcase_pyversion
     if (not flag_list or
             all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
+
+    if testcase.config.getoption('--mypy-verbose'):
+        options.verbosity = testcase.config.getoption('--mypy-verbose')
 
     return options
 

@@ -187,10 +187,10 @@ class A:
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> __main__.A'
 reveal_type(A.__eq__)  # E: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__ne__)  # E: Revealed type is 'def (self: __main__.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -367,6 +367,19 @@ A([1], '2')  # E: Cannot infer type argument 1 of "A"
 
 [builtins fixtures/list.pyi]
 
+[case testAttrsGenericClassmethod]
+from typing import TypeVar, Generic, Optional
+import attr
+T = TypeVar('T')
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    x: Optional[T]
+    @classmethod
+    def clsmeth(cls) -> None:
+       reveal_type(cls)  # E: Revealed type is 'Type[__main__.A[T`1]]'
+
+[builtins fixtures/classmethod.pyi]
+
 [case testAttrsForwardReference]
 import attr
 @attr.s(auto_attribs=True)
@@ -416,7 +429,7 @@ class A:
     b: str = attr.ib()
     @classmethod
     def new(cls) -> A:
-       reveal_type(cls)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
+       reveal_type(cls)  # E: Revealed type is 'Type[__main__.A]'
        return cls(6, 'hello')
     @classmethod
     def bad(cls) -> A:
@@ -426,6 +439,38 @@ class A:
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int, b: builtins.str) -> __main__.A'
 a = A.new()
 reveal_type(a.foo) # E: Revealed type is 'def () -> builtins.int'
+[builtins fixtures/classmethod.pyi]
+
+[case testAttrsOtherOverloads]
+import attr
+from typing import overload, Union
+
+@attr.s
+class A:
+    a = attr.ib()
+    b = attr.ib(default=3)
+
+    @classmethod
+    def other(cls) -> str:
+        return "..."
+
+    @overload
+    @classmethod
+    def foo(cls, x: int) -> int: ...
+
+    @overload
+    @classmethod
+    def foo(cls, x: str) -> str: ...
+
+    @classmethod
+    def foo(cls, x: Union[int, str]) -> Union[int, str]:
+        reveal_type(cls)            # E: Revealed type is 'Type[__main__.A]'
+        reveal_type(cls.other())    # E: Revealed type is 'builtins.str'
+        return x
+
+reveal_type(A.foo(3))      # E: Revealed type is 'builtins.int'
+reveal_type(A.foo("foo"))  # E: Revealed type is 'builtins.str'
+
 [builtins fixtures/classmethod.pyi]
 
 [case testAttrsDefaultDecorator]
@@ -532,6 +577,32 @@ class C:
 
 [builtins fixtures/list.pyi]
 
+[case testAttrsUsingBadConverter]
+import attr
+from typing import overload
+@overload
+def bad_overloaded_converter(x: int, y: int) -> int:
+    ...
+@overload
+def bad_overloaded_converter(x: str, y: str) -> str:
+    ...
+def bad_overloaded_converter(x, y=7):
+    return x
+def bad_converter() -> str:
+    return ''
+@attr.dataclass
+class A:
+    bad: str = attr.ib(converter=bad_converter)
+    bad_overloaded: int = attr.ib(converter=bad_overloaded_converter)
+reveal_type(A)
+[out]
+main:15: error: Cannot determine __init__ type from converter
+main:15: error: Argument "converter" has incompatible type "Callable[[], str]"; expected "Callable[[Any], str]"
+main:16: error: Cannot determine __init__ type from converter
+main:16: error: Argument "converter" has incompatible type overloaded function; expected "Callable[[Any], int]"
+main:17: error: Revealed type is 'def (bad: Any, bad_overloaded: Any) -> __main__.A'
+[builtins fixtures/list.pyi]
+
 [case testAttrsUsingUnsupportedConverter]
 import attr
 class Thing:
@@ -542,9 +613,9 @@ def factory(default: int):
    ...
 @attr.s
 class C:
-    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter function, only named functions are currently supported
-    y: str = attr.ib(converter=lambda x: x)  # E: Unsupported converter function, only named functions are currently supported
-    z: str = attr.ib(converter=factory(8))  # E: Unsupported converter function, only named functions are currently supported
+    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter, only named functions and types are currently supported
+    y: str = attr.ib(converter=lambda x: x)  # E: Unsupported converter, only named functions and types are currently supported
+    z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions and types are currently supported
 reveal_type(C)  # E: Revealed type is 'def (x: Any, y: Any, z: Any) -> __main__.C'
 [builtins fixtures/list.pyi]
 
@@ -567,6 +638,24 @@ reveal_type(A)  # E: Revealed type is 'def (x: builtins.int) -> __main__.A'
 reveal_type(A(15).x)  # E: Revealed type is 'builtins.str'
 [builtins fixtures/list.pyi]
 
+[case testAttrsUsingConverterWithTypes]
+from typing import overload
+import attr
+
+@attr.dataclass
+class A:
+    x: str
+
+@attr.s
+class C:
+    x: complex = attr.ib(converter=complex)
+    y: int = attr.ib(converter=int)
+    z: A = attr.ib(converter=A)
+
+o = C("1", "2", "3")
+o = C(1, 2, "3")
+[builtins fixtures/attr.pyi]
+
 [case testAttrsCmpWithSubclasses]
 import attr
 @attr.s
@@ -578,23 +667,23 @@ class C(A, B): pass
 @attr.s
 class D(A): pass
 
-reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(B.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(C.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(D.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(B.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(C.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(D.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 
 A() < A()
 B() < B()
-A() < B() # E: Unsupported operand types for > ("B" and "A")
+A() < B() # E: Unsupported operand types for < ("A" and "B")
 
 C() > A()
 C() > B()
 C() > C()
-C() > D() # E: Unsupported operand types for < ("D" and "C")
+C() > D() # E: Unsupported operand types for > ("C" and "D")
 
 D() >= A()
-D() >= B()  # E: Unsupported operand types for <= ("B" and "D")
-D() >= C()  # E: Unsupported operand types for <= ("C" and "D")
+D() >= B()  # E: Unsupported operand types for >= ("D" and "B")
+D() >= C()  # E: Unsupported operand types for >= ("D" and "C")
 D() >= D()
 
 A() <= 1  # E: Unsupported operand types for <= ("A" and "int")
@@ -677,13 +766,13 @@ reveal_type(A)  # E: Revealed type is 'def (b: Any, a: Any) -> __main__.A'
 class B:
    a: int = attr.ib(default=8)
    b: int = attr.ib()
-   a: int = attr.ib()  # E: Name 'a' already defined
+   a: int = attr.ib()  # E: Name 'a' already defined on line 10
 reveal_type(B)  # E: Revealed type is 'def (b: builtins.int, a: builtins.int) -> __main__.B'
 @attr.s(auto_attribs=True)
 class C:
    a: int = 8
    b: int
-   a: int = attr.ib()  # E: Name 'a' already defined
+   a: int = attr.ib()  # E: Name 'a' already defined on line 16
 reveal_type(C)  # E: Revealed type is 'def (a: builtins.int, b: builtins.int) -> __main__.C'
 [builtins fixtures/bool.pyi]
 
@@ -771,3 +860,77 @@ class FFrozen(F):
     def bar(self) -> bool:
         return self._cb(5, 6)
 [builtins fixtures/callable.pyi]
+
+[case testAttrsWithFactory]
+from typing import List
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: List[int] = attr.ib(factory=list)
+    y: int = attr.ib(factory=my_factory)
+A()
+[builtins fixtures/list.pyi]
+
+[case testAttrsFactoryAndDefault]
+import attr
+@attr.s
+class A:
+    x: int = attr.ib(factory=int, default=7)  # E: Can't pass both `default` and `factory`.
+[builtins fixtures/bool.pyi]
+
+[case testAttrsFactoryBadReturn]
+import attr
+def my_factory() -> int:
+    return 7
+@attr.s
+class A:
+    x: int = attr.ib(factory=list)  # E: Incompatible types in assignment (expression has type "List[T]", variable has type "int")
+    y: str = attr.ib(factory=my_factory) # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+[builtins fixtures/list.pyi]
+
+[case testAttrsDefaultAndInit]
+import attr
+
+@attr.s
+class C:
+   a = attr.ib(init=False, default=42)
+   b = attr.ib()  # Ok because previous attribute is init=False
+   c = attr.ib(default=44)
+   d = attr.ib(init=False)  # Ok because this attribute is init=False
+   e = attr.ib()  # E: Non-default attributes not allowed after default attributes.
+
+[builtins fixtures/bool.pyi]
+
+[case testAttrsOptionalConverter]
+# flags: --strict-optional
+import attr
+from attr.converters import optional
+from typing import Optional
+
+def converter(s:int) -> str:
+    return 'hello'
+
+
+@attr.s
+class A:
+    y: Optional[int] = attr.ib(converter=optional(int))
+    z: Optional[str] = attr.ib(converter=optional(converter))
+
+
+A(None, None)
+
+[builtins fixtures/attr.pyi]
+
+[case testAttrsTypeVarNoCollision]
+from typing import TypeVar, Generic
+import attr
+
+T = TypeVar("T", bytes, str)
+
+# Make sure the generated __le__ (and friends) don't use T for their arguments.
+@attr.s(auto_attribs=True)
+class A(Generic[T]):
+    v: T
+[builtins fixtures/attr.pyi]

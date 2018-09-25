@@ -37,3 +37,15 @@ y = 0.0
 y = 1
 y.x # E: "int" has no attribute "x"
 [builtins fixtures/primitives.pyi]
+
+[case testTypePromotionsDontInterfereWithProtocols]
+from typing import TypeVar, Union, Protocol
+
+class SupportsFloat(Protocol):
+    def __float__(self) -> float: pass
+
+T = TypeVar('T')
+def f(x: Union[SupportsFloat, T]) -> Union[SupportsFloat, T]: pass
+f(0)  # should not crash
+[builtins fixtures/primitives.pyi]
+[out]

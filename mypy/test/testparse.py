@@ -9,6 +9,8 @@ from mypy.options import Options
 
 
 class ParserSuite(DataSuite):
+    required_out_section = True
+    base_path = '.'
     files = ['parse.test',
              'parse-python2.test']
 
@@ -48,6 +50,8 @@ INPUT_FILE_NAME = 'file'
 
 
 class ParseErrorSuite(DataSuite):
+    required_out_section = True
+    base_path = '.'
     files = ['parse-errors.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:

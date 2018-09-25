@@ -534,7 +534,10 @@ class A:
 a = None # type: A
 a.g()
 a.g(B())
-a.g(a) # E: No overload variant matches argument types [foo.A]
+a.g(a) # E: No overload variant matches argument type "A" \
+       # N: Possible overload variant: \
+       # N:     def f(self, b: B) -> None \
+       # N:     <1 more non-matching overload not shown>
 
 [case testMethodAsDataAttributeInferredFromDynamicallyTypedMethod]
 
@@ -1310,7 +1313,7 @@ if x:
     def f(x: int) -> None: pass
 else:
     # TODO: This should be okay.
-    @dec # E: Name 'f' already defined
+    @dec # E: Name 'f' already defined on line 7
     def f(): pass
 
 [case testConditionalFunctionDefinitionUsingDecorator4]
@@ -1323,7 +1326,7 @@ if x:
     def f(x: str) -> None: pass
 else:
     # TODO: We should report an incompatible redefinition.
-    @dec # E: Name 'f' already defined
+    @dec # E: Name 'f' already defined on line 7
     def f(): pass
 
 [case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
@@ -1490,7 +1493,7 @@ x = None # type: Any
 class A:
     if x:
         def f(self): pass
-    def f(self): pass # E: Name 'f' already defined
+    def f(self): pass # E: Name 'f' already defined on line 5
 
 [case testIncompatibleConditionalMethodDefinition]
 from typing import Any
@@ -2073,25 +2076,18 @@ h(7) # E: Cannot call function of unknown type
 
 [case testPositionalOnlyArg]
 def f(__a: int) -> None: pass
+def g(__a__: int) -> None: pass
 
 f(1)
 f(__a=1) # E: Unexpected keyword argument "__a" for "f"
+
+g(1)
+# Argument names that also end with __ are not positional-only.
+g(__a__=1)
 
 [builtins fixtures/bool.pyi]
 [out]
 main:1: note: "f" defined here
-
-[case testPositionalOnlyArgFastparse]
-
-
-def f(__a: int) -> None: pass
-
-f(1)
-f(__a=1) # E: Unexpected keyword argument "__a" for "f"
-
-[builtins fixtures/bool.pyi]
-[out]
-main:3: note: "f" defined here
 
 [case testMagicMethodPositionalOnlyArg]
 class A(object):
@@ -2212,7 +2208,7 @@ foo(y=2)  # E: Missing positional arguments
 def dec(f): pass
 
 @dec
-def test(a: str) -> (str,): # E: Invalid tuple literal type # N: Suggestion: Is there a spurious trailing comma?
+def test(a: str) -> (str,): # E: Syntax error in type annotation # N: Suggestion: Is there a spurious trailing comma?
     return None
 
 [case testReturnTypeLineNumberNewLine]
@@ -2302,3 +2298,24 @@ f = lambda: 5
 reveal_type(f)
 [out]
 main:2: error: Revealed type is 'def () -> builtins.int'
+
+[case testRevealLocalsFunction]
+a = 1.0
+
+def f(a: int, b: int) -> int:
+    reveal_locals()
+    c = a + b
+    reveal_locals()
+    return c
+
+reveal_locals()
+[out]
+main:4: error: Revealed local types are:
+main:4: error: a: builtins.int
+main:4: error: b: builtins.int
+main:6: error: Revealed local types are:
+main:6: error: a: builtins.int
+main:6: error: b: builtins.int
+main:6: error: c: builtins.int
+main:9: error: Revealed local types are:
+main:9: error: a: builtins.float

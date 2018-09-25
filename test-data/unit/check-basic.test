@@ -308,3 +308,68 @@ class C:
         pass
 [out]
 main:2: error: The return type of "__init__" must be None
+
+-- WritesCache signals to testcheck to do the cache validation
+[case testWritesCache]
+import a
+import d
+[file a.py]
+import b
+import c
+[file b.py]
+[file c.py]
+[file d.py]
+
+[case testWritesCacheErrors]
+import a
+import d
+[file a.py]
+import b
+import c
+[file b.py]
+[file c.py]
+[file d.py]
+import e
+[file e.py]
+1+'no'  # E: Unsupported operand types for + ("int" and "str")
+
+[case testModuleAsTypeNoCrash]
+import mock
+from typing import Union
+
+class A: ...
+class B: ...
+
+x: Union[mock, A]  # E: Invalid type "mock"
+
+if isinstance(x, B):
+    pass
+[file mock.py]
+[builtins fixtures/isinstance.pyi]
+[out]
+
+[case testModuleAsTypeNoCrash2]
+import mock
+from typing import overload, Any, Union
+
+@overload
+def f(x: int) -> int: ...
+@overload
+def f(x: str) -> Union[mock, str]: ...  # E: Invalid type "mock"
+def f(x):
+    pass
+
+x: Any
+f(x)
+[file mock.py]
+[builtins fixtures/isinstance.pyi]
+[out]
+
+[case testPartialTypeComments]
+def foo(
+    a,  # type: str
+    b,
+    args=None,
+):
+    # type: (...) -> None
+    pass

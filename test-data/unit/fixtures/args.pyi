@@ -27,3 +27,4 @@ class int:
 class str: pass
 class bool: pass
 class function: pass
+class ellipsis: pass

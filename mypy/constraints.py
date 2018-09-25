@@ -2,7 +2,6 @@
 
 from typing import Iterable, List, Optional, Sequence
 
-from mypy import experiments
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, NoneTyp, TypeVarType, Instance,
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
@@ -14,9 +13,13 @@ import mypy.subtypes
 from mypy.sametypes import is_same_type
 from mypy.erasetype import erase_typevars
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-SUBTYPE_OF = 0  # type: int
-SUPERTYPE_OF = 1  # type: int
+
+SUBTYPE_OF = 0  # type: Final[int]
+SUPERTYPE_OF = 1  # type: Final[int]
 
 
 class Constraint:
@@ -307,12 +310,28 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_instance(self, template: Instance) -> List[Constraint]:
         original_actual = actual = self.actual
         res = []  # type: List[Constraint]
+        if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
+            if template.type.protocol_members == ['__call__']:
+                # Special case: a generic callback protocol
+                if not any(is_same_type(template, t) for t in template.type.inferring):
+                    template.type.inferring.append(template)
+                    call = mypy.subtypes.find_member('__call__', template, actual)
+                    assert call is not None
+                    if mypy.subtypes.is_subtype(actual, erase_typevars(call)):
+                        subres = infer_constraints(call, actual, self.direction)
+                        res.extend(subres)
+                    template.type.inferring.pop()
+                    return res
         if isinstance(actual, CallableType) and actual.fallback is not None:
+            actual = actual.fallback
+        if isinstance(actual, Overloaded) and actual.fallback is not None:
             actual = actual.fallback
         if isinstance(actual, TypedDictType):
             actual = actual.as_anonymous().fallback
         if isinstance(actual, Instance):
             instance = actual
+            erased = erase_typevars(template)
+            assert isinstance(erased, Instance)
             # We always try nominal inference if possible,
             # it is much faster than the structural one.
             if (self.direction == SUBTYPE_OF and
@@ -344,8 +363,11 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     # This is a conservative way break the inference cycles.
                     # It never produces any "false" constraints but gives up soon
                     # on purely structural inference cycles, see #3829.
+                    # Note that we use is_protocol_implementation instead of is_subtype
+                    # because some type may be considered a subtype of a protocol
+                    # due to _promote, but still not implement the protocol.
                     not any(is_same_type(template, t) for t in template.type.inferring) and
-                    mypy.subtypes.is_subtype(instance, erase_typevars(template))):
+                    mypy.subtypes.is_protocol_implementation(instance, erased)):
                 template.type.inferring.append(template)
                 self.infer_constraints_from_protocol_members(res, instance, template,
                                                              original_actual, template)
@@ -354,7 +376,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             elif (instance.type.is_protocol and self.direction == SUBTYPE_OF and
                   # We avoid infinite recursion for structural subtypes also here.
                   not any(is_same_type(instance, i) for i in instance.type.inferring) and
-                  mypy.subtypes.is_subtype(erase_typevars(template), instance)):
+                  mypy.subtypes.is_protocol_implementation(erased, instance)):
                 instance.type.inferring.append(instance)
                 self.infer_constraints_from_protocol_members(res, instance, template,
                                                              template, instance)
@@ -525,7 +547,9 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
     for item in items:
         # Return type may be indeterminate in the template, so ignore it when performing a
         # subtype check.
-        if mypy.subtypes.is_callable_subtype(item, template, ignore_return=True):
+        if mypy.subtypes.is_callable_compatible(item, template,
+                                                is_compat=mypy.subtypes.is_subtype,
+                                                ignore_return=True):
             return item
     # Fall back to the first item if we can't find a match. This is totally arbitrary --
     # maybe we should just bail out at this point.

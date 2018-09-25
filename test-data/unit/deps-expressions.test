@@ -137,9 +137,9 @@ def g() -> None:
 [builtins fixtures/list.pyi]
 [out]
 <m.A.__init__> -> m.g
-<m.A.__iter__> -> m.g
+<m.A.__iter__> -> <m.A>, m.g
 <m.A.__new__> -> m.g
-<m.A> -> m.A, m.g
+<m.A> -> m.A, m.g, typing.Iterable
 
 [case testCast]
 from typing import cast

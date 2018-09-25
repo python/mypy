@@ -1,17 +1,17 @@
-"""Client for mypy daemon mode.
+"""Server for mypy daemon mode.
 
 Highly experimental!  Only supports UNIX-like systems.
 
-This manages a daemon process which keeps useful state in memory
+This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
-import gc
-import io
 import json
 import os
+import shutil
 import socket
 import sys
+import tempfile
 import time
 import traceback
 
@@ -22,10 +22,18 @@ import mypy.errors
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
-from mypy.gclogger import GcLogger
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.options import Options
+from mypy.typestate import reset_global_state
+from mypy.version import __version__
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
+
+MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -35,6 +43,9 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     subprocess killed by signal.
     """
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
+    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+    if sys.platform == 'win32' or bool():
+        raise ValueError('Mypy daemon is not supported on Windows yet')
     sys.stdout.flush()
     sys.stderr.flush()
     pid = os.fork()
@@ -76,15 +87,15 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 
 # Server code.
 
-SOCKET_NAME = 'dmypy.sock'  # In current directory.
+SOCKET_NAME = 'dmypy.sock'  # type: Final
 
 
-def process_start_options(flags: List[str]) -> Options:
+def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     import mypy.main
     sources, options = mypy.main.process_options(['-i'] + flags,
                                                  require_targets=False,
                                                  server_options=True)
-    if sources:
+    if sources and not allow_sources:
         sys.exit("dmypy: start/restart does not accept sources")
     if options.report_dirs:
         sys.exit("dmypy: start/restart cannot generate reports")
@@ -108,24 +119,26 @@ class Server:
     # serve() is called in the grandchild (by daemonize()).
 
     def __init__(self, options: Options,
-                 timeout: Optional[int] = None,
-                 alt_lib_path: Optional[str] = None) -> None:
+                 timeout: Optional[int] = None) -> None:
         """Initialize the server with the desired mypy flags."""
         self.options = options
+        # Snapshot the options info before we muck with it, to detect changes
+        self.options_snapshot = options.snapshot()
         self.timeout = timeout
-        self.alt_lib_path = alt_lib_path
         self.fine_grained_manager = None  # type: Optional[FineGrainedBuildManager]
 
         if os.path.isfile(STATUS_FILE):
             os.unlink(STATUS_FILE)
 
-        self.fscache = FileSystemCache(self.options.python_version)
+        self.fscache = FileSystemCache()
 
         options.incremental = True
         options.fine_grained_incremental = True
         options.show_traceback = True
         if options.use_fine_grained_cache:
-            options.cache_fine_grained = True  # set this so that cache options match
+            # Using fine_grained_cache implies generating and caring
+            # about the fine grained cache
+            options.cache_fine_grained = True
         else:
             options.cache_dir = os.devnull
         # Fine-grained incremental doesn't support general partial types
@@ -147,6 +160,7 @@ class Server:
                         conn, addr = sock.accept()
                     except socket.timeout:
                         print("Exiting due to inactivity.")
+                        reset_global_state()
                         sys.exit(0)
                     try:
                         data = receive(conn)
@@ -162,14 +176,14 @@ class Server:
                             resp = {'error': "Command is not a string"}
                         else:
                             command = data.pop('command')
-                        try:
-                            resp = self.run_command(command, data)
-                        except Exception:
-                            # If we are crashing, report the crash to the client
-                            tb = traceback.format_exception(*sys.exc_info())  # type: ignore
-                            resp = {'error': "Daemon crashed!\n" + "".join(tb)}
-                            conn.sendall(json.dumps(resp).encode('utf8'))
-                            raise
+                            try:
+                                resp = self.run_command(command, data)
+                            except Exception:
+                                # If we are crashing, report the crash to the client
+                                tb = traceback.format_exception(*sys.exc_info())
+                                resp = {'error': "Daemon crashed!\n" + "".join(tb)}
+                                conn.sendall(json.dumps(resp).encode('utf8'))
+                                raise
                     try:
                         conn.sendall(json.dumps(resp).encode('utf8'))
                     except OSError as err:
@@ -177,22 +191,22 @@ class Server:
                     conn.close()
                     if command == 'stop':
                         sock.close()
+                        reset_global_state()
                         sys.exit(0)
             finally:
                 os.unlink(STATUS_FILE)
         finally:
-            os.unlink(self.sockname)
+            shutil.rmtree(self.sock_directory)
             exc_info = sys.exc_info()
             if exc_info[0] and exc_info[0] is not SystemExit:
-                traceback.print_exception(*exc_info)  # type: ignore
+                traceback.print_exception(*exc_info)
 
     def create_listening_socket(self) -> socket.socket:
         """Create the socket and set it up for listening."""
-        self.sockname = os.path.abspath(SOCKET_NAME)
-        if os.path.exists(self.sockname):
-            os.unlink(self.sockname)
+        self.sock_directory = tempfile.mkdtemp()
+        sockname = os.path.join(self.sock_directory, SOCKET_NAME)
         sock = socket.socket(socket.AF_UNIX)
-        sock.bind(self.sockname)
+        sock.bind(sockname)
         sock.listen(1)
         return sock
 
@@ -218,6 +232,23 @@ class Server:
         return {}
 
     last_sources = None  # type: List[mypy.build.BuildSource]
+
+    def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
+        """Check a list of files, triggering a restart if needed."""
+        try:
+            self.last_sources, options = mypy.main.process_options(
+                ['-i'] + list(args),
+                require_targets=True,
+                server_options=True,
+                fscache=self.fscache)
+            # Signal that we need to restart if the options have changed
+            if self.options_snapshot != options.snapshot():
+                return {'restart': 'configuration changed'}
+            if __version__ != version:
+                return {'restart': 'mypy version changed'}
+        except InvalidSourceList as err:
+            return {'out': '', 'err': str(err), 'status': 2}
+        return self.check(self.last_sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
@@ -248,8 +279,7 @@ class Server:
         try:
             result = mypy.build.build(sources=sources,
                                       options=self.options,
-                                      fscache=self.fscache,
-                                      alt_lib_path=self.alt_lib_path)
+                                      fscache=self.fscache)
         except mypy.errors.CompileError as e:
             output = ''.join(s + '\n' for s in e.messages)
             if e.use_stdout:
@@ -289,19 +319,26 @@ class Server:
             # Stores the initial state of sources as a side effect.
             self.fswatcher.find_changed()
 
+        if MEM_PROFILE:
+            from mypy.memprofile import print_memory_profile
+            print_memory_profile(run_gc=False)
+
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
     def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
         assert self.fine_grained_manager is not None
+        manager = self.fine_grained_manager.manager
 
         t0 = time.time()
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
+        manager.search_paths = mypy.build.compute_search_paths(
+            sources, manager.options, manager.data_dir, mypy.build.FileSystemCache())
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        self.fine_grained_manager.manager.log(
+        manager.log(
             "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
                 t1 - t0, t2 - t1))
         status = 1 if messages else 0
@@ -349,7 +386,7 @@ class Server:
 # Misc utilities.
 
 
-MiB = 2**20
+MiB = 2**20  # type: Final
 
 
 def get_meminfo() -> Dict[str, Any]:
@@ -357,7 +394,8 @@ def get_meminfo() -> Dict[str, Any]:
     import resource  # Since it doesn't exist on Windows.
     res = {}  # type: Dict[str, Any]
     rusage = resource.getrusage(resource.RUSAGE_SELF)
-    if sys.platform == 'darwin':
+    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+    if sys.platform == 'darwin' or bool():
         factor = 1
     else:
         factor = 1024  # Linux

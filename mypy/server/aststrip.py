@@ -44,14 +44,15 @@ from mypy.nodes import (
     Node, FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, FuncItem, ClassDef, AssignmentStmt,
     ImportFrom, Import, TypeInfo, SymbolTable, Var, CallExpr, Decorator, OverloadedFuncDef,
     SuperExpr, UNBOUND_IMPORTED, GDEF, MDEF, IndexExpr, SymbolTableNode, ImportAll, TupleExpr,
-    ListExpr
+    ListExpr, ForStmt, Block
 )
 from mypy.semanal_shared import create_indirect_imported_name
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
+from mypy.typestate import TypeState
 
 
-def strip_target(node: Union[MypyFile, FuncItem, OverloadedFuncDef]) -> None:
+def strip_target(node: Union[MypyFile, FuncDef, OverloadedFuncDef]) -> None:
     """Reset a fine-grained incremental target to state after semantic analysis pass 1.
 
     NOTE: Currently we opportunistically only reset changes that are known to otherwise
@@ -82,6 +83,11 @@ class NodeStripVisitor(TraverserVisitor):
         self.recurse_into_functions = False
         file_node.accept(self)
 
+    def visit_block(self, b: Block) -> None:
+        if b.is_unreachable:
+            return
+        super().visit_block(b)
+
     def visit_class_def(self, node: ClassDef) -> None:
         """Strip class body and type info, but don't strip methods."""
         self.strip_type_info(node.info)
@@ -101,8 +107,7 @@ class NodeStripVisitor(TraverserVisitor):
         info.tuple_type = None
         info.typeddict_type = None
         info.tuple_type = None
-        info._cache = set()
-        info._cache_proper = set()
+        TypeState.reset_subtype_caches_for(info)
         info.declared_metaclass = None
         info.metaclass_type = None
 
@@ -111,6 +116,8 @@ class NodeStripVisitor(TraverserVisitor):
             return
         node.expanded = []
         node.type = node.unanalyzed_type
+        # All nodes are non-final after the first pass.
+        node.is_final = False
         # Type variable binder binds tvars before the type is analyzed.
         # It should be refactored, before that we just undo this change here.
         # TODO: this will be not necessary when #4814 is fixed.
@@ -125,15 +132,17 @@ class NodeStripVisitor(TraverserVisitor):
         for expr in node.decorators:
             expr.accept(self)
         if self.recurse_into_functions:
+            # Only touch the final status if we re-process
+            # a method target
+            node.var.is_final = False
             node.func.accept(self)
 
     def visit_overloaded_func_def(self, node: OverloadedFuncDef) -> None:
         if not self.recurse_into_functions:
             return
-        if node.impl:
-            # Revert change made during semantic analysis pass 2.
-            assert node.items[-1] is not node.impl
-            node.items.append(node.impl)
+        # Revert change made during semantic analysis pass 2.
+        node.items = node.unanalyzed_items.copy()
+        node.is_final = False
         super().visit_overloaded_func_def(node)
 
     @contextlib.contextmanager
@@ -162,6 +171,7 @@ class NodeStripVisitor(TraverserVisitor):
 
     def visit_assignment_stmt(self, node: AssignmentStmt) -> None:
         node.type = node.unanalyzed_type
+        node.is_final_def = False
         if self.type and not self.is_class_body:
             for lvalue in node.lvalues:
                 self.process_lvalue_in_method(lvalue)
@@ -180,44 +190,47 @@ class NodeStripVisitor(TraverserVisitor):
                 self.process_lvalue_in_method(item)
 
     def visit_import_from(self, node: ImportFrom) -> None:
-        if node.assignments:
-            node.assignments = []
-        else:
-            # If the node is unreachable, don't reset entries: they point to something else!
-            if node.is_unreachable: return
-            if self.names:
-                # Reset entries in the symbol table. This is necessary since
-                # otherwise the semantic analyzer will think that the import
-                # assigns to an existing name instead of defining a new one.
-                for name, as_name in node.names:
-                    imported_name = as_name or name
-                    # This assert is safe since we check for self.names above.
-                    assert self.file_node is not None
-                    sym = create_indirect_imported_name(self.file_node,
-                                                        node.id,
-                                                        node.relative,
-                                                        name)
-                    if sym:
-                        self.names[imported_name] = sym
+        # Imports can include both overriding symbols and fresh ones,
+        # and we need to clear both.
+        node.assignments = []
+
+        # If the node is unreachable, don't reset entries: they point to something else!
+        if node.is_unreachable: return
+        if self.names:
+            # Reset entries in the symbol table. This is necessary since
+            # otherwise the semantic analyzer will think that the import
+            # assigns to an existing name instead of defining a new one.
+            for name, as_name in node.names:
+                imported_name = as_name or name
+                # This assert is safe since we check for self.names above.
+                assert self.file_node is not None
+                sym = create_indirect_imported_name(self.file_node,
+                                                    node.id,
+                                                    node.relative,
+                                                    name)
+                if sym:
+                    self.names[imported_name] = sym
 
     def visit_import(self, node: Import) -> None:
-        if node.assignments:
-            node.assignments = []
-        else:
-            # If the node is unreachable, don't reset entries: they point to something else!
-            if node.is_unreachable: return
-            if self.names:
-                # Reset entries in the symbol table. This is necessary since
-                # otherwise the semantic analyzer will think that the import
-                # assigns to an existing name instead of defining a new one.
-                for name, as_name in node.ids:
-                    imported_name = as_name or name
-                    initial = imported_name.split('.')[0]
-                    symnode = self.names[initial]
-                    symnode.kind = UNBOUND_IMPORTED
-                    symnode.node = None
+        assert not node.assignments
+
+        # If the node is unreachable, don't reset entries: they point to something else!
+        if node.is_unreachable: return
+        if self.names:
+            # Reset entries in the symbol table. This is necessary since
+            # otherwise the semantic analyzer will think that the import
+            # assigns to an existing name instead of defining a new one.
+            for name, as_name in node.ids:
+                imported_name = as_name or name
+                initial = imported_name.split('.')[0]
+                if initial in self.names:
+                    self.names[initial] = SymbolTableNode(UNBOUND_IMPORTED, None)
 
     def visit_import_all(self, node: ImportAll) -> None:
+        # Imports can include both overriding symbols and fresh ones,
+        # and we need to clear both.
+        node.assignments = []
+
         # If the node is unreachable, we don't want to reset entries from a reachable import.
         if node.is_unreachable:
             return
@@ -225,8 +238,15 @@ class NodeStripVisitor(TraverserVisitor):
         # (The description in visit_import is relevant here as well.)
         if self.names:
             for name in node.imported_names:
-                del self.names[name]
+                if name in self.names:
+                    del self.names[name]
         node.imported_names = []
+
+    def visit_for_stmt(self, node: ForStmt) -> None:
+        node.index_type = node.unanalyzed_index_type
+        node.inferred_item_type = None
+        node.inferred_iterator_type = None
+        super().visit_for_stmt(node)
 
     def visit_name_expr(self, node: NameExpr) -> None:
         # Global assignments are processed in semantic analysis pass 1 [*], and we
@@ -239,6 +259,7 @@ class NodeStripVisitor(TraverserVisitor):
         # [*] although we always strip type, thus returning the Var to the state after pass 1.
         if isinstance(node.node, Var):
             node.node.type = None
+            self._reset_var_final_flags(node.node)
 
     def visit_member_expr(self, node: MemberExpr) -> None:
         self.strip_ref_expr(node)
@@ -253,7 +274,15 @@ class NodeStripVisitor(TraverserVisitor):
             # definition.
             self.strip_class_attr(node.name)
             node.def_var = None
+        if isinstance(node.node, Var):
+            self._reset_var_final_flags(node.node)
         super().visit_member_expr(node)
+
+    def _reset_var_final_flags(self, v: Var) -> None:
+        v.is_final = False
+        v.final_unset_in_class = False
+        v.final_set_in_init = False
+        v.final_value = None
 
     def visit_index_expr(self, node: IndexExpr) -> None:
         node.analyzed = None  # was a type alias

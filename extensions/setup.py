@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-version = '0.4.0-dev'
+version = '0.5.0-dev'
 description = 'Experimental type system extensions for programs checked with the mypy typechecker.'
 long_description = '''
 Mypy Extensions
@@ -20,7 +20,6 @@ classifiers = [
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',

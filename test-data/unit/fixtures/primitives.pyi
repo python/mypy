@@ -11,7 +11,8 @@ class type:
 
 class int:
     def __add__(self, i: int) -> int: pass
-class float: pass
+class float:
+    def __float__(self) -> float: pass
 class complex: pass
 class bool(int): pass
 class str:

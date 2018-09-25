@@ -138,10 +138,6 @@ MypyFile:1(
 from collections import namedtuple
 N = namedtuple('N') # E: Too few arguments for namedtuple()
 
-[case testNamedTupleWithTooManyArguments]
-from collections import namedtuple
-N = namedtuple('N', ['x'], 'y') # E: Too many arguments for namedtuple()
-
 [case testNamedTupleWithInvalidName]
 from collections import namedtuple
 N = namedtuple(1, ['x']) # E: namedtuple() expects a string literal as the first argument

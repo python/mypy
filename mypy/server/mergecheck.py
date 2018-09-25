@@ -2,12 +2,16 @@
 
 from typing import Dict, List, Tuple
 
-from mypy.nodes import SymbolNode, Var, Decorator, OverloadedFuncDef, FuncDef
+from mypy.nodes import SymbolNode, Var, Decorator, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
 # If True, print more verbose output on failure.
-DUMP_MISMATCH_NODES = False
+DUMP_MISMATCH_NODES = False  # type: Final
 
 
 def check_consistency(o: object) -> None:

@@ -1,4 +1,4 @@
-from typing import List, Dict, Sequence, Optional
+from typing import Dict, Sequence, Optional
 
 import mypy.subtypes
 from mypy.sametypes import is_same_type

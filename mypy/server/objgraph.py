@@ -1,29 +1,32 @@
 """Find all objects reachable from a root object."""
 
-from collections import deque
 from collections.abc import Iterable
-from typing import List, Dict, Iterator, Optional, Tuple, Mapping
+from typing import List, Dict, Iterator, Tuple, Mapping
 import weakref
 import types
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-method_descriptor_type = type(object.__dir__)
-method_wrapper_type = type(object().__ne__)
-wrapper_descriptor_type = type(object.__ne__)
+
+method_descriptor_type = type(object.__dir__)  # type: Final
+method_wrapper_type = type(object().__ne__)  # type: Final
+wrapper_descriptor_type = type(object.__ne__)  # type: Final
 
 FUNCTION_TYPES = (types.BuiltinFunctionType,
                   types.FunctionType,
                   types.MethodType,
                   method_descriptor_type,
                   wrapper_descriptor_type,
-                  method_wrapper_type)
+                  method_wrapper_type)  # type: Final
 
 ATTR_BLACKLIST = {
     '__doc__',
     '__name__',
     '__class__',
     '__dict__',
-}
+}  # type: Final
 
 # Instances of these types can't have references to other objects
 ATOMIC_TYPE_BLACKLIST = {
@@ -33,7 +36,7 @@ ATOMIC_TYPE_BLACKLIST = {
     str,
     type(None),
     object,
-}
+}  # type: Final
 
 # Don't look at most attributes of these types
 COLLECTION_TYPE_BLACKLIST = {
@@ -41,12 +44,12 @@ COLLECTION_TYPE_BLACKLIST = {
     set,
     dict,
     tuple,
-}
+}  # type: Final
 
 # Don't return these objects
 TYPE_BLACKLIST = {
     weakref.ReferenceType,
-}
+}  # type: Final
 
 
 def isproperty(o: object, attr: str) -> bool:

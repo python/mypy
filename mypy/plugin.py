@@ -1,11 +1,12 @@
 """Plugin system for extending mypy."""
 
+import types
+
 from abc import abstractmethod
 from functools import partial
 from typing import Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
+from mypy_extensions import trait
 
-import mypy.plugins.attrs
-import mypy.plugins.ctypes
 from mypy.nodes import (
     Expression, StrExpr, IntExpr, UnaryExpr, Context, DictExpr, ClassDef,
     TypeInfo, SymbolTableNode, MypyFile
@@ -13,12 +14,14 @@ from mypy.nodes import (
 from mypy.tvar_scope import TypeVarScope
 from mypy.types import (
     Type, Instance, CallableType, TypedDictType, UnionType, NoneTyp, TypeVarType,
-    AnyType, TypeList, UnboundType, TypeOfAny
+    AnyType, TypeList, UnboundType, TypeOfAny, TypeType,
 )
 from mypy.messages import MessageBuilder
 from mypy.options import Options
+import mypy.interpreted_plugin
 
 
+@trait
 class TypeAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
@@ -49,6 +52,7 @@ AnalyzeTypeContext = NamedTuple(
         ('api', TypeAnalyzerPluginInterface)])
 
 
+@trait
 class CheckerPluginInterface:
     """Interface for accessing type checker functionality in plugins."""
 
@@ -59,6 +63,7 @@ class CheckerPluginInterface:
         raise NotImplementedError
 
 
+@trait
 class SemanticAnalyzerPluginInterface:
     """Interface for accessing semantic analyzer functionality in plugins."""
 
@@ -83,12 +88,16 @@ class SemanticAnalyzerPluginInterface:
     def anal_type(self, t: Type, *,
                   tvar_scope: Optional[TypeVarScope] = None,
                   allow_tuple_literal: bool = False,
-                  aliasing: bool = False,
+                  allow_unbound_tvars: bool = False,
                   third_pass: bool = False) -> Type:
         raise NotImplementedError
 
     @abstractmethod
-    def class_type(self, info: TypeInfo) -> Type:
+    def class_type(self, self_type: Type) -> Type:
+        raise NotImplementedError
+
+    @abstractmethod
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
@@ -208,8 +217,64 @@ class Plugin:
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return None
 
+    def get_customize_class_mro_hook(self, fullname: str
+                                     ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
 
 T = TypeVar('T')
+
+
+class WrapperPlugin(Plugin):
+    """A plugin that wraps an interpreted plugin.
+
+    This is a ugly workaround the limitation that mypyc-compiled
+    classes can't be subclassed by interpreted ones, so instead we
+    create a new class for interpreted clients to inherit from and
+    dispatch to it from here.
+
+    Eventually mypyc ought to do something like this automatically.
+    """
+
+    def __init__(self, plugin: mypy.interpreted_plugin.InterpretedPlugin) -> None:
+        super().__init__(plugin.options)
+        self.plugin = plugin
+
+    def get_type_analyze_hook(self, fullname: str
+                              ) -> Optional[Callable[[AnalyzeTypeContext], Type]]:
+        return self.plugin.get_type_analyze_hook(fullname)
+
+    def get_function_hook(self, fullname: str
+                          ) -> Optional[Callable[[FunctionContext], Type]]:
+        return self.plugin.get_function_hook(fullname)
+
+    def get_method_signature_hook(self, fullname: str
+                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
+        return self.plugin.get_method_signature_hook(fullname)
+
+    def get_method_hook(self, fullname: str
+                        ) -> Optional[Callable[[MethodContext], Type]]:
+        return self.plugin.get_method_hook(fullname)
+
+    def get_attribute_hook(self, fullname: str
+                           ) -> Optional[Callable[[AttributeContext], Type]]:
+        return self.plugin.get_attribute_hook(fullname)
+
+    def get_class_decorator_hook(self, fullname: str
+                                 ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_class_decorator_hook(fullname)
+
+    def get_metaclass_hook(self, fullname: str
+                           ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_metaclass_hook(fullname)
+
+    def get_base_class_hook(self, fullname: str
+                            ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_base_class_hook(fullname)
+
+    def get_customize_class_mro_hook(self, fullname: str
+                                     ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self.plugin.get_customize_class_mro_hook(fullname)
 
 
 class ChainedPlugin(Plugin):
@@ -264,6 +329,10 @@ class ChainedPlugin(Plugin):
                             ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_base_class_hook(fullname))
 
+    def get_customize_class_mro_hook(self, fullname: str
+                                     ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_customize_class_mro_hook(fullname))
+
     def _find_hook(self, lookup: Callable[[Plugin], T]) -> Optional[T]:
         for plugin in self._plugins:
             hook = lookup(plugin)
@@ -287,23 +356,27 @@ class DefaultPlugin(Plugin):
     def get_method_signature_hook(self, fullname: str
                                   ) -> Optional[Callable[[MethodSigContext], CallableType]]:
         print(f"get_method_signature_hook({fullname!r})")  # XXX debugging
+        from mypy.plugins import ctypes
+
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
         elif fullname == 'ctypes.Array.__init__':
-            return mypy.plugins.ctypes.array_init_callback
+            return ctypes.array_init_callback
         return None
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
         print(f"get_method_hook({fullname!r})")  # XXX debugging
+        from mypy.plugins import ctypes
+
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
         elif fullname == 'ctypes.Array.__getitem__':
-            return mypy.plugins.ctypes.array_getitem_callback
+            return ctypes.array_getitem_callback
         elif fullname == 'ctypes.Array.__iter__':
-            return mypy.plugins.ctypes.array_iter_callback
+            return ctypes.array_iter_callback
         return None
 
     def get_attribute_hook(self, fullname: str
@@ -313,13 +386,18 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
-        if fullname in mypy.plugins.attrs.attr_class_makers:
-            return mypy.plugins.attrs.attr_class_maker_callback
-        elif fullname in mypy.plugins.attrs.attr_dataclass_makers:
+        from mypy.plugins import attrs
+        from mypy.plugins import dataclasses
+
+        if fullname in attrs.attr_class_makers:
+            return attrs.attr_class_maker_callback
+        elif fullname in attrs.attr_dataclass_makers:
             return partial(
-                mypy.plugins.attrs.attr_class_maker_callback,
+                attrs.attr_class_maker_callback,
                 auto_attribs_default=True
             )
+        elif fullname in dataclasses.dataclass_makers:
+            return dataclasses.dataclass_class_maker_callback
         return None
 
 
@@ -439,3 +517,14 @@ def int_pow_callback(ctx: MethodContext) -> Type:
         else:
             return ctx.api.named_generic_type('builtins.float', [])
     return ctx.default_return_type
+
+
+# This is an incredibly frumious hack. If this module is compiled by mypyc,
+# set the module 'Plugin' attribute to point to InterpretedPlugin. This means
+# that anything interpreted that imports Plugin will get InterpretedPlugin
+# while anything compiled alongside this module will get the real Plugin.
+if isinstance(int_pow_callback, types.BuiltinFunctionType):
+    plugin_types = (Plugin, mypy.interpreted_plugin.InterpretedPlugin)  # type: Tuple[type, ...]
+    globals()['Plugin'] = mypy.interpreted_plugin.InterpretedPlugin
+else:
+    plugin_types = (Plugin,)

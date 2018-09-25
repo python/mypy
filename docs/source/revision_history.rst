@@ -1,14 +1,77 @@
 Revision history
 ================
 
-List of major changes:
+List of major changes (the `Mypy Blog <http://mypy-lang.blogspot.com/>`_ contains more
+detailed release notes):
+
+- September 2018
+    * Publish ``mypy`` version 0.630 on PyPI.
+
+      * Document ``--warn-incomplete-stub`` (:ref:`docs <warn-incomplete-stub>`).
+
+      * Document incompatibility of stub-only packages and ``MYPYPATH``
+        (:ref:`docs <installed-packages>`).
+
+      * Reorganize command line :ref:`documentation <command-line>`
+        (see also :ref:`docs <running-mypy>` and :ref:`more docs <extending-mypy>`).
+
+      * Document :ref:`callback protocols <callback_protocols>`.
+
+- July 2018
+    * Publish ``mypy`` version 0.620 on PyPI.
+
+      * Improve support for :ref:`overloads <function-overloading>`.
+
+      * Add support for :ref:`dataclasses <dataclasses_support>`.
+
+- June 2018
+    * Publish ``mypy`` version 0.610 on PyPI.
+
+      * Major overhaul of documentation.
+
+      * Add the ``dmypy run`` command to the :ref:`daemon <mypy_daemon>`.
+
+      * Partially revert the prior changes to section pattern semantics in
+        configuration files
+        (:ref:`docs <config-file>` and :ref:`more docs <per-module-flags>`).
+
+- May 2018
+    * Publish ``mypy`` version 0.600 on PyPI.
+
+      * Enable :ref:`strict optional checking <strict_optional>` by default.
+
+      * Document :ref:`disabling strict optional checking <no_strict_optional>`.
+
+      * Add :ref:`mypy_daemon`.
+
+      * Add :ref:`remote-cache`.
+
+      * Support user-specific configuration file (:ref:`docs <config-file>`).
+
+      * Changes to section pattern semantics in configuration files
+        (:ref:`docs <config-file>` and :ref:`more docs <per-module-flags>`).
+
+- April 2018
+    * Publish ``mypy`` version 0.590 on PyPI.
+
+      * Document :ref:`PEP 561 support <installed-packages>`.
+
+      * Made :ref:`incremental mode <incremental>` the default.
+
+      * Document ``--always-true`` and ``--always-false`` (:ref:`docs <always-true>`).
+
+      * Document ``follow_imports_for_stubs`` (:ref:`docs<per-module-flags>`).
+
+      * Add coroutines to :ref:`Python 3 cheat sheet <cheat-sheet-py3>`.
+
+      * Add ``None`` return/strict-optional to :ref:`common issues <annotations_needed>`.
+
+      * Clarify that ``SupportsInt`` etc. don't support arithmetic operations (see :ref:`docs <supports-int-etc>`).
 
 - March 2018
     * Publish ``mypy`` version 0.580 on PyPI.
 
       * Allow specifying multiple packages on the command line with ``-p`` and ``-m`` flags.
-
-      * Clarify that ``SupportsInt`` etc. don't support arithmetic operations.
 
     * Publish ``mypy`` version 0.570 on PyPI.
 
@@ -32,7 +95,7 @@ List of major changes:
         of the analysis (i.e. the ``--python-version`` flag).
 
       * Split ``--disallow-any`` flag into
-        :ref:`separate boolean flags <disallow-any>`.
+        :ref:`separate boolean flags <disallow-dynamic-typing>`.
 
       * The ``--old-html-report`` flag was removed.
 
@@ -57,7 +120,7 @@ List of major changes:
 
     * Publish ``mypy`` version 0.520 on PyPI.
 
-    * Add :ref:`fine-grained control of Any types <disallow-any>`.
+    * Add :ref:`fine-grained control of Any types <disallow-dynamic-typing>`.
 
     * Add :ref:`typeddict`.
 
@@ -148,7 +211,7 @@ List of major changes:
 - November 2016
     * Publish ``mypy-lang`` version 0.4.6 on PyPI.
 
-    * Add :ref:`getting-started`.
+    * Add Getting started.
 
     * Add :ref:`generic-methods-and-generic-self` (experimental).
 
@@ -210,7 +273,7 @@ List of major changes:
 - July 2016
     * Publish ``mypy-lang`` version 0.4.3 on PyPI.
 
-    * Add :ref:`strict_optional`.
+    * Add :ref:`strict optional checking <strict_optional>`.
 
     * Add :ref:`multi_line_annotation`.
 
@@ -236,7 +299,7 @@ List of major changes:
     * Document Python 2 support.
 
 - Nov 2015
-    Add :ref:`library-stubs`.
+    Add :ref:`stubs-intro`.
 
 - Jun 2015
     Remove ``Undefined`` and ``Dynamic``, as they are not in PEP 484.
@@ -247,7 +310,7 @@ List of major changes:
 - Mar 2015
     Update documentation to reflect PEP 484:
 
-    * Add :ref:`named-tuples` and :ref:`optional`.
+    * Add :ref:`named-tuples` and :ref:`Optional types <strict_optional>`.
 
     * Do not mention type application syntax (for
       example, ``List[int]()``), as it's no longer supported,

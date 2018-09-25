@@ -112,25 +112,23 @@ This is module is tested using end-to-end fine-grained incremental mode
 test cases (test-data/unit/fine-grained*.test).
 """
 
-import os
 import time
-import os.path
 from typing import (
-    Dict, List, Set, Tuple, Iterable, Union, Optional, Mapping, NamedTuple, Callable
+    Dict, List, Set, Tuple, Iterable, Union, Optional, NamedTuple, Callable,
+    Sequence
 )
 
 from mypy.build import (
-    BuildManager, State, BuildSource, BuildResult, Graph, load_graph, module_not_found,
-    PRI_INDIRECT, DEBUG_FINE_GRAINED,
+    BuildManager, State, BuildSource, BuildResult, Graph, load_graph,
+    process_fresh_modules, DEBUG_FINE_GRAINED,
 )
-from mypy.checker import DeferredNode
-from mypy.errors import Errors, CompileError
+from mypy.checker import FineGrainedDeferredNode
+from mypy.errors import CompileError
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, Expression, SymbolNode, Var, FuncBase, ClassDef, Decorator,
-    Import, ImportFrom, OverloadedFuncDef, SymbolTable, LambdaExpr
+    MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
+    OverloadedFuncDef, SymbolTable, LambdaExpr
 )
 from mypy.options import Options
-from mypy.types import Type
 from mypy.fscache import FileSystemCache
 from mypy.semanal import apply_semantic_analyzer_patches
 from mypy.server.astdiff import (
@@ -138,12 +136,17 @@ from mypy.server.astdiff import (
 )
 from mypy.server.astmerge import merge_asts
 from mypy.server.aststrip import strip_target
-from mypy.server.deps import get_dependencies, get_dependencies_of_target
+from mypy.server.deps import get_dependencies_of_target
 from mypy.server.target import module_prefix, split_target
 from mypy.server.trigger import make_trigger, WILDCARD_TAG
+from mypy.typestate import TypeState
+
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 
-MAX_ITER = 1000
+MAX_ITER = 1000  # type: Final
 
 
 class FineGrainedBuildManager:
@@ -154,12 +157,12 @@ class FineGrainedBuildManager:
             result: Result from the initialized build.
                     The manager and graph will be taken over by this class.
             manager: State of the build (mutated by this class)
-            graph: Additional state of the build (only read to initialize state)
+            graph: Additional state of the build (mutated by this class)
         """
         manager = result.manager
         self.manager = manager
         self.graph = result.graph
-        self.previous_modules = get_module_to_path_map(manager)
+        self.previous_modules = get_module_to_path_map(self.graph)
         self.deps = get_all_dependencies(manager, self.graph)
         self.previous_targets_with_errors = manager.errors.targets()
         self.previous_messages = result.errors[:]
@@ -188,7 +191,7 @@ class FineGrainedBuildManager:
         those parts of other modules that are affected by the changes. Retain
         the existing ASTs and symbol tables of unaffected modules.
 
-        Create new graph with new State objects, but reuse original BuildManager.
+        Reuses original BuildManager and Graph.
 
         Args:
             changed_modules: Modules changed since the previous update/build; each is
@@ -324,7 +327,11 @@ class FineGrainedBuildManager:
         previous_modules = self.previous_modules
         graph = self.graph
 
-        # Record symbol table snaphot of old version the changed module.
+        # If this is an already existing module, make sure that we have
+        # its tree loaded so that we can snapshot it for comparison.
+        ensure_trees_loaded(manager, graph, [module])
+
+        # Record symbol table snapshot of old version the changed module.
         old_snapshots = {}  # type: Dict[str, Dict[str, SnapshotItem]]
         if module in manager.modules:
             snapshot = snapshot_symbol_table(module, manager.modules[module].names)
@@ -336,7 +343,7 @@ class FineGrainedBuildManager:
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
             module, path, remaining, errors = result
-            self.previous_modules = get_module_to_path_map(manager)
+            self.previous_modules = get_module_to_path_map(graph)
             return remaining, (module, path), errors
         assert isinstance(result, NormalUpdate)  # Work around #4124
         module, path, remaining, tree = result
@@ -348,7 +355,7 @@ class FineGrainedBuildManager:
                         if not trigger.endswith('__>')]
             self.manager.log_fine_grained('triggered: %r' % sorted(filtered))
         self.triggered.extend(triggered | self.previous_targets_with_errors)
-        collect_dependencies({module: tree}, self.deps, graph)
+        collect_dependencies([module], self.deps, graph)
         remaining += propagate_changes_using_dependencies(
             manager, graph, self.deps, triggered,
             {module},
@@ -356,16 +363,55 @@ class FineGrainedBuildManager:
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors.update(manager.errors.targets())
-        self.previous_modules = get_module_to_path_map(manager)
+        self.previous_modules = get_module_to_path_map(graph)
 
         return remaining, (module, path), None
+
+
+def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
+                       initial: Sequence[str]) -> List[str]:
+    """Find all the deps of the nodes in initial that haven't had their tree loaded.
+
+    The key invariant here is that if a module is loaded, so are all
+    of their dependencies. This means that when we encounter a loaded
+    module, we don't need to explore its dependencies.  (This
+    invariant is slightly violated when dependencies are added, which
+    can be handled by calling find_unloaded_deps directly on the new
+    dependencies.)
+    """
+    worklist = list(initial)
+    seen = set()  # type: Set[str]
+    unloaded = []
+    while worklist:
+        node = worklist.pop()
+        if node in seen or node not in graph:
+            continue
+        seen.add(node)
+        if node not in manager.modules:
+            ancestors = graph[node].ancestors or []
+            worklist.extend(graph[node].dependencies + ancestors)
+            unloaded.append(node)
+
+    return unloaded
+
+
+def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
+                        initial: Sequence[str]) -> None:
+    """Ensure that the modules in initial and their deps have loaded trees."""
+    to_process = find_unloaded_deps(manager, graph, initial)
+    if to_process:
+        if is_verbose(manager):
+            manager.log_fine_grained("Calling process_fresh_modules on set of size {} ({})".format(
+                len(to_process), sorted(to_process)))
+        process_fresh_modules(graph, to_process, manager)
 
 
 def get_all_dependencies(manager: BuildManager, graph: Dict[str, State]) -> Dict[str, Set[str]]:
     """Return the fine-grained dependency map for an entire build."""
     # Deps for each module were computed during build() or loaded from the cache.
     deps = {}  # type: Dict[str, Set[str]]
-    collect_dependencies(manager.modules, deps, graph)
+    collect_dependencies(graph, deps, graph)
+    TypeState.add_all_protocol_deps(deps)
     return deps
 
 
@@ -400,7 +446,7 @@ def update_module_isolated(module: str,
                            force_removed: bool) -> UpdateResult:
     """Build a new version of one changed module only.
 
-    Don't propagate changes to elsewhere in the program. Raise CompleError on
+    Don't propagate changes to elsewhere in the program. Raise CompileError on
     encountering a blocking error.
 
     Args:
@@ -413,40 +459,56 @@ def update_module_isolated(module: str,
 
     Returns a named tuple describing the result (see above for details).
     """
-    if module not in manager.modules:
+    if module not in graph:
         manager.log_fine_grained('new module %r' % module)
 
     if not manager.fscache.isfile(path) or force_removed:
-        delete_module(module, graph, manager)
+        delete_module(module, path, graph, manager)
         return NormalUpdate(module, path, [], None)
 
-    old_modules = dict(manager.modules)
     sources = get_sources(manager.fscache, previous_modules, [(module, path)])
 
     if module in manager.missing_modules:
         manager.missing_modules.remove(module)
 
+    orig_module = module
+    orig_state = graph.get(module)
+    orig_tree = manager.modules.get(module)
+
+    def restore(ids: List[str]) -> None:
+        # For each of the modules in ids, restore that id's old
+        # manager.modules and graphs entries. (Except for the original
+        # module, this means deleting them.)
+        for id in ids:
+            if id == orig_module and orig_tree:
+                manager.modules[id] = orig_tree
+            elif id in manager.modules:
+                del manager.modules[id]
+            if id == orig_module and orig_state:
+                graph[id] = orig_state
+            elif id in graph:
+                del graph[id]
+
+    new_modules = []  # type: List[State]
     try:
         if module in graph:
             del graph[module]
-        load_graph(sources, manager, graph)
+        load_graph(sources, manager, graph, new_modules)
     except CompileError as err:
         # Parse error somewhere in the program -- a blocker
         assert err.module_with_blocker
-        if err.module_with_blocker != module:
-            # Blocker is in a fresh module. Delete the state of the original target module
-            # since it will be stale.
-            #
-            # TODO: It would be more efficient to store the original target module
-            path = manager.modules[module].path
-            del manager.modules[module]
-            remaining_modules = [(module, path)]
-        else:
-            remaining_modules = []
-        return BlockedUpdate(err.module_with_blocker, path, remaining_modules, err.messages)
+        restore([module] + [st.id for st in new_modules])
+        return BlockedUpdate(err.module_with_blocker, path, [], err.messages)
+
+    # Reparsing the file may have brought in dependencies that we
+    # didn't have before. Make sure that they are loaded to restore
+    # the invariant that a module having a loaded tree implies that
+    # its dependencies do as well.
+    ensure_trees_loaded(manager, graph, graph[module].dependencies)
 
     # Find any other modules brought in by imports.
-    changed_modules = get_all_changed_modules(module, path, previous_modules, graph)
+    changed_modules = [(st.id, st.xpath) for st in new_modules]
+
     # If there are multiple modules to process, only process one of them and return
     # the remaining ones to the caller.
     if len(changed_modules) > 1:
@@ -455,12 +517,7 @@ def update_module_isolated(module: str,
         changed_modules.remove((module, path))
         remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
-        for id, _ in remaining_modules:
-            if id in old_modules:
-                manager.modules[id] = old_modules[id]
-            else:
-                del manager.modules[id]
-            del graph[id]
+        restore([id for id, _ in remaining_modules])
         manager.log_fine_grained('--> %r (newly imported)' % module)
     else:
         remaining_modules = []
@@ -469,22 +526,26 @@ def update_module_isolated(module: str,
 
     # Process the changed file.
     state.parse_file()
+    assert state.tree is not None, "file must be at least parsed"
     # TODO: state.fix_suppressed_dependencies()?
+    if module == 'typing':
+        # We need to manually add typing aliases to builtins, like we
+        # do in process_stale_scc. Because this can't be done until
+        # builtins is also loaded, there isn't an obvious way to
+        # refactor this.
+        manager.semantic_analyzer.add_builtin_aliases(state.tree)
     try:
         state.semantic_analysis()
     except CompileError as err:
         # There was a blocking error, so module AST is incomplete. Restore old modules.
-        manager.modules.clear()
-        manager.modules.update(old_modules)
-        del graph[module]
+        restore([module])
         return BlockedUpdate(module, path, remaining_modules, err.messages)
     state.semantic_analysis_pass_three()
     state.semantic_analysis_apply_patches()
 
     # Merge old and new ASTs.
-    assert state.tree is not None, "file must be at least parsed"
-    new_modules = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
-    replace_modules_with_new_variants(manager, graph, old_modules, new_modules)
+    new_modules_dict = {module: state.tree}  # type: Dict[str, Optional[MypyFile]]
+    replace_modules_with_new_variants(manager, graph, {orig_module: orig_tree}, new_modules_dict)
 
     # Perform type checking.
     state.type_checker().reset()
@@ -526,6 +587,7 @@ def find_relative_leaf_module(modules: List[Tuple[str, str]], graph: Graph) -> T
 
 
 def delete_module(module_id: str,
+                  path: str,
                   graph: Graph,
                   manager: BuildManager) -> None:
     manager.log_fine_grained('delete module %r' % module_id)
@@ -543,6 +605,10 @@ def delete_module(module_id: str,
             parent = manager.modules[parent_id]
             if components[-1] in parent.names:
                 del parent.names[components[-1]]
+    # If the module is removed from the build but still exists, then
+    # we mark it as missing so that it will get picked up by import from still.
+    if manager.fscache.isfile(path):
+        manager.missing_modules.add(module_id)
 
 
 def dedupe_modules(modules: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
@@ -555,9 +621,9 @@ def dedupe_modules(modules: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
     return result
 
 
-def get_module_to_path_map(manager: BuildManager) -> Dict[str, str]:
-    return {module: node.path
-            for module, node in manager.modules.items()}
+def get_module_to_path_map(graph: Graph) -> Dict[str, str]:
+    return {module: node.xpath
+            for module, node in graph.items()}
 
 
 def get_sources(fscache: FileSystemCache,
@@ -570,28 +636,16 @@ def get_sources(fscache: FileSystemCache,
     return sources
 
 
-def get_all_changed_modules(root_module: str,
-                            root_path: str,
-                            old_modules: Dict[str, str],
-                            new_graph: Dict[str, State]) -> List[Tuple[str, str]]:
-    changed_set = {root_module}
-    changed_modules = [(root_module, root_path)]
-    for st in new_graph.values():
-        if st.id not in old_modules and st.id not in changed_set:
-            assert st.path
-            changed_set.add(st.id)
-            changed_modules.append((st.id, st.path))
-    return changed_modules
-
-
-def collect_dependencies(new_modules: Mapping[str, Optional[MypyFile]],
+def collect_dependencies(new_modules: Iterable[str],
                          deps: Dict[str, Set[str]],
                          graph: Dict[str, State]) -> None:
-    for id, node in new_modules.items():
-        if node is None:
+    for id in new_modules:
+        if id not in graph:
             continue
         for trigger, targets in graph[id].fine_grained_deps.items():
             deps.setdefault(trigger, set()).update(targets)
+    # Merge also the newly added protocol deps.
+    TypeState.update_protocol_deps(deps)
 
 
 def calculate_active_triggers(manager: BuildManager,
@@ -616,7 +670,7 @@ def calculate_active_triggers(manager: BuildManager,
             snapshot2 = snapshot_symbol_table(id, new.names)
         diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
         package_nesting_level = id.count('.')
-        for item in diff:
+        for item in diff.copy():
             if (item.count('.') <= package_nesting_level + 1
                     and item.split('.')[-1] not in ('__builtins__',
                                                     '__file__',
@@ -631,7 +685,10 @@ def calculate_active_triggers(manager: BuildManager,
                 # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
                 #     special casing them here.
                 diff.add(id + WILDCARD_TAG)
-                break
+            if item.count('.') > package_nesting_level + 1:
+                # These are for changes within classes, used by protocols.
+                diff.add(item.rsplit('.', 1)[0] + WILDCARD_TAG)
+
         names |= diff
     return {make_trigger(name) for name in names}
 
@@ -639,7 +696,7 @@ def calculate_active_triggers(manager: BuildManager,
 def replace_modules_with_new_variants(
         manager: BuildManager,
         graph: Dict[str, State],
-        old_modules: Dict[str, MypyFile],
+        old_modules: Dict[str, Optional[MypyFile]],
         new_modules: Dict[str, Optional[MypyFile]]) -> None:
     """Replace modules with newly builds versions.
 
@@ -651,10 +708,10 @@ def replace_modules_with_new_variants(
     propagate_changes_using_dependencies).
     """
     for id in new_modules:
+        preserved_module = old_modules.get(id)
         new_module = new_modules[id]
-        if id in old_modules and new_module is not None:
-            preserved_module = old_modules[id]
-            merge_asts(preserved_module, old_modules[id].names,
+        if preserved_module and new_module is not None:
+            merge_asts(preserved_module, preserved_module.names,
                        new_module, new_module.names)
             manager.modules[id] = preserved_module
             graph[id].tree = preserved_module
@@ -673,7 +730,7 @@ def propagate_changes_using_dependencies(
     a target that needs to be reprocessed but that has not been parsed yet."""
 
     num_iter = 0
-    remaining_modules = []
+    remaining_modules = []  # type: List[Tuple[str, str]]
 
     # Propagate changes until nothing visible has changed during the last
     # iteration.
@@ -682,27 +739,31 @@ def propagate_changes_using_dependencies(
         if num_iter > MAX_ITER:
             raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
 
-        todo = find_targets_recursive(manager, triggered, deps, up_to_date_modules)
+        todo, unloaded, stale_protos = find_targets_recursive(manager, graph,
+                                                              triggered, deps, up_to_date_modules)
+        # TODO: we sort to make it deterministic, but this is *incredibly* ad hoc
+        remaining_modules.extend((id, graph[id].xpath) for id in sorted(unloaded))
         # Also process targets that used to have errors, as otherwise some
         # errors might be lost.
         for target in targets_with_errors:
-            id = module_prefix(manager.modules, target)
+            id = module_prefix(graph, target)
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
                 manager.log_fine_grained('process target with error: %s' % target)
-                todo[id].update(lookup_target(manager, target))
+                more_nodes, _ = lookup_target(manager, target)
+                todo[id].update(more_nodes)
         triggered = set()
+        # First invalidate subtype caches in all stale protocols.
+        # We need to do this to avoid false negatives if the protocol itself is
+        # unchanged, but was marked stale because its sub- (or super-) type changed.
+        for info in stale_protos:
+            TypeState.reset_subtype_caches_for(info)
+        # Then fully reprocess all targets.
         # TODO: Preserve order (set is not optimal)
         for id, nodes in sorted(todo.items(), key=lambda x: x[0]):
             assert id not in up_to_date_modules
-            if manager.modules[id].is_cache_skeleton:
-                # We have only loaded the cache for this file, not the actual file,
-                # so we can't access the nodes to reprocess.
-                # Add it to the queue of files that need to be processed fully.
-                remaining_modules.append((id, manager.modules[id].path))
-            else:
-                triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
+            triggered |= reprocess_nodes(manager, graph, id, nodes, deps)
         # Changes elsewhere may require us to reprocess modules that were
         # previously considered up to date. For example, there may be a
         # dependency loop that loops back to an originally processed module.
@@ -716,16 +777,22 @@ def propagate_changes_using_dependencies(
 
 def find_targets_recursive(
         manager: BuildManager,
+        graph: Graph,
         triggers: Set[str],
         deps: Dict[str, Set[str]],
-        up_to_date_modules: Set[str]) -> Dict[str, Set[DeferredNode]]:
+        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[FineGrainedDeferredNode]],
+                                               Set[str], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
-    Returns: Dictionary from module id to a set of stale targets.
+    Returns: A tuple containing a:
+     * Dictionary from module id to a set of stale targets.
+     * A set of module ids for unparsed modules with stale targets.
     """
-    result = {}  # type: Dict[str, Set[DeferredNode]]
+    result = {}  # type: Dict[str, Set[FineGrainedDeferredNode]]
     worklist = triggers
     processed = set()  # type: Set[str]
+    stale_protos = set()  # type: Set[TypeInfo]
+    unloaded_files = set()  # type: Set[str]
 
     # Find AST nodes corresponding to each target.
     #
@@ -738,26 +805,36 @@ def find_targets_recursive(
             if target.startswith('<'):
                 worklist |= deps.get(target, set()) - processed
             else:
-                module_id = module_prefix(manager.modules, target)
+                module_id = module_prefix(graph, target)
                 if module_id is None:
                     # Deleted module.
                     continue
                 if module_id in up_to_date_modules:
                     # Already processed.
                     continue
+                if (module_id not in manager.modules
+                        or manager.modules[module_id].is_cache_skeleton):
+                    # We haven't actually parsed and checked the module, so we don't have
+                    # access to the actual nodes.
+                    # Add it to the queue of files that need to be processed fully.
+                    unloaded_files.add(module_id)
+                    continue
+
                 if module_id not in result:
                     result[module_id] = set()
                 manager.log_fine_grained('process: %s' % target)
-                deferred = lookup_target(manager, target)
+                deferred, stale_proto = lookup_target(manager, target)
+                if stale_proto:
+                    stale_protos.add(stale_proto)
                 result[module_id].update(deferred)
 
-    return result
+    return result, unloaded_files, stale_protos
 
 
 def reprocess_nodes(manager: BuildManager,
                     graph: Dict[str, State],
                     module_id: str,
-                    nodeset: Set[DeferredNode],
+                    nodeset: Set[FineGrainedDeferredNode],
                     deps: Dict[str, Set[str]]) -> Set[str]:
     """Reprocess a set of nodes within a single module.
 
@@ -773,7 +850,7 @@ def reprocess_nodes(manager: BuildManager,
     old_symbols = {name: names.copy() for name, names in old_symbols.items()}
     old_symbols_snapshot = snapshot_symbol_table(file_node.fullname(), file_node.names)
 
-    def key(node: DeferredNode) -> int:
+    def key(node: FineGrainedDeferredNode) -> int:
         # Unlike modules which are sorted by name within SCC,
         # nodes within the same module are sorted by line number, because
         # this is how they are processed in normal mode.
@@ -781,8 +858,9 @@ def reprocess_nodes(manager: BuildManager,
 
     nodes = sorted(nodeset, key=key)
 
-    # TODO: ignore_all argument to set_file_ignored_lines
-    manager.errors.set_file_ignored_lines(file_node.path, file_node.ignored_lines)
+    options = graph[module_id].options
+    manager.errors.set_file_ignored_lines(
+        file_node.path, file_node.ignored_lines, options.ignore_errors)
 
     targets = set()
     for node in nodes:
@@ -800,7 +878,6 @@ def reprocess_nodes(manager: BuildManager,
 
     # Second pass of semantic analysis. We don't redo the first pass, because it only
     # does local things that won't go stale.
-    options = graph[module_id].options
     for deferred in nodes:
         with semantic_analyzer.file_context(
                 file_node=file_node,
@@ -882,7 +959,7 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str,
 
 
 def update_deps(module_id: str,
-                nodes: List[DeferredNode],
+                nodes: List[FineGrainedDeferredNode],
                 graph: Dict[str, State],
                 deps: Dict[str, Set[str]],
                 options: Options) -> None:
@@ -895,12 +972,18 @@ def update_deps(module_id: str,
                                               options.python_version)
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
+    # Merge also the newly added protocol deps (if any).
+    TypeState.update_protocol_deps(deps)
 
 
 def lookup_target(manager: BuildManager,
-                  target: str) -> List[DeferredNode]:
-    """Look up a target by fully-qualified name."""
+                  target: str) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
+    """Look up a target by fully-qualified name.
 
+    The first item in the return tuple is a list of deferred nodes that
+    needs to be reprocessed. If the target represents a TypeInfo corresponding
+    to a protocol, return it as a second item in the return tuple, otherwise None.
+    """
     def not_found() -> None:
         manager.log_fine_grained(
             "Can't find matching target for %s (stale dependency?)" % target)
@@ -909,7 +992,7 @@ def lookup_target(manager: BuildManager,
     items = split_target(modules, target)
     if items is None:
         not_found()  # Stale dependency
-        return []
+        return [], None
     module, rest = items
     if rest:
         components = rest.split('.')
@@ -928,7 +1011,7 @@ def lookup_target(manager: BuildManager,
         if (not isinstance(node, (MypyFile, TypeInfo))
                 or c not in node.names):
             not_found()  # Stale dependency
-            return []
+            return [], None
         node = node.names[c].node
     if isinstance(node, TypeInfo):
         # A ClassDef target covers the body of the class and everything defined
@@ -941,13 +1024,17 @@ def lookup_target(manager: BuildManager,
             # Processing them would spell trouble -- for example, we could be refreshing
             # a deserialized TypeInfo with missing attributes.
             not_found()
-            return []
-        result = [DeferredNode(file, None, None)]
+            return [], None
+        result = [FineGrainedDeferredNode(file, None, None)]
+        stale_info = None  # type: Optional[TypeInfo]
+        if node.is_protocol:
+            stale_info = node
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                result.extend(lookup_target(manager, target + '.' + name))
-        return result
+                method, _ = lookup_target(manager, target + '.' + name)
+                result.extend(method)
+        return result, stale_info
     if isinstance(node, Decorator):
         # Decorator targets actually refer to the function definition only.
         node = node.func
@@ -957,13 +1044,13 @@ def lookup_target(manager: BuildManager,
         # The target can't be refreshed. It's possible that the target was
         # changed to another type and we have a stale dependency pointing to it.
         not_found()
-        return []
+        return [], None
     if node.fullname() != target:
         # Stale reference points to something unexpected. We shouldn't process since the
         # context will be wrong and it could be a partially initialized deserialized node.
         not_found()
-        return []
-    return [DeferredNode(node, active_class_name, active_class)]
+        return [], None
+    return [FineGrainedDeferredNode(node, active_class_name, active_class)], None
 
 
 def is_verbose(manager: BuildManager) -> bool:
@@ -971,7 +1058,7 @@ def is_verbose(manager: BuildManager) -> bool:
 
 
 def target_from_node(module: str,
-                     node: Union[FuncDef, MypyFile, OverloadedFuncDef, LambdaExpr]
+                     node: Union[FuncDef, MypyFile, OverloadedFuncDef]
                      ) -> Optional[str]:
     """Return the target name corresponding to a deferred node.
 
@@ -986,10 +1073,8 @@ def target_from_node(module: str,
             # Actually a reference to another module -- likely a stale dependency.
             return None
         return module
-    elif isinstance(node, (OverloadedFuncDef, FuncDef)):
-        if node.info is not None:
+    else:  # OverloadedFuncDef or FuncDef
+        if node.info:
             return '%s.%s' % (node.info.fullname(), node.name())
         else:
             return '%s.%s' % (module, node.name())
-    else:
-        assert False, "Lambda expressions can't be deferred in fine-grained incremental mode"

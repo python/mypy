@@ -1,13 +1,13 @@
 .. _common_issues:
 
-Common issues
-=============
+Common issues and solutions
+===========================
 
 This section has examples of cases when you need to update your code
 to use static typing, and ideas for working around issues if mypy
 doesn't work as expected. Statically typed code is often identical to
-normal Python code, but sometimes you need to do things slightly
-differently.
+normal Python code (except for type annotations), but sometimes you need
+to do things slightly differently.
 
 Can't install mypy using pip
 ----------------------------
@@ -30,7 +30,8 @@ flagged as an error.
   do not have any annotations (neither for any argument nor for the
   return type) are not type-checked, and even the most blatant type
   errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
-  annotations.
+  annotations. Where that isn't possible, functions without annotations
+  can be checked using ``--check-untyped-defs``.
 
   Example:
 
@@ -51,7 +52,7 @@ flagged as an error.
 
   If you don't know what types to add, you can use ``Any``, but beware:
 
-- **One of the values involved has type ``Any``.** Extending the above
+- **One of the values involved has type 'Any'.** Extending the above
   example, if we were to leave out the annotation for ``a``, we'd get
   no error:
 
@@ -85,7 +86,7 @@ flagged as an error.
   clarity about the latter use ``--follow-imports=error``.  You can
   read up about these and other useful flags in :ref:`command-line`.
 
-- **A function annotated as returning a non-optional type returns ``None``
+- **A function annotated as returning a non-optional type returns 'None'
   and mypy doesn't complain**.
 
   .. code-block:: python
@@ -93,9 +94,8 @@ flagged as an error.
       def foo() -> str:
           return None  # No error!
 
-  By default, the ``None`` value is considered compatible with everything. See
-  :ref:`optional` for details on strict optional checking, which allows mypy to
-  check ``None`` values precisely, and will soon become default.
+  You may have disabled strict optional checking (see
+  :ref:`no_strict_optional` for more).
 
 .. _silencing_checker:
 
@@ -131,6 +131,45 @@ The second line is now fine, since the ignore comment causes the name
     if we did have a stub available for ``frobnicate`` then mypy would
     ignore the ``# type: ignore`` comment and typecheck the stub as usual.
 
+Another option is to explicitly annotate values with type ``Any`` --
+mypy will let you perform arbitrary operations on ``Any``
+values. Sometimes there is no more precise type you can use for a
+particular value, especially if you use dynamic Python features
+such as ``__getattr__``:
+
+.. code-block:: python
+
+   class Wrapper:
+       ...
+       def __getattr__(self, a: str) -> Any:
+           return getattr(self._wrapped, a)
+
+Finally, you can create a stub file (``.pyi``) for a file that
+generates spurious errors. Mypy will only look at the stub file
+and ignore the implementation, since stub files take precedence
+over ``.py`` files.
+
+Unexpected errors about 'None' and/or 'Optional' types
+------------------------------------------------------
+
+Starting from mypy 0.600, mypy uses
+:ref:`strict optional checking <strict_optional>` by default,
+and the ``None`` value is not compatible with non-optional types.
+It's easy to switch back to the older behavior where ``None`` was
+compatible with arbitrary types (see :ref:`no_strict_optional`).
+You can also fall back to this behavior if strict optional
+checking would require a large number of ``assert foo is not None``
+checks to be inserted, and you want to minimize the number
+of code changes required to get a clean mypy run.
+
+Mypy runs are slow
+------------------
+
+If your mypy runs feel slow, you should probably use the :ref:`mypy
+daemon <mypy_daemon>`, which can speed up incremental mypy runtimes by
+a factor of 10 or more. :ref:`Remote caching <remote-cache>` can
+make cold mypy runs several times faster.
+
 Types of empty collections
 --------------------------
 
@@ -139,7 +178,7 @@ dict to a new variable, as mentioned earlier:
 
 .. code-block:: python
 
-   a = []  # type: List[int]
+   a: List[int] = []
 
 Without the annotation mypy can't always figure out the
 precise type of ``a``.
@@ -237,48 +276,6 @@ Possible strategies in such situations are:
      def f_good(x: Sequence[A]) -> A:
          return x[0]
      f_good(new_lst) # OK
-
-Covariant subtyping of mutable protocol members is rejected
------------------------------------------------------------
-
-Mypy rejects this because this is potentially unsafe.
-Consider this example:
-
-.. code-block:: python
-
-   from typing_extensions import Protocol
-
-   class P(Protocol):
-       x: float
-
-   def fun(arg: P) -> None:
-       arg.x = 3.14
-
-   class C:
-       x = 42
-   c = C()
-   fun(c)  # This is not safe
-   c.x << 5  # Since this will fail!
-
-To work around this problem consider whether "mutating" is actually part
-of a protocol. If not, then one can use a ``@property`` in
-the protocol definition:
-
-.. code-block:: python
-
-   from typing_extensions import Protocol
-
-   class P(Protocol):
-       @property
-       def x(self) -> float:
-          pass
-
-   def fun(arg: P) -> None:
-       ...
-
-   class C:
-       x = 42
-   fun(C())  # OK
 
 Declaring a supertype as variable type
 --------------------------------------
@@ -419,12 +416,25 @@ understand how mypy handles a particular piece of code. Example:
 
    reveal_type((1, 'hello'))  # Revealed type is 'Tuple[builtins.int, builtins.str]'
 
+You can also use ``reveal_locals()`` at any line in a file
+to see the types of all local variables at once. Example:
+
+.. code-block:: python
+
+   a = 1
+   b = 'one'
+   reveal_locals()
+   # Revealed local types are:
+   # a: builtins.int
+   # b: builtins.str
 .. note::
 
-   ``reveal_type`` is only understood by mypy and doesn't exist
-   in Python, if you try to run your program. You'll have to remove
-   any ``reveal_type`` calls before you can run your code.
-   ``reveal_type`` is always available and you don't need to import it.
+   ``reveal_type`` and ``reveal_locals`` are only understood by mypy and
+   don't exist in Python. If you try to run your program, you'll have to
+   remove any ``reveal_type`` and ``reveal_locals`` calls before you can
+   run your code. Both are always available and you don't need to import
+   them.
+
 
 .. _import-cycles:
 
@@ -508,3 +518,86 @@ put the linter comment *after* the type comment:
 .. code-block:: python
 
     a = some_complex_thing()  # type: ignore  # noqa
+
+Covariant subtyping of mutable protocol members is rejected
+-----------------------------------------------------------
+
+Mypy rejects this because this is potentially unsafe.
+Consider this example:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       x: float
+
+   def fun(arg: P) -> None:
+       arg.x = 3.14
+
+   class C:
+       x = 42
+   c = C()
+   fun(c)  # This is not safe
+   c.x << 5  # Since this will fail!
+
+To work around this problem consider whether "mutating" is actually part
+of a protocol. If not, then one can use a ``@property`` in
+the protocol definition:
+
+.. code-block:: python
+
+   from typing_extensions import Protocol
+
+   class P(Protocol):
+       @property
+       def x(self) -> float:
+          pass
+
+   def fun(arg: P) -> None:
+       ...
+
+   class C:
+       x = 42
+   fun(C())  # OK
+
+Dealing with conflicting names
+------------------------------
+
+Suppose you have a class with a method whose name is the same as an
+imported (or built-in) type, and you want to use the type in another
+method signature.  E.g.:
+
+.. code-block:: python
+
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes):  # error: Invalid type "mod.Message.bytes"
+           ...
+
+The third line elicits an error because mypy sees the argument type
+``bytes`` as a reference to the method by that name.  Other than
+renaming the method, a work-around is to use an alias:
+
+.. code-block:: python
+
+   bytes_ = bytes
+   class Message:
+       def bytes(self):
+           ...
+       def register(self, path: bytes_):
+           ...
+
+I need a mypy bug fix that hasn't been released yet
+---------------------------------------------------
+
+You can install the latest development version of mypy from source. Clone the
+`mypy repository on GitHub <https://github.com/python/mypy>`_, and then run
+``pip install`` locally:
+
+.. code-block:: text
+
+    git clone --recurse-submodules https://github.com/python/mypy.git
+    cd mypy
+    sudo python3 -m pip install --upgrade .

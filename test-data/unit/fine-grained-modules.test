@@ -134,6 +134,25 @@ b.py:1: error: Name 'f' is not defined
 ==
 b.py:1: error: Name 'f' is not defined
 
+[case testRemoveSubmoduleFromBuild1]
+# cmd1: mypy a.py b/__init__.py b/c.py
+# cmd2: mypy a.py b/__init__.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file a.py]
+from b import c
+x=1
+[file a.py.2]
+from b import c
+x=2
+[file a.py.3]
+from b import c
+x=3
+[file b/__init__.py]
+[file b/c.py]
+[out]
+==
+==
+
 [case testImportLineNumber1]
 import b
 [file b.py]
@@ -202,7 +221,6 @@ main:1: error: Cannot find module named 'p.a'
 ==
 main:1: error: Cannot find module named 'p.a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Module has no attribute "a"
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 [builtins fixtures/module.pyi]
@@ -436,6 +454,18 @@ main:1: error: Cannot find module named 'p.q'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
+[case testDeleteSubpackageWithNontrivialParent1]
+[file p/__init__.py]
+def g() -> None:
+    pass
+[file p/b.py.2]
+def foo() -> None: pass
+foo()
+[delete p/b.py.3]
+[out]
+==
+==
+
 [case testDeleteModuleWithError]
 import a
 [file a.py]
@@ -481,6 +511,28 @@ import b
 b.f(1)
 [file b.py.2]
 def f(x: int) -> None: pass
+[out]
+==
+
+[case testDeleteSubpackageInit1]
+# cmd: mypy q/r/s.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file q/__init__.py]
+[file q/r/__init__.py]
+[file q/r/s.py]
+[delete q/__init__.py.2]
+[out]
+==
+
+[case testAddSubpackageInit2]
+# cmd: mypy q/r/s.py
+# flags: --follow-imports=skip --ignore-missing-imports
+[file q/r/__init__.py]
+[file q/r/s.py]
+1
+[file q/r/s.py.2]
+2
+[file q/__init__.py.2]
 [out]
 ==
 
@@ -699,6 +751,7 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAddFileWhichImportsLibModuleWithErrors]
+# flags: --no-silence-site-packages
 import a
 a.x = 0
 [file a.py.2]
@@ -706,8 +759,8 @@ import broken
 x = broken.x
 z
 [out]
-main:1: error: Cannot find module named 'a'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Cannot find module named 'a'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 a.py:3: error: Name 'z' is not defined
 <ROOT>/test-data/unit/lib-stub/broken.pyi:2: error: Name 'y' is not defined
@@ -773,7 +826,6 @@ a.py:2: error: Too many arguments for "g"
 ==
 a.py:1: error: Cannot find module named 'm.x'
 a.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-a.py:2: error: Module has no attribute "x"
 
 [case testDeletePackage1]
 import p.a
@@ -820,7 +872,6 @@ main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
 main:1: error: Cannot find module named 'p.a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
-main:2: error: Module has no attribute "a"
 ==
 main:1: error: Cannot find module named 'p'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
@@ -1535,6 +1586,91 @@ x = ''
 ==
 ==
 
+[case testImportStarSomethingMoved]
+import p
+[file p.py]
+from r2 import *
+[file r2.py]
+class A: pass
+
+[file p.py.2]
+from r1 import *
+from r2 import *
+[file r2.py.2]
+
+[file r1.py.2]
+class A: pass
+
+[out]
+==
+
+[case testImportStarOverlap]
+from b import *
+from c import *  # type: ignore
+[file b.py]
+from d import T
+[file c.py]
+from d import T
+[file c.py.2]
+from d import T
+z = 10
+[file d.py]
+from typing import TypeVar
+T = TypeVar('T')
+[out]
+==
+
+[case testImportStarOverlap2]
+from b import *
+import typing
+def foo(x: typing.List[int]) -> int:
+    return x[0]
+[file b.py]
+import typing
+z = 10
+[file b.py.2]
+import typing
+z = '10'
+[builtins fixtures/list.pyi]
+[out]
+==
+
+
+[case testImportStarOverlap3]
+from b import *
+from c import typing
+def foo(x: typing.List[int]) -> int:
+    return x[0]
+[file b.py]
+import typing
+z = 10
+[file b.py.2]
+import typing
+z = '10'
+[file c.py]
+import typing
+z = 10
+[builtins fixtures/list.pyi]
+[out]
+==
+
+
+[case testImportPartialAssign]
+import a
+[file a.py]
+from c import *
+from b import A, x
+[file b.py]
+A = 10
+x = 1
+[file b.py.2]
+class A: pass
+x = 1
+[file c.py]
+x = 10
+[out]
+==
+
 [case testDeleteFileWithErrors]
 # cmd: mypy main a.py
 # cmd2: mypy main
@@ -1782,3 +1918,210 @@ reveal_type(b.x)
 ==
 ==
 a.py:2: error: Revealed type is 'builtins.int'
+
+[case testQualifiedSubpackage1]
+[file c/__init__.py]
+[file c/a.py]
+from lurr import x
+from c.d import f
+
+[file c/d.py]
+def f() -> None: pass
+def g(x: int) -> None: pass
+[file lurr.py]
+x = 10
+[file lurr.py.2]
+x = '10'
+[out]
+==
+
+[case testImportedMissingSubpackage]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy a.py b/__init__.py
+[file a.py]
+from b.foo import bar
+x = 10
+[file b/__init__.py]
+[file a.py.2]
+from b.foo import bar
+x = '10'
+[out]
+==
+
+[case testFineAddedMissingStubs]
+# flags: --ignore-missing-imports
+from missing import f
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackage]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackageFrom]
+# flags: --ignore-missing-imports
+from package import missing
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackagePartial]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackagePartialGetAttr]
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnore]
+from missing import f  # type: ignore
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnorePackage]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnorePackageFrom]
+from package import missing  # type: ignore
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnorePackagePartial]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineFollowImportSkipNotInvalidatedOnPresent]
+# flags: --follow-imports=skip
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other.py]
+x = 1
+[file other.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+[out]
+==
+
+[case testFineFollowImportSkipNotInvalidatedOnPresentPackage]
+# flags: --follow-imports=skip
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other/__init__.py]
+x = 1
+[file other/__init__.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+[out]
+==
+
+[case testFineFollowImportSkipNotInvalidatedOnAdded]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other.py.2]
+x = 1
+[stale]
+[rechecked]
+[out]
+==
+
+-- TODO: Fix this: stubs should be followed normally even with follow-imports=skip
+[case testFineFollowImportSkipInvalidatedOnAddedStub-skip]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy main.py
+[file main.py]
+import other
+x: str = other.x
+[file other.pyi.2]
+x = 1
+[stale main, other]
+[rechecked main, other]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testFineFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs]
+# flags: --follow-imports=skip --ignore-missing-imports --config-file=tmp/mypy.ini
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[file mypy.ini]
+[[mypy]
+follow_imports_for_stubs = True
+[stale]
+[rechecked]
+[out]
+==
+
+[case testFineAddedSkippedStubsPackageFrom]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy main.py
+# cmd2: mypy main.py package/__init__.py package/missing.py
+[file main.py]
+from package import missing
+missing.f(int())
+[file package/__init__.py]
+[file package/missing.py]
+def f(x: str) -> None: pass
+[out]
+==
+main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"

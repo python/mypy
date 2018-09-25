@@ -1,10 +1,6 @@
-from typing import Dict, Iterable, List, Optional, Set
-from abc import abstractmethod
+from typing import Dict, Iterable, List, Optional, Set, Union
 
-from mypy.visitor import NodeVisitor
 from mypy.types import SyntheticTypeVisitor
-from mypy.nodes import MODULE_REF
-import mypy.nodes as nodes
 import mypy.types as types
 from mypy.util import split_module_names
 
@@ -26,9 +22,10 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
         self.cache = {}  # type: Dict[types.Type, Set[str]]
 
     def find_modules(self, typs: Iterable[types.Type]) -> Set[str]:
-        return self._visit(*typs)
+        return self._visit(typs)
 
-    def _visit(self, *typs: types.Type) -> Set[str]:
+    def _visit(self, typ_or_typs: Union[types.Type, Iterable[types.Type]]) -> Set[str]:
+        typs = [typ_or_typs] if isinstance(typ_or_typs, types.Type) else typ_or_typs
         output = set()  # type: Set[str]
         for typ in typs:
             if typ in self.cache:
@@ -40,10 +37,10 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
         return output
 
     def visit_unbound_type(self, t: types.UnboundType) -> Set[str]:
-        return self._visit(*t.args)
+        return self._visit(t.args)
 
     def visit_type_list(self, t: types.TypeList) -> Set[str]:
-        return self._visit(*t.items)
+        return self._visit(t.items)
 
     def visit_callable_argument(self, t: types.CallableArgument) -> Set[str]:
         return self._visit(t.typ)
@@ -64,11 +61,11 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
         return set()
 
     def visit_type_var(self, t: types.TypeVarType) -> Set[str]:
-        return self._visit(*t.values) | self._visit(t.upper_bound)
+        return self._visit(t.values) | self._visit(t.upper_bound)
 
     def visit_instance(self, t: types.Instance) -> Set[str]:
-        out = self._visit(*t.args)
-        if t.type is not None:
+        out = self._visit(t.args)
+        if t.type:
             # Uses of a class depend on everything in the MRO,
             # as changes to classes in the MRO can add types to methods,
             # change property types, change the MRO itself, etc.
@@ -79,25 +76,25 @@ class TypeIndirectionVisitor(SyntheticTypeVisitor[Set[str]]):
         return out
 
     def visit_callable_type(self, t: types.CallableType) -> Set[str]:
-        out = self._visit(*t.arg_types) | self._visit(t.ret_type)
+        out = self._visit(t.arg_types) | self._visit(t.ret_type)
         if t.definition is not None:
             out.update(extract_module_names(t.definition.fullname()))
         return out
 
     def visit_overloaded(self, t: types.Overloaded) -> Set[str]:
-        return self._visit(*t.items()) | self._visit(t.fallback)
+        return self._visit(t.items()) | self._visit(t.fallback)
 
     def visit_tuple_type(self, t: types.TupleType) -> Set[str]:
-        return self._visit(*t.items) | self._visit(t.fallback)
+        return self._visit(t.items) | self._visit(t.fallback)
 
     def visit_typeddict_type(self, t: types.TypedDictType) -> Set[str]:
-        return self._visit(*t.items.values()) | self._visit(t.fallback)
+        return self._visit(t.items.values()) | self._visit(t.fallback)
 
     def visit_star_type(self, t: types.StarType) -> Set[str]:
         return set()
 
     def visit_union_type(self, t: types.UnionType) -> Set[str]:
-        return self._visit(*t.items)
+        return self._visit(t.items)
 
     def visit_partial_type(self, t: types.PartialType) -> Set[str]:
         return set()

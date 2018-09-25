@@ -3,7 +3,7 @@ from typing import Dict, Iterable, List, TypeVar, Mapping, cast
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
     NoneTyp, TypeVarType, Overloaded, TupleType, TypedDictType, UnionType,
-    ErasedType, TypeList, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
+    ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarDef
 )
 

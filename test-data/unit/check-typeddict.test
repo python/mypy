@@ -347,6 +347,7 @@ def as_mutable_mapping(p: Point) -> MutableMapping[str, int]:
               # N: 'Point' is missing following 'MutableMapping' protocol member: \
               # N:     __setitem__
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testCanConvertTypedDictToAny]
 from mypy_extensions import TypedDict
@@ -879,11 +880,11 @@ from mypy_extensions import TypedDict
 class A: pass
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
-reveal_type(d.get('x')) # E: Revealed type is 'Union[builtins.int, builtins.None]'
-reveal_type(d.get('y')) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+reveal_type(d.get('x')) # E: Revealed type is 'Union[builtins.int, None]'
+reveal_type(d.get('y')) # E: Revealed type is 'Union[builtins.str, None]'
 reveal_type(d.get('x', A())) # E: Revealed type is 'Union[builtins.int, __main__.A]'
 reveal_type(d.get('x', 1)) # E: Revealed type is 'builtins.int'
-reveal_type(d.get('y', None)) # E: Revealed type is 'Union[builtins.str, builtins.None]'
+reveal_type(d.get('y', None)) # E: Revealed type is 'Union[builtins.str, None]'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -905,8 +906,14 @@ reveal_type(d.get('x', a)) # E: Revealed type is 'Union[builtins.list[builtins.i
 from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int, 'y': str})
 d: D
-d.get() # E: No overload variant of "get" of "Mapping" matches argument types []
-d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types [builtins.str, builtins.int, builtins.int]
+d.get() # E: All overload variants of "get" of "Mapping" require at least one argument \
+        # N: Possible overload variants: \
+        # N:     def get(self, k: str) -> object \
+        # N:     def [V] get(self, k: str, default: object) -> object
+d.get('x', 1, 2) # E: No overload variant of "get" of "Mapping" matches argument types "str", "int", "int" \
+                 # N: Possible overload variants: \
+                 # N:     def get(self, k: str) -> object \
+                 # N:     def [V] get(self, k: str, default: Union[int, V]) -> object
 x = d.get('z') # E: TypedDict "D" has no key 'z'
 reveal_type(x) # E: Revealed type is 'Any'
 s = ''
@@ -948,8 +955,8 @@ d: D
 reveal_type(d.get('x', {})) \
     # E: Revealed type is 'TypedDict('__main__.C', {'a'?: builtins.int})'
 reveal_type(d.get('x', None)) \
-    # E: Revealed type is 'Union[TypedDict('__main__.C', {'a': builtins.int}), builtins.None]'
-reveal_type(d.get('x', {}).get('a')) # E: Revealed type is 'Union[builtins.int, builtins.None]'
+    # E: Revealed type is 'Union[TypedDict('__main__.C', {'a': builtins.int}), None]'
+reveal_type(d.get('x', {}).get('a')) # E: Revealed type is 'Union[builtins.int, None]'
 reveal_type(d.get('x', {})['a']) # E: Revealed type is 'builtins.int'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
@@ -1124,6 +1131,12 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x'})  # E: TypedDict() expects a dictionary literal as the second argument
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictTypeWithKwargs]
+from mypy_extensions import TypedDict
+d = {'x': int, 'y': int}
+Point = TypedDict('Point', {**d})  # E: Invalid TypedDict() field name
+[builtins fixtures/dict.pyi]
+
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
 [case testCannotCreateTypedDictTypeWithNonpositionalArgs]
@@ -1204,7 +1217,10 @@ def f(x: int) -> None: ...
 def f(x): pass
 
 a: A
-f(a)  # E: No overload variant of "f" matches argument types [TypedDict('__main__.A', {'x': builtins.int})]
+f(a)  # E: No overload variant of "f" matches argument type "A" \
+      # N: Possible overload variants: \
+      # N:     def f(x: str) -> None \
+      # N:     def f(x: int) -> None
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1260,15 +1276,15 @@ A = TypedDict('A', {'x': int})
 B = TypedDict('B', {'y': str})
 
 @overload
-def f(x: A) -> int: ... # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+def f(x: A) -> int: ...
 @overload
 def f(x: B) -> str: ...
 def f(x): pass
 
 a: A
 b: B
-reveal_type(f(a)) # E: Revealed type is 'Any'
-reveal_type(f(b)) # E: Revealed type is 'Any'
+reveal_type(f(a)) # E: Revealed type is 'builtins.int'
+reveal_type(f(b)) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -1326,6 +1342,21 @@ reveal_type(m['director']['name']) # E: Revealed type is 'builtins.str'
 [builtins fixtures/dict.pyi]
 [out]
 
+[case testSubclassOfRecursiveTypedDict]
+from typing import List
+from mypy_extensions import TypedDict
+
+class Command(TypedDict):  # type: ignore
+    subcommands: List['Command']
+
+class HelpCommand(Command):
+    pass
+
+hc = HelpCommand(subcommands=[])
+reveal_type(hc)  # E: Revealed type is 'TypedDict('__main__.HelpCommand', {'subcommands': builtins.list[TypedDict('__main__.Command', {'subcommands': builtins.list[Any]})]})'
+[builtins fixtures/list.pyi]
+[out]
+
 [case testTypedDictForwardAsUpperBound]
 from typing import TypeVar, Generic
 from mypy_extensions import TypedDict
@@ -1359,3 +1390,26 @@ def f(x: a.N) -> None:
 [out]
 tmp/b.py:4: error: Revealed type is 'TypedDict('a.N', {'a': builtins.str})'
 tmp/b.py:5: error: Revealed type is 'builtins.str'
+
+[case testTypedDictImportCycle]
+import b
+[file a.py]
+class C:
+    pass
+
+from b import tp
+x: tp
+reveal_type(x['x'])  # E: Revealed type is 'builtins.int'
+
+# Unfortunately runtime part doesn't work yet, see docstring in SemanticAnalyzerPass3.update_imported_vars()
+reveal_type(tp)  # E: Revealed type is 'Any' \
+                 # E: Cannot determine type of 'tp'
+tp('x')  # E: Cannot determine type of 'tp'
+
+[file b.py]
+from a import C
+from mypy_extensions import TypedDict
+
+tp = TypedDict('tp', {'x': int})
+[builtins fixtures/dict.pyi]
+[out]
