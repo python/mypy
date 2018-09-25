@@ -28,13 +28,11 @@ DeleteFile = NamedTuple('DeleteFile', [('module', str),
 FileOperation = Union[UpdateFile, DeleteFile]
 
 
-def parse_test_case(suite: 'DataSuite', p: List['TestItem'], path: str,
+def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
                     case: 'DataDrivenTestCase') -> None:
-    """Parse a single case from suite with test case descriptions.
+    """Parse and prepare a single case from suite with test case descriptions.
 
-    NB: this function and DataDrivenTestCase were shared between the
-    legacy myunit and pytest codepaths -- if something looks redundant,
-    that's likely the reason.
+    This method is part of the setup phase, just before the test case is run.
     """
     base_path = suite.base_path
     if suite.native_sep:
@@ -44,144 +42,111 @@ def parse_test_case(suite: 'DataSuite', p: List['TestItem'], path: str,
 
     # Process the parsed items. Each item has a header of form [id args],
     # optionally followed by lines of text.
-    i = 0
-    if True:
-        ok = False
-        i0 = 0
-        if True:
-            i += 1
+    out_section_missing = suite.required_out_section
 
-            files = []  # type: List[Tuple[str, str]] # path and contents
-            output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
-            tcout = []  # type: List[str]  # Regular output errors
-            tcout2 = {}  # type: Dict[int, List[str]]  # Output errors for incremental, runs 2+
-            deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
-            stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
-            rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
-            triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
-            while i < len(p):
-                if p[i].id == 'file' or p[i].id == 'outfile':
-                    # Record an extra file needed for the test case.
-                    arg = p[i].arg
-                    assert arg is not None
-                    contents = '\n'.join(p[i].data)
-                    contents = expand_variables(contents)
-                    file_entry = (join(base_path, arg), contents)
-                    if p[i].id == 'file':
-                        files.append(file_entry)
-                    elif p[i].id == 'outfile':
-                        output_files.append(file_entry)
-                elif p[i].id in ('builtins', 'builtins_py2'):
-                    # Use an alternative stub file for the builtins module.
-                    arg = p[i].arg
-                    assert arg is not None
-                    mpath = join(os.path.dirname(path), arg)
-                    if p[i].id == 'builtins':
-                        fnam = 'builtins.pyi'
-                    else:
-                        # Python 2
-                        fnam = '__builtin__.pyi'
-                    with open(mpath) as f:
-                        files.append((join(base_path, fnam), f.read()))
-                elif p[i].id == 'typing':
-                    # Use an alternative stub file for the typing module.
-                    arg = p[i].arg
-                    assert arg is not None
-                    src_path = join(os.path.dirname(path), arg)
-                    with open(src_path) as f:
-                        files.append((join(base_path, 'typing.pyi'), f.read()))
-                elif re.match(r'stale[0-9]*$', p[i].id):
-                    if p[i].id == 'stale':
-                        passnum = 1
-                    else:
-                        passnum = int(p[i].id[len('stale'):])
-                        assert passnum > 0
-                    arg = p[i].arg
-                    if arg is None:
-                        stale_modules[passnum] = set()
-                    else:
-                        stale_modules[passnum] = {item.strip() for item in arg.split(',')}
-                elif re.match(r'rechecked[0-9]*$', p[i].id):
-                    if p[i].id == 'rechecked':
-                        passnum = 1
-                    else:
-                        passnum = int(p[i].id[len('rechecked'):])
-                    arg = p[i].arg
-                    if arg is None:
-                        rechecked_modules[passnum] = set()
-                    else:
-                        rechecked_modules[passnum] = {item.strip() for item in arg.split(',')}
-                elif p[i].id == 'delete':
-                    # File to delete during a multi-step test case
-                    arg = p[i].arg
-                    assert arg is not None
-                    m = re.match(r'(.*)\.([0-9]+)$', arg)
-                    assert m, 'Invalid delete section: {}'.format(arg)
-                    num = int(m.group(2))
-                    assert num >= 2, "Can't delete during step {}".format(num)
-                    full = join(base_path, m.group(1))
-                    deleted_paths.setdefault(num, set()).add(full)
-                elif p[i].id == 'out' or p[i].id == 'out1':
-                    tcout = p[i].data
-                    tcout = [expand_variables(line) for line in tcout]
-                    if os.path.sep == '\\':
-                        tcout = [fix_win_path(line) for line in tcout]
-                    ok = True
-                elif re.match(r'out[0-9]*$', p[i].id):
-                    passnum = int(p[i].id[3:])
-                    assert passnum > 1
-                    output = p[i].data
-                    output = [expand_variables(line) for line in output]
-                    if suite.native_sep and os.path.sep == '\\':
-                        output = [fix_win_path(line) for line in output]
-                    tcout2[passnum] = output
-                    ok = True
-                elif p[i].id == 'triggered' and p[i].arg is None:
-                    triggered = p[i].data
-                else:
-                    raise ValueError(
-                        'Invalid section header {} in {} at line {}'.format(
-                            p[i].id, path, p[i].line))
-                i += 1
+    files = []  # type: List[Tuple[str, str]] # path and contents
+    output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
+    output = []  # type: List[str]  # Regular output errors
+    output2 = {}  # type: Dict[int, List[str]]  # Output errors for incremental, runs 2+
+    deleted_paths = {}  # type: Dict[int, Set[str]]  # from run number of paths
+    stale_modules = {}  # type: Dict[int, Set[str]]  # from run number to module names
+    rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
+    triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
 
-            for passnum in stale_modules.keys():
-                if passnum not in rechecked_modules:
-                    # If the set of rechecked modules isn't specified, make it the same as the set
-                    # of modules with a stale public interface.
-                    rechecked_modules[passnum] = stale_modules[passnum]
-                if (passnum in stale_modules
-                        and passnum in rechecked_modules
-                        and not stale_modules[passnum].issubset(rechecked_modules[passnum])):
-                    raise ValueError(
-                        ('Stale modules after pass {} must be a subset of rechecked '
-                         'modules ({}:{})').format(passnum, path, p[i0].line))
-
-            if not suite.required_out_section:
-                ok = True
-
-            if ok:
-                input = p[i0].data
-                expand_errors(input, tcout, 'main')
-                for file_path, contents in files:
-                    expand_errors(contents.split('\n'), tcout, file_path)
-                lastline = p[i].line if i < len(p) else p[i - 1].line + 9999
-
-                case.input = input
-                case.output = tcout
-                case.output2 = tcout2
-                case.lastline = lastline
-                case.file = path
-                case.files = files
-                case.output_files = output_files
-                case.expected_stale_modules = stale_modules
-                case.expected_rechecked_modules = rechecked_modules
-                case.deleted_paths = deleted_paths
-                case.triggered = triggered or []
-                return
-        if not ok:
+    item = first_item = test_items[0]
+    for item in test_items[1:]:
+        if item.id == 'file' or item.id == 'outfile':
+            # Record an extra file needed for the test case.
+            assert item.arg is not None
+            contents = expand_variables('\n'.join(item.data))
+            file_entry = (join(base_path, item.arg), contents)
+            if item.id == 'file':
+                files.append(file_entry)
+            else:
+                output_files.append(file_entry)
+        elif item.id in ('builtins', 'builtins_py2'):
+            # Use an alternative stub file for the builtins module.
+            assert item.arg is not None
+            mpath = join(os.path.dirname(file), item.arg)
+            fnam = 'builtins.pyi' if item.id == 'builtins' else '__builtin__.pyi'
+            with open(mpath) as f:
+                files.append((join(base_path, fnam), f.read()))
+        elif item.id == 'typing':
+            # Use an alternative stub file for the typing module.
+            assert item.arg is not None
+            src_path = join(os.path.dirname(file), item.arg)
+            with open(src_path) as f:
+                files.append((join(base_path, 'typing.pyi'), f.read()))
+        elif re.match(r'stale[0-9]*$', item.id):
+            passnum = 1 if item.id == 'stale' else int(item.id[len('stale'):])
+            assert passnum > 0
+            modules = (set() if item.arg is None else {t.strip() for t in item.arg.split(',')})
+            stale_modules[passnum] = modules
+        elif re.match(r'rechecked[0-9]*$', item.id):
+            passnum = 1 if item.id == 'rechecked' else int(item.id[len('rechecked'):])
+            assert passnum > 0
+            modules = (set() if item.arg is None else {t.strip() for t in item.arg.split(',')})
+            rechecked_modules[passnum] = modules
+        elif item.id == 'delete':
+            # File to delete during a multi-step test case
+            assert item.arg is not None
+            m = re.match(r'(.*)\.([0-9]+)$', item.arg)
+            assert m, 'Invalid delete section: {}'.format(item.arg)
+            num = int(m.group(2))
+            assert num >= 2, "Can't delete during step {}".format(num)
+            full = join(base_path, m.group(1))
+            deleted_paths.setdefault(num, set()).add(full)
+        elif re.match(r'out[0-9]*$', item.id):
+            tmp_output = [expand_variables(line) for line in item.data]
+            if suite.native_sep and os.path.sep == '\\':
+                tmp_output = [fix_win_path(line) for line in tmp_output]
+            if item.id == 'out' or item.id == 'out1':
+                output = tmp_output
+            else:
+                passnum = int(item.id[len('out'):])
+                assert passnum > 1
+                output2[passnum] = tmp_output
+            out_section_missing = False
+        elif item.id == 'triggered' and item.arg is None:
+            triggered = item.data
+        else:
             raise ValueError(
-                '{}, line {}: Error in test case description'.format(
-                    path, p[i0].line))
+                'Invalid section header {} in {} at line {}'.format(
+                    item.id, file, item.line))
+
+    if out_section_missing:
+        raise ValueError(
+            '{}, line {}: Required output section not found'.format(
+                file, first_item.line))
+
+    for passnum in stale_modules.keys():
+        if passnum not in rechecked_modules:
+            # If the set of rechecked modules isn't specified, make it the same as the set
+            # of modules with a stale public interface.
+            rechecked_modules[passnum] = stale_modules[passnum]
+        if (passnum in stale_modules
+                and passnum in rechecked_modules
+                and not stale_modules[passnum].issubset(rechecked_modules[passnum])):
+            raise ValueError(
+                ('Stale modules after pass {} must be a subset of rechecked '
+                 'modules ({}:{})').format(passnum, file, first_item.line))
+
+    input = first_item.data
+    expand_errors(input, output, 'main')
+    for file_path, contents in files:
+        expand_errors(contents.split('\n'), output, file_path)
+
+    case.input = input
+    case.output = output
+    case.output2 = output2
+    case.lastline = item.line
+    case.file = file
+    case.files = files
+    case.output_files = output_files
+    case.expected_stale_modules = stale_modules
+    case.expected_rechecked_modules = rechecked_modules
+    case.deleted_paths = deleted_paths
+    case.triggered = triggered or []
 
 
 class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
@@ -246,8 +211,8 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
 
     def setup(self) -> None:
         parse_test_case(suite=self.suite,
-                        p=parse_test_data(self.data, self.name),
-                        path=self.path,
+                        test_items=parse_test_data(self.data, self.name),
+                        file=self.path,
                         case=self)
         self.old_cwd = os.getcwd()
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
@@ -602,6 +567,11 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
 
 def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                      path: str) -> Iterator['DataDrivenTestCase']:
+    """Iterate over raw test cases in file, at collection time, ignoring sub items.
+
+    The collection phase is slow, so any heavy processing should be deferred to after
+    uninteresting tests are filtered (when using -k PATTERN switch).
+    """
     with open(path, encoding='utf-8') as f:
         data = f.read()
     cases = re.split('^\[case ([a-zA-Z_0-9]+)'
