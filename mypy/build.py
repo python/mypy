@@ -20,6 +20,7 @@ import gc
 import hashlib
 import json
 import os.path
+import pathlib
 import re
 import site
 import stat
@@ -31,6 +32,10 @@ import errno
 
 from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
+MYPY = False
+if MYPY:
+    from typing import ClassVar
+    from typing_extensions import Final
 
 from mypy import sitepkgs
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
@@ -50,21 +55,23 @@ from mypy.parse import parse
 from mypy.stats import dump_type_stats
 from mypy.types import Type
 from mypy.version import __version__
-from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin
+from mypy.plugin import Plugin, DefaultPlugin, ChainedPlugin, plugin_types
 from mypy.defaults import PYTHON3_VERSION_MIN
 from mypy.server.deps import get_dependencies
 from mypy.fscache import FileSystemCache
 from mypy.typestate import TypeState, reset_global_state
+
+from mypy.mypyc_hacks import BuildManagerBase
 
 
 # Switch to True to produce debug output related to fine-grained incremental
 # mode only that is useful during development. This produces only a subset of
 # output compared to --verbose output. We use a global flag to enable this so
 # that it's easy to enable this when running tests.
-DEBUG_FINE_GRAINED = False
+DEBUG_FINE_GRAINED = False  # type: Final
 
 
-PYTHON_EXTENSIONS = ['.pyi', '.py']
+PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
 
 
 Graph = Dict[str, 'State']
@@ -188,7 +195,7 @@ def build(sources: List[BuildSource],
         raise
 
 
-# python_path is usercode, mypy_path is set via config or environment variable,
+# python_path is user code, mypy_path is set via config or environment variable,
 # package_path is calculated by _get_site_packages_dirs, and typeshed_path points
 # to typeshed. Each is a tuple of paths to be searched in find_module()
 SearchPaths = NamedTuple('SearchPaths',
@@ -321,7 +328,7 @@ def _build(sources: List[BuildSource],
     # This seems the most reasonable place to tune garbage collection.
     gc.set_threshold(50000)
 
-    data_dir = default_data_dir(bin_dir)
+    data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
 
     search_paths = compute_search_paths(sources, options, data_dir, fscache, alt_lib_path)
@@ -360,68 +367,9 @@ def _build(sources: List[BuildSource],
         reports.finish()
 
 
-def default_data_dir(bin_dir: Optional[str]) -> str:
-    """Returns directory containing typeshed directory
-
-    Args:
-      bin_dir: directory containing the mypy script
-    """
-    if not bin_dir:
-        if os.name == 'nt':
-            prefixes = [os.path.join(sys.prefix, 'Lib')]
-            try:
-                prefixes.append(os.path.join(site.getuserbase(), 'lib'))
-            except AttributeError:
-                # getuserbase in not available in virtualenvs
-                prefixes.append(os.path.join(get_python_lib(), 'lib'))
-            for parent in prefixes:
-                    data_dir = os.path.join(parent, 'mypy')
-                    if os.path.exists(data_dir):
-                        return data_dir
-        mypy_package = os.path.dirname(__file__)
-        parent = os.path.dirname(mypy_package)
-        if (os.path.basename(parent) == 'site-packages' or
-                os.path.basename(parent) == 'dist-packages'):
-            # Installed in site-packages or dist-packages, but invoked with python3 -m mypy;
-            # __file__ is .../blah/lib/python3.N/site-packages/mypy/build.py
-            # or .../blah/lib/python3.N/dist-packages/mypy/build.py (Debian)
-            # or .../blah/lib64/python3.N/dist-packages/mypy/build.py (Gentoo)
-            # or .../blah/lib/site-packages/mypy/build.py (Windows)
-            # blah may be a virtualenv or /usr/local.  We want .../blah/lib/mypy.
-            lib = parent
-            for i in range(2):
-                lib = os.path.dirname(lib)
-                if os.path.basename(lib) in ('lib', 'lib32', 'lib64'):
-                    return os.path.join(os.path.dirname(lib), 'lib/mypy')
-        subdir = os.path.join(parent, 'lib', 'mypy')
-        if os.path.isdir(subdir):
-            # If installed via buildout, the __file__ is
-            # somewhere/mypy/__init__.py and what we want is
-            # somewhere/lib/mypy.
-            return subdir
-        # Default to directory containing this file's parent.
-        return parent
-    base = os.path.basename(bin_dir)
-    dir = os.path.dirname(bin_dir)
-    if (sys.platform == 'win32' and base.lower() == 'scripts'
-            and not os.path.isdir(os.path.join(dir, 'typeshed'))):
-        # Installed, on Windows.
-        return os.path.join(dir, 'Lib', 'mypy')
-    elif base == 'scripts':
-        # Assume that we have a repo check out or unpacked source tarball.
-        return dir
-    elif base == 'bin':
-        # Installed to somewhere (can be under /usr/local or anywhere).
-        return os.path.join(dir, 'lib', 'mypy')
-    elif base == 'python3':
-        # Assume we installed python3 with brew on os x
-        return os.path.join(os.path.dirname(dir), 'lib', 'mypy')
-    elif dir.endswith('python-exec'):
-        # Gentoo uses a python wrapper in /usr/lib to which mypy is a symlink.
-        return os.path.join(os.path.dirname(dir), 'mypy')
-    else:
-        # Don't know where to find the data files!
-        raise RuntimeError("Broken installation: can't determine base dir")
+def default_data_dir() -> str:
+    """Returns directory containing typeshed directory."""
+    return os.path.dirname(__file__)
 
 
 def mypy_path() -> List[str]:
@@ -537,12 +485,12 @@ def cache_meta_from_dict(meta: Dict[str, Any],
 # Priorities used for imports.  (Here, top-level includes inside a class.)
 # These are used to determine a more predictable order in which the
 # nodes in an import cycle are processed.
-PRI_HIGH = 5  # top-level "from X import blah"
-PRI_MED = 10  # top-level "import X"
-PRI_LOW = 20  # either form inside a function
-PRI_MYPY = 25  # inside "if MYPY" or "if TYPE_CHECKING"
-PRI_INDIRECT = 30  # an indirect dependency
-PRI_ALL = 99  # include all priorities
+PRI_HIGH = 5  # type: Final  # top-level "from X import blah"
+PRI_MED = 10  # type: Final  # top-level "import X"
+PRI_LOW = 20  # type: Final  # either form inside a function
+PRI_MYPY = 25  # type: Final  # inside "if MYPY" or "if TYPE_CHECKING"
+PRI_INDIRECT = 30  # type: Final  # an indirect dependency
+PRI_ALL = 99  # type: Final  # include all priorities
 
 
 def import_priority(imp: ImportBase, toplevel_priority: int) -> int:
@@ -622,7 +570,7 @@ def load_plugins(options: Options, errors: Errors) -> Plugin:
             plugin_error(
                 'Type object expected as the return value of "plugin"; got {!r} (in {})'.format(
                     plugin_type, plugin_path))
-        if not issubclass(plugin_type, Plugin):
+        if not issubclass(plugin_type, plugin_types):
             plugin_error(
                 'Return value of "plugin" must be a subclass of "mypy.plugin.Plugin" '
                 '(in {})'.format(plugin_path))
@@ -658,7 +606,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     return -1
 
 
-class BuildManager:
+class BuildManager(BuildManagerBase):
     """This class holds shared state for building a mypy program.
 
     It is used to coordinate parsing, import processing, semantic
@@ -703,6 +651,7 @@ class BuildManager:
                  flush_errors: Callable[[List[str], bool], None],
                  fscache: FileSystemCache,
                  ) -> None:
+        super().__init__()
         self.start_time = time.time()
         self.data_dir = data_dir
         self.errors = errors
@@ -727,9 +676,8 @@ class BuildManager:
         self.flush_errors = flush_errors
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
-        self.stats = {}  # type: Dict[str, Any]  # Values are ints or floats
         self.fscache = fscache
-        self.find_module_cache = FindModuleCache(self.fscache)
+        self.find_module_cache = FindModuleCache(self.fscache, self.options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -888,37 +836,6 @@ class BuildManager:
         if self.source_set.is_source(file):
             self.reports.file(file, type_map, options)
 
-    def log(self, *message: str) -> None:
-        if self.options.verbosity >= 1:
-            if message:
-                print('LOG: ', *message, file=sys.stderr)
-            else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
-
-    def log_fine_grained(self, *message: str) -> None:
-        if self.options.verbosity >= 1:
-            self.log('fine-grained:', *message)
-        elif DEBUG_FINE_GRAINED:
-            # Output log in a simplified format that is quick to browse.
-            if message:
-                print(*message, file=sys.stderr)
-            else:
-                print(file=sys.stderr)
-            sys.stderr.flush()
-
-    def trace(self, *message: str) -> None:
-        if self.options.verbosity >= 2:
-            print('TRACE:', *message, file=sys.stderr)
-            sys.stderr.flush()
-
-    def add_stats(self, **kwds: Any) -> None:
-        for key, value in kwds.items():
-            if key in self.stats:
-                self.stats[key] += value
-            else:
-                self.stats[key] = value
-
     def stats_summary(self) -> Mapping[str, object]:
         return self.stats
 
@@ -938,12 +855,14 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemCache] = None) -> None:
+    def __init__(self, fscache: Optional[FileSystemCache] = None,
+                 options: Optional[Options] = None) -> None:
         self.fscache = fscache or FileSystemCache()
         # Cache find_lib_path_dirs: (dir_chain, search_paths) -> list(package_dirs, should_verify)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], PackageDirs]
         # Cache find_module: (id, search_paths, python_version) -> result.
         self.results = {}  # type: Dict[Tuple[str, SearchPaths, Optional[str]], Optional[str]]
+        self.options = options
 
     def clear(self) -> None:
         self.results.clear()
@@ -1019,6 +938,10 @@ class FindModuleCache:
             elif fscache.isfile(typed_file):
                 path = os.path.join(pkg_dir, dir_chain)
                 third_party_inline_dirs.append((path, True))
+        if self.options and self.options.use_builtins_fixtures:
+            # Everything should be in fixtures.
+            third_party_inline_dirs.clear()
+            third_party_stubs_dirs.clear()
         python_mypy_path = search_paths.python_path + search_paths.mypy_path
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
@@ -1310,7 +1233,8 @@ def random_string() -> str:
     return binascii.hexlify(os.urandom(8)).decode('ascii')
 
 
-def atomic_write(filename: str, *lines: str) -> bool:
+def atomic_write(filename: str, line1: str, line2: str) -> bool:
+    lines = [line1, line2]
     tmp_filename = filename + '.' + random_string()
     try:
         with open(tmp_filename, 'w') as f:
@@ -1762,7 +1686,7 @@ class State:
     """
 
     manager = None  # type: BuildManager
-    order_counter = 0  # Class variable
+    order_counter = 0  # type: ClassVar[int]
     order = None  # type: int  # Order in which modules were encountered
     id = None  # type: str  # Fully qualified module name
     path = None  # type: Optional[str]  # Path to module source
@@ -1884,6 +1808,19 @@ class State:
             self.child_modules = set(self.meta.child_modules)
             if temporary:
                 self.load_tree(temporary=True)
+            if not manager.use_fine_grained_cache():
+                # Special case: if there were a previously missing package imported here
+                # and it is not present, then we need to re-calculate dependencies.
+                # This is to support patterns like this:
+                #     from missing_package import missing_module  # type: ignore
+                # At first mypy doesn't know that `missing_module` is a module
+                # (it may be a variable, a class, or a function), so it is not added to
+                # suppressed dependencies. Therefore, when the package with module is added,
+                # we need to re-calculate dependencies.
+                # NOTE: see comment below for why we skip this in fine grained mode.
+                if exist_added_packages(self.suppressed, manager, self.options):
+                    self.parse_file()  # This is safe because the cache is anyway stale.
+                    self.compute_dependencies()
         else:
             # When doing a fine-grained cache load, pretend we only
             # know about modules that have cache information and defer
@@ -1896,6 +1833,11 @@ class State:
             self.parse_file()
             self.compute_dependencies()
             self.child_modules = set()
+
+    @property
+    def xmeta(self) -> CacheMeta:
+        assert self.meta, "missing meta on allegedly fresh module"
+        return self.meta
 
     def add_ancestors(self) -> None:
         if self.path is not None:
@@ -2422,6 +2364,36 @@ def find_module_and_diagnose(manager: BuildManager,
             raise CompileError(["mypy: can't find module '%s'" % id])
 
 
+def exist_added_packages(suppressed: List[str],
+                        manager: BuildManager, options: Options) -> bool:
+    """Find if there are any newly added packages that were previously suppressed.
+
+    Exclude everything not in build for follow-imports=skip.
+    """
+    for dep in suppressed:
+        if dep in manager.source_set.source_modules:
+            # We don't need to add any special logic for this. If a module
+            # is added to build, importers will be invalidated by normal mechanism.
+            continue
+        path = find_module_simple(dep, manager)
+        if not path:
+            continue
+        if (options.follow_imports == 'skip' and
+                (not path.endswith('.pyi') or options.follow_imports_for_stubs)):
+            continue
+        if '__init__.py' in path:
+            # It is better to have a bit lenient test, this will only slightly reduce
+            # performance, while having a too strict test may affect correctness.
+            return True
+    return False
+
+
+def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
+    """Find a filesystem path for module `id` or `None` if not found."""
+    return manager.find_module_cache.find_module(id, manager.search_paths,
+                                                 manager.options.python_executable)
+
+
 def in_partial_package(id: str, manager: BuildManager) -> bool:
     """Check if a missing module can potentially be a part of a package.
 
@@ -2696,12 +2668,20 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
+        if not manager.use_fine_grained_cache():
+            # TODO: Ideally we could skip here modules that appeared in st.suppressed
+            # because they are not in build with `follow-imports=skip`.
+            # This way we could avoid overhead of cloning options in `State.__init__()`
+            # below to get the option value. This is quite minor performance loss however.
+            added = [dep for dep in st.suppressed if find_module_simple(dep, manager)]
+        else:
+            # During initial loading we don't care about newly added modules,
+            # they will be taken care of during fine grained update. See also
+            # comment about this in `State.__init__()`.
+            added = []
         for dep in st.ancestors + dependencies + st.suppressed:
-            # We don't want to recheck imports marked with '# type: ignore'
-            # so we ignore any suppressed module not explicitly re-included
-            # from the command line.
             ignored = dep in st.suppressed and dep not in entry_points
-            if ignored:
+            if ignored and dep not in added:
                 manager.missing_modules.add(dep)
             elif dep not in graph:
                 try:
@@ -2729,10 +2709,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                     st.suppressed.remove(dep)
                     st.dependencies.append(dep)
     return graph
-
-
-class FreshState(State):
-    meta = None  # type: CacheMeta
 
 
 def process_graph(graph: Graph, manager: BuildManager) -> None:
@@ -2789,25 +2765,24 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         if fresh:
             # All cache files are fresh.  Check that no dependency's
             # cache file is newer than any scc node's cache file.
-            fresh_graph = cast(Dict[str, FreshState], graph)
-            oldest_in_scc = min(fresh_graph[id].meta.data_mtime for id in scc)
+            oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
             viable = {id for id in stale_deps if graph[id].meta is not None}
-            newest_in_deps = 0 if not viable else max(fresh_graph[dep].meta.data_mtime
+            newest_in_deps = 0 if not viable else max(graph[dep].xmeta.data_mtime
                                                       for dep in viable)
             if manager.options.verbosity >= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | viable, key=lambda id: fresh_graph[id].meta.data_mtime)
+                all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
                 for id in all_ids:
                     if id in scc:
-                        if fresh_graph[id].meta.data_mtime < newest_in_deps:
+                        if graph[id].xmeta.data_mtime < newest_in_deps:
                             key = "*id:"
                         else:
                             key = "id:"
                     else:
-                        if fresh_graph[id].meta.data_mtime > oldest_in_scc:
+                        if graph[id].xmeta.data_mtime > oldest_in_scc:
                             key = "+dep:"
                         else:
                             key = "dep:"
-                    manager.trace(" %5s %.0f %s" % (key, fresh_graph[id].meta.data_mtime, id))
+                    manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
             # If equal, give the benefit of the doubt, due to 1-sec time granularity
             # (on some platforms).
             if manager.options.quick_and_dirty and stale_deps:

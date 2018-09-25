@@ -5,6 +5,7 @@ import os
 import tempfile
 import posixpath
 import re
+import sys
 from os import remove, rmdir
 import shutil
 from abc import abstractmethod

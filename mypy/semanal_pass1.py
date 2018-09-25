@@ -3,7 +3,7 @@
 This sets up externally visible names defined in a module but doesn't
 follow imports and mostly ignores local definitions.  It helps enable
 (some) cyclic references between modules, such as module 'a' that
-imports module 'b' and used names defined in b *and* vice versa.  The
+imports module 'b' and used names defined in 'b' *and* vice versa.  The
 first pass can be performed before dependent modules have been
 processed.
 
@@ -37,7 +37,8 @@ from mypy.visitor import NodeVisitor
 class SemanticAnalyzerPass1(NodeVisitor[None]):
     """First phase of semantic analysis.
 
-    See docstring of 'analyze()' below for a description of what this does.
+    See docstring of 'visit_file()' below and the module docstring for a
+    description of what this does.
     """
 
     def __init__(self, sem: SemanticAnalyzerPass2) -> None:
@@ -146,14 +147,20 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             for lval in s.lvalues:
                 self.analyze_lvalue(lval, explicit_type=s.type is not None)
 
-    def visit_func_def(self, func: FuncDef) -> None:
+    def visit_func_def(self, func: FuncDef, decorated: bool = False) -> None:
+        """Process a func def.
+
+        decorated is true if we are processing a func def in a
+        Decorator that needs a _fullname and to have its body analyzed but
+        does not need to be added to the symbol table.
+        """
         sem = self.sem
         if sem.type is not None:
             # Don't process methods during pass 1.
             return
         func.is_conditional = sem.block_depth[-1] > 0
         func._fullname = sem.qualified_name(func.name())
-        at_module = sem.is_module_scope()
+        at_module = sem.is_module_scope() and not decorated
         if (at_module and func.name() == '__getattr__' and
                 self.sem.cur_mod_node.is_package_init_file() and self.sem.cur_mod_node.is_stub):
             if isinstance(func.type, CallableType):
@@ -310,6 +317,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
             return
         d.var._fullname = self.sem.qualified_name(d.var.name())
         self.add_symbol(d.var.name(), SymbolTableNode(self.kind_by_scope(), d), d)
+        self.visit_func_def(d.func, decorated=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         infer_reachability_of_if_statement(s, self.sem.options)
@@ -348,6 +356,7 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 if not (node.kind == MODULE_REF and
                         self.sem.locals[-1][name].node == node.node):
                     self.sem.name_already_defined(name, context, self.sem.locals[-1][name])
+                    return
             self.sem.locals[-1][name] = node
         else:
             assert self.sem.type is None  # Pass 1 doesn't look inside classes
@@ -364,5 +373,6 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                     ok = True
                 if not ok:
                     self.sem.name_already_defined(name, context, existing)
+                    return
             elif not existing:
                 self.sem.globals[name] = node

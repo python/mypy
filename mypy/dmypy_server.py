@@ -28,8 +28,12 @@ from mypy.options import Options
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-MEM_PROFILE = False  # If True, dump memory profile after initialization
+
+MEM_PROFILE = False  # type: Final  # If True, dump memory profile after initialization
 
 
 def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
@@ -39,7 +43,8 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
     subprocess killed by signal.
     """
     # See https://stackoverflow.com/questions/473620/how-do-you-create-a-daemon-in-python
-    if sys.platform == 'win32':
+    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+    if sys.platform == 'win32' or bool():
         raise ValueError('Mypy daemon is not supported on Windows yet')
     sys.stdout.flush()
     sys.stderr.flush()
@@ -82,7 +87,7 @@ def daemonize(func: Callable[[], None], log_file: Optional[str] = None) -> int:
 
 # Server code.
 
-SOCKET_NAME = 'dmypy.sock'
+SOCKET_NAME = 'dmypy.sock'  # type: Final
 
 
 def process_start_options(flags: List[str], allow_sources: bool) -> Options:
@@ -381,7 +386,7 @@ class Server:
 # Misc utilities.
 
 
-MiB = 2**20
+MiB = 2**20  # type: Final
 
 
 def get_meminfo() -> Dict[str, Any]:
@@ -389,7 +394,8 @@ def get_meminfo() -> Dict[str, Any]:
     import resource  # Since it doesn't exist on Windows.
     res = {}  # type: Dict[str, Any]
     rusage = resource.getrusage(resource.RUSAGE_SELF)
-    if sys.platform == 'darwin':
+    # mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+    if sys.platform == 'darwin' or bool():
         factor = 1
     else:
         factor = 1024  # Linux

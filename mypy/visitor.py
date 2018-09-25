@@ -2,6 +2,7 @@
 
 from abc import abstractmethod
 from typing import TypeVar, Generic
+from mypy_extensions import trait
 
 if False:
     # break import cycle only needed for mypy
@@ -11,6 +12,7 @@ if False:
 T = TypeVar('T')
 
 
+@trait
 class ExpressionVisitor(Generic[T]):
     @abstractmethod
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> T:
@@ -181,6 +183,7 @@ class ExpressionVisitor(Generic[T]):
         pass
 
 
+@trait
 class StatementVisitor(Generic[T]):
     # Definitions
 
@@ -301,6 +304,7 @@ class StatementVisitor(Generic[T]):
         pass
 
 
+@trait
 class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T]):
     """Empty base class for parse tree node visitors.
 

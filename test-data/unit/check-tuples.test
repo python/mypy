@@ -1099,7 +1099,7 @@ possibles: Tuple[int, Tuple[A]]
 x: Optional[Tuple[B]]
 
 if x in possibles:
-    reveal_type(x) # E: Revealed type is 'Union[Tuple[__main__.B], None]'
+    reveal_type(x) # E: Revealed type is 'Tuple[__main__.B]'
 else:
     reveal_type(x) # E: Revealed type is 'Union[Tuple[__main__.B], None]'
 

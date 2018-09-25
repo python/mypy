@@ -19,6 +19,13 @@ from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
 from mypy import join
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
+TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
+                      'expected "field_name: field_type"')  # type: Final
+
 
 class TypedDictAnalyzer:
     def __init__(self,
@@ -97,8 +104,6 @@ class TypedDictAnalyzer:
                                  oldfields: Optional[List[str]] = None) -> Tuple[List[str],
                                                                                  List[Type],
                                                                                  Set[str]]:
-        TPDICT_CLASS_ERROR = ('Invalid statement in TypedDict definition; '
-                              'expected "field_name: field_type"')
         if self.options.python_version < (3, 6):
             self.fail('TypedDict class syntax is only supported in Python 3.6', defn)
             return [], [], set()
@@ -242,15 +247,18 @@ class TypedDictAnalyzer:
         assert total is not None
         return items, types, total, ok
 
-    def parse_typeddict_fields_with_types(self, dict_items: List[Tuple[Expression, Expression]],
-                                          context: Context) -> Tuple[List[str], List[Type], bool]:
+    def parse_typeddict_fields_with_types(
+            self,
+            dict_items: List[Tuple[Optional[Expression], Expression]],
+            context: Context) -> Tuple[List[str], List[Type], bool]:
         items = []  # type: List[str]
         types = []  # type: List[Type]
         for (field_name_expr, field_type_expr) in dict_items:
             if isinstance(field_name_expr, (StrExpr, BytesExpr, UnicodeExpr)):
                 items.append(field_name_expr.value)
             else:
-                self.fail_typeddict_arg("Invalid TypedDict() field name", field_name_expr)
+                name_context = field_name_expr or field_type_expr
+                self.fail_typeddict_arg("Invalid TypedDict() field name", name_context)
                 return [], [], False
             try:
                 type = expr_to_unanalyzed_type(field_type_expr)

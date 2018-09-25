@@ -30,11 +30,11 @@ from mypy.traverser import TraverserVisitor
 from mypy.typeanal import TypeAnalyserPass3, collect_any_types
 from mypy.typevars import has_no_typevars
 from mypy.semanal_shared import PRIORITY_FORWARD_REF, PRIORITY_TYPEVAR_VALUES
+from mypy.semanal import SemanticAnalyzerPass2
 from mypy.subtypes import is_subtype
 from mypy.sametypes import is_same_type
 from mypy.scope import Scope
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
-import mypy.semanal
 
 
 class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
@@ -45,7 +45,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
     """
 
     def __init__(self, modules: Dict[str, MypyFile], errors: Errors,
-                 sem: 'mypy.semanal.SemanticAnalyzerPass2') -> None:
+                 sem: SemanticAnalyzerPass2) -> None:
         self.modules = modules
         self.errors = errors
         self.sem = sem
@@ -67,13 +67,56 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         self.sem.globals = file_node.names
         with experiments.strict_optional_set(options.strict_optional):
             self.scope.enter_file(file_node.fullname())
+            self.update_imported_vars()
             self.accept(file_node)
             self.analyze_symbol_table(file_node.names)
             self.scope.leave()
         del self.cur_mod_node
         self.patches = []
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+    def update_imported_vars(self) -> None:
+        """Update nodes for imported names, if they got updated from Var to TypeInfo or TypeAlias.
+
+        This is a simple _band-aid_ fix for "Invalid type" error in import cycles where type
+        aliases, named tuples, or typed dicts appear. The root cause is that during first pass
+        definitions like:
+
+            A = List[int]
+
+        are seen by mypy as variables, because it doesn't know yet that `List` refers to a type.
+        In the second pass, such `Var` is replaced with a `TypeAlias`. But in import cycle,
+        import of `A` will still refer to the old `Var` node. Therefore we need to update it.
+
+        Note that this is a partial fix that only fixes the "Invalid type" error when a type alias
+        etc. appears in type context. This doesn't fix errors (e.g. "Cannot determine type of A")
+        that may appear if the type alias etc. appear in runtime context.
+
+        The motivation for partial fix is two-fold:
+          * The "Invalid type" error often appears in stub files (especially for large
+            libraries/frameworks) where we have more import cycles, but no runtime
+            context at all.
+          * Ideally we should refactor semantic analysis to have deferred nodes, and process
+            them in smaller passes when there is more info (like we do in type checking phase).
+            But this is _much_ harder since this requires a large refactoring. Also an alternative
+            fix of updating node of every `NameExpr` and `MemberExpr` in third pass is costly
+            from performance point of view, and still nontrivial.
+        """
+        for sym in self.cur_mod_node.names.values():
+            if sym and isinstance(sym.node, Var):
+                fullname = sym.node.fullname()
+                if '.' not in fullname:
+                    continue
+                mod_name, _, name = fullname.rpartition('.')
+                if mod_name not in self.sem.modules:
+                    continue
+                if mod_name != self.sem.cur_mod_id:  # imported
+                    new_sym = self.sem.modules[mod_name].names.get(name)
+                    if new_sym and isinstance(new_sym.node, (TypeInfo, TypeAlias)):
+                        # This Var was replaced with a class (like named tuple)
+                        # or alias, update this.
+                        sym.node = new_sym.node
+
+    def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.options = self.sem.options
@@ -127,6 +170,8 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     types.append(tvar.upper_bound)
                 if tvar.values:
                     types.extend(tvar.values)
+            if tdef.info.tuple_type:
+                types.append(tdef.info.tuple_type)
             self.analyze_types(types, tdef.info)
             for type in tdef.info.bases:
                 if tdef.info.is_protocol:
@@ -138,7 +183,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         # import loop. (Only do so if we succeeded the first time.)
         if tdef.info.mro:
             tdef.info.mro = []  # Force recomputation
-            mypy.semanal.calculate_class_mro(tdef, self.fail_blocker)
+            self.sem.calculate_class_mro(tdef)
         if tdef.analyzed is not None:
             # Also check synthetic types associated with this ClassDef.
             # Currently these are TypedDict, and NamedTuple.
@@ -230,7 +275,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     self.analyze_info(analyzed.info)
                 if analyzed.info and analyzed.info.mro:
                     analyzed.info.mro = []  # Force recomputation
-                    mypy.semanal.calculate_class_mro(analyzed.info.defn, self.fail_blocker)
+                    self.sem.calculate_class_mro(analyzed.info.defn)
             if isinstance(analyzed, TypeVarExpr):
                 types = []
                 if analyzed.upper_bound:
@@ -251,7 +296,7 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
         if (isinstance(s.lvalues[0], NameExpr) and s.lvalues[0].kind == MDEF
                 and isinstance(s.lvalues[0].node, Var)):
             var = s.lvalues[0].node
-            if var.info is not None and var.is_inferred and not var.is_classvar:
+            if var.info and var.is_inferred and not var.is_classvar:
                 for base in var.info.mro[1:]:
                     tnode = base.names.get(var.name())
                     if (tnode is not None and isinstance(tnode.node, Var)
@@ -349,6 +394,10 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                     alt_base = Instance(base.type, [transform(a) for a in base.args])
                     new_bases.append(alt_base)
             node.bases = new_bases
+            if node.tuple_type:
+                new_tuple_type = transform(node.tuple_type)
+                assert isinstance(new_tuple_type, TupleType)
+                node.tuple_type = new_tuple_type
 
     def transform_types_in_lvalue(self, lvalue: Lvalue,
                                   transform: Callable[[Type], Type]) -> None:
@@ -416,11 +465,11 @@ class SemanticAnalyzerPass3(TraverserVisitor, SemanticAnalyzerCoreInterface):
                                                                   node, warn)))
             self.patches.append((PRIORITY_FORWARD_REF, self.make_scoped_patch(patch)))
         if indicator.get('typevar'):
-            def patch() -> None:
+            def patch2() -> None:
                 self.perform_transform(node,
                     lambda tp: tp.accept(TypeVariableChecker(self.fail)))
 
-            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch)))
+            self.patches.append((PRIORITY_TYPEVAR_VALUES, self.make_scoped_patch(patch2)))
 
     def analyze_info(self, info: TypeInfo) -> None:
         # Similar to above but for nodes with synthetic TypeInfos (NamedTuple and NewType).
@@ -593,17 +642,20 @@ class ForwardReferenceResolver(TypeTranslator):
                 # The key idea is that when we recursively return to a type already traversed,
                 # then we break the cycle and put AnyType as a leaf.
                 return AnyType(TypeOfAny.from_error)
-            return tp.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+            return tp.copy_modified(fallback=Instance(info.replaced, [],
+                                                      line=t.line)).accept(self)
         # Same as above but for TypedDicts.
         if info.replaced and info.replaced.typeddict_type:
             td = info.replaced.typeddict_type
             if self.check_recursion(td):
                 # We also break the cycles for TypedDicts as explained above for NamedTuples.
                 return AnyType(TypeOfAny.from_error)
-            return td.copy_modified(fallback=Instance(info.replaced, [])).accept(self)
+            return td.copy_modified(fallback=Instance(info.replaced, [],
+                                                      line=t.line)).accept(self)
         if self.check_recursion(t):
             # We also need to break a potential cycle with normal (non-synthetic) instance types.
-            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars))
+            return Instance(t.type, [AnyType(TypeOfAny.from_error)] * len(t.type.defn.type_vars),
+                            line=t.line)
         return super().visit_instance(t)
 
     def visit_type_var(self, t: TypeVarType) -> Type:

@@ -409,3 +409,54 @@ in ``typing`` such as ``Iterable``.
    ``isinstance()`` with protocols is not completely safe at runtime.
    For example, signatures of methods are not checked. The runtime
    implementation only checks that all protocol members are defined.
+
+.. _callback_protocols:
+
+Callback protocols
+******************
+
+Protocols can be used to define flexible callback types that are hard
+(or even impossible) to express using the ``Callable[...]`` syntax, such as variadic,
+overloaded, and complex generic callbacks. They are defined with a special ``__call__``
+member:
+
+.. code-block:: python
+
+   from typing import Optional, Iterable, List
+   from typing_extensions import Protocol
+
+   class Combiner(Protocol):
+       def __call__(self, *vals: bytes, maxlen: Optional[int] = None) -> List[bytes]: ...
+
+   def batch_proc(data: Iterable[bytes], cb_results: Combiner) -> bytes:
+       for item in data:
+           ...
+
+   def good_cb(*vals: bytes, maxlen: Optional[int] = None) -> List[bytes]:
+       ...
+   def bad_cb(*vals: bytes, maxitems: Optional[int]) -> List[bytes]:
+       ...
+
+   batch_proc([], good_cb)  # OK
+   batch_proc([], bad_cb)   # Error! Argument 2 has incompatible type because of
+                            # different name and kind in the callback
+
+Callback protocols and ``Callable[...]`` types can be used interchangeably.
+Keyword argument names in ``__call__`` methods must be identical, unless
+a double underscore prefix is used. For example:
+
+.. code-block:: python
+
+   from typing import Callable, TypeVar
+   from typing_extensions import Protocol
+
+   T = TypeVar('T')
+
+   class Copy(Protocol):
+       def __call__(self, __origin: T) -> T: ...
+
+   copy_a: Callable[[T], T]
+   copy_b: Copy
+
+   copy_a = copy_b  # OK
+   copy_b = copy_a  # Also OK

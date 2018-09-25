@@ -30,6 +30,9 @@ from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
 from mypy.semanal_shared import SemanticAnalyzerCoreInterface
 from mypy import nodes, messages
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
@@ -40,7 +43,7 @@ type_constructors = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
-}
+}  # type: Final
 
 ARG_KINDS_BY_CONSTRUCTOR = {
     'mypy_extensions.Arg': ARG_POS,
@@ -49,7 +52,7 @@ ARG_KINDS_BY_CONSTRUCTOR = {
     'mypy_extensions.DefaultNamedArg': ARG_NAMED_OPT,
     'mypy_extensions.VarArg': ARG_STAR,
     'mypy_extensions.KwArg': ARG_STAR2,
-}
+}  # type: Final
 
 
 def analyze_type_alias(node: Expression,
@@ -228,6 +231,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return NoneTyp()
             elif fullname == 'typing.Any' or fullname == 'builtins.Any':
                 return AnyType(TypeOfAny.explicit)
+            elif fullname in ('typing.Final', 'typing_extensions.Final'):
+                self.fail("Final can be only used as an outermost qualifier"
+                          " in a variable annotation", t)
+                return AnyType(TypeOfAny.from_error)
             elif fullname == 'typing.Tuple':
                 if len(t.args) == 0 and not t.empty_tuple_index:
                     # Bare 'Tuple' is same as 'tuple'
@@ -413,7 +420,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 variables = self.bind_function_type_variables(t, t)
             ret = t.copy_modified(arg_types=self.anal_array(t.arg_types, nested=nested),
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
-                                  fallback=t.fallback or self.named_type('builtins.function'),
+                                  # If the fallback isn't filled in yet,
+                                  # its type will be the falsey FakeInfo
+                                  fallback=(t.fallback if t.fallback.type
+                                            else self.named_type('builtins.function')),
                                   variables=self.anal_var_defs(variables))
         return ret
 
@@ -437,7 +447,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 return AnyType(TypeOfAny.from_error)
         any_type = AnyType(TypeOfAny.special_form)
-        fallback = t.fallback if t.fallback else self.named_type('builtins.tuple', [any_type])
+        # If the fallback isn't filled in yet, its type will be the falsey FakeInfo
+        fallback = (t.fallback if t.fallback.type
+                    else self.named_type('builtins.tuple', [any_type]))
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
@@ -784,7 +796,10 @@ class TypeAnalyserPass3(TypeVisitor[None]):
 
     def visit_forwardref_type(self, t: ForwardRef) -> None:
         self.indicator['forward'] = True
-        if t.resolved is None:
+        # mypyc plays badly with the janky failure to realize
+        # t.resolved is changed, so keep it from figuring out that it
+        # is None
+        if (t.resolved is None) is True:
             resolved = self.anal_type(t.unbound)
             t.resolve(resolved)
             assert t.resolved is not None

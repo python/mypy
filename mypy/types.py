@@ -1,14 +1,17 @@
 """Classes for representing mypy types."""
 
 import sys
-import copy
 from abc import abstractmethod
 from collections import OrderedDict
-from enum import Enum
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Generic, Set, Optional, Union, Iterable, NamedTuple,
-    Callable, Sequence, Iterator
+    Callable, Sequence, Iterator,
 )
+
+MYPY = False
+if MYPY:
+    from typing import ClassVar
+    from typing_extensions import Final
 
 import mypy.nodes
 from mypy import experiments
@@ -17,19 +20,42 @@ from mypy.nodes import (
     FuncBase, FuncDef,
 )
 from mypy.sharedparse import argument_elide_name
-from mypy.util import IdMapper
+from mypy.util import IdMapper, replace_object_state
+from mypy.bogus_type import Bogus
 
 T = TypeVar('T')
 
 JsonDict = Dict[str, Any]
-
-MYPY = False
 
 # If we import type_visitor in the middle of the file, mypy breaks, and if we do it
 # at the top, it breaks at runtime because of import cycle issues, so we do it at different
 # times in different places.
 if MYPY:
     from mypy.type_visitor import TypeVisitor, SyntheticTypeVisitor, TypeTranslator, TypeQuery
+
+
+class TypeOfAny:
+    """
+    This class describes different types of Any. Each 'Any' can be of only one type at a time.
+    """
+    # Was this Any type was inferred without a type annotation?
+    unannotated = 1  # type: Final
+    # Does this Any come from an explicit type annotation?
+    explicit = 2  # type: Final
+    # Does this come from an unfollowed import? See --disallow-any-unimported option
+    from_unimported_type = 3  # type: Final
+    # Does this Any type come from omitted generics?
+    from_omitted_generics = 4  # type: Final
+    # Does this Any come from an error?
+    from_error = 5  # type: Final
+    # Is this a type that can't be represented in mypy's type system? For instance, type of
+    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
+    # Also used for variables named '_'.
+    special_form = 6  # type: Final
+    # Does this Any come from interaction with another Any?
+    from_another_any = 7  # type: Final
+    # Does this Any come from an implementation limitation/bug?
+    implementation_artifact = 8  # type: Final
 
 
 def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
@@ -91,7 +117,7 @@ class TypeVarId:
     meta_level = 0  # type: int
 
     # Class variable used for allocating fresh ids for metavariables.
-    next_raw_id = 1  # type: int
+    next_raw_id = 1  # type: ClassVar[int]
 
     def __init__(self, raw_id: int, meta_level: int = 0) -> None:
         self.raw_id = raw_id
@@ -152,6 +178,12 @@ class TypeVarDef(mypy.nodes.Context):
         new_id = TypeVarId.new(meta_level=1)
         return TypeVarDef(old.name, old.fullname, new_id, old.values,
                           old.upper_bound, old.variance, old.line, old.column)
+
+    def erase_to_union_or_bound(self) -> Type:
+        if self.values:
+            return UnionType.make_simplified_union(self.values)
+        else:
+            return self.upper_bound
 
     def __repr__(self) -> str:
         if self.values:
@@ -278,31 +310,7 @@ class TypeList(Type):
         assert False, "Synthetic types don't serialize"
 
 
-_dummy = object()  # type: Any
-
-
-class TypeOfAny(Enum):
-    """
-    This class describes different types of Any. Each 'Any' can be of only one type at a time.
-    """
-    # Was this Any type was inferred without a type annotation?
-    unannotated = 'unannotated'
-    # Does this Any come from an explicit type annotation?
-    explicit = 'explicit'
-    # Does this come from an unfollowed import? See --disallow-any-unimported option
-    from_unimported_type = 'from_unimported_type'
-    # Does this Any type come from omitted generics?
-    from_omitted_generics = 'from_omitted_generics'
-    # Does this Any come from an error?
-    from_error = 'from_error'
-    # Is this a type that can't be represented in mypy's type system? For instance, type of
-    # call to NewType...). Even though these types aren't real Anys, we treat them as such.
-    # Also used for variables named '_'.
-    special_form = 'special_form'
-    # Does this Any come from interaction with another Any?
-    from_another_any = 'from_another_any'
-    # Does this Any come from an implementation limitation/bug?
-    implementation_artifact = 'implementation_artifact'
+_dummy = object()  # type: Final[Any]
 
 
 class AnyType(Type):
@@ -311,7 +319,7 @@ class AnyType(Type):
     __slots__ = ('type_of_any', 'source_any', 'missing_import_name')
 
     def __init__(self,
-                 type_of_any: TypeOfAny,
+                 type_of_any: int,
                  source_any: Optional['AnyType'] = None,
                  missing_import_name: Optional[str] = None,
                  line: int = -1,
@@ -341,8 +349,9 @@ class AnyType(Type):
         return visitor.visit_any(self)
 
     def copy_modified(self,
-                      type_of_any: TypeOfAny = _dummy,
-                      original_any: Optional['AnyType'] = _dummy,
+                      # Mark with Bogus because _dummy is just an object (with type Any)
+                      type_of_any: Bogus[int] = _dummy,
+                      original_any: Bogus[Optional['AnyType']] = _dummy,
                       ) -> 'AnyType':
         if type_of_any is _dummy:
             type_of_any = self.type_of_any
@@ -359,7 +368,7 @@ class AnyType(Type):
         return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType', 'type_of_any': self.type_of_any.name,
+        return {'.class': 'AnyType', 'type_of_any': self.type_of_any,
                 'source_any': self.source_any.serialize() if self.source_any is not None else None,
                 'missing_import_name': self.missing_import_name}
 
@@ -367,7 +376,7 @@ class AnyType(Type):
     def deserialize(cls, data: JsonDict) -> 'AnyType':
         assert data['.class'] == 'AnyType'
         source = data['source_any']
-        return AnyType(TypeOfAny[data['type_of_any']],
+        return AnyType(data['type_of_any'],
                        AnyType.deserialize(source) if source is not None else None,
                        data['missing_import_name'])
 
@@ -490,9 +499,7 @@ class DeletedType(Type):
 
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
-NOT_READY = mypy.nodes.FakeInfo(mypy.nodes.SymbolTable(),
-                                mypy.nodes.ClassDef('<NOT READY>', mypy.nodes.Block([])),
-                                '<NOT READY>')
+NOT_READY = mypy.nodes.FakeInfo('De-serialization failure: TypeInfo not fixed')  # type: Final
 
 
 class Instance(Type):
@@ -506,7 +513,7 @@ class Instance(Type):
     def __init__(self, typ: mypy.nodes.TypeInfo, args: List[Type],
                  line: int = -1, column: int = -1, erased: bool = False) -> None:
         super().__init__(line, column)
-        assert typ is NOT_READY or typ.fullname() not in ["builtins.Any", "typing.Any"]
+        assert not typ or typ.fullname() not in ["builtins.Any", "typing.Any"]
         self.type = typ
         self.args = args
         self.erased = erased  # True if result of type variable substitution
@@ -699,7 +706,6 @@ class CallableType(FunctionLike):
                  column: int = -1,
                  is_ellipsis_args: bool = False,
                  implicit: bool = False,
-                 is_classmethod_class: bool = False,
                  special_sig: Optional[str] = None,
                  from_type_type: bool = False,
                  bound_args: Sequence[Optional[Type]] = (),
@@ -723,7 +729,6 @@ class CallableType(FunctionLike):
         self.variables = variables
         self.is_ellipsis_args = is_ellipsis_args
         self.implicit = implicit
-        self.is_classmethod_class = is_classmethod_class
         self.special_sig = special_sig
         self.from_type_type = from_type_type
         if not bound_args:
@@ -743,22 +748,22 @@ class CallableType(FunctionLike):
             self.def_extras = {}
 
     def copy_modified(self,
-                      arg_types: List[Type] = _dummy,
-                      arg_kinds: List[int] = _dummy,
-                      arg_names: List[Optional[str]] = _dummy,
-                      ret_type: Type = _dummy,
-                      fallback: Instance = _dummy,
-                      name: Optional[str] = _dummy,
-                      definition: SymbolNode = _dummy,
-                      variables: List[TypeVarDef] = _dummy,
-                      line: int = _dummy,
-                      column: int = _dummy,
-                      is_ellipsis_args: bool = _dummy,
-                      implicit: bool = _dummy,
-                      special_sig: Optional[str] = _dummy,
-                      from_type_type: bool = _dummy,
-                      bound_args: List[Optional[Type]] = _dummy,
-                      def_extras: Dict[str, Any] = _dummy) -> 'CallableType':
+                      arg_types: Bogus[List[Type]] = _dummy,
+                      arg_kinds: Bogus[List[int]] = _dummy,
+                      arg_names: Bogus[List[Optional[str]]] = _dummy,
+                      ret_type: Bogus[Type] = _dummy,
+                      fallback: Bogus[Instance] = _dummy,
+                      name: Bogus[Optional[str]] = _dummy,
+                      definition: Bogus[SymbolNode] = _dummy,
+                      variables: Bogus[List[TypeVarDef]] = _dummy,
+                      line: Bogus[int] = _dummy,
+                      column: Bogus[int] = _dummy,
+                      is_ellipsis_args: Bogus[bool] = _dummy,
+                      implicit: Bogus[bool] = _dummy,
+                      special_sig: Bogus[Optional[str]] = _dummy,
+                      from_type_type: Bogus[bool] = _dummy,
+                      bound_args: Bogus[List[Optional[Type]]] = _dummy,
+                      def_extras: Bogus[Dict[str, Any]] = _dummy) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
@@ -773,7 +778,6 @@ class CallableType(FunctionLike):
             is_ellipsis_args=(
                 is_ellipsis_args if is_ellipsis_args is not _dummy else self.is_ellipsis_args),
             implicit=implicit if implicit is not _dummy else self.implicit,
-            is_classmethod_class=self.is_classmethod_class,
             special_sig=special_sig if special_sig is not _dummy else self.special_sig,
             from_type_type=from_type_type if from_type_type is not _dummy else self.from_type_type,
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
@@ -808,9 +812,6 @@ class CallableType(FunctionLike):
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass()
-
-    def is_concrete_type_obj(self) -> bool:
-        return self.is_type_obj() and self.is_classmethod_class
 
     def type_object(self) -> mypy.nodes.TypeInfo:
         assert self.is_type_obj()
@@ -983,7 +984,6 @@ class CallableType(FunctionLike):
                 'variables': [v.serialize() for v in self.variables],
                 'is_ellipsis_args': self.is_ellipsis_args,
                 'implicit': self.implicit,
-                'is_classmethod_class': self.is_classmethod_class,
                 'bound_args': [(None if t is None else t.serialize())
                                for t in self.bound_args],
                 'def_extras': dict(self.def_extras),
@@ -1002,7 +1002,6 @@ class CallableType(FunctionLike):
                             variables=[TypeVarDef.deserialize(v) for v in data['variables']],
                             is_ellipsis_args=data['is_ellipsis_args'],
                             implicit=data['implicit'],
-                            is_classmethod_class=data['is_classmethod_class'],
                             bound_args=[(None if t is None else deserialize_type(t))
                                         for t in data['bound_args']],
                             def_extras=data['def_extras']
@@ -1457,8 +1456,9 @@ class TypeType(Type):
     # a generic class instance, a union, Any, a type variable...
     item = None  # type: Type
 
-    def __init__(self, item: Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
-                                   CallableType], *, line: int = -1, column: int = -1) -> None:
+    def __init__(self, item: Bogus[Union[Instance, AnyType, TypeVarType, TupleType, NoneTyp,
+                                         CallableType]], *,
+                 line: int = -1, column: int = -1) -> None:
         """To ensure Type[Union[A, B]] is always represented as Union[Type[A], Type[B]], item of
         type UnionType must be handled through make_normalized static method.
         """
@@ -1759,7 +1759,13 @@ def copy_type(t: Type) -> Type:
     """
     Build a copy of the type; used to mutate the copy with truthiness information
     """
-    return copy.copy(t)
+    # We'd like to just do a copy.copy(), but mypyc types aren't
+    # pickleable so we hack around it by manually creating a new type
+    # and copying everything in with replace_object_state.
+    typ = type(t)
+    nt = typ.__new__(typ)
+    replace_object_state(nt, t, copy_dict=True)
+    return nt
 
 
 def true_only(t: Type) -> Type:
@@ -1912,10 +1918,10 @@ def union_items(typ: Type) -> List[Type]:
         return [typ]
 
 
-names = globals().copy()
+names = globals().copy()  # type: Final
 names.pop('NOT_READY', None)
 deserialize_map = {
     key: obj.deserialize  # type: ignore
     for key, obj in names.items()
     if isinstance(obj, type) and issubclass(obj, Type) and obj is not Type
-}
+}  # type: Final

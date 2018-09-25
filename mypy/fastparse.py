@@ -2,8 +2,13 @@ from functools import wraps
 import sys
 
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
 )
+MYPY = False
+if MYPY:
+    import typing  # for typing.Type, which conflicts with types.Type
+    from typing_extensions import Final
+
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
 )
@@ -23,10 +28,11 @@ from mypy.nodes import (
     AwaitExpr, TempNode, Expression, Statement,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
+    FakeInfo,
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny
+    TypeOfAny, Instance,
 )
 from mypy import defaults
 from mypy import messages
@@ -59,10 +65,23 @@ V = TypeVar('V')
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-_dummy_fallback = None  # type: Any
+MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # type: Final
+_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
-TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
-TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'
+TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
+TYPE_COMMENT_AST_ERROR = 'invalid type comment or annotation'  # type: Final
+
+
+# Older versions of typing don't allow using overload outside stubs,
+# so provide a dummy.
+# mypyc doesn't like function declarations nested in if statements
+def _overload(x: Any) -> Any:
+    return x
+
+
+# mypyc doesn't like unreachable code, so trick mypy into thinking the branch is reachable
+if bool() or sys.version_info < (3, 6):
+    overload = _overload  # noqa
 
 
 def parse(source: Union[str, bytes],
@@ -123,7 +142,8 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
-    @wraps(f)
+    # mypyc doesn't properly populate all the fields that @wraps expects
+    # @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno, ast.col_offset)
@@ -203,7 +223,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }
+    }  # type: Final[Dict[typing.Type[ast3.AST], str]]
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -223,7 +243,7 @@ class ASTConverter(ast3.NodeTransformer):
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }
+    }  # type: Final[Dict[typing.Type[ast3.AST], str]]
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -248,7 +268,7 @@ class ASTConverter(ast3.NodeTransformer):
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
         current_overload = []  # type: List[OverloadPart]
-        current_overload_name = None
+        current_overload_name = None  # type: Optional[str]
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
@@ -880,42 +900,40 @@ class ASTConverter(ast3.NodeTransformer):
         # unicode.
         return StrExpr(n.s)
 
-    # Only available with typed_ast >= 0.6.2
-    if hasattr(ast3, 'JoinedStr'):
-        # JoinedStr(expr* values)
-        @with_line
-        def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
-            # Each of n.values is a str or FormattedValue; we just concatenate
-            # them all using ''.join.
-            empty_string = StrExpr('')
-            empty_string.set_line(n.lineno, n.col_offset)
-            strs_to_join = ListExpr(self.translate_expr_list(n.values))
-            strs_to_join.set_line(empty_string)
-            join_method = MemberExpr(empty_string, 'join')
-            join_method.set_line(empty_string)
-            result_expression = CallExpr(join_method,
-                                         [strs_to_join],
-                                         [ARG_POS],
-                                         [None])
-            return result_expression
+    # JoinedStr(expr* values)
+    @with_line
+    def visit_JoinedStr(self, n: ast3.JoinedStr) -> Expression:
+        # Each of n.values is a str or FormattedValue; we just concatenate
+        # them all using ''.join.
+        empty_string = StrExpr('')
+        empty_string.set_line(n.lineno, n.col_offset)
+        strs_to_join = ListExpr(self.translate_expr_list(n.values))
+        strs_to_join.set_line(empty_string)
+        join_method = MemberExpr(empty_string, 'join')
+        join_method.set_line(empty_string)
+        result_expression = CallExpr(join_method,
+                                     [strs_to_join],
+                                     [ARG_POS],
+                                     [None])
+        return result_expression
 
-        # FormattedValue(expr value)
-        @with_line
-        def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
-            # A FormattedValue is a component of a JoinedStr, or it can exist
-            # on its own. We translate them to individual '{}'.format(value)
-            # calls -- we don't bother with the conversion/format_spec fields.
-            exp = self.visit(n.value)
-            exp.set_line(n.lineno, n.col_offset)
-            format_string = StrExpr('{}')
-            format_string.set_line(n.lineno, n.col_offset)
-            format_method = MemberExpr(format_string, 'format')
-            format_method.set_line(format_string)
-            result_expression = CallExpr(format_method,
-                                         [exp],
-                                         [ARG_POS],
-                                         [None])
-            return result_expression
+    # FormattedValue(expr value)
+    @with_line
+    def visit_FormattedValue(self, n: ast3.FormattedValue) -> Expression:
+        # A FormattedValue is a component of a JoinedStr, or it can exist
+        # on its own. We translate them to individual '{}'.format(value)
+        # calls -- we don't bother with the conversion/format_spec fields.
+        exp = self.visit(n.value)
+        exp.set_line(n.lineno, n.col_offset)
+        format_string = StrExpr('{}')
+        format_string.set_line(n.lineno, n.col_offset)
+        format_method = MemberExpr(format_string, 'format')
+        format_method.set_line(format_string)
+        result_expression = CallExpr(format_method,
+                                     [exp],
+                                     [ARG_POS],
+                                     [None])
+        return result_expression
 
     # Bytes(bytes s)
     @with_line
@@ -996,7 +1014,13 @@ class TypeConverter(ast3.NodeTransformer):
         self.line = line
         self.node_stack = []  # type: List[ast3.AST]
 
-    def _visit_implementation(self, node: Optional[ast3.AST]) -> Optional[Type]:
+    @overload
+    def visit(self, node: ast3.expr) -> Type: ...
+
+    @overload  # noqa
+    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
+
+    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
@@ -1005,19 +1029,6 @@ class TypeConverter(ast3.NodeTransformer):
             return super().visit(node)
         finally:
             self.node_stack.pop()
-
-    if sys.version_info >= (3, 6):
-        @overload
-        def visit(self, node: ast3.expr) -> Type: ...
-
-        @overload  # noqa
-        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
-
-        def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
-            return self._visit_implementation(node)
-    else:
-        def visit(self, node: Optional[ast3.AST]) -> Any:
-            return self._visit_implementation(node)
 
     def parent(self) -> Optional[ast3.AST]:
         """Return the AST node above the one we are processing"""

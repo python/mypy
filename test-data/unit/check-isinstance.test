@@ -183,7 +183,8 @@ def bar() -> None:
     while bool():
         x + 'a'
         while bool():
-            x + 'a'         # E: Unsupported operand types for + (likely involving Union)
+            x + 'a'         # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
             x = foo()
             if bool():
                 continue
@@ -409,12 +410,16 @@ def f(x: Union[List[int], List[str], int]) -> None:
 
         # type of a?
         reveal_type(x) # E: Revealed type is 'Union[builtins.list[builtins.int], builtins.list[builtins.str]]'
-        x + 1 # E: Unsupported operand types for + (likely involving Union)
+        x + 1 # E: Unsupported operand types for + ("List[int]" and "int") \
+              # E: Unsupported operand types for + ("List[str]" and "int") \
+              # N: Left operand is of type "Union[List[int], List[str]]"
     else:
         x[0] # E: Value of type "int" is not indexable
         x + 1
     x[0] # E: Value of type "Union[List[int], List[str], int]" is not indexable
-    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + ("List[int]" and "int") \
+          # E: Unsupported operand types for + ("List[str]" and "int") \
+          # N: Left operand is of type "Union[List[int], List[str], int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionListIsinstance2]
@@ -445,7 +450,8 @@ x = foo()
 x = 1
 x = x + 1
 x = foo()
-x = x + 1                # E: Unsupported operand types for + (likely involving Union)
+x = x + 1                # E: Unsupported operand types for + ("str" and "int") \
+                         # N: Left operand is of type "Union[int, str]"
 if isinstance(x, str):
    x = x + 1             # E: Unsupported operand types for + ("str" and "int")
    x = 1
@@ -509,8 +515,10 @@ while bool():
     if isinstance(h.pet, Dog):
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
-        y = h.pet.paws + 1   # E: Unsupported operand types for + (likely involving Union)
-        z = h.pet.paws + 'a' # E: Unsupported operand types for + (likely involving Union)
+        y = h.pet.paws + 1   # E: Unsupported operand types for + ("str" and "int") \
+                             # N: Left operand is of type "Union[int, str]"
+        z = h.pet.paws + 'a' # E: Unsupported operand types for + ("int" and "str") \
+                             # N: Left operand is of type "Union[int, str]"
         if isinstance(h.pet.paws, str):
             x = h.pet.paws + 'a'
             break
@@ -652,7 +660,8 @@ def foo() -> None:
             break
     else:
         pass
-    y = x + 'asdad'    # E: Unsupported operand types for + (likely involving Union)
+    y = x + 'asdad'    # E: Unsupported operand types for + ("int" and "str") \
+                       # N: Left operand is of type "Union[int, str]"
 
 foo()
 [builtins fixtures/isinstancelist.pyi]
@@ -669,8 +678,13 @@ while bool():
         x + 'a'
     else:
         x + [1]
-    x + 'a'           # E: Unsupported operand types for + (likely involving Union)
-x + [1]               # E: Unsupported operand types for + (likely involving Union)
+    x + 'a'           # E: Unsupported operand types for + ("int" and "str") \
+                      # E: Unsupported operand types for + ("List[int]" and "str") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
+
+x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
+                      # E: Unsupported operand types for + ("str" and "List[int]") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion2]
@@ -685,7 +699,9 @@ while bool():
         break
     x + [1]
     x + 'a'           # E: Unsupported operand types for + ("List[int]" and "str")
-x + [1]               # E: Unsupported operand types for + (likely involving Union)
+x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
+                      # E: Unsupported operand types for + ("str" and "List[int]") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsInstanceThreeUnion3]
@@ -702,7 +718,9 @@ while bool():
         break
     x + [1]           # These lines aren't reached because x was an int
     x + 'a'
-x + [1]               # E: Unsupported operand types for + (likely involving Union)
+x + [1]               # E: Unsupported operand types for + ("int" and "List[int]") \
+                      # E: Unsupported operand types for + ("str" and "List[int]") \
+                      # N: Left operand is of type "Union[int, str, List[int]]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRemovingTypeRepeatedly]
@@ -712,24 +730,28 @@ def foo() -> Union[int, str]: pass
 
 for i in [1, 2]:
     x = foo()
-    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
+    x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
-    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
+    x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
     if isinstance(x, int):
         break
     x + 'a'
 
     x = foo()
-    x + 'a'                 # E: Unsupported operand types for + (likely involving Union)
+    x + 'a'                 # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
     if isinstance(x, int):
         break
     x + 'a'
 
-x + 'a'                    # E: Unsupported operand types for + (likely involving Union)
+x + 'a'                    # E: Unsupported operand types for + ("int" and "str") \
+                            # N: Left operand is of type "Union[int, str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyRepeatedly]
@@ -738,8 +760,10 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
-x + 1     # E: Unsupported operand types for + (likely involving Union)
-x + 'a'   # E: Unsupported operand types for + (likely involving Union)
+x + 1     # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
+          # N: Left operand is of type "Union[int, str]"
 
 x = 1
 x + 1
@@ -750,8 +774,10 @@ x + 1     # E: Unsupported operand types for + ("str" and "int")
 x + 'a'
 
 x = foo()
-x + 1     # E: Unsupported operand types for + (likely involving Union)
-x + 'a'   # E: Unsupported operand types for + (likely involving Union)
+x + 1     # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
+x + 'a'   # E: Unsupported operand types for + ("int" and "str") \
+          # N: Left operand is of type "Union[int, str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoop]
@@ -760,14 +786,16 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
-x + 1      # E: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
 x = 'a'
 x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
 x + 1
 
 while bool():
-      x + 1    # E: Unsupported operand types for + (likely involving Union)
+      x + 1    # E: Unsupported operand types for + ("str" and "int") \
+               # N: Left operand is of type "Union[int, str]"
       x = 'a'
 [builtins fixtures/isinstancelist.pyi]
 
@@ -777,7 +805,8 @@ from typing import Union
 def foo() -> Union[int, str]: pass
 
 x = foo()
-x + 1      # E: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
 x = 'a'
 x + 1      # E: Unsupported operand types for + ("str" and "int")
 x = 1
@@ -786,7 +815,8 @@ x + 1
 for i in [1]:
       x = 'a'
 
-x + 1    # E: Unsupported operand types for + (likely involving Union)
+x + 1    # E: Unsupported operand types for + ("str" and "int") \
+         # N: Left operand is of type "Union[int, str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoop3]
@@ -803,7 +833,8 @@ while bool():
     break
 else:
     x + 1
-x + 1      # E: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
 x = 1
 for y in [1]:
     x + 1
@@ -811,7 +842,8 @@ for y in [1]:
     break
 else:
     x + 1
-x + 1      # E: Unsupported operand types for + (likely involving Union)
+x + 1      # E: Unsupported operand types for + ("str" and "int") \
+           # N: Left operand is of type "Union[int, str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopWhile4]
@@ -833,12 +865,14 @@ else:
 x + 'a'
 x = 1
 while bool():
-    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
     if bool():
         x = 'a'
         continue
 else:
-    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
@@ -862,12 +896,14 @@ else:
 x + 'a'
 x = 1
 for y in [1]:
-    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
     if bool():
         x = 'a'
         continue
 else:
-    x + 1 # E: Unsupported operand types for + (likely involving Union)
+    x + 1 # E: Unsupported operand types for + ("str" and "int") \
+          # N: Left operand is of type "Union[int, str]"
     x = 'a'
 x + 'a'
 [builtins fixtures/isinstancelist.pyi]
@@ -888,7 +924,8 @@ for y in [1]:
         break
 else:
     x + 1
-x + 1 # E: Unsupported operand types for + (likely involving Union)
+x + 1 # E: Unsupported operand types for + ("str" and "int") \
+      # N: Left operand is of type "Union[int, str]"
 x = 1
 while bool():
     while bool():
@@ -898,7 +935,8 @@ while bool():
         break
 else:
     x + 1
-x + 1 # E: Unsupported operand types for + (likely involving Union)
+x + 1 # E: Unsupported operand types for + ("str" and "int") \
+      # N: Left operand is of type "Union[int, str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testModifyLoopLong]
@@ -910,8 +948,9 @@ def foo() -> Union[int, str, A]: pass
 
 def bar() -> None:
     x = foo()
-    x + 1  # E: Unsupported left operand type for + (some union) \
-           # E: Unsupported operand types for + (likely involving Union)
+    x + 1  # E: Unsupported operand types for + ("str" and "int") \
+           # E: Unsupported left operand type for + ("A") \
+           # N: Left operand is of type "Union[int, str, A]"
     if isinstance(x, A):
        x.a
     else:
@@ -1348,7 +1387,7 @@ l = [x for x in a if isinstance(x, int)]
 g = (x for x in a if isinstance(x, int))
 d = {0: x for x in a if isinstance(x, int)}
 reveal_type(l) # E: Revealed type is 'builtins.list[builtins.int*]'
-reveal_type(g) # E: Revealed type is 'typing.Iterator[builtins.int*]'
+reveal_type(g) # E: Revealed type is 'typing.Generator[builtins.int*, None, None]'
 reveal_type(d) # E: Revealed type is 'builtins.dict[builtins.int*, builtins.int*]'
 [builtins fixtures/isinstancelist.pyi]
 
@@ -1375,7 +1414,8 @@ from typing import Union
 
 def f(x: Union[int, str], typ: type) -> None:
     if isinstance(x, (typ, int)):
-        x + 1  # E: Unsupported operand types for + (likely involving Union)
+        x + 1  # E: Unsupported operand types for + ("str" and "int") \
+               # N: Left operand is of type "Union[int, str]"
         reveal_type(x)  # E: Revealed type is 'Union[builtins.int, builtins.str]'
     else:
         reveal_type(x)  # E: Revealed type is 'builtins.str'
@@ -2005,3 +2045,122 @@ def f(x: Union[A, str]) -> None:
     if isinstance(x, A):
         x.method_only_in_a()
 [builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceInitialNoneCheckSkipsImpossibleCasesNoStrictOptional]
+# flags: --strict-optional
+from typing import Optional, Union
+
+class A: pass
+
+def foo1(x: Union[A, str, None]) -> None:
+    if x is None:
+        reveal_type(x)      # E: Revealed type is 'None'
+    elif isinstance(x, A):
+        reveal_type(x)      # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
+
+def foo2(x: Optional[str]) -> None:
+    if x is None:
+        reveal_type(x)      # E: Revealed type is 'None'
+    elif isinstance(x, A):
+        reveal_type(x)
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstance.pyi]
+
+[case testIsInstanceInitialNoneCheckSkipsImpossibleCasesInNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Optional, Union
+
+class A: pass
+
+def foo1(x: Union[A, str, None]) -> None:
+    if x is None:
+        reveal_type(x)      # E: Revealed type is 'None'
+    elif isinstance(x, A):
+        # Note that Union[None, A] == A in no-strict-optional
+        reveal_type(x)      # E: Revealed type is '__main__.A'
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
+
+def foo2(x: Optional[str]) -> None:
+    if x is None:
+        reveal_type(x)      # E: Revealed type is 'None'
+    elif isinstance(x, A):
+        # Mypy should, however, be able to skip impossible cases
+        reveal_type(x)
+    else:
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVars]
+# flags: --strict-optional
+
+# Note: this test (and the following one) are testing checker.conditional_type_map:
+# if you set the 'prohibit_none_typevar_overlap' keyword argument to False when calling
+# 'is_overlapping_types', the binder will incorrectly infer that 'out' has a type of
+# Union[T, None] after the if statement.
+
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -> T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneCheckDoesNotNarrowWhenUsingTypeVarsNoStrictOptional]
+# flags: --no-strict-optional
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def foo(x: T) -> T:
+    out = None
+    out = x
+    if out is None:
+        pass
+    return out
+[builtins fixtures/isinstance.pyi]
+
+[case testNoneAndGenericTypesOverlapNoStrictOptional]
+# flags: --no-strict-optional
+from typing import Union, Optional, List
+
+# Note: this test is indirectly making sure meet.is_overlapping_types
+# correctly ignores 'None' in unions.
+
+def foo(x: Optional[List[str]]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'builtins.list[builtins.str]'
+
+def bar(x: Union[List[str], List[int], None]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNoneAndGenericTypesOverlapStrictOptional]
+# flags: --strict-optional
+from typing import Union, Optional, List
+
+# This test is the same as the one above, except for strict-optional.
+# It isn't testing anything explicitly and mostly exists for the sake
+# of completeness.
+
+def foo(x: Optional[List[str]]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'builtins.list[builtins.str]'
+
+def bar(x: Union[List[str], List[int], None]) -> None:
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int], None]'
+    assert isinstance(x, list)
+    reveal_type(x)                  # E: Revealed type is 'Union[builtins.list[builtins.str], builtins.list[builtins.int]]'
+[builtins fixtures/isinstancelist.pyi]

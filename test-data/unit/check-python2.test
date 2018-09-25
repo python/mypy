@@ -324,3 +324,12 @@ class B(A):
     def g(self): # type: () -> None
         super(B, self).f()
         super().f() # E: Too few arguments for "super"
+
+[case testPartialTypeComments_python2]
+def foo(
+    a,  # type: str
+    b,
+    args=None,
+):
+    # type: (...) -> None
+    pass

@@ -755,7 +755,8 @@ class Node(Generic[T]):
 UNode = Union[int, Node[T]]
 x = 1 # type: UNode[int]
 
-x + 1 # E: Unsupported left operand type for + (some union)
+x + 1 # E: Unsupported left operand type for + ("Node[int]") \
+      # N: Left operand is of type "Union[int, Node[int]]"
 if not isinstance(x, Node):
     x + 1
 

@@ -3,14 +3,26 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, Set, Tuple, Optional
+from typing import Any, Dict, Set, Tuple, Optional
 
 MYPY = False
 if MYPY:
     from typing import ClassVar
+    from typing_extensions import Final
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
 from mypy.server.trigger import make_trigger
+
+# Represents that the 'left' instance is a subtype of the 'right' instance
+SubtypeRelationship = Tuple[Instance, Instance]
+
+# A tuple encoding the specific conditions under which we performed the subtype check.
+# (e.g. did we want a proper subtype? A regular subtype while ignoring variance?)
+SubtypeKind = Tuple[bool, ...]
+
+# A cache that keeps track of whether the given TypeInfo is a part of a particular
+# subtype relationship
+SubtypeCache = Dict[TypeInfo, Dict[SubtypeKind, Set[SubtypeRelationship]]]
 
 
 class TypeState:
@@ -23,13 +35,11 @@ class TypeState:
     The protocol dependencies however are only stored here, and shouldn't be deleted unless
     not needed any more (e.g. during daemon shutdown).
     """
-    # 'caches' and 'caches_proper' are subtype caches, implemented as sets of pairs
-    # of (subtype, supertype), where supertypes are instances of given TypeInfo.
+    # '_subtype_caches' keeps track of (subtype, supertype) pairs where supertypes are
+    # instances of the given TypeInfo. The cache also keeps track of the specific
+    # *kind* of subtyping relationship, which we represent as an arbitrary hashable tuple.
     # We need the caches, since subtype checks for structural types are very slow.
-    # _subtype_caches_proper is for caching proper subtype checks (i.e. not assuming that
-    # Any is consistent with every type).
-    _subtype_caches = {}  # type: ClassVar[Dict[TypeInfo, Set[Tuple[Instance, Instance]]]]
-    _subtype_caches_proper = {}  # type: ClassVar[Dict[TypeInfo, Set[Tuple[Instance, Instance]]]]
+    _subtype_caches = {}  # type: Final[SubtypeCache]
 
     # This contains protocol dependencies generated after running a full build,
     # or after an update. These dependencies are special because:
@@ -42,7 +52,7 @@ class TypeState:
     # A blocking error will be generated in this case, since we can't proceed safely.
     # For the description of kinds of protocol dependencies and corresponding examples,
     # see _snapshot_protocol_deps.
-    proto_deps = {}  # type: Optional[Dict[str, Set[str]]]
+    proto_deps = {}  # type: ClassVar[Optional[Dict[str, Set[str]]]]
 
     # Protocols (full names) a given class attempted to implement.
     # Used to calculate fine grained protocol dependencies and optimize protocol
@@ -50,13 +60,13 @@ class TypeState:
     # of type a.A to a function expecting something compatible with protocol p.P,
     # we'd have 'a.A' -> {'p.P', ...} in the map. This map is flushed after every incremental
     # update.
-    _attempted_protocols = {}  # type: Dict[str, Set[str]]
+    _attempted_protocols = {}  # type: Final[Dict[str, Set[str]]]
     # We also snapshot protocol members of the above protocols. For example, if we pass
     # a value of type a.A to a function expecting something compatible with Iterable, we'd have
     # 'a.A' -> {'__iter__', ...} in the map. This map is also flushed after every incremental
     # update. This map is needed to only generate dependencies like <a.A.__iter__> -> <a.A>
     # instead of a wildcard to avoid unnecessarily invalidating classes.
-    _checked_against_members = {}  # type: Dict[str, Set[str]]
+    _checked_against_members = {}  # type: Final[Dict[str, Set[str]]]
     # TypeInfos that appeared as a left type (subtype) in a subtype check since latest
     # dependency snapshot update. This is an optimisation for fine grained mode; during a full
     # run we only take a dependency snapshot at the very end, so this set will contain all
@@ -64,19 +74,18 @@ class TypeState:
     # dependencies generated from (typically) few TypeInfos that were subtype-checked
     # (i.e. appeared as r.h.s. in an assignment or an argument in a function call in
     # a re-checked target) during the update.
-    _rechecked_types = set()  # type: Set[TypeInfo]
+    _rechecked_types = set()  # type: Final[Set[TypeInfo]]
 
     @classmethod
     def reset_all_subtype_caches(cls) -> None:
         """Completely reset all known subtype caches."""
-        cls._subtype_caches = {}
-        cls._subtype_caches_proper = {}
+        cls._subtype_caches.clear()
 
     @classmethod
     def reset_subtype_caches_for(cls, info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo."""
-        cls._subtype_caches.setdefault(info, set()).clear()
-        cls._subtype_caches_proper.setdefault(info, set()).clear()
+        if info in cls._subtype_caches:
+            cls._subtype_caches[info].clear()
 
     @classmethod
     def reset_all_subtype_caches_for(cls, info: TypeInfo) -> None:
@@ -85,28 +94,28 @@ class TypeState:
             cls.reset_subtype_caches_for(item)
 
     @classmethod
-    def is_cached_subtype_check(cls, left: Instance, right: Instance) -> bool:
-        return (left, right) in cls._subtype_caches.setdefault(right.type, set())
+    def is_cached_subtype_check(cls, kind: SubtypeKind, left: Instance, right: Instance) -> bool:
+        info = right.type
+        if info not in cls._subtype_caches:
+            return False
+        cache = cls._subtype_caches[info]
+        if kind not in cache:
+            return False
+        return (left, right) in cache[kind]
 
     @classmethod
-    def is_cached_proper_subtype_check(cls, left: Instance, right: Instance) -> bool:
-        return (left, right) in cls._subtype_caches_proper.setdefault(right.type, set())
-
-    @classmethod
-    def record_subtype_cache_entry(cls, left: Instance, right: Instance) -> None:
-        cls._subtype_caches.setdefault(right.type, set()).add((left, right))
-
-    @classmethod
-    def record_proper_subtype_cache_entry(cls, left: Instance, right: Instance) -> None:
-        cls._subtype_caches_proper.setdefault(right.type, set()).add((left, right))
+    def record_subtype_cache_entry(cls, kind: SubtypeKind,
+                                   left: Instance, right: Instance) -> None:
+        cache = cls._subtype_caches.setdefault(right.type, dict())
+        cache.setdefault(kind, set()).add((left, right))
 
     @classmethod
     def reset_protocol_deps(cls) -> None:
         """Reset dependencies after a full run or before a daemon shutdown."""
         cls.proto_deps = {}
-        cls._attempted_protocols = {}
-        cls._checked_against_members = {}
-        cls._rechecked_types = set()
+        cls._attempted_protocols.clear()
+        cls._checked_against_members.clear()
+        cls._rechecked_types.clear()
 
     @classmethod
     def record_protocol_subtype_check(cls, left_type: TypeInfo, right_type: TypeInfo) -> None:

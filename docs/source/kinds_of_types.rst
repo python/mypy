@@ -93,7 +93,7 @@ the error:
    if wait(2) > 1:   # Error: can't compare None and int
        ...
 
-The ``Any`` type is discussed in more detail in section :ref:`dynamic_typing`.
+The ``Any`` type is discussed in more detail in section :ref:`dynamic-typing`.
 
 .. note::
 
@@ -186,6 +186,8 @@ Any)`` function signature. Example:
     arbitrary_call(open)  # Error: does not return an int
     arbitrary_call(1)     # Error: 'int' is not callable
 
+In situations where more precise or complex types of callbacks are
+necessary one can use flexible :ref:`callback protocols <callback_protocols>`.
 Lambdas are also supported. The lambda argument and return value types
 cannot be given explicitly; they are always inferred based on context
 using bidirectional type inference:
@@ -435,8 +437,8 @@ this example -- it's not recommended if you can avoid it:
 However, making code "optional clean" can take some work! You can also use
 :ref:`the mypy configuration file <config-file>` to migrate your code
 to strict optional checking one file at a time, since there exists
-the :ref:`per-module flag <per-module-flags>` ``strict_optional`` to
-control strict optional mode.
+the :ref:`per-module flag <config-file-none-and-optional-handling>`
+``strict_optional`` to control strict optional mode.
 
 Often it's still useful to document whether a variable can be
 ``None``. For example, this function accepts a ``None`` argument,
@@ -546,7 +548,8 @@ assigning the type to a variable:
 .. note::
 
     A type alias does not create a new type. It's just a shorthand notation for
-    another type -- it's equivalent to the target type.
+    another type -- it's equivalent to the target type except for
+    :ref:`generic aliases <generic-type-aliases>`.
 
 .. _named-tuples:
 

@@ -23,6 +23,9 @@ class TraverserVisitor(NodeVisitor[None]):
     traversal implementation.
     """
 
+    def __init__(self) -> None:
+        pass
+
     # Visit methods
 
     def visit_mypy_file(self, o: MypyFile) -> None:

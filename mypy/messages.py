@@ -30,74 +30,88 @@ from mypy.nodes import (
     CallExpr
 )
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 # Constants that represent simple type checker error message, i.e. messages
 # that do not have any parameters.
 
-NO_RETURN_VALUE_EXPECTED = 'No return value expected'
-MISSING_RETURN_STATEMENT = 'Missing return statement'
-INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'
-INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'
-RETURN_VALUE_EXPECTED = 'Return value expected'
-NO_RETURN_EXPECTED = 'Return statement in function which does not return'
-INVALID_EXCEPTION = 'Exception must be derived from BaseException'
-INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'
+NO_RETURN_VALUE_EXPECTED = 'No return value expected'  # type: Final
+MISSING_RETURN_STATEMENT = 'Missing return statement'  # type: Final
+INVALID_IMPLICIT_RETURN = 'Implicit return in function which does not return'  # type: Final
+INCOMPATIBLE_RETURN_VALUE_TYPE = 'Incompatible return value type'  # type: Final
+RETURN_VALUE_EXPECTED = 'Return value expected'  # type: Final
+NO_RETURN_EXPECTED = 'Return statement in function which does not return'  # type: Final
+INVALID_EXCEPTION = 'Exception must be derived from BaseException'  # type: Final
+INVALID_EXCEPTION_TYPE = 'Exception type must be derived from BaseException'  # type: Final
 INVALID_RETURN_TYPE_FOR_GENERATOR = \
-    'The return type of a generator function should be "Generator" or one of its supertypes'
+    'The return type of a generator function should be "Generator"' \
+    ' or one of its supertypes'  # type: Final
 INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR = \
     'The return type of an async generator function should be "AsyncGenerator" or one of its ' \
-    'supertypes'
+    'supertypes'  # type: Final
 INVALID_GENERATOR_RETURN_ITEM_TYPE = \
-    'The return type of a generator function must be None in its third type parameter in Python 2'
-YIELD_VALUE_EXPECTED = 'Yield value expected'
-INCOMPATIBLE_TYPES = 'Incompatible types'
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'
-INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'
-INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = 'Incompatible types in "async with" for "__aenter__"'
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = 'Incompatible types in "async with" for "__aexit__"'
-INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'
+    'The return type of a generator function must be None in' \
+    ' its third type parameter in Python 2'  # type: Final
+YIELD_VALUE_EXPECTED = 'Yield value expected'  # type: Final
+INCOMPATIBLE_TYPES = 'Incompatible types'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT = 'Incompatible types in assignment'  # type: Final
+INCOMPATIBLE_REDEFINITION = 'Incompatible redefinition'  # type: Final
+INCOMPATIBLE_TYPES_IN_AWAIT = 'Incompatible types in "await"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER = \
+    'Incompatible types in "async with" for "__aenter__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT = \
+    'Incompatible types in "async with" for "__aexit__"'  # type: Final
+INCOMPATIBLE_TYPES_IN_ASYNC_FOR = 'Incompatible types in "async for"'  # type: Final
 
-INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'
-INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'
-INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = 'Incompatible types in string interpolation'
-MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'
-INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'
-TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'
-INVALID_SLICE_INDEX = 'Slice index must be an integer or None'
-CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'
-CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'
-CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'
-CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'
-CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'
+INCOMPATIBLE_TYPES_IN_YIELD = 'Incompatible types in "yield"'  # type: Final
+INCOMPATIBLE_TYPES_IN_YIELD_FROM = 'Incompatible types in "yield from"'  # type: Final
+INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION = \
+    'Incompatible types in string interpolation'  # type: Final
+MUST_HAVE_NONE_RETURN_TYPE = 'The return type of "{}" must be None'  # type: Final
+INVALID_TUPLE_INDEX_TYPE = 'Invalid tuple index type'  # type: Final
+TUPLE_INDEX_OUT_OF_RANGE = 'Tuple index out of range'  # type: Final
+INVALID_SLICE_INDEX = 'Slice index must be an integer or None'  # type: Final
+CANNOT_INFER_LAMBDA_TYPE = 'Cannot infer type of lambda'  # type: Final
+CANNOT_INFER_ITEM_TYPE = 'Cannot infer iterable item type'  # type: Final
+CANNOT_ACCESS_INIT = 'Cannot access "__init__" directly'  # type: Final
+CANNOT_ASSIGN_TO_METHOD = 'Cannot assign to a method'  # type: Final
+CANNOT_ASSIGN_TO_TYPE = 'Cannot assign to a type'  # type: Final
 INCONSISTENT_ABSTRACT_OVERLOAD = \
-    'Overloaded method has both abstract and non-abstract variants'
+    'Overloaded method has both abstract and non-abstract variants'  # type: Final
 READ_ONLY_PROPERTY_OVERRIDES_READ_WRITE = \
-    'Read-only property cannot override read-write property'
-FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'
-RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = "Cannot use a contravariant type variable as return type"
-FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = "Cannot use a covariant type variable as a parameter"
-INCOMPATIBLE_IMPORT_OF = "Incompatible import of"
-FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"
-ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"
-RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"
-ARGUMENT_TYPE_EXPECTED = "Function is missing a type annotation for one or more arguments"
+    'Read-only property cannot override read-write property'  # type: Final
+FORMAT_REQUIRES_MAPPING = 'Format requires a mapping'  # type: Final
+RETURN_TYPE_CANNOT_BE_CONTRAVARIANT = \
+    "Cannot use a contravariant type variable as return type"  # type: Final
+FUNCTION_PARAMETER_CANNOT_BE_COVARIANT = \
+    "Cannot use a covariant type variable as a parameter"  # type: Final
+INCOMPATIBLE_IMPORT_OF = "Incompatible import of"  # type: Final
+FUNCTION_TYPE_EXPECTED = "Function is missing a type annotation"  # type: Final
+ONLY_CLASS_APPLICATION = "Type application is only supported for generic classes"  # type: Final
+RETURN_TYPE_EXPECTED = "Function is missing a return type annotation"  # type: Final
+ARGUMENT_TYPE_EXPECTED = \
+    "Function is missing a type annotation for one or more arguments"  # type: Final
 KEYWORD_ARGUMENT_REQUIRES_STR_KEY_TYPE = \
-    'Keyword argument only valid with "str" key type in call to "dict"'
-ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'
+    'Keyword argument only valid with "str" key type in call to "dict"'  # type: Final
+ALL_MUST_BE_SEQ_STR = 'Type of __all__ must be {}, not {}'  # type: Final
 INVALID_TYPEDDICT_ARGS = \
-    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'
+    'Expected keyword arguments, {...}, or dict(...) in TypedDict constructor'  # type: Final
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL = \
-    'Expected TypedDict key to be string literal'
-MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'
-NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'
-DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'
-GENERIC_INSTANCE_VAR_CLASS_ACCESS = 'Access to generic instance variables via class is ambiguous'
-CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'
-CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'
-BARE_GENERIC = 'Missing type parameters for generic type'
-IMPLICIT_GENERIC_ANY_BUILTIN = 'Implicit generic "Any". Use \'{}\' and specify generic parameters'
-INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'
-UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'
+    'Expected TypedDict key to be string literal'  # type: Final
+MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # type: Final
+NON_BOOLEAN_IN_CONDITIONAL = 'Condition must be a boolean'  # type: Final
+DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
+GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
+    'Access to generic instance variables via class is ambiguous'  # type: Final
+CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'  # type: Final
+CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'  # type: Final
+BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final
+IMPLICIT_GENERIC_ANY_BUILTIN = \
+    'Implicit generic "Any". Use \'{}\' and specify generic parameters'  # type: Final
+INCOMPATIBLE_TYPEVAR_VALUE = 'Value of type variable "{}" of {} cannot be {}'  # type: Final
+UNSUPPORTED_ARGUMENT_2_FOR_SUPER = 'Unsupported argument 2 for "super"'  # type: Final
 
 ARG_CONSTRUCTOR_NAMES = {
     ARG_POS: "Arg",
@@ -106,7 +120,7 @@ ARG_CONSTRUCTOR_NAMES = {
     ARG_NAMED_OPT: "DefaultNamedArg",
     ARG_STAR: "VarArg",
     ARG_STAR2: "KwArg",
-}
+}  # type: Final
 
 
 class MessageBuilder:
@@ -466,6 +480,9 @@ class MessageBuilder:
                     matches.extend(best_matches(member, alternatives)[:3])
                     if member == '__aiter__' and matches == ['__iter__']:
                         matches = []  # Avoid misleading suggestion
+                    if member == '__div__' and matches == ['__truediv__']:
+                        # TODO: Handle differences in division between Python 2 and 3 more cleanly
+                        matches = []
                     if matches:
                         self.fail('{} has no attribute "{}"; maybe {}?{}'.format(
                             self.format(original_type), member, pretty_or(matches), extra),
@@ -948,6 +965,27 @@ class MessageBuilder:
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
         self.fail('Cannot assign to class variable "%s" via instance' % name, context)
 
+    def final_cant_override_writable(self, name: str, ctx: Context) -> None:
+        self.fail('Cannot override writable attribute "{}" with a final one'.format(name), ctx)
+
+    def cant_override_final(self, name: str, base_name: str, ctx: Context) -> None:
+        self.fail('Cannot override final attribute "{}"'
+                  ' (previously declared in base class "{}")'.format(name, base_name), ctx)
+
+    def cant_assign_to_final(self, name: str, attr_assign: bool, ctx: Context) -> None:
+        """Warn about a prohibited assignment to a final attribute.
+
+        Pass `attr_assign=True` if the assignment assigns to an attribute.
+        """
+        kind = "attribute" if attr_assign else "name"
+        self.fail('Cannot assign to final {} "{}"'.format(kind, name), ctx)
+
+    def protocol_members_cant_be_final(self, ctx: Context) -> None:
+        self.fail("Protocol member cannot be final", ctx)
+
+    def final_without_value(self, ctx: Context) -> None:
+        self.fail("Final name must be initialized with a value", ctx)
+
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
         self.fail('Property "{}" defined in "{}" is read-only'.format(
@@ -973,6 +1011,12 @@ class MessageBuilder:
         self.fail('Overloaded function signatures {} and {} overlap with '
                   'incompatible return types'.format(index1, index2), context)
 
+    def overloaded_signatures_partial_overlap(self, index1: int, index2: int,
+                                              context: Context) -> None:
+        self.fail('Overloaded function signatures {} and {} '.format(index1, index2)
+                  + 'are partially overlapping: the two signatures may return '
+                  + 'incompatible types given certain calls', context)
+
     def overloaded_signature_will_never_match(self, index1: int, index2: int,
                                               context: Context) -> None:
         self.fail(
@@ -993,6 +1037,12 @@ class MessageBuilder:
     def overloaded_signatures_ret_specific(self, index: int, context: Context) -> None:
         self.fail('Overloaded function implementation cannot produce return type '
                   'of signature {}'.format(index), context)
+
+    def warn_both_operands_are_from_unions(self, context: Context) -> None:
+        self.note('Both left and right operands are unions', context)
+
+    def warn_operand_was_from_union(self, side: str, original: Type, context: Context) -> None:
+        self.note('{} operand is of type {}'.format(side, self.format(original)), context)
 
     def operator_method_signatures_overlap(
             self, reverse_class: TypeInfo, reverse_method: str, forward_class: Type,
@@ -1521,7 +1571,7 @@ def temp_message_builder() -> MessageBuilder:
 # For hard-coding suggested missing member alternatives.
 COMMON_MISTAKES = {
     'add': ('append', 'extend'),
-}  # type: Dict[str, Sequence[str]]
+}  # type: Final[Dict[str, Sequence[str]]]
 
 
 def best_matches(current: str, options: Iterable[str]) -> List[str]:

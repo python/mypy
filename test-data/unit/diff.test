@@ -275,7 +275,7 @@ M = NamedTuple('M', [('x', int), ('y', str)])
 [out]
 __main__.A
 __main__.N
-__main__.N.__init__
+__main__.N.__new__
 __main__.N._asdict
 __main__.N._make
 __main__.N._replace
@@ -944,3 +944,129 @@ class A:
 [out]
 __main__.A.(abstract)
 __main__.A.g
+
+[case testFinalFlagsTriggerVar]
+from typing import Final
+
+x: Final = 1
+y: Final[int] = 1
+same: Final = 0
+class C:
+    x: Final = 1
+    y: Final[int] = 1
+    same: Final = 0
+    def __init__(self) -> None:
+        self.z: Final = 1
+        self.t: Final[int] = 1
+        self.also_same: Final[int] = 0
+
+[file next.py]
+from typing import Final
+
+x = 1
+y: int = 1
+same: Final = 0
+class C:
+    x = 1
+    y: int = 1
+    same: Final = 0
+    def __init__(self) -> None:
+        self.z = 1
+        self.t: int = 1
+        self.also_same: Final = 0
+[out]
+__main__.C.t
+__main__.C.x
+__main__.C.y
+__main__.C.z
+__main__.x
+__main__.y
+
+[case testFinalFlagsTriggerMethod]
+from typing import final
+
+class C:
+    def meth(self) -> int: pass
+    @final
+    def same(self) -> int: pass
+    @classmethod
+    def cmeth(cls) -> int: pass
+
+[file next.py]
+from typing import final
+
+class C:
+    @final
+    def meth(self) -> int: pass
+    @final
+    def same(self) -> int: pass
+    @final
+    @classmethod
+    def cmeth(cls) -> int: pass
+[builtins fixtures/classmethod.pyi]
+[out]
+__main__.C.cmeth
+__main__.C.meth
+
+[case testFinalFlagsTriggerProperty]
+from typing import final
+
+class C:
+    @final
+    @property
+    def p(self) -> int: pass
+    @final
+    @property
+    def same(self) -> str: pass
+
+[file next.py]
+from typing import final
+
+class C:
+    @property
+    def p(self) -> int: pass
+    @final
+    @property
+    def same(self) -> str: pass
+[builtins fixtures/property.pyi]
+[out]
+__main__.C.p
+
+[case testFinalFlagsTriggerMethodOverload]
+from typing import final, overload
+
+class C:
+    @overload
+    def m(self, x: int) -> int: ...
+    @overload
+    def m(self, x: str) -> str: ...
+    @final
+    def m(self, x):
+        pass
+    @overload
+    def same(self, x: int) -> int: ...
+    @overload
+    def same(self, x: str) -> str: ...
+    @final
+    def same(self, x):
+        pass
+
+[file next.py]
+from typing import final, overload
+
+class C:
+    @overload
+    def m(self, x: int) -> int: ...
+    @overload
+    def m(self, x: str) -> str: ...
+    def m(self, x):
+        pass
+    @overload
+    def same(self, x: int) -> int: ...
+    @overload
+    def same(self, x: str) -> str: ...
+    @final
+    def same(self, x):
+        pass
+[out]
+__main__.C.m

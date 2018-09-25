@@ -14,6 +14,7 @@ other modules refer to them.
 from abc import abstractmethod
 from collections import OrderedDict
 from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional
+from mypy_extensions import trait
 
 T = TypeVar('T')
 
@@ -25,6 +26,7 @@ from mypy.types import (
 )
 
 
+@trait
 class TypeVisitor(Generic[T]):
     """Visitor class for types (Type subclasses).
 
@@ -99,6 +101,7 @@ class TypeVisitor(Generic[T]):
         raise RuntimeError('Internal error: unresolved forward reference')
 
 
+@trait
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.
 
@@ -121,6 +124,7 @@ class SyntheticTypeVisitor(TypeVisitor[T]):
         pass
 
 
+@trait
 class TypeTranslator(TypeVisitor[Type]):
     """Identity type transformation.
 
@@ -204,6 +208,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
 
+@trait
 class TypeQuery(SyntheticTypeVisitor[T]):
     """Visitor for performing queries of types.
 

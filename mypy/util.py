@@ -1,4 +1,5 @@
 """Utility functions with no non-trivial dependencies."""
+import inspect
 import genericpath  # type: ignore  # no stub files yet
 import os
 import pathlib
@@ -8,12 +9,18 @@ import sys
 from xml.sax.saxutils import escape
 from typing import TypeVar, List, Tuple, Optional, Dict, Sequence
 
+MYPY = False
+if MYPY:
+    from typing import Type
+    from typing_extensions import Final
 
 T = TypeVar('T')
 
-ENCODING_RE = re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')
+ENCODING_RE = \
+    re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
 
-default_python2_interpreter = ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']
+default_python2_interpreter = \
+    ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -117,7 +124,7 @@ PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
   <testcase classname="mypy" file="mypy" line="1" name="mypy" time="{time:.3f}">
   </testcase>
 </testsuite>
-"""
+"""  # type: Final
 
 FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
@@ -125,7 +132,7 @@ FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
-"""
+"""  # type: Final
 
 ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
@@ -133,7 +140,7 @@ ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
-"""
+"""  # type: Final
 
 
 def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str) -> None:
@@ -189,26 +196,58 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-def replace_object_state(new: object, old: object) -> None:
+fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
+
+
+def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
+    # Maintain a cache of type -> attributes defined by descriptors in the class
+    # (that is, attributes from __slots__ and C extension classes)
+    if cls not in fields_cache:
+        members = inspect.getmembers(
+            cls,
+            lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o))
+        fields_cache[cls] = [x for x, y in members if x != '__weakref__']
+    return fields_cache[cls]
+
+
+def replace_object_state(new: object, old: object, copy_dict: bool=False) -> None:
     """Copy state of old node to the new node.
 
-    This handles cases where there is __slots__ and/or __dict__.
+    This handles cases where there is __dict__ and/or attribute descriptors
+    (either from slots or because the type is defined in a C extension module).
 
     Assume that both objects have the same __class__.
     """
     if hasattr(old, '__dict__'):
-        new.__dict__ = old.__dict__
-    if hasattr(old, '__slots__'):
-        # Use __mro__ since some classes override 'mro' with something different.
-        for base in type(old).__mro__:
-            if '__slots__' in base.__dict__:
-                for attr in getattr(base, '__slots__'):
-                    if hasattr(old, attr):
-                        setattr(new, attr, getattr(old, attr))
-                    elif hasattr(new, attr):
-                        delattr(new, attr)
+        if copy_dict:
+            new.__dict__ = dict(old.__dict__)
+        else:
+            new.__dict__ = old.__dict__
+
+    for attr in get_class_descriptors(old.__class__):
+        try:
+            if hasattr(old, attr):
+                setattr(new, attr, getattr(old, attr))
+            elif hasattr(new, attr):
+                delattr(new, attr)
+        # There is no way to distinguish getsetdescriptors that allow
+        # writes from ones that don't (I think?), so we just ignore
+        # AttributeErrors if we need to.
+        # TODO: What about getsetdescriptors that act like properties???
+        except AttributeError:
+            pass
 
 
 def is_sub_path(path1: str, path2: str) -> bool:
     """Given two paths, return if path1 is a sub-path of path2."""
     return pathlib.Path(path2) in pathlib.Path(path1).parents
+
+
+def hard_exit(status: int = 0) -> None:
+    """Kill the current process without fully cleaning up.
+
+    This can be quite a bit faster than a normal exit() since objects are not freed.
+    """
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(status)

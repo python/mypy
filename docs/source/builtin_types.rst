@@ -27,7 +27,7 @@ The type ``Any`` and type constructors such as ``List``, ``Dict``,
 
 The type ``Dict`` is a *generic* class, signified by type arguments within
 ``[...]``. For example, ``Dict[int, str]`` is a dictionary from integers to
-strings and and ``Dict[Any, Any]`` is a dictionary of dynamically typed
+strings and ``Dict[Any, Any]`` is a dictionary of dynamically typed
 (arbitrary) values and keys. ``List`` is another generic class. ``Dict`` and
 ``List`` are aliases for the built-ins ``dict`` and ``list``, respectively.
 
@@ -35,6 +35,6 @@ strings and and ``Dict[Any, Any]`` is a dictionary of dynamically typed
 correspond to Python protocols. For example, a ``str`` object or a
 ``List[str]`` object is valid
 when ``Iterable[str]`` or ``Sequence[str]`` is expected. Note that even though
-they are similar to abstract base classes defined in ``abc.collections``
+they are similar to abstract base classes defined in ``collections.abc``
 (formerly ``collections``), they are not identical, since the built-in
 collection type objects do not support indexing.

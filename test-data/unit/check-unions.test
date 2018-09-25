@@ -98,7 +98,8 @@ i = y.foo()   # E: Incompatible types in assignment (expression has type "Union[
 from typing import Union, List
 x = None # type: Union[List[int], str]
 x[2]
-x[2] + 1 # E: Unsupported operand types for + (likely involving Union)
+x[2] + 1 # E: Unsupported operand types for + ("str" and "int") \
+         # N: Left operand is of type "Union[int, str]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionAsOverloadArg]
@@ -289,8 +290,10 @@ reveal_type(u('', 1, 1))  # E: Revealed type is 'Union[builtins.int*, builtins.s
 from typing import Union
 class A: pass
 def f(x: Union[int, str, A]):
-    x + object() # E: Unsupported left operand type for + (some union) \
-        # E: Unsupported operand types for + (likely involving Union)
+    x + object() # E: Unsupported operand types for + ("int" and "object") \
+                 # E: Unsupported operand types for + ("str" and "object") \
+                 # E: Unsupported left operand type for + ("A") \
+                 # N: Left operand is of type "Union[int, str, A]"
 
 [case testNarrowingDownNamedTupleUnion]
 from typing import NamedTuple, Union
@@ -945,3 +948,31 @@ MYTYPE = List[Union[str, "MYTYPE"]]
 [builtins fixtures/list.pyi]
 [out]
 main:2: error: Recursive types not fully supported yet, nested types replaced with "Any"
+
+[case testNonStrictOptional]
+from typing import Optional, List
+
+def union_test1(x):
+    # type: (Optional[List[int]]) -> Optional[int]
+    if x is None:
+        return x
+    else:
+        return x[0]
+
+def union_test2(x):
+    # type: (Optional[List[int]]) -> Optional[int]
+    if isinstance(x, type(None)):
+        return x
+    else:
+        return x[0]
+
+def f(): return 0
+
+def union_test3():
+    # type: () -> int
+    x = f()
+    assert x is None
+    x = f()
+    return x + 1
+
+[builtins fixtures/isinstancelist.pyi]

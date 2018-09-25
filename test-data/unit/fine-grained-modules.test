@@ -1947,3 +1947,181 @@ from b.foo import bar
 x = '10'
 [out]
 ==
+
+[case testFineAddedMissingStubs]
+# flags: --ignore-missing-imports
+from missing import f
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackage]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackageFrom]
+# flags: --ignore-missing-imports
+from package import missing
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackagePartial]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsPackagePartialGetAttr]
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnore]
+from missing import f  # type: ignore
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnorePackage]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnorePackageFrom]
+from package import missing  # type: ignore
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineAddedMissingStubsIgnorePackagePartial]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testFineFollowImportSkipNotInvalidatedOnPresent]
+# flags: --follow-imports=skip
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other.py]
+x = 1
+[file other.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+[out]
+==
+
+[case testFineFollowImportSkipNotInvalidatedOnPresentPackage]
+# flags: --follow-imports=skip
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other/__init__.py]
+x = 1
+[file other/__init__.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+[out]
+==
+
+[case testFineFollowImportSkipNotInvalidatedOnAdded]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other.py.2]
+x = 1
+[stale]
+[rechecked]
+[out]
+==
+
+-- TODO: Fix this: stubs should be followed normally even with follow-imports=skip
+[case testFineFollowImportSkipInvalidatedOnAddedStub-skip]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy main.py
+[file main.py]
+import other
+x: str = other.x
+[file other.pyi.2]
+x = 1
+[stale main, other]
+[rechecked main, other]
+[out]
+==
+main:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+[case testFineFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs]
+# flags: --follow-imports=skip --ignore-missing-imports --config-file=tmp/mypy.ini
+# cmd: mypy main.py
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[file mypy.ini]
+[[mypy]
+follow_imports_for_stubs = True
+[stale]
+[rechecked]
+[out]
+==
+
+[case testFineAddedSkippedStubsPackageFrom]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy main.py
+# cmd2: mypy main.py package/__init__.py package/missing.py
+[file main.py]
+from package import missing
+missing.f(int())
+[file package/__init__.py]
+[file package/missing.py]
+def f(x: str) -> None: pass
+[out]
+==
+main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"

@@ -19,15 +19,19 @@ from mypy.build import BuildSource, BuildResult, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
-from mypy.options import Options, BuildType
+from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
 from mypy.report import reporter_classes
 
 from mypy.version import __version__
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
 
-orig_stat = os.stat
 
-MEM_PROFILE = False  # If True, dump memory profile
+orig_stat = os.stat  # type: Final
+
+MEM_PROFILE = False  # type: Final  # If True, dump memory profile
 
 
 def stat_proxy(path: str) -> os.stat_result:
@@ -107,8 +111,15 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
 
+    code = 0
     if messages:
         code = 2 if blockers else 1
+    if options.fast_exit:
+        # Exit without freeing objects -- it's faster.
+        #
+        # NOTE: We don't flush all open files on exit (or run other destructors)!
+        util.hard_exit(code)
+    elif code:
         sys.exit(code)
 
 
@@ -210,8 +221,8 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 flag_prefix_pairs = [
     ('allow', 'disallow'),
     ('show', 'hide'),
-]
-flag_prefix_map = {}  # type: Dict[str, str]
+]  # type: Final
+flag_prefix_map = {}  # type: Final[Dict[str, str]]
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
     flag_prefix_map[b] = a
@@ -304,7 +315,7 @@ def infer_python_version_and_executable(options: Options,
 
 
 HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
-            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]"""  # type: Final
 
 
 DESCRIPTION = """
@@ -328,10 +339,10 @@ You can also use a config file to configure mypy instead of using
 command line flags. For more details, see:
 
 - http://mypy.readthedocs.io/en/latest/config_file.html
-"""
+"""  # type: Final
 
 FOOTER = """Environment variables:
-  Define MYPYPATH for additional module search path entries."""
+  Define MYPYPATH for additional module search path entries."""  # type: Final
 
 
 def process_options(args: List[str],
@@ -454,7 +465,7 @@ def process_options(args: List[str],
         help='Type check code assuming it will be running on Python x.y',
         dest='special-opts:python_version')
     platform_group.add_argument(
-        '-2', '--py2', dest='python_version', action='store_const',
+        '-2', '--py2', dest='special-opts:python_version', action='store_const',
         const=defaults.PYTHON2_VERSION,
         help="Use Python 2 mode (same as --python-version 2.7)")
     platform_group.add_argument(
@@ -469,8 +480,8 @@ def process_options(args: List[str],
         help="Additional variable to be considered False (may be repeated)")
 
     disallow_any_group = parser.add_argument_group(
-        title='Any type restrictions',
-        description="Disallow the use of the 'Any' type under certain conditions.")
+        title='Dynamic typing',
+        description="Disallow the use of the dynamic 'Any' type under certain conditions.")
     disallow_any_group.add_argument(
         '--disallow-any-unimported', default=False, action='store_true',
         help="Disallow Any types resulting from unfollowed imports")
@@ -511,10 +522,6 @@ def process_options(args: List[str],
                         group=untyped_group)
     add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
                         help="Type check the interior of functions without type annotations",
-                        group=untyped_group)
-    add_invertible_flag('--warn-incomplete-stub', default=False,
-                        help="Warn if missing type annotation in typeshed, only relevant with"
-                             " --check-untyped-defs enabled",
                         group=untyped_group)
     add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
                         help="Disallow decorating typed functions with untyped decorators",
@@ -608,11 +615,17 @@ def process_options(args: List[str],
     internals_group.add_argument(
         '--custom-typeshed-dir', metavar='DIR',
         help="Use the custom typeshed in DIR")
+    add_invertible_flag('--warn-incomplete-stub', default=False,
+                        help="Warn if missing type annotation in typeshed, only relevant with"
+                             " --disallow-untyped-defs or --disallow-incomplete-defs enabled",
+                        group=internals_group)
     internals_group.add_argument(
         '--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
         dest='shadow_file', action='append',
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
+    add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
+                        group=internals_group)
 
     error_group = parser.add_argument_group(
         title='Error reporting',
@@ -776,7 +789,7 @@ def process_options(args: List[str],
     # Process deprecated options
     if special_opts.disallow_any:
         print("--disallow-any option was split up into multiple flags. "
-              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-any-flags")
+              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-dynamic-typing")
     if options.strict_boolean:
         print("Warning: --strict-boolean is deprecated; "
               "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
@@ -964,7 +977,7 @@ config_types = {
     'always_true': lambda s: [p.strip() for p in s.split(',')],
     'always_false': lambda s: [p.strip() for p in s.split(',')],
     'package_root': lambda s: [p.strip() for p in s.split(',')],
-}
+}  # type: Final
 
 
 def parse_config_file(options: Options, filename: Optional[str]) -> None:
@@ -1014,11 +1027,11 @@ def parse_config_file(options: Options, filename: Optional[str]) -> None:
                 print("%s: Per-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
                       file=sys.stderr)
-            if set(updates) - Options.PER_MODULE_OPTIONS:
+            if set(updates) - PER_MODULE_OPTIONS:
                 print("%s: Per-module sections should only specify per-module flags (%s)" %
-                      (prefix, ', '.join(sorted(set(updates) - Options.PER_MODULE_OPTIONS))),
+                      (prefix, ', '.join(sorted(set(updates) - PER_MODULE_OPTIONS))),
                       file=sys.stderr)
-                updates = {k: v for k, v in updates.items() if k in Options.PER_MODULE_OPTIONS}
+                updates = {k: v for k, v in updates.items() if k in PER_MODULE_OPTIONS}
             globs = name[5:]
             for glob in globs.split(','):
                 # For backwards compatibility, replace (back)slashes with dots.

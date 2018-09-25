@@ -3,6 +3,7 @@ flake8
 flake8-bugbear; python_version >= '3.5'
 flake8-pyi; python_version >= '3.6'
 lxml==4.2.4
+mypy_extensions==0.4.0
 psutil==5.4.0
 pytest>=3.4
 pytest-xdist>=1.22

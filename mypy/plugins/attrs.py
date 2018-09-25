@@ -20,21 +20,25 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 
 # The names of the different functions that create classes or arguments.
 attr_class_makers = {
     'attr.s',
     'attr.attrs',
     'attr.attributes',
-}
+}  # type: Final
 attr_dataclass_makers = {
     'attr.dataclass',
-}
+}  # type: Final
 attr_attrib_makers = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
-}
+}  # type: Final
 
 
 class Converter:
@@ -458,7 +462,7 @@ def _add_cmp(ctx: 'mypy.plugin.ClassDefContext', adder: 'MethodAdder') -> None:
     #    AT = TypeVar('AT')
     #    def __lt__(self: AT, other: AT) -> bool
     # This way comparisons with subclasses will work correctly.
-    tvd = TypeVarDef('AT', 'AT', 1, [], object_type)
+    tvd = TypeVarDef('AT', 'AT', -1, [], object_type)
     tvd_type = TypeVarType(tvd)
     args = [Argument(Var('other', tvd_type), tvd_type, None, ARG_POS)]
     for method in ['__lt__', '__le__', '__gt__', '__ge__']:
@@ -491,23 +495,6 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
         [attribute.argument(ctx) for attribute in attributes if attribute.init],
         NoneTyp()
     )
-    for stmt in ctx.cls.defs.body:
-        # The type of classmethods will be wrong because it's based on the parent's __init__.
-        # Set it correctly.
-        if isinstance(stmt, Decorator) and stmt.func.is_class:
-            func_type = stmt.func.type
-            if isinstance(func_type, CallableType):
-                func_type.arg_types[0] = ctx.api.class_type(ctx.cls.info)
-        if isinstance(stmt, OverloadedFuncDef) and stmt.is_class:
-            func_type = stmt.type
-            if isinstance(func_type, Overloaded):
-                class_type = ctx.api.class_type(ctx.cls.info)
-                for item in func_type.items():
-                    item.arg_types[0] = class_type
-                if stmt.impl is not None:
-                    assert isinstance(stmt.impl, Decorator)
-                    if isinstance(stmt.impl.func.type, CallableType):
-                        stmt.impl.func.type.arg_types[0] = class_type
 
 
 class MethodAdder:

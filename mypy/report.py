@@ -24,8 +24,15 @@ from mypy.traverser import TraverserVisitor
 from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
 
+MYPY = False
+if MYPY:
+    from typing_extensions import Final
+
 try:
-    import lxml.etree as etree  # type: ignore
+    # mypyc doesn't properly handle import from of submodules that we
+    # don't have stubs for, hence the hacky double import
+    import lxml.etree  # type: ignore
+    from lxml import etree  # type: ignore
     LXML_INSTALLED = True
 except ImportError:
     LXML_INSTALLED = False
@@ -38,9 +45,11 @@ type_of_any_name_map = collections.OrderedDict([
     (TypeOfAny.from_error, "Error"),
     (TypeOfAny.special_form, "Special Form"),
     (TypeOfAny.implementation_artifact, "Implementation Artifact"),
-])  # type: collections.OrderedDict[TypeOfAny, str]
+])  # type: Final[collections.OrderedDict[int, str]]
 
-reporter_classes = {}  # type: Dict[str, Tuple[Callable[[Reports, str], AbstractReporter], bool]]
+ReporterClasses = Dict[str, Tuple[Callable[['Reports', str], 'AbstractReporter'], bool]]
+
+reporter_classes = {}  # type: Final[ReporterClasses]
 
 
 class Reports:
@@ -160,7 +169,7 @@ class AnyExpressionsReporter(AbstractReporter):
     def __init__(self, reports: Reports, output_dir: str) -> None:
         super().__init__(reports, output_dir)
         self.counts = {}  # type: Dict[str, Tuple[int, int]]
-        self.any_types_counter = {}  # type: Dict[str, typing.Counter[TypeOfAny]]
+        self.any_types_counter = {}  # type: Dict[str, typing.Counter[int]]
         stats.ensure_dir_exists(output_dir)
 
     def on_file(self,
@@ -230,7 +239,7 @@ class AnyExpressionsReporter(AbstractReporter):
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
-        total_counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+        total_counter = collections.Counter()  # type: typing.Counter[int]
         for counter in self.any_types_counter.values():
             for any_type, value in counter.items():
                 total_counter[any_type] += value
@@ -453,7 +462,7 @@ class MemoryXmlReporter(AbstractReporter):
     def _get_any_info_for_line(visitor: stats.StatisticsVisitor, lineno: int) -> str:
         if lineno in visitor.any_line_map:
             result = "Any Types on this line: "
-            counter = collections.Counter()  # type: typing.Counter[TypeOfAny]
+            counter = collections.Counter()  # type: typing.Counter[int]
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():

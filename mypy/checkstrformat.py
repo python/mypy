@@ -10,10 +10,13 @@ from mypy.types import (
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr
 )
-if False:
+
+MYPY = False
+if MYPY:
     # break import cycle only needed for mypy
     import mypy.checker
     import mypy.checkexpr
+    from typing_extensions import Final
 from mypy import messages
 from mypy.messages import MessageBuilder
 
@@ -32,11 +35,12 @@ def compile_format_re() -> Pattern[str]:
     return re.compile(format_re)
 
 
-FORMAT_RE = compile_format_re()
+FORMAT_RE = compile_format_re()  # type: Final
 
 
 class ConversionSpecifier:
-    def __init__(self, key: str, flags: str, width: str, precision: str, type: str) -> None:
+    def __init__(self, key: Optional[str],
+                 flags: str, width: str, precision: str, type: str) -> None:
         self.key = key
         self.flags = flags
         self.width = width
@@ -179,6 +183,7 @@ class StringFormatterChecker:
                 if specifier.type == '%':
                     # %% is allowed in mappings, no checking is required
                     continue
+                assert specifier.key is not None
                 if specifier.key not in mapping:
                     self.msg.key_not_in_mapping(specifier.key, replacements)
                     return

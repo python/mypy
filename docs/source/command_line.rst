@@ -126,6 +126,8 @@ imports.
     compliant packages. Adding this flag will disable this behavior.
 
 
+.. _platform-configuration:
+
 Platform configuration
 **********************
 
@@ -169,12 +171,15 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
     compile-time constants that are always false.  This flag may
     be repeated.
 
-.. _disallow-any:
+.. _disallow-dynamic-typing:
 
-Disallow Any 
-************
+Disallow dynamic typing
+***********************
 
-The ``--disallow-any`` family of flags disallows various types of ``Any`` in a module.
+The ``Any`` type is used represent a value that has a :ref:`dynamic type <dynamic-typing>`.
+The ``--disallow-any`` family of flags will disallow various uses of the ``Any`` type in
+a module -- this lets us strategically disallow the use of dynamic typing in a controlled way.
+
 The following options are available:
 
 ``--disallow-any-unimported``
@@ -208,8 +213,6 @@ The following options are available:
     ``dict``) become disallowed as you should use their aliases from the typing
     module (such as ``List[int]`` and ``Dict[str, str]``).
 
-.. _disallow-subclassing-any:
-
 ``--disallow-subclassing-any`` 
     This flag reports an error whenever a class subclasses a value of 
     type ``Any``.  This may occur when the base class is imported from 
@@ -239,8 +242,6 @@ definitions or calls.
     This flag reports an error whenever it encounters a function definition
     without type annotations.
 
-.. _disallow-incomplete-defs:
-
 ``--disallow-incomplete-defs`` 
     This flag reports an error whenever it encounters a partly annotated
     function definition.
@@ -258,6 +259,7 @@ definitions or calls.
     This flag reports an error whenever a function with type annotations
     is decorated with a decorator without annotations.
 
+.. _none-and-optional-handling:
 
 None and Optional handling
 **************************
@@ -273,7 +275,7 @@ For more details, see :ref:`no_strict_optional`.
 
     For example, by default mypy will assume that the ``x`` parameter
     is of type ``Optional[int]`` in the code snippet below since
-    the default pararameter is ``None``:
+    the default parameter is ``None``:
 
     .. code-block:: python
 
@@ -299,6 +301,7 @@ For more details, see :ref:`no_strict_optional`.
     mypy 0.600, and in previous versions it had to be explicitly enabled
     using ``--strict-optional`` (which is still accepted).
 
+.. _configuring-warnings:
 
 Configuring warnings
 ********************
@@ -352,6 +355,8 @@ of the above sections.
 
     Note: the exact list of flags enabled by running ``--strict`` may change
     over time.
+
+.. _configuring-error-messages:
 
 Configuring error messages
 **************************
@@ -440,6 +445,8 @@ beyond what incremental mode can offer, try running mypy in
     We recommend that you try using the :ref:`mypy_daemon` before
     attempting to use this feature.
 
+.. _advanced-flags:
+
 Advanced flags
 **************
 
@@ -464,6 +471,23 @@ in developing or debugging mypy internals.
     primarily intended to make it easier to test typeshed changes before
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
+
+.. _warn-incomplete-stub:
+
+``--warn-incomplete-stub``
+    This flag modifies both the ``--disallow-untyped-defs`` and 
+    ``--disallow-incomplete-defs`` flags so they also report errors
+    if stubs in typeshed are missing type annotations or has incomplete
+    annotations. If both flags are missing, ``--warn-incomplete-stub``
+    also does nothing.
+
+    This flag is mainly intended to be used by people who want contribute
+    to typeshed and would like a convenient way to find gaps and omissions.
+    
+    If you want mypy to report an error when your codebase *uses* an untyped
+    function, whether that function is defined in typeshed or not, use the 
+    ``--disallow-untyped-call`` flag. See :ref:`untyped-definitions-and-calls`
+    for more details.
 
 .. _shadow-file:
 

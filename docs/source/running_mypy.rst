@@ -131,7 +131,7 @@ Missing imports
 When you import a module, mypy may report that it is unable to
 follow the import.
 
-This could happen if the code is importing a non-existant module
+This could happen if the code is importing a non-existent module
 or if the code is importing a library that does not use type hints.
 Specifically, the library is neither declared to be a 
 :ref:`PEP 561 compliant package <installed-packages>` nor has registered
@@ -153,19 +153,36 @@ If the module is a library that does not use type hints, the easiest fix
 is to silence the error messages by adding a ``# type: ignore`` comment on
 each respective import statement.
 
-If you have many of these errors, you can silence them all at once by using
-the ``--ignore-missing-imports`` flag. We recommend using this flag only
-as a last resort: it's equivalent to adding a ``# type: ignore`` comment
-to all unresolved imports in your codebase.
+If you have many of these errors from a specific library, it may be more
+convenient to silence all of those errors at once using the
+:ref:`mypy config file <config-file>`. For example, suppose your codebase
+makes heavy use of an (untyped) library named `foobar`. You can silence all
+import errors associated with that library and that library alone by adding
+the following section to your config file::
+
+    [mypy-foobar]
+    ignore_missing_imports = True
+
+Note: this option is equivalent to adding a ``# type: ignore`` to every
+import of ``foobar`` in your codebase. For more information, see the
+documentation about configuring
+:ref:`import discovery <config-file-import-discovery-per-module>` in config files.
+
+If you would like to silence *all* missing import errors in your codebase,
+you can do so by using the ``--ignore-missing-imports`` flag. We recommend
+using this flag only as a last resort: it's equivalent to adding a
+``# type: ignore`` to all unresolved imports in your codebase.
 
 A more involved solution would be to reverse-engineer how the library
 works, create type hints for the library, and point mypy at those
 type hints either by passing in in via the command line or by adding
-the location of your custom stubs to the ``MYPYPATH`` environment variable.
+the location of your custom stubs to either the ``MYPYPATH`` environment
+variable or the ``mypy_path`` 
+:ref:`config file option <config-file-import-discovery-global>`.
 
-If you want to share your work, you can either open a pull request on
-typeshed or modify the library itself to be 
-:ref:`PEP 561 compliant <installed-packages>`.
+If you want to share your work, you can try contributing your stubs back
+to the library -- see our documentation on creating
+:ref:`PEP 561 compliant packages <installed-packages>`.
 
 
 .. _follow-imports:
@@ -297,12 +314,18 @@ This is computed from the following items:
 
 - The ``MYPYPATH`` environment variable
   (a colon-separated list of directories).
+- The ``mypy_path`` :ref:`config file option <config-file-import-discovery-global>`.
 - The directories containing the sources given on the command line
   (see below).
 - The installed packages marked as safe for type checking (see
   :ref:`PEP 561 support <installed-packages>`)
 - The relevant directories of the
   `typeshed <https://github.com/python/typeshed>`_ repo.
+
+.. note::
+
+    You cannot point to a PEP 561 package via the MYPYPATH, it must be
+    installed (see :ref:`PEP 561 support <installed-packages>`)
 
 For sources given on the command line, the path is adjusted by crawling
 up from the given file or package to the nearest directory that does not

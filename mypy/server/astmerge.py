@@ -300,7 +300,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         self.fixup_type(info.tuple_type)
         self.fixup_type(info.typeddict_type)
         info.defn.info = self.fixup(info)
-        info.replaced = self.fixup(info.replaced)
+        if info.replaced:
+            info.replaced = self.fixup(info.replaced)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):
             info.mro[i] = self.fixup(info.mro[i])
@@ -419,8 +420,6 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
     def fixup(self, node: SN) -> SN:
         if node in self.replacements:
             new = self.replacements[node]
-            # TODO: This may be unnecessary?
-            new.__dict__ = node.__dict__
             return cast(SN, new)
         return node
 

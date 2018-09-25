@@ -3515,7 +3515,8 @@ from typing import Optional
 def foo() -> Optional[int]: return 0
 [out1]
 [out2]
-main:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+main:3: error: Unsupported operand types for + ("int" and "None")
+main:3: note: Right operand is of type "Optional[int]"
 
 [case testAttrsIncrementalSubclassingCached]
 from a import A
@@ -3642,10 +3643,10 @@ from a import A
 reveal_type(A)  # E: Revealed type is 'def (a: builtins.int) -> a.A'
 reveal_type(A.__eq__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 reveal_type(A.__ne__)  # E: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+reveal_type(A.__lt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__le__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__gt__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+reveal_type(A.__ge__)  # E: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 
 A(1) < A(2)
 A(1) <= A(2)
@@ -3681,10 +3682,10 @@ class A:
 main:2: error: Revealed type is 'def (a: builtins.int) -> a.A'
 main:3: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
 main:4: error: Revealed type is 'def (self: a.A, other: builtins.object) -> builtins.bool'
-main:5: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-main:6: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-main:7: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
-main:8: error: Revealed type is 'def [AT] (self: AT`1, other: AT`1) -> builtins.bool'
+main:5: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+main:6: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+main:7: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
+main:8: error: Revealed type is 'def [AT] (self: AT`-1, other: AT`-1) -> builtins.bool'
 main:17: error: Unsupported operand types for < ("A" and "int")
 main:18: error: Unsupported operand types for <= ("A" and "int")
 main:19: error: Unsupported operand types for > ("A" and "int")
@@ -4082,7 +4083,8 @@ class Baz:
         return 1
 [out]
 [out2]
-tmp/a.py:3: error: Unsupported operand types for + ("int" and "Optional[int]")
+tmp/a.py:3: error: Unsupported operand types for + ("int" and "None")
+tmp/a.py:3: note: Right operand is of type "Optional[int]"
 
 [case testIncrementalMetaclassUpdate]
 import a
@@ -4526,10 +4528,10 @@ class A:
 tmp/b.py:3: error: Revealed type is 'def (a: builtins.int) -> a.A'
 tmp/b.py:4: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
 tmp/b.py:5: error: Revealed type is 'def (builtins.object, builtins.object) -> builtins.bool'
-tmp/b.py:6: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:7: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:8: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
-tmp/b.py:9: error: Revealed type is 'def [T] (self: T`1, other: T`1) -> builtins.bool'
+tmp/b.py:6: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:7: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:8: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
+tmp/b.py:9: error: Revealed type is 'def [T] (self: T`-1, other: T`-1) -> builtins.bool'
 tmp/b.py:18: error: Unsupported operand types for < ("A" and "int")
 tmp/b.py:19: error: Unsupported operand types for <= ("A" and "int")
 tmp/b.py:20: error: Unsupported operand types for > ("A" and "int")
@@ -4790,3 +4792,562 @@ tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-impor
 [out2]
 tmp/c.py:1: error: Cannot find module named 'a.b.c'
 tmp/c.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testAddedMissingStubs]
+# flags: --ignore-missing-imports
+from missing import f
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackage]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackageFrom]
+# flags: --ignore-missing-imports
+from package import missing
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackagePartial]
+# flags: --ignore-missing-imports
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsPackagePartialGetAttr]
+import package.missing
+package.missing.f(int())
+[file package/__init__.pyi]
+from typing import Any
+def __getattr__(attr: str) -> Any: ...
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnore]
+from missing import f  # type: ignore
+f(int())
+[file missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnorePackage]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnorePackageFrom]
+from package import missing  # type: ignore
+missing.f(int())
+[file package/__init__.pyi.2]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testAddedMissingStubsIgnorePackagePartial]
+import package.missing  # type: ignore
+package.missing.f(int())
+[file package/__init__.pyi]
+[file package/missing.pyi.2]
+def f(x: str) -> None: pass
+[out]
+[out2]
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+-- Test cases for final qualifier
+
+[case testFinalAddFinalVarAssign]
+import mod
+from a import D
+from mod import x
+
+mod.x = 2  # This an all below are errors.
+x = 2
+d: D
+d.y = 2
+d.z = 2
+D.y = 2
+[file a.py]
+import mod
+
+class D(mod.C):
+    pass
+[file mod.py]
+x = 1
+class C:
+    y = 1
+    def __init__(self) -> None:
+        self.z = 1
+
+[file mod.py.2]
+from typing import Final
+
+x: Final = 1
+class C:
+    y: Final = 1
+    def __init__(self) -> None:
+        self.z: Final = 1
+[out]
+[out2]
+main:5: error: Cannot assign to final name "x"
+main:6: error: Cannot assign to final name "x"
+main:8: error: Cannot assign to final attribute "y"
+main:9: error: Cannot assign to final attribute "z"
+main:10: error: Cannot assign to final attribute "y"
+
+[case testFinalAddFinalVarOverride]
+from mod import C
+
+class D(C):
+    x = 2
+    def __init__(self) -> None:
+        self.y = 2
+class E(C):
+    y = 2
+    def __init__(self) -> None:
+        self.x = 2
+
+[file mod.py]
+class C:
+    x = 1
+    def __init__(self) -> None:
+        self.y = 1
+
+[file mod.py.2]
+from typing import Final
+
+class C:
+    x: Final = 1
+    def __init__(self) -> None:
+        self.y: Final = 1
+[out]
+[out2]
+main:4: error: Cannot assign to final name "x"
+main:6: error: Cannot assign to final attribute "y"
+main:8: error: Cannot assign to final name "y"
+main:10: error: Cannot assign to final attribute "x"
+
+[case testFinalAddFinalMethodOverride]
+from mod import C
+
+class D(C):
+    def meth(self) -> int: ...
+
+[file mod.py]
+class C:
+    def meth(self) -> int: ...
+
+[file mod.py.2]
+from typing import final
+
+class C:
+    @final
+    def meth(self) -> int: ...
+[out]
+[out2]
+main:4: error: Cannot override final attribute "meth" (previously declared in base class "C")
+
+-- These tests should just not crash
+[case testOverrideByBadVar]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+s: Slow
+from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+A = Slow
+from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarClass]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+    s: Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarClassAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+    A = Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarExisting]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+s: Slow
+from cext import Slow  # type: ignore
+[file cext.py]
+Slow = 1
+[out]
+[out2]
+
+[case testOverrideByBadVarAliasExisting]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class Slow:
+    pass
+
+A = Slow
+from cext import Slow  # type: ignore
+[file cext.py]
+Slow = 1
+[out]
+[out2]
+
+[case testOverrideByBadFunction]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    class Slow:
+        pass
+
+    s: Slow
+    def Slow() -> None: ...  # type: ignore
+[out]
+[out2]
+
+[case testOverrideByBadVarLocal]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+def outer() -> None:
+    class Slow:
+        pass
+
+    s: Slow
+    from cext import Slow  # type: ignore
+[out]
+[out2]
+
+[case testRecursiveAliasImported]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x)
+[file lib.pyi]
+from typing import List
+from other import B
+A = List[B]  # type: ignore
+[file other.pyi]
+from typing import List
+from lib import A
+B = List[A]
+[builtins fixtures/list.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'builtins.list[builtins.list[builtins.list[Any]]]'
+
+[case testRecursiveNamedTupleTypedDict]
+import a
+[file a.py]
+import lib
+x: int
+[file a.py.2]
+import lib
+x: lib.A
+reveal_type(x.x['x'])
+[file lib.pyi]
+from typing import NamedTuple
+from other import B
+A = NamedTuple('A', [('x', B)])  # type: ignore
+[file other.pyi]
+from mypy_extensions import TypedDict
+from lib import A
+B = TypedDict('B', {'x': A})
+[builtins fixtures/dict.pyi]
+[out]
+[out2]
+tmp/a.py:3: error: Revealed type is 'Tuple[TypedDict('other.B', {'x': Any}), fallback=lib.A]'
+
+[case testFollowImportSkipNotInvalidatedOnPresent]
+# flags: --follow-imports=skip
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.py]
+x = 1
+[file other.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+
+[case testFollowImportSkipNotInvalidatedOnPresentPackage]
+# flags: --follow-imports=skip
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other/__init__.py]
+x = 1
+[file other/__init__.py.2]
+x = 'hi'
+[stale]
+[rechecked]
+
+[case testFollowImportSkipNotInvalidatedOnAdded]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.py.2]
+x = 1
+[stale]
+[rechecked]
+
+[case testFollowImportSkipInvalidatedOnAddedStub]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[stale main, other]
+[rechecked main, other]
+
+[case testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs]
+# flags: --follow-imports=skip --ignore-missing-imports --config-file=tmp/mypy.ini
+# cmd: mypy -m main
+[file main.py]
+import other
+[file other.pyi.2]
+x = 1
+[file mypy.ini]
+[[mypy]
+follow_imports_for_stubs = True
+[stale]
+[rechecked]
+
+[case testAddedSkippedStubsPackageFrom]
+# flags: --follow-imports=skip --ignore-missing-imports
+# cmd: mypy -m main
+# cmd2: mypy -m main package package.missing
+[file main.py]
+from package import missing
+missing.f(int())
+[file package/__init__.py]
+[file package/missing.py]
+def f(x: str) -> None: pass
+[out]
+[out2]
+tmp/main.py:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testOverrideByIdemAlias]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C
+class C:  # type: ignore
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+class C:
+    pass
+C = C  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasGeneric]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    pass
+C = C[int]  # type: ignore
+x: C
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImported]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+from other import C
+C = C  # type: ignore
+x: C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testOverrideByIdemAliasImportedReversed]
+import a
+[file a.py]
+import lib
+x = 1
+[file a.py.2]
+import lib
+x = 2
+[file lib.py]
+C = C  # type: ignore
+from other import C
+[file other.py]
+class C:
+    pass
+[out]
+[out2]
+
+[case testConditionalExceptionAliasOverride]
+import a
+[file a.py]
+import lib
+try:
+    x = 1
+except lib.Exception as e:
+    pass
+[file a.py.2]
+import lib
+try:
+    x = 2
+except lib.Exception as e:
+    pass
+[file lib.py]
+try:
+    Exception = Exception
+except BaseException:
+    class Exception(BaseException): pass  # type: ignore
+
+try:
+    pass
+except Exception as e:
+    pass
+[builtins fixtures/exception.pyi]
+[out]
+[out2]

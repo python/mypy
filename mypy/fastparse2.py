@@ -17,7 +17,12 @@ two in a typesafe way.
 from functools import wraps
 import sys
 
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, cast, List
+from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
+MYPY = False
+if MYPY:
+    import typing  # for typing.Type, which conflicts with types.Type
+    from typing_extensions import Final
+
 from mypy.sharedparse import (
     special_function_elide_names, argument_elide_name,
 )
@@ -34,9 +39,10 @@ from mypy.nodes import (
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
     Expression, Statement, BackquoteExpr, PrintStmt, ExecStmt,
     ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_STAR2, OverloadPart, check_arg_names,
+    FakeInfo,
 )
 from mypy.types import (
-    Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny
+    Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
 )
 from mypy import messages
 from mypy.errors import Errors
@@ -70,10 +76,11 @@ V = TypeVar('V')
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-_dummy_fallback = None  # type: Any
+MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # type: Final
+_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
 
-TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'
-TYPE_COMMENT_AST_ERROR = 'invalid type comment'
+TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
+TYPE_COMMENT_AST_ERROR = 'invalid type comment'  # type: Final
 
 
 def parse(source: Union[str, bytes],
@@ -115,7 +122,8 @@ def parse(source: Union[str, bytes],
 
 
 def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
-    @wraps(f)
+    # mypyc doesn't properly populate all the fields that @wraps expects
+    # @wraps(f)
     def wrapper(self: 'ASTConverter', ast: T) -> U:
         node = f(self, ast)
         node.set_line(ast.lineno, ast.col_offset)
@@ -191,7 +199,7 @@ class ASTConverter(ast27.NodeTransformer):
         ast27.BitXor: '^',
         ast27.BitAnd: '&',
         ast27.FloorDiv: '//'
-    }
+    }  # type: Final[Dict[typing.Type[ast27.AST], str]]
 
     def from_operator(self, op: ast27.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -213,7 +221,7 @@ class ASTConverter(ast27.NodeTransformer):
         ast27.IsNot: 'is not',
         ast27.In: 'in',
         ast27.NotIn: 'not in'
-    }
+    }  # type: Final[Dict[typing.Type[ast27.AST], str]]
 
     def from_comp_operator(self, op: ast27.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -238,7 +246,7 @@ class ASTConverter(ast27.NodeTransformer):
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
         ret = []  # type: List[Statement]
         current_overload = []  # type: List[OverloadPart]
-        current_overload_name = None
+        current_overload_name = None  # type: Optional[str]
         for stmt in stmts:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
@@ -397,7 +405,7 @@ class ASTConverter(ast27.NodeTransformer):
                        n: ast27.arguments,
                        line: int,
                        ) -> Tuple[List[Argument], List[Statement]]:
-        type_comments = n.type_comments
+        type_comments = n.type_comments  # type: Sequence[Optional[str]]
         converter = TypeConverter(self.errors, line=line)
         decompose_stmts = []  # type: List[Statement]
 
@@ -424,8 +432,10 @@ class ASTConverter(ast27.NodeTransformer):
             return Var(v)
 
         def get_type(i: int) -> Optional[Type]:
-            if i < len(type_comments) and type_comments[i] is not None:
-                return converter.visit_raw_str(type_comments[i])
+            if i < len(type_comments):
+                comment = type_comments[i]
+                if comment is not None:
+                    return converter.visit_raw_str(comment)
             return None
 
         args = [(convert_arg(i, arg), get_type(i)) for i, arg in enumerate(n.args)]
