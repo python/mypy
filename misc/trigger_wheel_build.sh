@@ -1,6 +1,6 @@
 #!/bin/bash -eux
 
-git clone --recurse-submodules https://${GH_TOKEN}@github.com/msullivan/travis-testing.git build
+git clone --recurse-submodules https://${WHEELS_PUSH_TOKEN}@github.com/msullivan/travis-testing.git build
 
 git config --global user.email "nobody"
 git config --global user.name "mypy wheels autopush"
