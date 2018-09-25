@@ -1,15 +1,12 @@
-#!/bin/bash -eu
+#!/bin/bash -eux
 
-REPO=travis-testing
-
-set -x
-git clone --recurse-submodules https://${GH_TOKEN}@github.com/msullivan/$REPO.git
+git clone --recurse-submodules https://${GH_TOKEN}@github.com/msullivan/travis-testing.git build
 
 git config --global user.email "nobody"
 git config --global user.name "mypy wheels autopush"
 
 COMMIT=$(git rev-parse HEAD)
-cd $REPO/mypy
+cd build/mypy
 git fetch
 git checkout $COMMIT
 pip install -r test-requirements.txt
