@@ -527,6 +527,13 @@ def process_options(args: List[str],
                         help="Disallow decorating typed functions with untyped decorators",
                         group=untyped_group)
 
+    toplevel_group = parser.add_argument_group(
+        title='Top-level hecking',
+        description="Configure how code at the top-level is handled. ")
+    add_invertible_flag('--permissive-toplevel', default=False, strict_flag=False,
+                        help="Suppress toplevel errors caused by missing annotations",
+                        group=toplevel_group)
+
     none_group = parser.add_argument_group(
         title='None and Optional handling',
         description="Adjust how values of type 'None' are handled. For more context on "

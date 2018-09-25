@@ -19,12 +19,12 @@ main:6: error: Incompatible types in assignment (expression has type "B", variab
 [case testInferSimpleLvarType]
 import typing
 def f() -> None:
-  x = A()
-  y = B()
-  x = B() # Fail
-  x = A()
-  x = y   # Fail
-  x = x
+    x = A()
+    y = B()
+    x = B() # Fail
+    x = A()
+    x = y   # Fail
+    x = x
 class A: pass
 class B: pass
 [out]
@@ -2467,3 +2467,115 @@ def f() -> None:
         _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "BaseException")
         _ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "BaseException")
 [builtins fixtures/exception.pyi]
+
+-- Tests for permissive toplevel checking
+-- --------------
+
+[case testPermissiveAttributeOverride1]
+# flags: --permissive-toplevel
+
+class A:
+    x = None
+
+class B(A):
+    x = 12
+
+class C(A):
+    x = '12'
+
+reveal_type(A.x) # E: Revealed type is 'Union[Any, None]'
+reveal_type(B.x) # E: Revealed type is 'builtins.int'
+reveal_type(C.x) # E: Revealed type is 'builtins.str'
+
+[case testPermissiveAttributeOverride2]
+# flags: --permissive-toplevel
+
+class A:
+    x = []
+
+class B(A):
+    x = [12]
+
+class C(A):
+    x = ['12']
+
+reveal_type(A.x) # E: Revealed type is 'builtins.list[Any]'
+reveal_type(B.x) # E: Revealed type is 'builtins.list[builtins.int*]'
+reveal_type(C.x) # E: Revealed type is 'builtins.list[builtins.str*]'
+
+[builtins fixtures/list.pyi]
+
+[case testPermissiveGlobalContainer1]
+# flags: --permissive-toplevel --local-partial-types
+
+import a
+
+[file b.py]
+x = []
+y = {}
+
+def foo() -> None:
+    reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+    reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
+
+[file a.py]
+from b import x, y
+reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
+
+[builtins fixtures/dict.pyi]
+
+[case testPermissiveGlobalContainer2]
+# flags: --permissive-toplevel
+
+import a
+
+[file b.py]
+x = []
+y = {}
+
+def foo() -> None:
+    reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+    reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
+
+[file a.py]
+from b import x, y
+reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
+
+[builtins fixtures/dict.pyi]
+
+[case testPermissiveGlobalContainer3]
+# flags: --permissive-toplevel --local-partial-types
+
+import a
+
+[file b.py]
+x = []
+y = {}
+z = y
+
+
+[file a.py]
+from b import x, y
+reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
+
+[builtins fixtures/dict.pyi]
+[case testPermissiveGlobalContainer4]
+# flags: --permissive-toplevel
+
+import a
+
+[file b.py]
+x = []
+y = {}
+z = y
+
+
+[file a.py]
+from b import x, y
+reveal_type(x)  # E: Revealed type is 'builtins.list[Any]'
+reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
+
+[builtins fixtures/dict.pyi]

@@ -41,6 +41,7 @@ PER_MODULE_OPTIONS = {
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
+    "permissive_toplevel",
     "show_none_errors",
     "strict_boolean",
     "strict_optional",
@@ -146,6 +147,9 @@ class Options:
 
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
+
+        # Aggressively avoid false-positives in top-level code
+        self.permissive_toplevel = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

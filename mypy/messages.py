@@ -1099,6 +1099,7 @@ class MessageBuilder:
                   ctx)
 
     def need_annotation_for_var(self, node: SymbolNode, context: Context) -> None:
+#        import pdb; pdb.set_trace()
         self.fail("Need type annotation for '{}'".format(node.name()), context)
 
     def explicit_any(self, ctx: Context) -> None:
