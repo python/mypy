@@ -130,7 +130,7 @@ TypeRange = NamedTuple(
 PartialTypeScope = NamedTuple('PartialTypeScope', [('map', Dict[Var, Context]),
                                                    ('is_function', bool),
                                                    ('is_local', bool),
-])
+                                                   ])
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
@@ -3647,9 +3647,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """
         for scope in reversed(self.partial_types):
             if var in scope.map:
-            # All scopes within the outermost function are active. Scopes out of
-            # the outermost function are inactive to allow local reasoning (important
-            # for fine-grained incremental mode).
+                # All scopes within the outermost function are active. Scopes out of
+                # the outermost function are inactive to allow local reasoning (important
+                # for fine-grained incremental mode).
                 scope_active = (not self.options.local_partial_types
                                 or scope.is_local == self.partial_types[-1].is_local)
                 return scope_active, scope.is_local, scope.map
