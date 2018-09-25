@@ -33,7 +33,7 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
                     case: 'DataDrivenTestCase') -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
-    This method is part of the setup phase, just before the test case is run.s
+    This method is part of the setup phase, just before the test case is run.
     """
     base_path = suite.base_path
     if suite.native_sep:
