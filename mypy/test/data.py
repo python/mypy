@@ -33,7 +33,7 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
                     case: 'DataDrivenTestCase') -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
-    This method is part of the setup phase, just before the test case is run.
+    This method is part of the setup phase, just before the test case is run.s
     """
     base_path = suite.base_path
     if suite.native_sep:
@@ -41,8 +41,6 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
     else:
         join = posixpath.join  # type: ignore
 
-    # Process the parsed items. Each item has a header of form [id args],
-    # optionally followed by lines of text.
     out_section_missing = suite.required_out_section
 
     files = []  # type: List[Tuple[str, str]] # path and contents
@@ -54,6 +52,8 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
     rechecked_modules = {}  # type: Dict[ int, Set[str]]  # from run number module names
     triggered = []  # type: List[str]  # Active triggers (one line per incremental step)
 
+    # Process the parsed items. Each item has a header of form [id args],
+    # optionally followed by lines of text.
     item = first_item = test_items[0]
     for item in test_items[1:]:
         if item.id == 'file' or item.id == 'outfile':
@@ -99,7 +99,7 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r'out[0-9]*$', item.id):
             tmp_output = [expand_variables(line) for line in item.data]
-            if suite.native_sep and os.path.sep == '\\':
+            if os.path.sep == '\\':
                 tmp_output = [fix_win_path(line) for line in tmp_output]
             if item.id == 'out' or item.id == 'out1':
                 output = tmp_output
