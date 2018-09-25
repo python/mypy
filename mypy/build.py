@@ -841,7 +841,8 @@ class BuildManager(BuildManagerBase):
 
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
-PackageDirs = List[Tuple[str, bool]]
+OnePackageDir = Tuple[str, bool]
+PackageDirs = List[OnePackageDir]
 
 
 class FindModuleCache:
@@ -896,21 +897,13 @@ class FindModuleCache:
             self.results[key] = self._find_module(id, search_paths, python_executable)
         return self.results[key]
 
-    def _find_module_non_stub_helper(
-        self,
-        components: List[str],
-        pkg_dir: str
-    ) -> Optional[Tuple[str, bool]]:
-        fscache = self.fscache
-        pkgs2check = (
-            fscache.isfile(
-                os.path.join(os.path.join(pkg_dir, *components[:count + 1]), 'py.typed')
-            ) for count in range(len(components))
-        )
-        if next(pkgs2check):
-            return os.path.join(pkg_dir, *components[:-1]), True
-        if any(pkgs2check):
-            return os.path.join(pkg_dir, *components[:-1]), False
+    def _find_module_non_stub_helper(self, components: List[str],
+                                     pkg_dir: str) -> Optional[OnePackageDir]:
+        dir_path = pkg_dir
+        for index, component in enumerate(components):
+            dir_path = os.path.join(dir_path, component)
+            if self.fscache.isfile(os.path.join(dir_path, 'py.typed')):
+                return os.path.join(pkg_dir, *components[:-1]), index == 0
         return None
 
     def _find_module(self, id: str, search_paths: SearchPaths,
@@ -927,8 +920,8 @@ class FindModuleCache:
 
         # We have two sets of folders so that we collect *all* stubs folders and
         # put them in the front of the search path
-        third_party_inline_dirs = []
-        third_party_stubs_dirs = []
+        third_party_inline_dirs = []  # type: PackageDirs
+        third_party_stubs_dirs = []  # type: PackageDirs
         # Third-party stub/typed packages
         for pkg_dir in search_paths.package_path:
             stub_name = components[0] + '-stubs'
@@ -951,10 +944,7 @@ class FindModuleCache:
                         third_party_stubs_dirs.append((path, False))
                     else:
                         third_party_stubs_dirs.append((path, True))
-            non_stub_match = self._find_module_non_stub_helper(
-                components,
-                pkg_dir
-            )
+            non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
             if non_stub_match:
                 third_party_inline_dirs.append(non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
@@ -2700,8 +2690,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             # they will be taken care of during fine grained update. See also
             # comment about this in `State.__init__()`.
             added = []
-        all_deps_to_check = st.ancestors + dependencies + st.suppressed
-        for dep in all_deps_to_check:
+        for dep in st.ancestors + dependencies + st.suppressed:
             ignored = dep in st.suppressed and dep not in entry_points
             if ignored and dep not in added:
                 manager.missing_modules.add(dep)
