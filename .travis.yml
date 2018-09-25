@@ -1,4 +1,4 @@
-if: tag IS present OR type = pull_request OR (branch = master AND type = push) OR branch = auto-build-wheels-test  # we only CI the master, tags and PRs
+if: tag IS present OR type = pull_request OR (branch = master AND type = push)   # we only CI the master, tags and PRs
 
 language: python
 # cache package wheels (1 cache per python version)
@@ -39,7 +39,7 @@ jobs:
   - name: "trigger a build of wheels"
     stage: deploy
     python: 3.7
-    script: test $TRAVIS_BRANCH = "auto-build-wheels-test" && test $TRAVIS_PULL_REQUEST = "false" && ./misc/trigger_wheel_build.sh
+    script: test $TRAVIS_BRANCH = "master" && test $TRAVIS_PULL_REQUEST = "false" && ./misc/trigger_wheel_build.sh
 
 install:
 - pip install -U pip setuptools
