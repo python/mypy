@@ -1,5 +1,11 @@
 #!/bin/bash -eux
 
+# Trigger a build of mypyc compiled mypy wheels by updating the mypy
+# submodule in the git repo that drives those builds.
+
+# TODO: This is a testing repo and will need to be retargeted at the
+# real location once it exists. $WHEELS_PUSH_TOKEN is stored in travis
+# and is an API token for the mypy-build-bot account.
 git clone --recurse-submodules https://${WHEELS_PUSH_TOKEN}@github.com/msullivan/travis-testing.git build
 
 git config --global user.email "nobody"
