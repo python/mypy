@@ -167,7 +167,7 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
     else:
         # Find module by going through search path.
         search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
-        module_path = FindModuleCache().find_module(module, search_paths, interpreter)
+        module_path = FindModuleCache(search_paths).find_module(module)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))

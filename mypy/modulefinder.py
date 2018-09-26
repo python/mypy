@@ -63,13 +63,16 @@ class FindModuleCache:
     cleared by client code.
     """
 
-    def __init__(self, fscache: Optional[FileSystemCache] = None,
+    def __init__(self,
+                 search_paths: SearchPaths,
+                 fscache: Optional[FileSystemCache] = None,
                  options: Optional[Options] = None) -> None:
+        self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
         # Cache find_lib_path_dirs: (dir_chain, search_paths) -> list(package_dirs, should_verify)
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], PackageDirs]
-        # Cache find_module: (id, search_paths, python_version) -> result.
-        self.results = {}  # type: Dict[Tuple[str, SearchPaths, Optional[str]], Optional[str]]
+        # Cache find_module: id -> result
+        self.results = {}  # type: Dict[str, Optional[str]]
         self.options = options
 
     def clear(self) -> None:
@@ -96,13 +99,11 @@ class FindModuleCache:
                 dirs.append((dir, True))
         return dirs
 
-    def find_module(self, id: str, search_paths: SearchPaths,
-                    python_executable: Optional[str]) -> Optional[str]:
+    def find_module(self, id: str) -> Optional[str]:
         """Return the path of the module source file, or None if not found."""
-        key = (id, search_paths, python_executable)
-        if key not in self.results:
-            self.results[key] = self._find_module(id, search_paths, python_executable)
-        return self.results[key]
+        if id not in self.results:
+            self.results[id] = self._find_module(id)
+        return self.results[id]
 
     def _find_module_non_stub_helper(self, components: List[str],
                                      pkg_dir: str) -> Optional[OnePackageDir]:
@@ -113,8 +114,7 @@ class FindModuleCache:
                 return os.path.join(pkg_dir, *components[:-1]), index == 0
         return None
 
-    def _find_module(self, id: str, search_paths: SearchPaths,
-                     python_executable: Optional[str]) -> Optional[str]:
+    def _find_module(self, id: str) -> Optional[str]:
         fscache = self.fscache
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
@@ -130,7 +130,7 @@ class FindModuleCache:
         third_party_inline_dirs = []  # type: PackageDirs
         third_party_stubs_dirs = []  # type: PackageDirs
         # Third-party stub/typed packages
-        for pkg_dir in search_paths.package_path:
+        for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + '-stubs'
             stub_dir = os.path.join(pkg_dir, stub_name)
             if fscache.isdir(stub_dir):
@@ -158,10 +158,10 @@ class FindModuleCache:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
             third_party_stubs_dirs.clear()
-        python_mypy_path = search_paths.python_path + search_paths.mypy_path
+        python_mypy_path = self.search_paths.python_path + self.search_paths.mypy_path
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
-            self.find_lib_path_dirs(dir_chain, search_paths.typeshed_path)
+            self.find_lib_path_dirs(dir_chain, self.search_paths.typeshed_path)
 
         # If we're looking for a module like 'foo.bar.baz', then candidate_base_dirs now
         # contains just the subdirectories 'foo/bar' that actually exist under the
@@ -192,9 +192,8 @@ class FindModuleCache:
                     return path
         return None
 
-    def find_modules_recursive(self, module: str, search_paths: SearchPaths,
-                               python_executable: Optional[str]) -> List[BuildSource]:
-        module_path = self.find_module(module, search_paths, python_executable)
+    def find_modules_recursive(self, module: str) -> List[BuildSource]:
+        module_path = self.find_module(module)
         if not module_path:
             return []
         result = [BuildSource(module_path, module, None)]
@@ -214,15 +213,13 @@ class FindModuleCache:
                         (os.path.isfile(os.path.join(abs_path, '__init__.py')) or
                         os.path.isfile(os.path.join(abs_path, '__init__.pyi'))):
                     hits.add(item)
-                    result += self.find_modules_recursive(module + '.' + item, search_paths,
-                                                          python_executable)
+                    result += self.find_modules_recursive(module + '.' + item)
                 elif item != '__init__.py' and item != '__init__.pyi' and \
                         item.endswith(('.py', '.pyi')):
                     mod = item.split('.')[0]
                     if mod not in hits:
                         hits.add(mod)
-                        result += self.find_modules_recursive(module + '.' + mod, search_paths,
-                                                              python_executable)
+                        result += self.find_modules_recursive(module + '.' + mod)
         return result
 
 

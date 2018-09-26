@@ -486,7 +486,7 @@ class BuildManager(BuildManagerBase):
         self.cache_enabled = options.incremental and (
             not options.fine_grained_incremental or options.use_fine_grained_cache)
         self.fscache = fscache
-        self.find_module_cache = FindModuleCache(self.fscache, self.options)
+        self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
 
         # a mapping from source files to their corresponding shadow files
         # for efficient lookup
@@ -616,8 +616,7 @@ class BuildManager(BuildManagerBase):
 
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        return self.find_module_cache.find_module(id, self.search_paths,
-                                                  self.options.python_executable) is not None
+        return self.find_module_cache.find_module(id) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:
         """Parse the source of a file with the given name.
@@ -1939,8 +1938,7 @@ def find_module_and_diagnose(manager: BuildManager,
         # difference and just assume 'builtins' everywhere,
         # which simplifies code.
         file_id = '__builtin__'
-    path = manager.find_module_cache.find_module(file_id, manager.search_paths,
-                                                 manager.options.python_executable)
+    path = manager.find_module_cache.find_module(file_id)
     if path:
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
@@ -2019,8 +2017,7 @@ def exist_added_packages(suppressed: List[str],
 
 def find_module_simple(id: str, manager: BuildManager) -> Optional[str]:
     """Find a filesystem path for module `id` or `None` if not found."""
-    return manager.find_module_cache.find_module(id, manager.search_paths,
-                                                 manager.options.python_executable)
+    return manager.find_module_cache.find_module(id)
 
 
 def in_partial_package(id: str, manager: BuildManager) -> bool:

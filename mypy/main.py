@@ -884,11 +884,11 @@ def process_options(args: List[str],
         search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = FindModuleCache(fscache)
+        cache = FindModuleCache(search_paths, fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p))
-            p_targets = cache.find_modules_recursive(p, search_paths, options.python_executable)
+            p_targets = cache.find_modules_recursive(p)
             if not p_targets:
                 fail("Can't find package '{}'".format(p))
             targets.extend(p_targets)
