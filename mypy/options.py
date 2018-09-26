@@ -20,6 +20,7 @@ class BuildType:
 
 PER_MODULE_OPTIONS = {
     # Please keep this list sorted
+    "allow_untyped_globals",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -146,6 +147,9 @@ class Options:
 
         # Don't assume arguments with default values of None are Optional
         self.no_implicit_optional = False
+
+        # Suppress toplevel errors caused by missing annotations
+        self.allow_untyped_globals = False
 
         # Variable names considered True
         self.always_true = []  # type: List[str]

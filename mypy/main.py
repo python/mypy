@@ -574,6 +574,10 @@ def process_options(args: List[str],
     strictness_group = parser.add_argument_group(
         title='Other strictness checks')
 
+    add_invertible_flag('--allow-untyped-globals', default=False, strict_flag=False,
+                        help="Suppress toplevel errors caused by missing annotations",
+                        group=strictness_group)
+
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
         description="Adjust how mypy incrementally type checks and caches modules. "

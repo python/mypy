@@ -128,7 +128,9 @@ TypeRange = NamedTuple(
 # mode partial types initially defined at the top level cannot be completed in
 # a function, and we use the 'is_function' attribute to enforce this.
 PartialTypeScope = NamedTuple('PartialTypeScope', [('map', Dict[Var, Context]),
-                                                   ('is_function', bool)])
+                                                   ('is_function', bool),
+                                                   ('is_local', bool),
+                                                   ])
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
@@ -3565,10 +3567,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Also report errors for (some) variables which still have partial
         types, i.e. we couldn't infer a complete type.
         """
-        self.partial_types.append(PartialTypeScope({}, is_function))
+        is_local = (self.partial_types and self.partial_types[-1].is_local) or is_function
+        self.partial_types.append(PartialTypeScope({}, is_function, is_local))
         yield
 
-        partial_types, _ = self.partial_types.pop()
+        permissive = (self.options.allow_untyped_globals and not is_local)
+
+        partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:
             for var, context in partial_types.items():
                 # If we require local partial types, there are a few exceptions where
@@ -3589,15 +3594,55 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                               or (is_class and self.is_defined_in_base_class(var)))
                 if (allow_none
                         and isinstance(var.type, PartialType)
-                        and var.type.type is None):
+                        and var.type.type is None
+                        and not permissive):
                     var.type = NoneTyp()
                 else:
-                    if var not in self.partial_reported:
+                    if var not in self.partial_reported and not permissive:
                         self.msg.need_annotation_for_var(var, context)
                         self.partial_reported.add(var)
-                    # Give the variable an 'Any' type to avoid generating multiple errors
-                    # from a single missing annotation.
-                    var.type = AnyType(TypeOfAny.from_error)
+                    if var.type:
+                        var.type = self.fixup_partial_type(var.type)
+
+    def handle_partial_var_type(
+            self, typ: PartialType, is_lvalue: bool, node: Var, context: Context) -> Type:
+        """Handle a reference to a partial type through a var.
+
+        (Used by checkexpr and checkmember.)
+        """
+        in_scope, is_local, partial_types = self.find_partial_types_in_all_scopes(node)
+        if typ.type is None and in_scope:
+            # 'None' partial type. It has a well-defined type. In an lvalue context
+            # we want to preserve the knowledge of it being a partial type.
+            if not is_lvalue:
+                return NoneTyp()
+            else:
+                return typ
+        else:
+            if partial_types is not None and not self.current_node_deferred:
+                if in_scope:
+                    context = partial_types[node]
+                    if is_local or not self.options.allow_untyped_globals:
+                        self.msg.need_annotation_for_var(node, context)
+                else:
+                    # Defer the node -- we might get a better type in the outer scope
+                    self.handle_cannot_determine_type(node.name(), context)
+            return self.fixup_partial_type(typ)
+
+    def fixup_partial_type(self, typ: Type) -> Type:
+        """Convert a partial type that we couldn't resolve into something concrete.
+
+        This means, for None we make it Optional[Any], and for anything else we
+        fill in all of the type arguments with Any.
+        """
+        if not isinstance(typ, PartialType):
+            return typ
+        if typ.type is None:
+            return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneTyp()])
+        else:
+            return Instance(
+                typ.type,
+                [AnyType(TypeOfAny.unannotated) for _ in typ.inner_types])
 
     def is_defined_in_base_class(self, var: Var) -> bool:
         if var.info:
@@ -3615,41 +3660,26 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         type originally defined in the scope. This is affected by the local_partial_types
         configuration option.
         """
-        in_scope, partial_types = self.find_partial_types_in_all_scopes(var)
+        in_scope, _, partial_types = self.find_partial_types_in_all_scopes(var)
         if in_scope:
             return partial_types
         return None
 
-    def find_partial_types_in_all_scopes(self, var: Var) -> Tuple[bool,
-                                                                  Optional[Dict[Var, Context]]]:
+    def find_partial_types_in_all_scopes(
+            self, var: Var) -> Tuple[bool, bool, Optional[Dict[Var, Context]]]:
         """Look for partial type scope containing variable.
 
-        Return tuple (is the scope active, scope).
+        Return tuple (is the scope active, is the scope a local scope, scope).
         """
-        active = self.partial_types
-        inactive = []  # type: List[PartialTypeScope]
-        if self.options.local_partial_types:
-            # All scopes within the outermost function are active. Scopes out of
-            # the outermost function are inactive to allow local reasoning (important
-            # for fine-grained incremental mode).
-            for i, t in enumerate(self.partial_types):
-                if t.is_function:
-                    active = self.partial_types[i:]
-                    inactive = self.partial_types[:i]
-                    break
-            else:
-                # Not within a function -- only the innermost scope is in scope.
-                active = self.partial_types[-1:]
-                inactive = self.partial_types[:-1]
-        # First look within in-scope partial types.
-        for scope in reversed(active):
+        for scope in reversed(self.partial_types):
             if var in scope.map:
-                return True, scope.map
-        # Then for out-of-scope partial types.
-        for scope in reversed(inactive):
-            if var in scope.map:
-                return False, scope.map
-        return False, None
+                # All scopes within the outermost function are active. Scopes out of
+                # the outermost function are inactive to allow local reasoning (important
+                # for fine-grained incremental mode).
+                scope_active = (not self.options.local_partial_types
+                                or scope.is_local == self.partial_types[-1].is_local)
+                return scope_active, scope.is_local, scope.map
+        return False, False, None
 
     def temp_node(self, t: Type, context: Optional[Context] = None) -> TempNode:
         """Create a temporary node with the given, fixed type."""

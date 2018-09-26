@@ -1397,8 +1397,8 @@ if g(C()):
 f = [] # E: Need type annotation for 'f'
 if object():
     def f(): pass # E: Incompatible redefinition
-f()
-f(1)
+f()  # E: "List[Any]" not callable
+f(1)  # E: "List[Any]" not callable
 [builtins fixtures/list.pyi]
 
 [case testDefineConditionallyAsImportedAndDecorated]

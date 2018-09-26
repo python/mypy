@@ -415,7 +415,7 @@ def analyze_var(name: str, var: Var, itype: Instance, info: TypeInfo, node: Cont
     typ = var.type
     if typ:
         if isinstance(typ, PartialType):
-            return handle_partial_attribute_type(typ, is_lvalue, msg, var)
+            return chk.handle_partial_var_type(typ, is_lvalue, var, node)
         t = expand_type_by_instance(typ, itype)
         if is_lvalue and var.is_property and not var.is_settable_property:
             # TODO allow setting attributes in subclass (although it is probably an error)
@@ -474,20 +474,6 @@ def freeze_type_vars(member_type: Type) -> None:
         for it in member_type.items():
             for v in it.variables:
                 v.id.meta_level = 0
-
-
-def handle_partial_attribute_type(typ: PartialType, is_lvalue: bool, msg: MessageBuilder,
-                                  node: SymbolNode) -> Type:
-    if typ.type is None:
-        # 'None' partial type. It has a well-defined type -- 'None'.
-        # In an lvalue context we want to preserver the knowledge of
-        # it being a partial type.
-        if not is_lvalue:
-            return NoneTyp()
-        return typ
-    else:
-        msg.need_annotation_for_var(node, node)
-        return AnyType(TypeOfAny.from_error)
 
 
 def lookup_member_var_or_accessor(info: TypeInfo, name: str,
@@ -567,8 +553,8 @@ def analyze_class_attribute_access(itype: Instance,
     if t:
         if isinstance(t, PartialType):
             symnode = node.node
-            assert symnode is not None
-            return handle_partial_attribute_type(t, is_lvalue, msg, symnode)
+            assert isinstance(symnode, Var)
+            return chk.handle_partial_var_type(t, is_lvalue, symnode, context)
         if not is_method and (isinstance(t, TypeVarType) or get_type_vars(t)):
             msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)

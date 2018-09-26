@@ -165,21 +165,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Variable reference.
             result = self.analyze_var_ref(node, e)
             if isinstance(result, PartialType):
-                in_scope, partial_types = self.chk.find_partial_types_in_all_scopes(node)
-                if result.type is None and in_scope:
-                    # 'None' partial type. It has a well-defined type. In an lvalue context
-                    # we want to preserve the knowledge of it being a partial type.
-                    if not lvalue:
-                        result = NoneTyp()
-                else:
-                    if partial_types is not None and not self.chk.current_node_deferred:
-                        if in_scope:
-                            context = partial_types[node]
-                            self.msg.need_annotation_for_var(node, context)
-                        else:
-                            # Defer the node -- we might get a better type in the outer scope
-                            self.chk.handle_cannot_determine_type(node.name(), e)
-                    result = AnyType(TypeOfAny.special_form)
+                result = self.chk.handle_partial_var_type(result, lvalue, node, e)
         elif isinstance(node, FuncDef):
             # Reference to a global function.
             result = function_type(node, self.named_type('builtins.function'))
