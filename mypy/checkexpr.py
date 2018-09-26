@@ -315,7 +315,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
-        if not allow_none_return and self.always_returns_none(e.callee):
+        # Warn on calls to functions that always return None. The check
+        # of ret_type is both a common-case optimization and prevents reporting
+        # the error in dynamic functions (where it will be Any).
+        if (not allow_none_return and isinstance(ret_type, NoneTyp)
+                and self.always_returns_none(e.callee)):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type

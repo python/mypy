@@ -2376,3 +2376,10 @@ def Y(x: Optional[str] = X(x_in)): ...
 
 xx: Optional[int] = X(x_in)
 [out]
+
+[case testNoComplainNoneReturnFromUntyped]
+def foo() -> None:
+    pass
+
+def lol():
+    x = foo()
