@@ -453,6 +453,10 @@ def process_options(args: List[str],
     imports_group.add_argument(
         '--no-silence-site-packages', action='store_true',
         help="Do not silence errors in PEP 561 compliant installed packages")
+    add_invertible_flag(
+        '--namespace-packages', default=False,
+        help="Support namespace packages (PEP 420, __init__.py-less)",
+        group=imports_group)
 
     platform_group = parser.add_argument_group(
         title='Platform configuration',
