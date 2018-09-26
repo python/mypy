@@ -261,19 +261,6 @@ definitions or calls.
 
 .. _none-and-optional-handling:
 
-.. _top_level_checking:
-
-Top-level checking
-******************
-
-The following flags adjust how mypy checks code at the top-level of a
-program.
-
-``--permissive-toplevel``
-    This flag causes mypy to suppress errors caused by not being able to fully
-	infer the types of global and class variables.
-
-
 None and Optional handling
 **************************
 
@@ -361,6 +348,10 @@ Miscellaneous strictness flags
 
 This section documents any other flags that do not neatly fall under any
 of the above sections.
+
+``--allow-untyped-globals``
+    This flag causes mypy to suppress errors caused by not being able to fully
+    infer the types of global and class variables.
 
 ``--strict``
     This flag mode enables all optional error checking flags.  You can see the

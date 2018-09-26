@@ -2473,7 +2473,7 @@ def f() -> None:
 -- --------------
 
 [case testPermissiveAttributeOverride1]
-# flags: --permissive-toplevel
+# flags: --allow-untyped-globals
 
 class A:
     x = None
@@ -2489,7 +2489,7 @@ reveal_type(B.x) # E: Revealed type is 'builtins.int'
 reveal_type(C.x) # E: Revealed type is 'builtins.str'
 
 [case testPermissiveAttributeOverride2]
-# flags: --permissive-toplevel
+# flags: --allow-untyped-globals
 
 class A:
     x = []
@@ -2507,7 +2507,7 @@ reveal_type(C.x) # E: Revealed type is 'builtins.list[builtins.str*]'
 [builtins fixtures/list.pyi]
 
 [case testPermissiveGlobalContainer1]
-# flags: --permissive-toplevel --local-partial-types
+# flags: --allow-untyped-globals --local-partial-types
 
 import a
 
@@ -2527,7 +2527,7 @@ reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
 [builtins fixtures/dict.pyi]
 
 [case testPermissiveGlobalContainer2]
-# flags: --permissive-toplevel
+# flags: --allow-untyped-globals
 
 import a
 
@@ -2547,7 +2547,7 @@ reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
 [builtins fixtures/dict.pyi]
 
 [case testPermissiveGlobalContainer3]
-# flags: --permissive-toplevel --local-partial-types
+# flags: --allow-untyped-globals --local-partial-types
 
 import a
 
@@ -2564,7 +2564,7 @@ reveal_type(y)  # E: Revealed type is 'builtins.dict[Any, Any]'
 
 [builtins fixtures/dict.pyi]
 [case testPermissiveGlobalContainer4]
-# flags: --permissive-toplevel
+# flags: --allow-untyped-globals
 
 import a
 

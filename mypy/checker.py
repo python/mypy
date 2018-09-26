@@ -3571,7 +3571,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types.append(PartialTypeScope({}, is_function, is_local))
         yield
 
-        permissive = (self.options.permissive_toplevel and not is_local)
+        permissive = (self.options.allow_untyped_globals and not is_local)
 
         partial_types, _, _ = self.partial_types.pop()
         if not self.current_node_deferred:

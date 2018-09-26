@@ -176,7 +176,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if partial_types is not None and not self.chk.current_node_deferred:
                         if in_scope:
                             context = partial_types[node]
-                            if is_local or not self.chk.options.permissive_toplevel:
+                            if is_local or not self.chk.options.allow_untyped_globals:
                                 self.msg.need_annotation_for_var(node, context)
                         else:
                             # Defer the node -- we might get a better type in the outer scope
