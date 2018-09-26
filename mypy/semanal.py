@@ -68,7 +68,8 @@ from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType,
-    TypeTranslator, TypeOfAny, TypeType, NoneTyp)
+    TypeTranslator, TypeOfAny, TypeType, NoneTyp,
+)
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
