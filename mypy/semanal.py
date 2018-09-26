@@ -2017,7 +2017,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                          not self.type)
         if (add_global or nested_global) and lval.name not in self.globals:
             # Define new global name.
-            v = self.make_name_lvalue_var(lval, GDEF)
+            v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
             self.globals[lval.name] = SymbolTableNode(GDEF, v)
         elif isinstance(lval.node, Var) and lval.is_new_def:
             if lval.kind == GDEF:
@@ -2029,7 +2029,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
               lval.name not in self.global_decls[-1] and
               lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
-            v = self.make_name_lvalue_var(lval, LDEF)
+            v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
             self.add_local(v, lval)
             if lval.name == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
@@ -2038,16 +2038,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         elif not self.is_func_scope() and (self.type and
                                            lval.name not in self.type.names):
             # Define a new attribute within class body.
-            v = self.make_name_lvalue_var(lval, MDEF)
-            v.is_inferred = not explicit_type
+            v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, final_cb)
 
-    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int) -> Var:
+    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int, inferred: bool) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
         v = Var(lvalue.name)
         v.set_line(lvalue)
+        v.is_inferred = inferred
         if kind == MDEF:
             assert self.type is not None
             v.info = self.type

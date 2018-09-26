@@ -392,7 +392,7 @@ main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
 
-[case testDeletionOfSubmoduleTriggersImportFrom1-skip-cache]
+[case testDeletionOfSubmoduleTriggersImportFrom1-only_when_nocache]
 -- Different cache/no-cache tests because:
 -- missing module error message mismatch
 from p import q
@@ -410,7 +410,7 @@ main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" 
 
 -- TODO: Fix this bug. It is a real bug that was been papered over
 -- by the test harness.
-[case testDeletionOfSubmoduleTriggersImportFrom1-skip-nocache-skip]
+[case testDeletionOfSubmoduleTriggersImportFrom1-only_when_cache-skip]
 -- Different cache/no-cache tests because:
 -- missing module error message mismatch
 from p import q
@@ -1019,7 +1019,7 @@ a/b.py:3: error: Revealed type is 'Any'
 ==
 a/b.py:3: error: Unsupported operand types for + ("int" and "str")
 
-[case testDeleteModuleWithinPackageInitIgnored-skip-cache]
+[case testDeleteModuleWithinPackageInitIgnored-only_when_nocache]
 -- Disabled in cache mode because incorrect behavior:
 -- Having deleted files specified on command line seems dodgy, though.
 # cmd: mypy x.py a/b.py
@@ -1217,7 +1217,7 @@ main:2: error: Too few arguments for "foo" of "Foo"
 -- does not appear in the cache, for cache mode. They are run in
 -- cache mode only because stale and rechecked differ heavily between
 -- the modes.
-[case testAddModuleAfterCache1-skip-nocache]
+[case testAddModuleAfterCache1-only_when_cache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py
 # cmd3: mypy main a.py b.py
@@ -1244,7 +1244,7 @@ def foo(x: int) -> None: pass
 a.py:2: error: Too many arguments for "foo"
 ==
 
-[case testAddModuleAfterCache2-skip-nocache]
+[case testAddModuleAfterCache2-only_when_cache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py
 # cmd3: mypy main a.py b.py
@@ -1269,7 +1269,7 @@ def foo(x: int) -> None: pass
 a.py:2: error: Too many arguments for "foo"
 ==
 
-[case testAddModuleAfterCache3-skip-nocache]
+[case testAddModuleAfterCache3-only_when_cache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py c.py d.py e.py f.py g.py
 # cmd3: mypy main a.py b.py c.py d.py e.py f.py g.py
@@ -1300,7 +1300,7 @@ a.py:2: error: Too many arguments for "foo"
 ==
 
 
-[case testAddModuleAfterCache4-skip-nocache]
+[case testAddModuleAfterCache4-only_when_cache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py
 # cmd3: mypy main a.py b.py
@@ -1319,7 +1319,7 @@ def foo(x: int) -> None: pass
 b.py:2: error: Too many arguments for "foo"
 ==
 
-[case testAddModuleAfterCache5-skip-nocache]
+[case testAddModuleAfterCache5-only_when_cache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py
 # cmd3: mypy main a.py b.py
@@ -1346,7 +1346,7 @@ def foo(x: int) -> None: pass
 b.py:2: error: Too many arguments for "foo"
 ==
 
-[case testAddModuleAfterCache6-skip-nocache]
+[case testAddModuleAfterCache6-only_when_cache]
 # cmd: mypy main a.py
 # cmd2: mypy main a.py b.py
 # cmd3: mypy main a.py b.py
@@ -1374,7 +1374,7 @@ def foo(x: int) -> None: pass
 a.py:2: error: Too many arguments for "foo"
 ==
 
-[case testRenameAndDeleteModuleAfterCache-skip-nocache]
+[case testRenameAndDeleteModuleAfterCache-only_when_cache]
 import a
 [file a.py]
 from b1 import f
@@ -1394,7 +1394,7 @@ f()
 [out]
 ==
 
-[case testDeleteModuleAfterCache-skip-nocache]
+[case testDeleteModuleAfterCache-only_when_cache]
 import a
 [file a.py]
 from b import f

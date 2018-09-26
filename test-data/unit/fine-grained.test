@@ -36,7 +36,7 @@
 -- incremental runs is not yet supported.
 --
 -- Each test case run without caching and with caching (if the initial run passes),
--- unless it has one a --skip-cache or --skip-nocache suffix. We sometimes
+-- unless it has one a -only_when_cache or -only_when_nocache arguments. We sometimes
 -- skip caching test cases to speed up tests, if the caching variant is not useful.
 -- The caching test case variants get an implicit _cached suffix.
 
@@ -313,7 +313,7 @@ main:5: error: Module has no attribute "B"
 ==
 main:5: error: Module has no attribute "B"
 
-[case testContinueToReportErrorAtTopLevel-skip-cache]
+[case testContinueToReportErrorAtTopLevel-only_when_nocache]
 -- Different cache/no-cache tests because:
 -- Error message ordering differs
 import n
@@ -338,7 +338,7 @@ n.py:2: error: "A" has no attribute "g"
 ==
 n.py:2: error: "A" has no attribute "g"
 
-[case testContinueToReportErrorAtTopLevel-skip-nocache]
+[case testContinueToReportErrorAtTopLevel-only_when_cache]
 -- Different cache/no-cache tests because:
 -- Error message ordering differs
 import n
@@ -4556,7 +4556,7 @@ def g(x: T) -> T:
 ==
 a.py:2: error: Value of type variable "T" of function cannot be "int"
 
-[case testGenericFineCallableBoundDeleted-skip-nocache]
+[case testGenericFineCallableBoundDeleted-only_when_cache]
 # See https://github.com/python/mypy/issues/4783
 import a
 [file a.py]
@@ -5953,7 +5953,7 @@ class C:
 ==
 a.py:4: error: Argument 1 to "func" has incompatible type "B"; expected "P"
 
-[case testTwoProtocolsTwoFilesCrossedUpdateType-skip-cache]
+[case testTwoProtocolsTwoFilesCrossedUpdateType-only_when_nocache]
 # this test and the next one (TwoProtocolsTwoFilesCrossedDeleteAttr) has errors ordered
 # opposite way with and without cache, therefore skip one of each.
 import a
@@ -5991,7 +5991,7 @@ b2.py:7: error: Argument 1 to "f" has incompatible type "D"; expected "P1"
 b2.py:7: note: Following member(s) of "D" have conflicts:
 b2.py:7: note:     x: expected "int", got "str"
 
-[case testTwoProtocolsTwoFilesCrossedDeleteAttr-skip-nocache]
+[case testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache]
 import a
 [file a.py]
 import b1
@@ -6732,7 +6732,7 @@ def g(x: str) -> str: pass
 ==
 main:2: error: Argument 1 to "g" has incompatible type "int"; expected "str"
 
-[case testExtendedUnpacking-skip-cache]
+[case testExtendedUnpacking-only_when_nocache]
 from typing import List
 from a import g
 def f() -> List[int]:
@@ -6752,7 +6752,7 @@ def g() -> Tuple[str, str]: pass
 ==
 main:5: error: Incompatible return value type (got "List[str]", expected "List[int]")
 
-[case testUnpackInExpression1-skip-cache]
+[case testUnpackInExpression1-only_when_nocache]
 from typing import Tuple, List
 from a import t
 
@@ -6776,7 +6776,7 @@ def t() -> Tuple[str]: ...
 main:5: error: Incompatible return value type (got "Tuple[int, str]", expected "Tuple[int, int]")
 main:8: error: List item 1 has incompatible type "Tuple[str]"; expected "int"
 
-[case testUnpackInExpression2-skip-cache]
+[case testUnpackInExpression2-only_when_nocache]
 from typing import Set
 from a import t
 
@@ -6796,7 +6796,7 @@ def t() -> Tuple[str]: pass
 ==
 main:5: error: Argument 2 to <set> has incompatible type "*Tuple[str]"; expected "int"
 
-[case testUnpackInExpression3-skip-cache]
+[case testUnpackInExpression3-only_when_nocache]
 from typing import Dict
 from a import d
 
@@ -6816,7 +6816,7 @@ def d() -> Dict[int, int]: pass
 ==
 main:5: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
 
-[case testAwaitAndAsyncDef-skip-cache]
+[case testAwaitAndAsyncDef-only_when_nocache]
 from a import g
 
 async def f() -> int:
@@ -6836,7 +6836,7 @@ async def g() -> str:
 ==
 main:4: error: Incompatible return value type (got "str", expected "int")
 
-[case testAwaitAnd__await__-skip-cache]
+[case testAwaitAnd__await__-only_when_nocache]
 from a import C
 
 async def f(c: C) -> int:
@@ -6899,7 +6899,7 @@ main:6: error: Incompatible return value type (got "str", expected "int")
 ==
 main:6: error: Incompatible return value type (got "object", expected "int")
 
-[case testAsyncWith2-skip-cache]
+[case testAsyncWith2-only_when_nocache]
 from a import C
 
 async def f() -> int:
@@ -7005,7 +7005,7 @@ main:7: error: Unsupported operand types for + ("str" and "int")
 ==
 main:5: error: Return type of "m" incompatible with supertype "B"
 
-[case testLiskovFineVariableClean-skip-cache]
+[case testLiskovFineVariableClean-only_when_nocache]
 import b
 class A(b.B):
     x: str
@@ -7019,7 +7019,7 @@ class B:
 ==
 main:3: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineVariableCleanDefInMethod-skip-cache]
+[case testLiskovFineVariableCleanDefInMethod-only_when_nocache]
 import b
 class A(b.B):
     def meth(self) -> None:
@@ -7034,7 +7034,7 @@ class B:
 ==
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineVariableCleanDefInMethodNested-skip-cache]
+[case testLiskovFineVariableCleanDefInMethodNested-only_when_nocache]
 from b import B
 def outer() -> None:
     class A(B):
@@ -7050,7 +7050,7 @@ class B:
 ==
 main:5: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineVariableInFunctionClean-skip-cache]
+[case testLiskovFineVariableInFunctionClean-only_when_nocache]
 from b import B
 def outer() -> None:
     class A(B):
@@ -7065,7 +7065,7 @@ class B:
 ==
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testLiskovFineDecoratorClean-skip-cache]
+[case testLiskovFineDecoratorClean-only_when_nocache]
 import b
 from c import deco
 class A(b.B):

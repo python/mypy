@@ -31,7 +31,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolTable,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -331,10 +331,47 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
-        if not allow_none_return and isinstance(ret_type, NoneTyp):
+        if not allow_none_return and self.always_returns_none(e.callee):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def always_returns_none(self, node: Expression) -> bool:
+        """Check if `node` refers to something explicitly annotated as only returning None."""
+        if isinstance(node, RefExpr):
+            if self.defn_returns_none(node.node):
+                return True
+        if isinstance(node, MemberExpr) and node.node is None:  # instance or class attribute
+            typ = self.chk.type_map.get(node.expr)
+            if isinstance(typ, Instance):
+                info = typ.type
+            elif (isinstance(typ, CallableType) and typ.is_type_obj() and
+                  isinstance(typ.ret_type, Instance)):
+                info = typ.ret_type.type
+            else:
+                return False
+            sym = info.get(node.name)
+            if sym and self.defn_returns_none(sym.node):
+                return True
+        return False
+
+    def defn_returns_none(self, defn: Optional[SymbolNode]) -> bool:
+        """Check if `defn` can _only_ return None."""
+        if isinstance(defn, FuncDef):
+            return (isinstance(defn.type, CallableType) and
+                    isinstance(defn.type.ret_type, NoneTyp))
+        if isinstance(defn, OverloadedFuncDef):
+            return all(isinstance(item.type, CallableType) and
+                       isinstance(item.type.ret_type, NoneTyp) for item in defn.items)
+        if isinstance(defn, Var):
+            if (not defn.is_inferred and isinstance(defn.type, CallableType) and
+                    isinstance(defn.type.ret_type, NoneTyp)):
+                return True
+            if isinstance(defn.type, Instance):
+                sym = defn.type.type.get('__call__')
+                if sym and self.defn_returns_none(sym.node):
+                    return True
+        return False
 
     def check_runtime_protocol_test(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
@@ -629,7 +666,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee = self.infer_function_type_arguments(
                     callee, args, arg_kinds, formal_to_actual, context)
 
-            arg_types = self.infer_arg_types_in_context2(
+            arg_types = self.infer_arg_types_in_context(
                 callee, args, arg_kinds, formal_to_actual)
 
             self.check_argument_count(callee, arg_types, arg_kinds,
@@ -657,13 +694,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 callee = callee.copy_modified(ret_type=ret_type)
             return callee.ret_type, callee
         elif isinstance(callee, Overloaded):
-            # Type check arguments in empty context. They will be checked again
-            # later in a context derived from the signature; these types are
-            # only used to pick a signature variant.
-            self.msg.disable_errors()
-            arg_types = self.infer_arg_types_in_context(None, args)
-            self.msg.enable_errors()
-
+            arg_types = self.infer_arg_types_in_empty_context(args)
             return self.check_overload_call(callee=callee,
                                             args=args,
                                             arg_types=arg_types,
@@ -674,7 +705,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                             context=context,
                                             arg_messages=arg_messages)
         elif isinstance(callee, AnyType) or not self.chk.in_checked_function():
-            self.infer_arg_types_in_context(None, args)
+            self.infer_arg_types_in_empty_context(args)
             if isinstance(callee, AnyType):
                 return (AnyType(TypeOfAny.from_another_any, source_any=callee),
                         AnyType(TypeOfAny.from_another_any, source_any=callee))
@@ -746,38 +777,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.msg.unsupported_type_type(item, context)
         return AnyType(TypeOfAny.from_error)
 
-    def infer_arg_types_in_context(self, callee: Optional[CallableType],
-                                   args: List[Expression]) -> List[Type]:
-        """Infer argument expression types using a callable type as context.
+    def infer_arg_types_in_empty_context(self, args: List[Expression]) -> List[Type]:
+        """Infer argument expression types in an empty context.
 
-        For example, if callee argument 2 has type List[int], infer the
-        argument expression with List[int] type context.
+        In short, we basically recurse on each argument without considering
+        in what context the argument was called.
         """
-        # TODO Always called with callee as None, i.e. empty context.
         res = []  # type: List[Type]
 
-        fixed = len(args)
-        if callee:
-            fixed = min(fixed, callee.max_fixed_args())
-
-        ctx = None
-        for i, arg in enumerate(args):
-            if i < fixed:
-                if callee and i < len(callee.arg_types):
-                    ctx = callee.arg_types[i]
-                arg_type = self.accept(arg, ctx)
-            else:
-                if callee and callee.is_var_arg:
-                    arg_type = self.accept(arg, callee.arg_types[-1])
-                else:
-                    arg_type = self.accept(arg)
+        for arg in args:
+            arg_type = self.accept(arg)
             if has_erased_component(arg_type):
                 res.append(NoneTyp())
             else:
                 res.append(arg_type)
         return res
 
-    def infer_arg_types_in_context2(
+    def infer_arg_types_in_context(
             self, callee: CallableType, args: List[Expression], arg_kinds: List[int],
             formal_to_actual: List[List[int]]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
@@ -861,7 +877,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # inferred again later.
             self.msg.disable_errors()
 
-            arg_types = self.infer_arg_types_in_context2(
+            arg_types = self.infer_arg_types_in_context(
                 callee_type, args, arg_kinds, formal_to_actual)
 
             self.msg.enable_errors()
@@ -935,7 +951,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 inferred_args[i] = None
         callee_type = self.apply_generic_arguments(callee_type, inferred_args, context)
 
-        arg_types = self.infer_arg_types_in_context2(
+        arg_types = self.infer_arg_types_in_context(
             callee_type, args, arg_kinds, formal_to_actual)
 
         inferred_args = infer_function_type_arguments(
@@ -3173,6 +3189,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(actual_item_type, AnyType):
                 expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
             else:
+                # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
                 expr_type = NoneTyp()
 
         if not allow_none_return and isinstance(expr_type, NoneTyp):

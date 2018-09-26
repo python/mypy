@@ -2246,8 +2246,7 @@ def h() -> Dict[Union[str, int], str]:
 
 def i() -> List[Union[int, float]]:
     x: List[int] = [1]
-    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]") \
-# N: Perhaps you need a type annotation for "x"? Suggestion: "List[Union[int, float]]"
+    return x # E: Incompatible return value type (got "List[int]", expected "List[Union[int, float]]")
 
 [builtins fixtures/dict.pyi]
 
@@ -2319,3 +2318,61 @@ main:6: error: b: builtins.int
 main:6: error: c: builtins.int
 main:9: error: Revealed local types are:
 main:9: error: a: builtins.float
+
+[case testNoComplainOverloadNone]
+# flags: --no-strict-optional
+from typing import overload, Optional
+@overload
+def bar(x: None) -> None:
+    ...
+@overload
+def bar(x: int) -> str:
+    ...
+def bar(x: Optional[int]) -> Optional[str]:
+    if x is None:
+        return None
+    return "number"
+
+reveal_type(bar(None))  # E: Revealed type is 'None'
+[builtins fixtures/isinstance.pyi]
+[out]
+
+[case testNoComplainOverloadNoneStrict]
+# flags: --strict-optional
+from typing import overload, Optional
+@overload
+def bar(x: None) -> None:
+    ...
+@overload
+def bar(x: int) -> str:
+    ...
+def bar(x: Optional[int]) -> Optional[str]:
+    if x is None:
+        return None
+    return "number"
+
+reveal_type(bar(None))  # E: Revealed type is 'None'
+[builtins fixtures/isinstance.pyi]
+[out]
+
+[case testNoComplainInferredNone]
+# flags: --no-strict-optional
+from typing import TypeVar, Optional
+T = TypeVar('T')
+def X(val: T) -> T: ...
+x_in = None
+def Y(x: Optional[str] = X(x_in)): ...
+
+xx: Optional[int] = X(x_in)
+[out]
+
+[case testNoComplainInferredNoneStrict]
+# flags: --strict-optional
+from typing import TypeVar, Optional
+T = TypeVar('T')
+def X(val: T) -> T: ...
+x_in = None
+def Y(x: Optional[str] = X(x_in)): ...
+
+xx: Optional[int] = X(x_in)
+[out]

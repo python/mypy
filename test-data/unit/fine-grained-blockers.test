@@ -237,7 +237,7 @@ a.py:1: error: invalid syntax
 b.py:3: error: Too many arguments for "f"
 a.py:3: error: Too many arguments for "g"
 
-[case testDeleteFileWithBlockingError-skip-cache]
+[case testDeleteFileWithBlockingError-only_when_nocache]
 -- Different cache/no-cache tests because:
 -- Error message ordering differs
 import a
@@ -258,7 +258,7 @@ main:1: error: Cannot find module named 'a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 b.py:1: error: Cannot find module named 'a'
 
-[case testDeleteFileWithBlockingError-skip-nocache]
+[case testDeleteFileWithBlockingError-only_when_cache]
 -- Different cache/no-cache tests because:
 -- Error message ordering differs
 import a
@@ -331,7 +331,7 @@ import blocker2
 ==
 a.py:1: error: "int" not callable
 
-[case testFixingBlockingErrorTriggersDeletion1-skip-cache]
+[case testFixingBlockingErrorTriggersDeletion1-only_when_nocache]
 -- Disabled in cache mdode:
 -- Cache mode fails to produce the error in the final step, but this is
 -- a manifestation of a bug that can occur in no-cache mode also.
