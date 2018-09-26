@@ -841,7 +841,8 @@ class BuildManager(BuildManagerBase):
 
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
-PackageDirs = List[Tuple[str, bool]]
+OnePackageDir = Tuple[str, bool]
+PackageDirs = List[OnePackageDir]
 
 
 class FindModuleCache:
@@ -896,6 +897,15 @@ class FindModuleCache:
             self.results[key] = self._find_module(id, search_paths, python_executable)
         return self.results[key]
 
+    def _find_module_non_stub_helper(self, components: List[str],
+                                     pkg_dir: str) -> Optional[OnePackageDir]:
+        dir_path = pkg_dir
+        for index, component in enumerate(components):
+            dir_path = os.path.join(dir_path, component)
+            if self.fscache.isfile(os.path.join(dir_path, 'py.typed')):
+                return os.path.join(pkg_dir, *components[:-1]), index == 0
+        return None
+
     def _find_module(self, id: str, search_paths: SearchPaths,
                      python_executable: Optional[str]) -> Optional[str]:
         fscache = self.fscache
@@ -910,12 +920,11 @@ class FindModuleCache:
 
         # We have two sets of folders so that we collect *all* stubs folders and
         # put them in the front of the search path
-        third_party_inline_dirs = []
-        third_party_stubs_dirs = []
+        third_party_inline_dirs = []  # type: PackageDirs
+        third_party_stubs_dirs = []  # type: PackageDirs
         # Third-party stub/typed packages
         for pkg_dir in search_paths.package_path:
             stub_name = components[0] + '-stubs'
-            typed_file = os.path.join(pkg_dir, components[0], 'py.typed')
             stub_dir = os.path.join(pkg_dir, stub_name)
             if fscache.isdir(stub_dir):
                 stub_typed_file = os.path.join(stub_dir, 'py.typed')
@@ -935,9 +944,9 @@ class FindModuleCache:
                         third_party_stubs_dirs.append((path, False))
                     else:
                         third_party_stubs_dirs.append((path, True))
-            elif fscache.isfile(typed_file):
-                path = os.path.join(pkg_dir, dir_chain)
-                third_party_inline_dirs.append((path, True))
+            non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
+            if non_stub_match:
+                third_party_inline_dirs.append(non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
@@ -2357,11 +2366,13 @@ def find_module_and_diagnose(manager: BuildManager,
             if not (options.ignore_missing_imports or in_partial_package(id, manager)):
                 module_not_found(manager, caller_line, caller_state, id)
             raise ModuleNotFound
-        else:
+        elif root_source:
             # If we can't find a root source it's always fatal.
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
             raise CompileError(["mypy: can't find module '%s'" % id])
+        else:
+            raise ModuleNotFound
 
 
 def exist_added_packages(suppressed: List[str],
