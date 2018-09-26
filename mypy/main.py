@@ -15,8 +15,8 @@ from mypy import build
 from mypy import defaults
 from mypy import experiments
 from mypy import util
-from mypy.build import BuildSource, BuildResult, SearchPaths
-from mypy.modulefinder import mypy_path
+from mypy.build import BuildResult
+from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
@@ -884,7 +884,7 @@ def process_options(args: List[str],
         search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = build.FindModuleCache(fscache)
+        cache = FindModuleCache(fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p))
