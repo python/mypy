@@ -2342,8 +2342,7 @@ class C:
     a = None  # E: Need type annotation for 'a'
 
     def f(self, x) -> None:
-        # TODO: It would be better for the type to be Any here
-        C.a.y  # E: "None" has no attribute "y"
+        C.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
 
 [case testLocalPartialTypesAccessPartialNoneAttribute]
 # flags: --local-partial-types
@@ -2351,8 +2350,7 @@ class C:
     a = None  # E: Need type annotation for 'a'
 
     def f(self, x) -> None:
-        # TODO: It would be better for the type to be Any here
-        self.a.y  # E: "None" has no attribute "y"
+        self.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
 
 -- Special case for assignment to '_'
 -- ----------------------------------
@@ -2503,6 +2501,16 @@ class C(A):
 reveal_type(A.x) # E: Revealed type is 'builtins.list[Any]'
 reveal_type(B.x) # E: Revealed type is 'builtins.list[builtins.int*]'
 reveal_type(C.x) # E: Revealed type is 'builtins.list[builtins.str*]'
+
+[builtins fixtures/list.pyi]
+
+[case testPermissiveAttribute]
+# flags: --allow-untyped-globals
+
+class A:
+    x = []
+    def f(self) -> None:
+        reveal_type(self.x)  # E: Revealed type is 'builtins.list[Any]'
 
 [builtins fixtures/list.pyi]
 

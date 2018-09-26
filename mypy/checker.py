@@ -3601,9 +3601,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if var not in self.partial_reported and not permissive:
                         self.msg.need_annotation_for_var(var, context)
                         self.partial_reported.add(var)
-                    var.type = self.fixup_partial_type(var.type)
+                    if var.type:
+                        var.type = self.fixup_partial_type(var.type)
 
-    def fixup_partial_type(self, typ: Optional[Type]) -> Optional[Type]:
+    def handle_partial_var_type(
+            self, typ: PartialType, is_lvalue: bool, node: Var, context: Context) -> Type:
+        """Handle a reference to a partial type through a var.
+
+        (Used by checkexpr and checkmember.)
+        """
+        in_scope, is_local, partial_types = self.find_partial_types_in_all_scopes(node)
+        if typ.type is None and in_scope:
+            # 'None' partial type. It has a well-defined type. In an lvalue context
+            # we want to preserve the knowledge of it being a partial type.
+            if not is_lvalue:
+                return NoneTyp()
+            else:
+                return typ
+        else:
+            if partial_types is not None and not self.current_node_deferred:
+                if in_scope:
+                    context = partial_types[node]
+                    if is_local or not self.options.allow_untyped_globals:
+                        self.msg.need_annotation_for_var(node, context)
+                else:
+                    # Defer the node -- we might get a better type in the outer scope
+                    self.handle_cannot_determine_type(node.name(), context)
+            return self.fixup_partial_type(typ)
+
+    def fixup_partial_type(self, typ: Type) -> Type:
         """Convert a partial type that we couldn't resolve into something concrete.
 
         This means, for None we make it Optional[Any], and for anything else we
