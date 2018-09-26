@@ -880,6 +880,11 @@ def walk_packages(packages: List[str]) -> Iterator[str]:
 
 
 def main() -> None:
+    # Make sure that the current directory is in sys.path so that
+    # stubgen can be run on packages in the current directory.
+    if '' not in sys.path:
+        sys.path.insert(0, '')
+
     options = parse_options(sys.argv[1:])
     if not os.path.isdir(options.output_dir):
         raise SystemExit('Directory "{}" does not exist'.format(options.output_dir))
