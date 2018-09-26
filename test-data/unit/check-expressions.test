@@ -938,6 +938,7 @@ a, o = None, None # type: (A, object)
 a = f()         # E: "f" does not return a value
 o = a()         # E: Function does not return a value
 o = A().g(a)    # E: "g" of "A" does not return a value
+o = A.g(a, a)   # E: "g" of "A" does not return a value
 A().g(f())      # E: "f" does not return a value
 x: A = f()      # E: "f" does not return a value
 f()

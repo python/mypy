@@ -500,3 +500,27 @@ class A:
         reveal_type(cls())  # E: Revealed type is 'T`-1'
         return cls()
 [builtins fixtures/classmethod.pyi]
+
+[case testNoComplainFieldNone]
+# flags: --python-version 3.6
+# flags: --no-strict-optional
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Foo:
+    bar: Optional[int] = field(default=None)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testNoComplainFieldNoneStrict]
+# flags: --python-version 3.6
+# flags: --strict-optional
+from dataclasses import dataclass, field
+from typing import Optional
+
+@dataclass
+class Foo:
+    bar: Optional[int] = field(default=None)
+[builtins fixtures/list.pyi]
+[out]

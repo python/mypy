@@ -31,7 +31,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolTable,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -329,10 +329,47 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.check_protocol_issubclass(e)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
-        if not allow_none_return and isinstance(ret_type, NoneTyp):
+        if not allow_none_return and self.always_returns_none(e.callee):
             self.chk.msg.does_not_return_value(callee_type, e)
             return AnyType(TypeOfAny.from_error)
         return ret_type
+
+    def always_returns_none(self, node: Expression) -> bool:
+        """Check if `node` refers to something explicitly annotated as only returning None."""
+        if isinstance(node, RefExpr):
+            if self.defn_returns_none(node.node):
+                return True
+        if isinstance(node, MemberExpr) and node.node is None:  # instance or class attribute
+            typ = self.chk.type_map.get(node.expr)
+            if isinstance(typ, Instance):
+                info = typ.type
+            elif (isinstance(typ, CallableType) and typ.is_type_obj() and
+                  isinstance(typ.ret_type, Instance)):
+                info = typ.ret_type.type
+            else:
+                return False
+            sym = info.get(node.name)
+            if sym and self.defn_returns_none(sym.node):
+                return True
+        return False
+
+    def defn_returns_none(self, defn: Optional[SymbolNode]) -> bool:
+        """Check if `defn` can _only_ return None."""
+        if isinstance(defn, FuncDef):
+            return (isinstance(defn.type, CallableType) and
+                    isinstance(defn.type.ret_type, NoneTyp))
+        if isinstance(defn, OverloadedFuncDef):
+            return all(isinstance(item.type, CallableType) and
+                       isinstance(item.type.ret_type, NoneTyp) for item in defn.items)
+        if isinstance(defn, Var):
+            if (not defn.is_inferred and isinstance(defn.type, CallableType) and
+                    isinstance(defn.type.ret_type, NoneTyp)):
+                return True
+            if isinstance(defn.type, Instance):
+                sym = defn.type.type.get('__call__')
+                if sym and self.defn_returns_none(sym.node):
+                    return True
+        return False
 
     def check_runtime_protocol_test(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
@@ -3150,6 +3187,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(actual_item_type, AnyType):
                 expr_type = AnyType(TypeOfAny.from_another_any, source_any=actual_item_type)
             else:
+                # Treat `Iterator[X]` as a shorthand for `Generator[X, None, Any]`.
                 expr_type = NoneTyp()
 
         if not allow_none_return and isinstance(expr_type, NoneTyp):
