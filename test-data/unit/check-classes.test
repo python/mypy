@@ -578,6 +578,18 @@ class A:
     def __init__(self, x: int): pass
 [out]
 
+[case testDecoratedConstructorWithImplicitReturnValueType]
+import typing
+from typing import Callable
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init__(self, x: int): pass
+[out]
+
 [case testInitSubclassWithReturnValueType]
 import typing
 class A:
@@ -589,6 +601,18 @@ main:3: error: The return type of "__init_subclass__" must be None
 import typing
 class A:
     def __init_subclass__(cls, x: int=1): pass
+[out]
+
+[case testDecoratedInitSubclassWithImplicitReturnValueType]
+import typing
+from typing import Callable
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init_subclass__(self, x: int=1): pass
 [out]
 
 [case testGlobalFunctionInitWithReturnType]
