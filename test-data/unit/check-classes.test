@@ -612,7 +612,7 @@ def deco(fn: Callable) -> Callable:
 
 class A:
     @deco
-    def __init_subclass__(self, x: int=1): pass
+    def __init_subclass__(cls, x: int=1): pass
 [out]
 
 [case testGlobalFunctionInitWithReturnType]
