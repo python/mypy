@@ -406,10 +406,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             add_symbol = False
                     if add_symbol:
                         self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
-                if (defn.type is not None and
-                        defn.name() in ('__init__', '__init_subclass__') and
-                        isinstance(defn.type.ret_type, AnyType)):
-                    defn.type = defn.type.copy_modified(ret_type=NoneTyp())
+                if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
+                    assert isinstance(defn.type, CallableType)
+                    if isinstance(defn.type.ret_type, AnyType):
+                        defn.type = defn.type.copy_modified(ret_type=NoneTyp())
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
