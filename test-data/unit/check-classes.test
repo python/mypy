@@ -590,6 +590,19 @@ class A:
     def __init__(self, x: int): pass
 [out]
 
+[case testOverloadedConstructorWithImplicitReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload
+class Foo:
+    @overload
+    def __init__(self, a: int):
+        pass
+
+    @overload
+    def __init__(self, a: str):
+        pass
+
 [case testInitSubclassWithReturnValueType]
 import typing
 class A:
@@ -614,6 +627,19 @@ class A:
     @deco
     def __init_subclass__(cls, x: int=1): pass
 [out]
+
+[case testOverloadedConstructorWithImplicitReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload
+class Foo:
+    @overload
+    def __init_subclass__(cls, a: int):
+        pass
+
+    @overload
+    def __init_subclass__(cls, a: str):
+        pass
 
 [case testGlobalFunctionInitWithReturnType]
 import typing
