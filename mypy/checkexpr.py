@@ -297,12 +297,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if info:
                     fullname = '{}.{}'.format(info.fullname(), e.callee.name)
                     object_type = callee_expr_type
-                    # Apply plugin signature hook that may generate a better signature.
-                    signature_hook = self.plugin.get_method_signature_hook(fullname)
-                    if signature_hook:
-                        assert object_type is not None
-                        callee_type = self.apply_method_signature_hook(
-                            e, callee_type, object_type, signature_hook)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname, object_type)
         if isinstance(e.callee, RefExpr) and len(e.args) == 2:
             if e.callee.fullname in ('builtins.isinstance', 'builtins.issubclass'):
@@ -543,13 +537,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                               context, self.chk))
 
     def apply_method_signature_hook(
-            self, e: CallExpr, callee: FunctionLike, object_type: Type,
+            self, callee: FunctionLike, args: List[Expression],
+            arg_kinds: List[int], context: Context,
+            arg_names: Optional[Sequence[Optional[str]]], object_type: Type,
             signature_hook: Callable[[MethodSigContext], CallableType]) -> FunctionLike:
         """Apply a plugin hook that may infer a more precise signature for a method."""
         if isinstance(callee, CallableType):
-            arg_kinds = e.arg_kinds
-            arg_names = e.arg_names
-            args = e.args
             num_formals = len(callee.arg_kinds)
             formal_to_actual = map_actuals_to_formals(
                 arg_kinds, arg_names,
@@ -560,12 +553,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 for actual in actuals:
                     formal_arg_exprs[formal].append(args[actual])
             return signature_hook(
-                MethodSigContext(object_type, formal_arg_exprs, callee, e, self.chk))
+                MethodSigContext(object_type, formal_arg_exprs, callee, context, self.chk))
         else:
             assert isinstance(callee, Overloaded)
             items = []
             for item in callee.items():
-                adjusted = self.apply_method_signature_hook(e, item, object_type, signature_hook)
+                adjusted = self.apply_method_signature_hook(
+                    item, args, arg_kinds, context, arg_names, object_type, signature_hook)
                 assert isinstance(adjusted, CallableType)
                 items.append(adjusted)
             return Overloaded(items)
@@ -613,6 +607,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 on which the method is being called
         """
         arg_messages = arg_messages or self.msg
+
+        if object_type is not None and isinstance(callee, FunctionLike):
+            # Apply plugin signature hook that may generate a better signature.
+            signature_hook = self.plugin.get_method_signature_hook(callable_name)
+            if signature_hook:
+                callee = self.apply_method_signature_hook(
+                    callee, args, arg_kinds, context, arg_names, object_type, signature_hook)
+
         if isinstance(callee, CallableType):
             if callable_name is None and callee.name:
                 callable_name = callee.name
