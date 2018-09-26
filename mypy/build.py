@@ -10,7 +10,6 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
-import ast
 import binascii
 import collections
 import contextlib
@@ -24,7 +23,6 @@ import pathlib
 import re
 import site
 import stat
-import subprocess
 import sys
 import time
 import errno
@@ -36,7 +34,6 @@ if MYPY:
     from typing import ClassVar
     from typing_extensions import Final
 
-from mypy import sitepkgs
 from mypy.nodes import (MypyFile, ImportBase, Import, ImportFrom, ImportAll)
 from mypy.semanal_pass1 import SemanticAnalyzerPass1
 from mypy.semanal import SemanticAnalyzerPass2, apply_semantic_analyzer_patches
@@ -48,7 +45,7 @@ from mypy.util import DecodeError, decode_python_encoding, is_sub_path
 from mypy.report import Reports
 from mypy import moduleinfo
 from mypy.fixup import fixup_module
-from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths  # TODO: Don't re-export
+from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
 from mypy.nodes import Expression
 from mypy.options import Options
 from mypy.parse import parse
@@ -178,119 +175,6 @@ def build(sources: List[BuildSource],
         raise
 
 
-@functools.lru_cache(maxsize=None)
-def _get_site_packages_dirs(python_executable: Optional[str],
-                            fscache: FileSystemCache) -> Tuple[List[str], List[str]]:
-    """Find package directories for given python.
-
-    This runs a subprocess call, which generates a list of the egg directories, and the site
-    package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
-    lru_cache the results."""
-    def make_abspath(path: str, root: str) -> str:
-        """Take a path and make it absolute relative to root if not already absolute."""
-        if os.path.isabs(path):
-            return os.path.normpath(path)
-        else:
-            return os.path.join(root, os.path.normpath(path))
-
-    if python_executable is None:
-        return [], []
-    if python_executable == sys.executable:
-        # Use running Python's package dirs
-        site_packages = sitepkgs.getsitepackages()
-    else:
-        # Use subprocess to get the package directory of given Python
-        # executable
-        site_packages = ast.literal_eval(
-            subprocess.check_output([python_executable, sitepkgs.__file__],
-            stderr=subprocess.PIPE).decode())
-    egg_dirs = []
-    for dir in site_packages:
-        pth = os.path.join(dir, 'easy-install.pth')
-        if fscache.isfile(pth):
-            with open(pth) as f:
-                egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
-    return egg_dirs, site_packages
-
-
-def compute_search_paths(sources: List[BuildSource],
-                     options: Options,
-                     data_dir: str,
-                     fscache: FileSystemCache,
-                     alt_lib_path: Optional[str] = None) -> SearchPaths:
-    """Compute the search paths as specified in PEP 561.
-
-    There are the following 4 members created:
-    - User code (from `sources`)
-    - MYPYPATH (set either via config or environment variable)
-    - installed package directories (which will later be split into stub-only and inline)
-    - typeshed
-     """
-    # Determine the default module search path.
-    lib_path = collections.deque(
-        default_lib_path(data_dir,
-                         options.python_version,
-                         custom_typeshed_dir=options.custom_typeshed_dir))
-
-    if options.use_builtins_fixtures:
-        # Use stub builtins (to speed up test cases and to make them easier to
-        # debug).  This is a test-only feature, so assume our files are laid out
-        # as in the source tree.
-        root_dir = os.path.dirname(os.path.dirname(__file__))
-        lib_path.appendleft(os.path.join(root_dir, 'test-data', 'unit', 'lib-stub'))
-    # alt_lib_path is used by some tests to bypass the normal lib_path mechanics.
-    # If we don't have one, grab directories of source files.
-    python_path = []  # type: List[str]
-    if not alt_lib_path:
-        for source in sources:
-            # Include directory of the program file in the module search path.
-            if source.base_dir:
-                dir = source.base_dir
-                if dir not in python_path:
-                    python_path.append(dir)
-
-        # Do this even if running as a file, for sanity (mainly because with
-        # multiple builds, there could be a mix of files/modules, so its easier
-        # to just define the semantics that we always add the current director
-        # to the lib_path
-        # TODO: Don't do this in some cases; for motivation see see
-        # https://github.com/python/mypy/issues/4195#issuecomment-341915031
-        if options.bazel:
-            dir = '.'
-        else:
-            dir = os.getcwd()
-        if dir not in lib_path:
-            python_path.insert(0, dir)
-
-    # Start with a MYPYPATH environment variable at the front of the mypy_path, if defined.
-    mypypath = mypy_path()
-
-    # Add a config-defined mypy path.
-    mypypath.extend(options.mypy_path)
-
-    # If provided, insert the caller-supplied extra module path to the
-    # beginning (highest priority) of the search path.
-    if alt_lib_path:
-        mypypath.insert(0, alt_lib_path)
-
-    egg_dirs, site_packages = _get_site_packages_dirs(options.python_executable, fscache)
-    for site_dir in site_packages:
-        assert site_dir not in lib_path
-        if site_dir in mypypath:
-            print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
-            sys.exit(1)
-        elif site_dir in python_path:
-            print("{} is in the PYTHONPATH. Please change directory"
-                  " so it is not.".format(site_dir),
-                  file=sys.stderr)
-            sys.exit(1)
-
-    return SearchPaths(tuple(reversed(python_path)),
-                       tuple(mypypath),
-                       tuple(egg_dirs + site_packages),
-                       tuple(lib_path))
-
-
 def _build(sources: List[BuildSource],
            options: Options,
            alt_lib_path: Optional[str],
@@ -343,54 +227,6 @@ def _build(sources: List[BuildSource],
 def default_data_dir() -> str:
     """Returns directory containing typeshed directory."""
     return os.path.dirname(__file__)
-
-
-def mypy_path() -> List[str]:
-    path_env = os.getenv('MYPYPATH')
-    if not path_env:
-        return []
-    return path_env.split(os.pathsep)
-
-
-def default_lib_path(data_dir: str,
-                     pyversion: Tuple[int, int],
-                     custom_typeshed_dir: Optional[str]) -> List[str]:
-    """Return default standard library search paths."""
-    # IDEA: Make this more portable.
-    path = []  # type: List[str]
-
-    if custom_typeshed_dir:
-        typeshed_dir = custom_typeshed_dir
-    else:
-        auto = os.path.join(data_dir, 'stubs-auto')
-        if os.path.isdir(auto):
-            data_dir = auto
-        typeshed_dir = os.path.join(data_dir, "typeshed")
-    if pyversion[0] == 3:
-        # We allow a module for e.g. version 3.5 to be in 3.4/. The assumption
-        # is that a module added with 3.4 will still be present in Python 3.5.
-        versions = ["%d.%d" % (pyversion[0], minor)
-                    for minor in reversed(range(PYTHON3_VERSION_MIN[1], pyversion[1] + 1))]
-    else:
-        # For Python 2, we only have stubs for 2.7
-        versions = ["2.7"]
-    # E.g. for Python 3.6, try 3.6/, 3.5/, 3.4/, 3/, 2and3/.
-    for v in versions + [str(pyversion[0]), '2and3']:
-        for lib_type in ['stdlib', 'third_party']:
-            stubdir = os.path.join(typeshed_dir, lib_type, v)
-            if os.path.isdir(stubdir):
-                path.append(stubdir)
-
-    # Add fallback path that can be used if we have a broken installation.
-    if sys.platform != 'win32':
-        path.append('/usr/local/lib/mypy')
-    if not path:
-        print("Could not resolve typeshed subdirectories. If you are using mypy\n"
-              "from source, you need to run \"git submodule update --init\".\n"
-              "Otherwise your mypy install is broken.\nPython executable is located at "
-              "{0}.\nMypy located at {1}".format(sys.executable, data_dir), file=sys.stderr)
-        sys.exit(1)
-    return path
 
 
 CacheMeta = NamedTuple('CacheMeta',

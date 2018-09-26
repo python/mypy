@@ -16,6 +16,7 @@ from mypy import defaults
 from mypy import experiments
 from mypy import util
 from mypy.build import BuildSource, BuildResult, SearchPaths
+from mypy.modulefinder import mypy_path
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
@@ -880,7 +881,7 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(build.mypy_path()), (), ())
+        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
         cache = build.FindModuleCache(fscache)
