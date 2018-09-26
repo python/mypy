@@ -7,7 +7,8 @@ import sys
 from typing import Dict, List, Set, Tuple
 
 from mypy import build
-from mypy.build import BuildSource, Graph, SearchPaths
+from mypy.build import Graph
+from mypy.modulefinder import BuildSource, SearchPaths
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
 from mypy.test.helpers import (
