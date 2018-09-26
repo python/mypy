@@ -2382,5 +2382,4 @@ def foo() -> None:
     pass
 
 def lol():
-    1+'uh'
     x = foo()
