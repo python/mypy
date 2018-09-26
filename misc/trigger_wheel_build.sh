@@ -15,6 +15,7 @@ COMMIT=$(git rev-parse HEAD)
 cd build/mypy
 git fetch
 git checkout $COMMIT
+git submodule update
 pip install -r test-requirements.txt
 V=$(python3 -m mypy --version)
 V=$(echo "$V" | cut -d" " -f2)
