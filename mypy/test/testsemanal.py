@@ -5,7 +5,7 @@ import os.path
 from typing import Dict, List
 
 from mypy import build
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, testfile_pyversion,

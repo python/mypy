@@ -57,6 +57,7 @@ import mypy.errors
 import mypy.traverser
 import mypy.util
 from mypy import defaults
+from mypy.modulefinder import FindModuleCache, SearchPaths
 from mypy.nodes import (
     Expression, IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, IndexExpr, EllipsisExpr,
@@ -165,9 +166,8 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             module_all = getattr(mod, '__all__', None)
     else:
         # Find module by going through search path.
-        search_paths = mypy.build.SearchPaths(('.',) + tuple(search_path), (), (), ())
-        module_path = mypy.build.FindModuleCache().find_module(module, search_paths,
-                                                               interpreter)
+        search_paths = SearchPaths(('.',) + tuple(search_path), (), (), ())
+        module_path = FindModuleCache(search_paths).find_module(module)
         if not module_path:
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))
