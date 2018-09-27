@@ -45,7 +45,7 @@ class BuildSource:
         self.path = path  # File where it's found (e.g. 'xxx/yyy/foo/bar.py')
         self.module = module or '__main__'  # Module name (e.g. 'foo.bar')
         self.text = text  # Source code, if initially supplied, else None
-        self.base_dir = base_dir    # Directory where the package is rooted (e.g. 'xxx/yyy')
+        self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
         return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
