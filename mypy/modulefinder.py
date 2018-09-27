@@ -1,7 +1,6 @@
 """Low-level infrastructure to find modules.
 
 This build on fscache.py; find_sources.py builds on top of this.
-
 """
 
 import ast
@@ -22,14 +21,14 @@ from mypy.fscache import FileSystemCache
 from mypy.options import Options
 from mypy import sitepkgs
 
-# python_path is user code, mypy_path is set via config or environment variable,
-# package_path is calculated by get_site_packages_dirs, and typeshed_path points
-# to typeshed. Each is a tuple of paths to be searched in find_module()
-SearchPaths = NamedTuple('SearchPaths',
-             (('python_path', Tuple[str, ...]),
-              ('mypy_path', Tuple[str, ...]),
-              ('package_path', Tuple[str, ...]),
-              ('typeshed_path', Tuple[str, ...])))
+# Paths to be searched in find_module().
+SearchPaths = NamedTuple(
+    'SearchPaths',
+    [('python_path', Tuple[str, ...]),  # where user code is found
+     ('mypy_path', Tuple[str, ...]),  # from $MYPYPATH or config variable
+     ('package_path', Tuple[str, ...]),  # from get_site_packages_dirs()
+     ('typeshed_path', Tuple[str, ...]),  # paths in typeshed
+     ])
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
 OnePackageDir = Tuple[str, bool]
@@ -39,12 +38,14 @@ PYTHON_EXTENSIONS = ['.pyi', '.py']  # type: Final
 
 
 class BuildSource:
+    """A single source file."""
+
     def __init__(self, path: Optional[str], module: Optional[str],
                  text: Optional[str], base_dir: Optional[str] = None) -> None:
-        self.path = path
-        self.module = module or '__main__'
-        self.text = text
-        self.base_dir = base_dir
+        self.path = path  # File where it's found (e.g. 'xxx/yyy/foo/bar.py')
+        self.module = module or '__main__'  # Module name (e.g. 'foo.bar')
+        self.text = text  # Source code, if initially supplied, else None
+        self.base_dir = base_dir    # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
         return '<BuildSource path=%r module=%r has_text=%s>' % (self.path,
