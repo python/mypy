@@ -8,7 +8,7 @@ if MYPY:
 from collections import defaultdict
 
 from mypy import build, defaults
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
 from mypy.options import Options

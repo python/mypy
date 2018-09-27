@@ -80,7 +80,9 @@ class Options:
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
-        self.follow_imports_for_stubs = False  # type: bool
+        self.follow_imports_for_stubs = False
+        # PEP 420 namespace packages
+        self.namespace_packages = False
 
         # disallow_any options
         self.disallow_any_generics = False

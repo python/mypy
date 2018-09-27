@@ -18,7 +18,7 @@ import re
 from typing import List, cast
 
 from mypy import build
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
 from mypy.options import Options
 from mypy.test.config import test_temp_dir
