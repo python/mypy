@@ -628,7 +628,7 @@ class A:
     def __init_subclass__(cls, x: int=1): pass
 [out]
 
-[case testOverloadedConstructorWithImplicitReturnValueType]
+[case testOverloadedInitSubclassWithImplicitReturnValueType]
 from foo import *
 [file foo.pyi]
 from typing import overload
