@@ -2053,13 +2053,12 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     self.fail("Cannot redefine an existing name as final", lval)
                 assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
         elif (self.locals[-1] is not None
-              and (lval.name not in self.locals[-1])
-                  # or (is_new and not self.is_local_final(lval.name)))
+              and lval.name not in self.locals[-1]
               and lval.name not in self.global_decls[-1]
               and lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
             v = self.make_name_lvalue_var(lval, LDEF)
-            self.add_local(v, lval) #, allow_redefine=is_new)
+            self.add_local(v, lval)
             if lval.name == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
                 typ = AnyType(TypeOfAny.special_form)
@@ -2074,23 +2073,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
-
-    def get_original_def(self, name: str) -> Optional[SymbolTableNode]:
-        if self.is_func_scope():
-            if not name.endswith("'"):
-                # Not a mangled name -- can't be an alias
-                return False
-            name = unmangle(name)
-            assert self.locals[-1] is not None, "No locals at function scope"
-            return self.locals[-1].get(name)
-        elif self.type is not None:
-            # TODO
-            return None
-        else:
-            orig_name = unmangle(name) + "'"
-            if name == orig_name:
-                return None
-            return self.globals.get(orig_name)
 
     def is_alias_for_final_name(self, name: str) -> bool:
         if self.is_func_scope():
@@ -3560,7 +3542,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # TODO: Combine these methods in the first and second pass into a single one.
         if self.is_func_scope():
             assert self.locals[-1] is not None
-            if name in self.locals[-1]: # and not is_new:
+            if name in self.locals[-1]:
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
                         self.locals[-1][name].node == node.node):
