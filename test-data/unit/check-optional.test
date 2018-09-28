@@ -548,8 +548,10 @@ def f(x: T) -> ONode[T]:
         return None
 
 x = None # type: ONode[int]
-x = f(1)
-x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
+if int():
+    x = f(1)
+if int():
+    x = f('x') # E: Argument 1 to "f" has incompatible type "str"; expected "int"
 
 x.x = 1 # E: Item "None" of "Optional[Node[int]]" has no attribute "x"
 if x is not None:

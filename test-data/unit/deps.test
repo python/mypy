@@ -1202,8 +1202,10 @@ def func() -> int:
     pass
 [out]
 <m.b> -> m
+<m.c'> -> m
 <m.c> -> m
-<mod.func> -> m, m.outer
+<mod.func> -> <m.c>, m, m.outer
+--'
 
 [case testLogicalDefinitionMember]
 # flags: --logical-deps

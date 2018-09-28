@@ -16,9 +16,10 @@ def f(x: T) -> List[T]: pass
 i = [1]
 s = ['x']
 o = [object()]
-i = f(1)
-s = f('')
-o = f(1) # E: Value of type variable "T" of "f" cannot be "object"
+if int():
+    i = f(1)
+    s = f('')
+    o = f(1) # E: Value of type variable "T" of "f" cannot be "object"
 [builtins fixtures/list.pyi]
 
 [case testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs]
@@ -268,10 +269,12 @@ class C(Generic[X]):
     def __init__(self, x: X) -> None: pass
 x = None  # type: C[str]
 y = C(S())
-x = y
-y = x
+if int():
+    x = y
+    y = x
 c_int = C(1) # type: C[int]
-y = c_int # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[str]")
+if int():
+    y = c_int # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[str]")
 
 [case testGenericTypeBodyWithTypevarValues]
 from typing import TypeVar, Generic
@@ -523,11 +526,15 @@ U = TypeVar('U', str, A, int)
 def f(x: T) -> T: pass
 def g(x: U) -> U: pass
 a = f
-a = f
-a = g
+if int():
+    a = f
+if int():
+    a = g
 b = g
-b = g
-b = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
+if int():
+    b = g
+if int():
+    b = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
 
 [case testInnerFunctionWithTypevarValues]
 from typing import TypeVar

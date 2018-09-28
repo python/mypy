@@ -4708,11 +4708,12 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
+if int():
+    c = 1
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testRefreshClassBasedIntEnum]
 import aa
@@ -4734,14 +4735,16 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
-n: int
-n = C.X
-n = c
+if int():
+    c = 1
+    n: int
+    n = C.X
+    if int():
+        n = c
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testClassBasedEnumPropagation1]
 import a
@@ -4805,11 +4808,12 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
+if int():
+   c = 1
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testRefreshFuncBasedIntEnum]
 import aa
@@ -4830,14 +4834,15 @@ x = ''
 from a import C
 c: C
 c = C.X
-c = 1
-n: int
-n = C.X
+if int():
+    c = 1  # Error
+    n: int
+    n = C.X
 n = c
 [out]
 ==
 ==
-aa.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "C")
+aa.py:5: error: Incompatible types in assignment (expression has type "int", variable has type "C")
 
 [case testFuncBasedEnumPropagation1]
 import a

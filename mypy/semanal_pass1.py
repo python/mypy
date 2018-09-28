@@ -14,7 +14,8 @@ definitions, as these look like regular assignments until we are able to
 bind names, which only happens in pass 2.
 
 This pass also infers the reachability of certain if statements, such as
-those with platform checks.
+those with platform checks. This lets us filter out unreachable imports
+at an early stage.
 """
 
 from typing import List, Tuple
@@ -23,8 +24,8 @@ from mypy import experiments
 from mypy.nodes import (
     MypyFile, SymbolTable, SymbolTableNode, Var, Block, AssignmentStmt, FuncDef, Decorator,
     ClassDef, TypeInfo, ImportFrom, Import, ImportAll, IfStmt, WhileStmt, ForStmt, WithStmt,
-    TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, LDEF, GDEF, MDEF, UNBOUND_IMPORTED,
-    MODULE_REF, implicit_module_attrs
+    TryStmt, OverloadedFuncDef, Lvalue, Context, ImportedName, TempNode, LDEF, GDEF, MDEF,
+    UNBOUND_IMPORTED, MODULE_REF, implicit_module_attrs
 )
 from mypy.types import Type, UnboundType, UnionType, AnyType, TypeOfAny, NoneTyp, CallableType
 from mypy.semanal import SemanticAnalyzerPass2, infer_reachability_of_if_statement
@@ -32,6 +33,7 @@ from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
+from mypy.semanal_redef import VariableRenameVisitor
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
@@ -59,6 +61,8 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         and these will get resolved in later phases of semantic
         analysis.
         """
+        # Perform renaming across the AST
+        file.accept(VariableRenameVisitor())
         sem = self.sem
         self.sem.options = options  # Needed because we sometimes call into it
         self.pyversion = options.python_version
@@ -92,10 +96,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
                 v._fullname = self.sem.qualified_name(name)
                 self.sem.globals[name] = SymbolTableNode(GDEF, v)
 
-            self.sem.var_def_analyzer.enter_block()
+            #self.sem.var_def_analyzer.enter_block()
             for d in defs:
                 d.accept(self)
-            self.sem.var_def_analyzer.leave_block()
+            #self.sem.var_def_analyzer.leave_block()
 
             # Add implicit definition of literals/keywords to builtins, as we
             # cannot define a variable with them explicitly.
@@ -140,10 +144,10 @@ class SemanticAnalyzerPass1(NodeVisitor[None]):
         if b.is_unreachable:
             return
         self.sem.block_depth[-1] += 1
-        self.sem.var_def_analyzer.enter_block()
+        #self.sem.var_def_analyzer.enter_block()
         for node in b.body:
             node.accept(self)
-        self.sem.var_def_analyzer.leave_block()
+        #self.sem.var_def_analyzer.leave_block()
         self.sem.block_depth[-1] -= 1
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

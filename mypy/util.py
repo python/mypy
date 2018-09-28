@@ -251,3 +251,8 @@ def hard_exit(status: int = 0) -> None:
     sys.stdout.flush()
     sys.stderr.flush()
     os._exit(status)
+
+
+def unmangle(name: str) -> str:
+    """Remove internal suffixes from a short name."""
+    return name.rstrip("'")

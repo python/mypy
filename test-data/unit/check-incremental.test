@@ -1110,13 +1110,14 @@ class C: pass
 
 [file c/submodule.py]
 val = 3  # type: int
-val = "foo"
+if int():
+    val = "foo"
 
 [builtins fixtures/module_all.pyi]
 [rechecked main, c, c.submodule]
 [stale c]
 [out2]
-tmp/c/submodule.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+tmp/c/submodule.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
 tmp/main.py:7: error: "C" has no attribute "foo"
 
 [case testIncrementalRemoteError]

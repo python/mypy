@@ -2,45 +2,43 @@
 [out]
 
 [case testAssignmentAndVarDef]
-
 a = None # type: A
 b = None # type: B
-a = a
-a = b # Fail
+if int():
+    a = a
+if int():
+    a = b # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A: pass
 class B: pass
-[out]
-main:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testConstructionAndAssignment]
-
 x = None # type: A
 x = A()
-x = B()
+if int():
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A:
     def __init__(self): pass
 class B:
     def __init__(self): pass
-[out]
-main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testInheritInitFromObject]
-
 x = None # type: A
-x = A()
-x = B()
+if int():
+    x = A()
+if int():
+    x = B() # E: Incompatible types in assignment (expression has type "B", variable has type "A")
 class A(object): pass
 class B(object): pass
-[out]
-main:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testImplicitInheritInitFromObject]
-
 x = None # type: A
 o = None # type: object
-x = o # E: Incompatible types in assignment (expression has type "object", variable has type "A")
-x = A()
-o = x
+if int():
+    x = o # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+if int():
+    x = A()
+if int():
+    o = x
 class A: pass
 class B: pass
 [out]
@@ -71,8 +69,10 @@ main:3: error: Incompatible types in assignment (expression has type "A", variab
 [case testDeclaredVariableInParentheses]
 
 (x) = None # type: int
-x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
-x = 1
+if int():
+    x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+if int():
+    x = 1
 
 
 -- Simple functions and calling
@@ -258,8 +258,9 @@ class B: pass
 class A: pass
 while A:
     a = None # type: A
-    a = A()
-    a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
+    if int():
+        a = A()
+        a = object() # E: Incompatible types in assignment (expression has type "object", variable has type "A")
 
 
 -- # type: signatures

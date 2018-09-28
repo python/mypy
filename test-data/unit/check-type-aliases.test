@@ -58,15 +58,18 @@ U = Union[int, str]
 
 [case testProhibitReassigningAliases]
 A = float
-A = int  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
+if int():
+    A = int  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation
 [out]
 
 [case testProhibitReassigningSubscriptedAliases]
 from typing import Callable
 A = Callable[[], float]
-A = Callable[[], int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
-                       # E: Value of type "int" is not indexable
-                       # the second error is because of `Callable = 0` in lib-stub/typing.pyi
+if int():
+    A = Callable[[], int] \
+      # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
+      # E: Value of type "int" is not indexable
+      # the second error is because of `Callable = 0` in lib-stub/typing.pyi
 [builtins fixtures/list.pyi]
 [out]
 
@@ -75,7 +78,8 @@ from typing import TypeVar, Union, Tuple
 T = TypeVar('T')
 
 A = Tuple[T, T]
-A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
+if int():
+    A = Union[T, int]  # E: Cannot assign multiple types to name "A" without an explicit "Type[...]" annotation \
                    # E: Value of type "int" is not indexable
                    # the second error is because of `Union = 0` in lib-stub/typing.pyi
 [out]
@@ -85,7 +89,8 @@ from typing import TypeVar, Sequence, Type
 T = TypeVar('T')
 
 A: Type[float] = int
-A = float  # OK
+if int():
+    A = float  # OK
 x: A  # E: Invalid type "__main__.A"
 def bad(tp: A) -> None:  # E: Invalid type "__main__.A"
     pass

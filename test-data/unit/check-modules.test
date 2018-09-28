@@ -179,10 +179,14 @@ x = object()
 import m
 
 i, s = None, None # type: (int, str)
-i = m.x
-i = m.y
-s = m.x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-s = m.y # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    i = m.x
+if int():
+    i = m.y
+if int():
+    s = m.x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    s = m.y # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 [file m.py]
 x = y = 1
 [builtins fixtures/primitives.pyi]
@@ -365,7 +369,8 @@ m.a.x = m.a.y # Error
 import typing
 from .b import A, B, x, y
 z = x
-z = y # Error
+if int():
+    z = y # Error
 [file m/b.py]
 import typing
 class A: pass
@@ -373,7 +378,7 @@ class B: pass
 x = A()
 y = B()
 [out]
-tmp/m/a.py:4: error: Incompatible types in assignment (expression has type "B", variable has type "A")
+tmp/m/a.py:5: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 main:3: error: Incompatible types in assignment (expression has type "B", variable has type "A")
 
 [case testRelativeImports2]
@@ -634,7 +639,8 @@ from m import f
 def g() -> None:
     global f
     f = None
-    f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
+    if int():
+        f = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [file m.py]
 def f(): pass
 [out]
@@ -1687,14 +1693,18 @@ a = 3
 import m, n, o
 
 x = m
-x = n  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
-x = o  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+if int():
+    x = n  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
+if int():
+    x = o  # E: Cannot assign multiple modules to name 'x' without explicit 'types.ModuleType' annotation
 
 y = o
-y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit 'types.ModuleType' annotation
+if int():
+    y, z = m, n  # E: Cannot assign multiple modules to name 'y' without explicit 'types.ModuleType' annotation
 
 xx = m
-xx = m
+if int():
+    xx = m
 reveal_type(xx.a)  # E: Revealed type is 'builtins.str'
 
 [file m.py]
@@ -1857,7 +1867,8 @@ import mod
 import othermod
 alias = mod.submod
 reveal_type(alias.whatever('/'))  # E: Revealed type is 'builtins.str*'
-alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
+if int():
+    alias = othermod  # E: Cannot assign multiple modules to name 'alias' without explicit 'types.ModuleType' annotation
 [file mod.py]
 import submod
 [file submod.py]

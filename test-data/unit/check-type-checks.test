@@ -2,15 +2,16 @@
 
 
 [case testSimpleIsinstance]
-
 x = None  # type: object
 n = None  # type: int
 s = None  # type: str
-n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+if int():
+    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 if isinstance(x, int):
     n = x
     s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+if int():
+    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
 [builtins fixtures/isinstance.pyi]
 
 [case testSimpleIsinstance2]
@@ -26,12 +27,12 @@ def f(x: object, n: int, s: str) -> None:
 [out]
 
 [case testSimpleIsinstance3]
-
 class A:
     x = None  # type: object
     n = None  # type: int
     s = None  # type: str
-    n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+    if int():
+        n = x # E: Incompatible types in assignment (expression has type "object", variable has type "int")
     if isinstance(x, int):
         n = x
         s = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")

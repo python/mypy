@@ -3,10 +3,14 @@
 
 [case testUnicode]
 u = u'foo'
-u = unicode()
-s = ''
-s = u'foo' # E: Incompatible types in assignment (expression has type "unicode", variable has type "str")
-s = b'foo'
+if int():
+    u = unicode()
+if int():
+    s = ''
+if int():
+    s = u'foo' # E: Incompatible types in assignment (expression has type "unicode", variable has type "str")
+if int():
+    s = b'foo'
 [builtins_py2 fixtures/python2.pyi]
 
 [case testTypeVariableUnicode]
@@ -34,8 +38,10 @@ class A:
         # type: (int) -> str
         pass
 s = A() / 1
-s = ''
-s = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+if int():
+    s = ''
+if int():
+    s = 1 # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testStrUnicodeCompatibility]
 import typing

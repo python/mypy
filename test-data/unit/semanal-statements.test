@@ -927,3 +927,60 @@ MypyFile:1(
             TupleExpr:5(
               NameExpr(a [l])
               NameExpr(b [l]))))))))
+
+[case testRenameGlobalVariable]
+def f(a): pass
+x = 0
+f(x)
+x = ''
+f(x)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(a))
+    Block:1(
+      PassStmt:1()))
+  AssignmentStmt:2(
+    NameExpr(x'* [__main__.x'])
+    IntExpr(0))
+  ExpressionStmt:3(
+    CallExpr:3(
+      NameExpr(f [__main__.f])
+      Args(
+        NameExpr(x' [__main__.x']))))
+  AssignmentStmt:4(
+    NameExpr(x* [__main__.x])
+    StrExpr())
+  ExpressionStmt:5(
+    CallExpr:5(
+      NameExpr(f [__main__.f])
+      Args(
+        NameExpr(x [__main__.x])))))
+
+[case testRenameLocalVariable]
+def f(a):
+    f(a)
+    a = ''
+    f(a)
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    Args(
+      Var(a))
+    Block:1(
+      ExpressionStmt:2(
+        CallExpr:2(
+          NameExpr(f [__main__.f])
+          Args(
+            NameExpr(a [l]))))
+      AssignmentStmt:3(
+        NameExpr(a'* [l])
+        StrExpr())
+      ExpressionStmt:4(
+        CallExpr:4(
+          NameExpr(f [__main__.f])
+          Args(
+            NameExpr(a' [l])))))))

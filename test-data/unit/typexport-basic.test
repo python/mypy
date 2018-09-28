@@ -204,16 +204,18 @@ CallExpr(5) : B
 from typing import Any
 a = None # type: A
 b = a # type: Any
-b = a
-a = b
+if b:
+    b = a
+    a = b
 
 class A: pass
 [out]
 NameExpr(3) : A
-NameExpr(4) : A
 NameExpr(4) : Any
 NameExpr(5) : A
 NameExpr(5) : Any
+NameExpr(6) : A
+NameExpr(6) : Any
 
 [case testMemberAssignment]
 from typing import Any
@@ -851,7 +853,8 @@ from typing import List
 a = None # type: List[A]
 a or []
 a = a or []
-a = [] or a
+if int():
+    a = [] or a
 class A: pass
 [builtins fixtures/list.pyi]
 [out]
@@ -862,10 +865,12 @@ ListExpr(4) : builtins.list[A]
 NameExpr(4) : builtins.list[A]
 NameExpr(4) : builtins.list[A]
 OpExpr(4) : builtins.list[A]
-ListExpr(5) : builtins.list[A]
-NameExpr(5) : builtins.list[A]
-NameExpr(5) : builtins.list[A]
-OpExpr(5) : builtins.list[A]
+CallExpr(5) : builtins.int
+NameExpr(5) : def () -> builtins.int
+ListExpr(6) : builtins.list[A]
+NameExpr(6) : builtins.list[A]
+NameExpr(6) : builtins.list[A]
+OpExpr(6) : builtins.list[A]
 
 
 -- Class attributes

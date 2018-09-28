@@ -1,7 +1,7 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod, abstractproperty
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Dict, Set
 from mypy_extensions import trait
 
 from mypy.nodes import (
@@ -161,7 +161,7 @@ class VarDefAnalyzer:
         x = 0
         x = str(x)  # Defines a new 'x'
 
-    Since we have two distinct 'x' variables, they can have independent inferred types.
+    Since we now have two distinct 'x' variables, they can have independent inferred types.
     """
 
     def __init__(self) -> None:
@@ -170,9 +170,13 @@ class VarDefAnalyzer:
         self.loop_depth = 0
         # Map block id to loop depth.
         self.block_loop_depth = {}  # type: Dict[int, int]
+        # Stack of block ids being processed.
         self.blocks = []  # type: List[int]
         # List of scopes; each scope maps short name to block id.
         self.var_blocks = [{}]  # type: List[Dict[str, int]]
+        # Variables which have no assigned value yet (e.g., "x: t" but no assigment).
+        # Assignment in any block is considered an initialization.
+        self.uninitialized = set()  # type: Set[str]
 
     def clear(self) -> None:
         self.blocks = []
@@ -207,6 +211,9 @@ class VarDefAnalyzer:
     def leave_scope(self) -> None:
         self.var_blocks.pop()
 
+    def is_nested(self) -> int:
+        return len(self.var_blocks) > 1
+
     def reject_redefinition_of_vars_in_scope(self) -> None:
         """Make it impossible to redefine defined variables in the current scope.
 
@@ -223,16 +230,24 @@ class VarDefAnalyzer:
             if self.block_loop_depth.get(block) == self.loop_depth:
                 var_blocks[key] = -1
 
-    def process_assignment(self, name: str, can_be_redefined: bool) -> bool:
+    def process_assignment(self, name: str, can_be_redefined: bool, no_value: bool = False) -> bool:
         """Record assignment to given name and return True if it defines a new name.
 
         Args:
             can_be_redefined: If True, allows assignment in the same block to redefine the name
+            no_value: If True, the first assignment we encounter will not be considered to redefine
+                this but to initilize it (in any block)
         """
         if self.disallow_redef_depth > 0:
             can_be_redefined = False
         block = self.current_block()
         var_blocks = self.var_blocks[-1]
+        uninitialized = self.uninitialized
+        existing_no_value = name in self.uninitialized
+        if no_value:
+            uninitialized.add(name)
+        else:
+            uninitialized.discard(name)
         if name not in var_blocks:
             # New definition
             if can_be_redefined:
@@ -242,7 +257,7 @@ class VarDefAnalyzer:
                 # TODO: Make this less restricted.
                 var_blocks[name] = -1
             return True
-        elif var_blocks[name] == block:
+        elif var_blocks[name] == block and not existing_no_value:
             # Redefinition
             return True
         else:
