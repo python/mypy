@@ -2429,12 +2429,13 @@ def foo() -> None:
 
 [case testUnusedTargetNotGlobal]
 _ = 0
-_ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+_ = ''
 
 [case testUnusedTargetNotClass]
 class C:
     _ = 0
-    _ = ''  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+    _ = ''
+reveal_type(C._) # E: Revealed type is 'builtins.str'
 
 [case testUnusedTargetTupleUnpacking]
 def foo() -> None:

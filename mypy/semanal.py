@@ -2059,7 +2059,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Define new local name.
             v = self.make_name_lvalue_var(lval, LDEF)
             self.add_local(v, lval)
-            if lval.name == '_':
+            if unmangle(lval.name) == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
                 typ = AnyType(TypeOfAny.special_form)
                 self.store_declared_types(lval, typ)

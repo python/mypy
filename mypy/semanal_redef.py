@@ -3,7 +3,7 @@ from typing import Dict, List, Set
 from mypy.nodes import (
     Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr, TempNode,
     WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, StarExpr, ImportFrom,
-    MemberExpr, IndexExpr
+    MemberExpr, IndexExpr, Import
 )
 from mypy.traverser import TraverserVisitor
 
@@ -151,6 +151,10 @@ class VariableRenameVisitor(TraverserVisitor):
             lvalue.index.accept(self)
         elif isinstance(lvalue, StarExpr):
             self.analyze_lvalue(lvalue.expr, has_initializer)
+
+    def visit_import(self, imp: Import) -> None:
+        for id, as_id in imp.ids:
+            self.record_assignment(as_id or id, False, False)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         for id, as_id in imp.names:
