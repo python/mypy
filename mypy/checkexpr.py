@@ -1720,7 +1720,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Comparison expressions are type checked consecutive-pair-wise
         That is, 'a < b > c == d' is check as 'a < b and b > c and c == d'
         """
-        result = None  # type: Optional[Type]
+        result = None      # type: Optional[Type]
+        sub_result = None  # type: Optional[Type]
 
         # Check each consecutive operand pair and their operator
         for left, right, operator in zip(e.operands, e.operands[1:], e.operators):
