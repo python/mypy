@@ -1686,6 +1686,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
+        if e.op == 'in':
+            return self.bool_type()
         if e.op == 'and' or e.op == 'or':
             return self.check_boolean_op(e, e)
         if e.op == '*' and isinstance(e.left, ListExpr):
@@ -1733,8 +1735,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # are just to verify whether something is valid typing wise).
                 local_errors = self.msg.copy()
                 local_errors.disable_count = 0
-                sub_result, method_type = self.check_op_local_by_name('__contains__', right_type,
-                                                                      left, e, local_errors)
+                _, method_type = self.check_op_local_by_name('__contains__', right_type,
+                                                             left, e, local_errors)
+                sub_result = self.bool_type()
                 if isinstance(right_type, PartialType):
                     # We don't really know if this is an error or not, so just shut up.
                     pass
@@ -1748,13 +1751,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         [None],
                         self.bool_type(),
                         self.named_type('builtins.function'))
-                    sub_result = self.bool_type()
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 else:
                     self.msg.add_errors(local_errors)
-                if operator == 'not in':
-                    sub_result = self.bool_type()
             elif operator in nodes.op_methods:
                 method = self.get_operator_method(operator)
                 sub_result, method_type = self.check_op(method, left_type, right, e,
