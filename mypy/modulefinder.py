@@ -170,27 +170,35 @@ class FindModuleCache:
         # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
         seplast = os.sep + components[-1]  # so e.g. '/baz'
         sepinit = os.sep + '__init__'
-        for base_dir, verify in candidate_base_dirs:
-            base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
-            # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
-            for extension in PYTHON_EXTENSIONS:
-                path = base_path + sepinit + extension
-                path_stubs = base_path + '-stubs' + sepinit + extension
-                if fscache.isfile_case(path):
-                    if verify and not verify_module(fscache, id, path):
-                        continue
-                    return path
-                elif fscache.isfile_case(path_stubs):
-                    if verify and not verify_module(fscache, id, path_stubs):
-                        continue
-                    return path_stubs
-            # No package, look for module.
-            for extension in PYTHON_EXTENSIONS:
-                path = base_path + extension
-                if fscache.isfile_case(path):
-                    if verify and not verify_module(fscache, id, path):
-                        continue
-                    return path
+        verify_flags = [True]
+        if self.options is not None and self.options.namespace_packages:
+            verify_flags.append(False)
+        # If --namespace-packages, we do the whole thing twice:
+        # - once with classic rules (verify if requested)
+        # - once looking for namespace packages (never verify)
+        for verify_flag in verify_flags:
+            for base_dir, verify in candidate_base_dirs:
+                verify = verify and verify_flag
+                base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+                # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
+                for extension in PYTHON_EXTENSIONS:
+                    path = base_path + sepinit + extension
+                    path_stubs = base_path + '-stubs' + sepinit + extension
+                    if fscache.isfile_case(path):
+                        if verify and not verify_module(fscache, id, path):
+                            continue
+                        return path
+                    elif fscache.isfile_case(path_stubs):
+                        if verify and not verify_module(fscache, id, path_stubs):
+                            continue
+                        return path_stubs
+                # No package, look for module.
+                for extension in PYTHON_EXTENSIONS:
+                    path = base_path + extension
+                    if fscache.isfile_case(path):
+                        if verify and not verify_module(fscache, id, path):
+                            continue
+                        return path
         return None
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
