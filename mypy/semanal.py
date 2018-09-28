@@ -705,7 +705,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.function_stack.append(defn)
             self.enter()
             for arg in defn.arguments:
-                #self.var_def_analyzer.process_assignment(arg.variable.name(), True)
                 self.add_local(arg.variable, defn)
 
             # The first argument of a non-static, non-class method is like 'self'
@@ -717,7 +716,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # First analyze body of the function but ignore nested functions.
             self.postpone_nested_functions_stack.append(FUNCTION_FIRST_PHASE_POSTPONE_SECOND)
             self.postponed_functions_stack.append([])
-            self.visit_block(defn.body, new_var_scope=False)
+            self.visit_block(defn.body)
 
             # Analyze nested functions (if any) as a second phase.
             self.postpone_nested_functions_stack[-1] = FUNCTION_SECOND_PHASE
@@ -1636,17 +1635,13 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     # Statements
     #
 
-    def visit_block(self, b: Block, new_var_scope: bool = True) -> None:
+    def visit_block(self, b: Block) -> None:
         if b.is_unreachable:
             return
         self.block_depth[-1] += 1
-        #if new_var_scope:
-        #    self.var_def_analyzer.enter_block()
         for s in b.body:
             self.accept(s)
         self.block_depth[-1] -= 1
-        #if new_var_scope:
-        #    self.var_def_analyzer.leave_block()
 
     def visit_block_maybe(self, b: Optional[Block]) -> None:
         if b:
@@ -2038,8 +2033,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             else:
                 self.msg.cant_assign_to_final(lval.name, self.type is not None, lval)
 
-        #is_new = self.var_def_analyzer.process_assignment(lval.name, True, not has_initializer)
-
         # Top-level definitions within some statements (at least while) are
         # not handled in the first pass, so they have to be added now.
         nested_global = (not self.is_func_scope() and
@@ -2068,7 +2061,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             v = self.make_name_lvalue_var(lval, LDEF)
             self.add_local(v, lval) #, allow_redefine=is_new)
             if lval.name == '_':
-                1 / 0
                 # Special case for assignment to local named '_': always infer 'Any'.
                 typ = AnyType(TypeOfAny.special_form)
                 self.store_declared_types(lval, typ)
@@ -2669,9 +2661,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def visit_while_stmt(self, s: WhileStmt) -> None:
         s.expr.accept(self)
         self.loop_depth += 1
-        #self.var_def_analyzer.enter_loop()
         s.body.accept(self)
-        #self.var_def_analyzer.leave_loop()
         self.loop_depth -= 1
         self.visit_block_maybe(s.else_body)
 
@@ -2688,20 +2678,16 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             self.store_declared_types(s.index, s.index_type)
 
         self.loop_depth += 1
-        #self.var_def_analyzer.enter_loop()
         self.visit_block(s.body)
-        #self.var_def_analyzer.leave_loop()
         self.loop_depth -= 1
 
         self.visit_block_maybe(s.else_body)
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
-        #self.var_def_analyzer.reject_redefinition_of_vars_in_loop()
         if self.loop_depth == 0:
             self.fail("'break' outside loop", s, True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
-        #self.var_def_analyzer.reject_redefinition_of_vars_in_loop()
         if self.loop_depth == 0:
             self.fail("'continue' outside loop", s, True, blocker=True)
 
@@ -2717,9 +2703,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
     def analyze_try_stmt(self, s: TryStmt, visitor: NodeVisitor[None],
                          add_global: bool = False) -> None:
-        #self.var_def_analyzer.enter_with_or_try()
         s.body.accept(visitor)
-        #self.var_def_analyzer.leave_with_or_try()
         for type, var, handler in zip(s.types, s.vars, s.handlers):
             if type:
                 type.accept(visitor)
@@ -2776,9 +2760,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(s.target_type, TupleType):
                 s.target_type = s.target_type.copy_modified(items=new_types)
 
-        #self.var_def_analyzer.enter_with_or_try()
         self.visit_block(s.body)
-        #self.var_def_analyzer.leave_with_or_try()
 
     def visit_del_stmt(self, s: DelStmt) -> None:
         s.expr.accept(self)
@@ -3578,8 +3560,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
         # TODO: Combine these methods in the first and second pass into a single one.
         if self.is_func_scope():
             assert self.locals[-1] is not None
-            #is_new = (isinstance(node.node, Var)
-            #          and self.var_def_analyzer.process_assignment(name, can_be_redefined=False))
             if name in self.locals[-1]: # and not is_new:
                 # Flag redefinition unless this is a reimport of a module.
                 if not (node.kind == MODULE_REF and
