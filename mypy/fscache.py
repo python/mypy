@@ -144,7 +144,7 @@ class FileSystemCache:
         seq[stat.ST_NLINK] = 1
         seq[stat.ST_SIZE] = 0
         tpl = tuple(seq)
-        st = os.stat_result(tpl)
+        st = os.stat_result(tpl)  # type: ignore
         self.stat_cache[path] = st
         # Make listdir() and read() also pretend this file exists.
         self.fake_package_cache.add(dirname)
