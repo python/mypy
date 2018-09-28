@@ -320,10 +320,10 @@ def get_site_packages_dirs(python_executable: Optional[str],
 
 
 def compute_search_paths(sources: List[BuildSource],
-                     options: Options,
-                     data_dir: str,
-                     fscache: FileSystemCache,
-                     alt_lib_path: Optional[str] = None) -> SearchPaths:
+                         options: Options,
+                         data_dir: str,
+                         fscache: FileSystemCache,
+                         alt_lib_path: Optional[str] = None) -> SearchPaths:
     """Compute the search paths as specified in PEP 561.
 
     There are the following 4 members created:
