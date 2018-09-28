@@ -122,7 +122,6 @@ class BuildSourceSet:
 def build(sources: List[BuildSource],
           options: Options,
           alt_lib_path: Optional[str] = None,
-          bin_dir: Optional[str] = None,
           flush_errors: Optional[Callable[[List[str], bool], None]] = None,
           fscache: Optional[FileSystemCache] = None,
           ) -> BuildResult:
@@ -144,8 +143,6 @@ def build(sources: List[BuildSource],
       options: build options
       alt_lib_path: an additional directory for looking up library modules
         (takes precedence over other directories)
-      bin_dir: directory containing the mypy script, used for finding data
-        directories; if omitted, use '.' as the data directory
       flush_errors: optional function to flush errors after a file is processed
       fscache: optionally a file-system cacher
 
@@ -160,8 +157,7 @@ def build(sources: List[BuildSource],
     flush_errors = flush_errors or default_flush_errors
 
     try:
-        result = _build(sources, options, alt_lib_path, bin_dir,
-                        flush_errors, fscache)
+        result = _build(sources, options, alt_lib_path, flush_errors, fscache)
         result.errors = messages
         return result
     except CompileError as e:
@@ -178,7 +174,6 @@ def build(sources: List[BuildSource],
 def _build(sources: List[BuildSource],
            options: Options,
            alt_lib_path: Optional[str],
-           bin_dir: Optional[str],
            flush_errors: Callable[[List[str], bool], None],
            fscache: Optional[FileSystemCache],
            ) -> BuildResult:
@@ -424,7 +419,7 @@ class BuildManager(BuildManagerBase):
 
     Attributes:
       data_dir:        Mypy data directory (contains stubs)
-      lib_path:        Library path for looking up modules
+      search_paths:    SearchPaths instance indicating where to look for modules
       modules:         Mapping of module ID to MypyFile (shared by the passes)
       semantic_analyzer:
                        Semantic analyzer, pass 2

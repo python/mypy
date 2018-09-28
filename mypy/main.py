@@ -65,10 +65,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    if script_path:
-        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
-    else:
-        bin_dir = None
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
@@ -93,7 +89,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = build.build(sources, options, None, bin_dir, flush_errors, fscache)
+        res = build.build(sources, options, None, flush_errors, fscache)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -122,20 +118,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         util.hard_exit(code)
     elif code:
         sys.exit(code)
-
-
-def find_bin_directory(script_path: str) -> str:
-    """Find the directory that contains this script.
-
-    This is used by build to find stubs and other data files.
-    """
-    # Follow up to 5 symbolic links (cap to avoid cycles).
-    for i in range(5):
-        if os.path.islink(script_path):
-            script_path = readlinkabs(script_path)
-        else:
-            break
-    return os.path.dirname(script_path)
 
 
 def readlinkabs(link: str) -> str:
