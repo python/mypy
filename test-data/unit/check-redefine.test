@@ -338,3 +338,13 @@ x = 1
 reveal_type(x) # E: Revealed type is 'builtins.int'
 if int():
     x = object()
+
+[case testRedefineGlobalUsingForLoop]
+from typing import Iterable, TypeVar, Union
+T = TypeVar('T')
+def f(x: T) -> Iterable[Union[T, str]]: pass
+x = 0
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+for x in f(x):
+    pass
+reveal_type(x)  # E: Revealed type is 'Union[builtins.int*, builtins.str]'

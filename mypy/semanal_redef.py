@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from mypy.nodes import (
     Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr, TempNode,
@@ -103,10 +103,13 @@ class VariableRenameVisitor(TraverserVisitor):
         self.leave_loop()
 
     def visit_for_stmt(self, stmt: ForStmt) -> None:
+        stmt.expr.accept(self)
         self.analyze_lvalue(stmt.index, True)
         self.enter_loop()
-        super().visit_for_stmt(stmt)
+        stmt.body.accept(self)
         self.leave_loop()
+        if stmt.else_body:
+            stmt.else_body.accept(self)
 
     def visit_break_stmt(self, stmt: BreakStmt) -> None:
         self.reject_redefinition_of_vars_in_loop()
