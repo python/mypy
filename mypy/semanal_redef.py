@@ -16,46 +16,27 @@ class VariableRenameVisitor(TraverserVisitor):
       x = 0
       f(x)
 
-      x = ''
+      x = "a"
       g(x)
 
-    It would be transformed to this:
+    It will be transformed like this:
 
       x' = 0
       f(x')
 
-      x = ''
+      x = "a"
       g(x)
 
     There will be two independent variables (x' and x) that will have separate
-    inferred types.
+    inferred types. The publicly exposed variant will get the non-suffixed name.
+    This is the last definition at module top level and the first definition
+    (argument) within a function.
 
-    Renaming only happens for assignments within the same block.
+    Renaming only happens for assignments within the same block. Renaming is
+    performed before semantic analysis, immediately after parsing.
 
-    TODO:
-     * renaming in functions (argument redef)
-     * loops
-     * break/continue
-     * break/continue
-     * inititalizer / no initializer
-     * nested functions
-       * prevent redefinition -> no need to rename internally
-     * Final
-
-     - multiple renamings
-       * global
-       - local
-
-     - kinds of names
-       * for index variables
-       * imports
-       - funcdef and such
-       - classdef
-       - other ways of assigning to variables
-
-     - nested class
-     - overloaded func
-     - decorated func
+    The implementation performs a rudimentary static analysis. The analysis is
+    overly conservative to keep things simple.
     """
 
     def __init__(self) -> None:
@@ -68,46 +49,53 @@ class VariableRenameVisitor(TraverserVisitor):
         # Stack of block ids being processed.
         self.blocks = []  # type: List[int]
         # List of scopes; each scope maps short name to block id.
-        self.var_blocks = [{}]  # type: List[Dict[str, int]]
+        self.var_blocks = []  # type: List[Dict[str, int]]
         # Variables which have no assigned value yet (e.g., "x: t" but no assigment).
         # Assignment in any block is considered an initialization.
         self.uninitialized = set()  # type: Set[str]
 
-        # References to variables
+        # References to variables the we may need to rename. List of
+        # scopes; each scope is a mapping from name to list of collections
+        # of names that refer to the same logical variable.
         self.refs = []  # type: List[Dict[str, List[List[NameExpr]]]]
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
+        """Rename variables within a file.
+
+        This is the main entry point to this class.
+        """
         self.clear()
+        self.enter_scope()
         self.enter_block()
-        self.refs.append({})
         for d in file_node.defs:
             d.accept(self)
-        self.flush_refs()
         self.leave_block()
+        self.leave_scope()
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         # Conservatively do not allow variable defined before a function to
         # be redefined later, since function could refer to either definition.
         self.reject_redefinition_of_vars_in_scope()
-        self.process_assignment(fdef.name(), can_be_redefined=False)
+        # Functions can't be redefined.
+        self.record_assignment(fdef.name(), can_be_redefined=False)
+
         self.enter_scope()
-        self.refs.append({})
+        self.enter_block()
 
         for arg in fdef.arguments:
             name = arg.variable.name()
-            self.process_assignment(arg.variable.name(), can_be_redefined=True)
+            self.record_assignment(arg.variable.name(), can_be_redefined=True)
             self.handle_arg(name)
+        for stmt in fdef.body.body:
+            stmt.accept(self)
 
-        self.visit_block(fdef.body, enter=False)
-        self.flush_refs()
+        self.leave_block()
         self.leave_scope()
 
-    def visit_block(self, block: Block, enter: bool = True) -> None:
-        if enter:
-            self.enter_block()
+    def visit_block(self, block: Block) -> None:
+        self.enter_block()
         super().visit_block(block)
-        if enter:
-            self.leave_block()
+        self.leave_block()
 
     def visit_while_stmt(self, stmt: WhileStmt) -> None:
         self.enter_loop()
@@ -145,7 +133,7 @@ class VariableRenameVisitor(TraverserVisitor):
     def analyze_lvalue(self, lvalue: Lvalue, has_initializer: bool) -> None:
         if isinstance(lvalue, NameExpr):
             name = lvalue.name
-            is_new = self.process_assignment(name, True, not has_initializer)
+            is_new = self.record_assignment(name, True, not has_initializer)
             if is_new: # and name != '_':  # Underscore gets special handling later
                 self.handle_def(lvalue)
             else:
@@ -163,20 +151,25 @@ class VariableRenameVisitor(TraverserVisitor):
 
     def visit_import_from(self, imp: ImportFrom) -> None:
         for id, as_id in imp.names:
-            self.process_assignment(as_id or id, False, False)
+            self.record_assignment(as_id or id, False, False)
 
     def visit_name_expr(self, expr: NameExpr) -> None:
         self.handle_ref(expr)
 
+    # Helpers for renaming references
+
     def handle_arg(self, name: str) -> None:
+        """Store function argument."""
         if name not in self.refs[-1]:
             self.refs[-1][name] = [[]]
 
     def handle_def(self, expr: NameExpr) -> None:
+        """Store new name definition."""
         names = self.refs[-1].setdefault(expr.name, [])
         names.append([expr])
 
     def handle_ref(self, expr: NameExpr) -> None:
+        """Store reference to defined name."""
         name = expr.name
         if name in self.refs[-1]:
             names = self.refs[-1][name]
@@ -185,13 +178,22 @@ class VariableRenameVisitor(TraverserVisitor):
             names[-1].append(expr)
 
     def flush_refs(self) -> None:
+        """Rename all references within the current scope.
+
+        This will be called at the end of a scope.
+        """
         is_func = self.is_nested()
         for name, refs in self.refs[-1].items():
             if len(refs) == 1:
+                # Only one definition -- no renaming neeed.
                 continue
             if is_func:
+                # In a function, don't rename the first definition, as it
+                # may be an argument that must preserve the name.
                 to_rename = refs[1:]
             else:
+                # At module top level, don't rename the final definition,
+                # as it will be publicly visible outside the module.
                 to_rename = refs[:-1]
             for i, item in enumerate(to_rename):
                 self.rename_refs(item, i)
@@ -203,11 +205,11 @@ class VariableRenameVisitor(TraverserVisitor):
         for expr in names:
             expr.name = new_name
 
-    # ----
+    # Helpers for determining which assignments define new variables
 
     def clear(self) -> None:
         self.blocks = []
-        self.var_blocks = [{}]
+        self.var_blocks = []
 
     def enter_block(self) -> None:
         self.block_id += 1
@@ -234,8 +236,10 @@ class VariableRenameVisitor(TraverserVisitor):
 
     def enter_scope(self) -> None:
         self.var_blocks.append({})
+        self.refs.append({})
 
     def leave_scope(self) -> None:
+        self.flush_refs()
         self.var_blocks.pop()
 
     def is_nested(self) -> int:
@@ -244,48 +248,74 @@ class VariableRenameVisitor(TraverserVisitor):
     def reject_redefinition_of_vars_in_scope(self) -> None:
         """Make it impossible to redefine defined variables in the current scope.
 
-        This is used if we encounter a function definition or break/continue that
-        can make it ambiguous which definition is live.
+        This is used if we encounter a function definition that
+        can make it ambiguous which definition is live. Example:
+
+          x = 0
+
+          def f() -> int:
+              return x
+
+          x = ''  # Error -- cannot redefine x across function definition
         """
         var_blocks = self.var_blocks[-1]
         for key in var_blocks:
             var_blocks[key] = -1
 
     def reject_redefinition_of_vars_in_loop(self) -> None:
+        """Reject redefinition of variables in the innermost loop.
+
+        If there is an early exit from a loop, there may be ambiguity about which
+        value may escpae the loop. Example where this matters:
+
+          while f():
+              x = 0
+              if g():
+                  break
+              x = ''  # Error -- not a redefinition
+          reveal_type(x)  # int
+
+        This method ensures that the second assignment to 'x' doesn't introduce a new
+        variable.
+        """
         var_blocks = self.var_blocks[-1]
         for key, block in var_blocks.items():
             if self.block_loop_depth.get(block) == self.loop_depth:
                 var_blocks[key] = -1
 
-    def process_assignment(self, name: str, can_be_redefined: bool, no_value: bool = False) -> bool:
-        """Record assignment to given name and return True if it defines a new name.
+    def record_assignment(self, name: str, can_be_redefined: bool, no_value: bool = False) -> bool:
+        """Record assignment to given name and return True if it defines a new variable.
 
         Args:
-            can_be_redefined: If True, allows assignment in the same block to redefine the name
-            no_value: If True, the first assignment we encounter will not be considered to redefine
-                this but to initilize it (in any block)
+            can_be_redefined: If True, allows assignment in the same block to redefine
+                this name (if this is a new definition)
+            no_value: If True, the first assignment we encounter will not be considered
+                to redefine this but to initilize it (in any block); used for bare "x: t"
         """
         if self.disallow_redef_depth > 0:
+            # Can't redefine within try/with a block.
             can_be_redefined = False
         block = self.current_block()
         var_blocks = self.var_blocks[-1]
         uninitialized = self.uninitialized
-        existing_no_value = name in self.uninitialized
+        declared_but_no_value = name in self.uninitialized
         if no_value:
             uninitialized.add(name)
         else:
             uninitialized.discard(name)
         if name not in var_blocks:
-            # New definition
+            # New definition in this scope.
             if can_be_redefined:
+                # Store the block where this was defined to allow redefinition in
+                # the same block only.
                 var_blocks[name] = block
             else:
                 # This doesn't support arbitrary redefinition.
-                # TODO: Make this less restricted.
                 var_blocks[name] = -1
             return True
-        elif var_blocks[name] == block and not existing_no_value:
-            # Redefinition
+        elif var_blocks[name] == block and not declared_but_no_value:
+            # Redefinition -- defines a new variable with the same name.
             return True
         else:
+            # Assigns to an existing variable.
             return False
