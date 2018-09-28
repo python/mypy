@@ -93,7 +93,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
+        res = build.build(sources, options, None, bin_dir, flush_errors, fscache)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -146,18 +146,6 @@ def readlinkabs(link: str) -> str:
     if os.path.isabs(path):
         return path
     return os.path.join(os.path.dirname(link), path)
-
-
-def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options,
-                    flush_errors: Optional[Callable[[List[str], bool], None]],
-                    fscache: FileSystemCache) -> BuildResult:
-    # Type-check the program and dependencies.
-    return build.build(sources=sources,
-                       bin_dir=bin_dir,
-                       options=options,
-                       flush_errors=flush_errors,
-                       fscache=fscache)
 
 
 class SplitNamespace(argparse.Namespace):
