@@ -19,6 +19,7 @@ Most flags correspond closely to :ref:`command-line flags <command-line>` but
 there are some differences in flag names and some flags may take a different
 value based on the module being processed.
 
+
 Config file format
 ******************
 
@@ -140,7 +141,54 @@ override them on a module-by-module basis. If multiple pattern sections match a
 module, :ref:`the options from the most specific section are used where they
 disagree <config-precedence>`.
 
+Configuring warnings
+--------------------
+
+For more information, see the :ref:`configuring warnings <configuring-warnings>`
+section of the command line docs.
+
+``warn_no_return`` (bool, default True)
+    Shows errors for missing return statements on some execution paths.
+
+``warn_return_any`` (bool, default False)
+    Shows a warning when returning a value with type ``Any`` from a function
+    declared with a non- ``Any`` return type.
+
+``warn_unused_ignores`` (bool, default False)
+    Warns about unneeded ``# type: ignore`` comments.
+
+
 .. _config-file-import-discovery-per-module:
+
+Disallow dynamic typing
+-----------------------
+
+For more information, see the :ref:`disallowing dynamic typing
+<disallow-dynamic-typing>` section of the command line docs.
+
+``disallow_any_decorated`` (bool, default False)
+    Disallows functions that have ``Any`` in their signature after decorator
+    transformation.
+
+``disallow_any_explicit`` (bool, default False)
+    Disallows explicit ``Any`` in type positions such as type annotations and
+    generic type parameters.
+
+``disallow_any_expr`` (bool, default False)
+    Disallows all expressions in the module that have type ``Any``.
+
+``disallow_any_generics`` (bool, default False)
+    Disallows usage of generic types that do not specify explicit type
+    parameters.
+
+``disallow_any_unimported`` (bool, default False)
+    Disallows usage of types that come from unfollowed imports (anything
+    imported from an unfollowed import is automatically given a type of
+    ``Any``).
+
+``disallow_subclassing_any`` (bool, default False)
+    Disallows subclassing a value of type ``Any``.
+
 
 Import discovery
 ----------------
@@ -151,13 +199,6 @@ of the command line docs.
 Note: this section describes options that can be used both globally and
 per-module.  See below for a list of import discovery options that may be used
 :ref:`only globally <config-file-import-discovery-global>`.
-
-``ignore_missing_imports`` (bool, default False)
-    Suppresses error messages about imports that cannot be resolved.
-
-    If this option is used in a per-module section, the module name should match
-    the name of the *imported* module, not the module containing the import
-    statement.
 
 ``follow_imports`` (string, default ``normal``)
     Directs what to do with imports when the imported module is found as a
@@ -182,59 +223,13 @@ per-module.  See below for a list of import discovery options that may be used
     Used in conjunction with ``follow_imports=error``, this can be used to make
     any use of a particular ``typeshed`` module an error.
 
-Disallow dynamic typing
------------------------
+``ignore_missing_imports`` (bool, default False)
+    Suppresses error messages about imports that cannot be resolved.
 
-For more information, see the :ref:`disallowing dynamic typing
-<disallow-dynamic-typing>` section of the command line docs.
+    If this option is used in a per-module section, the module name should match
+    the name of the *imported* module, not the module containing the import
+    statement.
 
-``disallow_any_unimported`` (bool, default False)
-    Disallows usage of types that come from unfollowed imports (anything
-    imported from an unfollowed import is automatically given a type of
-    ``Any``).
-
-``disallow_any_expr`` (bool, default False)
-    Disallows all expressions in the module that have type ``Any``.
-
-``disallow_any_decorated`` (bool, default False)
-    Disallows functions that have ``Any`` in their signature after decorator
-    transformation.
-
-``disallow_any_explicit`` (bool, default False)
-    Disallows explicit ``Any`` in type positions such as type annotations and
-    generic type parameters.
-
-``disallow_any_generics`` (bool, default False)
-    Disallows usage of generic types that do not specify explicit type
-    parameters.
-
-``disallow_subclassing_any`` (bool, default False)
-    Disallows subclassing a value of type ``Any``.
-
-
-Untyped definitions and calls
------------------------------
-
-For more information, see the :ref:`untyped definitions and calls
-<untyped-definitions-and-calls>` section of the command line docs.
-
-``disallow_untyped_calls`` (bool, default False)
-    Disallows calling functions without type annotations from functions with
-    type annotations.
-
-``disallow_untyped_defs`` (bool, default False)
-    Disallows defining functions without type annotations or with incomplete
-    type annotations.
-
-``disallow_incomplete_defs`` (bool, default False)
-    Disallows defining functions with incomplete type annotations.
-
-``check_untyped_defs`` (bool, default False)
-    Type-checks the interior of functions without type annotations.
-
-``disallow_untyped_decorators`` (bool, default False)
-    Reports an error whenever a function with type annotations is decorated with
-    a decorator without annotations.
 
 .. _config-file-none-and-optional-handling:
 
@@ -255,22 +250,6 @@ For more information, see the :ref:`None and optional handling
     **Note:** This was False by default in mypy versions earlier than 0.600.
 
 
-Configuring warnings
---------------------
-
-For more information, see the :ref:`configuring warnings <configuring-warnings>`
-section of the command line docs.
-
-``warn_unused_ignores`` (bool, default False)
-    Warns about unneeded ``# type: ignore`` comments.
-
-``warn_no_return`` (bool, default True)
-    Shows errors for missing return statements on some execution paths.
-
-``warn_return_any`` (bool, default False)
-    Shows a warning when returning a value with type ``Any`` from a function
-    declared with a non- ``Any`` return type.
-
 .. _config-file-suppressing-errors:
 
 Suppressing errors
@@ -279,18 +258,56 @@ Suppressing errors
 Note: these configuration options are available in the config file only. There
 is no analog available via the command line options.
 
+``ignore_errors`` (bool, default False)
+    Ignores all non-fatal errors.
+
 ``show_none_errors`` (bool, default True)
     Shows errors related to strict ``None`` checking, if the global
     ``strict_optional`` flag is enabled.
 
-``ignore_errors`` (bool, default False)
-    Ignores all non-fatal errors.
+
+Untyped definitions and calls
+-----------------------------
+
+For more information, see the :ref:`untyped definitions and calls
+<untyped-definitions-and-calls>` section of the command line docs.
+
+``check_untyped_defs`` (bool, default False)
+    Type-checks the interior of functions without type annotations.
+
+``disallow_incomplete_defs`` (bool, default False)
+    Disallows defining functions with incomplete type annotations.
+
+``disallow_untyped_calls`` (bool, default False)
+    Disallows calling functions without type annotations from functions with
+    type annotations.
+
+``disallow_untyped_decorators`` (bool, default False)
+    Reports an error whenever a function with type annotations is decorated with
+    a decorator without annotations.
+
+``disallow_untyped_defs`` (bool, default False)
+    Disallows defining functions without type annotations or with incomplete
+    type annotations.
 
 
 Global-only options
 *******************
 
 The following options may only be set in the global section (``[mypy]``).
+
+Configuring error messages
+--------------------------
+
+For more information, see the :ref:`configuring error messages
+<configuring-error-messages>` section of the command line docs.
+
+``show_column_numbers`` (bool, default False)
+    Shows column numbers in error messages.
+
+``show_error_context`` (bool, default False)
+    Prefixes each error with the relevant context.
+
 
 .. _config-file-import-discovery-global:
 
@@ -304,45 +321,20 @@ Note: this section describes only global-only import discovery options. See
 above for a list of import discovery options that may be used :ref:`both
 per-module and globally <config-file-import-discovery-per-module>`.
 
-``python_executable`` (string)
-    Specifies the path to the Python executable to inspect to collect a list of
-    available :ref:`PEP 561 packages <installed-packages>`. Defaults to the
-    executable used to run mypy.
+``mypy_path`` (string)
+    Specifies the paths to use, after trying the paths from ``MYPYPATH``
+    environment variable.  Useful if you'd like to keep stubs in your repo,
+    along with the config file.
 
 ``no_silence_site_packages`` (bool, default False)
     Enables reporting error messages generated within PEP 561 compliant
     packages.  Those error messages are suppressed by default, since you are
     usually not able to control errors in 3rd party code.
 
-``mypy_path`` (string)
-    Specifies the paths to use, after trying the paths from ``MYPYPATH``
-    environment variable.  Useful if you'd like to keep stubs in your repo,
-    along with the config file.
-
-
-Platform configuration
-----------------------
-
-For more information, see the :ref:`platform configuration
-<platform-configuration>` section of the command line docs.
-
-``python_version`` (string)
-    Specifies the Python version used to parse and check the target program.
-    The string should be in the format ``DIGIT.DIGIT`` -- for example ``2.7``.
-    The default is the version of the Python interpreter used to run mypy.
-
-``platform`` (string)
-    Specifies the OS platform for the target program, for example ``darwin`` or
-    ``win32`` (meaning OS X or Windows, respectively).  The default is the
-    current platform as revealed by Python's ``sys.platform`` variable.
-
-``always_true`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as compile-time constants
-    that are always true.
-
-``always_false`` (comma-separated list of strings)
-    Specifies a list of variables that mypy will treat as compile-time constants
-    that are always false.
+``python_executable`` (string)
+    Specifies the path to the Python executable to inspect to collect a list of
+    available :ref:`PEP 561 packages <installed-packages>`. Defaults to the
+    executable used to run mypy.
 
 
 Incremental mode
@@ -351,35 +343,47 @@ Incremental mode
 For more information, see the :ref:`incremental mode <incremental>` section of
 the command line docs.
 
-``incremental`` (bool, default True)
-    Enables :ref:`incremental mode <incremental>`.
-
 ``cache_dir`` (string, default ``.mypy_cache``)
     Specifies the location where mypy stores incremental cache info.  Note that
     the cache is only read when incremental mode is enabled but is always
     written to, unless the value is set to ``/dev/nul`` (UNIX) or ``nul``
     (Windows).
 
+``incremental`` (bool, default True)
+    Enables :ref:`incremental mode <incremental>`.
+
+``quick_and_dirty`` (bool, default False)
+    Enables :ref:`quick mode <quick-mode>`.
+
 ``skip_version_check`` (bool, default False)
     Makes mypy use incremental cache data even if it was generated by a
     different version of mypy. (By default, mypy will perform a version check
     and regenerate the cache if it was written by older versions of mypy.)
 
-``quick_and_dirty`` (bool, default False)
-    Enables :ref:`quick mode <quick-mode>`.
 
+Platform configuration
+----------------------
 
-Configuring error messages
---------------------------
+For more information, see the :ref:`platform configuration
+<platform-configuration>` section of the command line docs.
 
-For more information, see the :ref:`configuring error messages
-<configuring-error-messages>` section of the command line docs.
+``always_false`` (comma-separated list of strings)
+    Specifies a list of variables that mypy will treat as compile-time constants
+    that are always false.
 
-``show_error_context`` (bool, default False)
-    Prefixes each error with the relevant context.
+``always_true`` (comma-separated list of strings)
+    Specifies a list of variables that mypy will treat as compile-time constants
+    that are always true.
 
-``show_column_numbers`` (bool, default False)
-    Shows column numbers in error messages.
+``platform`` (string)
+    Specifies the OS platform for the target program, for example ``darwin`` or
+    ``win32`` (meaning OS X or Windows, respectively).  The default is the
+    current platform as revealed by Python's ``sys.platform`` variable.
+
+``python_version`` (string)
+    Specifies the Python version used to parse and check the target program.
+    The string should be in the format ``DIGIT.DIGIT`` -- for example ``2.7``.
+    The default is the version of the Python interpreter used to run mypy.
 
 
 Advanced options
@@ -388,18 +392,18 @@ Advanced options
 For more information, see the :ref:`advanced flags <advanced-flags>` section of
 the command line docs.
 
+``custom_typeshed_dir`` (string)
+    Specifies an alternative directory to look for stubs instead of the default
+    ``typeshed`` directory.
+
+``custom_typing_module`` (string)
+    Specifies a custom module to use as a substitute for the ``typing`` module.
+
 ``pdb`` (bool, default False)
     Invokes pdb on fatal error.
 
 ``show_traceback`` (bool, default False)
     Shows traceback on fatal error.
-
-``custom_typing_module`` (string)
-    Specifies a custom module to use as a substitute for the ``typing`` module.
-
-``custom_typeshed_dir`` (string)
-    Specifies an alternative directory to look for stubs instead of the default
-    ``typeshed`` directory.
 
 ``warn_incomplete_stub`` (bool, default False)
     Warns about missing type annotations in typeshed.  This is only relevant in
@@ -409,19 +413,17 @@ the command line docs.
 Miscellaneous
 -------------
 
-``warn_redundant_casts`` (bool, default False)
-    Warns about casting an expression to its inferred type.
-
 ``scripts_are_modules`` (bool, default False)
     Makes script ``x`` become module ``x`` instead of ``__main__``.  This is
     useful when checking multiple scripts in a single run.
-
-``warn_unused_configs`` (bool, default False)
-    Warns about per-module sections in the config file that do not match any
-    files processed when invoking mypy.
 
 ``verbosity`` (integer, default 0)
     Controls how much debug output will be generated.  Higher numbers are more
     verbose.
 
+``warn_redundant_casts`` (bool, default False)
+    Warns about casting an expression to its inferred type.
 
+``warn_unused_configs`` (bool, default False)
+    Warns about per-module sections in the config file that do not match any
+    files processed when invoking mypy.
