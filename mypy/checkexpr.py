@@ -19,7 +19,7 @@ from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, true_only,
-    false_only, is_named_instance, function_type, callable_type, FunctionLike, StarType
+    false_only, is_named_instance, function_type, callable_type, FunctionLike, StarType,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
