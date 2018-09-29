@@ -11,23 +11,18 @@ The function build() is the main interface to this module.
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
 import binascii
-import collections
 import contextlib
-from distutils.sysconfig import get_python_lib
-import functools
 import gc
 import hashlib
 import json
 import os
-import pathlib
 import re
-import site
 import stat
 import sys
 import time
 import errno
 
-from typing import (AbstractSet, Any, cast, Dict, Iterable, Iterator, List,
+from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List,
                     Mapping, NamedTuple, Optional, Set, Tuple, Union, Callable)
 MYPY = False
 if MYPY:
