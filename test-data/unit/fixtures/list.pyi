@@ -26,12 +26,9 @@ class list(Sequence[T]):
 
 class tuple(Generic[T]): pass
 class function: pass
-class int:
-    def __eq__(self, other: object) -> bool: pass
-    def __gt__(self, other: int) -> bool: pass
+class int: pass
 class float: pass
-class str:
-    def __eq__(self, other: object) -> bool: pass
+class str: pass
 class bool(int): pass
 
 property = object() # Dummy definition.
