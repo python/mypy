@@ -920,3 +920,160 @@ class C:
     def f(self) -> None:
         g: Callable[[], int] = lambda: 1 or self.x
         self.x = int()
+
+[case testWideOuterContext]
+from typing import Any, Mapping, Dict, TypeVar
+
+T = TypeVar('T', bound=Dict[str, Any])
+
+def f(arg: T) -> T:
+    ...
+def outer(x: Mapping[str, Any]) -> None:
+    ...
+d: Dict[str, Any]
+
+m: Mapping[str, Any] = f(d)
+outer(f(d))
+[builtins fixtures/dict.pyi]
+[out]
+
+[case testWideOuterContext2]
+from typing import Optional, Type, TypeVar
+
+class A: pass
+class B: pass
+
+class Experimental:
+    T = TypeVar('T', 'A', 'B')
+
+    def create_component_a(self) -> Optional[A]:
+        return self.create_component(A)
+
+    def create_component(self, cls: Type[T]) -> Optional[T]:
+        result = cls()
+        if bool():
+            return result
+        return None
+[builtins fixtures/bool.pyi]
+[out]
+
+[case testWideOuterContext3]
+from typing import Callable
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import TypeVar
+
+
+class C:
+    x: str
+
+
+T = TypeVar('T')
+
+
+def f(i: Iterable[T], c: Callable[[T], bool]) -> Optional[T]:
+    for x in i:
+        if c(x):
+            return x
+    else:
+        return None
+
+
+def g(l: List[C], x: str) -> Optional[C]:
+    return f(l, lambda d: d.x == x)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testWideOuterContext4]
+from typing import Callable
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import TypeVar
+
+
+class C:
+    x: str
+
+
+T = TypeVar('T')
+
+
+def f(i: Iterable[T], c: Callable[[T], bool]) -> Optional[T]:
+    for x in i:
+        if c(x):
+            return x
+    else:
+        return None
+
+
+def g(l: List[C], x: str) -> Optional[C]:
+    def pred(d: C) -> bool:
+        return d.x == x
+
+    return f(l, pred)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testWideOuterContext5]
+from typing import Callable
+from typing import Iterable
+from typing import Optional
+from typing import TypeVar
+
+E = TypeVar('E')
+
+
+def first(
+        predicate: Callable[['E'], bool],
+        iterable: Iterable['E'],
+) -> Optional['E']:
+    for element in iterable:
+        if predicate(element):
+            return element
+    return None
+
+
+def test() -> Optional[int]:
+    l = [0, 1, 2, 3]
+    return first(lambda x: x > 1, l)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testWideOuterContext6]
+from typing import Optional, Type, TypeVar
+
+class Custom:
+    pass
+
+T = TypeVar('T', bound=Custom)
+
+def a(cls: Type[T]) -> Optional[T]:
+    return cls()
+
+def b(cls: Type[T]) -> Optional[T]:
+    return a(cls)
+[out]
+
+[case testWideOuterContext7]
+from typing import TypeVar, List
+
+class A:
+    pass
+class B(A):
+    pass
+class C:
+    pass
+
+LooseType = TypeVar('LooseType', A, B, C)
+def foo(xs: List[LooseType]) -> LooseType:
+    return xs[0]
+
+
+StrictType = TypeVar('StrictType', B, C)
+def bar(xs: List[StrictType]) -> StrictType:
+    foo(xs)
+    return xs[0]
+[builtins fixtures/list.pyi]
+[out]

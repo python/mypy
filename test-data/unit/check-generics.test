@@ -849,7 +849,7 @@ def fun2(v: Vec[T], scale: T) -> Vec[T]:
     return v
 
 reveal_type(fun1([(1, 1)])) # E: Revealed type is 'builtins.int*'
-fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "List[Tuple[int, int]]"
+fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "List[Tuple[bool, bool]]"
 fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
 
 reveal_type(fun2([(1, 1)], 1)) # E: Revealed type is 'builtins.list[Tuple[builtins.int*, builtins.int*]]'

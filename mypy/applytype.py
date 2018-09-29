@@ -9,7 +9,7 @@ from mypy.nodes import Context
 
 
 def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optional[Type]],
-                            msg: MessageBuilder, context: Context) -> CallableType:
+                            msg: MessageBuilder, context: Context, silent: bool = False) -> CallableType:
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
@@ -34,15 +34,28 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
                 if all(any(is_same_type(v, v1) for v in values)
                        for v1 in type.values):
                     continue
+            matching = []
             for value in values:
                 if mypy.subtypes.is_subtype(type, value):
-                    types[i] = value
-                    break
+                    matching.append(value)
+            if matching:
+                best = matching[0]
+                # If there are more than one matching value, we select the narrowest
+                for match in matching[1:]:
+                    if mypy.subtypes.is_subtype(match, best):
+                        best = match
+                types[i] = best
             else:
-                msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
+                if silent:
+                    types[i] = None
+                else:
+                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
         upper_bound = callable.variables[i].upper_bound
         if type and not mypy.subtypes.is_subtype(type, upper_bound):
-            msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
+            if silent:
+                types[i] = None
+            else:
+                msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
 
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[TypeVarId, Type]
