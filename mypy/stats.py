@@ -1,6 +1,6 @@
 """Utilities for calculating and reporting statistics about types."""
 
-import os.path
+import os
 import typing
 
 from collections import Counter

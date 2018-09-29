@@ -4,7 +4,7 @@ from collections import OrderedDict
 from contextlib import contextmanager
 from typing import (
     cast, Dict, Set, List, Tuple, Callable, Union, Optional, Iterable,
-    Sequence, Any, Iterator
+    Sequence, Iterator
 )
 MYPY = False
 if MYPY:
@@ -18,9 +18,8 @@ from mypy.typeanal import (
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType, TypeOfAny,
-    true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    get_typ_args, StarType
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, true_only,
+    false_only, is_named_instance, function_type, callable_type, FunctionLike, StarType,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -45,13 +44,12 @@ from mypy import messages
 from mypy.infer import infer_type_arguments, infer_function_type_arguments
 from mypy import join
 from mypy.meet import narrow_declared_type
-from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
     is_subtype, is_proper_subtype, is_equivalent, find_member, non_method_protocol_members,
 )
 from mypy import applytype
 from mypy import erasetype
-from mypy.checkmember import analyze_member_access, type_object_type, bind_self
+from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.constraints import get_actual_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
@@ -60,8 +58,6 @@ from mypy.typevars import fill_typevars
 from mypy.visitor import ExpressionVisitor
 from mypy.plugin import Plugin, MethodContext, MethodSigContext, FunctionContext
 from mypy.typeanal import make_optional_type
-
-from mypy import experiments
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.
