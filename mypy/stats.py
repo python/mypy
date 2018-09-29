@@ -1,9 +1,10 @@
 """Utilities for calculating and reporting statistics about types."""
 
-import os.path
+import os
+import typing
 
 from collections import Counter
-from typing import cast, Counter, Dict, List, Optional
+from typing import Dict, List, cast, Optional
 
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import collect_all_inner_types
@@ -66,7 +67,7 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line_map = {}  # type: Dict[int, int]
 
-        self.type_of_any_counter = Counter()  # type: Counter[int]
+        self.type_of_any_counter = Counter()  # type: typing.Counter[int]
         self.any_line_map = {}  # type: Dict[int, List[AnyType]]
 
         self.output = []  # type: List[str]
