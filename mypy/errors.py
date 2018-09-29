@@ -2,9 +2,8 @@ import os.path
 import sys
 import traceback
 from collections import OrderedDict, defaultdict
-from contextlib import contextmanager
 
-from typing import Tuple, List, TypeVar, Set, Dict, Iterator, Optional, cast
+from typing import Tuple, List, TypeVar, Set, Dict, Optional
 
 from mypy.scope import Scope
 from mypy.options import Options
