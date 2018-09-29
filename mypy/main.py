@@ -9,13 +9,12 @@ import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Callable
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from mypy import build
 from mypy import defaults
 from mypy import experiments
 from mypy import util
-from mypy.build import BuildResult
 from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
