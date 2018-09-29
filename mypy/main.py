@@ -107,6 +107,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
+    del res  # Now it's safe to delete
 
     code = 0
     if messages:
