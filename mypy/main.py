@@ -86,6 +86,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     serious = False
     blockers = False
+    res = None
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
