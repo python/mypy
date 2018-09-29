@@ -65,10 +65,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    if script_path:
-        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
-    else:
-        bin_dir = None
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
@@ -90,10 +86,11 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     serious = False
     blockers = False
+    res = None
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
+        res = build.build(sources, options, None, flush_errors, fscache)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -111,6 +108,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
+    del res  # Now it's safe to delete
 
     code = 0
     if messages:
@@ -124,20 +122,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         sys.exit(code)
 
 
-def find_bin_directory(script_path: str) -> str:
-    """Find the directory that contains this script.
-
-    This is used by build to find stubs and other data files.
-    """
-    # Follow up to 5 symbolic links (cap to avoid cycles).
-    for i in range(5):
-        if os.path.islink(script_path):
-            script_path = readlinkabs(script_path)
-        else:
-            break
-    return os.path.dirname(script_path)
-
-
 def readlinkabs(link: str) -> str:
     """Return an absolute path to symbolic link destination."""
     # Adapted from code by Greg Smith.
@@ -146,18 +130,6 @@ def readlinkabs(link: str) -> str:
     if os.path.isabs(path):
         return path
     return os.path.join(os.path.dirname(link), path)
-
-
-def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options,
-                    flush_errors: Optional[Callable[[List[str], bool], None]],
-                    fscache: FileSystemCache) -> BuildResult:
-    # Type-check the program and dependencies.
-    return build.build(sources=sources,
-                       bin_dir=bin_dir,
-                       options=options,
-                       flush_errors=flush_errors,
-                       fscache=fscache)
 
 
 class SplitNamespace(argparse.Namespace):
