@@ -1359,12 +1359,3 @@ def foo(path: Optional[str]):
     if path is None:
         f, path = mkstemp('f')
 [out]
-
-[case testWideOuterContextFullStubs3]
-def foo(a: str):
-    pass
-
-
-d = {'key': 'a'}
-foo(d.get('key', None) or '26')
-[out]
