@@ -419,6 +419,10 @@ class A:
 main:5: error: Incompatible types in assignment (expression has type "bool", variable has type "int")
 main:6: error: Incompatible types in assignment (expression has type "bool", variable has type "int")
 
+[case testInWithInvalidArgs]
+a = 1 in ([1] + ['x'])  # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/list.pyi]
+
 [case testEq]
 
 a, b = None, None # type: (A, bool)
