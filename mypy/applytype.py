@@ -53,7 +53,8 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
                 if only_allowed:
                     types[i] = None
                 else:
-                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
+                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name,
+                                                   context)
         upper_bound = callable.variables[i].upper_bound
         if type and not mypy.subtypes.is_subtype(type, upper_bound):
             if only_allowed:
