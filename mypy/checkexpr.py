@@ -852,7 +852,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # this *seems* to usually be the reasonable thing to do.
             #
             # See also github issues #462 and #360.
-            ret_type = NoneTyp()
+            return callable.copy_modified()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Optional[Type]]
@@ -864,7 +864,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Don't show errors after we have only used the outer context for inference.
         # We will use argument context to infer more variables.
         return self.apply_generic_arguments(callable, new_args, error_context,
-                                            only_allowed=True)
+                                            skip_unsatisfied=True)
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -1632,10 +1632,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
 
     def apply_generic_arguments(self, callable: CallableType, types: Sequence[Optional[Type]],
-                                context: Context, only_allowed: bool = False) -> CallableType:
+                                context: Context, skip_unsatisfied: bool = False) -> CallableType:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
         return applytype.apply_generic_arguments(callable, types, self.msg, context,
-                                                 only_allowed=only_allowed)
+                                                 skip_unsatisfied=skip_unsatisfied)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""
