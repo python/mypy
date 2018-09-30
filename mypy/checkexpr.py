@@ -823,22 +823,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # valid results.
         erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if isinstance(ret_type, TypeVarType):
-            if ret_type.values or (not isinstance(ctx, Instance) or
-                                   not ctx.args):
-                # The return type is a type variable. If it has values, we can't easily restrict
-                # type inference to conform to the valid values. If it's unrestricted, we could
-                # infer a too general type for the type variable if we use context, and this could
-                # result in confusing and spurious type errors elsewhere.
-                #
-                # Give up and just use function arguments for type inference. As an exception,
-                # if the context is a generic instance type, actually use it as context, as
-                # this *seems* to usually be the reasonable thing to do.
-                #
-                # See also github issues #462 and #360.
-                ret_type = NoneTyp()
         if mypy.checker.is_optional(ret_type) and mypy.checker.is_optional(ctx):
-            # Another special case:
             # If both the context and the return type are optional, unwrap the optional,
             # since in 99% cases this is what a user expects. In other words, we replace
             #     Optional[T] <: Optional[int]
@@ -848,7 +833,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             ret_type = mypy.checker.remove_optional(ret_type)
             erased_ctx = mypy.checker.remove_optional(erased_ctx)
             #
-            # TODO: Instead of this hack and the one above, we need to use outer and
+            # TODO: Instead of this hack and the one below, we need to use outer and
             # inner contexts at the same time. This is however not easy because of two
             # reasons:
             #   * We need to support constraints like [1 <: 2, 2 <: X], i.e. with variables
@@ -857,6 +842,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #     variables in an expression are inferred at the same time.
             #     (And this is hard, also we need to be careful with lambdas that require
             #     two passes.)
+        if isinstance(ret_type, TypeVarType) and not (isinstance(ctx, Instance) and ctx.args):
+            # Another special case: the return type is a type variable. If it's unrestricted,
+            # we could infer a too general type for the type variable if we use context,
+            # and this could result in confusing and spurious type errors elsewhere.
+            #
+            # Give up and just use function arguments for type inference. As an exception,
+            # if the context is a generic instance type, actually use it as context, as
+            # this *seems* to usually be the reasonable thing to do.
+            #
+            # See also github issues #462 and #360.
+            ret_type = NoneTyp()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Optional[Type]]
