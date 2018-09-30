@@ -9,13 +9,17 @@ from mypy.nodes import Context
 
 
 def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optional[Type]],
-                            msg: MessageBuilder, context: Context, silent: bool = False) -> CallableType:
+                            msg: MessageBuilder, context: Context,
+                            only_allowed: bool = False) -> CallableType:
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
     'def (int) -> int'.
 
     Note that each type can be None; in this case, it will not be applied.
+
+    If `only_allowed` is True, only apply those types that satisfy type variable
+    bound or constraints (and replace the type with `None`), instead of giving an error.
     """
     tvars = callable.variables
     assert len(tvars) == len(orig_types)
@@ -46,13 +50,13 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
                         best = match
                 types[i] = best
             else:
-                if silent:
+                if only_allowed:
                     types[i] = None
                 else:
                     msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
         upper_bound = callable.variables[i].upper_bound
         if type and not mypy.subtypes.is_subtype(type, upper_bound):
-            if silent:
+            if only_allowed:
                 types[i] = None
             else:
                 msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)

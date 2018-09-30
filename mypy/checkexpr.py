@@ -837,6 +837,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 #
                 # See also github issues #462 and #360.
                 ret_type = NoneTyp()
+        if mypy.checker.is_optional(ret_type) and mypy.checker.is_optional(ctx):
+            # Another special case:
+            # If both the context and the return type are optional, unwrap the optional,
+            # since in 99% cases this is what a user expects. In other words, we replace
+            #     Optional[T] <: Optional[int]
+            # with
+            #     T <: int
+            # while the former would infer T <: Optional[int].
+            ret_type = mypy.checker.remove_optional(ret_type)
+            erased_ctx = mypy.checker.remove_optional(erased_ctx)
+            #
+            # TODO: Instead of this hack and the one above, we need to use outer and
+            # inner contexts at the same time. This is however not easy because of two
+            # reasons:
+            #   * We need to support constraints like [1 <: 2, 2 <: X], i.e. with variables
+            #     on both sides. (This is not too hard.)
+            #   * We need to update all the inference "infrastructure", so that all
+            #     variables in an expression are inferred at the same time.
+            #     (And this is hard, also we need to be careful with lambdas that require
+            #     two passes.)
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Optional[Type]]
@@ -845,8 +865,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 new_args.append(None)
             else:
                 new_args.append(arg)
-        # Don't show errors after only using outer context.
-        return self.apply_generic_arguments(callable, new_args, error_context, silent=True)
+        # Don't show errors after we have only used the outer context for inference.
+        # We will use argument context to infer more variables.
+        return self.apply_generic_arguments(callable, new_args, error_context,
+                                            only_allowed=True)
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -1614,9 +1636,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
 
     def apply_generic_arguments(self, callable: CallableType, types: Sequence[Optional[Type]],
-                                context: Context, silent: bool = False) -> CallableType:
+                                context: Context, only_allowed: bool = False) -> CallableType:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
-        return applytype.apply_generic_arguments(callable, types, self.msg, context, silent=silent)
+        return applytype.apply_generic_arguments(callable, types, self.msg, context,
+                                                 only_allowed=only_allowed)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""

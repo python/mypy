@@ -921,45 +921,95 @@ class C:
         g: Callable[[], int] = lambda: 1 or self.x
         self.x = int()
 
-[case testWideOuterContext]
-# flags: --strict-optional
-from typing import Any, Mapping, Dict, TypeVar
+[case testWideOuterContextSubClassBound]
+from typing import TypeVar
 
-T = TypeVar('T', bound=Dict[str, Any])
+class A: ...
+class B(A): ...
 
-def f(arg: T) -> T:
-    ...
-def outer(x: Mapping[str, Any]) -> None:
-    ...
-d: Dict[str, Any]
+T = TypeVar('T', bound=B)
+def f(x: T) -> T: ...
+def outer(x: A) -> None: ...
 
-m: Mapping[str, Any] = f(d)
-outer(f(d))
-[builtins fixtures/dict.pyi]
+outer(f(B()))
+x: A = f(B())
 [out]
 
-[case testWideOuterContext2]
-# flags: --strict-optional
-from typing import Optional, Type, TypeVar
+[case testWideOuterContextSubClassValues]
+from typing import TypeVar
 
-class A: pass
-class B: pass
+class A: ...
+class B(A): ...
 
-class Experimental:
-    T = TypeVar('T', 'A', 'B')
+T = TypeVar('T', B, int)
+def f(x: T) -> T: ...
+def outer(x: A) -> None: ...
 
-    def create_component_a(self) -> Optional[A]:
-        return self.create_component(A)
-
-    def create_component(self, cls: Type[T]) -> Optional[T]:
-        result = cls()
-        if bool():
-            return result
-        return None
-[builtins fixtures/bool.pyi]
+outer(f(B()))
+x: A = f(B())
 [out]
 
-[case testWideOuterContext6]
+[case testWideOuterContextSubclassBoundGeneric]
+from typing import TypeVar, Generic
+
+S = TypeVar('S')
+class A(Generic[S]): ...
+class B(A[S]): ...
+
+T = TypeVar('T', bound=B[int])
+def f(x: T) -> T: ...
+def outer(x: A[int]) -> None: ...
+
+y: B[int]
+outer(f(y))
+x: A[int] = f(y)
+[out]
+
+[case testWideOuterContextSubclassValuesGeneric]
+from typing import TypeVar, Generic
+
+S = TypeVar('S')
+class A(Generic[S]): ...
+class B(A[S]): ...
+
+T = TypeVar('T', B[int], int)
+def f(x: T) -> T: ...
+def outer(x: A[int]) -> None: ...
+
+y: B[int]
+outer(f(y))
+x: A[int] = f(y)
+[out]
+
+[case testWideOuterContextUnionBound]
+from typing import TypeVar, Union
+
+class A: ...
+class B: ...
+
+T = TypeVar('T', bound=B)
+def f(x: T) -> T: ...
+def outer(x: Union[A, B]) -> None: ...
+
+outer(f(B()))
+x: Union[A, B] = f(B())
+[out]
+
+[case testWideOuterContextUnionValues]
+from typing import TypeVar, Union
+
+class A: ...
+class B: ...
+
+T = TypeVar('T', B, int)
+def f(x: T) -> T: ...
+def outer(x: Union[A, B]) -> None: ...
+
+outer(f(B()))
+x: Union[A, B] = f(B())
+[out]
+
+[case testWideOuterContextOptional]
 # flags: --strict-optional
 from typing import Optional, Type, TypeVar
 
@@ -968,15 +1018,28 @@ class Custom:
 
 T = TypeVar('T', bound=Custom)
 
-def a(cls: Type[T]) -> Optional[T]:
-    return cls()
+def a(x: T) -> Optional[T]: ...
 
-def b(cls: Type[T]) -> Optional[T]:
-    return a(cls)
+def b(x: T) -> Optional[T]:
+    return a(x)
 [out]
 
-[case testWideOuterContext7]
+[case testWideOuterContextOptionalMethod]
 # flags: --strict-optional
+from typing import Optional, Type, TypeVar
+
+class A: pass
+class B: pass
+
+T = TypeVar('T', A, B)
+class C:
+    def meth_a(self) -> Optional[A]:
+        return self.meth(A)
+
+    def meth(self, cls: Type[T]) -> Optional[T]: ...
+[out]
+
+[case testWideOuterContextValuesOverlapping]
 from typing import TypeVar, List
 
 class A:
@@ -986,14 +1049,44 @@ class B(A):
 class C:
     pass
 
-LooseType = TypeVar('LooseType', A, B, C)
-def foo(xs: List[LooseType]) -> LooseType:
-    return xs[0]
+T = TypeVar('T', A, B, C)
+def foo(xs: List[T]) -> T: ...
 
-
-StrictType = TypeVar('StrictType', B, C)
-def bar(xs: List[StrictType]) -> StrictType:
+S = TypeVar('S', B, C)
+def bar(xs: List[S]) -> S:
     foo(xs)
     return xs[0]
+[builtins fixtures/list.pyi]
+[out]
+
+[case testWideOuterContextOptionalTypeVarReturn]
+# flags: --strict-optional
+from typing import Callable, Iterable, List, Optional, TypeVar
+
+class C:
+    x: str
+
+T = TypeVar('T')
+def f(i: Iterable[T], c: Callable[[T], str]) -> Optional[T]: ...
+
+def g(l: List[C], x: str) -> Optional[C]:
+    def pred(c: C) -> str:
+        return c.x
+    return f(l, pred)
+[builtins fixtures/list.pyi]
+[out]
+
+[case testWideOuterContextOptionalTypeVarReturnLambda]
+# flags: --strict-optional
+from typing import Callable, Iterable, List, Optional, TypeVar
+
+class C:
+    x: str
+
+T = TypeVar('T')
+def f(i: Iterable[T], c: Callable[[T], str]) -> Optional[T]: ...
+
+def g(l: List[C], x: str) -> Optional[C]:
+    return f(l, lambda c: reveal_type(c).x)  # E: Revealed type is '__main__.C'
 [builtins fixtures/list.pyi]
 [out]
