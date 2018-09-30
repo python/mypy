@@ -1731,8 +1731,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # are just to verify whether something is valid typing wise).
                 local_errors = self.msg.copy()
                 local_errors.disable_count = 0
-                sub_result, method_type = self.check_op_local_by_name('__contains__', right_type,
-                                                                      left, e, local_errors)
+                sub_result, method_type = self.check_method_call_by_name(
+                    '__contains__', right_type, [left], [ARG_POS], e, local_errors)
                 if isinstance(right_type, PartialType):
                     # We don't really know if this is an error or not, so just shut up.
                     pass
@@ -1783,31 +1783,35 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             return nodes.op_methods[op]
 
-    def check_op_local_by_name(self,
-                               method: str,
-                               base_type: Type,
-                               arg: Expression,
-                               context: Context,
-                               local_errors: MessageBuilder) -> Tuple[Type, Type]:
-        """Type check a binary operation which maps to a method call.
+    def check_method_call_by_name(self,
+                                  method: str,
+                                  base_type: Type,
+                                  args: List[Expression],
+                                  arg_kinds: List[int],
+                                  context: Context,
+                                  local_errors: Optional[MessageBuilder] = None) -> Tuple[Type, Type]:
+        """Type check a call to a named method on an object.
 
-        Return tuple (result type, inferred operator method type).
+        Return tuple (result type, inferred method type).
         """
+        local_errors = local_errors or self.msg
         method_type = analyze_member_access(method, base_type, context, False, False, True,
                                             self.named_type, self.not_ready_callback, local_errors,
                                             original_type=base_type, chk=self.chk)
-        return self.check_op_local(method, method_type, base_type, arg, context, local_errors)
+        return self.check_method_call(
+            method, base_type, method_type, args, arg_kinds, context, local_errors)
 
-    def check_op_local(self,
-                       method_name: str,
-                       method_type: Type,
-                       base_type: Type,
-                       arg: Expression,
-                       context: Context,
-                       local_errors: MessageBuilder) -> Tuple[Type, Type]:
-        """Type check a binary operation using the (assumed) type of the operator method.
+    def check_method_call(self,
+                          method_name: str,
+                          base_type: Type,
+                          method_type: Type,
+                          args: List[Expression],
+                          arg_kinds: List[int],
+                          context: Context,
+                          local_errors: Optional[MessageBuilder] = None) -> Tuple[Type, Type]:
+        """Type check a call to a method with the given name and type on an object.
 
-        Return tuple (result type, inferred operator method type).
+        Return tuple (result type, inferred method type).
         """
         callable_name = None
         object_type = None
@@ -1816,7 +1820,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # TODO: Support non-Instance types.
             callable_name = '{}.{}'.format(base_type.type.fullname(), method_name)
             object_type = base_type
-        return self.check_call(method_type, [arg], [nodes.ARG_POS],
+        return self.check_call(method_type, args, arg_kinds,
                                context, arg_messages=local_errors,
                                callable_name=callable_name, object_type=object_type)
 
@@ -1975,7 +1979,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         results = []
         for method, obj, arg in variants:
             local_errors = make_local_errors()
-            result = self.check_op_local(op_name, method, obj, arg, context, local_errors)
+            result = self.check_method_call(
+                op_name, obj, method, [arg], [ARG_POS], context, local_errors)
             if local_errors.is_errors():
                 errors.append(local_errors)
                 results.append(result)
@@ -1988,8 +1993,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if not variants:
             local_errors = make_local_errors()
-            result = self.check_op_local_by_name(
-                op_name, left_type, right_expr, context, local_errors)
+            result = self.check_method_call_by_name(
+                op_name, left_type, [right_expr], [ARG_POS], context, local_errors)
 
             if local_errors.is_errors():
                 errors.append(local_errors)
@@ -2101,10 +2106,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             inferred_final = self.combine_function_signatures(all_inferred)
             return results_final, inferred_final
         else:
-            return self.check_op_local_by_name(
+            return self.check_method_call_by_name(
                 method=method,
                 base_type=base_type,
-                arg=arg,
+                args=[arg],
+                arg_kinds=[ARG_POS],
                 context=context,
                 local_errors=self.msg,
             )
@@ -2196,8 +2202,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.bool_type()  # type: Type
         else:
             method = nodes.unary_op_methods[op]
-            method_type = self.analyze_external_member_access(method, operand_type, e)
-            result, method_type = self.check_call(method_type, [], [], e)
+            result, method_type = self.check_method_call_by_name(method, operand_type, [], [], e)
             e.method_type = method_type
         return result
 
@@ -2238,7 +2243,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               and left_type.is_type_obj() and left_type.type_object().is_enum):
             return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
         else:
-            result, method_type = self.check_op('__getitem__', left_type, e.index, e)
+            result, method_type = self.check_method_call_by_name(
+                '__getitem__', left_type, [e.index], [ARG_POS], e)
             e.method_type = method_type
             return result
 
@@ -2613,8 +2619,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         variables=[ktdef, vtdef])
                     rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
                 else:
-                    method = self.analyze_external_member_access('update', rv, arg)
-                    self.check_call(method, [arg], [nodes.ARG_POS], arg)
+                    self.check_method_call_by_name('update', rv, [arg], [nodes.ARG_POS], arg)
         assert rv is not None
         return rv
 
@@ -3114,8 +3119,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                       msg, 'actual type', 'expected type'):
             return AnyType(TypeOfAny.special_form)
         else:
-            method = self.analyze_external_member_access('__await__', t, ctx)
-            generator = self.check_call(method, [], [], ctx)[0]
+            generator = self.check_method_call_by_name('__await__', t, [], [], ctx)[0]
             return self.chk.get_generator_return_type(generator, False)
 
     def visit_yield_from_expr(self, e: YieldFromExpr, allow_none_return: bool = False) -> Type:
@@ -3138,16 +3142,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif self.chk.type_is_iterable(subexpr_type):
             if is_async_def(subexpr_type) and not has_coroutine_decorator(return_type):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
-            iter_method_type = self.analyze_external_member_access(
-                '__iter__',
-                subexpr_type,
-                AnyType(TypeOfAny.special_form))
 
             any_type = AnyType(TypeOfAny.special_form)
             generic_generator_type = self.chk.named_generic_type('typing.Generator',
                                                                  [any_type, any_type, any_type])
-            iter_type, _ = self.check_call(iter_method_type, [], [],
-                                           context=generic_generator_type)
+            iter_type, _ = self.check_method_call_by_name(
+                '__iter__', subexpr_type, [], [], context=generic_generator_type)
         else:
             if not (is_async_def(subexpr_type) and has_coroutine_decorator(return_type)):
                 self.chk.msg.yield_from_invalid_operand_type(subexpr_type, e)
