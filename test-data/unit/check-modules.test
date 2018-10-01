@@ -2609,11 +2609,12 @@ mypy_path = tmp/xx, tmp/yy
 
 [case testClassicPackageInsideNamespacePackage]
 # flags: --namespace-packages --config-file tmp/mypy.ini
-from foo.bar.baz import x
+from foo.bar.baz.boo import x
 reveal_type(x)  # E: Revealed type is 'builtins.int'
-[file xx/foo/bar/baz.py]
+[file xx/foo/bar/baz/boo.py]
 x = ''
-[file yy/foo/bar/baz.py]
+[file xx/foo/bar/baz/__init__.py]
+[file yy/foo/bar/baz/boo.py]
 x = 0
 [file yy/foo/bar/__init__.py]
 [file mypy.ini]

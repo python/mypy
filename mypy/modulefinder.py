@@ -170,35 +170,50 @@ class FindModuleCache:
         # Now just look for 'baz.pyi', 'baz/__init__.py', etc., inside those directories.
         seplast = os.sep + components[-1]  # so e.g. '/baz'
         sepinit = os.sep + '__init__'
-        verify_flags = [True]
-        if self.options is not None and self.options.namespace_packages:
-            verify_flags.append(False)
-        # If --namespace-packages, we do the whole thing twice:
-        # - once with classic rules (verify if requested)
-        # - once looking for namespace packages (never verify)
-        for verify_flag in verify_flags:
-            for base_dir, verify in candidate_base_dirs:
-                verify = verify and verify_flag
-                base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
-                # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
-                for extension in PYTHON_EXTENSIONS:
-                    path = base_path + sepinit + extension
-                    path_stubs = base_path + '-stubs' + sepinit + extension
-                    if fscache.isfile_case(path):
-                        if verify and not verify_module(fscache, id, path):
-                            continue
-                        return path
-                    elif fscache.isfile_case(path_stubs):
-                        if verify and not verify_module(fscache, id, path_stubs):
-                            continue
-                        return path_stubs
-                # No package, look for module.
-                for extension in PYTHON_EXTENSIONS:
-                    path = base_path + extension
-                    if fscache.isfile_case(path):
-                        if verify and not verify_module(fscache, id, path):
-                            continue
-                        return path
+        near_misses = []  # Collect near misses for namespace mode (see below).
+        for base_dir, verify in candidate_base_dirs:
+            base_path = base_dir + seplast  # so e.g. '/usr/lib/python3.4/foo/bar/baz'
+            # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
+            for extension in PYTHON_EXTENSIONS:
+                path = base_path + sepinit + extension
+                path_stubs = base_path + '-stubs' + sepinit + extension
+                if fscache.isfile_case(path):
+                    if verify and not verify_module(fscache, id, path):
+                        near_misses.append(path)
+                        continue
+                    return path
+                elif fscache.isfile_case(path_stubs):
+                    if verify and not verify_module(fscache, id, path_stubs):
+                        near_misses.append(path_stubs)
+                        continue
+                    return path_stubs
+            # No package, look for module.
+            for extension in PYTHON_EXTENSIONS:
+                path = base_path + extension
+                if fscache.isfile_case(path):
+                    if verify and not verify_module(fscache, id, path):
+                        near_misses.append(path)
+                        continue
+                    return path
+
+        # In namespace mode, re-check those entries that had 'verify'
+        # set using different rules.  This time we allow missing
+        # __init__.py[i] files and we don't look for -stubs.  It's
+        # complicated because if there's a classic subpackage
+        # somewhere it should still be preferred over a namespace
+        # subpackage with the same name earlier on the path.
+        if self.options.namespace_packages and near_misses:
+            for index in range(id.count('.')):
+                if len(near_misses) > 1:
+                    reduced_list = [path
+                                    for path in near_misses
+                                    if verify_module(fscache, id, path,
+                                                     index, index + 1)]
+                    if reduced_list:
+                        near_misses = reduced_list
+            if near_misses:
+                return near_misses[0]
+
         return None
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
@@ -232,14 +247,30 @@ class FindModuleCache:
         return result
 
 
-def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
-    """Check that all packages containing id have a __init__ file."""
+def verify_module(fscache: FileSystemCache, id: str, path: str,
+                  head: int = 0, tail: int = 999999999) -> bool:
+    """Check that all packages containing id have a __init__ file.
+
+    Optional arguments head and tail constrain the check to the slice
+    [head : tail] of the paths to try.  For example, if the toplevel
+    package is allowed to be a namespace, pass head=1; if the
+    innermost package is allowed to be a namespace, pass tail=-1.
+    """
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = os.path.dirname(path)
-    for i in range(id.count('.')):
+    # Counting is a bit tricky.  If id == 'foo.bar.baz.boo', then
+    # count == 3, so the index takes on the values 0, 1 and 2.  But
+    # the algorithm strips dirnames from the end, so we make the index
+    # go backwards: 2, 1, 0.  Then specifying head=1 would skip index
+    # value 0, while specifying head=-1 would skip index value 2.
+    count = id.count('.')
+    if tail < 0:
+        tail += count
+    for index in reversed(range(count)):
         path = os.path.dirname(path)
-        if not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
-                   for extension in PYTHON_EXTENSIONS):
+        if (head <= index < tail
+            and not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
+                        for extension in PYTHON_EXTENSIONS)):
             return False
     return True
 
