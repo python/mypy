@@ -18,9 +18,9 @@ from mypy.typeanal import (
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UnboundType, UninhabitedType, TypeType, TypeOfAny,
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
-    get_typ_args, StarType
+    StarType, is_optional, remove_optional
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -31,7 +31,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolNode,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -823,15 +823,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # valid results.
         erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if mypy.checker.is_optional(ret_type) and mypy.checker.is_optional(ctx):
+        if is_optional(ret_type) and is_optional(ctx):
             # If both the context and the return type are optional, unwrap the optional,
             # since in 99% cases this is what a user expects. In other words, we replace
             #     Optional[T] <: Optional[int]
             # with
             #     T <: int
             # while the former would infer T <: Optional[int].
-            ret_type = mypy.checker.remove_optional(ret_type)
-            erased_ctx = mypy.checker.remove_optional(erased_ctx)
+            ret_type = remove_optional(ret_type)
+            erased_ctx = remove_optional(erased_ctx)
             #
             # TODO: Instead of this hack and the one below, we need to use outer and
             # inner contexts at the same time. This is however not easy because of two

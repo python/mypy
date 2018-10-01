@@ -933,7 +933,6 @@ def outer(x: A) -> None: ...
 
 outer(f(B()))
 x: A = f(B())
-[out]
 
 [case testWideOuterContextSubClassBoundGenericReturn]
 from typing import TypeVar, Iterable, List
@@ -948,7 +947,6 @@ def outer(x: Iterable[A]) -> None: ...
 outer(f(B()))
 x: Iterable[A] = f(B())
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextSubClassValues]
 from typing import TypeVar
@@ -962,7 +960,6 @@ def outer(x: A) -> None: ...
 
 outer(f(B()))
 x: A = f(B())
-[out]
 
 [case testWideOuterContextSubClassValuesGenericReturn]
 from typing import TypeVar, Iterable, List
@@ -977,7 +974,6 @@ def outer(x: Iterable[A]) -> None: ...
 outer(f(B()))
 x: Iterable[A] = f(B())
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextSubclassBoundGeneric]
 from typing import TypeVar, Generic
@@ -993,7 +989,21 @@ def outer(x: A[int]) -> None: ...
 y: B[int]
 outer(f(y))
 x: A[int] = f(y)
-[out]
+
+[case testWideOuterContextSubclassBoundGenericCovariant]
+from typing import TypeVar, Generic
+
+S_co = TypeVar('S_co', covariant=True)
+class A(Generic[S_co]): ...
+class B(A[S_co]): ...
+
+T = TypeVar('T', bound=B[int])
+def f(x: T) -> T: ...
+def outer(x: A[int]) -> None: ...
+
+y: B[int]
+outer(f(y))
+x: A[int] = f(y)
 
 [case testWideOuterContextSubclassValuesGeneric]
 from typing import TypeVar, Generic
@@ -1009,7 +1019,21 @@ def outer(x: A[int]) -> None: ...
 y: B[int]
 outer(f(y))
 x: A[int] = f(y)
-[out]
+
+[case testWideOuterContextSubclassValuesGenericCovariant]
+from typing import TypeVar, Generic
+
+S_co = TypeVar('S_co', covariant=True)
+class A(Generic[S_co]): ...
+class B(A[S_co]): ...
+
+T = TypeVar('T', B[int], int)
+def f(x: T) -> T: ...
+def outer(x: A[int]) -> None: ...
+
+y: B[int]
+outer(f(y))
+x: A[int] = f(y)
 
 [case testWideOuterContextUnionBound]
 from typing import TypeVar, Union
@@ -1023,7 +1047,6 @@ def outer(x: Union[A, B]) -> None: ...
 
 outer(f(B()))
 x: Union[A, B] = f(B())
-[out]
 
 [case testWideOuterContextUnionBoundGenericReturn]
 from typing import TypeVar, Union, Iterable, List
@@ -1038,7 +1061,6 @@ def outer(x: Iterable[Union[A, B]]) -> None: ...
 outer(f(B()))
 x: Iterable[Union[A, B]] = f(B())
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextUnionValues]
 from typing import TypeVar, Union
@@ -1052,7 +1074,6 @@ def outer(x: Union[A, B]) -> None: ...
 
 outer(f(B()))
 x: Union[A, B] = f(B())
-[out]
 
 [case testWideOuterContextUnionValuesGenericReturn]
 from typing import TypeVar, Union, Iterable, List
@@ -1067,7 +1088,6 @@ def outer(x: Iterable[Union[A, B]]) -> None: ...
 outer(f(B()))
 x: Iterable[Union[A, B]] = f(B())
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextOptional]
 # flags: --strict-optional
@@ -1082,7 +1102,6 @@ def a(x: T) -> Optional[T]: ...
 
 def b(x: T) -> Optional[T]:
     return a(x)
-[out]
 
 [case testWideOuterContextOptionalGenericReturn]
 # flags: --strict-optional
@@ -1097,7 +1116,6 @@ def a(x: T) -> Iterable[Optional[T]]: ...
 
 def b(x: T) -> Iterable[Optional[T]]:
     return a(x)
-[out]
 
 [case testWideOuterContextOptionalMethod]
 # flags: --strict-optional
@@ -1112,7 +1130,6 @@ class C:
         return self.meth(A)
 
     def meth(self, cls: Type[T]) -> Optional[T]: ...
-[out]
 
 [case testWideOuterContextValuesOverlapping]
 from typing import TypeVar, List
@@ -1132,7 +1149,6 @@ def bar(xs: List[S]) -> S:
     foo(xs)
     return xs[0]
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextOptionalTypeVarReturn]
 # flags: --strict-optional
@@ -1149,7 +1165,6 @@ def g(l: List[C], x: str) -> Optional[C]:
         return c.x
     return f(l, pred)
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextOptionalTypeVarReturnLambda]
 # flags: --strict-optional
@@ -1164,7 +1179,6 @@ def f(i: Iterable[T], c: Callable[[T], str]) -> Optional[T]: ...
 def g(l: List[C], x: str) -> Optional[C]:
     return f(l, lambda c: reveal_type(c).x)  # E: Revealed type is '__main__.C'
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextEmpty]
 from typing import List, TypeVar
@@ -1175,7 +1189,6 @@ def f(x: List[T]) -> T: ...
 # mypy infers List[<nothing>] here, and <nothing> is a subtype of str
 y: str = f([])
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextEmptyError]
 from typing import List, TypeVar
@@ -1183,10 +1196,9 @@ from typing import List, TypeVar
 T = TypeVar('T', bound=int)
 def f(x: List[T]) -> List[T]: ...
 
-# TODO: improve error message for such cases, see # 3283
+# TODO: improve error message for such cases, see #3283 and #5706
 y: List[str] = f([])  # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[str]")
 [builtins fixtures/list.pyi]
-[out]
 
 [case testWideOuterContextNoArgs]
 # flags: --strict-optional
@@ -1196,7 +1208,6 @@ T = TypeVar('T', bound=int)
 def f(x: Optional[T] = None) -> T: ...
 
 y: str = f()
-[out]
 
 [case testWideOuterContextNoArgsError]
 # flags: --strict-optional
@@ -1207,4 +1218,3 @@ def f(x: Optional[T] = None) -> List[T]: ...
 
 y: List[str] = f()  # E: Incompatible types in assignment (expression has type "List[<nothing>]", variable has type "List[str]")
 [builtins fixtures/list.pyi]
-[out]

@@ -18,8 +18,8 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
 
     Note that each type can be None; in this case, it will not be applied.
 
-    If `skip_unsatisfied` is True, only apply those types that satisfy type variable
-    bound or constraints (and replace the type with `None`), instead of giving an error.
+    If `skip_unsatisfied` is True, then just skip the types that don't satisfy type variable
+    bound or constraints, instead of giving an error.
     """
     tvars = callable.variables
     assert len(tvars) == len(orig_types)

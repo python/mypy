@@ -1918,6 +1918,17 @@ def union_items(typ: Type) -> List[Type]:
         return [typ]
 
 
+def is_optional(t: Type) -> bool:
+    return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
+
+
+def remove_optional(typ: Type) -> Type:
+    if isinstance(typ, UnionType):
+        return UnionType.make_union([t for t in typ.items if not isinstance(t, NoneTyp)])
+    else:
+        return typ
+
+
 names = globals().copy()  # type: Final
 names.pop('NOT_READY', None)
 deserialize_map = {
