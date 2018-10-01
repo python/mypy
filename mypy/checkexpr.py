@@ -21,8 +21,6 @@ from mypy.types import (
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny,
     true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
     StarType, is_optional, remove_optional
-    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, true_only,
-    false_only, is_named_instance, function_type, callable_type, FunctionLike, StarType,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
