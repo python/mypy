@@ -12,7 +12,6 @@ import json
 import sys
 import types
 from typing import Text
-from collections import defaultdict
 
 
 if sys.version_info >= (3, 0):

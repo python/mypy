@@ -4,7 +4,7 @@ import os.path
 
 from typing import List, Sequence, Set, Tuple, Optional, Dict
 
-from mypy.build import BuildSource, PYTHON_EXTENSIONS
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 

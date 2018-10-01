@@ -5,7 +5,8 @@ import shutil
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildSource, BuildResult
+from mypy.build import BuildResult
+from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.nodes import (
