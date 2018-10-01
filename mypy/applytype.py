@@ -10,7 +10,7 @@ from mypy.nodes import Context
 
 def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optional[Type]],
                             msg: MessageBuilder, context: Context,
-                            only_allowed: bool = False) -> CallableType:
+                            skip_unsatisfied: bool = False) -> CallableType:
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
@@ -18,7 +18,7 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
 
     Note that each type can be None; in this case, it will not be applied.
 
-    If `only_allowed` is True, only apply those types that satisfy type variable
+    If `skip_unsatisfied` is True, only apply those types that satisfy type variable
     bound or constraints (and replace the type with `None`), instead of giving an error.
     """
     tvars = callable.variables
@@ -29,7 +29,9 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
     for i, type in enumerate(types):
         assert not isinstance(type, PartialType), "Internal error: must never apply partial type"
         values = callable.variables[i].values
-        if values and type:
+        if type is None:
+            continue
+        if values:
             if isinstance(type, AnyType):
                 continue
             if isinstance(type, TypeVarType) and type.values:
@@ -50,16 +52,19 @@ def apply_generic_arguments(callable: CallableType, orig_types: Sequence[Optiona
                         best = match
                 types[i] = best
             else:
-                if only_allowed:
+                if skip_unsatisfied:
                     types[i] = None
                 else:
-                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
-        upper_bound = callable.variables[i].upper_bound
-        if type and not mypy.subtypes.is_subtype(type, upper_bound):
-            if only_allowed:
-                types[i] = None
-            else:
-                msg.incompatible_typevar_value(callable, type, callable.variables[i].name, context)
+                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name,
+                                                   context)
+        else:
+            upper_bound = callable.variables[i].upper_bound
+            if not mypy.subtypes.is_subtype(type, upper_bound):
+                if skip_unsatisfied:
+                    types[i] = None
+                else:
+                    msg.incompatible_typevar_value(callable, type, callable.variables[i].name,
+                                                   context)
 
     # Create a map from type variable id to target type.
     id_to_type = {}  # type: Dict[TypeVarId, Type]
