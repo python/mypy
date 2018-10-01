@@ -2581,3 +2581,15 @@ y = 0
 [file mypy.ini]
 [[mypy]
 mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackagePickFirstOnMypyPath]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar.py]
+x = 0
+[file yy/foo/bar.py]
+x = ''
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
