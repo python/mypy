@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 from os import system
-from sys import argv, exit, platform
+from sys import argv, exit, platform, executable, version_info
 
 prog, *args = argv
 
 if platform == 'win32':
-    python_name = 'py -3'
+    # use the executable the script was invoked with
+    # or default to Python 3.x
+    if version_info > (3, 0, 0):
+        python_name = executable
+    else:
+        python_name = 'py -3'
 else:
     python_name = 'python3'
 
