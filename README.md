@@ -221,7 +221,12 @@ whenever you change branches, merge, rebase, or pull.
 Tests
 -----
 
-See [Test README.md](test-data/unit/README.md)
+The basic way to run tests:
+
+    $ pip3 install -r test-requirements.txt
+    $ ./runtests.py
+
+For more on the tests, see [Test README.md](test-data/unit/README.md)
 
 
 Development status
