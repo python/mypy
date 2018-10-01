@@ -2593,3 +2593,29 @@ x = ''
 [file mypy.ini]
 [[mypy]
 mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackageInsideClassicPackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar.baz import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar/baz.py]
+x = ''
+[file yy/foo/bar/baz.py]
+x = 0
+[file yy/foo/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testClassicPackageInsideNamespacePackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar.baz import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar/baz.py]
+x = ''
+[file yy/foo/bar/baz.py]
+x = 0
+[file xx/foo/bar/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
