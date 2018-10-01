@@ -2615,7 +2615,7 @@ reveal_type(x)  # E: Revealed type is 'builtins.int'
 x = ''
 [file yy/foo/bar/baz.py]
 x = 0
-[file xx/foo/bar/__init__.py]
+[file yy/foo/bar/__init__.py]
 [file mypy.ini]
 [[mypy]
 mypy_path = tmp/xx, tmp/yy
