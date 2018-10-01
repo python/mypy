@@ -202,7 +202,7 @@ class FindModuleCache:
         # complicated because if there's a classic subpackage
         # somewhere it should still be preferred over a namespace
         # subpackage with the same name earlier on the path.
-        if self.options.namespace_packages and near_misses:
+        if self.options and self.options.namespace_packages and near_misses:
             for index in range(id.count('.')):
                 if len(near_misses) > 1:
                     reduced_list = [path
