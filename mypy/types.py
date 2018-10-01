@@ -1918,6 +1918,12 @@ def union_items(typ: Type) -> List[Type]:
         return [typ]
 
 
+def is_invariant_instance(tp: Type) -> bool:
+    if not isinstance(tp, Instance) or not tp.args:
+        return False
+    return any(v.variance == INVARIANT for v in tp.type.defn.type_vars)
+
+
 def is_optional(t: Type) -> bool:
     return isinstance(t, UnionType) and any(isinstance(e, NoneTyp) for e in t.items)
 
