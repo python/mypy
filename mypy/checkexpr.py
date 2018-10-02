@@ -18,8 +18,9 @@ from mypy.typeanal import (
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneTyp, TypeVarDef,
     TupleType, TypedDictType, Instance, TypeVarType, ErasedType, UnionType,
-    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, true_only,
-    false_only, is_named_instance, function_type, callable_type, FunctionLike, StarType,
+    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny,
+    true_only, false_only, is_named_instance, function_type, callable_type, FunctionLike,
+    StarType, is_optional, remove_optional, is_invariant_instance
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -30,7 +31,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
-    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, ClassDef, Block, SymbolNode,
+    TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode,
     ARG_POS, ARG_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2, MODULE_REF, LITERAL_TYPE, REVEAL_TYPE
 )
 from mypy.literals import literal
@@ -819,20 +820,36 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # valid results.
         erased_ctx = replace_meta_vars(ctx, ErasedType())
         ret_type = callable.ret_type
-        if isinstance(ret_type, TypeVarType):
-            if ret_type.values or (not isinstance(ctx, Instance) or
-                                   not ctx.args):
-                # The return type is a type variable. If it has values, we can't easily restrict
-                # type inference to conform to the valid values. If it's unrestricted, we could
-                # infer a too general type for the type variable if we use context, and this could
-                # result in confusing and spurious type errors elsewhere.
-                #
-                # Give up and just use function arguments for type inference. As an exception,
-                # if the context is a generic instance type, actually use it as context, as
-                # this *seems* to usually be the reasonable thing to do.
-                #
-                # See also github issues #462 and #360.
-                ret_type = NoneTyp()
+        if is_optional(ret_type) and is_optional(ctx):
+            # If both the context and the return type are optional, unwrap the optional,
+            # since in 99% cases this is what a user expects. In other words, we replace
+            #     Optional[T] <: Optional[int]
+            # with
+            #     T <: int
+            # while the former would infer T <: Optional[int].
+            ret_type = remove_optional(ret_type)
+            erased_ctx = remove_optional(erased_ctx)
+            #
+            # TODO: Instead of this hack and the one below, we need to use outer and
+            # inner contexts at the same time. This is however not easy because of two
+            # reasons:
+            #   * We need to support constraints like [1 <: 2, 2 <: X], i.e. with variables
+            #     on both sides. (This is not too hard.)
+            #   * We need to update all the inference "infrastructure", so that all
+            #     variables in an expression are inferred at the same time.
+            #     (And this is hard, also we need to be careful with lambdas that require
+            #     two passes.)
+        if isinstance(ret_type, TypeVarType) and not is_invariant_instance(ctx):
+            # Another special case: the return type is a type variable. If it's unrestricted,
+            # we could infer a too general type for the type variable if we use context,
+            # and this could result in confusing and spurious type errors elsewhere.
+            #
+            # Give up and just use function arguments for type inference. As an exception,
+            # if the context is an invariant instance type, actually use it as context, as
+            # this *seems* to usually be the reasonable thing to do.
+            #
+            # See also github issues #462 and #360.
+            return callable.copy_modified()
         args = infer_type_arguments(callable.type_var_ids(), ret_type, erased_ctx)
         # Only substitute non-Uninhabited and non-erased types.
         new_args = []  # type: List[Optional[Type]]
@@ -841,7 +858,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 new_args.append(None)
             else:
                 new_args.append(arg)
-        return self.apply_generic_arguments(callable, new_args, error_context)
+        # Don't show errors after we have only used the outer context for inference.
+        # We will use argument context to infer more variables.
+        return self.apply_generic_arguments(callable, new_args, error_context,
+                                            skip_unsatisfied=True)
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Expression],
@@ -1609,9 +1629,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
 
     def apply_generic_arguments(self, callable: CallableType, types: Sequence[Optional[Type]],
-                                context: Context) -> CallableType:
+                                context: Context, skip_unsatisfied: bool = False) -> CallableType:
         """Simple wrapper around mypy.applytype.apply_generic_arguments."""
-        return applytype.apply_generic_arguments(callable, types, self.msg, context)
+        return applytype.apply_generic_arguments(callable, types, self.msg, context,
+                                                 skip_unsatisfied=skip_unsatisfied)
 
     def visit_member_expr(self, e: MemberExpr, is_lvalue: bool = False) -> Type:
         """Visit member expression (of form e.id)."""

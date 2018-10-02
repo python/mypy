@@ -142,6 +142,10 @@ To run the linter:
 
     $ flake8
 
+You can also run all of the above tests together with:
+
+    $ python3 runtests.py
+
 Many test suites store test case descriptions in text files
 (`test-data/unit/*.test`). The module `mypy.test.data` parses these
 descriptions.
