@@ -330,15 +330,16 @@ class ASTConverter:
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
     def visit_FunctionDef(self, n: ast3.FunctionDef) -> Union[FuncDef, Decorator]:
-        node = self.do_func_def(n)
-        node.set_line(n.lineno, n.col_offset)
-        return node
+        f = self.do_func_def(n)
+        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
+        return f
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     def visit_AsyncFunctionDef(self, n: ast3.AsyncFunctionDef) -> Union[FuncDef, Decorator]:
-        node = self.do_func_def(n, is_coroutine=True)
-        return self.set_line(node, n)
+        f = self.do_func_def(n, is_coroutine=True)
+        f.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
+        return f
 
     def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
@@ -786,7 +787,8 @@ class ASTConverter:
 
         e = LambdaExpr(self.transform_args(n.args, n.lineno),
                        self.as_required_block([body], n.lineno))
-        return self.set_line(e, n)
+        e.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
+        return e
 
     # IfExp(expr test, expr body, expr orelse)
     def visit_IfExp(self, n: ast3.IfExp) -> ConditionalExpr:
