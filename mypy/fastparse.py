@@ -72,9 +72,7 @@ except ImportError:
               'Python 3.3 and greater.', file=sys.stderr)
     sys.exit(1)
 
-T = TypeVar('T', bound=Union[ast3.expr, ast3.stmt])
-U = TypeVar('U', bound=Node)
-V = TypeVar('V')
+N = TypeVar('N', bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
@@ -195,7 +193,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: Node, n: AST) -> Node:
+    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt]) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         return node
@@ -745,7 +743,7 @@ class ASTConverter:
         # potentially inefficient!
         return self.group(op, self.translate_expr_list(n.values), n)
 
-    def group(self, op: str, vals: List[Expression], n: AST) -> OpExpr:
+    def group(self, op: str, vals: List[Expression], n: ast3.expr) -> OpExpr:
         if len(vals) == 2:
             e = OpExpr(op, vals[0], vals[1])
         else:
@@ -889,7 +887,7 @@ class ASTConverter:
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
         val = n.n
         if isinstance(val, int):
-            e = IntExpr(val)
+            e = IntExpr(val)  # type: Union[IntExpr, FloatExpr, ComplexExpr]
         elif isinstance(val, float):
             e = FloatExpr(val)
         elif isinstance(val, complex):
@@ -965,7 +963,7 @@ class ASTConverter:
         if (isinstance(value, Call) and
                 isinstance(value.func, Name) and
                 value.func.id == 'super'):
-            e = SuperExpr(n.attr, self.visit(value))
+            e = SuperExpr(n.attr, self.visit(value))  # type: Union[MemberExpr, SuperExpr]
         else:
             e = MemberExpr(self.visit(value), n.attr)
         return self.set_line(e, n)
@@ -990,7 +988,7 @@ class ASTConverter:
         expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
         if isinstance(n.ctx, ast3.Store):
             # [x, y] = z and (x, y) = z means exactly the same thing
-            e = TupleExpr(expr_list)
+            e = TupleExpr(expr_list)  # type: Union[ListExpr, TupleExpr]
         else:
             e = ListExpr(expr_list)
         return self.set_line(e, n)
