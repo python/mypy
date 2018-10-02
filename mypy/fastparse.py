@@ -179,6 +179,9 @@ class ASTConverter:
         self.is_stub = is_stub
         self.errors = errors
 
+        # Cache of visit_X methods keyed by type of visited object
+        self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[ast3.AST]], Any]]
+
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity='note')
 
@@ -188,8 +191,12 @@ class ASTConverter:
     def visit(self, node: Optional[ast3.AST]) -> Any:  # same as in typed_ast stub
         if node is None:
             return None
-        method = 'visit_' + node.__class__.__name__
-        visitor = getattr(self, method)
+        typeobj = type(node)
+        visitor = self.visitor_cache.get(typeobj)
+        if visitor is None:
+            method = 'visit_' + node.__class__.__name__
+            visitor = getattr(self, method)
+            self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
     def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Expression]:
