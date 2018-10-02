@@ -167,7 +167,7 @@ def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     return False
 
 
-class ASTConverter(ast3.NodeTransformer):
+class ASTConverter:
     def __init__(self,
                  options: Options,
                  is_stub: bool,
@@ -185,13 +185,12 @@ class ASTConverter(ast3.NodeTransformer):
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
-    def generic_visit(self, node: ast3.AST) -> None:
-        raise RuntimeError('AST node not implemented: ' + str(type(node)))
-
     def visit(self, node: Optional[ast3.AST]) -> Any:  # same as in typed_ast stub
         if node is None:
             return None
-        return super().visit(node)
+        method = 'visit_' + node.__class__.__name__
+        visitor = getattr(self, method)
+        return visitor(node)
 
     def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Expression]:
         res = []  # type: List[Expression]
