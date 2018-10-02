@@ -450,48 +450,36 @@ class ASTConverter:
                        line: int,
                        no_type_check: bool = False,
                        ) -> List[Argument]:
-        def make_argument(arg: ast3.arg, default: Optional[ast3.expr], kind: int) -> Argument:
-            if no_type_check:
-                arg_type = None
-            else:
-                if arg.annotation is not None and arg.type_comment is not None:
-                    self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
-                arg_type = None
-                if arg.annotation is not None:
-                    arg_type = TypeConverter(self.errors, line=arg.lineno).visit(arg.annotation)
-                elif arg.type_comment is not None:
-                    arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
-            return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
-
         new_args = []
         names = []  # type: List[ast3.arg]
         num_no_defaults = len(args.args) - len(args.defaults)
         # positional arguments without defaults
         for a in args.args[:num_no_defaults]:
-            new_args.append(make_argument(a, None, ARG_POS))
+            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check))
             names.append(a)
 
         # positional arguments with defaults
         for a, d in zip(args.args[num_no_defaults:], args.defaults):
-            new_args.append(make_argument(a, d, ARG_OPT))
+            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check))
             names.append(a)
 
         # *arg
         if args.vararg is not None:
-            new_args.append(make_argument(args.vararg, None, ARG_STAR))
+            new_args.append(self.make_argument(args.vararg, None, ARG_STAR, no_type_check))
             names.append(args.vararg)
 
         # keyword-only arguments with defaults
         for a, d in zip(args.kwonlyargs, args.kw_defaults):
-            new_args.append(make_argument(
+            new_args.append(self.make_argument(
                 a,
                 d,
-                ARG_NAMED if d is None else ARG_NAMED_OPT))
+                ARG_NAMED if d is None else ARG_NAMED_OPT,
+                no_type_check))
             names.append(a)
 
         # **kwarg
         if args.kwarg is not None:
-            new_args.append(make_argument(args.kwarg, None, ARG_STAR2))
+            new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
         def fail_arg(msg: str, arg: ast3.arg) -> None:
@@ -500,6 +488,20 @@ class ASTConverter:
         check_arg_names([name.arg for name in names], names, fail_arg)
 
         return new_args
+
+    def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: int,
+                      no_type_check: bool) -> Argument:
+        if no_type_check:
+            arg_type = None
+        else:
+            if arg.annotation is not None and arg.type_comment is not None:
+                self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
+            arg_type = None
+            if arg.annotation is not None:
+                arg_type = TypeConverter(self.errors, line=arg.lineno).visit(arg.annotation)
+            elif arg.type_comment is not None:
+                arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
+        return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -867,18 +869,15 @@ class ASTConverter:
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
     def visit_Call(self, n: ast3.Call) -> CallExpr:
-        def is_star2arg(k: ast3.keyword) -> bool:
-            return k.arg is None
-
         arg_types = self.translate_expr_list(
             [a.value if isinstance(a, ast3.Starred) else a for a in n.args] +
             [k.value for k in n.keywords])
         arg_kinds = ([ARG_STAR if isinstance(a, ast3.Starred) else ARG_POS for a in n.args] +
-                     [ARG_STAR2 if is_star2arg(k) else ARG_NAMED for k in n.keywords])
+                     [ARG_STAR2 if k.arg is None else ARG_NAMED for k in n.keywords])
         node = CallExpr(self.visit(n.func),
                         arg_types,
                         arg_kinds,
-                        cast(List[Optional[str]], [None] * len(n.args)) +
+                        cast('List[Optional[str]]', [None] * len(n.args)) +
                         [k.arg for k in n.keywords])
         node.set_line(n.lineno, n.col_offset)
         return node
@@ -960,14 +959,16 @@ class ASTConverter:
         return EllipsisExpr()
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    @with_line
     def visit_Attribute(self, n: ast3.Attribute) -> Union[MemberExpr, SuperExpr]:
-        if (isinstance(n.value, ast3.Call) and
-                isinstance(n.value.func, ast3.Name) and
-                n.value.func.id == 'super'):
-            return SuperExpr(n.attr, self.visit(n.value))
-
-        return MemberExpr(self.visit(n.value), n.attr)
+        value = n.value
+        if (isinstance(value, ast3.Call) and
+                isinstance(value.func, ast3.Name) and
+                value.func.id == 'super'):
+            node = SuperExpr(n.attr, self.visit(value))
+        else:
+            node = MemberExpr(self.visit(value), n.attr)
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # Subscript(expr value, slice slice, expr_context ctx)
     @with_line
