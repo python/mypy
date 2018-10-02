@@ -23,6 +23,10 @@ from mypy.version import __version__
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
 
+class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    def __init__(self, prog: str) -> None:
+        super().__init__(prog=prog, max_help_position=28)
+
 parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')
 parser.set_defaults(action=None)
@@ -52,29 +56,29 @@ stop_parser = p = subparsers.add_parser('stop', help="Stop daemon (asks it polit
 
 kill_parser = p = subparsers.add_parser('kill', help="Kill daemon (kills the process)")
 
-check_parser = p = subparsers.add_parser('check',
-                                         help="Check some files (requires running daemon)")
+check_parser = p = subparsers.add_parser('check', formatter_class=AugmentedHelpFormatter,
+                                         help="Check some files (requires daemon)")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
-p.add_argument('--junit-xml', help="write junit.xml to the given file")
+p.add_argument('--junit-xml', help="Write junit.xml to the given file")
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
 
-run_parser = p = subparsers.add_parser('run',
+run_parser = p = subparsers.add_parser('run', formatter_class=AugmentedHelpFormatter,
                                        help="Check some files, [re]starting daemon if necessary")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
-p.add_argument('--junit-xml', help="write junit.xml to the given file")
+p.add_argument('--junit-xml', help="Write junit.xml to the given file")
 p.add_argument('--timeout', metavar='TIMEOUT', type=int,
                help="Server shutdown timeout (in seconds)")
 p.add_argument('--log-file', metavar='FILE', type=str,
                help="Direct daemon stdout/stderr to FILE")
-p.add_argument('flags', metavar='flags', nargs='*', type=str,
+p.add_argument('flags', metavar='ARG', nargs='*', type=str,
                help="Regular mypy flags and files (precede with --)")
 
-recheck_parser = p = subparsers.add_parser('recheck',
-    help="Check the same files as the most previous  check run (requires running daemon)")
+recheck_parser = p = subparsers.add_parser('recheck', formatter_class=AugmentedHelpFormatter,
+    help="Check the same files as the most previous check run (requires daemon).")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
-p.add_argument('--junit-xml', help="write junit.xml to the given file")
+p.add_argument('--junit-xml', help="Write junit.xml to the given file")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -148,7 +152,7 @@ def do_start(args: argparse.Namespace) -> None:
 
 
 @action(restart_parser)
-def do_restart(args: argparse.Namespace, allow_sources: bool = False) -> None:
+def do_restart(args: argparse.Namespace) -> None:
     """Restart daemon (it may or may not be running; but not hanging).
 
     We first try to stop it politely if it's running.  This also sets
