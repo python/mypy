@@ -41,6 +41,19 @@ from mypy.options import Options
 
 try:
     from typed_ast import ast3
+    from typed_ast.ast3 import (
+        AST,
+        Call,
+        FunctionType,
+        Name,
+        Attribute,
+        Ellipsis as ast3_Ellipsis,
+        Starred,
+        NameConstant,
+        Expression as ast3_Expression,
+        Str,
+        Index,
+    )
 except ImportError:
     if sys.version_info.minor > 2:
         try:
@@ -137,7 +150,7 @@ def parse_type_comment(type_comment: str, line: int, errors: Optional[Errors]) -
         else:
             raise
     else:
-        assert isinstance(typ, ast3.Expression)
+        assert isinstance(typ, ast3_Expression)
         return TypeConverter(errors, line=line).visit(typ.body)
 
 
@@ -152,10 +165,10 @@ def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', 
 
 
 def is_no_type_check_decorator(expr: ast3.expr) -> bool:
-    if isinstance(expr, ast3.Name):
+    if isinstance(expr, Name):
         return expr.id == 'no_type_check'
-    elif isinstance(expr, ast3.Attribute):
-        if isinstance(expr.value, ast3.Name):
+    elif isinstance(expr, Attribute):
+        if isinstance(expr.value, Name):
             return expr.value.id == 'typing' and expr.attr == 'no_type_check'
     return False
 
@@ -173,7 +186,7 @@ class ASTConverter:
         self.errors = errors
 
         # Cache of visit_X methods keyed by type of visited object
-        self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[ast3.AST]], Any]]
+        self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
 
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity='note')
@@ -181,7 +194,7 @@ class ASTConverter:
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
-    def visit(self, node: Optional[ast3.AST]) -> Any:  # same as in typed_ast stub
+    def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
         if node is None:
             return None
         typeobj = type(node)
@@ -192,7 +205,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def translate_expr_list(self, l: Sequence[ast3.AST]) -> List[Expression]:
+    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
         res = []  # type: List[Expression]
         for e in l:
             exp = self.visit(e)
@@ -200,7 +213,7 @@ class ASTConverter:
             res.append(exp)
         return res
 
-    def translate_stmt_list(self, l: Sequence[ast3.AST]) -> List[Statement]:
+    def translate_stmt_list(self, l: Sequence[AST]) -> List[Statement]:
         res = []  # type: List[Statement]
         for e in l:
             stmt = self.visit(e)
@@ -222,7 +235,7 @@ class ASTConverter:
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }  # type: Final[Dict[typing.Type[ast3.AST], str]]
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -242,7 +255,7 @@ class ASTConverter:
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }  # type: Final[Dict[typing.Type[ast3.AST], str]]
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -354,10 +367,10 @@ class ASTConverter:
         elif n.type_comment is not None:
             try:
                 func_type_ast = ast3.parse(n.type_comment, '<func_type>', 'func_type')
-                assert isinstance(func_type_ast, ast3.FunctionType)
+                assert isinstance(func_type_ast, FunctionType)
                 # for ellipsis arg
                 if (len(func_type_ast.argtypes) == 1 and
-                        isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
+                        isinstance(func_type_ast.argtypes[0], ast3_Ellipsis)):
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
                         self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
@@ -870,13 +883,13 @@ class ASTConverter:
 
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
-    def visit_Call(self, n: ast3.Call) -> CallExpr:
+    def visit_Call(self, n: Call) -> CallExpr:
         args = n.args
         keywords = n.keywords
         arg_types = self.translate_expr_list(
-            [a.value if isinstance(a, ast3.Starred) else a for a in args] +
+            [a.value if isinstance(a, Starred) else a for a in args] +
             [k.value for k in keywords])
-        arg_kinds = ([ARG_STAR if isinstance(a, ast3.Starred) else ARG_POS for a in args] +
+        arg_kinds = ([ARG_STAR if isinstance(a, Starred) else ARG_POS for a in args] +
                      [ARG_STAR2 if k.arg is None else ARG_NAMED for k in keywords])
         node = CallExpr(self.visit(n.func),
                         arg_types,
@@ -900,7 +913,7 @@ class ASTConverter:
         raise RuntimeError('num not implemented for ' + str(type(val)))
 
     # Str(string s)
-    def visit_Str(self, n: ast3.Str) -> Union[UnicodeExpr, StrExpr]:
+    def visit_Str(self, n: Str) -> Union[UnicodeExpr, StrExpr]:
         # Hack: assume all string literals in Python 2 stubs are normal
         # strs (i.e. not unicode).  All stubs are parsed with the Python 3
         # parser, which causes unprefixed string literals to be interpreted
@@ -955,19 +968,19 @@ class ASTConverter:
         return BytesExpr(contents)
 
     # NameConstant(singleton value)
-    def visit_NameConstant(self, n: ast3.NameConstant) -> NameExpr:
+    def visit_NameConstant(self, n: NameConstant) -> NameExpr:
         return NameExpr(str(n.value))
 
     # Ellipsis
     @with_line
-    def visit_Ellipsis(self, n: ast3.Ellipsis) -> EllipsisExpr:
+    def visit_Ellipsis(self, n: ast3_Ellipsis) -> EllipsisExpr:
         return EllipsisExpr()
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    def visit_Attribute(self, n: ast3.Attribute) -> Union[MemberExpr, SuperExpr]:
+    def visit_Attribute(self, n: Attribute) -> Union[MemberExpr, SuperExpr]:
         value = n.value
-        if (isinstance(value, ast3.Call) and
-                isinstance(value.func, ast3.Name) and
+        if (isinstance(value, Call) and
+                isinstance(value.func, Name) and
                 value.func.id == 'super'):
             node = SuperExpr(n.attr, self.visit(value))
         else:
@@ -983,11 +996,11 @@ class ASTConverter:
 
     # Starred(expr value, expr_context ctx)
     @with_line
-    def visit_Starred(self, n: ast3.Starred) -> StarExpr:
+    def visit_Starred(self, n: Starred) -> StarExpr:
         return StarExpr(self.visit(n.value))
 
     # Name(identifier id, expr_context ctx)
-    def visit_Name(self, n: ast3.Name) -> NameExpr:
+    def visit_Name(self, n: Name) -> NameExpr:
         node = NameExpr(n.id)
         node.set_line(n.lineno, n.col_offset)
         return node
@@ -1019,33 +1032,35 @@ class ASTConverter:
         return TupleExpr(self.translate_expr_list(n.dims))
 
     # Index(expr value)
-    def visit_Index(self, n: ast3.Index) -> Node:
+    def visit_Index(self, n: Index) -> Node:
         return self.visit(n.value)
 
 
-class TypeConverter(ast3.NodeTransformer):
+class TypeConverter:
     def __init__(self, errors: Optional[Errors], line: int = -1) -> None:
         self.errors = errors
         self.line = line
-        self.node_stack = []  # type: List[ast3.AST]
+        self.node_stack = []  # type: List[AST]
 
     @overload
     def visit(self, node: ast3.expr) -> Type: ...
 
     @overload  # noqa
-    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]: ...
+    def visit(self, node: Optional[AST]) -> Optional[Type]: ...
 
-    def visit(self, node: Optional[ast3.AST]) -> Optional[Type]:  # noqa
+    def visit(self, node: Optional[AST]) -> Optional[Type]:  # noqa
         """Modified visit -- keep track of the stack of nodes"""
         if node is None:
             return None
         self.node_stack.append(node)
         try:
-            return super().visit(node)
+            method = 'visit_' + node.__class__.__name__
+            visitor = getattr(self, method)
+            return visitor(node)
         finally:
             self.node_stack.pop()
 
-    def parent(self) -> Optional[ast3.AST]:
+    def parent(self) -> Optional[AST]:
         """Return the AST node above the one we are processing"""
         if len(self.node_stack) < 2:
             return None
@@ -1062,18 +1077,18 @@ class TypeConverter(ast3.NodeTransformer):
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
         # directly hook into the Python 3.5 type converter in some cases
-        # without needing to create an intermediary `ast3.Str` object.
+        # without needing to create an intermediary `Str` object.
         return (parse_type_comment(s.strip(), self.line, self.errors) or
                 AnyType(TypeOfAny.from_error))
 
-    def generic_visit(self, node: ast3.AST) -> Type:  # type: ignore
+    def generic_visit(self, node: AST) -> Type:  # type: ignore
         self.fail(TYPE_COMMENT_AST_ERROR, self.line, getattr(node, 'col_offset', -1))
         return AnyType(TypeOfAny.from_error)
 
     def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]
 
-    def visit_Call(self, e: ast3.Call) -> Type:
+    def visit_Call(self, e: Call) -> Type:
         # Parse the arg constructor
         f = e.func
         constructor = stringify_name(f)
@@ -1125,28 +1140,28 @@ class TypeConverter(ast3.NodeTransformer):
         return TypeList([self.visit(e) for e in l], line=self.line)
 
     def _extract_argument_name(self, n: ast3.expr) -> Optional[str]:
-        if isinstance(n, ast3.Str):
+        if isinstance(n, Str):
             return n.s.strip()
-        elif isinstance(n, ast3.NameConstant) and str(n.value) == 'None':
+        elif isinstance(n, NameConstant) and str(n.value) == 'None':
             return None
         self.fail('Expected string literal for argument name, got {}'.format(
             type(n).__name__), self.line, 0)
         return None
 
-    def visit_Name(self, n: ast3.Name) -> Type:
+    def visit_Name(self, n: Name) -> Type:
         return UnboundType(n.id, line=self.line)
 
-    def visit_NameConstant(self, n: ast3.NameConstant) -> Type:
+    def visit_NameConstant(self, n: NameConstant) -> Type:
         return UnboundType(str(n.value))
 
     # Str(string s)
-    def visit_Str(self, n: ast3.Str) -> Type:
+    def visit_Str(self, n: Str) -> Type:
         return (parse_type_comment(n.s.strip(), self.line, self.errors) or
                 AnyType(TypeOfAny.from_error))
 
     # Subscript(expr value, slice slice, expr_context ctx)
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
-        if not isinstance(n.slice, ast3.Index):
+        if not isinstance(n.slice, Index):
             self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
             return AnyType(TypeOfAny.from_error)
 
@@ -1171,7 +1186,7 @@ class TypeConverter(ast3.NodeTransformer):
                          implicit=True, line=self.line)
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    def visit_Attribute(self, n: ast3.Attribute) -> Type:
+    def visit_Attribute(self, n: Attribute) -> Type:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
@@ -1181,7 +1196,7 @@ class TypeConverter(ast3.NodeTransformer):
             return AnyType(TypeOfAny.from_error)
 
     # Ellipsis
-    def visit_Ellipsis(self, n: ast3.Ellipsis) -> Type:
+    def visit_Ellipsis(self, n: ast3_Ellipsis) -> Type:
         return EllipsisType(line=self.line)
 
     # List(expr* elts, expr_context ctx)
@@ -1190,10 +1205,10 @@ class TypeConverter(ast3.NodeTransformer):
         return self.translate_argument_list(n.elts)
 
 
-def stringify_name(n: ast3.AST) -> Optional[str]:
-    if isinstance(n, ast3.Name):
+def stringify_name(n: AST) -> Optional[str]:
+    if isinstance(n, Name):
         return n.id
-    elif isinstance(n, ast3.Attribute):
+    elif isinstance(n, Attribute):
         sv = stringify_name(n.value)
         if sv is not None:
             return "{}.{}".format(sv, n.attr)
