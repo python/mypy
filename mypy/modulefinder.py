@@ -196,12 +196,27 @@ class FindModuleCache:
                         continue
                     return path
 
-        # In namespace mode, re-check those entries that had 'verify'
-        # set using different rules.  This time we allow missing
-        # __init__.py[i] files and we don't look for -stubs.  It's
-        # complicated because if there's a classic subpackage
-        # somewhere it should still be preferred over a namespace
-        # subpackage with the same name earlier on the path.
+        # In namespace mode, re-check those entries that had 'verify'.
+        # Assume search path entries xxx, yyy and zzz, and we're
+        # looking for foo.bar.baz.  Suppose near_misses has:
+        #
+        # - xxx/foo/bar/baz.py
+        # - yyy/foo/bar/baz/__init__.py
+        # - zzz/foo/bar/baz.pyi
+        #
+        # If any of the foo directories has __init__.py[i], it wins.
+        # Else, we look for foo/bar/__init__.py[i], etc.  If there are
+        # none, the first hit wins.  Note that this does not take into
+        # account whether the lowest-level module is a file (baz.py),
+        # a package (baz/__init__.py), or a stub file (baz.pyi) -- for
+        # these the first one encountered along the search path wins.
+        #
+        # The helper function highest_init_level() returns an int that
+        # indicates the highest level at which a __init__.py[i] file
+        # is found; if no __init__ was found it returns 0, if we find
+        # only foo/bar/__init__.py it returns 1, and if we have
+        # foo/__init__.py it returns 2 (regardless of what's un
+        # foo/bar).  It doesn't look higher than that.
         if self.options and self.options.namespace_packages and near_misses:
             levels = [highest_init_level(fscache, id, path) for path in near_misses]
             index = levels.index(max(levels))
