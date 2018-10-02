@@ -3269,3 +3269,48 @@ L0:
     r0 = 10
     r1 = None
     return r1
+
+[case testDirectlyCall__bool__]
+from typing import Optional
+
+class A:
+    def __bool__(self) -> bool:
+        return True
+class B(A):
+    def __bool__(self) -> bool:
+        return False
+
+def lol(x: A) -> int:
+    if x:
+        return 1
+    else:
+        return 0
+
+[out]
+def A.__bool__(self):
+    self :: A
+    r0 :: bool
+L0:
+    r0 = True
+    return r0
+def B.__bool__(self):
+    self :: B
+    r0 :: bool
+L0:
+    r0 = False
+    return r0
+def lol(x):
+    x :: A
+    r0 :: bool
+    r1, r2 :: short_int
+L0:
+    r0 = x.__bool__()
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = 1
+    return r1
+L2:
+    r2 = 0
+    return r2
+L3:
+    unreachable
