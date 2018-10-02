@@ -608,7 +608,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """
         arg_messages = arg_messages or self.msg
 
-        if object_type is not None and isinstance(callee, FunctionLike):
+        if (callable_name is not None and object_type is not None
+                and isinstance(callee, FunctionLike)):
             # Apply plugin signature hook that may generate a better signature.
             signature_hook = self.plugin.get_method_signature_hook(callable_name)
             if signature_hook:
@@ -1789,7 +1790,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                   args: List[Expression],
                                   arg_kinds: List[int],
                                   context: Context,
-                                  local_errors: Optional[MessageBuilder] = None) -> Tuple[Type, Type]:
+                                  local_errors: Optional[MessageBuilder] = None,
+                                  ) -> Tuple[Type, Type]:
         """Type check a call to a named method on an object.
 
         Return tuple (result type, inferred method type).

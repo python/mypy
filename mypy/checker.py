@@ -3072,7 +3072,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if target:
             self.check_assignment(target, self.temp_node(obj, expr), infer_lvalue_type)
         arg = self.temp_node(AnyType(TypeOfAny.special_form), expr)
-        res = echk.check_method_call_by_name('__aexit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
+        res = echk.check_method_call_by_name(
+            '__aexit__', ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr)[0]
         echk.check_awaitable_expr(
             res, expr, messages.INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT)
 
