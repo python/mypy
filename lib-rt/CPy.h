@@ -724,6 +724,19 @@ static CPyTagged CPyObject_Hash(PyObject *o) {
     }
 }
 
+static inline int CPyObject_Size(PyObject *obj) {
+    Py_ssize_t s = PyObject_Size(obj);
+    if (s < 0) {
+        return CPY_INT_TAG;
+    } else {
+        // Technically __len__ could return a really big number, so we
+        // should allow this to produce a boxed int. In practice it
+        // shouldn't ever if the data structure actually contains all
+        // the elements, but...
+        return CPyTagged_FromLongLong(s);
+    }
+}
+
 static inline int CPy_ObjectToStatus(PyObject *obj) {
     if (obj) {
         Py_DECREF(obj);

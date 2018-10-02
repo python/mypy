@@ -302,6 +302,13 @@ type_op = func_op(
     error_kind=ERR_NEVER,
     emit=simple_emit('{dest} = PyObject_Type({args[0]});'))
 
+func_op(name='builtins.len',
+        arg_types=[object_rprimitive],
+        result_type=int_rprimitive,
+        error_kind=ERR_NEVER,
+        emit=simple_emit('{dest} = CPyObject_Size({args[0]});'),
+        priority=0)
+
 pytype_from_template_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, str_rprimitive],
     result_type=object_rprimitive,
