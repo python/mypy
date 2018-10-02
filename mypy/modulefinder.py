@@ -221,7 +221,7 @@ class FindModuleCache:
             levels = [highest_init_level(fscache, id, path) for path in near_misses]
             index = levels.index(max(levels))
             return near_misses[index]
-            
+
         return None
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
