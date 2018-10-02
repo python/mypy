@@ -66,8 +66,7 @@ Functions
    # This function has no parameters and also returns nothing. Annotations
    # can also be placed on the same line as their function headers.
    def greet_world(): # type: () -> None
-       print "Hello, world!"
-
+       print "Hello, world!You are awesome!!"
    # And here's how you specify multiple arguments
    def plus(num1, num2):
        # type: (int, int) -> int
