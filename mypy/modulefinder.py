@@ -203,17 +203,10 @@ class FindModuleCache:
         # somewhere it should still be preferred over a namespace
         # subpackage with the same name earlier on the path.
         if self.options and self.options.namespace_packages and near_misses:
-            for index in range(id.count('.')):
-                if len(near_misses) > 1:
-                    reduced_list = [path
-                                    for path in near_misses
-                                    if verify_module(fscache, id, path,
-                                                     index, index + 1)]
-                    if reduced_list:
-                        near_misses = reduced_list
-            if near_misses:
-                return near_misses[0]
-
+            levels = [highest_init_level(fscache, id, path) for path in near_misses]
+            index = levels.index(max(levels))
+            return near_misses[index]
+            
         return None
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
@@ -247,32 +240,29 @@ class FindModuleCache:
         return result
 
 
-def verify_module(fscache: FileSystemCache, id: str, path: str,
-                  head: int = 0, tail: int = 999999999) -> bool:
-    """Check that all packages containing id have a __init__ file.
-
-    Optional arguments head and tail constrain the check to the slice
-    [head : tail] of the paths to try.  For example, if the toplevel
-    package is allowed to be a namespace, pass head=1; if the
-    innermost package is allowed to be a namespace, pass tail=-1.
-    """
+def verify_module(fscache: FileSystemCache, id: str, path: str) -> bool:
+    """Check that all packages containing id have a __init__ file."""
     if path.endswith(('__init__.py', '__init__.pyi')):
         path = os.path.dirname(path)
-    # Counting is a bit tricky.  If id == 'foo.bar.baz.boo', then
-    # count == 3, so the index takes on the values 0, 1 and 2.  But
-    # the algorithm strips dirnames from the end, so we make the index
-    # go backwards: 2, 1, 0.  Then specifying head=1 would skip index
-    # value 0, while specifying head=-1 would skip index value 2.
-    count = id.count('.')
-    if tail < 0:
-        tail += count
-    for index in reversed(range(count)):
+    for i in range(id.count('.')):
         path = os.path.dirname(path)
-        if (head <= index < tail
-            and not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
-                        for extension in PYTHON_EXTENSIONS)):
+        if not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
+                   for extension in PYTHON_EXTENSIONS):
             return False
     return True
+
+
+def highest_init_level(fscache: FileSystemCache, id: str, path: str) -> int:
+    """Compute the highest level where an __init__ file is found."""
+    if path.endswith(('__init__.py', '__init__.pyi')):
+        path = os.path.dirname(path)
+    level = 0
+    for i in range(id.count('.')):
+        path = os.path.dirname(path)
+        if any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)))
+               for extension in PYTHON_EXTENSIONS):
+            level = i + 1
+    return level
 
 
 def mypy_path() -> List[str]:
