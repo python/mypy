@@ -4923,11 +4923,9 @@ reveal_type(f(g()))  # E: Revealed type is 'builtins.list[builtins.int]'
 [builtins fixtures/list.pyi]
 
 [case testOverloadInferringArgumentsUsingContext2-skip]
-# This test case ought to work, but is maybe blocked by 
-# https://github.com/python/mypy/issues/4872?
-#
-# See https://github.com/python/mypy/pull/5660#discussion_r219669409 for
-# more context.
+# TODO: Overloads only use outer context to infer type variables in a given overload variant,
+# but never use outer context to _choose_ a better overload in ambiguous situations
+# like empty containers or multiple inheritance, instead just always choosing the first one.
 
 from typing import Optional, List, overload, TypeVar
 T = TypeVar('T')
