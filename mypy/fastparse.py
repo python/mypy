@@ -636,9 +636,9 @@ class ASTConverter:
         else:
             target_type = None
         s = WithStmt([self.visit(i.context_expr) for i in n.items],
-                        [self.visit(i.optional_vars) for i in n.items],
-                        self.as_required_block(n.body, n.lineno),
-                        target_type)
+                     [self.visit(i.optional_vars) for i in n.items],
+                     self.as_required_block(n.body, n.lineno),
+                     target_type)
         s.is_async = True
         return self.set_line(s, n)
 
