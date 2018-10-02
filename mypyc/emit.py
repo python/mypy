@@ -540,7 +540,7 @@ class Emitter:
                                 optional)
             self.emit_lines(*failure)
             self.emit_line('} else')
-            conversion = 'PyObject_IsTrue({})'.format(src)
+            conversion = '{} == Py_True'.format(src)
             self.emit_line('    {} = {};'.format(dest, conversion))
         elif is_none_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
@@ -612,9 +612,12 @@ class Emitter:
             # Steal the existing reference if it exists.
             self.emit_line('{}{} = CPyTagged_StealAsObject({});'.format(declaration, dest, src))
         elif is_bool_rprimitive(typ):
-            # TODO: The Py_RETURN macros return the correct PyObject * with reference count
-            #       handling. Relevant here?
-            self.emit_lines('{}{} = PyBool_FromLong({});'.format(declaration, dest, src))
+            # N.B: bool is special cased to produce a borrowed value
+            # after boxing, so we don't need to increment the refcount
+            # when this comes directly from a Box op.
+            self.emit_lines('{}{} = {} ? Py_True : Py_False;'.format(declaration, dest, src))
+            if not can_borrow:
+                self.emit_inc_ref(dest, object_rprimitive)
         elif is_none_rprimitive(typ):
             # N.B: None is special cased to produce a borrowed value
             # after boxing, so we don't need to increment the refcount

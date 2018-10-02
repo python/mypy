@@ -1207,8 +1207,8 @@ class Box(RegisterOp):
         super().__init__(line)
         self.src = src
         self.type = object_rprimitive
-        # When we box None values, we produce a borrowed result
-        if is_none_rprimitive(self.src.type):
+        # When we box None and bool values, we produce a borrowed result
+        if is_none_rprimitive(self.src.type) or is_bool_rprimitive(self.src.type):
             self.is_borrowed = True
 
     def sources(self) -> List[Value]:
