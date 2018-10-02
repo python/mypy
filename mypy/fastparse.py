@@ -151,13 +151,6 @@ def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', 
     return wrapper
 
 
-def find(f: Callable[[V], bool], seq: Sequence[V]) -> Optional[V]:
-    for item in seq:
-        if f(item):
-            return item
-    return None
-
-
 def is_no_type_check_decorator(expr: ast3.expr) -> bool:
     if isinstance(expr, ast3.Name):
         return expr.id == 'no_type_check'
@@ -203,7 +196,7 @@ class ASTConverter:
         res = []  # type: List[Expression]
         for e in l:
             exp = self.visit(e)
-            isinstance(exp, Expression)
+            assert isinstance(exp, Expression)
             res.append(exp)
         return res
 
@@ -211,7 +204,7 @@ class ASTConverter:
         res = []  # type: List[Statement]
         for e in l:
             stmt = self.visit(e)
-            isinstance(stmt, Statement)
+            assert isinstance(stmt, Statement)
             res.append(stmt)
         return res
 
@@ -489,10 +482,7 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        def fail_arg(msg: str, arg: ast3.arg) -> None:
-            self.fail(msg, arg.lineno, arg.col_offset)
-
-        check_arg_names([name.arg for name in names], names, fail_arg)
+        check_arg_names([name.arg for name in names], names, self.fail_arg)
 
         return new_args
 
@@ -509,6 +499,9 @@ class ASTConverter:
             elif arg.type_comment is not None:
                 arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
+
+    def fail_arg(self, msg: str, arg: ast3.arg) -> None:
+        self.fail(msg, arg.lineno, arg.col_offset)
 
     # ClassDef(identifier name,
     #  expr* bases,
@@ -615,10 +608,11 @@ class ASTConverter:
 
     # If(expr test, stmt* body, stmt* orelse)
     def visit_If(self, n: ast3.If) -> IfStmt:
+        lineno = n.lineno
         node = IfStmt([self.visit(n.test)],
-                      [self.as_required_block(n.body, n.lineno)],
-                      self.as_block(n.orelse, n.lineno))
-        node.set_line(n.lineno, n.col_offset)
+                      [self.as_required_block(n.body, lineno)],
+                      self.as_block(n.orelse, lineno))
+        node.set_line(lineno, n.col_offset)
         return node
 
     # With(withitem* items, stmt* body, string? type_comment)
@@ -740,21 +734,22 @@ class ASTConverter:
     def visit_BoolOp(self, n: ast3.BoolOp) -> OpExpr:
         # mypy translates (1 and 2 and 3) as (1 and (2 and 3))
         assert len(n.values) >= 2
-        if isinstance(n.op, ast3.And):
+        op_node = n.op
+        if isinstance(op_node, ast3.And):
             op = 'and'
-        elif isinstance(n.op, ast3.Or):
+        elif isinstance(op_node, ast3.Or):
             op = 'or'
         else:
             raise RuntimeError('unknown BoolOp ' + str(type(n)))
 
         # potentially inefficient!
-        def group(vals: List[Expression]) -> OpExpr:
-            if len(vals) == 2:
-                return OpExpr(op, vals[0], vals[1])
-            else:
-                return OpExpr(op, vals[0], group(vals[1:]))
+        return self.group(op, self.translate_expr_list(n.values))
 
-        return group(self.translate_expr_list(n.values))
+    def group(self, op: str, vals: List[Expression]) -> OpExpr:
+        if len(vals) == 2:
+            return OpExpr(op, vals[0], vals[1])
+        else:
+            return OpExpr(op, vals[0], self.group(op, vals[1:]))
 
     # BinOp(expr left, operator op, expr right)
     @with_line
@@ -876,30 +871,33 @@ class ASTConverter:
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
     def visit_Call(self, n: ast3.Call) -> CallExpr:
+        args = n.args
+        keywords = n.keywords
         arg_types = self.translate_expr_list(
-            [a.value if isinstance(a, ast3.Starred) else a for a in n.args] +
-            [k.value for k in n.keywords])
-        arg_kinds = ([ARG_STAR if isinstance(a, ast3.Starred) else ARG_POS for a in n.args] +
-                     [ARG_STAR2 if k.arg is None else ARG_NAMED for k in n.keywords])
+            [a.value if isinstance(a, ast3.Starred) else a for a in args] +
+            [k.value for k in keywords])
+        arg_kinds = ([ARG_STAR if isinstance(a, ast3.Starred) else ARG_POS for a in args] +
+                     [ARG_STAR2 if k.arg is None else ARG_NAMED for k in keywords])
         node = CallExpr(self.visit(n.func),
                         arg_types,
                         arg_kinds,
-                        cast('List[Optional[str]]', [None] * len(n.args)) +
-                        [k.arg for k in n.keywords])
+                        cast('List[Optional[str]]', [None] * len(args)) +
+                        [k.arg for k in keywords])
         node.set_line(n.lineno, n.col_offset)
         return node
 
     # Num(object n) -- a number as a PyObject.
     @with_line
     def visit_Num(self, n: ast3.Num) -> Union[IntExpr, FloatExpr, ComplexExpr]:
-        if isinstance(n.n, int):
-            return IntExpr(n.n)
-        elif isinstance(n.n, float):
-            return FloatExpr(n.n)
-        elif isinstance(n.n, complex):
-            return ComplexExpr(n.n)
+        val = n.n
+        if isinstance(val, int):
+            return IntExpr(val)
+        elif isinstance(val, float):
+            return FloatExpr(val)
+        elif isinstance(val, complex):
+            return ComplexExpr(val)
 
-        raise RuntimeError('num not implemented for ' + str(type(n.n)))
+        raise RuntimeError('num not implemented for ' + str(type(val)))
 
     # Str(string s)
     def visit_Str(self, n: ast3.Str) -> Union[UnicodeExpr, StrExpr]:
@@ -978,7 +976,6 @@ class ASTConverter:
         return node
 
     # Subscript(expr value, slice slice, expr_context ctx)
-    @with_line
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
         node = IndexExpr(self.visit(n.value), self.visit(n.slice))
         node.set_line(n.lineno, n.col_offset)
