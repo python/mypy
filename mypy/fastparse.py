@@ -323,9 +323,10 @@ class ASTConverter:
     #             stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
-    @with_line
     def visit_FunctionDef(self, n: ast3.FunctionDef) -> Union[FuncDef, Decorator]:
-        return self.do_func_def(n)
+        node = self.do_func_def(n)
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # AsyncFunctionDef(identifier name, arguments args,
     #                  stmt* body, expr* decorator_list, expr? returns, string? type_comment)
@@ -522,9 +523,10 @@ class ASTConverter:
         return cdef
 
     # Return(expr? value)
-    @with_line
     def visit_Return(self, n: ast3.Return) -> ReturnStmt:
-        return ReturnStmt(self.visit(n.value))
+        node = ReturnStmt(self.visit(n.value))
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # Delete(expr* targets)
     @with_line
@@ -537,7 +539,6 @@ class ASTConverter:
             return DelStmt(self.visit(n.targets[0]))
 
     # Assign(expr* targets, expr? value, string? type_comment, expr? annotation)
-    @with_line
     def visit_Assign(self, n: ast3.Assign) -> AssignmentStmt:
         lvalues = self.translate_expr_list(n.targets)
         rvalue = self.visit(n.value)
@@ -545,7 +546,9 @@ class ASTConverter:
             typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
         else:
             typ = None
-        return AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
+        node = AssignmentStmt(lvalues, rvalue, type=typ, new_syntax=False)
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # AnnAssign(expr target, expr annotation, expr? value, int simple)
     @with_line
@@ -602,11 +605,12 @@ class ASTConverter:
                          self.as_block(n.orelse, n.lineno))
 
     # If(expr test, stmt* body, stmt* orelse)
-    @with_line
     def visit_If(self, n: ast3.If) -> IfStmt:
-        return IfStmt([self.visit(n.test)],
+        node = IfStmt([self.visit(n.test)],
                       [self.as_required_block(n.body, n.lineno)],
                       self.as_block(n.orelse, n.lineno))
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # With(withitem* items, stmt* body, string? type_comment)
     @with_line
@@ -700,10 +704,11 @@ class ASTConverter:
         return NonlocalDecl(n.names)
 
     # Expr(expr value)
-    @with_line
     def visit_Expr(self, n: ast3.Expr) -> ExpressionStmt:
         value = self.visit(n.value)
-        return ExpressionStmt(value)
+        node = ExpressionStmt(value)
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # Pass
     @with_line
@@ -852,15 +857,15 @@ class ASTConverter:
         return YieldFromExpr(self.visit(n.value))
 
     # Compare(expr left, cmpop* ops, expr* comparators)
-    @with_line
     def visit_Compare(self, n: ast3.Compare) -> ComparisonExpr:
         operators = [self.from_comp_operator(o) for o in n.ops]
         operands = self.translate_expr_list([n.left] + n.comparators)
-        return ComparisonExpr(operators, operands)
+        node = ComparisonExpr(operators, operands)
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
-    @with_line
     def visit_Call(self, n: ast3.Call) -> CallExpr:
         def is_star2arg(k: ast3.keyword) -> bool:
             return k.arg is None
@@ -870,11 +875,13 @@ class ASTConverter:
             [k.value for k in n.keywords])
         arg_kinds = ([ARG_STAR if isinstance(a, ast3.Starred) else ARG_POS for a in n.args] +
                      [ARG_STAR2 if is_star2arg(k) else ARG_NAMED for k in n.keywords])
-        return CallExpr(self.visit(n.func),
+        node = CallExpr(self.visit(n.func),
                         arg_types,
                         arg_kinds,
                         cast(List[Optional[str]], [None] * len(n.args)) +
                         [k.arg for k in n.keywords])
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # Num(object n) -- a number as a PyObject.
     @with_line
@@ -889,7 +896,6 @@ class ASTConverter:
         raise RuntimeError('num not implemented for ' + str(type(n.n)))
 
     # Str(string s)
-    @with_line
     def visit_Str(self, n: ast3.Str) -> Union[UnicodeExpr, StrExpr]:
         # Hack: assume all string literals in Python 2 stubs are normal
         # strs (i.e. not unicode).  All stubs are parsed with the Python 3
@@ -897,7 +903,9 @@ class ASTConverter:
         # as unicode instead of bytes.  This hack is generally okay,
         # because mypy considers str literals to be compatible with
         # unicode.
-        return StrExpr(n.s)
+        node = StrExpr(n.s)
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # JoinedStr(expr* values)
     @with_line
@@ -964,7 +972,9 @@ class ASTConverter:
     # Subscript(expr value, slice slice, expr_context ctx)
     @with_line
     def visit_Subscript(self, n: ast3.Subscript) -> IndexExpr:
-        return IndexExpr(self.visit(n.value), self.visit(n.slice))
+        node = IndexExpr(self.visit(n.value), self.visit(n.slice))
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # Starred(expr value, expr_context ctx)
     @with_line
@@ -972,9 +982,10 @@ class ASTConverter:
         return StarExpr(self.visit(n.value))
 
     # Name(identifier id, expr_context ctx)
-    @with_line
     def visit_Name(self, n: ast3.Name) -> NameExpr:
-        return NameExpr(n.id)
+        node = NameExpr(n.id)
+        node.set_line(n.lineno, n.col_offset)
+        return node
 
     # List(expr* elts, expr_context ctx)
     @with_line
