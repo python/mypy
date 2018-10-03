@@ -182,7 +182,7 @@ class ASTConverter:
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
-    def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
+    def visit(self, node: Optional[AST]) -> Any:
         if node is None:
             return None
         typeobj = type(node)
@@ -347,7 +347,8 @@ class ASTConverter:
         no_type_check = bool(n.decorator_list and
                              any(is_no_type_check_decorator(d) for d in n.decorator_list))
 
-        args = self.transform_args(n.args, n.lineno, no_type_check=no_type_check)
+        lineno = n.lineno
+        args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
 
         arg_kinds = [arg.kind for arg in args]
         arg_names = [arg.variable.name() for arg in args]  # type: List[Optional[str]]
@@ -367,7 +368,7 @@ class ASTConverter:
                         isinstance(func_type_ast.argtypes[0], ast3_Ellipsis)):
                     if n.returns:
                         # PEP 484 disallows both type annotations and type comments
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
+                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     arg_types = [a.type_annotation
                                  if a.type_annotation is not None
                                  else AnyType(TypeOfAny.unannotated)
@@ -375,28 +376,28 @@ class ASTConverter:
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if n.returns or any(a.type_annotation is not None for a in args):
-                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, n.lineno, n.col_offset)
-                    translated_args = (TypeConverter(self.errors, line=n.lineno)
+                        self.fail(messages.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
+                    translated_args = (TypeConverter(self.errors, line=lineno)
                                        .translate_expr_list(func_type_ast.argtypes))
                     arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
                                 for a in translated_args]
                 return_type = TypeConverter(self.errors,
-                                            line=n.lineno).visit(func_type_ast.returns)
+                                            line=lineno).visit(func_type_ast.returns)
 
                 # add implicit self type
                 if self.in_class() and len(arg_types) < len(args):
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, n.lineno, n.col_offset)
+                self.fail(TYPE_COMMENT_SYNTAX_ERROR, lineno, n.col_offset)
                 if n.type_comment and n.type_comment[0] != "(":
                     self.note('Suggestion: wrap argument types in parentheses',
-                              n.lineno, n.col_offset)
+                              lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
         else:
             arg_types = [a.type_annotation for a in args]
             return_type = TypeConverter(self.errors, line=n.returns.lineno
-                                        if n.returns else n.lineno).visit(n.returns)
+                                        if n.returns else lineno).visit(n.returns)
 
         for arg, arg_type in zip(args, arg_types):
             self.set_type_optional(arg_type, arg.initializer)
@@ -405,11 +406,11 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType) for t in arg_types):
                 self.fail("Ellipses cannot accompany other argument types "
-                          "in function type signature.", n.lineno, 0)
+                          "in function type signature.", lineno, 0)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', n.lineno, 0)
+                self.fail('Type signature has too many arguments', lineno, 0)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', n.lineno, 0)
+                self.fail('Type signature has too few arguments', lineno, 0)
             else:
                 func_type = CallableType([a if a is not None else
                                           AnyType(TypeOfAny.unannotated) for a in arg_types],
@@ -421,7 +422,7 @@ class ASTConverter:
 
         func_def = FuncDef(n.name,
                        args,
-                       self.as_required_block(n.body, n.lineno),
+                       self.as_required_block(n.body, lineno),
                        func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
@@ -430,7 +431,7 @@ class ASTConverter:
             func_def.is_coroutine = True
         if func_type is not None:
             func_type.definition = func_def
-            func_type.line = n.lineno
+            func_type.line = lineno
 
         if n.decorator_list:
             var = Var(func_def.name())
@@ -438,7 +439,7 @@ class ASTConverter:
             var.set_line(n.decorator_list[0].lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(n.lineno + len(n.decorator_list))
+            func_def.set_line(lineno + len(n.decorator_list))
             func_def.body.set_line(func_def.get_line())
             return Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
         else:
@@ -459,14 +460,16 @@ class ASTConverter:
                        ) -> List[Argument]:
         new_args = []
         names = []  # type: List[ast3.arg]
-        num_no_defaults = len(args.args) - len(args.defaults)
+        args_args = args.args
+        args_defaults = args.defaults
+        num_no_defaults = len(args_args) - len(args_defaults)
         # positional arguments without defaults
-        for a in args.args[:num_no_defaults]:
+        for a in args_args[:num_no_defaults]:
             new_args.append(self.make_argument(a, None, ARG_POS, no_type_check))
             names.append(a)
 
         # positional arguments with defaults
-        for a, d in zip(args.args[num_no_defaults:], args.defaults):
+        for a, d in zip(args_args[num_no_defaults:], args_defaults):
             new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check))
             names.append(a)
 
@@ -873,16 +876,16 @@ class ASTConverter:
     def visit_Call(self, n: Call) -> CallExpr:
         args = n.args
         keywords = n.keywords
+        keyword_names = [k.arg for k in keywords]
         arg_types = self.translate_expr_list(
             [a.value if isinstance(a, Starred) else a for a in args] +
             [k.value for k in keywords])
-        arg_kinds = ([ARG_STAR if isinstance(a, Starred) else ARG_POS for a in args] +
-                     [ARG_STAR2 if k.arg is None else ARG_NAMED for k in keywords])
+        arg_kinds = ([ARG_STAR if type(a) is Starred else ARG_POS for a in args] +
+                     [ARG_STAR2 if arg is None else ARG_NAMED for arg in keyword_names])
         e = CallExpr(self.visit(n.func),
                      arg_types,
                      arg_kinds,
-                     cast('List[Optional[str]]', [None] * len(args)) +
-                     [k.arg for k in keywords])
+                     cast('List[Optional[str]]', [None] * len(args)) + keyword_names)
         return self.set_line(e, n)
 
     # Num(object n) -- a number as a PyObject.
@@ -962,12 +965,14 @@ class ASTConverter:
     # Attribute(expr value, identifier attr, expr_context ctx)
     def visit_Attribute(self, n: Attribute) -> Union[MemberExpr, SuperExpr]:
         value = n.value
-        if (isinstance(value, Call) and
-                isinstance(value.func, Name) and
-                value.func.id == 'super'):
-            e = SuperExpr(n.attr, self.visit(value))  # type: Union[MemberExpr, SuperExpr]
+        member_expr = MemberExpr(self.visit(value), n.attr)
+        obj = member_expr.expr
+        if (isinstance(obj, CallExpr) and
+                isinstance(obj.callee, NameExpr) and
+                obj.callee.name == 'super'):
+            e = SuperExpr(member_expr.name, obj)  # type: Union[MemberExpr, SuperExpr]
         else:
-            e = MemberExpr(self.visit(value), n.attr)
+            e = member_expr
         return self.set_line(e, n)
 
     # Subscript(expr value, slice slice, expr_context ctx)
