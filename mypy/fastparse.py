@@ -492,7 +492,7 @@ class ASTConverter:
             new_args.append(self.make_argument(args.kwarg, None, ARG_STAR2, no_type_check))
             names.append(args.kwarg)
 
-        check_arg_names([name.arg for name in names], names, self.fail_arg)
+        check_arg_names([arg.variable.name() for arg in new_args], names, self.fail_arg)
 
         return new_args
 
@@ -501,13 +501,15 @@ class ASTConverter:
         if no_type_check:
             arg_type = None
         else:
-            if arg.annotation is not None and arg.type_comment is not None:
+            annotation = arg.annotation
+            type_comment = arg.type_comment
+            if annotation is not None and type_comment is not None:
                 self.fail(messages.DUPLICATE_TYPE_SIGNATURES, arg.lineno, arg.col_offset)
             arg_type = None
-            if arg.annotation is not None:
-                arg_type = TypeConverter(self.errors, line=arg.lineno).visit(arg.annotation)
-            elif arg.type_comment is not None:
-                arg_type = parse_type_comment(arg.type_comment, arg.lineno, self.errors)
+            if annotation is not None:
+                arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
+            elif type_comment is not None:
+                arg_type = parse_type_comment(type_comment, arg.lineno, self.errors)
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
