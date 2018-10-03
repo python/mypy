@@ -215,7 +215,7 @@ class FindModuleCache:
         # indicates the highest level at which a __init__.py[i] file
         # is found; if no __init__ was found it returns 0, if we find
         # only foo/bar/__init__.py it returns 1, and if we have
-        # foo/__init__.py it returns 2 (regardless of what's un
+        # foo/__init__.py it returns 2 (regardless of what's in
         # foo/bar).  It doesn't look higher than that.
         if self.options and self.options.namespace_packages and near_misses:
             levels = [highest_init_level(fscache, id, path) for path in near_misses]
