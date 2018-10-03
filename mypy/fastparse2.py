@@ -396,7 +396,7 @@ class ASTConverter:
             dec.set_line(lineno, n.col_offset)
             return dec
         else:
-            func_def.set_line(lineno, n.col_offset)
+            func_def.set_line(lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
             return func_def
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
@@ -771,7 +771,8 @@ class ASTConverter:
             body.body = decompose_stmts + body.body
 
         e = LambdaExpr(args, body)
-        return self.set_line(e, n)
+        e.set_line(n.lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
+        return e
 
     # IfExp(expr test, expr body, expr orelse)
     def visit_IfExp(self, n: ast27.IfExp) -> ConditionalExpr:

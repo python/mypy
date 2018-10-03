@@ -211,7 +211,7 @@ MypyFile:1(
       IntExpr(1)
       IntExpr(2))))
 
-[case testLambdaInListComprehensionInPython2]
+[case testListComprehensionInPython2]
 ([ 0 for x in 1, 2 if 3 ])
 [out]
 MypyFile:1(
@@ -395,3 +395,25 @@ MypyFile:1(
       TupleExpr:1(
         IntExpr(1)
         IntExpr(2)))))
+
+[case testSuperInPython2]
+class A:
+    def f(self):
+        super(A, self).x
+[out]
+MypyFile:1(
+  ClassDef:1(
+    A
+    FuncDef:2(
+      f
+      Args(
+        Var(self))
+      Block:2(
+        ExpressionStmt:3(
+          SuperExpr:3(
+            x
+            CallExpr:3(
+              NameExpr(super)
+              Args(
+                NameExpr(A)
+                NameExpr(self)))))))))

@@ -440,7 +440,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.base, o.index], o)
 
     def visit_super_expr(self, o: 'mypy.nodes.SuperExpr') -> str:
-        return self.dump([o.name], o)
+        return self.dump([o.name, o.call], o)
 
     def visit_type_application(self, o: 'mypy.nodes.TypeApplication') -> str:
         return self.dump([o.expr, ('Types', o.types)], o)
