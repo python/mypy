@@ -1,6 +1,6 @@
 """Server for mypy daemon mode.
 
-Highly experimental!  Only supports UNIX-like systems.
+Only supports UNIX-like systems.
 
 This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
@@ -232,12 +232,10 @@ class Server:
         """Stop daemon."""
         return {}
 
-    last_sources = None  # type: List[BuildSource]
-
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         try:
-            self.last_sources, options = mypy.main.process_options(
+            sources, options = mypy.main.process_options(
                 ['-i'] + list(args),
                 require_targets=True,
                 server_options=True,
@@ -249,21 +247,21 @@ class Server:
                 return {'restart': 'mypy version changed'}
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
-        return self.check(self.last_sources)
+        return self.check(sources)
 
     def cmd_check(self, files: Sequence[str]) -> Dict[str, object]:
         """Check a list of files."""
         try:
-            self.last_sources = create_source_list(files, self.options, self.fscache)
+            sources = create_source_list(files, self.options, self.fscache)
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
-        return self.check(self.last_sources)
+        return self.check(sources)
 
     def cmd_recheck(self) -> Dict[str, object]:
         """Check the same list of files we checked most recently."""
-        if not self.last_sources:
+        if not self.fine_grained_manager:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
-        return self.check(self.last_sources)
+        return self.check(self.previous_sources)
 
     def check(self, sources: List[BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
