@@ -202,7 +202,6 @@ class ASTConverter:
         res = []  # type: List[Expression]
         for e in l:
             exp = self.visit(e)
-            # assert isinstance(exp, Expression)
             res.append(exp)
         return res
 
@@ -210,7 +209,6 @@ class ASTConverter:
         res = []  # type: List[Statement]
         for e in l:
             stmt = self.visit(e)
-            # assert isinstance(stmt, Statement)
             res.append(stmt)
         return res
 

@@ -8,10 +8,4 @@ def console_entry() -> None:
 
 
 if __name__ == '__main__':
-    import cProfile
-    import pstats
-
-    cProfile.run('main(None)', 'profstats')
-    p = pstats.Stats('profstats')
-    p.sort_stats('time').print_stats(40)
-    #main(None)
+    main(None)
