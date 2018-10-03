@@ -919,6 +919,8 @@ def r(x: int) -> None:
 def f(b: bool) -> None:
     try:
         r(int(b))
+    except AttributeError:
+        print('no')
     except:
         print(str(wrapsys.exc_info()[1]))
     print(str(wrapsys.exc_info()[1]))
@@ -1022,14 +1024,14 @@ m('lol')
 Traceback (most recent call last):
   File "driver.py", line 6, in <module>
     i()
-  File "native.py", line 42, in i
+  File "native.py", line 44, in i
     r(0)
   File "native.py", line 15, in r
     [0][1]
 IndexError: list index out of range
 == k ==
 Traceback (most recent call last):
-  File "native.py", line 57, in k
+  File "native.py", line 59, in k
     r(1)
   File "native.py", line 17, in r
     raise Exception('hi')
@@ -1040,7 +1042,7 @@ During handling of the above exception, another exception occurred:
 Traceback (most recent call last):
   File "driver.py", line 12, in <module>
     k()
-  File "native.py", line 59, in k
+  File "native.py", line 61, in k
     r(0)
   File "native.py", line 15, in r
     [0][1]

@@ -2771,8 +2771,8 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             IRBuilder.ExceptNonlocalControl(self.nonlocal_control[-1], old_exc))
 
         # Process the bodies
-        next_block = None
         for type, var, handler_body in handlers:
+            next_block = None
             if type:
                 next_block, body_block = BasicBlock(), BasicBlock()
                 matches = self.primitive_op(exc_matches_op, [self.accept(type)], type.line)
