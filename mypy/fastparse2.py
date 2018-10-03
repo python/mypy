@@ -396,7 +396,8 @@ class ASTConverter:
             dec.set_line(lineno, n.col_offset)
             return dec
         else:
-            func_def.set_line(lineno, n.col_offset)  # Overrides set_line -- can't use self.set_line
+            # Overrides set_line -- can't use self.set_line
+            func_def.set_line(lineno, n.col_offset)
             return func_def
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
@@ -792,8 +793,8 @@ class ASTConverter:
 
     # Set(expr* elts)
     def visit_Set(self, n: ast27.Set) -> SetExpr:
-         e = SetExpr(self.translate_expr_list(n.elts))
-         return self.set_line(e, n)
+        e = SetExpr(self.translate_expr_list(n.elts))
+        return self.set_line(e, n)
 
     # ListComp(expr elt, comprehension* generators)
     def visit_ListComp(self, n: ast27.ListComp) -> ListComprehension:
@@ -890,7 +891,7 @@ class ASTConverter:
         elif isinstance(value, complex):
             expr = ComplexExpr(value)
         else:
-            raise RuntimeError('num not implemented for ' + str(type(new.n)))
+            raise RuntimeError('num not implemented for ' + str(type(n.n)))
 
         if is_inverse:
             expr = UnaryExpr('-', expr)
@@ -939,7 +940,7 @@ class ASTConverter:
 
     # Name(identifier id, expr_context ctx)
     def visit_Name(self, n: Name) -> NameExpr:
-        e =  NameExpr(n.id)
+        e = NameExpr(n.id)
         return self.set_line(e, n)
 
     # List(expr* elts, expr_context ctx)
@@ -947,9 +948,9 @@ class ASTConverter:
         expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
         if isinstance(n.ctx, ast27.Store):
             # [x, y] = z and (x, y) = z means exactly the same thing
-            e = TupleExpr(expr_list)
-            return self.set_line(e, n)
-        e = ListExpr(expr_list)
+            e = TupleExpr(expr_list)  # type: Union[ListExpr, TupleExpr]
+        else:
+            e = ListExpr(expr_list)
         return self.set_line(e, n)
 
     # Tuple(expr* elts, expr_context ctx)
