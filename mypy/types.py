@@ -671,8 +671,6 @@ class CallableType(FunctionLike):
                  'arg_kinds',  # ARG_ constants
                  'arg_names',  # Argument names; None if not a keyword argument
                  'min_args',  # Minimum number of arguments; derived from arg_kinds
-                 'var_arg',  # The formal argument for *args. Derived from arg kinds and types
-                 'kw_arg',  # The formal argument for **kwargs. Derived from arg kinds and types
                  'ret_type',  # Return value type
                  'name',  # Name (may be None; for error messages and plugins)
                  'definition',  # For error messages.  May be None.
@@ -713,14 +711,12 @@ class CallableType(FunctionLike):
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
-        assert not any(tp is None for tp in arg_types), "No annotation must be Any, not None"
         if variables is None:
             variables = []
         self.arg_types = arg_types
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
-        self.var_arg, self.kw_arg = self._lookup_star_args(self.arg_types, self.arg_kinds)
         self.ret_type = ret_type
         self.fallback = fallback
         assert not name or '<bound method' not in name
@@ -784,31 +780,29 @@ class CallableType(FunctionLike):
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
         )
 
-    def _lookup_star_args(self,
-                          arg_types: List[Type],
-                          arg_kinds: List[int],
-                          ) -> Tuple[Optional[FormalArgument], Optional[FormalArgument]]:
-        """Returns the formal arguments for *args and **kwargs, if they exist.
-
-        This helper method is used only in the constructor."""
-        star_arg = None
-        kwarg_arg = None
-        for position, (type, kind) in enumerate(zip(arg_types, arg_kinds)):
+    def var_arg(self) -> Optional[FormalArgument]:
+        """The formal argument for *args."""
+        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
             if kind == ARG_STAR:
-                star_arg = FormalArgument(None, position, type, False)
-            elif kind == ARG_STAR2:
-                kwarg_arg = FormalArgument(None, position, type, False)
-        return star_arg, kwarg_arg
+                return FormalArgument(None, position, type, False)
+        return None
+
+    def kw_arg(self) -> Optional[FormalArgument]:
+        """The formal argument for **kwargs."""
+        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
+            if kind == ARG_STAR2:
+                return FormalArgument(None, position, type, False)
+        return None
 
     @property
     def is_var_arg(self) -> bool:
         """Does this callable have a *args argument?"""
-        return self.var_arg is not None
+        return ARG_STAR in self.arg_kinds
 
     @property
     def is_kw_arg(self) -> bool:
         """Does this callable have a **kwargs argument?"""
-        return self.kw_arg is not None
+        return ARG_STAR2 in self.arg_kinds
 
     def is_type_obj(self) -> bool:
         return self.fallback.type.is_metaclass()
@@ -929,15 +923,17 @@ class CallableType(FunctionLike):
 
     def try_synthesizing_arg_from_kwarg(self,
                                         name: Optional[str]) -> Optional[FormalArgument]:
-        if self.kw_arg is not None:
-            return FormalArgument(name, None, self.kw_arg.typ, False)
+        kw_arg = self.kw_arg()
+        if kw_arg is not None:
+            return FormalArgument(name, None, kw_arg.typ, False)
         else:
             return None
 
     def try_synthesizing_arg_from_vararg(self,
                                          position: Optional[int]) -> Optional[FormalArgument]:
-        if self.var_arg is not None:
-            return FormalArgument(None, position, self.var_arg.typ, False)
+        var_arg = self.var_arg()
+        if var_arg is not None:
+            return FormalArgument(None, position, var_arg.typ, False)
         else:
             return None
 
