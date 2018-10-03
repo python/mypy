@@ -1,4 +1,5 @@
 -- Type checker test cases dealing with modules and imports.
+-- Towards the end there are tests for PEP 420 (namespace packages, i.e. __init__.py-less packages).
 
 [case testAccessImportedDefinitions]
 import m
@@ -2525,3 +2526,97 @@ def __radd__(self) -> int: ...
 
 [case testFunctionWithInPlaceDunderName]
 def __iadd__(self) -> int: ...
+
+-- Tests for PEP 420 namespace packages.
+
+[case testClassicPackage]
+from foo.bar import x
+[file foo/__init__.py]
+# empty
+[file foo/bar.py]
+x = 0
+
+[case testClassicNotPackage]
+from foo.bar import x
+[file foo/bar.py]
+x = 0
+[out]
+main:1: error: Cannot find module named 'foo.bar'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+
+[case testNamespacePackage]
+# flags: --namespace-packages
+from foo.bar import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file foo/bar.py]
+x = 0
+
+[case testNamespacePackageWithMypyPath]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bax import x
+from foo.bay import y
+from foo.baz import z
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+reveal_type(z)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bax.py]
+x = 0
+[file yy/foo/bay.py]
+y = 0
+[file foo/baz.py]
+z = 0
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testClassicPackageIgnoresEarlierNamespacePackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar import y
+reveal_type(y)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar.py]
+x = ''
+[file yy/foo/bar.py]
+y = 0
+[file yy/foo/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackagePickFirstOnMypyPath]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar.py]
+x = 0
+[file yy/foo/bar.py]
+x = ''
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackageInsideClassicPackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar.baz import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar/baz.py]
+x = ''
+[file yy/foo/bar/baz.py]
+x = 0
+[file yy/foo/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
+
+[case testClassicPackageInsideNamespacePackage]
+# flags: --namespace-packages --config-file tmp/mypy.ini
+from foo.bar.baz.boo import x
+reveal_type(x)  # E: Revealed type is 'builtins.int'
+[file xx/foo/bar/baz/boo.py]
+x = ''
+[file xx/foo/bar/baz/__init__.py]
+[file yy/foo/bar/baz/boo.py]
+x = 0
+[file yy/foo/bar/__init__.py]
+[file mypy.ini]
+[[mypy]
+mypy_path = tmp/xx, tmp/yy
