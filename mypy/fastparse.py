@@ -1067,6 +1067,13 @@ class TypeConverter:
     def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]
 
+    def visit_raw_str(self, s: str) -> Type:
+        # An escape hatch that allows the AST walker in fastparse2 to
+        # directly hook into the Python 3.5 type converter in some cases
+        # without needing to create an intermediary `Str` object.
+        return (parse_type_comment(s.strip(), self.line, self.errors) or
+                AnyType(TypeOfAny.from_error))
+
     def visit_Call(self, e: Call) -> Type:
         # Parse the arg constructor
         f = e.func
