@@ -442,7 +442,9 @@ class ASTConverter:
 
         # **kwarg
         if n.kwarg is not None:
-            typ = self.get_type(len(args) + (0 if n.vararg is None else 1), type_comments, converter)
+            typ = self.get_type(len(args) + (0 if n.vararg is None else 1),
+                                type_comments,
+                                converter)
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
             names.append(n.kwarg)
 
@@ -461,7 +463,8 @@ class ASTConverter:
         else:
             return []
 
-    def convert_arg(self, index: int, arg: ast27.expr, line: int, decompose_stmts: List[Statement]) -> Var:
+    def convert_arg(self, index: int, arg: ast27.expr, line: int,
+                    decompose_stmts: List[Statement]) -> Var:
         if isinstance(arg, Name):
             v = arg.id
         elif isinstance(arg, ast27_Tuple):
@@ -722,14 +725,14 @@ class ASTConverter:
             raise RuntimeError('unknown BoolOp ' + str(type(n)))
 
         # potentially inefficient!
-        def group(vals: List[Expression]) -> OpExpr:
-            if len(vals) == 2:
-                return OpExpr(op, vals[0], vals[1])
-            else:
-                return OpExpr(op, vals[0], group(vals[1:]))
-
-        e = group(self.translate_expr_list(n.values))
+        e = self.group(self.translate_expr_list(n.values), op)
         return self.set_line(e, n)
+
+    def group(self, vals: List[Expression], op: str) -> OpExpr:
+        if len(vals) == 2:
+            return OpExpr(op, vals[0], vals[1])
+        else:
+            return OpExpr(op, vals[0], self.group(vals[1:], op))
 
     # BinOp(expr left, operator op, expr right)
     def visit_BinOp(self, n: ast27.BinOp) -> OpExpr:
