@@ -414,38 +414,11 @@ class ASTConverter:
         converter = TypeConverter(self.errors, line=line)
         decompose_stmts = []  # type: List[Statement]
 
-        def extract_names(arg: ast27.expr) -> List[str]:
-            if isinstance(arg, ast27.Name):
-                return [arg.id]
-            elif isinstance(arg, ast27.Tuple):
-                return [name for elt in arg.elts for name in extract_names(elt)]
-            else:
-                return []
-
-        def convert_arg(index: int, arg: ast27.expr) -> Var:
-            if isinstance(arg, ast27.Name):
-                v = arg.id
-            elif isinstance(arg, ast27.Tuple):
-                v = '__tuple_arg_{}'.format(index + 1)
-                rvalue = NameExpr(v)
-                rvalue.set_line(line)
-                assignment = AssignmentStmt([self.visit(arg)], rvalue)
-                assignment.set_line(line)
-                decompose_stmts.append(assignment)
-            else:
-                raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
-            return Var(v)
-
-        def get_type(i: int) -> Optional[Type]:
-            if i < len(type_comments):
-                comment = type_comments[i]
-                if comment is not None:
-                    return converter.visit_raw_str(comment)
-            return None
-
-        args = [(convert_arg(i, arg), get_type(i)) for i, arg in enumerate(n.args)]
+        args = [(self.convert_arg(i, arg, line, decompose_stmts),
+                 self.get_type(i, type_comments, converter))
+                for i, arg in enumerate(n.args)]
         defaults = self.translate_expr_list(n.defaults)
-        names = [name for arg in n.args for name in extract_names(arg)]  # type: List[str]
+        names = [name for arg in n.args for name in self.extract_names(arg)]  # type: List[str]
 
         new_args = []  # type: List[Argument]
         num_no_defaults = len(args) - len(defaults)
@@ -459,12 +432,15 @@ class ASTConverter:
 
         # *arg
         if n.vararg is not None:
-            new_args.append(Argument(Var(n.vararg), get_type(len(args)), None, ARG_STAR))
+            new_args.append(Argument(Var(n.vararg),
+                                     self.get_type(len(args), type_comments, converter),
+                                     None,
+                                     ARG_STAR))
             names.append(n.vararg)
 
         # **kwarg
         if n.kwarg is not None:
-            typ = get_type(len(args) + (0 if n.vararg is None else 1))
+            typ = self.get_type(len(args) + (0 if n.vararg is None else 1), type_comments, converter)
             new_args.append(Argument(Var(n.kwarg), typ, None, ARG_STAR2))
             names.append(n.kwarg)
 
@@ -474,6 +450,36 @@ class ASTConverter:
         check_arg_names(names, [None] * len(names), fail_arg)
 
         return new_args, decompose_stmts
+
+    def extract_names(self, arg: ast27.expr) -> List[str]:
+        if isinstance(arg, ast27.Name):
+            return [arg.id]
+        elif isinstance(arg, ast27.Tuple):
+            return [name for elt in arg.elts for name in self.extract_names(elt)]
+        else:
+            return []
+
+    def convert_arg(self, index: int, arg: ast27.expr, line: int, decompose_stmts: List[Statement]) -> Var:
+        if isinstance(arg, ast27.Name):
+            v = arg.id
+        elif isinstance(arg, ast27.Tuple):
+            v = '__tuple_arg_{}'.format(index + 1)
+            rvalue = NameExpr(v)
+            rvalue.set_line(line)
+            assignment = AssignmentStmt([self.visit(arg)], rvalue)
+            assignment.set_line(line)
+            decompose_stmts.append(assignment)
+        else:
+            raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
+        return Var(v)
+
+    def get_type(self, i: int, type_comments: Sequence[Optional[str]],
+                 converter: TypeConverter) -> Optional[Type]:
+        if i < len(type_comments):
+            comment = type_comments[i]
+            if comment is not None:
+                return converter.visit_raw_str(comment)
+        return None
 
     def stringify_name(self, n: ast27.AST) -> str:
         if isinstance(n, ast27.Name):
