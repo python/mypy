@@ -14,7 +14,7 @@ import socket
 import sys
 import time
 
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.util import write_junit_xml
@@ -25,7 +25,7 @@ from mypy.version import __version__
 
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
-        super().__init__(prog=prog, max_help_position=28)
+        super().__init__(prog=prog, max_help_position=30)
 
 parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')
@@ -75,10 +75,16 @@ p.add_argument('flags', metavar='ARG', nargs='*', type=str,
                help="Regular mypy flags and files (precede with --)")
 
 recheck_parser = p = subparsers.add_parser('recheck', formatter_class=AugmentedHelpFormatter,
-    help="Check the same files as the most previous check run (requires daemon).")
+    help="Re-check the previous list of files, with optional modifications (requires daemon).")
 p.add_argument('-v', '--verbose', action='store_true', help="Print detailed status")
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
+p.add_argument('--add', metavar='FILE', nargs='*',
+               help="Files to add to the run")
+p.add_argument('--remove', metavar='FILE', nargs='*',
+               help="Files to remove from the run")
+p.add_argument('--update', metavar='FILE', nargs='*',
+               help="Files in the run to check again (default: all from previous run)..")
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -289,12 +295,20 @@ def do_check(args: argparse.Namespace) -> None:
 
 @action(recheck_parser)
 def do_recheck(args: argparse.Namespace) -> None:
-    """Ask the daemon to check the same list of files it checked most recently.
+    """Ask the daemon to recheck the previous list of files, with optional modifications.
 
-    This doesn't work across daemon restarts.
+    If at least one of --add, --remove or --update is non-empty, the server will
+    update the list of files to check accordingly and assume that any other files
+    are unchanged.  If none of these flags are given, the server will call stat()
+    on each file last checked to determine its status.
+
+    NOTE: The list of files is lost when the daemon is restarted.
     """
     t0 = time.time()
-    response = request('recheck')
+    if args.add is not None or args.remove is not None or args.update is not None:
+        response = request('recheck', add=args.add, remove=args.remove, update=args.update)
+    else:
+        response = request('recheck')
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml)
