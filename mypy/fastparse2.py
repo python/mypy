@@ -69,8 +69,6 @@ except ImportError:
               'Python 3.3 and greater.', file=sys.stderr)
     sys.exit(1)
 
-T = TypeVar('T', bound=Union[ast27.expr, ast27.stmt])
-U = TypeVar('U', bound=Node)
 N = TypeVar('N', bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
@@ -118,16 +116,6 @@ def parse(source: Union[str, bytes],
         errors.raise_error()
 
     return tree
-
-
-def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', T], U]:
-    # mypyc doesn't properly populate all the fields that @wraps expects
-    # @wraps(f)
-    def wrapper(self: 'ASTConverter', ast: T) -> U:
-        node = f(self, ast)
-        node.set_line(ast.lineno, ast.col_offset)
-        return node
-    return wrapper
 
 
 def is_no_type_check_decorator(expr: ast27.expr) -> bool:
