@@ -305,7 +305,6 @@ class ASTConverter:
     #             stmt* body, expr* decorator_list, expr? returns, string? type_comment)
     # arguments = (arg* args, arg? vararg, arg* kwonlyargs, expr* kw_defaults,
     #              arg? kwarg, expr* defaults)
-    @with_line
     def visit_FunctionDef(self, n: ast27.FunctionDef) -> Statement:
         converter = TypeConverter(self.errors, line=n.lineno)
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
@@ -392,8 +391,11 @@ class ASTConverter:
             func_def.is_decorated = True
             func_def.set_line(n.lineno + len(n.decorator_list))
             func_def.body.set_line(func_def.get_line())
-            return Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            dec = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
+            dec.set_line(n.lineno, n.col_offset)
+            return dec
         else:
+            func_def.set_line(n.lineno, n.col_offset)
             return func_def
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
@@ -486,7 +488,6 @@ class ASTConverter:
     #  keyword* keywords,
     #  stmt* body,
     #  expr* decorator_list)
-    @with_line
     def visit_ClassDef(self, n: ast27.ClassDef) -> ClassDef:
         self.class_nesting += 1
 
@@ -496,82 +497,82 @@ class ASTConverter:
                         self.translate_expr_list(n.bases),
                         metaclass=None)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
+        self.set_line(cdef, n)
         self.class_nesting -= 1
         return cdef
 
     # Return(expr? value)
-    @with_line
     def visit_Return(self, n: ast27.Return) -> ReturnStmt:
-        return ReturnStmt(self.visit(n.value))
+        s = ReturnStmt(self.visit(n.value))
+        return self.set_line(s, n)
 
     # Delete(expr* targets)
-    @with_line
     def visit_Delete(self, n: ast27.Delete) -> DelStmt:
         if len(n.targets) > 1:
             tup = TupleExpr(self.translate_expr_list(n.targets))
             tup.set_line(n.lineno)
-            return DelStmt(tup)
+            s = DelStmt(tup)
         else:
-            return DelStmt(self.visit(n.targets[0]))
+            s = DelStmt(self.visit(n.targets[0]))
+        return self.set_line(s, n)
 
     # Assign(expr* targets, expr value, string? type_comment)
-    @with_line
     def visit_Assign(self, n: ast27.Assign) -> AssignmentStmt:
         typ = None
         if n.type_comment:
             typ = parse_type_comment(n.type_comment, n.lineno, self.errors)
 
-        return AssignmentStmt(self.translate_expr_list(n.targets),
-                              self.visit(n.value),
-                              type=typ)
+        s = AssignmentStmt(self.translate_expr_list(n.targets),
+                           self.visit(n.value),
+                           type=typ)
+        return self.set_line(s, n)
 
     # AugAssign(expr target, operator op, expr value)
-    @with_line
     def visit_AugAssign(self, n: ast27.AugAssign) -> OperatorAssignmentStmt:
-        return OperatorAssignmentStmt(self.from_operator(n.op),
-                              self.visit(n.target),
-                              self.visit(n.value))
+        s = OperatorAssignmentStmt(self.from_operator(n.op),
+                                   self.visit(n.target),
+                                   self.visit(n.value))
+        return self.set_line(s, n)
 
     # For(expr target, expr iter, stmt* body, stmt* orelse, string? type_comment)
-    @with_line
     def visit_For(self, n: ast27.For) -> ForStmt:
         if n.type_comment is not None:
             target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
         else:
             target_type = None
-        return ForStmt(self.visit(n.target),
-                       self.visit(n.iter),
-                       self.as_required_block(n.body, n.lineno),
-                       self.as_block(n.orelse, n.lineno),
-                       target_type)
+        s = ForStmt(self.visit(n.target),
+                    self.visit(n.iter),
+                    self.as_required_block(n.body, n.lineno),
+                    self.as_block(n.orelse, n.lineno),
+                    target_type)
+        return self.set_line(s, n)
 
     # While(expr test, stmt* body, stmt* orelse)
-    @with_line
     def visit_While(self, n: ast27.While) -> WhileStmt:
-        return WhileStmt(self.visit(n.test),
-                         self.as_required_block(n.body, n.lineno),
-                         self.as_block(n.orelse, n.lineno))
+        s = WhileStmt(self.visit(n.test),
+                      self.as_required_block(n.body, n.lineno),
+                      self.as_block(n.orelse, n.lineno))
+        return self.set_line(s, n)
 
     # If(expr test, stmt* body, stmt* orelse)
-    @with_line
     def visit_If(self, n: ast27.If) -> IfStmt:
-        return IfStmt([self.visit(n.test)],
-                      [self.as_required_block(n.body, n.lineno)],
-                      self.as_block(n.orelse, n.lineno))
+        s = IfStmt([self.visit(n.test)],
+                   [self.as_required_block(n.body, n.lineno)],
+                   self.as_block(n.orelse, n.lineno))
+        return self.set_line(s, n)
 
     # With(withitem* items, stmt* body, string? type_comment)
-    @with_line
     def visit_With(self, n: ast27.With) -> WithStmt:
         if n.type_comment is not None:
             target_type = parse_type_comment(n.type_comment, n.lineno, self.errors)
         else:
             target_type = None
-        return WithStmt([self.visit(n.context_expr)],
-                        [self.visit(n.optional_vars)],
-                        self.as_required_block(n.body, n.lineno),
-                        target_type)
+        s = WithStmt([self.visit(n.context_expr)],
+                     [self.visit(n.optional_vars)],
+                     self.as_required_block(n.body, n.lineno),
+                     target_type)
+        return self.set_line(s, n)
 
-    @with_line
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
         if n.type is None:
             e = None
@@ -584,19 +585,20 @@ class ASTConverter:
                 else:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst), self.visit(n.tback)])
 
-        return RaiseStmt(e, None)
+        s = RaiseStmt(e, None)
+        return self.set_line(s, n)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)
-    @with_line
     def visit_TryExcept(self, n: ast27.TryExcept) -> TryStmt:
-        return self.try_handler(n.body, n.handlers, n.orelse, [], n.lineno)
+        s = self.try_handler(n.body, n.handlers, n.orelse, [], n.lineno)
+        return self.set_line(s, n)
 
-    @with_line
     def visit_TryFinally(self, n: ast27.TryFinally) -> TryStmt:
         if len(n.body) == 1 and isinstance(n.body[0], ast27.TryExcept):
-            return self.try_handler([n.body[0]], [], [], n.finalbody, n.lineno)
+            s = self.try_handler([n.body[0]], [], [], n.finalbody, n.lineno)
         else:
-            return self.try_handler(n.body, [], [], n.finalbody, n.lineno)
+            s = self.try_handler(n.body, [], [], n.finalbody, n.lineno)
+        return self.set_line(s, n)
 
     def try_handler(self,
                     body: List[ast27.stmt],
@@ -624,27 +626,26 @@ class ASTConverter:
                        self.as_block(orelse, lineno),
                        self.as_block(finalbody, lineno))
 
-    @with_line
     def visit_Print(self, n: ast27.Print) -> PrintStmt:
-        return PrintStmt(self.translate_expr_list(n.values), n.nl, self.visit(n.dest))
+        s = PrintStmt(self.translate_expr_list(n.values), n.nl, self.visit(n.dest))
+        return self.set_line(s, n)
 
-    @with_line
     def visit_Exec(self, n: ast27.Exec) -> ExecStmt:
-        return ExecStmt(self.visit(n.body),
-                        self.visit(n.globals),
-                        self.visit(n.locals))
+        s = ExecStmt(self.visit(n.body),
+                     self.visit(n.globals),
+                     self.visit(n.locals))
+        return self.set_line(s, n)
 
-    @with_line
     def visit_Repr(self, n: ast27.Repr) -> BackquoteExpr:
-        return BackquoteExpr(self.visit(n.value))
+        s = BackquoteExpr(self.visit(n.value))
+        return self.set_line(s, n)
 
     # Assert(expr test, expr? msg)
-    @with_line
     def visit_Assert(self, n: ast27.Assert) -> AssertStmt:
-        return AssertStmt(self.visit(n.test), self.visit(n.msg))
+        s = AssertStmt(self.visit(n.test), self.visit(n.msg))
+        return self.set_line(s, n)
 
     # Import(alias* names)
-    @with_line
     def visit_Import(self, n: ast27.Import) -> Import:
         names = []  # type: List[Tuple[str, Optional[str]]]
         for alias in n.names:
@@ -658,10 +659,9 @@ class ASTConverter:
             names.append((name, asname))
         i = Import(names)
         self.imports.append(i)
-        return i
+        return self.set_line(i, n)
 
     # ImportFrom(identifier? module, alias* names, int? level)
-    @with_line
     def visit_ImportFrom(self, n: ast27.ImportFrom) -> ImportBase:
         assert n.level is not None
         if len(n.names) == 1 and n.names[0].name == '*':
@@ -672,37 +672,37 @@ class ASTConverter:
                            n.level,
                            [(a.name, a.asname) for a in n.names])
         self.imports.append(i)
-        return i
+        return self.set_line(i, n)
 
     # Global(identifier* names)
-    @with_line
     def visit_Global(self, n: ast27.Global) -> GlobalDecl:
-        return GlobalDecl(n.names)
+        s = GlobalDecl(n.names)
+        return self.set_line(s, n)
 
     # Expr(expr value)
-    @with_line
     def visit_Expr(self, n: ast27.Expr) -> ExpressionStmt:
         value = self.visit(n.value)
-        return ExpressionStmt(value)
+        s = ExpressionStmt(value)
+        return self.set_line(s, n)
 
     # Pass
-    @with_line
     def visit_Pass(self, n: ast27.Pass) -> PassStmt:
-        return PassStmt()
+        s = PassStmt()
+        return self.set_line(s, n)
 
     # Break
-    @with_line
     def visit_Break(self, n: ast27.Break) -> BreakStmt:
-        return BreakStmt()
+        s = BreakStmt()
+        return self.set_line(s, n)
 
     # Continue
-    @with_line
     def visit_Continue(self, n: ast27.Continue) -> ContinueStmt:
-        return ContinueStmt()
+        s = ContinueStmt()
+        return self.set_line(s, n)
 
     # --- expr ---
+
     # BoolOp(boolop op, expr* values)
-    @with_line
     def visit_BoolOp(self, n: ast27.BoolOp) -> OpExpr:
         # mypy translates (1 and 2 and 3) as (1 and (2 and 3))
         assert len(n.values) >= 2
@@ -720,20 +720,20 @@ class ASTConverter:
             else:
                 return OpExpr(op, vals[0], group(vals[1:]))
 
-        return group(self.translate_expr_list(n.values))
+        e = group(self.translate_expr_list(n.values))
+        return self.set_line(e, n)
 
     # BinOp(expr left, operator op, expr right)
-    @with_line
     def visit_BinOp(self, n: ast27.BinOp) -> OpExpr:
         op = self.from_operator(n.op)
 
         if op is None:
             raise RuntimeError('cannot translate BinOp ' + str(type(n.op)))
 
-        return OpExpr(op, self.visit(n.left), self.visit(n.right))
+        e = OpExpr(op, self.visit(n.left), self.visit(n.right))
+        return self.set_line(e, n)
 
     # UnaryOp(unaryop op, expr operand)
-    @with_line
     def visit_UnaryOp(self, n: ast27.UnaryOp) -> UnaryExpr:
         op = None
         if isinstance(n.op, ast27.Invert):
@@ -748,10 +748,10 @@ class ASTConverter:
         if op is None:
             raise RuntimeError('cannot translate UnaryOp ' + str(type(n.op)))
 
-        return UnaryExpr(op, self.visit(n.operand))
+        e = UnaryExpr(op, self.visit(n.operand))
+        return self.set_line(e, n)
 
     # Lambda(arguments args, expr body)
-    @with_line
     def visit_Lambda(self, n: ast27.Lambda) -> LambdaExpr:
         args, decompose_stmts = self.transform_args(n.args, n.lineno)
 
@@ -762,76 +762,76 @@ class ASTConverter:
         if decompose_stmts:
             body.body = decompose_stmts + body.body
 
-        return LambdaExpr(args, body)
+        e = LambdaExpr(args, body)
+        return self.set_line(e, n)
 
     # IfExp(expr test, expr body, expr orelse)
-    @with_line
     def visit_IfExp(self, n: ast27.IfExp) -> ConditionalExpr:
-        return ConditionalExpr(self.visit(n.test),
-                               self.visit(n.body),
-                               self.visit(n.orelse))
+        e = ConditionalExpr(self.visit(n.test),
+                            self.visit(n.body),
+                            self.visit(n.orelse))
+        return self.set_line(e, n)
 
     # Dict(expr* keys, expr* values)
-    @with_line
     def visit_Dict(self, n: ast27.Dict) -> DictExpr:
-        return DictExpr(list(zip(self.translate_expr_list(n.keys),
-                                 self.translate_expr_list(n.values))))
+        e = DictExpr(list(zip(self.translate_expr_list(n.keys),
+                              self.translate_expr_list(n.values))))
+        return self.set_line(e, n)
 
     # Set(expr* elts)
-    @with_line
     def visit_Set(self, n: ast27.Set) -> SetExpr:
-        return SetExpr(self.translate_expr_list(n.elts))
+         e = SetExpr(self.translate_expr_list(n.elts))
+         return self.set_line(e, n)
 
     # ListComp(expr elt, comprehension* generators)
-    @with_line
     def visit_ListComp(self, n: ast27.ListComp) -> ListComprehension:
-        return ListComprehension(self.visit_GeneratorExp(cast(ast27.GeneratorExp, n)))
+        e = ListComprehension(self.visit_GeneratorExp(cast(ast27.GeneratorExp, n)))
+        return self.set_line(e, n)
 
     # SetComp(expr elt, comprehension* generators)
-    @with_line
     def visit_SetComp(self, n: ast27.SetComp) -> SetComprehension:
-        return SetComprehension(self.visit_GeneratorExp(cast(ast27.GeneratorExp, n)))
+        e = SetComprehension(self.visit_GeneratorExp(cast(ast27.GeneratorExp, n)))
+        return self.set_line(e, n)
 
     # DictComp(expr key, expr value, comprehension* generators)
-    @with_line
     def visit_DictComp(self, n: ast27.DictComp) -> DictionaryComprehension:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
-        return DictionaryComprehension(self.visit(n.key),
-                                       self.visit(n.value),
-                                       targets,
-                                       iters,
-                                       ifs_list,
-                                       [False for _ in n.generators])
+        e = DictionaryComprehension(self.visit(n.key),
+                                    self.visit(n.value),
+                                    targets,
+                                    iters,
+                                    ifs_list,
+                                    [False for _ in n.generators])
+        return self.set_line(e, n)
 
     # GeneratorExp(expr elt, comprehension* generators)
-    @with_line
     def visit_GeneratorExp(self, n: ast27.GeneratorExp) -> GeneratorExpr:
         targets = [self.visit(c.target) for c in n.generators]
         iters = [self.visit(c.iter) for c in n.generators]
         ifs_list = [self.translate_expr_list(c.ifs) for c in n.generators]
-        return GeneratorExpr(self.visit(n.elt),
-                             targets,
-                             iters,
-                             ifs_list,
-                             [False for _ in n.generators])
+        e = GeneratorExpr(self.visit(n.elt),
+                          targets,
+                          iters,
+                          ifs_list,
+                          [False for _ in n.generators])
+        return self.set_line(e, n)
 
     # Yield(expr? value)
-    @with_line
     def visit_Yield(self, n: ast27.Yield) -> YieldExpr:
-        return YieldExpr(self.visit(n.value))
+        e = YieldExpr(self.visit(n.value))
+        return self.set_line(e, n)
 
     # Compare(expr left, cmpop* ops, expr* comparators)
-    @with_line
     def visit_Compare(self, n: ast27.Compare) -> ComparisonExpr:
         operators = [self.from_comp_operator(o) for o in n.ops]
         operands = self.translate_expr_list([n.left] + n.comparators)
-        return ComparisonExpr(operators, operands)
+        e = ComparisonExpr(operators, operands)
+        return self.set_line(e, n)
 
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
-    @with_line
     def visit_Call(self, n: ast27.Call) -> CallExpr:
         arg_types = []  # type: List[ast27.expr]
         arg_kinds = []  # type: List[int]
@@ -855,18 +855,18 @@ class ASTConverter:
             arg_kinds.append(ARG_STAR2)
             signature.append(None)
 
-        return CallExpr(self.visit(n.func),
-                        self.translate_expr_list(arg_types),
-                        arg_kinds,
-                        signature)
+        e = CallExpr(self.visit(n.func),
+                     self.translate_expr_list(arg_types),
+                     arg_kinds,
+                     signature)
+        return self.set_line(e, n)
 
     # Num(object n) -- a number as a PyObject.
-    @with_line
-    def visit_Num(self, new: ast27.Num) -> Expression:
-        value = new.n
+    def visit_Num(self, n: ast27.Num) -> Expression:
+        value = n.n
         is_inverse = False
-        if str(new.n).startswith('-'):  # Hackish because of complex.
-            value = -new.n
+        if str(n.n).startswith('-'):  # Hackish because of complex.
+            value = -n.n
             is_inverse = True
 
         if isinstance(value, int):
@@ -881,63 +881,66 @@ class ASTConverter:
         if is_inverse:
             expr = UnaryExpr('-', expr)
 
-        return expr
+        return self.set_line(expr, n)
 
     # Str(string s)
-    @with_line
-    def visit_Str(self, s: ast27.Str) -> Expression:
+    def visit_Str(self, n: ast27.Str) -> Expression:
         # Hack: assume all string literals in Python 2 stubs are normal
         # strs (i.e. not unicode).  All stubs are parsed with the Python 3
         # parser, which causes unprefixed string literals to be interpreted
         # as unicode instead of bytes.  This hack is generally okay,
         # because mypy considers str literals to be compatible with
         # unicode.
-        if isinstance(s.s, bytes):
-            n = s.s
+        if isinstance(n.s, bytes):
+            s = n.s
             # The following line is a bit hacky, but is the best way to maintain
             # compatibility with how mypy currently parses the contents of bytes literals.
-            contents = str(n)[2:-1]
-            return StrExpr(contents)
+            contents = str(s)[2:-1]
+            e = StrExpr(contents)
+            return self.set_line(e, n)
         else:
-            return UnicodeExpr(s.s)
+            e = UnicodeExpr(n.s)
+            return self.set_line(e, n)
 
     # Ellipsis
     def visit_Ellipsis(self, n: ast27.Ellipsis) -> EllipsisExpr:
         return EllipsisExpr()
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    @with_line
     def visit_Attribute(self, n: ast27.Attribute) -> Expression:
         if (isinstance(n.value, ast27.Call) and
                 isinstance(n.value.func, ast27.Name) and
                 n.value.func.id == 'super'):
-            return SuperExpr(n.attr, self.visit(n.value))
+            e = SuperExpr(n.attr, self.visit(n.value))
+            return self.set_line(e, n)
 
-        return MemberExpr(self.visit(n.value), n.attr)
+        e = MemberExpr(self.visit(n.value), n.attr)
+        return self.set_line(e, n)
 
     # Subscript(expr value, slice slice, expr_context ctx)
-    @with_line
     def visit_Subscript(self, n: ast27.Subscript) -> IndexExpr:
-        return IndexExpr(self.visit(n.value), self.visit(n.slice))
+        e = IndexExpr(self.visit(n.value), self.visit(n.slice))
+        return self.set_line(e, n)
 
     # Name(identifier id, expr_context ctx)
-    @with_line
     def visit_Name(self, n: ast27.Name) -> NameExpr:
-        return NameExpr(n.id)
+        e =  NameExpr(n.id)
+        return self.set_line(e, n)
 
     # List(expr* elts, expr_context ctx)
-    @with_line
     def visit_List(self, n: ast27.List) -> Union[ListExpr, TupleExpr]:
         expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
         if isinstance(n.ctx, ast27.Store):
             # [x, y] = z and (x, y) = z means exactly the same thing
-            return TupleExpr(expr_list)
-        return ListExpr(expr_list)
+            e = TupleExpr(expr_list)
+            return self.set_line(e, n)
+        e = ListExpr(expr_list)
+        return self.set_line(e, n)
 
     # Tuple(expr* elts, expr_context ctx)
-    @with_line
     def visit_Tuple(self, n: ast27.Tuple) -> TupleExpr:
-        return TupleExpr([self.visit(e) for e in n.elts])
+        e = TupleExpr([self.visit(e) for e in n.elts])
+        return self.set_line(e, n)
 
     # --- slice ---
 
