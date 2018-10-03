@@ -71,7 +71,7 @@ except ImportError:
 
 T = TypeVar('T', bound=Union[ast27.expr, ast27.stmt])
 U = TypeVar('U', bound=Node)
-V = TypeVar('V')
+N = TypeVar('N', bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
@@ -130,13 +130,6 @@ def with_line(f: Callable[['ASTConverter', T], U]) -> Callable[['ASTConverter', 
     return wrapper
 
 
-def find(f: Callable[[V], bool], seq: Sequence[V]) -> Optional[V]:
-    for item in seq:
-        if f(item):
-            return item
-    return None
-
-
 def is_no_type_check_decorator(expr: ast27.expr) -> bool:
     if isinstance(expr, ast27.Name):
         return expr.id == 'no_type_check'
@@ -146,7 +139,7 @@ def is_no_type_check_decorator(expr: ast27.expr) -> bool:
     return False
 
 
-class ASTConverter(ast27.NodeTransformer):
+class ASTConverter:
     def __init__(self,
                  options: Options,
                  is_stub: bool,
@@ -158,16 +151,27 @@ class ASTConverter(ast27.NodeTransformer):
         self.is_stub = is_stub
         self.errors = errors
 
+        # Cache of visit_X methods keyed by type of visited object
+        self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
+
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
-
-    def generic_visit(self, node: ast27.AST) -> None:
-        raise RuntimeError('AST node not implemented: ' + str(type(node)))
 
     def visit(self, node: Optional[ast27.AST]) -> Any:  # same as in typed_ast stub
         if node is None:
             return None
-        return super().visit(node)
+        typeobj = type(node)
+        visitor = self.visitor_cache.get(typeobj)
+        if visitor is None:
+            method = 'visit_' + node.__class__.__name__
+            visitor = getattr(self, method)
+            self.visitor_cache[typeobj] = visitor
+        return visitor(node)
+
+    def set_line(self, node: N, n: Union[ast27.expr, ast27.stmt]) -> N:
+        node.line = n.lineno
+        node.column = n.col_offset
+        return node
 
     def translate_expr_list(self, l: Sequence[ast27.AST]) -> List[Expression]:
         res = []  # type: List[Expression]
