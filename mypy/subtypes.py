@@ -778,10 +778,10 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if right.is_ellipsis_args:
         return True
 
-    left_star = left.var_arg
-    left_star2 = left.kw_arg
-    right_star = right.var_arg
-    right_star2 = right.kw_arg
+    left_star = left.var_arg()
+    left_star2 = left.kw_arg()
+    right_star = right.var_arg()
+    right_star2 = right.kw_arg()
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must
