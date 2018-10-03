@@ -50,6 +50,13 @@ from mypy.options import Options
 
 try:
     from typed_ast import ast27
+    from typed_ast.ast27 import (
+        AST,
+        Call,
+        Name,
+        Attribute,
+        Tuple as ast27_Tuple,
+    )
     from typed_ast import ast3
 except ImportError:
     if sys.version_info.minor > 2:
@@ -119,10 +126,10 @@ def parse(source: Union[str, bytes],
 
 
 def is_no_type_check_decorator(expr: ast27.expr) -> bool:
-    if isinstance(expr, ast27.Name):
+    if isinstance(expr, Name):
         return expr.id == 'no_type_check'
-    elif isinstance(expr, ast27.Attribute):
-        if isinstance(expr.value, ast27.Name):
+    elif isinstance(expr, Attribute):
+        if isinstance(expr.value, Name):
             return expr.value.id == 'typing' and expr.attr == 'no_type_check'
     return False
 
@@ -145,7 +152,7 @@ class ASTConverter:
     def fail(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, blocker=True)
 
-    def visit(self, node: Optional[ast27.AST]) -> Any:  # same as in typed_ast stub
+    def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
         if node is None:
             return None
         typeobj = type(node)
@@ -161,7 +168,7 @@ class ASTConverter:
         node.column = n.col_offset
         return node
 
-    def translate_expr_list(self, l: Sequence[ast27.AST]) -> List[Expression]:
+    def translate_expr_list(self, l: Sequence[AST]) -> List[Expression]:
         res = []  # type: List[Expression]
         for e in l:
             exp = self.visit(e)
@@ -169,7 +176,7 @@ class ASTConverter:
             res.append(exp)
         return res
 
-    def translate_stmt_list(self, l: Sequence[ast27.AST]) -> List[Statement]:
+    def translate_stmt_list(self, l: Sequence[AST]) -> List[Statement]:
         res = []  # type: List[Statement]
         for e in l:
             stmt = self.visit(e)
@@ -190,7 +197,7 @@ class ASTConverter:
         ast27.BitXor: '^',
         ast27.BitAnd: '&',
         ast27.FloorDiv: '//'
-    }  # type: Final[Dict[typing.Type[ast27.AST], str]]
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_operator(self, op: ast27.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -212,7 +219,7 @@ class ASTConverter:
         ast27.IsNot: 'is not',
         ast27.In: 'in',
         ast27.NotIn: 'not in'
-    }  # type: Final[Dict[typing.Type[ast27.AST], str]]
+    }  # type: Final[Dict[typing.Type[AST], str]]
 
     def from_comp_operator(self, op: ast27.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -440,17 +447,17 @@ class ASTConverter:
         return new_args, decompose_stmts
 
     def extract_names(self, arg: ast27.expr) -> List[str]:
-        if isinstance(arg, ast27.Name):
+        if isinstance(arg, Name):
             return [arg.id]
-        elif isinstance(arg, ast27.Tuple):
+        elif isinstance(arg, ast27_Tuple):
             return [name for elt in arg.elts for name in self.extract_names(elt)]
         else:
             return []
 
     def convert_arg(self, index: int, arg: ast27.expr, line: int, decompose_stmts: List[Statement]) -> Var:
-        if isinstance(arg, ast27.Name):
+        if isinstance(arg, Name):
             v = arg.id
-        elif isinstance(arg, ast27.Tuple):
+        elif isinstance(arg, ast27_Tuple):
             v = '__tuple_arg_{}'.format(index + 1)
             rvalue = NameExpr(v)
             rvalue.set_line(line)
@@ -469,10 +476,10 @@ class ASTConverter:
                 return converter.visit_raw_str(comment)
         return None
 
-    def stringify_name(self, n: ast27.AST) -> str:
-        if isinstance(n, ast27.Name):
+    def stringify_name(self, n: AST) -> str:
+        if isinstance(n, Name):
             return n.id
-        elif isinstance(n, ast27.Attribute):
+        elif isinstance(n, Attribute):
             return "{}.{}".format(self.stringify_name(n.value), n.attr)
         else:
             assert False, "can't stringify " + str(type(n))
@@ -604,7 +611,7 @@ class ASTConverter:
         for item in handlers:
             if item.name is None:
                 vs.append(None)
-            elif isinstance(item.name, ast27.Name):
+            elif isinstance(item.name, Name):
                 vs.append(NameExpr(item.name.id))
             else:
                 self.fail("Sorry, `except <expr>, <anything but a name>` is not supported",
@@ -826,7 +833,7 @@ class ASTConverter:
 
     # Call(expr func, expr* args, keyword* keywords)
     # keyword = (identifier? arg, expr value)
-    def visit_Call(self, n: ast27.Call) -> CallExpr:
+    def visit_Call(self, n: Call) -> CallExpr:
         arg_types = []  # type: List[ast27.expr]
         arg_kinds = []  # type: List[int]
         signature = []  # type: List[Optional[str]]
@@ -901,9 +908,9 @@ class ASTConverter:
         return EllipsisExpr()
 
     # Attribute(expr value, identifier attr, expr_context ctx)
-    def visit_Attribute(self, n: ast27.Attribute) -> Expression:
-        if (isinstance(n.value, ast27.Call) and
-                isinstance(n.value.func, ast27.Name) and
+    def visit_Attribute(self, n: Attribute) -> Expression:
+        if (isinstance(n.value, Call) and
+                isinstance(n.value.func, Name) and
                 n.value.func.id == 'super'):
             e = SuperExpr(n.attr, self.visit(n.value))
             return self.set_line(e, n)
@@ -917,7 +924,7 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Name(identifier id, expr_context ctx)
-    def visit_Name(self, n: ast27.Name) -> NameExpr:
+    def visit_Name(self, n: Name) -> NameExpr:
         e =  NameExpr(n.id)
         return self.set_line(e, n)
 
@@ -932,7 +939,7 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Tuple(expr* elts, expr_context ctx)
-    def visit_Tuple(self, n: ast27.Tuple) -> TupleExpr:
+    def visit_Tuple(self, n: ast27_Tuple) -> TupleExpr:
         e = TupleExpr([self.visit(e) for e in n.elts])
         return self.set_line(e, n)
 
