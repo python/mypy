@@ -76,57 +76,64 @@ class TypeState:
     # a re-checked target) during the update.
     _rechecked_types = set()  # type: Final[Set[TypeInfo]]
 
-    @classmethod
-    def reset_all_subtype_caches(cls) -> None:
+    # N.B: We do all of the accesses to these properties through
+    # TypeState, instead of making these classmethods and accessing
+    # via the cls parameter, since mypyc can optimize accesses to
+    # Final attributes of a directly referenced type.
+
+    @staticmethod
+    def reset_all_subtype_caches() -> None:
         """Completely reset all known subtype caches."""
-        cls._subtype_caches.clear()
+        TypeState._subtype_caches.clear()
 
-    @classmethod
-    def reset_subtype_caches_for(cls, info: TypeInfo) -> None:
+    @staticmethod
+    def reset_subtype_caches_for(info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo."""
-        if info in cls._subtype_caches:
-            cls._subtype_caches[info].clear()
+        if info in TypeState._subtype_caches:
+            TypeState._subtype_caches[info].clear()
 
-    @classmethod
-    def reset_all_subtype_caches_for(cls, info: TypeInfo) -> None:
+    @staticmethod
+    def reset_all_subtype_caches_for(info: TypeInfo) -> None:
         """Reset subtype caches (if any) for a given supertype TypeInfo and its MRO."""
         for item in info.mro:
-            cls.reset_subtype_caches_for(item)
+            TypeState.reset_subtype_caches_for(item)
 
-    @classmethod
-    def is_cached_subtype_check(cls, kind: SubtypeKind, left: Instance, right: Instance) -> bool:
+    @staticmethod
+    def is_cached_subtype_check(kind: SubtypeKind, left: Instance, right: Instance) -> bool:
         info = right.type
-        if info not in cls._subtype_caches:
+        if info not in TypeState._subtype_caches:
             return False
-        cache = cls._subtype_caches[info]
+        cache = TypeState._subtype_caches[info]
         if kind not in cache:
             return False
         return (left, right) in cache[kind]
 
-    @classmethod
-    def record_subtype_cache_entry(cls, kind: SubtypeKind,
+    @staticmethod
+    def record_subtype_cache_entry(kind: SubtypeKind,
                                    left: Instance, right: Instance) -> None:
-        cache = cls._subtype_caches.setdefault(right.type, dict())
+        cache = TypeState._subtype_caches.setdefault(right.type, dict())
         cache.setdefault(kind, set()).add((left, right))
 
-    @classmethod
-    def reset_protocol_deps(cls) -> None:
+    @staticmethod
+    def reset_protocol_deps() -> None:
         """Reset dependencies after a full run or before a daemon shutdown."""
-        cls.proto_deps = {}
-        cls._attempted_protocols.clear()
-        cls._checked_against_members.clear()
-        cls._rechecked_types.clear()
+        TypeState.proto_deps = {}
+        TypeState._attempted_protocols.clear()
+        TypeState._checked_against_members.clear()
+        TypeState._rechecked_types.clear()
 
-    @classmethod
-    def record_protocol_subtype_check(cls, left_type: TypeInfo, right_type: TypeInfo) -> None:
+    @staticmethod
+    def record_protocol_subtype_check(left_type: TypeInfo, right_type: TypeInfo) -> None:
         assert right_type.is_protocol
-        cls._rechecked_types.add(left_type)
-        cls._attempted_protocols.setdefault(left_type.fullname(), set()).add(right_type.fullname())
-        cls._checked_against_members.setdefault(left_type.fullname(),
-                                                set()).update(right_type.protocol_members)
+        TypeState._rechecked_types.add(left_type)
+        TypeState._attempted_protocols.setdefault(
+            left_type.fullname(), set()).add(right_type.fullname())
+        TypeState._checked_against_members.setdefault(
+            left_type.fullname(),
+            set()).update(right_type.protocol_members)
 
-    @classmethod
-    def _snapshot_protocol_deps(cls) -> Dict[str, Set[str]]:
+    @staticmethod
+    def _snapshot_protocol_deps() -> Dict[str, Set[str]]:
         """Collect protocol attribute dependencies found so far from registered subtype checks.
 
         There are three kinds of protocol dependencies. For example, after a subtype check:
@@ -156,8 +163,8 @@ class TypeState:
         'subtypes.is_protocol_implementation').
         """
         deps = {}  # type: Dict[str, Set[str]]
-        for info in cls._rechecked_types:
-            for attr in cls._checked_against_members[info.fullname()]:
+        for info in TypeState._rechecked_types:
+            for attr in TypeState._checked_against_members[info.fullname()]:
                 # The need for full MRO here is subtle, during an update, base classes of
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
                 # are added.
@@ -167,7 +174,7 @@ class TypeState:
                         # TODO: avoid everything from typeshed
                         continue
                     deps.setdefault(trigger, set()).add(make_trigger(info.fullname()))
-            for proto in cls._attempted_protocols[info.fullname()]:
+            for proto in TypeState._attempted_protocols[info.fullname()]:
                 trigger = make_trigger(info.fullname())
                 if 'typing' in trigger or 'builtins' in trigger:
                     continue
@@ -180,36 +187,38 @@ class TypeState:
                 deps.setdefault(trigger, set()).add(proto)
         return deps
 
-    @classmethod
-    def update_protocol_deps(cls, second_map: Optional[Dict[str, Set[str]]] = None) -> None:
+    @staticmethod
+    def update_protocol_deps(second_map: Optional[Dict[str, Set[str]]] = None) -> None:
         """Update global protocol dependency map.
 
         We update the global map incrementally, using a snapshot only from recently
         type checked types. If second_map is given, update it as well. This is currently used
         by FineGrainedBuildManager that maintains normal (non-protocol) dependencies.
         """
-        assert cls.proto_deps is not None, "This should not be called after failed cache load"
-        new_deps = cls._snapshot_protocol_deps()
+        assert TypeState.proto_deps is not None, (
+            "This should not be called after failed cache load")
+        new_deps = TypeState._snapshot_protocol_deps()
         for trigger, targets in new_deps.items():
-            cls.proto_deps.setdefault(trigger, set()).update(targets)
+            TypeState.proto_deps.setdefault(trigger, set()).update(targets)
         if second_map is not None:
             for trigger, targets in new_deps.items():
                 second_map.setdefault(trigger, set()).update(targets)
-        cls._rechecked_types.clear()
-        cls._attempted_protocols.clear()
-        cls._checked_against_members.clear()
+        TypeState._rechecked_types.clear()
+        TypeState._attempted_protocols.clear()
+        TypeState._checked_against_members.clear()
 
-    @classmethod
-    def add_all_protocol_deps(cls, deps: Dict[str, Set[str]]) -> None:
+    @staticmethod
+    def add_all_protocol_deps(deps: Dict[str, Set[str]]) -> None:
         """Add all known protocol dependencies to deps.
 
         This is used by tests and debug output, and also when passing
         all collected or loaded dependencies on to FineGrainedBuildManager
         in its __init__.
         """
-        cls.update_protocol_deps()  # just in case
-        assert cls.proto_deps is not None, "This should not be called after failed cache load"
-        for trigger, targets in cls.proto_deps.items():
+        TypeState.update_protocol_deps()  # just in case
+        assert TypeState.proto_deps is not None, (
+            "This should not be called after failed cache load")
+        for trigger, targets in TypeState.proto_deps.items():
             deps.setdefault(trigger, set()).update(targets)
 
 
