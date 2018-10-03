@@ -742,7 +742,7 @@ class Var(SymbolNode):
         super().__init__()
         self._name = name   # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast(Bogus[str], None)  # Name with module prefix
+        self._fullname = cast('Bogus[str]', None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
