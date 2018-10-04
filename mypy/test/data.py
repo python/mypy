@@ -29,19 +29,19 @@ DeleteFile = NamedTuple('DeleteFile', [('module', str),
 FileOperation = Union[UpdateFile, DeleteFile]
 
 
-def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
-                    case: 'DataDrivenTestCase') -> None:
+def parse_test_case(case: 'DataDrivenTestCase') -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
     This method is part of the setup phase, just before the test case is run.
     """
-    base_path = suite.base_path
-    if suite.native_sep:
+    test_items = parse_test_data(case.data, case.name)
+    base_path = case.suite.base_path
+    if case.suite.native_sep:
         join = os.path.join
     else:
         join = posixpath.join  # type: ignore
 
-    out_section_missing = suite.required_out_section
+    out_section_missing = case.suite.required_out_section
 
     files = []  # type: List[Tuple[str, str]] # path and contents
     output_files = []  # type: List[Tuple[str, str]] # path and contents for output files
@@ -68,14 +68,14 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
         elif item.id in ('builtins', 'builtins_py2'):
             # Use an alternative stub file for the builtins module.
             assert item.arg is not None
-            mpath = join(os.path.dirname(file), item.arg)
+            mpath = join(os.path.dirname(case.file), item.arg)
             fnam = 'builtins.pyi' if item.id == 'builtins' else '__builtin__.pyi'
             with open(mpath) as f:
                 files.append((join(base_path, fnam), f.read()))
         elif item.id == 'typing':
             # Use an alternative stub file for the typing module.
             assert item.arg is not None
-            src_path = join(os.path.dirname(file), item.arg)
+            src_path = join(os.path.dirname(case.file), item.arg)
             with open(src_path) as f:
                 files.append((join(base_path, 'typing.pyi'), f.read()))
         elif re.match(r'stale[0-9]*$', item.id):
@@ -113,12 +113,12 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
         else:
             raise ValueError(
                 'Invalid section header {} in {} at line {}'.format(
-                    item.id, file, item.line))
+                    item.id, case.file, item.line))
 
     if out_section_missing:
         raise ValueError(
             '{}, line {}: Required output section not found'.format(
-                file, first_item.line))
+                case.file, first_item.line))
 
     for passnum in stale_modules.keys():
         if passnum not in rechecked_modules:
@@ -130,7 +130,7 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
                 and not stale_modules[passnum].issubset(rechecked_modules[passnum])):
             raise ValueError(
                 ('Stale modules after pass {} must be a subset of rechecked '
-                 'modules ({}:{})').format(passnum, file, first_item.line))
+                 'modules ({}:{})').format(passnum, case.file, first_item.line))
 
     input = first_item.data
     expand_errors(input, output, 'main')
@@ -141,7 +141,6 @@ def parse_test_case(suite: 'DataSuite', test_items: List['TestItem'], file: str,
     case.output = output
     case.output2 = output2
     case.lastline = item.line
-    case.file = file
     case.files = files
     case.output_files = output_files
     case.expected_stale_modules = stale_modules
@@ -157,6 +156,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     output = None  # type: List[str]  # Output for the first pass
     output2 = None  # type: Dict[int, List[str]]  # Output for runs 2+, indexed by run number
 
+    # full path of test suite
     file = ''
     line = 0
 
@@ -171,7 +171,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
     def __init__(self,
                  parent: 'DataSuiteCollector',
                  suite: 'DataSuite',
-                 path: str,
+                 file: str,
                  name: str,
                  writescache: bool,
                  only_when: str,
@@ -179,8 +179,8 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
                  data: str,
                  line: int) -> None:
         super().__init__(name, parent)
-        self.path = path
         self.suite = suite
+        self.file = file
         self.writescache = writescache
         self.only_when = only_when
         self.skip = skip
@@ -211,10 +211,7 @@ class DataDrivenTestCase(pytest.Item):  # type: ignore  # inheriting from Any
             raise
 
     def setup(self) -> None:
-        parse_test_case(suite=self.suite,
-                        test_items=parse_test_data(self.data, self.name),
-                        file=self.path,
-                        case=self)
+        parse_test_case(case=self)
         self.old_cwd = os.getcwd()
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
@@ -567,13 +564,13 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
 
 
 def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
-                     path: str) -> Iterator['DataDrivenTestCase']:
+                     file: str) -> Iterator['DataDrivenTestCase']:
     """Iterate over raw test cases in file, at collection time, ignoring sub items.
 
     The collection phase is slow, so any heavy processing should be deferred to after
     uninteresting tests are filtered (when using -k PATTERN switch).
     """
-    with open(path, encoding='utf-8') as f:
+    with open(file, encoding='utf-8') as f:
         data = f.read()
     cases = re.split('^\[case ([a-zA-Z_0-9]+)'
                      '(-writescache)?'
@@ -584,7 +581,7 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
     line_no = cases[0].count('\n') + 1
     for i in range(1, len(cases), 5):
         name, writescache, only_when, skip, data = cases[i:i + 5]
-        yield DataDrivenTestCase(parent, suite, path,
+        yield DataDrivenTestCase(parent, suite, file,
                                  name=add_test_name_suffix(name, suite.test_name_suffix),
                                  writescache=bool(writescache),
                                  only_when=only_when,
