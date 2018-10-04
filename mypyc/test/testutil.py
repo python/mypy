@@ -171,11 +171,7 @@ def heading(text: str) -> None:
     print('=' * 20 + ' ' + text + ' ' + '=' * 20)
 
 
-def show_c_error(cpath: str, output: bytes) -> None:
+def show_c(ctext: str) -> None:
     heading('Generated C')
-    with open(cpath) as f:
-        print_with_line_numbers(f.read().rstrip())
+    print_with_line_numbers(ctext)
     heading('End C')
-    heading('Build output')
-    print(output.decode('utf8').rstrip('\n'))
-    heading('End output')

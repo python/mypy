@@ -1,5 +1,6 @@
 """Test cases for building an C extension and running it."""
 
+import glob
 import os.path
 import platform
 import subprocess
@@ -15,9 +16,10 @@ from mypy.options import Options
 
 from mypyc import genops
 from mypyc import emitmodule
+from mypyc.test.config import prefix
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, assert_test_output,
-    show_c_error, heading,
+    heading, show_c
 )
 
 from distutils.core import run_setup
@@ -129,6 +131,11 @@ class TestRun(MypycDataSuite):
                 f.write(setup_format.format(module_paths))
 
             run_setup(setup_file, ['build_ext', '--inplace'])
+            # Oh argh run_setup doesn't propagate failure. For now we'll just assert
+            # that the file is there.
+            if not glob.glob('native.*.so'):
+                show_c(ctext)
+                assert False, "Compilation failed"
 
             for p in to_delete:
                 os.remove(p)
@@ -156,10 +163,7 @@ class TestRun(MypycDataSuite):
             output = output.decode('utf8')
             outlines = output.splitlines()
 
-            heading('Generated C')
-            with open(cpath) as f:
-                print(f.read().rstrip())
-            heading('End C')
+            show_c(ctext)
             if proc.returncode != 0:
                 print()
                 print('*** Exit status: %d' % proc.returncode)
