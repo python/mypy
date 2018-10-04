@@ -33,7 +33,7 @@ from mypy.semanal_shared import create_indirect_imported_name
 from mypy.options import Options
 from mypy.sametypes import is_same_type
 from mypy.visitor import NodeVisitor
-from mypy.semanal_redef import VariableRenameVisitor
+from mypy.renaming import VariableRenameVisitor
 
 
 class SemanticAnalyzerPass1(NodeVisitor[None]):
