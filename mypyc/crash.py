@@ -1,4 +1,7 @@
-from typing import NoReturn, Iterator
+from typing import Iterator
+MYPY = False
+if MYPY:
+    from typing import NoReturn
 
 import sys
 import traceback
@@ -13,7 +16,7 @@ def catch_errors(module_path: str, line: int) -> Iterator[None]:
         crash_report(module_path, line)
 
 
-def crash_report(module_path: str, line: int) -> NoReturn:
+def crash_report(module_path: str, line: int) -> 'NoReturn':
     # Adapted from report_internal_error in mypy
     err = sys.exc_info()[1]
     tb = traceback.extract_stack()[:-4]

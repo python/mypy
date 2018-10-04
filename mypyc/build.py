@@ -27,7 +27,10 @@ import subprocess
 import hashlib
 import time
 
-from typing import List, Tuple, Any, Optional, Union, Dict, NoReturn, cast
+from typing import List, Tuple, Any, Optional, Union, Dict, cast
+MYPY = False
+if MYPY:
+    from typing import NoReturn
 
 base_path = os.path.join(os.path.dirname(__file__), '..')
 sys.path.insert(0, os.path.join(base_path, 'external/mypy'))
@@ -93,7 +96,7 @@ class MypycifyExtension(Extension):
         self.mypyc_shared_target = mypyc_shared_target
 
 
-def fail(message: str) -> NoReturn:
+def fail(message: str) -> 'NoReturn':
     # TODO: Is there something else we should do to fail?
     sys.exit(message)
 

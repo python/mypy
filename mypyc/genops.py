@@ -14,8 +14,11 @@ It would be translated to something that conceptually looks like this:
    return r3
 """
 from typing import (
-    Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, ClassVar, cast, overload,
+    Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, cast, overload,
 )
+MYPY = False
+if MYPY:
+    from typing import ClassVar
 from abc import abstractmethod
 import sys
 import traceback
