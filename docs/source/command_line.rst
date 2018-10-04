@@ -436,7 +436,7 @@ beyond what incremental mode can offer, try running mypy in
 .. _quick-mode:
 
 ``--quick-and-dirty``
-    This flag enables an experimental, unsafe variant of incremental mode.
+    This flag enables a **deprecated**, unsafe variant of incremental mode.
     Quick mode is faster than regular incremental mode because it only
     re-checks modules that were modified since their cache file was
     last written: regular incremental mode also re-checks all modules
@@ -448,6 +448,7 @@ beyond what incremental mode can offer, try running mypy in
 
     We recommend that you try using the :ref:`mypy_daemon` before
     attempting to use this feature.
+    Quick mode is deprecated and will soon be removed.
 
 .. _advanced-flags:
 

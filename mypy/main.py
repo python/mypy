@@ -575,9 +575,6 @@ def process_options(args: List[str],
         '--cache-fine-grained', action='store_true',
         help="Include fine-grained dependency information in the cache for the mypy daemon")
     incremental_group.add_argument(
-        '--quick-and-dirty', action='store_true',
-        help="Use cache even if dependencies out of date (implies --incremental)")
-    incremental_group.add_argument(
         '--skip-version-check', action='store_true',
         help="Allow using cache written by older mypy version")
 
@@ -713,6 +710,8 @@ def process_options(args: List[str],
     parser.add_argument('--no-fast-parser', action='store_true',
                         dest='special-opts:no_fast_parser',
                         help=argparse.SUPPRESS)
+    parser.add_argument('--quick-and-dirty', action='store_true',
+                        help=argparse.SUPPRESS)
 
     code_group = parser.add_argument_group(
         title="Running code",
@@ -769,7 +768,8 @@ def process_options(args: List[str],
     # Process deprecated options
     if special_opts.disallow_any:
         print("--disallow-any option was split up into multiple flags. "
-              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-dynamic-typing")
+              "See http://mypy.readthedocs.io/en/latest/command_line.html#disallow-dynamic-typing",
+              file=sys.stderr)
     if options.strict_boolean:
         print("Warning: --strict-boolean is deprecated; "
               "see https://github.com/python/mypy/issues/3195", file=sys.stderr)
@@ -792,7 +792,10 @@ def process_options(args: List[str],
         print("Warning: --fast-parser is now the default (and only) parser.")
     if special_opts.no_fast_parser:
         print("Warning: --no-fast-parser no longer has any effect.  The fast parser "
-              "is now mypy's default and only parser.")
+              "is now mypy's default and only parser.", file=sys.stderr)
+    if options.quick_and_dirty:
+        print("Warning: --quick-and-dirty is deprecated.  It will disappear in the next release.",
+              file=sys.stderr)
 
     try:
         infer_python_version_and_executable(options, special_opts)
