@@ -81,7 +81,9 @@ Class and instance variable annotations
 ***************************************
 
 Mypy supports annotations for class and instance 
-variables in class bodies and methods:
+variables in class bodies and methods. Use ``ClassVar`` to
+indicate to the static type checker that this variable 
+should not be set on instances. 
 
 .. code-block:: python
 
@@ -89,8 +91,7 @@ variables in class bodies and methods:
       y: ClassVar[Dict[str, int]] = {}  # class variable
       z: int = 10                       # instance variable
 
-``ClassVar`` is a special class that indicates to the static 
-type checker that this variable should not be set on instances. 
+
 ``ClassVar`` accepts only types and cannot be further subscribed.
 
 ``ClassVar`` is not a class itself, and should not be used with 
