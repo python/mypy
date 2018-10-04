@@ -137,7 +137,7 @@ class VariableRenameVisitor(TraverserVisitor):
         if isinstance(lvalue, NameExpr):
             name = lvalue.name
             is_new = self.record_assignment(name, True, not has_initializer)
-            if is_new: # and name != '_':  # Underscore gets special handling later
+            if is_new:  # and name != '_':  # Underscore gets special handling later
                 self.handle_def(lvalue)
             else:
                 self.handle_ref(lvalue)

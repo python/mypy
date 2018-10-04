@@ -2088,7 +2088,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 return False
             existing = self.globals.get(orig_name)
             return existing is not None and is_final_node(existing.node)
-        #return is_final_node(self.locals[-1][name].node)
 
     def make_name_lvalue_var(self, lvalue: NameExpr, kind: int, inferred: bool) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
