@@ -173,7 +173,7 @@ def _build(sources: List[BuildSource],
            fscache: Optional[FileSystemCache],
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
-    gc.set_threshold(50000)
+    gc.set_threshold(150 * 1000)
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
