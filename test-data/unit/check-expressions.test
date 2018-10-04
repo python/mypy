@@ -959,7 +959,6 @@ main:3: error: "A" not callable
 
 [case testNoneReturnTypeBasics]
 a, o = None, None # type: (A, object)
-<<<<<<< HEAD
 if int():
     a = f()         # E: "f" does not return a value
 if int():
