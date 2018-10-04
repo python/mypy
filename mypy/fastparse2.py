@@ -911,7 +911,7 @@ class ASTConverter:
             # The following line is a bit hacky, but is the best way to maintain
             # compatibility with how mypy currently parses the contents of bytes literals.
             contents = str(s)[2:-1]
-            e = StrExpr(contents)
+            e = StrExpr(contents)  # type: Union[StrExpr, UnicodeExpr]
             return self.set_line(e, n)
         else:
             e = UnicodeExpr(n.s)
