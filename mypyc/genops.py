@@ -3813,7 +3813,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         Returns a ClassIR representing an environment for a function containing a nested function.
         """
         env_class = ClassIR('{}_{}_env'.format(self.fn_info.name, self.fn_info.ns),
-                            self.module_name)
+                            self.module_name, is_generated=True)
         env_class.attributes[SELF_NAME] = RInstance(env_class)
         if self.fn_info.is_nested:
             # If the function is nested, its environment class must contain an environment
@@ -3862,7 +3862,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def setup_generator_class(self) -> ClassIR:
         name = '{}_{}_gen'.format(self.fn_info.name, self.fn_info.ns)
 
-        generator_class_ir = ClassIR(name, self.module_name)
+        generator_class_ir = ClassIR(name, self.module_name, is_generated=True)
         generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(self.fn_info.env_class)
         generator_class_ir.mro = [generator_class_ir]
 

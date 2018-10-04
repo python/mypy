@@ -97,13 +97,15 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields['tp_name'] = '"{}"'.format(name)
 
     generate_full = not cl.is_trait and not cl.builtin_base
+    needs_getseters = not cl.is_generated
 
     if generate_full:
         fields['tp_new'] = new_name
         fields['tp_dealloc'] = '(destructor){}_dealloc'.format(name_prefix)
         fields['tp_traverse'] = '(traverseproc){}_traverse'.format(name_prefix)
         fields['tp_clear'] = '(inquiry){}_clear'.format(name_prefix)
-    fields['tp_getset'] = getseters_name
+    if needs_getseters:
+        fields['tp_getset'] = getseters_name
     fields['tp_methods'] = methods_name
 
     def emit_line() -> None:
@@ -166,10 +168,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         generate_native_getters_and_setters(cl, emitter)
         vtable_name = generate_vtables(cl, vtable_name, emitter)
         emit_line()
-    generate_getseter_declarations(cl, emitter)
-    emit_line()
-    generate_getseters_table(cl, getseters_name, emitter)
-    emit_line()
+    if needs_getseters:
+        generate_getseter_declarations(cl, emitter)
+        emit_line()
+        generate_getseters_table(cl, getseters_name, emitter)
+        emit_line()
     generate_methods_table(cl, methods_name, emitter)
     emit_line()
 
@@ -194,7 +197,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         generate_constructor_for_class(
             cl, cl.ctor, init_fn, setup_name, vtable_name, emitter)
         emitter.emit_line()
-    generate_getseters(cl, emitter)
+    if needs_getseters:
+        generate_getseters(cl, emitter)
 
 
 def getter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
