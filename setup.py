@@ -83,10 +83,15 @@ if os.getenv('MYPY_USE_MYPYC', None) == '1':
 
 if USE_MYPYC:
     MYPYC_BLACKLIST = (
+        # Designed to collect things that can't be compiled
         'mypyc_hacks.py',
         'interpreted_plugin.py',
 
+        # Can't be compiled because they need to be runnable as scripts
         '__main__.py',
+        'sitepkgs.py',
+
+        # Can't be compiled because something goes wrong
         'bogus_type.py',
         'dmypy.py',
         'gclogger.py',

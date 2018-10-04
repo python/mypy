@@ -742,7 +742,7 @@ class Var(SymbolNode):
         super().__init__()
         self._name = name   # Name without module prefix
         # TODO: Should be Optional[str]
-        self._fullname = cast(Bogus[str], None)  # Name with module prefix
+        self._fullname = cast('Bogus[str]', None)  # Name with module prefix
         # TODO: Should be Optional[TypeInfo]
         self.info = VAR_NO_INFO
         self.type = type  # type: Optional[mypy.types.Type] # Declared or inferred type, or None
@@ -2299,6 +2299,12 @@ class TypeInfo(SymbolNode):
     def __repr__(self) -> str:
         return '<TypeInfo %s>' % self.fullname()
 
+    def __bool__(self) -> bool:
+        # We defined this here instead of just overriding it in
+        # FakeInfo so that mypyc can generate a direct call instead of
+        # using the generic bool handling.
+        return not isinstance(self, FakeInfo)
+
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
 
@@ -2475,14 +2481,11 @@ class FakeInfo(TypeInfo):
     # for missing TypeInfos in a number of places where the excuses
     # for not being Optional are a little weaker.
     #
-    # It defines a __bool__ method so that it can be conveniently
-    # tested against in the same way that it would be if things were
-    # properly optional.
+    # TypeInfo defines a __bool__ method that returns False for FakeInfo
+    # so that it can be conveniently tested against in the same way that it
+    # would be if things were properly optional.
     def __init__(self, msg: str) -> None:
         self.msg = msg
-
-    def __bool__(self) -> bool:
-        return False
 
     def __getattribute__(self, attr: str) -> None:
         raise AssertionError(object.__getattribute__(self, 'msg'))

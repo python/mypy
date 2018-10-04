@@ -337,6 +337,23 @@ class B(A):
     def __new__(cls) -> int:
         return 1
 
+[case testOverride__new__AndCallObject]
+from typing import TypeVar, Generic
+
+class A:
+    def __new__(cls, x: int) -> 'A':
+        return object.__new__(cls)
+
+T = TypeVar('T')
+class B(Generic[T]):
+    def __new__(cls, foo: T) -> 'B[T]':
+        x = object.__new__(cls)
+        # object.__new__ doesn't have a great type :(
+        reveal_type(x)  # E: Revealed type is 'Any'
+        return x
+
+[builtins fixtures/__new__.pyi]
+
 [case testInnerFunctionNotOverriding]
 class A:
     def f(self) -> int: pass
@@ -558,7 +575,61 @@ import typing
 class A:
     def __init__(self, x: int): pass
 [out]
-main:3: error: The return type of "__init__" must be None
+
+[case testDecoratedConstructorWithImplicitReturnValueType]
+import typing
+from typing import Callable
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init__(self, x: int): pass
+[out]
+
+[case testOverloadedConstructorWithImplicitReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload
+class Foo:
+    @overload
+    def __init__(self, a: int):
+        pass
+
+    @overload
+    def __init__(self, a: str):
+        pass
+
+[case testConstructorWithAnyReturnValueType]
+import typing
+from typing import Any
+class A:
+    def __init__(self) -> Any: pass # E: The return type of "__init__" must be None
+
+[case testDecoratedConstructorWithAnyReturnValueType]
+import typing
+from typing import Callable, Any
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init__(self) -> Any: pass # E: The return type of "__init__" must be None
+
+[case testOverloadedConstructorWithAnyReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload, Any
+class Foo:
+    @overload
+    def __init__(self, a: int) -> Any: # E: The return type of "__init__" must be None
+        pass
+
+    @overload
+    def __init__(self, a: str) -> Any: # E: The return type of "__init__" must be None
+        pass
 
 [case testInitSubclassWithReturnValueType]
 import typing
@@ -572,7 +643,62 @@ import typing
 class A:
     def __init_subclass__(cls, x: int=1): pass
 [out]
-main:3: error: The return type of "__init_subclass__" must be None
+
+[case testDecoratedInitSubclassWithImplicitReturnValueType]
+import typing
+from typing import Callable
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init_subclass__(cls, x: int=1): pass
+[out]
+
+[case testOverloadedInitSubclassWithImplicitReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload
+class Foo:
+    @overload
+    def __init_subclass__(cls, a: int):
+        pass
+
+    @overload
+    def __init_subclass__(cls, a: str):
+        pass
+
+[case testInitSubclassWithAnyReturnValueType]
+import typing
+from typing import Any
+class A:
+    def __init_subclass__(cls) -> Any: pass # E: The return type of "__init_subclass__" must be None
+
+[case testDecoratedInitSubclassWithAnyReturnValueType]
+import typing
+from typing import Callable, Any
+
+def deco(fn: Callable) -> Callable:
+    return fn
+
+class A:
+    @deco
+    def __init_subclass__(cls) -> Any: pass # E: The return type of "__init_subclass__" must be None
+[out]
+
+[case testOverloadedInitSubclassWithAnyReturnValueType]
+from foo import *
+[file foo.pyi]
+from typing import overload, Any
+class Foo:
+    @overload
+    def __init_subclass__(cls, a: int) -> Any: # E: The return type of "__init_subclass__" must be None
+        pass
+
+    @overload
+    def __init_subclass__(cls, a: str) -> Any: # E: The return type of "__init_subclass__" must be None
+        pass
 
 [case testGlobalFunctionInitWithReturnType]
 import typing
@@ -3022,7 +3148,7 @@ def f(a: Type[N]):
     a()
 [builtins fixtures/list.pyi]
 [out]
-main:3: error: Unsupported type Type["N"]
+main:4: error: Too few arguments for "N"
 
 [case testTypeUsingTypeCJoin]
 from typing import Type
@@ -5140,4 +5266,371 @@ class C:
     @property  # Should be no error here
     def x(self) -> int: pass
 [builtins fixtures/property.pyi]
+[out]
+
+[case testClassMethodBeforeInit1]
+class Foo:
+    @classmethod
+    def bar(cls) -> Foo:
+        return cls("bar")
+
+    def __init__(self, baz: str) -> None:
+        self.baz = baz
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodBeforeInit2]
+class Foo:
+    @classmethod
+    def bar(cls) -> Foo:
+        return cls(Bar())
+
+    def __init__(self, baz: 'Bar') -> None:
+        self.baz = baz
+
+class Bar: pass
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodBeforeInit3]
+from typing import overload
+class Foo:
+    @classmethod
+    @overload
+    def bar(cls, x: int) -> Foo: ...
+    @classmethod
+    @overload
+    def bar(cls, x: str) -> Foo: ...
+    @classmethod
+    def bar(cls, x: object) -> Foo:
+        return cls(x)
+
+    def __init__(self, baz: object) -> None:
+        self.baz = baz
+
+[builtins fixtures/classmethod.pyi]
+
+[case testNewAndInit1]
+class A:
+    def __init__(self, x: int) -> None:
+        pass
+
+class B(A):
+    def __new__(cls) -> int:
+        return 10
+
+B()
+
+[case testNewAndInit2]
+from typing import Any
+
+class A:
+    def __new__(cls, *args: Any) -> 'A':
+        ...
+
+class B(A):
+    def __init__(self, x: int) -> None:
+        pass
+
+reveal_type(B)  # E: Revealed type is 'def (x: builtins.int) -> __main__.B'
+
+[case testNewAndInit3]
+from typing import Any
+
+class A:
+    def __new__(cls, *args: Any) -> 'A':
+        ...
+    def __init__(self, x: int) -> None:
+        pass
+
+reveal_type(A)  # E: Revealed type is 'def (x: builtins.int) -> __main__.A'
+
+[case testCyclicDecorator]
+import b
+[file a.py]
+import b
+import c
+
+class A(b.B):
+    @c.deco
+    def meth(self) -> int: ...
+[file b.py]
+import a
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int: ...
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[out]
+
+[case testCyclicOverload]
+import b
+[file a.pyi]
+import b
+from typing import overload
+
+class A(b.B):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+[file b.pyi]
+import a
+from typing import overload
+
+class B:
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+[out]
+
+[case testCyclicOverloadDeferred]
+import b
+[file a.py]
+import b
+from typing import overload, Union
+
+class A(b.B):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    def meth(self, x) -> Union[int, str]:
+        reveal_type(other.x)  # E: Revealed type is 'builtins.int'
+        return 0
+
+other: Other
+class Other:
+    def __init__(self) -> None:
+        self.x = f()
+def f() -> int: ...
+[file b.py]
+import a
+from typing import overload
+
+class B:
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    def meth(self, x):
+        pass
+[out]
+
+[case testCyclicOverrideAny]
+import a
+[file b.py]
+import a
+class Sub(a.Base):
+    def x(self) -> int: pass
+
+[file a.py]
+import b
+class Base:
+    def __init__(self):
+        self.x = 1
+[out]
+
+[case testCyclicOverrideChecked]
+import a
+[file b.py]
+import a
+class Sub(a.Base):
+    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base"
+
+[file a.py]
+import b
+class Base:
+    def __init__(self) -> None:
+        self.x = 1
+[out]
+
+[case testCyclicOverrideCheckedDecorator]
+import a
+[file b.py]
+import a
+import c
+class Sub(a.Base):
+    @c.deco
+    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base"
+
+[file a.py]
+import b
+import c
+class Base:
+    def __init__(self) -> None:
+        self.x = 1
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[out]
+
+[case testCyclicOverrideCheckedDecoratorDeferred]
+import a
+[file b.py]
+import a
+import c
+class Sub(a.Base):
+    @c.deco
+    def x(self) -> int: pass  # E: Signature of "x" incompatible with supertype "Base"
+
+[file a.py]
+import b
+import c
+class Base:
+    def __init__(self) -> None:
+        self.x = f()
+
+def f() -> int: ...
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[out]
+
+[case testCyclicOverrideAnyDecoratorDeferred]
+import a
+[file b.py]
+import a
+import c
+class Sub(a.Base):
+    @c.deco
+    def x(self) -> int: pass
+
+[file a.py]
+from b import Sub
+import c
+class Base:
+    def __init__(self) -> None:
+        self.x = f()
+
+def f() -> int: ...
+[file c.py]
+from typing import Any, Callable
+def deco(f: Callable[..., Any]) -> Any: ...
+[out]
+
+[case testCyclicDecoratorDoubleDeferred]
+import b
+[file a.py]
+import b
+import c
+
+class A(b.B):
+    @c.deco
+    def meth(self) -> int:
+        reveal_type(other.x)  # E: Revealed type is 'builtins.int'
+        return 0
+
+other: Other
+class Other:
+    def __init__(self) -> None:
+        self.x = f()
+def f() -> int: ...
+[file b.py]
+from a import A
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int:
+        pass
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[out]
+
+[case testCyclicDecoratorSuper]
+import b
+[file a.py]
+import b
+import c
+
+class A(b.B):
+    @c.deco
+    def meth(self) -> int:
+        y = super().meth()
+        reveal_type(y)  # E: Revealed type is 'Tuple[builtins.int*, builtins.int]'
+        return 0
+[file b.py]
+from a import A
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int:
+        pass
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[out]
+
+[case testCyclicDecoratorBothDeferred]
+import b
+[file a.py]
+import b
+import c
+
+class A(b.B):
+    @c.deco
+    def meth(self) -> int:
+        pass
+[file b.py]
+from a import A
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int:
+        reveal_type(other.x)  # E: Revealed type is 'builtins.int'
+        return 0
+
+other: Other
+class Other:
+    def __init__(self) -> None:
+        self.x = f()
+def f() -> int: ...
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
+[out]
+
+[case testCyclicDecoratorSuperDeferred]
+import b
+[file a.py]
+import b
+import c
+
+class A(b.B):
+    @c.deco
+    def meth(self) -> int:
+        y = super().meth()
+        reveal_type(y)  # E: Revealed type is 'Tuple[builtins.int*, builtins.int]'
+        reveal_type(other.x)  # E: Revealed type is 'builtins.int'
+        return 0
+
+other: Other
+class Other:
+    def __init__(self) -> None:
+        self.x = f()
+def f() -> int: ...
+[file b.py]
+from a import A
+import c
+
+class B:
+    @c.deco
+    def meth(self) -> int:
+        pass
+[file c.py]
+from typing import TypeVar, Tuple, Callable
+T = TypeVar('T')
+def deco(f: Callable[..., T]) -> Callable[..., Tuple[T, int]]: ...
 [out]

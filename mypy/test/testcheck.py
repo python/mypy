@@ -7,7 +7,8 @@ import sys
 from typing import Dict, List, Set, Tuple
 
 from mypy import build
-from mypy.build import BuildSource, Graph, SearchPaths
+from mypy.build import Graph
+from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, UpdateFile
 from mypy.test.helpers import (
@@ -145,7 +146,7 @@ class TypeCheckSuite(DataSuite):
         else:
             options.incremental = False
             # Don't waste time writing cache unless we are specifically looking for it
-            if 'writescache' not in testcase.name.lower():
+            if not testcase.writescache:
                 options.cache_dir = os.devnull
 
         sources = []
@@ -271,13 +272,14 @@ class TypeCheckSuite(DataSuite):
         Return a list of tuples (module name, file name, program text).
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
-        regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
-        alt_m = re.search(regex, program_text, flags=re.MULTILINE)
-        if alt_m is not None and incremental_step > 1:
-            # Optionally return a different command if in a later step
-            # of incremental mode, otherwise default to reusing the
-            # original cmd.
-            m = alt_m
+        if incremental_step > 1:
+            alt_regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+            alt_m = re.search(alt_regex, program_text, flags=re.MULTILINE)
+            if alt_m is not None:
+                # Optionally return a different command if in a later step
+                # of incremental mode, otherwise default to reusing the
+                # original cmd.
+                m = alt_m
 
         if m:
             # The test case wants to use a non-default main
@@ -286,9 +288,9 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             search_paths = SearchPaths((test_temp_dir,), (), (), ())
+            cache = FindModuleCache(search_paths)
             for module_name in module_names.split(' '):
-                path = build.FindModuleCache().find_module(module_name, search_paths,
-                                                           sys.executable)
+                path = cache.find_module(module_name)
                 assert path is not None, "Can't find ad hoc case file"
                 with open(path) as f:
                     program_text = f.read()

@@ -2095,9 +2095,7 @@ class A: pass
 
 def foo1(x: Union[A, str, None]) -> None:
     if x is None:
-        # Since None is a subtype of all types in no-strict-optional,
-        # we can't really narrow the type here
-        reveal_type(x)      # E: Revealed type is 'Union[__main__.A, builtins.str, None]'
+        reveal_type(x)      # E: Revealed type is 'None'
     elif isinstance(x, A):
         # Note that Union[None, A] == A in no-strict-optional
         reveal_type(x)      # E: Revealed type is '__main__.A'
@@ -2106,12 +2104,12 @@ def foo1(x: Union[A, str, None]) -> None:
 
 def foo2(x: Optional[str]) -> None:
     if x is None:
-        reveal_type(x)      # E: Revealed type is 'Union[builtins.str, None]'
+        reveal_type(x)      # E: Revealed type is 'None'
     elif isinstance(x, A):
         # Mypy should, however, be able to skip impossible cases
         reveal_type(x)
     else:
-        reveal_type(x)      # E: Revealed type is 'Union[builtins.str, None]'
+        reveal_type(x)      # E: Revealed type is 'builtins.str'
 [builtins fixtures/isinstance.pyi]
 
 [case testNoneCheckDoesNotNarrowWhenUsingTypeVars]

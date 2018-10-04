@@ -9,13 +9,13 @@ import subprocess
 import sys
 import time
 
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Callable
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from mypy import build
 from mypy import defaults
 from mypy import experiments
 from mypy import util
-from mypy.build import BuildSource, BuildResult, SearchPaths
+from mypy.modulefinder import BuildSource, FindModuleCache, mypy_path, SearchPaths
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
@@ -64,10 +64,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    if script_path:
-        bin_dir = find_bin_directory(script_path)  # type: Optional[str]
-    else:
-        bin_dir = None
     sys.setrecursionlimit(2 ** 14)
     if args is None:
         args = sys.argv[1:]
@@ -89,10 +85,11 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
 
     serious = False
     blockers = False
+    res = None
     try:
         # Keep a dummy reference (res) for memory profiling below, as otherwise
         # the result could be freed.
-        res = type_check_only(sources, bin_dir, options, flush_errors, fscache)  # noqa
+        res = build.build(sources, options, None, flush_errors, fscache)
     except CompileError as e:
         blockers = True
         if not e.use_stdout:
@@ -110,6 +107,7 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
         print_memory_profile()
+    del res  # Now it's safe to delete
 
     code = 0
     if messages:
@@ -123,20 +121,6 @@ def main(script_path: Optional[str], args: Optional[List[str]] = None) -> None:
         sys.exit(code)
 
 
-def find_bin_directory(script_path: str) -> str:
-    """Find the directory that contains this script.
-
-    This is used by build to find stubs and other data files.
-    """
-    # Follow up to 5 symbolic links (cap to avoid cycles).
-    for i in range(5):
-        if os.path.islink(script_path):
-            script_path = readlinkabs(script_path)
-        else:
-            break
-    return os.path.dirname(script_path)
-
-
 def readlinkabs(link: str) -> str:
     """Return an absolute path to symbolic link destination."""
     # Adapted from code by Greg Smith.
@@ -145,18 +129,6 @@ def readlinkabs(link: str) -> str:
     if os.path.isabs(path):
         return path
     return os.path.join(os.path.dirname(link), path)
-
-
-def type_check_only(sources: List[BuildSource], bin_dir: Optional[str],
-                    options: Options,
-                    flush_errors: Optional[Callable[[List[str], bool], None]],
-                    fscache: FileSystemCache) -> BuildResult:
-    # Type-check the program and dependencies.
-    return build.build(sources=sources,
-                       bin_dir=bin_dir,
-                       options=options,
-                       flush_errors=flush_errors,
-                       fscache=fscache)
 
 
 class SplitNamespace(argparse.Namespace):
@@ -453,6 +425,10 @@ def process_options(args: List[str],
     imports_group.add_argument(
         '--no-silence-site-packages', action='store_true',
         help="Do not silence errors in PEP 561 compliant installed packages")
+    add_invertible_flag(
+        '--namespace-packages', default=False,
+        help="Support namespace packages (PEP 420, __init__.py-less)",
+        group=imports_group)
 
     platform_group = parser.add_argument_group(
         title='Platform configuration',
@@ -573,6 +549,10 @@ def process_options(args: List[str],
     # flags that are added after this group.
     strictness_group = parser.add_argument_group(
         title='Other strictness checks')
+
+    add_invertible_flag('--allow-untyped-globals', default=False, strict_flag=False,
+                        help="Suppress toplevel errors caused by missing annotations",
+                        group=strictness_group)
 
     incremental_group = parser.add_argument_group(
         title='Incremental mode',
@@ -876,14 +856,14 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        search_paths = SearchPaths((os.getcwd(),), tuple(build.mypy_path()), (), ())
+        search_paths = SearchPaths((os.getcwd(),), tuple(mypy_path()), (), ())
         targets = []
         # TODO: use the same cache that the BuildManager will
-        cache = build.FindModuleCache(fscache)
+        cache = FindModuleCache(search_paths, fscache)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
                 fail("Package name '{}' cannot have a slash in it.".format(p))
-            p_targets = cache.find_modules_recursive(p, search_paths, options.python_executable)
+            p_targets = cache.find_modules_recursive(p)
             if not p_targets:
                 fail("Can't find package '{}'".format(p))
             targets.extend(p_targets)

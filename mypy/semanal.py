@@ -68,7 +68,7 @@ from mypy.messages import CANNOT_ASSIGN_TO_TYPE, MessageBuilder
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarDef, TupleType, UnionType, StarType, function_type,
     CallableType, Overloaded, Instance, Type, AnyType,
-    TypeTranslator, TypeOfAny
+    TypeTranslator, TypeOfAny, TypeType, NoneTyp,
 )
 from mypy.nodes import implicit_module_attrs
 from mypy.typeanal import (
@@ -317,7 +317,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             del self.cur_mod_node
             del self.globals
 
-    def refresh_partial(self, node: Union[MypyFile, FuncItem, OverloadedFuncDef],
+    def refresh_partial(self, node: Union[MypyFile, FuncDef, OverloadedFuncDef],
                         patches: List[Tuple[int, Callable[[], None]]]) -> None:
         """Refresh a stale target in fine-grained incremental mode."""
         self.patches = patches
@@ -408,6 +408,10 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             add_symbol = False
                     if add_symbol:
                         self.type.names[defn.name()] = SymbolTableNode(MDEF, defn)
+                if defn.type is not None and defn.name() in ('__init__', '__init_subclass__'):
+                    assert isinstance(defn.type, CallableType)
+                    if isinstance(defn.type.ret_type, AnyType):
+                        defn.type = defn.type.copy_modified(ret_type=NoneTyp())
                 self.prepare_method_signature(defn, self.type)
             elif self.is_func_scope():
                 # Nested function
@@ -480,10 +484,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             elif isinstance(functype, CallableType):
                 self_type = functype.arg_types[0]
                 if isinstance(self_type, AnyType):
+                    leading_type = fill_typevars(info)  # type: Type
                     if func.is_class or func.name() in ('__new__', '__init_subclass__'):
-                        leading_type = self.class_type(info)
-                    else:
-                        leading_type = fill_typevars(info)
+                        leading_type = self.class_type(leading_type)
                     func.type = replace_implicit_first_type(functype, leading_type)
 
     def set_original_def(self, previous: Optional[Node], new: FuncDef) -> bool:
@@ -776,8 +779,6 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                 # that were already set in build_namedtuple_typeinfo.
                 nt_names = named_tuple_info.names
                 named_tuple_info.names = SymbolTable()
-                # This is needed for the cls argument to classmethods to get bound correctly.
-                named_tuple_info.names['__init__'] = nt_names['__init__']
 
                 self.enter_class(named_tuple_info)
 
@@ -1344,15 +1345,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def str_type(self) -> Instance:
         return self.named_type('__builtins__.str')
 
-    def class_type(self, info: TypeInfo) -> Type:
-        # Construct a function type whose fallback is cls.
-        from mypy import checkmember  # To avoid import cycle.
-        leading_type = checkmember.type_object_type(info, self.builtin_type)
-        if isinstance(leading_type, Overloaded):
-            # Overloaded __init__ is too complex to handle.  Plus it's stubs only.
-            return AnyType(TypeOfAny.special_form)
-        else:
-            return leading_type
+    def class_type(self, self_type: Type) -> Type:
+        return TypeType.make_normalized(self_type)
 
     def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
         sym = self.lookup_qualified(qualified_name, Context())
@@ -2040,7 +2034,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                          not self.type)
         if (add_global or nested_global) and lval.name not in self.globals:
             # Define new global name.
-            v = self.make_name_lvalue_var(lval, GDEF)
+            v = self.make_name_lvalue_var(lval, GDEF, not explicit_type)
             self.globals[lval.name] = SymbolTableNode(GDEF, v)
         elif isinstance(lval.node, Var) and lval.is_new_def:
             if lval.kind == GDEF:
@@ -2057,7 +2051,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
               and lval.name not in self.global_decls[-1]
               and lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
-            v = self.make_name_lvalue_var(lval, LDEF)
+            v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
             self.add_local(v, lval)
             if unmangle(lval.name) == '_':
                 # Special case for assignment to local named '_': always infer 'Any'.
@@ -2068,8 +2062,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # Define a new attribute within class body.
             if is_final and unmangle(lval.name) + "'" in self.type.names:
                 self.fail("Cannot redefine an existing name as final", lval)
-            v = self.make_name_lvalue_var(lval, MDEF)
-            v.is_inferred = not explicit_type
+            v = self.make_name_lvalue_var(lval, MDEF, not explicit_type)
             self.type.names[lval.name] = SymbolTableNode(MDEF, v)
         else:
             self.make_name_lvalue_point_to_existing_def(lval, explicit_type, is_final)
@@ -2097,10 +2090,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             return existing is not None and is_final_node(existing.node)
         #return is_final_node(self.locals[-1][name].node)
 
-    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int) -> Var:
+    def make_name_lvalue_var(self, lvalue: NameExpr, kind: int, inferred: bool) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
         v = Var(lvalue.name)
         v.set_line(lvalue)
+        v.is_inferred = inferred
         if kind == MDEF:
             assert self.type is not None
             v.info = self.type

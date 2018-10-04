@@ -24,6 +24,7 @@ from mypy.server.update import FineGrainedBuildManager
 from mypy.dmypy_util import STATUS_FILE, receive
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
+from mypy.modulefinder import BuildSource, compute_search_paths
 from mypy.options import Options
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
@@ -231,7 +232,7 @@ class Server:
         """Stop daemon."""
         return {}
 
-    last_sources = None  # type: List[mypy.build.BuildSource]
+    last_sources = None  # type: List[BuildSource]
 
     def cmd_run(self, version: str, args: Sequence[str]) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
@@ -264,7 +265,7 @@ class Server:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
         return self.check(self.last_sources)
 
-    def check(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+    def check(self, sources: List[BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources)
@@ -273,7 +274,7 @@ class Server:
         self.fscache.flush()
         return res
 
-    def initialize_fine_grained(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+    def initialize_fine_grained(self, sources: List[BuildSource]) -> Dict[str, Any]:
         self.fswatcher = FileSystemWatcher(self.fscache)
         self.update_sources(sources)
         try:
@@ -326,15 +327,16 @@ class Server:
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
-    def fine_grained_increment(self, sources: List[mypy.build.BuildSource]) -> Dict[str, Any]:
+    def fine_grained_increment(self, sources: List[BuildSource]) -> Dict[str, Any]:
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
 
         t0 = time.time()
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
-        manager.search_paths = mypy.build.compute_search_paths(
-            sources, manager.options, manager.data_dir, mypy.build.FileSystemCache())
+        # TODO: Why create a new FileSystemCache rather than using self.fscache?
+        manager.search_paths = compute_search_paths(
+            sources, manager.options, manager.data_dir, FileSystemCache())
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
@@ -345,12 +347,12 @@ class Server:
         self.previous_sources = sources
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
-    def update_sources(self, sources: List[mypy.build.BuildSource]) -> None:
+    def update_sources(self, sources: List[BuildSource]) -> None:
         paths = [source.path for source in sources if source.path is not None]
         self.fswatcher.add_watched_paths(paths)
 
-    def find_changed(self, sources: List[mypy.build.BuildSource]) -> Tuple[List[Tuple[str, str]],
-                                                                           List[Tuple[str, str]]]:
+    def find_changed(self, sources: List[BuildSource]) -> Tuple[List[Tuple[str, str]],
+                                                                List[Tuple[str, str]]]:
         changed_paths = self.fswatcher.find_changed()
         # Find anything that has been added or modified
         changed = [(source.module, source.path)

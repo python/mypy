@@ -1,6 +1,5 @@
 """Utility functions with no non-trivial dependencies."""
 import inspect
-import genericpath  # type: ignore  # no stub files yet
 import os
 import pathlib
 import re

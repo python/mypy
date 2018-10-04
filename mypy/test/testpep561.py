@@ -6,7 +6,8 @@ from typing import Tuple, List, Generator, Optional
 from unittest import TestCase, main
 
 import mypy.api
-from mypy.build import _get_site_packages_dirs, FileSystemCache
+from mypy.build import FileSystemCache
+from mypy.modulefinder import get_site_packages_dirs
 from mypy.test.config import package_path
 from mypy.test.helpers import run_command
 from mypy.util import try_find_python2_interpreter
@@ -19,6 +20,17 @@ from typedpkg.sample import ex
 from typedpkg import dne
 a = ex([''])
 reveal_type(a)
+"""
+
+NAMESPACE_PROGRAM = """
+from typedpkg_nested.nested_package.nested_module import nested_func
+from typedpkg_namespace.alpha.alpha_module import alpha_func
+
+nested_func("abc")
+alpha_func(False)
+
+nested_func(False)
+alpha_func(2)
 """
 
 
@@ -95,6 +107,10 @@ class TestPEP561(TestCase):
         self.tempfile = os.path.join(self.temp_file_dir.name, 'simple.py')
         with open(self.tempfile, 'w+') as file:
             file.write(SIMPLE_PROGRAM)
+        self.namespace_tempfile = os.path.join(self.temp_file_dir.name, 'namespace_program.py')
+        with open(self.namespace_tempfile, 'w+') as file:
+            file.write(NAMESPACE_PROGRAM)
+
         self.msg_dne = \
             "{}:3: error: Module 'typedpkg' has no attribute 'dne'\n".format(self.tempfile)
         self.msg_list = \
@@ -102,12 +118,19 @@ class TestPEP561(TestCase):
         self.msg_tuple = \
             "{}:5: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile)
 
+        self.namespace_msg_bool_str = (
+            '{0}:8: error: Argument 1 to "nested_func" has incompatible type "bool"; '
+            'expected "str"\n'.format(self.namespace_tempfile))
+        self.namespace_msg_int_bool = (
+            '{0}:9: error: Argument 1 to "alpha_func" has incompatible type "int"; '
+            'expected "bool"\n'.format(self.namespace_tempfile))
+
     def tearDown(self) -> None:
         self.temp_file_dir.cleanup()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
-        dirs = _get_site_packages_dirs(sys.executable, FileSystemCache())
+        dirs = get_site_packages_dirs(sys.executable, FileSystemCache())
         assert dirs
 
     def test_typedpkg_stub_package(self) -> None:
@@ -189,6 +212,18 @@ class TestPEP561(TestCase):
                 [self.tempfile],
                 python_executable,
                 expected_out=self.msg_tuple,
+                venv_dir=venv_dir,
+            )
+
+    def test_nested_and_namespace(self) -> None:
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('typedpkg_nested', python_executable)
+            self.install_package('typedpkg_namespace-alpha', python_executable)
+            check_mypy_run(
+                [self.namespace_tempfile],
+                python_executable,
+                expected_out=self.namespace_msg_bool_str + self.namespace_msg_int_bool,
                 venv_dir=venv_dir,
             )
 

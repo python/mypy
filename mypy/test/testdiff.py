@@ -4,7 +4,7 @@ import os
 from typing import List, Tuple, Dict, Optional
 
 from mypy import build
-from mypy.build import BuildSource
+from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile

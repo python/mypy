@@ -362,7 +362,7 @@ will break the tie by picking the first matching variant: ``output``
 will have an inferred type of ``float``. The implementor is responsible
 for making sure ``summarize`` breaks ties in the same way at runtime.
 
-There are however are two exceptions to the "pick the first match" rule.
+However, there are two exceptions to the "pick the first match" rule.
 First, if multiple variants match due to an argument being of type
 ``Any``, mypy will make the inferred type also be ``Any``:
 
