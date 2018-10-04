@@ -423,6 +423,10 @@ def prepare_class_def(module_name: str, cdef: ClassDef, mapper: Mapper) -> None:
             base_mro.append(base_ir)
         mro.append(base_ir)
 
+    # Generic and similar are python base classes
+    if cdef.removed_base_type_exprs:
+        ir.inherits_python = True
+
     base_idx = 1 if not ir.is_trait else 0
     if len(base_mro) > base_idx:
         ir.base = base_mro[base_idx]

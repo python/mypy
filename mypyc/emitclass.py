@@ -144,7 +144,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         base_size = 'sizeof(PyObject)'
     else:
         base_size = 'sizeof({})'.format(struct_name)
-    if cl.inherits_python:
+    # Since our types aren't allocated using type() we need to
+    # populate these fields ourselves if we want them to have correct
+    # values. PyType_Ready will inherit the offsets from tp_base but
+    # that isn't what we want.
+    if any(x.inherits_python for x in cl.mro):
         fields['tp_basicsize'] = '{} + 2*sizeof(PyObject *)'.format(base_size)
         fields['tp_dictoffset'] = base_size
         fields['tp_weaklistoffset'] = '{} + sizeof(PyObject *)'.format(base_size)
