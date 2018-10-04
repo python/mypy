@@ -77,6 +77,52 @@ to it explicitly using ``self``:
            a = self
            a.x = 1      # Error: 'x' not defined
 
+Class and instance variable annotations
+***************************************
+
+Mypy supports annotations for class and instance 
+variables in class bodies and methods:
+
+.. code-block:: python
+
+  class A:
+      y: ClassVar[Dict[str, int]] = {}  # class variable
+      z: int = 10                       # instance variable
+
+``ClassVar`` is a special class that indicates to the static 
+type checker that this variable should not be set on instances. 
+``ClassVar`` accepts only types and cannot be further subscribed.
+
+``ClassVar`` is not a class itself, and should not be used with 
+isinstance() or issubclass(). 
+
+``ClassVar`` does not change Python runtime behavior, but 
+it can be used by third-party type checkers. For example, a type checker 
+might flag the following code as an error:
+
+.. code-block:: python
+
+  a = A(3000)
+  a.y = {}                # Error, setting class variable on instance
+  a.z = {}                # This is OK
+
+.. note::
+   Note that a ClassVar parameter cannot include any type variables, 
+   regardless of the level of nesting: ``ClassVar[T]`` and ``ClassVar[List[Set[T]]]``
+   are both invalid if ``T`` is a type variable.
+
+For convention, you can annotate instance variables in __init__ or other methods, 
+rather than in the class:
+
+.. code-block:: python
+
+  from typing import Generic, TypeVar
+  T = TypeVar('T')
+
+  class A(Generic[T]):
+      def __init__(self, y):
+          self.y: T = y
+
 Overriding statically typed methods
 ***********************************
 
