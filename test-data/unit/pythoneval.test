@@ -353,14 +353,18 @@ abs(2.2) + 'x'
 _program.py:6: error: Unsupported operand types for + ("float" and "str")
 
 [case testROperatorMethods]
-
 b = None  # type: bytes
 s = None  # type: str
-s = b'foo' * 5 # Error
-b = 5 * b'foo'
-b = b'foo' * 5
-s = 5 * 'foo'
-s = 'foo' * 5
+if int():
+    s = b'foo' * 5 # Error
+if int():
+    b = 5 * b'foo'
+if int():
+    b = b'foo' * 5
+if int():
+    s = 5 * 'foo'
+if int():
+    s = 'foo' * 5
 [out]
 _program.py:4: error: Incompatible types in assignment (expression has type "bytes", variable has type "str")
 
@@ -674,14 +678,15 @@ print(4J / 2.0)
 2j
 
 [case testComplexArithmetic2]
-import typing
 x = 5 + 8j
-x = ''
+if int():
+    x = '' # E
 y = 3j * 2.0
-y = ''
+if int():
+    y = '' # E
 [out]
 _program.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "complex")
-_program.py:5: error: Incompatible types in assignment (expression has type "str", variable has type "complex")
+_program.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "complex")
 
 [case testSuperNew]
 from typing import Dict, Any
