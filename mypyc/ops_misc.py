@@ -216,6 +216,14 @@ py_setattr_op = func_op(
     emit=simple_emit('{dest} = PyObject_SetAttr({args[0]}, {args[1]}, {args[2]}) >= 0;')
 )
 
+func_op(
+    name='builtins.hasattr',
+    arg_types=[object_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = PyObject_HasAttr({args[0]}, {args[1]});')
+)
+
 py_delattr_op = func_op(
     name='builtins.delattr',
     arg_types=[object_rprimitive, object_rprimitive],
