@@ -2145,6 +2145,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         if proto_deps is not None:
             TypeState.proto_deps = proto_deps
         elif manager.stats.get('fresh_metas', 0) > 0:
+            # Clear the stats so we don't infinite loop because of positive fresh_metas
+            manager.stats.clear()
             # There were some cache files read, but no protocol dependencies loaded.
             manager.log("Error reading protocol dependencies cache -- aborting cache load")
             manager.cache_enabled = False
