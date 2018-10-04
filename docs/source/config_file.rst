@@ -367,7 +367,7 @@ section of the command line docs.
     check and regenerate the cache if it was written by older versions of mypy.)
     
 ``quick_and_dirty`` (bool, default False)
-    Enables :ref:`quick mode <quick-mode>`.
+    Enables :ref:`quick mode <quick-mode>`.  **Deprecated.**
 
 
 Configuring error messages
