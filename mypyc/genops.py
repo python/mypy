@@ -62,6 +62,7 @@ from mypyc.ops import (
     MethodCall, INVALID_FUNC_DEF, int_rprimitive, float_rprimitive, bool_rprimitive,
     list_rprimitive, is_list_rprimitive, dict_rprimitive, set_rprimitive, str_rprimitive,
     tuple_rprimitive, none_rprimitive, is_none_rprimitive, object_rprimitive, exc_rtuple,
+    is_tuple_rprimitive,
     PrimitiveOp, ControlOp, LoadErrorValue, ERR_FALSE, OpDescription, RegisterOp,
     is_object_rprimitive, LiteralsMap, FuncSignature, VTableAttr, VTableMethod, VTableEntries,
     NAMESPACE_TYPE, RaiseStandardError, LoadErrorValue, NO_TRACEBACK_LINE_NO, FuncDecl,
@@ -1714,6 +1715,14 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
 
         self.activate_block(exit_block)
 
+    def extract_int(self, e: Expression) -> Optional[int]:
+        if isinstance(e, IntExpr):
+            return e.value
+        elif isinstance(e, UnaryExpr) and e.op == '-' and isinstance(e.expr, IntExpr):
+            return -e.expr.value
+        else:
+            return None
+
     def make_for_loop_generator(self,
                                 index: Lvalue,
                                 expr: Expression,
@@ -1734,25 +1743,34 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             target_type = self.type_to_rtype(target_list_type.args[0])
 
             for_list = ForList(self, index, body_block, loop_exit, line, nested)
-            for_list.init(expr_reg, target_type)
+            for_list.init(expr_reg, target_type, reverse=False)
             return for_list
 
         if (isinstance(expr, CallExpr)
                 and isinstance(expr.callee, RefExpr)):
             if (expr.callee.fullname == 'builtins.range'
-                    and len(expr.args) <= 2
+                    and (len(expr.args) <= 2
+                         or (len(expr.args) == 2
+                             and self.extract_int(expr.args[2]) is not None))
                     and set(expr.arg_kinds) == {ARG_POS}):
                 # Special case "for x in range(...)".
-                # Only support 1 and 2 arg forms for now.
+                # We support the 3 arg form but only for int literals, since it doesn't
+                # seem worth the hassle of supporting dynamically determining which
+                # direction of comparison to do.
                 if len(expr.args) == 1:
                     start_reg = self.add(LoadInt(0))
                     end_reg = self.accept(expr.args[0])
                 else:
                     start_reg = self.accept(expr.args[0])
                     end_reg = self.accept(expr.args[1])
+                if len(expr.args) == 3:
+                    step = self.extract_int(expr.args[2])
+                    assert step, "range() step can't be zero"
+                else:
+                    step = 1
 
                 for_range = ForRange(self, index, body_block, loop_exit, line, nested)
-                for_range.init(start_reg, end_reg)
+                for_range.init(start_reg, end_reg, step)
                 return for_range
 
             elif (expr.callee.fullname == 'builtins.enumerate'
@@ -1777,6 +1795,20 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 for_zip = ForZip(self, index, body_block, loop_exit, line, nested)
                 for_zip.init(index.items, expr.args)
                 return for_zip
+
+            if (expr.callee.fullname == 'builtins.reversed'
+                    and len(expr.args) == 1
+                    and expr.arg_kinds == [ARG_POS]
+                    and is_list_rprimitive(self.node_type(expr.args[0]))):
+                # Special case "for x in reversed(<list>)".
+                expr_reg = self.accept(expr.args[0])
+                target_list_type = self.types[expr.args[0]]
+                assert isinstance(target_list_type, Instance)
+                target_type = self.type_to_rtype(target_list_type.args[0])
+
+                for_list = ForList(self, index, body_block, loop_exit, line, nested)
+                for_list.init(expr_reg, target_type, reverse=True)
+                return for_list
 
         # Default to a generic for loop.
         expr_reg = self.accept(expr)

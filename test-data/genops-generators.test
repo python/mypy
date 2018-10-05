@@ -314,8 +314,9 @@ def yield_for_loop_list__gen.__mypyc_generator_helper__(__mypyc_self__, type, va
     r11 :: list
     r12 :: bool
     r13 :: list
-    r14 :: short_int
-    r15, r16 :: bool
+    r14 :: bool
+    r15 :: short_int
+    r16 :: bool
     r17 :: list
     r18, r19 :: short_int
     r20 :: bool
@@ -360,9 +361,9 @@ L3:
     r11 = [r10]
     r0.l = r11; r12 = is_error
     r13 = r0.l
-    r14 = 0
-    r0.__mypyc_temp__0 = r13; r15 = is_error
-    r0.__mypyc_temp__1 = r14; r16 = is_error
+    r0.__mypyc_temp__0 = r13; r14 = is_error
+    r15 = 0
+    r0.__mypyc_temp__1 = r15; r16 = is_error
 L4:
     r17 = r0.__mypyc_temp__0
     r18 = len r17 :: list

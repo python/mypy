@@ -3,7 +3,7 @@
 
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Sized, Dict, Optional, Tuple, Any, Set,
-    overload, Mapping, Union, Callable
+    overload, Mapping, Union, Callable, Sequence,
 )
 
 T = TypeVar('T')
@@ -77,7 +77,7 @@ class tuple(Generic[T_co], Sized):
 
 class function: pass
 
-class list(Generic[T], Iterable[T], Sized):
+class list(Generic[T], Sequence[T], Iterable[T], Sized):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
     @overload
     def __getitem__(self, i: int) -> T: ...
@@ -156,6 +156,7 @@ class NotImplementedError(RuntimeError): pass
 
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass
+def reversed(object: Sequence[T]) -> Iterator[T]: ...
 def id(o: object) -> int: pass
 def len(o: Sized) -> int: pass
 def print(*object) -> None: pass

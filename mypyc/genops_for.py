@@ -117,26 +117,47 @@ class ForIterable(ForGenerator):
         self.builder.primitive_op(no_err_occurred_op, [], self.line)
 
 
+# TODO: Generalize to support other sequences (tuples at least) with
+# different length and indexing ops.
 class ForList(ForGenerator):
-    """Generate optimized IR for a for loop over a list."""
+    """Generate optimized IR for a for loop over a list.
 
-    def init(self, expr_reg: Value, target_type: RType) -> None:
+    Supports iterating in both forward and reverse."""
+
+    def init(self, expr_reg: Value, target_type: RType, reverse: bool) -> None:
         builder = self.builder
+        self.reverse = reverse
         # Define target to contain the expression, along with the index that will be used
         # for the for-loop. If we are inside of a generator function, spill these into the
         # environment class.
-        index_reg = builder.add(LoadInt(0))
         self.expr_target = builder.maybe_spill(expr_reg)
+        if not reverse:
+            index_reg = builder.add(LoadInt(0))
+        else:
+            index_reg = builder.binary_op(self.load_len(), builder.add(LoadInt(1)), '-', self.line)
         self.index_target = builder.maybe_spill_assignable(index_reg)
         self.target_type = target_type
+
+    def load_len(self) -> Value:
+        return self.builder.add(PrimitiveOp([self.builder.read(self.expr_target, self.line)],
+                                            list_len_op, self.line))
 
     def gen_condition(self) -> None:
         builder = self.builder
         line = self.line
+        if self.reverse:
+            # If we are iterating in reverse order, we obviously need
+            # to check that the index is still positive. Somewhat less
+            # obviously we still need to check against the length,
+            # since it could shrink out from under us.
+            comparison = builder.binary_op(builder.read(self.index_target, line),
+                                           builder.add(LoadInt(0)), '>=', line)
+            second_check = BasicBlock()
+            builder.add_bool_branch(comparison, second_check, self.loop_exit)
+            builder.activate_block(second_check)
         # For compatibility with python semantics we recalculate the length
         # at every iteration.
-        len_reg = builder.add(PrimitiveOp([builder.read(self.expr_target, line)],
-                                          list_len_op, line))
+        len_reg = self.load_len()
         comparison = builder.binary_op(builder.read(self.index_target, line), len_reg, '<', line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
@@ -149,6 +170,9 @@ class ForList(ForGenerator):
             [builder.read(self.expr_target, line), builder.read(self.index_target, line)],
             line)
         assert value_box
+        # We coerce to the type of list elements here so that
+        # iterating with tuple unpacking generates a tuple based
+        # unpack instead of an iterator based one.
         builder.assign(builder.get_assignment_target(self.index),
                        builder.unbox_or_cast(value_box, self.target_type, line), line)
 
@@ -156,10 +180,11 @@ class ForList(ForGenerator):
         # Step to the next item.
         builder = self.builder
         line = self.line
+        step = 1 if not self.reverse else -1
         builder.assign(self.index_target, builder.primitive_op(
             unsafe_short_add,
             [builder.read(self.index_target, line),
-             builder.add(LoadInt(1))], line), line)
+             builder.add(LoadInt(step))], line), line)
 
 
 class ForRange(ForGenerator):
@@ -167,10 +192,11 @@ class ForRange(ForGenerator):
 
     # TODO: Use a separate register for the index to allow safe index mutation.
 
-    def init(self, start_reg: Value, end_reg: Value) -> None:
+    def init(self, start_reg: Value, end_reg: Value, step: int) -> None:
         builder = self.builder
         self.start_reg = start_reg
         self.end_reg = end_reg
+        self.step = step
         self.end_target = builder.maybe_spill(end_reg)
         # Initialize loop index to 0. Assert that the index target is assignable.
         self.index_target = builder.get_assignment_target(
@@ -181,8 +207,9 @@ class ForRange(ForGenerator):
         builder = self.builder
         line = self.line
         # Add loop condition check.
+        cmp = '<' if self.step > 0 else '>'
         comparison = builder.binary_op(builder.read(self.index_target, line),
-                                       builder.read(self.end_target, line), '<', line)
+                                       builder.read(self.end_target, line), cmp, line)
         builder.add_bool_branch(comparison, self.body_block, self.loop_exit)
 
     def gen_step(self) -> None:
@@ -198,7 +225,7 @@ class ForRange(ForGenerator):
                                    builder.add(LoadInt(1))], line)
         else:
             new_val = builder.binary_op(
-                builder.read(self.index_target, line), builder.add(LoadInt(1)), '+', line)
+                builder.read(self.index_target, line), builder.add(LoadInt(self.step)), '+', line)
         builder.assign(self.index_target, new_val, line)
 
 

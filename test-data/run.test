@@ -51,15 +51,37 @@ def count(n: int) -> None:
 def count_between(n: int, k: int) -> None:
     for i in range(n, k):
         print(i)
+def count_down(n: int, k: int) -> None:
+    for i in range(n, k, -1):
+        print(i)
+def count_double(n: int, k: int) -> None:
+    for i in range(n, k, 2):
+        print(i)
 def list_iter(l: List[int]) -> None:
     for i in l:
         print(i)
+def list_rev_iter(l: List[int]) -> None:
+    for i in reversed(l):
+        print(i)
+def list_rev_iter_lol(l: List[int]) -> None:
+    for i in reversed(l):
+        print(i)
+        if i == 3:
+            while l:
+                l.pop()
 [file driver.py]
-from native import count, list_iter, count_between
+from native import (
+    count, list_iter, list_rev_iter, list_rev_iter_lol, count_between, count_down, count_double,
+)
 count(5)
 list_iter(list(reversed(range(5))))
+list_rev_iter(list(reversed(range(5))))
 count_between(11, 15)
 count_between(10**20, 10**20+3)
+count_down(20, 10)
+count_double(10, 15)
+print('==')
+list_rev_iter_lol(list(reversed(range(5))))
 [out]
 0
 1
@@ -71,6 +93,11 @@ count_between(10**20, 10**20+3)
 2
 1
 0
+0
+1
+2
+3
+4
 11
 12
 13
@@ -78,6 +105,24 @@ count_between(10**20, 10**20+3)
 100000000000000000000
 100000000000000000001
 100000000000000000002
+20
+19
+18
+17
+16
+15
+14
+13
+12
+11
+10
+12
+14
+==
+0
+1
+2
+3
 
 [case testLoopElse]
 from typing import Iterator
