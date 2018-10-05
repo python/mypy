@@ -603,6 +603,13 @@ static inline bool CPyTagged_IsLe(CPyTagged left, CPyTagged right) {
     }
 }
 
+static PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index) {
+    long long n = CPyTagged_ShortAsLongLong(index);
+    PyObject *result = PyList_GET_ITEM(list, n);
+    Py_INCREF(result);
+    return result;
+}
+
 static PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
     long long n = CPyTagged_ShortAsLongLong(index);
     Py_ssize_t size = PyList_GET_SIZE(list);

@@ -54,6 +54,16 @@ method_op(
     emit=simple_emit('{dest} = CPyList_GetItemShort({args[0]}, {args[1]});'),
     priority=2)
 
+# This is unsafe because it assumes that the index is a non-negative short integer
+# that is in-bounds for the list.
+list_get_item_unsafe_op = custom_op(
+    name='__getitem__',
+    arg_types=[list_rprimitive, short_int_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_NEVER,
+    format_str='{dest} = {args[0]}[{args[1]}] :: unsafe list',
+    emit=simple_emit('{dest} = CPyList_GetItemUnsafe({args[0]}, {args[1]});'))
+
 
 list_set_item_op = method_op(
     name='__setitem__',

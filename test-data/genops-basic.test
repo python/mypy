@@ -1819,7 +1819,7 @@ L1:
     r11 = r9 < r10 :: short_int
     if r11 goto L2 else goto L8 :: bool
 L2:
-    r12 = r7[r9] :: list
+    r12 = r7[r9] :: unsafe list
     r13 = unbox(int, r12)
     x = r13
     r14 = 2
@@ -1883,7 +1883,7 @@ L1:
     r11 = r9 < r10 :: short_int
     if r11 goto L2 else goto L8 :: bool
 L2:
-    r12 = r7[r9] :: list
+    r12 = r7[r9] :: unsafe list
     r13 = unbox(int, r12)
     x = r13
     r14 = 2
@@ -1944,7 +1944,7 @@ L1:
     r3 = r1 < r2 :: short_int
     if r3 goto L2 else goto L4 :: bool
 L2:
-    r4 = l[r1] :: list
+    r4 = l[r1] :: unsafe list
     r5 = unbox(tuple[int, int, int], r4)
     r6 = r5[0]
     x = r6
@@ -1966,7 +1966,7 @@ L5:
     r15 = r13 < r14 :: short_int
     if r15 goto L6 else goto L8 :: bool
 L6:
-    r16 = l[r13] :: list
+    r16 = l[r13] :: unsafe list
     r17 = unbox(tuple[int, int, int], r16)
     r18 = r17[0]
     x0 = r18

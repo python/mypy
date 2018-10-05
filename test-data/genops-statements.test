@@ -238,7 +238,7 @@ L1:
     r4 = r2 < r3 :: short_int
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = ls[r2] :: list
+    r5 = ls[r2] :: unsafe list
     r6 = unbox(int, r5)
     x = r6
     r7 = y + x :: int
@@ -809,7 +809,7 @@ L1:
     r4 = r2 < r3 :: short_int
     if r4 goto L2 else goto L4 :: bool
 L2:
-    r5 = a[r2] :: list
+    r5 = a[r2] :: unsafe list
     r6 = unbox(int, r5)
     x = r6
     r7 = i + x :: int
@@ -892,7 +892,7 @@ L2:
     r5 = next r2 :: object
     if is_error(r5) goto L7 else goto L3
 L3:
-    r6 = a[r1] :: list
+    r6 = a[r1] :: unsafe list
     r7 = unbox(int, r6)
     x = r7
     r8 = unbox(bool, r5)
@@ -948,7 +948,7 @@ L3:
 L4:
     r9 = unbox(bool, r5)
     x = r9
-    r10 = b[r2] :: list
+    r10 = b[r2] :: unsafe list
     r11 = unbox(int, r10)
     y = r11
     r12 = False

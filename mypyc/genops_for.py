@@ -13,7 +13,7 @@ from mypyc.ops import (
     AssignmentTarget
 )
 from mypyc.ops_int import unsafe_short_add
-from mypyc.ops_list import list_len_op
+from mypyc.ops_list import list_len_op, list_get_item_unsafe_op
 from mypyc.ops_misc import iter_op, next_op
 from mypyc.ops_exc import no_err_occurred_op
 import mypyc.genops
@@ -144,9 +144,10 @@ class ForList(ForGenerator):
         builder = self.builder
         line = self.line
         # Read the next list item.
-        value_box = builder.translate_special_method_call(
-            builder.read(self.expr_target, line), '__getitem__',
-            [builder.read(self.index_target, line)], None, line)
+        value_box = builder.primitive_op(
+            list_get_item_unsafe_op,
+            [builder.read(self.expr_target, line), builder.read(self.index_target, line)],
+            line)
         assert value_box
         builder.assign(builder.get_assignment_target(self.index),
                        builder.unbox_or_cast(value_box, self.target_type, line), line)

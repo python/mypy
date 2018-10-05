@@ -372,7 +372,7 @@ L4:
 L5:
     r21 = r0.__mypyc_temp__0
     r22 = r0.__mypyc_temp__1
-    r23 = r21[r22] :: list
+    r23 = r21[r22] :: unsafe list
     r24 = cast(object, r23)
     r0.i = r24; r25 = is_error
 L6:
