@@ -80,6 +80,12 @@ class SourceFinder:
         names = self.fscache.listdir(arg)
         names.sort(key=keyfunc)
         for name in names:
+            # Skip certain names altogether
+            if (name == '__pycache__' or name == 'py.typed'
+                    or name.startswith('.')
+                    or name.endswith('~') or name.endswith('.pyc') or name.endswith('.pyo')
+                    ):
+                continue
             path = os.path.join(arg, name)
             if self.fscache.isdir(path):
                 sub_sources = self.expand_dir(path, mod_prefix + name + '.')
