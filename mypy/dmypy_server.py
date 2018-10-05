@@ -334,9 +334,7 @@ class Server:
         t0 = time.time()
         self.update_sources(sources)
         changed, removed = self.find_changed(sources)
-        # TODO: Why create a new FileSystemCache rather than using self.fscache?
-        manager.search_paths = compute_search_paths(
-            sources, manager.options, manager.data_dir, FileSystemCache())
+        manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
         t1 = time.time()
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()

@@ -178,7 +178,7 @@ def _build(sources: List[BuildSource],
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
 
-    search_paths = compute_search_paths(sources, options, data_dir, fscache, alt_lib_path)
+    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
