@@ -214,8 +214,6 @@ accepts one of four string values:
     replace the module (and *anything imported from it*) with an
     object of type ``Any``.
 
-    (Note: this option used to be known as ``--silent-imports``.)
-
 -   ``error`` behaves in the same way as ``skip`` but is not quite as
     silent -- it will flag the import as an error, like this::
 

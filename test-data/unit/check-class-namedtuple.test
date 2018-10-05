@@ -391,7 +391,7 @@ def f(a: Type[N]):
 main:9: error: Too few arguments for "N"
 
 [case testNewNamedTupleWithDefaults]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import List, NamedTuple, Optional
 
 class X(NamedTuple):
@@ -431,7 +431,7 @@ UserDefined(1)  # E: Argument 1 to "UserDefined" has incompatible type "int"; ex
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleWithDefaultsStrictOptional]
-# flags: --fast-parser --strict-optional --python-version 3.6
+# flags: --strict-optional --python-version 3.6
 from typing import List, NamedTuple, Optional
 
 class HasNone(NamedTuple):
@@ -450,7 +450,7 @@ class CannotBeNone(NamedTuple):
 [builtins fixtures/list.pyi]
 
 [case testNewNamedTupleWrongType]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
@@ -458,14 +458,14 @@ class X(NamedTuple):
     y: int = 'not an int'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
 [case testNewNamedTupleErrorInDefault]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):
     x: int = 1 + '1'  # E: Unsupported operand types for + ("int" and "str")
 
 [case testNewNamedTupleInheritance]
-# flags: --fast-parser --python-version 3.6
+# flags: --python-version 3.6
 from typing import NamedTuple
 
 class X(NamedTuple):

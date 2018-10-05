@@ -2929,12 +2929,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.chk.binder.put(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
-        cond_type = self.accept(e.cond)
-        if self.chk.options.strict_boolean:
-            is_bool = (isinstance(cond_type, Instance)
-                and cond_type.type.fullname() == 'builtins.bool')
-            if not (is_bool or isinstance(cond_type, AnyType)):
-                self.chk.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
+        self.accept(e.cond)
         ctx = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
