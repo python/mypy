@@ -43,7 +43,6 @@ PER_MODULE_OPTIONS = {
     "mypyc",
     "no_implicit_optional",
     "show_none_errors",
-    "strict_boolean",
     "strict_optional",
     "strict_optional_whitelist",
     "warn_no_return",
@@ -130,9 +129,6 @@ class Options:
 
         # Files in which to ignore all non-fatal errors
         self.ignore_errors = False
-
-        # Only allow booleans in conditions
-        self.strict_boolean = False
 
         # Apply strict None checking
         self.strict_optional = True
