@@ -31,6 +31,9 @@ class EmitterContext:
         self.temp_counter = 0
         self.names = NameGenerator(module_names)
 
+        # Map from tuple types to unique ids for them
+        self.tuple_ids = {}  # type: Dict[RTuple, str]
+
         # The two maps below are used for generating declarations or
         # definitions at the top of the C file. The main idea is that they can
         # be generated at any time during the emit phase.
@@ -158,10 +161,10 @@ class Emitter:
 
         This is necessary since C does not have anonymous structural type equivalence
         in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
-
-        TODO: a better unique id. (#38)
         """
-        return str(abs(hash(rtuple)))[0:15]
+        if rtuple not in self.context.tuple_ids:
+            self.context.tuple_ids[rtuple] = str(len(self.context.tuple_ids))
+        return self.context.tuple_ids[rtuple]
 
     def tuple_struct_name(self, rtuple: RTuple) -> str:
         # max c length is 31 chars, this should be enough entropy to be unique.
