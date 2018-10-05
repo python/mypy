@@ -2929,7 +2929,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         self.chk.binder.put(var, type)
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> Type:
-        cond_type = self.accept(e.cond)
         ctx = self.type_context[-1]
 
         # Gain type information from isinstance if it is there
