@@ -15,7 +15,7 @@ import tempfile
 import time
 import traceback
 
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 import mypy.build
 import mypy.errors
@@ -112,6 +112,11 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
     if options.follow_imports not in ('skip', 'error'):
         sys.exit("dmypy: follow-imports must be 'skip' or 'error'")
     return options
+
+
+ModulePathPair = Tuple[str, str]
+ModulePathPairs = List[ModulePathPair]
+ChangesAndRemovals = Tuple[ModulePathPairs,ModulePathPairs]
 
 
 class Server:
@@ -257,11 +262,36 @@ class Server:
             return {'out': '', 'err': str(err), 'status': 2}
         return self.check(sources)
 
-    def cmd_recheck(self) -> Dict[str, object]:
-        """Check the same list of files we checked most recently."""
+    def cmd_recheck(self,
+                    add: Optional[List[str]] = None,
+                    remove: Optional[List[str]] = None,
+                    update: Optional[List[str]] = None) -> Dict[str, object]:
+        """Check the same list of files we checked most recently.
+
+
+        If add/remove/update is given, they modifies the previous list.
+        """
+        t0 = time.time()
         if not self.fine_grained_manager:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
-        return self.check(self.previous_sources)
+        print(f"\nadd={add}, remove={remove}, update={update}")
+        sources = self.previous_sources
+        if remove:
+            removals = set(remove)
+            print
+            sources = [s for s in sources if s.path and s.path not in removals]
+        if add:
+            try:
+                added_sources = create_source_list(add, self.options, self.fscache)
+            except InvalidSourceList as err:
+                return {'out': '', 'err': str(err), 'status': 2}
+            sources = sources + added_sources  # Make a copy!
+        t1 = time.time()
+        manager = self.fine_grained_manager.manager
+        manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
+        res = self.fine_grained_increment(sources, add, remove, update)
+        self.fscache.flush()
+        return res
 
     def check(self, sources: List[BuildSource]) -> Dict[str, Any]:
         """Check using fine-grained incremental mode."""
@@ -325,20 +355,32 @@ class Server:
         status = 1 if messages else 0
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
 
-    def fine_grained_increment(self, sources: List[BuildSource]) -> Dict[str, Any]:
+    def fine_grained_increment(self,
+                               sources: List[BuildSource],
+                               add: Optional[List[str]] = None,
+                               remove: Optional[List[str]] = None,
+                               update: Optional[List[str]] = None,
+                               ) -> Dict[str, Any]:
         assert self.fine_grained_manager is not None
         manager = self.fine_grained_manager.manager
 
         t0 = time.time()
-        self.update_sources(sources)
-        changed, removed = self.find_changed(sources)
+        if add is None and remove is None and update is None:
+            # Use the fswatcher to determine which files were changed
+            # (updated or added) or removed.
+            self.update_sources(sources)
+            changed, removed = self.find_changed(sources)
+        else:
+            # Use the add/remove/update lists to update fswatcher.
+            # This avoids calling stat() for unchanged files.
+            changed, removed = self.update_changed(sources,
+                                                   add or [], remove or [], update or [])
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
         t1 = time.time()
+        manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        manager.log(
-            "fine-grained increment: find_changed: {:.3f}s, update: {:.3f}s".format(
-                t1 - t0, t2 - t1))
+        manager.log("fine-grained increment: update: {:.3f}s".format(t1 - t0))
         status = 1 if messages else 0
         self.previous_sources = sources
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
@@ -347,13 +389,26 @@ class Server:
         paths = [source.path for source in sources if source.path is not None]
         self.fswatcher.add_watched_paths(paths)
 
-    def find_changed(self, sources: List[BuildSource]) -> Tuple[List[Tuple[str, str]],
-                                                                List[Tuple[str, str]]]:
+    def update_changed(self,
+                       sources: List[BuildSource],
+                       add: List[str],
+                       remove: List[str],
+                       update: List[str],
+                       ) -> ChangesAndRemovals:
+
+        changed_paths = self.fswatcher.update_changed(add, remove, update)
+        return self._find_changed(sources, changed_paths)
+
+    def find_changed(self, sources: List[BuildSource]) -> ChangesAndRemovals:
         changed_paths = self.fswatcher.find_changed()
+        return self._find_changed(sources, changed_paths)
+
+    def _find_changed(self, sources: List[BuildSource],
+                      changed_paths: AbstractSet[str]) ->  ChangesAndRemovals:
         # Find anything that has been added or modified
         changed = [(source.module, source.path)
                    for source in sources
-                   if source.path in changed_paths]
+                   if source.path and source.path in changed_paths]
 
         # Now find anything that has been removed from the build
         modules = {source.module for source in sources}
