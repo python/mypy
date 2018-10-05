@@ -219,8 +219,8 @@ py_setattr_op = func_op(
 func_op(
     name='builtins.hasattr',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
+    result_type=bool_rprimitive,
+    error_kind=ERR_NEVER,
     emit=simple_emit('{dest} = PyObject_HasAttr({args[0]}, {args[1]});')
 )
 
