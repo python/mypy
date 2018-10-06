@@ -34,6 +34,34 @@ L4:
     r7 = None
     return r7
 
+[case testForInNegativeRange]
+def f() -> None:
+    for i in range(10, 0, -1):
+        pass
+[out]
+def f():
+    r0, r1 :: short_int
+    i :: int
+    r2 :: bool
+    r3, r4 :: short_int
+    r5 :: None
+L0:
+    r0 = 10
+    r1 = 0
+    i = r0
+L1:
+    r2 = i > r1 :: int
+    if r2 goto L2 else goto L4 :: bool
+L2:
+L3:
+    r3 = 1
+    r4 = i + r3 :: short_int
+    i = r4
+    goto L1
+L4:
+    r5 = None
+    return r5
+
 [case testBreak]
 def f() -> None:
   n = 0
