@@ -274,7 +274,6 @@ class Server:
         t0 = time.time()
         if not self.fine_grained_manager:
             return {'error': "Command 'recheck' is only valid after a 'check' command"}
-        print(f"\nadd={add}, remove={remove}, update={update}")
         sources = self.previous_sources
         if remove:
             removals = set(remove)
