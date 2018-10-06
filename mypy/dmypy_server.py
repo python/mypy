@@ -116,7 +116,7 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
 
 ModulePathPair = Tuple[str, str]
 ModulePathPairs = List[ModulePathPair]
-ChangesAndRemovals = Tuple[ModulePathPairs,ModulePathPairs]
+ChangesAndRemovals = Tuple[ModulePathPairs, ModulePathPairs]
 
 
 class Server:
@@ -379,7 +379,7 @@ class Server:
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        manager.log("fine-grained increment: update: {:.3f}s".format(t1 - t0))
+        manager.log("fine-grained increment: update: {:.3f}s".format(t2 - t1))
         status = 1 if messages else 0
         self.previous_sources = sources
         return {'out': ''.join(s + '\n' for s in messages), 'err': '', 'status': status}
@@ -403,7 +403,7 @@ class Server:
         return self._find_changed(sources, changed_paths)
 
     def _find_changed(self, sources: List[BuildSource],
-                      changed_paths: AbstractSet[str]) ->  ChangesAndRemovals:
+                      changed_paths: AbstractSet[str]) -> ChangesAndRemovals:
         # Find anything that has been added or modified
         changed = [(source.module, source.path)
                    for source in sources

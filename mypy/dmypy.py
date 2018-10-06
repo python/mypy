@@ -23,9 +23,11 @@ from mypy.version import __version__
 # Argument parser.  Subparsers are tied to action functions by the
 # @action(subparse) decorator.
 
+
 class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
     def __init__(self, prog: str) -> None:
         super().__init__(prog=prog, max_help_position=30)
+
 
 parser = argparse.ArgumentParser(description="Client for mypy daemon mode",
                                  fromfile_prefix_chars='@')

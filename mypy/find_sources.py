@@ -83,8 +83,7 @@ class SourceFinder:
             # Skip certain names altogether
             if (name == '__pycache__' or name == 'py.typed'
                     or name.startswith('.')
-                    or name.endswith('~') or name.endswith('.pyc') or name.endswith('.pyo')
-                    ):
+                    or name.endswith(('~', '.pyc', '.pyo'))):
                 continue
             path = os.path.join(arg, name)
             if self.fscache.isdir(path):
