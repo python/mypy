@@ -2315,6 +2315,19 @@ class TypeInfo(SymbolNode):
                     return None
         return None
 
+    def get_classmethod(self, name: str) -> Optional[FuncBase]:
+        for cls in self.mro:
+            if name in cls.names:
+                node = cls.names[name].node
+                is_decorated = isinstance(node, Decorator)
+                is_classmethod = ((is_decorated and cast(Decorator, node).func.is_class)
+                                  or (isinstance(node, FuncBase) and node.is_class))
+                if is_classmethod:
+                    return cast(FuncBase, node)
+                else:
+                    return None
+        return None
+
     def calculate_metaclass_type(self) -> 'Optional[mypy.types.Instance]':
         declared = self.declared_metaclass
         if declared is not None and not declared.type.has_base('builtins.type'):

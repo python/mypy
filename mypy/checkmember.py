@@ -559,7 +559,19 @@ def analyze_class_attribute_access(itype: Instance,
             msg.fail(messages.GENERIC_INSTANCE_VAR_CLASS_ACCESS, context)
         is_classmethod = ((is_decorated and cast(Decorator, node.node).func.is_class)
                           or (isinstance(node.node, FuncBase) and node.node.is_class))
+        if is_classmethod and not isinstance(original_type, TypeType) and itype.args:
+            msg.fail(messages.GENERIC_CLASSMETHOD_CLASS_ACCESS, context)
+
         result = add_class_tvars(t, itype, is_classmethod, builtin_type, original_type)
+
+        method = itype.type.get_classmethod(name)
+        if method is not None:
+            signature = function_type(method, builtin_type('builtins.function'))
+            signature = freshen_function_type_vars(signature)
+            signature = bind_self(signature, original_type, is_classmethod=True)
+            itype = map_instance_to_supertype(itype, method.info)
+            result = expand_type_by_instance(signature, itype)
+
         if not is_lvalue:
             result = analyze_descriptor_access(original_type, result, builtin_type,
                                                msg, context, chk=chk)

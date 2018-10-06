@@ -104,6 +104,8 @@ MALFORMED_ASSERT = 'Assertion is always true, perhaps remove parentheses?'  # ty
 DUPLICATE_TYPE_SIGNATURES = 'Function has duplicate type signatures'  # type: Final
 GENERIC_INSTANCE_VAR_CLASS_ACCESS = \
     'Access to generic instance variables via class is ambiguous'  # type: Final
+GENERIC_CLASSMETHOD_CLASS_ACCESS = \
+    'Access to generic classmethods via class is ambiguous.'  # type: Final
 CANNOT_ISINSTANCE_TYPEDDICT = 'Cannot use isinstance() with a TypedDict type'  # type: Final
 CANNOT_ISINSTANCE_NEWTYPE = 'Cannot use isinstance() with a NewType type'  # type: Final
 BARE_GENERIC = 'Missing type parameters for generic type'  # type: Final

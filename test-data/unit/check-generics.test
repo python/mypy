@@ -1815,3 +1815,269 @@ def g(x: T) -> T: return x
 [out]
 main:3: error: Revealed type is 'def [b.T] (x: b.T`-1) -> b.T`-1'
 main:4: error: Revealed type is 'def [T] (x: T`-1) -> T`-1'
+
+[case testClassMethodOfGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: ...
+class B(A[str]): pass
+class C(A[int]): pass
+
+reveal_type(B.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(B.f())  # E: Revealed type is 'builtins.str*'
+reveal_type(C.f)  # E: Revealed type is 'def () -> builtins.int*'
+reveal_type(C.f())  # E: Revealed type is 'builtins.int*'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassMultipleInheritance]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: pass
+
+class B(Generic[T]):
+    @classmethod
+    def g(cls) -> T: pass
+
+class C(A[str], B[int]):
+    @classmethod
+    def f(cls) -> str: pass
+    @classmethod
+    def g(cls) -> int: pass
+
+reveal_type(C.f())  # E: Revealed type is 'builtins.str'
+reveal_type(C.g())  # E: Revealed type is 'builtins.int'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfSubcClassOfSubClassOfGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: ...
+
+class B(A[str]): pass
+class C(B): pass
+class D(C): pass
+
+reveal_type(B.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(B.f())  # E: Revealed type is 'builtins.str*'
+reveal_type(C.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(C.f())  # E: Revealed type is 'builtins.str*'
+reveal_type(D.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(D.f())  # E: Revealed type is 'builtins.str*'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassMultipleLevelInheritance]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: ...
+
+class B(A[str]): pass
+class C(B): pass
+class D(C): pass
+class E(D): pass
+
+reveal_type(C.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(C.f())  # E: Revealed type is 'builtins.str*'
+reveal_type(D.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(D.f())  # E: Revealed type is 'builtins.str*'
+reveal_type(E.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(E.f())  # E: Revealed type is 'builtins.str*'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassMultipleLevelInheritanceWithChangingTypeVariable]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: ...
+class B(A[S]): pass
+class C(B[str]): pass
+class D(B[int]): pass
+
+reveal_type(C.f())  # E: Revealed type is 'builtins.str*'
+reveal_type(D.f())  # E: Revealed type is 'builtins.int*'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOrderOfMultipleGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: ...
+class B(Generic[T]):
+    @classmethod
+    def f(cls) -> T: ...
+class C(A[str], B[int]): pass
+class D(A[int], B[str]): pass
+
+reveal_type(C.f)  # E: Revealed type is 'def () -> builtins.str*'
+reveal_type(C.f())  # E: Revealed type is 'builtins.str*'
+reveal_type(D.f)  # E: Revealed type is 'def () -> builtins.int*'
+reveal_type(D.f())  # E: Revealed type is 'builtins.int*'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfMultipleGenericClass]
+from typing import Tuple, TypeVar, Generic
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T]): pass
+class B(Generic[T]): pass
+class C(A[T], B[S]):
+    @classmethod
+    def h(cls) -> Tuple[T, S]: ...
+
+class D(C[str, int]): pass
+class E(C[int, str]): pass
+
+reveal_type(D.h())  # E: Revealed type is 'Tuple[builtins.str*, builtins.int*]'
+reveal_type(E.h())  # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassOverriding]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: pass
+class B(A[str]):
+    @classmethod
+    def f(cls) -> str: pass
+class C(A[str]):
+    @classmethod
+    def f(cls) -> int: pass  # E: Return type of "f" incompatible with supertype "A"
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfInheritingGenericTypeFromGenericType]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: pass
+class B(A[S]): pass
+
+A.f  # E: Access to generic classmethods via class is ambiguous.
+B.f  # E: Access to generic classmethods via class is ambiguous.
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassComplexType]
+from typing import Generic, TypeVar, Iterable, Tuple
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: pass
+
+class B(A[Iterable[str]]): pass
+
+reveal_type(B.f())  # E: Revealed type is 'typing.Iterable*[builtins.str]'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassComplexReturnType]
+from typing import Generic, TypeVar, Iterable, Tuple
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> Iterable[Tuple[T, T]]: pass
+
+class B(A[str]): pass
+
+reveal_type(B.f())  # E: Revealed type is 'typing.Iterable[Tuple[builtins.str*, builtins.str*]]'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassComplexArgumentType]
+from typing import Generic, TypeVar, Iterable, Tuple
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls, arg: Iterable[Tuple[T, T]]) -> T: pass
+
+class B(A[str]): pass
+
+reveal_type(B.f((('x', 'y'),)))  # E: Revealed type is 'builtins.str*'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassMoreComplexTypeAndReturnTypeAndArgumentType]
+from typing import Generic, TypeVar, Iterable, Tuple
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls, arg: Iterable[Tuple[T, T]]) -> Iterable[Tuple[T, T, T]]: pass
+
+class B(A[Iterable[str]]): pass
+
+arg = ((('x',), ('y',),),)
+reveal_type(B.f(arg))  # E: Revealed type is 'typing.Iterable[Tuple[typing.Iterable*[builtins.str], typing.Iterable*[builtins.str], typing.Iterable*[builtins.str]]]'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOfGenericClassMultipleTypeVariable]
+from typing import Generic, TypeVar, Tuple
+T = TypeVar('T')
+S = TypeVar('S')
+class A(Generic[T, S]):
+    @classmethod
+    def f(cls) -> Tuple[T, S]: pass
+
+class B(A[str, int]): pass
+class C(A[int, str]): pass
+
+reveal_type(B.f())  # E: Revealed type is 'Tuple[builtins.str*, builtins.int*]'
+reveal_type(C.f())  # E: Revealed type is 'Tuple[builtins.int*, builtins.str*]'
+[builtins fixtures/classmethod.pyi]
+
+[case testClassMethodOverloadingGenericClass]
+from typing import overload, TypeVar, Generic, Tuple
+T = TypeVar('T')
+class A(Generic[T]):
+    @overload
+    @classmethod
+    def f(cls, s: str) -> Tuple[str, T]: pass
+    @overload
+    @classmethod
+    def f(cls, s: int) -> Tuple[T, int]: pass
+    @classmethod
+    def f(cls, s): pass
+class B(A[str]): pass
+class C(A[int]): pass
+
+reveal_type(B.f(1))  # E: Revealed type is 'Tuple[builtins.str*, builtins.int]'
+reveal_type(B.f('a'))  # E: Revealed type is 'Tuple[builtins.str, builtins.str*]'
+reveal_type(C.f(1))  # E: Revealed type is 'Tuple[builtins.int*, builtins.int]'
+reveal_type(C.f('a'))  # E: Revealed type is 'Tuple[builtins.str, builtins.int*]'
+[builtins fixtures/classmethod.pyi]
+
+[case testCallGenericClassMethodFromAnotherGenericClassMethodOfGenericClass]
+from typing import Generic, TypeVar
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: pass
+    @classmethod
+    def g(cls) -> T:
+        return cls.f()
+
+class B(A[str]): pass
+
+A.f  # E: Access to generic classmethods via class is ambiguous.
+A[str].f  # E: Access to generic classmethods via class is ambiguous.
+reveal_type(B.g())  # E: Revealed type is 'builtins.str*'
+[builtins fixtures/classmethod.pyi]
+
+[case testGenericClassComplexTypeMultiLevelInheritance]
+from typing import Generic, TypeVar, Tuple
+T = TypeVar('T')
+class A(Generic[T]):
+    @classmethod
+    def f(cls) -> T: ...
+class B(A[Tuple[T, T]]): pass
+class C(B[str]): pass
+
+reveal_type(C.f())  # E: Revealed type is 'Tuple[builtins.str*, builtins.str*]'
+[builtins fixtures/classmethod.pyi]
