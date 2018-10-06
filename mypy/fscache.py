@@ -39,7 +39,6 @@ class FileSystemCache:
         # The package root is not flushed with the caches.
         # It is set by set_package_root() below.
         self.package_root = []  # type: List[str]
-        self.initial_run = True
         self.flush()
 
     def set_package_root(self, package_root: List[str]) -> None:
@@ -47,25 +46,6 @@ class FileSystemCache:
 
     def flush(self) -> None:
         """Start another transaction and empty all caches."""
-        if self.initial_run:
-            self.initial_run = False
-        else:
-            print("Stats for FileSystemCache:")
-            print(f"  len(stat_cache)={len(self.stat_cache)}")
-            print(f"  len(stat_error_cache)={len(self.stat_error_cache)}")
-            if self.stat_error_cache:
-                a = repr(self.stat_error_cache)
-                if len(a) <= 1010:
-                    print(f"    {a}")
-                else:
-                    print(f"    {a[:500]}...{a[-500:]}")
-            print(f"  len(listdir_cache)={len(self.listdir_cache)}")
-            print(f"  len(listdir_error_cache)={len(self.listdir_error_cache)}")
-            print(f"  len(isfile_case_cache)={len(self.listdir_error_cache)}")
-            print(f"  len(read_cache)={len(self.read_cache)}")
-            print(f"  len(read_error_cache)={len(self.read_error_cache)}")
-            print(f"  len(hash_cache)={len(self.hash_cache)}")
-            print(f"  len(fake_package_cache)={len(self.fake_package_cache)}")
         self.stat_cache = {}  # type: Dict[str, os.stat_result]
         self.stat_error_cache = {}  # type: Dict[str, OSError]
         self.listdir_cache = {}  # type: Dict[str, List[str]]
@@ -83,7 +63,6 @@ class FileSystemCache:
             raise copy_os_error(self.stat_error_cache[path])
         try:
             st = os.stat(path)
-            print(f"Good stat({path!r})")
         except OSError as err:
             if self.init_under_package_root(path):
                 try:
@@ -246,7 +225,6 @@ class FileSystemCache:
         # Need to stat first so that the contents of file are from no
         # earlier instant than the mtime reported by self.stat().
         self.stat(path)
-        print(f"Real read({path!r})")
 
         dirname, basename = os.path.split(path)
         dirname = os.path.normpath(dirname)
