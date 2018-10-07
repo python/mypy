@@ -612,15 +612,8 @@ class BuildManager(BuildManagerBase):
 
         return res
 
-    _all_modules = None  # type: Optional[Set[str]]
-
-    def set_all_modules(self, all_modules: Optional[Set[str]]) -> None:
-        self._all_modules = all_modules
-
     def is_module(self, id: str) -> bool:
         """Is there a file in the file system corresponding to module id?"""
-        if self._all_modules is not None:
-            return id in self._all_modules
         return self.find_module_cache.find_module(id) is not None
 
     def parse_file(self, id: str, path: str, source: str, ignore_errors: bool) -> MypyFile:

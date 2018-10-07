@@ -375,7 +375,6 @@ class Server:
             changed, removed = self.update_changed(sources,
                                                    add or [], remove or [], update or [])
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
-        manager.set_all_modules(set(s.module for s in sources))
         t1 = time.time()
         manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
         messages = self.fine_grained_manager.update(changed, removed)
