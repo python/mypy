@@ -818,6 +818,10 @@ def g() -> int:
     d.update(d2)
     return d['a'] + d['b']
 
+def h() -> None:
+    d = {}  # type: Dict[Any, Any]
+    d[{}]
+
 [file defaultdictwrap.py]
 from typing import Dict
 from collections import defaultdict  # type: ignore
@@ -825,10 +829,17 @@ def make_dict() -> Dict[str, int]:
     return defaultdict(int)
 
 [file driver.py]
-from native import f, g
+from native import f, g, h
 assert f(1) == 2
 assert f(2) == 1
 assert g() == 30
+# Make sure we get a TypeError from indexing with unhashable and not KeyError
+try:
+    h()
+except TypeError:
+    pass
+else:
+    assert False
 
 [case testPyMethodCall]
 from typing import List

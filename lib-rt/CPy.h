@@ -761,7 +761,9 @@ static PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     if (PyDict_CheckExact(dict)) {
         PyObject *res = PyDict_GetItemWithError(dict, key);
         if (!res) {
-            PyErr_SetObject(PyExc_KeyError, key);
+            if (!PyErr_Occurred()) {
+                PyErr_SetObject(PyExc_KeyError, key);
+            }
         } else {
             Py_INCREF(res);
         }
