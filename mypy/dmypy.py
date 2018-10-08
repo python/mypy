@@ -85,6 +85,11 @@ p.add_argument('--update', metavar='FILE', nargs='*',
 p.add_argument('--remove', metavar='FILE', nargs='*',
                help="Files to remove from the run")
 
+suggest_parser = p = subparsers.add_parser('suggest',
+    help="Suggest a signature or show call sites for a specific function")
+p.add_argument('function', metavar='FUNCTION', type=str,
+               help="Function specified as '[package.]module.[class.]function'")
+
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
 daemon_parser = p = subparsers.add_parser('daemon', help="Run daemon in foreground")
@@ -315,6 +320,17 @@ def do_recheck(args: argparse.Namespace) -> None:
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml)
+
+
+@action(suggest_parser)
+def do_suggest(args: argparse.Namespace) -> None:
+    """Ask the daemon for a suggested signature.
+
+    This just prints whatever the daemon reports as output.
+    For now it may be closer to a list of call sites.
+    """
+    response = request('suggest', function=args.function)
+    check_output(response, verbose=False, junit_xml=None)
 
 
 def check_output(response: Dict[str, Any], verbose: bool, junit_xml: Optional[str]) -> None:

@@ -93,7 +93,7 @@ DeferredNode = NamedTuple(
 # Same as above, but for fine-grained mode targets. Only top-level functions/methods
 # and module top levels are allowed as such.
 FineGrainedDeferredNode = NamedTuple(
-    'FineDeferredNode',
+    'FineGrainedDeferredNode',
     [
         ('node', FineGrainedDeferredNodeType),
         ('context_type_name', Optional[str]),
@@ -320,12 +320,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 assert not self.deferred_nodes
             self.deferred_nodes = []
             done = set()  # type: Set[Union[DeferredNodeType, FineGrainedDeferredNodeType]]
-            for node, type_name, active_typeinfo in todo:
+            for node, context_type_name, active_typeinfo in todo:
                 if node in done:
                     continue
                 # This is useful for debugging:
                 # print("XXX in pass %d, class %s, function %s" %
-                #       (self.pass_num, type_name, node.fullname() or node.name()))
+                #       (self.pass_num, context_type_name, node.fullname() or node.name()))
                 done.add(node)
                 with self.tscope.class_scope(active_typeinfo) if active_typeinfo else nothing():
                     with self.scope.push_class(active_typeinfo) if active_typeinfo else nothing():
