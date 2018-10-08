@@ -1,5 +1,8 @@
 """Primitive set ops."""
-from mypyc.ops_primitive import func_op, method_op, binary_op, simple_emit, negative_int_emit
+from mypyc.ops_primitive import (
+    func_op, method_op, binary_op,
+    simple_emit, negative_int_emit, call_emit, call_negative_bool_emit,
+)
 from mypyc.ops import (
     object_rprimitive, bool_rprimitive, set_rprimitive, int_rprimitive, ERR_MAGIC, ERR_FALSE,
     ERR_NEVER, EmitterInterface
@@ -20,7 +23,7 @@ func_op(
     arg_types=[object_rprimitive],
     result_type=set_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PySet_New({args[0]});')
+    emit=call_emit('PySet_New')
 )
 
 func_op(
@@ -28,7 +31,7 @@ func_op(
     arg_types=[object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PyFrozenSet_New({args[0]});')
+    emit=call_emit('PyFrozenSet_New')
 )
 
 
@@ -63,7 +66,7 @@ method_op(
     arg_types=[set_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = CPySet_Remove({args[0]}, {args[1]});')
+    emit=call_emit('CPySet_Remove')
 )
 
 
@@ -72,7 +75,7 @@ method_op(
     arg_types=[set_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = PySet_Discard({args[0]}, {args[1]}) >= 0;')
+    emit=call_negative_bool_emit('PySet_Discard')
 )
 
 
@@ -81,7 +84,7 @@ set_add_op = method_op(
     arg_types=[set_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = PySet_Add({args[0]}, {args[1]}) == 0;')
+    emit=call_negative_bool_emit('PySet_Add')
 )
 
 
@@ -90,7 +93,7 @@ method_op(
     arg_types=[set_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = PySet_Clear({args[0]}) == 0;')
+    emit=call_negative_bool_emit('PySet_Clear')
 )
 
 
@@ -99,5 +102,5 @@ method_op(
     arg_types=[set_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PySet_Pop({args[0]});')
+    emit=call_emit('PySet_Pop')
 )

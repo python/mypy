@@ -10,7 +10,8 @@ from mypyc.ops import (
 )
 from mypyc.ops_primitive import (
     name_ref_op, simple_emit, binary_op, unary_op, func_op, method_op, custom_op,
-    negative_int_emit,
+    simple_emit, negative_int_emit,
+    call_emit, name_emit, call_negative_bool_emit, call_negative_magic_emit,
 )
 
 
@@ -18,7 +19,7 @@ none_object_op = custom_op(result_type=object_rprimitive,
                            arg_types=[],
                            error_kind=ERR_NEVER,
                            format_str='{dest} = builtins.None :: object',
-                           emit=simple_emit('{dest} = Py_None;'),
+                           emit=name_emit('Py_None'),
                            is_borrowed=True)
 
 none_op = name_ref_op('builtins.None',
@@ -40,13 +41,14 @@ ellipsis_op = custom_op(name='...',
                         arg_types=[],
                         result_type=object_rprimitive,
                         error_kind=ERR_NEVER,
-                        emit=simple_emit('{dest} = Py_Ellipsis; Py_INCREF({dest});'))
+                        emit=name_emit('Py_Ellipsis'),
+                        is_borrowed=True)
 
 iter_op = func_op(name='builtins.iter',
                   arg_types=[object_rprimitive],
                   result_type=object_rprimitive,
                   error_kind=ERR_MAGIC,
-                  emit=simple_emit('{dest} = PyObject_GetIter({args[0]});'))
+                  emit=call_emit('PyObject_GetIter'))
 
 # Although the error_kind is set to be ERR_NEVER, this can actually return NULL, and thus it must
 # be checked using Branch.IS_ERROR.
@@ -54,13 +56,13 @@ next_op = custom_op(name='next',
                     arg_types=[object_rprimitive],
                     result_type=object_rprimitive,
                     error_kind=ERR_NEVER,
-                    emit=simple_emit('{dest} = PyIter_Next({args[0]});'))
+                    emit=call_emit('PyIter_Next'))
 
 method_new_op = custom_op(name='method_new',
                           arg_types=[object_rprimitive, object_rprimitive],
                           result_type=object_rprimitive,
                           error_kind=ERR_MAGIC,
-                          emit=simple_emit('{dest} = PyMethod_New({args[0]}, {args[1]});'))
+                          emit=call_emit('PyMethod_New'))
 
 
 #
@@ -96,7 +98,7 @@ for op, funcname in [('+', 'PyNumber_Add'),
               arg_types=[object_rprimitive, object_rprimitive],
               result_type=object_rprimitive,
               error_kind=ERR_MAGIC,
-              emit=simple_emit('{dest} = %s({args[0]}, {args[1]});' % funcname),
+              emit=call_emit(funcname),
               priority=0)
 
 for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
@@ -153,7 +155,7 @@ for op, funcname in [('-', 'PyNumber_Negative'),
              arg_type=object_rprimitive,
              result_type=object_rprimitive,
              error_kind=ERR_MAGIC,
-             emit=simple_emit('{dest} = %s({args[0]});' % funcname),
+             emit=call_emit(funcname),
              priority=0)
 
 unary_op(op='not',
@@ -161,7 +163,7 @@ unary_op(op='not',
          result_type=bool_rprimitive,
          error_kind=ERR_MAGIC,
          format_str='{dest} = not {args[0]}',
-         emit=negative_int_emit('{dest} = PyObject_Not({args[0]});'),
+         emit=call_negative_magic_emit('PyObject_Not'),
          priority=0)
 
 unary_op(op='not',
@@ -176,21 +178,21 @@ method_op('__getitem__',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=object_rprimitive,
           error_kind=ERR_MAGIC,
-          emit=simple_emit('{dest} = PyObject_GetItem({args[0]}, {args[1]});'),
+          emit=call_emit('PyObject_GetItem'),
           priority=0)
 
 method_op('__setitem__',
           arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_FALSE,
-          emit=simple_emit('{dest} = PyObject_SetItem({args[0]}, {args[1]}, {args[2]}) >= 0;'),
+          emit=call_negative_bool_emit('PyObject_SetItem'),
           priority=0)
 
 method_op('__delitem__',
           arg_types=[object_rprimitive, object_rprimitive],
           result_type=bool_rprimitive,
           error_kind=ERR_FALSE,
-          emit=simple_emit('{dest} = PyObject_DelItem({args[0]}, {args[1]}) >= 0;'),
+          emit=call_negative_bool_emit('PyObject_DelItem'),
           priority=0)
 
 func_op(
@@ -198,14 +200,14 @@ func_op(
     arg_types=[object_rprimitive],
     result_type=int_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPyObject_Hash({args[0]});'))
+    emit=call_emit('CPyObject_Hash'))
 
 py_getattr_op = func_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PyObject_GetAttr({args[0]}, {args[1]});')
+    emit=call_emit('PyObject_GetAttr')
 )
 
 py_setattr_op = func_op(
@@ -213,7 +215,7 @@ py_setattr_op = func_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = PyObject_SetAttr({args[0]}, {args[1]}, {args[2]}) >= 0;')
+    emit=call_negative_bool_emit('PyObject_SetAttr')
 )
 
 func_op(
@@ -221,7 +223,7 @@ func_op(
     arg_types=[object_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_NEVER,
-    emit=simple_emit('{dest} = PyObject_HasAttr({args[0]}, {args[1]});')
+    emit=call_emit('PyObject_HasAttr')
 )
 
 py_delattr_op = func_op(
@@ -229,7 +231,7 @@ py_delattr_op = func_op(
     arg_types=[object_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = PyObject_DelAttr({args[0]}, {args[1]}) >= 0;')
+    emit=call_negative_bool_emit('PyObject_DelAttr')
 )
 
 py_call_op = custom_op(
@@ -237,7 +239,7 @@ py_call_op = custom_op(
     result_type=object_rprimitive,
     is_var_arg=True,
     error_kind=ERR_MAGIC,
-    format_str = '{dest} = py_call({comma_args})',
+    format_str='{dest} = py_call({comma_args})',
     emit=simple_emit('{dest} = PyObject_CallFunctionObjArgs({comma_args}, NULL);'))
 
 py_call_with_kwargs_op = custom_op(
@@ -245,8 +247,8 @@ py_call_with_kwargs_op = custom_op(
     result_type=object_rprimitive,
     is_var_arg=True,
     error_kind=ERR_MAGIC,
-    format_str = '{dest} = py_call_with_kwargs({args[0]}, {args[1]}, {args[2]})',
-    emit=simple_emit('{dest} = PyObject_Call({args[0]}, {args[1]}, {args[2]});'))
+    format_str='{dest} = py_call_with_kwargs({args[0]}, {args[1]}, {args[2]})',
+    emit=call_emit('PyObject_Call'))
 
 
 py_method_call_op = custom_op(
@@ -254,7 +256,7 @@ py_method_call_op = custom_op(
     result_type=object_rprimitive,
     is_var_arg=True,
     error_kind=ERR_MAGIC,
-    format_str = '{dest} = py_method_call({comma_args})',
+    format_str='{dest} = py_method_call({comma_args})',
     emit=simple_emit('{dest} = PyObject_CallMethodObjArgs({comma_args}, NULL);'))
 
 
@@ -263,14 +265,14 @@ import_op = custom_op(
     arg_types=[str_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PyImport_Import({args[0]});'))
+    emit=call_emit('PyImport_Import'))
 
 
 func_op('builtins.isinstance',
         arg_types=[object_rprimitive, object_rprimitive],
         result_type=bool_rprimitive,
         error_kind=ERR_MAGIC,
-        emit=negative_int_emit('{dest} = PyObject_IsInstance({args[0]}, {args[1]});'))
+        emit=call_negative_magic_emit('PyObject_IsInstance'))
 
 # Faster isinstance() that only works with native classes and doesn't perform type checking
 # of the type argument.
@@ -294,27 +296,27 @@ bool_op = func_op(
     arg_types=[object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=negative_int_emit('{dest} = PyObject_IsTrue({args[0]});'))
+    emit=call_negative_magic_emit('PyObject_IsTrue'))
 
 new_slice_op = func_op(
     'builtins.slice',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PySlice_New({args[0]}, {args[1]}, {args[2]});'))
+    emit=call_emit('PySlice_New'))
 
 type_op = func_op(
     'builtins.type',
     arg_types=[object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_NEVER,
-    emit=simple_emit('{dest} = PyObject_Type({args[0]});'))
+    emit=call_emit('PyObject_Type'))
 
 func_op(name='builtins.len',
         arg_types=[object_rprimitive],
         result_type=int_rprimitive,
         error_kind=ERR_NEVER,
-        emit=simple_emit('{dest} = CPyObject_Size({args[0]});'),
+        emit=call_emit('CPyObject_Size;'),
         priority=0)
 
 pytype_from_template_op = custom_op(

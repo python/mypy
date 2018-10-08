@@ -8,7 +8,9 @@ from mypyc.ops import (
     ERR_FALSE, ERR_MAGIC, ERR_NEVER,
 )
 from mypyc.ops_primitive import (
-    name_ref_op, method_op, binary_op, func_op, simple_emit, negative_int_emit,
+    name_ref_op, method_op, binary_op, func_op,
+    simple_emit, negative_int_emit,
+    call_emit, call_negative_bool_emit, call_negative_magic_emit,
 )
 
 
@@ -23,7 +25,7 @@ dict_get_item_op = method_op(
     arg_types=[dict_rprimitive, object_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPyDict_GetItem({args[0]}, {args[1]});'))
+    emit=call_emit('CPyDict_GetItem'))
 
 
 dict_set_item_op = method_op(
@@ -31,7 +33,7 @@ dict_set_item_op = method_op(
     arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = CPyDict_SetItem({args[0]}, {args[1]}, {args[2]}) >= 0;'))
+    emit=call_negative_bool_emit('CPyDict_SetItem'))
 
 
 binary_op(op='in',
@@ -46,7 +48,7 @@ dict_update_op = method_op(
     arg_types=[dict_rprimitive, dict_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = CPyDict_Update({args[0]}, {args[1]}) != -1;'),
+    emit=call_negative_bool_emit('CPyDict_Update'),
     priority=2)
 
 method_op(
@@ -62,7 +64,7 @@ new_dict_op = func_op(
     result_type=dict_rprimitive,
     error_kind=ERR_MAGIC,
     format_str='{dest} = {{}}',
-    emit=simple_emit('{dest} = PyDict_New();'))
+    emit=call_emit('PyDict_New'))
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:

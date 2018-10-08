@@ -9,6 +9,7 @@ from mypyc.ops import (
 )
 from mypyc.ops_primitive import (
     name_ref_op, binary_op, func_op, method_op, custom_op, simple_emit,
+    call_emit, call_negative_bool_emit,
 )
 
 
@@ -42,7 +43,7 @@ list_get_item_op = method_op(
     arg_types=[list_rprimitive, int_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPyList_GetItem({args[0]}, {args[1]});'))
+    emit=call_emit('CPyList_GetItem'))
 
 
 # Version with no int bounds check for when it is known to be short
@@ -51,7 +52,7 @@ method_op(
     arg_types=[list_rprimitive, short_int_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPyList_GetItemShort({args[0]}, {args[1]});'),
+    emit=call_emit('CPyList_GetItemShort'),
     priority=2)
 
 # This is unsafe because it assumes that the index is a non-negative short integer
@@ -71,7 +72,7 @@ list_set_item_op = method_op(
     steals=[False, False, True],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = CPyList_SetItem({args[0]}, {args[1]}, {args[2]}) != 0;'))
+    emit=call_emit('CPyList_SetItem'))
 
 
 list_append_op = method_op(
@@ -79,7 +80,7 @@ list_append_op = method_op(
     arg_types=[list_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = PyList_Append({args[0]}, {args[1]}) != -1;'))
+    emit=call_negative_bool_emit('PyList_Append'))
 
 list_extend_op = method_op(
     name='extend',

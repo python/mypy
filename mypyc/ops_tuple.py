@@ -10,7 +10,9 @@ from mypyc.ops import (
     EmitterInterface, PrimitiveOp, tuple_rprimitive, int_rprimitive, list_rprimitive,
     object_rprimitive, ERR_NEVER, ERR_MAGIC
 )
-from mypyc.ops_primitive import method_op, func_op, simple_emit
+from mypyc.ops_primitive import (
+    func_op, method_op, call_emit,
+)
 
 
 tuple_get_item_op = method_op(
@@ -18,7 +20,7 @@ tuple_get_item_op = method_op(
     arg_types=[tuple_rprimitive, int_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPySequenceTuple_GetItem({args[0]}, {args[1]});'))
+    emit=call_emit('CPySequenceTuple_GetItem'))
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
@@ -41,4 +43,4 @@ list_tuple_op = func_op(
     arg_types=[list_rprimitive],
     result_type=tuple_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = PyList_AsTuple({args[0]});'))
+    emit=call_emit('PyList_AsTuple'))

@@ -162,7 +162,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_list_set_item(self) -> None:
         self.assert_emit(PrimitiveOp([self.l, self.n, self.o], list_set_item_op, 55),
-                         """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o) != 0;""")
+                         """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
     def test_box(self) -> None:
         self.assert_emit(Box(self.n),
@@ -189,7 +189,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_list_append(self) -> None:
         self.assert_emit(PrimitiveOp([self.l, self.o], list_append_op, 1),
-                         """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o) != -1;""")
+                         """cpy_r_r0 = PyList_Append(cpy_r_l, cpy_r_o) >= 0;""")
 
     def test_get_attr(self) -> None:
         self.assert_emit(
@@ -211,7 +211,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
 
     def test_dict_update(self) -> None:
         self.assert_emit(PrimitiveOp([self.d, self.o], dict_update_op, 1),
-                        """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o) != -1;""")
+                        """cpy_r_r0 = CPyDict_Update(cpy_r_d, cpy_r_o) >= 0;""")
 
     def test_new_dict(self) -> None:
         self.assert_emit(PrimitiveOp([], new_dict_op, 1),

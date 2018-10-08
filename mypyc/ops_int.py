@@ -6,7 +6,11 @@ from mypyc.ops import (
     RType, EmitterInterface, OpDescription,
     ERR_NEVER, ERR_MAGIC,
 )
-from mypyc.ops_primitive import name_ref_op, binary_op, unary_op, func_op, custom_op, simple_emit
+from mypyc.ops_primitive import (
+    name_ref_op, binary_op, unary_op, func_op, custom_op,
+    simple_emit,
+    call_emit,
+)
 
 # These int constructors produce object_rprimitives that then need to be unboxed
 # I guess unboxing ourselves would save a check and branch though?
@@ -24,7 +28,7 @@ func_op(
     arg_types=[float_rprimitive],
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=simple_emit('{dest} = CPyLong_FromFloat({args[0]});'),
+    emit=call_emit('CPyLong_FromFloat'),
     priority=1)
 
 
@@ -34,7 +38,7 @@ def int_binary_op(op: str, c_func_name: str, result_type: RType = int_rprimitive
               result_type=result_type,
               error_kind=ERR_NEVER,
               format_str='{dest} = {args[0]} %s {args[1]} :: int' % op,
-              emit=simple_emit('{dest} = %s({args[0]}, {args[1]});' % c_func_name))
+              emit=call_emit(c_func_name))
 
 
 def int_compare_op(op: str, c_func_name: str) -> None:
@@ -86,7 +90,7 @@ def int_unary_op(op: str, c_func_name: str) -> OpDescription:
                     result_type=int_rprimitive,
                     error_kind=ERR_NEVER,
                     format_str='{dest} = %s{args[0]} :: int' % op,
-                    emit=simple_emit('{dest} = %s({args[0]});' % c_func_name))
+                    emit=call_emit(c_func_name))
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
