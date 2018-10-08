@@ -15,7 +15,7 @@ import sys
 import time
 import traceback
 
-from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import AbstractSet, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 import mypy.build
 import mypy.errors
@@ -28,6 +28,7 @@ from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths
 from mypy.options import Options
+from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.typestate import reset_global_state
 from mypy.util import redirect_stderr, redirect_stdout
 from mypy.version import __version__
@@ -512,6 +513,27 @@ class Server:
                 changed.append((s.module, s.path))
 
         return changed, removed
+
+    def cmd_suggest(self, function: str) -> Dict[str, object]:
+        """Suggest a signature for a function.
+
+        (Currently suggesting signatures is beyond us; we just report
+        call sites and the arguments used for each.  The dmypy client
+        just prints whatever we give it as output.)
+        """
+        if not self.fine_grained_manager:
+            return {'error': "Command 'suggest' is only valid after a 'check' command"}
+        engine = SuggestionEngine(self.fine_grained_manager)
+        try:
+            out = engine.suggest(function)
+        except SuggestionFailure as err:
+            return {'error': str(err)}
+        else:
+            if not out:
+                out = "No suggestions\n"
+            elif not out.endswith("\n"):
+                out += "\n"
+            return {'out': out, 'err': "", 'status': 0}
 
     def cmd_hang(self) -> Dict[str, object]:
         """Hang for 100 seconds, as a debug hack."""
