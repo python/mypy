@@ -316,7 +316,7 @@ func_op(name='builtins.len',
         arg_types=[object_rprimitive],
         result_type=int_rprimitive,
         error_kind=ERR_NEVER,
-        emit=call_emit('CPyObject_Size;'),
+        emit=call_emit('CPyObject_Size'),
         priority=0)
 
 pytype_from_template_op = custom_op(
