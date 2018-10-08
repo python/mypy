@@ -69,9 +69,13 @@ def list_rev_iter_lol(l: List[int]) -> None:
         if i == 3:
             while l:
                 l.pop()
+def count_down_short() -> None:
+    for i in range(10, 0, -1):
+        print(i)
 [file driver.py]
 from native import (
     count, list_iter, list_rev_iter, list_rev_iter_lol, count_between, count_down, count_double,
+    count_down_short
 )
 count(5)
 list_iter(list(reversed(range(5))))
@@ -80,6 +84,7 @@ count_between(11, 15)
 count_between(10**20, 10**20+3)
 count_down(20, 10)
 count_double(10, 15)
+count_down_short()
 print('==')
 list_rev_iter_lol(list(reversed(range(5))))
 [out]
@@ -118,6 +123,16 @@ list_rev_iter_lol(list(reversed(range(5))))
 10
 12
 14
+10
+9
+8
+7
+6
+5
+4
+3
+2
+1
 ==
 0
 1

@@ -222,7 +222,7 @@ class ForRange(ForGenerator):
                 and is_short_int_rprimitive(self.end_reg.type)):
             new_val = builder.primitive_op(
                 unsafe_short_add, [builder.read(self.index_target, line),
-                                   builder.add(LoadInt(1))], line)
+                                   builder.add(LoadInt(self.step))], line)
         else:
             new_val = builder.binary_op(
                 builder.read(self.index_target, line), builder.add(LoadInt(self.step)), '+', line)

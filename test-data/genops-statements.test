@@ -54,7 +54,7 @@ L1:
     if r2 goto L2 else goto L4 :: bool
 L2:
 L3:
-    r3 = 1
+    r3 = -1
     r4 = i + r3 :: short_int
     i = r4
     goto L1
