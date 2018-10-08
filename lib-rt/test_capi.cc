@@ -56,6 +56,7 @@ static PyObject *eval(std::string expr) {
 
 static CPyTagged eval_int(std::string expr) {
     auto o = eval(expr);
+    EXPECT_TRUE(PyLong_Check(o));
     return CPyTagged_FromObject(o);
 }
 
@@ -329,7 +330,7 @@ TEST_F(CAPITest, test_floor_divide_short_int) {
 TEST_F(CAPITest, test_floor_divide_long_int) {
     ASSERT_FLOOR_DIV("2**100", "3", "2**100 // 3");
     ASSERT_FLOOR_DIV("3", "2**100", "0");
-    ASSERT_FLOOR_DIV("2**100", "2**70 / 3", "2**100 // (2**70 / 3)");
+    ASSERT_FLOOR_DIV("2**100", "2**70 // 3", "2**100 // (2**70 // 3)");
 }
 
 #define ASSERT_REMAINDER(x, y, result) \
@@ -360,7 +361,7 @@ TEST_F(CAPITest, test_remainder_short_int) {
 TEST_F(CAPITest, test_remainder_long_int) {
     ASSERT_REMAINDER("2**100", "3", "2**100 % 3");
     ASSERT_REMAINDER("3", "2**100", "3");
-    ASSERT_REMAINDER("2**100", "2**70 / 3", "2**100 % (2**70 / 3)");
+    ASSERT_REMAINDER("2**100", "2**70 // 3", "2**100 % (2**70 // 3)");
 }
 
 #define INT_EQ(x, y) \
