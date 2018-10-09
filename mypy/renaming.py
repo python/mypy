@@ -50,14 +50,13 @@ class VariableRenameVisitor(TraverserVisitor):
         self.blocks = []  # type: List[int]
         # List of scopes; each scope maps short name to block id.
         self.var_blocks = []  # type: List[Dict[str, int]]
-        # Variables which have no assigned value yet (e.g., "x: t" but no assigment).
-        # Assignment in any block is considered an initialization.
-        self.uninitialized = set()  # type: Set[str]
 
         # References to variables the we may need to rename. List of
         # scopes; each scope is a mapping from name to list of collections
         # of names that refer to the same logical variable.
         self.refs = []  # type: List[Dict[str, List[List[NameExpr]]]]
+        # Number of reads of the most recent definition of a variable (per scope)
+        self.num_reads = []  # type: List[Dict[str, int]]
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
         """Rename variables within a file.
@@ -67,8 +66,10 @@ class VariableRenameVisitor(TraverserVisitor):
         self.clear()
         self.enter_scope()
         self.enter_block()
+
         for d in file_node.defs:
             d.accept(self)
+
         self.leave_block()
         self.leave_scope()
 
@@ -86,6 +87,7 @@ class VariableRenameVisitor(TraverserVisitor):
             name = arg.variable.name()
             self.record_assignment(arg.variable.name(), can_be_redefined=True)
             self.handle_arg(name)
+
         for stmt in fdef.body.body:
             stmt.accept(self)
 
@@ -105,6 +107,8 @@ class VariableRenameVisitor(TraverserVisitor):
     def visit_for_stmt(self, stmt: ForStmt) -> None:
         stmt.expr.accept(self)
         self.analyze_lvalue(stmt.index, True)
+        # Also analyze as non-lvalue so that every for loop index variable is assumed to be read.
+        stmt.index.accept(self)
         self.enter_loop()
         stmt.body.accept(self)
         self.leave_loop()
@@ -127,38 +131,41 @@ class VariableRenameVisitor(TraverserVisitor):
         super().visit_with_stmt(stmt)
         self.leave_with_or_try()
 
+    def visit_import(self, imp: Import) -> None:
+        for id, as_id in imp.ids:
+            self.record_assignment(as_id or id, False)
+
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        for id, as_id in imp.names:
+            self.record_assignment(as_id or id, False)
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
-        has_initializer = not isinstance(s.rvalue, TempNode)
         s.rvalue.accept(self)
         for lvalue in s.lvalues:
-            self.analyze_lvalue(lvalue, has_initializer)
+            self.analyze_lvalue(lvalue)
 
-    def analyze_lvalue(self, lvalue: Lvalue, has_initializer: bool) -> None:
+    def analyze_lvalue(self, lvalue: Lvalue, is_nested: bool = False) -> None:
         if isinstance(lvalue, NameExpr):
             name = lvalue.name
-            is_new = self.record_assignment(name, True, not has_initializer)
-            if is_new:  # and name != '_':  # Underscore gets special handling later
+            is_new = self.record_assignment(name, True)
+            if is_new:
                 self.handle_def(lvalue)
             else:
+                self.handle_refine(lvalue)
+            if is_nested:
+                # This allows these to redefined freely. Multiple assignments often define
+                # dummy variables that are never read.
                 self.handle_ref(lvalue)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
             for item in lvalue.items:
-                self.analyze_lvalue(item, has_initializer)
+                self.analyze_lvalue(item, is_nested=True)
         elif isinstance(lvalue, MemberExpr):
             lvalue.expr.accept(self)
         elif isinstance(lvalue, IndexExpr):
             lvalue.base.accept(self)
             lvalue.index.accept(self)
         elif isinstance(lvalue, StarExpr):
-            self.analyze_lvalue(lvalue.expr, has_initializer)
-
-    def visit_import(self, imp: Import) -> None:
-        for id, as_id in imp.ids:
-            self.record_assignment(as_id or id, False, False)
-
-    def visit_import_from(self, imp: ImportFrom) -> None:
-        for id, as_id in imp.names:
-            self.record_assignment(as_id or id, False, False)
+            self.analyze_lvalue(lvalue.expr)
 
     def visit_name_expr(self, expr: NameExpr) -> None:
         self.handle_ref(expr)
@@ -172,8 +179,19 @@ class VariableRenameVisitor(TraverserVisitor):
 
     def handle_def(self, expr: NameExpr) -> None:
         """Store new name definition."""
-        names = self.refs[-1].setdefault(expr.name, [])
+        name = expr.name
+        names = self.refs[-1].setdefault(name, [])
         names.append([expr])
+        self.num_reads[-1][name] = 0
+
+    def handle_refine(self, expr: NameExpr) -> None:
+        """Store assignment to an existing name (that replaces previous value, if any)."""
+        name = expr.name
+        if name in self.refs[-1]:
+            names = self.refs[-1][name]
+            if not names:
+                names.append([])
+            names[-1].append(expr)
 
     def handle_ref(self, expr: NameExpr) -> None:
         """Store reference to defined name."""
@@ -183,6 +201,8 @@ class VariableRenameVisitor(TraverserVisitor):
             if not names:
                 names.append([])
             names[-1].append(expr)
+        num_reads = self.num_reads[-1]
+        num_reads[name] = num_reads.get(name, 0) + 1
 
     def flush_refs(self) -> None:
         """Rename all references within the current scope.
@@ -244,10 +264,12 @@ class VariableRenameVisitor(TraverserVisitor):
     def enter_scope(self) -> None:
         self.var_blocks.append({})
         self.refs.append({})
+        self.num_reads.append({})
 
     def leave_scope(self) -> None:
         self.flush_refs()
         self.var_blocks.pop()
+        self.num_reads.pop()
 
     def is_nested(self) -> int:
         return len(self.var_blocks) > 1
@@ -290,26 +312,21 @@ class VariableRenameVisitor(TraverserVisitor):
             if self.block_loop_depth.get(block) == self.loop_depth:
                 var_blocks[key] = -1
 
-    def record_assignment(self, name: str, can_be_redefined: bool, no_value: bool = False) -> bool:
+    def record_assignment(self, name: str, can_be_redefined: bool) -> bool:
         """Record assignment to given name and return True if it defines a new variable.
 
         Args:
             can_be_redefined: If True, allows assignment in the same block to redefine
                 this name (if this is a new definition)
-            no_value: If True, the first assignment we encounter will not be considered
-                to redefine this but to initilize it (in any block); used for bare "x: t"
         """
+        if self.num_reads[-1].get(name, -1) == 0:
+            # Only set, not read, so no reason to redefine
+            return False
         if self.disallow_redef_depth > 0:
             # Can't redefine within try/with a block.
             can_be_redefined = False
         block = self.current_block()
         var_blocks = self.var_blocks[-1]
-        uninitialized = self.uninitialized
-        declared_but_no_value = name in self.uninitialized
-        if no_value:
-            uninitialized.add(name)
-        else:
-            uninitialized.discard(name)
         if name not in var_blocks:
             # New definition in this scope.
             if can_be_redefined:
@@ -320,7 +337,7 @@ class VariableRenameVisitor(TraverserVisitor):
                 # This doesn't support arbitrary redefinition.
                 var_blocks[name] = -1
             return True
-        elif var_blocks[name] == block and not declared_but_no_value:
+        elif var_blocks[name] == block:
             # Redefinition -- defines a new variable with the same name.
             return True
         else:

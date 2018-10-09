@@ -1352,8 +1352,10 @@ def f(x: int): pass
 from typing import List
 a: List[A]
 b: List[B]
-b = [f(x) for x in a]
-a = [f(x) for x in a] # E: List comprehension has incompatible type List[B]; expected List[A]
+if int():
+    b = [f(x) for x in a]
+if int():
+    a = [f(x) for x in a] # E: List comprehension has incompatible type List[B]; expected List[A]
 ([f(x) for x in b])   # E: Argument 1 to "f" has incompatible type "B"; expected "A"
 class A: pass
 class B: pass

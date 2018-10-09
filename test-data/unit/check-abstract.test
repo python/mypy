@@ -230,7 +230,8 @@ class C(B):
 
 var: Type[A]
 var()
-var = A # E: Can only assign concrete classes to a variable of type "Type[A]"
+if int():
+    var = A # E: Can only assign concrete classes to a variable of type "Type[A]"
 if int():
     var = B # E: Can only assign concrete classes to a variable of type "Type[A]"
 if int():

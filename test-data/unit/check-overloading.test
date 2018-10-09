@@ -3578,17 +3578,20 @@ def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
 
 def test_narrow_int() -> None:
     a: Union[int, str]
-    a = narrow_int(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_int(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_int(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_int(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: str
-    c = narrow_int(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
-                    # TODO: maybe we should make mypy report a warning instead?
+    if int():
+        c = narrow_int(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
+                        # TODO: maybe we should make mypy report a warning instead?
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3607,17 +3610,20 @@ def narrow_int(x: Union[int, str]) -> Union[int, NoReturn]:
 
 def test_narrow_int() -> None:
     a: Union[int, str]
-    a = narrow_int(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_int(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_int(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_int(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: str
-    c = narrow_int(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
-                    # TODO: maybe we should make mypy report a warning instead?
+    if int():
+        c = narrow_int(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
+                        # TODO: maybe we should make mypy report a warning instead?
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3637,16 +3643,19 @@ def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
 
 def test_narrow_none() -> None:
     a: Optional[int]
-    a = narrow_none(a)
-    reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
+    if int():
+        a = narrow_none(a)
+        reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
 
     b: int
-    b = narrow_none(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+    if int():
+        c = narrow_none(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3666,16 +3675,19 @@ def narrow_none(x: Optional[T]) -> Union[NoReturn, T]:
 
 def test_narrow_none() -> None:
     a: Optional[int]
-    a = narrow_none(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_none(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_none(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none(c)
-    reveal_type(c)  # Branch is now dead
+    if int():
+        c = narrow_none(c)
+        reveal_type(c)  # Branch is now dead
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3695,16 +3707,19 @@ def narrow_none_v2(x: Optional[T]) -> T:
 
 def test_narrow_none_v2() -> None:
     a: Optional[int]
-    a = narrow_none_v2(a)
-    reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
+    if int():
+        a = narrow_none_v2(a)
+        reveal_type(a)  # E: Revealed type is 'Union[builtins.int, None]'
 
     b: int
-    b = narrow_none_v2(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none_v2(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none_v2(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+    if int():
+        c = narrow_none_v2(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3723,16 +3738,19 @@ def narrow_none_v2(x: Optional[T]) -> T:
 
 def test_narrow_none_v2() -> None:
     a: Optional[int]
-    a = narrow_none_v2(a)
-    reveal_type(a)  # E: Revealed type is 'builtins.int'
+    if int():
+        a = narrow_none_v2(a)
+        reveal_type(a)  # E: Revealed type is 'builtins.int'
 
     b: int
-    b = narrow_none_v2(b)
-    reveal_type(b)  # E: Revealed type is 'builtins.int'
+    if int():
+        b = narrow_none_v2(b)
+        reveal_type(b)  # E: Revealed type is 'builtins.int'
 
     c: None
-    c = narrow_none_v2(c)
-    reveal_type(c)  # Note: branch is now dead, so no type is revealed
+    if int():
+        c = narrow_none_v2(c)
+        reveal_type(c)  # Note: branch is now dead, so no type is revealed
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3755,12 +3773,14 @@ def narrow_to_not_a(x: T) -> Union[NoReturn, T]:
 
 def test() -> None:
     val: Union[A, B]
-    val = narrow_to_not_a(val)
-    reveal_type(val)   # E: Revealed type is '__main__.B'
+    if int():
+        val = narrow_to_not_a(val)
+        reveal_type(val)   # E: Revealed type is '__main__.B'
 
     val2: A
-    val2 = narrow_to_not_a(val2)
-    reveal_type(val2)  # Branch now dead
+    if int():
+        val2 = narrow_to_not_a(val2)
+        reveal_type(val2)  # Branch now dead
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
@@ -3781,14 +3801,14 @@ def narrow_to_not_a_v2(x: T) -> T:
     assert not isinstance(x, A)
     return x
 
-def test_v2() -> None:
-    val: Union[A, B]
-    val = narrow_to_not_a_v2(val)
-    reveal_type(val)   # E: Revealed type is '__main__.B'
+def test_v2(val: Union[A, B], val2: A) -> None:
+    if int():
+        val = narrow_to_not_a_v2(val)
+        reveal_type(val)   # E: Revealed type is '__main__.B'
 
-    val2: A
-    val2 = narrow_to_not_a_v2(val2)
-    reveal_type(val2)  # Branch now dead
+    if int():
+        val2 = narrow_to_not_a_v2(val2)
+        reveal_type(val2)  # Branch now dead
 
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]

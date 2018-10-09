@@ -149,15 +149,20 @@ c1: C1
 c2: C2
 y: AnotherP
 
-x = c
+if int():
+    x = c
 if int():
     x = B()  # E: Incompatible types in assignment (expression has type "B", variable has type "P")
+if int():
     x = c1 # E: Incompatible types in assignment (expression has type "C1", variable has type "P") \
         # N: 'C1' is missing following 'P' protocol member: \
         # N:     meth2
+if int():
     x = c2
+if int():
     x = y
-y = x
+if int():
+    y = x
 
 [case testSimpleProtocolTwoMethodsExtend]
 from typing import Protocol
@@ -183,7 +188,8 @@ x: P2
 reveal_type(x.meth1()) # E: Revealed type is 'builtins.int'
 reveal_type(x.meth2()) # E: Revealed type is 'builtins.str'
 
-x = C() # OK
+if int():
+    x = C() # OK
 if int():
     x = Cbad() # E: Incompatible types in assignment (expression has type "Cbad", variable has type "P2") \
         # N: 'Cbad' is missing following 'P2' protocol member: \
@@ -444,18 +450,24 @@ class B(A): pass
 
 x1: Pco[B]
 y1: Pco[A]
-x1 = y1 # E: Incompatible types in assignment (expression has type "Pco[A]", variable has type "Pco[B]")
-y1 = x1 # E: Incompatible types in assignment (expression has type "Pco[B]", variable has type "Pco[A]")
+if int():
+    x1 = y1 # E: Incompatible types in assignment (expression has type "Pco[A]", variable has type "Pco[B]")
+if int():
+    y1 = x1 # E: Incompatible types in assignment (expression has type "Pco[B]", variable has type "Pco[A]")
 
 x2: Pcontra[B]
 y2: Pcontra[A]
-y2 = x2 # E: Incompatible types in assignment (expression has type "Pcontra[B]", variable has type "Pcontra[A]")
-x2 = y2 # E: Incompatible types in assignment (expression has type "Pcontra[A]", variable has type "Pcontra[B]")
+if int():
+    y2 = x2 # E: Incompatible types in assignment (expression has type "Pcontra[B]", variable has type "Pcontra[A]")
+if int():
+    x2 = y2 # E: Incompatible types in assignment (expression has type "Pcontra[A]", variable has type "Pcontra[B]")
 
 x3: Pinv[B]
 y3: Pinv[A]
-y3 = x3 # E: Incompatible types in assignment (expression has type "Pinv[B]", variable has type "Pinv[A]")
-x3 = y3 # E: Incompatible types in assignment (expression has type "Pinv[A]", variable has type "Pinv[B]")
+if int():
+    y3 = x3 # E: Incompatible types in assignment (expression has type "Pinv[B]", variable has type "Pinv[A]")
+if int():
+    x3 = y3 # E: Incompatible types in assignment (expression has type "Pinv[A]", variable has type "Pinv[B]")
 
 [case testProtocolVarianceWithCallableAndList]
 from typing import Protocol, TypeVar, Callable, List

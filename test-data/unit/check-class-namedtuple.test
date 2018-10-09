@@ -192,13 +192,20 @@ class B(A): pass
 a = A(1, '')
 b = B(1, '')
 t: Tuple[int, str]
-b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-a = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
-b = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
-t = a
-t = (1, '')
-t = b
-a = b
+if int():
+    b = a  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+if int():
+    a = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "A")
+if int():
+    b = t  # E: Incompatible types in assignment (expression has type "Tuple[int, str]", variable has type "B")
+if int():
+    t = a
+if int():
+    t = (1, '')
+if int():
+    t = b
+if int():
+    a = b
 
 [case testNewNamedTupleSimpleTypeInference]
 # flags: --python-version 3.6

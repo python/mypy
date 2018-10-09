@@ -76,12 +76,14 @@ def g(a: Iterable[int]) -> None:
 
 def h(a: Iterable[int]) -> None:
     x = ''
+    reveal_type(x)  # E: Revealed type is 'builtins.str'
     for x in a: pass
 
 [case testCannotRedefineLocalWithinTry]
 def f() -> None:
     try:
         x = 0
+        x
         g()  # Might raise an exception
         x = '' \
         # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -89,6 +91,7 @@ def f() -> None:
         pass
     reveal_type(x) # E: Revealed type is 'builtins.int'
     y = 0
+    y
     y = ''
 
 def g(): pass
@@ -97,11 +100,13 @@ def g(): pass
 def f() -> None:
     with g():
         x = 0
+        x
         g()  # Might raise an exception
         x = '' \
         # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     reveal_type(x) # E: Revealed type is 'builtins.int'
     y = 0
+    y
     y = ''
 
 def g(): pass
@@ -109,6 +114,7 @@ def g(): pass
 [case testCannotRedefineAcrossNestedFunction]
 def f() -> None:
     x = 0
+    x
     def g() -> None:
         x
     g()
@@ -116,6 +122,7 @@ def f() -> None:
     # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     g()
     y = 0
+    y
     y = ''
 
 [case testCannotRedefineAcrossNestedDecoratedFunction]
@@ -123,6 +130,7 @@ def dec(f): return f
 
 def f() -> None:
     x = 0
+    x
     @dec
     def g() -> None:
         x
@@ -131,6 +139,7 @@ def f() -> None:
     # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     g()
     y = 0
+    y
     y = ''
 
 [case testCannotRedefineAcrossNestedOverloadedFunction]
@@ -138,6 +147,7 @@ from typing import overload
 
 def f() -> None:
     x = 0
+    x
     @overload
     def g() -> None: pass
     @overload
@@ -149,6 +159,7 @@ def f() -> None:
     # E: Incompatible types in assignment (expression has type "str", variable has type "int")
     g()
     y = 0
+    y
     y = ''
 
 [case testRedefineLocalInMultipleAssignment]
@@ -174,8 +185,10 @@ def f() -> None:
 [case testRedefineWithBreakAndContinue]
 def f() -> None:
     y = 0
+    y
     while int():
         z = 0
+        z
         z = ''
         x = 0
         if int():
@@ -187,8 +200,10 @@ def f() -> None:
 
 def g() -> None:
     y = 0
+    y
     for a in h():
         z = 0
+        z
         z = ''
         x = 0
         if int():
@@ -203,11 +218,14 @@ def h(): pass
 [case testRedefineLocalAndNestedLoops]
 def f() -> None:
     z = 0
+    z
     while int():
         x = 0
+        x
         while int():
             if 1:
                 y = 1
+                y
                 if int():
                     break
                 y = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
@@ -233,13 +251,13 @@ def f() -> None:
 [case testRedefineVarAsTypeVar]
 from typing import TypeVar
 def f() -> None:
-    # Since these look like assignments, they can be redefined.
     x = TypeVar('x')
-    x = 1
+    x = 1  # E: Invalid assignment target
     reveal_type(x) # E: Revealed type is 'builtins.int'
     y = 1
-    y = TypeVar('y')
-    # TODO: This should either work or we should give an error earlier.
+    # NOTE: '"int" not callable' is due to test stubs
+    y = TypeVar('y')  # E: Cannot redefine 'y' as a type variable \
+                      # E: "int" not callable
     def h(a: y) -> y: return a # E: Invalid type "y"
 
 [case testCannotRedefineVarAsModule]
@@ -253,17 +271,20 @@ def f() -> None:
 [case testRedefineLocalWithTypeAnnotation]
 def f() -> None:
     x = 1
+    reveal_type(x) # E: Revealed type is 'builtins.int'
     x = ''  # type: object
-    reveal_type(x)  # E: Revealed type is 'builtins.object'
+    reveal_type(x) # E: Revealed type is 'builtins.object'
 def g() -> None:
     x = 1
+    reveal_type(x) # E: Revealed type is 'builtins.int'
     x: object = ''
-    reveal_type(x)  # E: Revealed type is 'builtins.object'
+    reveal_type(x) # E: Revealed type is 'builtins.object'
 def h() -> None:
     x: int
     x = 1
+    reveal_type(x) # E: Revealed type is 'builtins.int'
     x: object
-    x: object = '' # E: Name 'x' already defined on line 12
+    x: object = '' # E: Name 'x' already defined on line 15
 def farg(x: int) -> None:
     x: str = ''
 
@@ -333,6 +354,7 @@ x = ''
 reveal_type(x) # E: Revealed type is 'builtins.str'
 x: int
 x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(x) # E: Revealed type is 'builtins.int'
 x: object
 x = 1
 reveal_type(x) # E: Revealed type is 'builtins.int'
@@ -348,3 +370,16 @@ reveal_type(x)  # E: Revealed type is 'builtins.int'
 for x in f(x):
     pass
 reveal_type(x)  # E: Revealed type is 'Union[builtins.int*, builtins.str]'
+
+[case testNoRedefinitionIfOnlyInitialized]
+x = None  # type: int
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x = object() # E: Incompatible types in assignment (expression has type "object", variable has type "int")
+x  # Reference to variable
+x = ''
+
+[case testXXX]
+x: int
+x = '' # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(x) # E: Revealed type is 'builtins.int'
+x: object

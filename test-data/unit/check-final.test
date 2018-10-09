@@ -339,6 +339,7 @@ class C:
 from typing import Final
 
 x: Final = 1
+x
 x = 2  # E: Cannot assign to final name "x"
 def f() -> int:
     global x
@@ -346,11 +347,13 @@ def f() -> int:
     return x
 
 x2: Final = 1
+x2
 def f2() -> None:
     global x2
     x2 = 1  # E: Cannot assign to final name "x2"
 
-y = 1
+y = 1 # E: Cannot asign to final name "y"
+y
 y: Final = 2  # E: Cannot redefine an existing name as final
 y = 3  # No error here, first definition wins
 
@@ -415,9 +418,9 @@ from typing import Final
 
 class C:
     x: Final = 1
-    x = 2  # E: Cannot assign to final attribute "x"
+    x = 2  # E: Cannot assign to final name "x"
 
-    y = 1
+    y = 1  # E: Cannot assign to final name "y"
     y: Final = 2  # E: Cannot redefine an existing name as final
 [out]
 

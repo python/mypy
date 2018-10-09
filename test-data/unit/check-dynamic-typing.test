@@ -7,9 +7,12 @@ from typing import Any
 d = None # type: Any
 a = None # type: A
 
-a = d # Everything ok
-d = a
-d = d
+if int():
+    a = d # Everything ok
+if int():
+    d = a
+if int():
+    d = d
 d.x = a
 d.x = d
 
