@@ -187,6 +187,8 @@ class FindModuleCache:
                         near_misses.append(path_stubs)
                         continue
                     return path_stubs
+                elif self.options and self.options.namespace_packages and fscache.isdir(base_path):
+                    near_misses.append(base_path)
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
