@@ -38,7 +38,7 @@ a type annotation:
    a = A()
    a.x = [1]     # OK
 
-As in Python generally, a variable defined in the class body can used
+As in Python generally, a variable defined in the class body can be used
 as a class or an instance variable.
 
 Type comments work as well, if you need to support Python versions earlier
@@ -77,13 +77,17 @@ to it explicitly using ``self``:
            a = self
            a.x = 1      # Error: 'x' not defined
 
-Class and instance variable annotations
-***************************************
+Class attribute annotations
+***************************
 
 Mypy supports annotations for class and instance 
 variables in class bodies and methods. Use ``ClassVar`` to
 indicate to the static type checker that this variable 
 should not be set on instances. 
+
+A class attribute without the ``ClassVar`` annotation can be used as 
+a class variable. Mypy won't prevent it from being used as an 
+instance variable.
 
 .. code-block:: python
 
@@ -91,14 +95,15 @@ should not be set on instances.
       y: ClassVar[Dict[str, int]] = {}  # class variable
       z: int = 10                       # instance variable
 
+The following are worth noting about ``ClassVar``:
 
-``ClassVar`` accepts only types and cannot be further subscribed.
+- It accepts only types and cannot be further subscribed.
 
-``ClassVar`` is not a class itself, and should not be used with 
+- It is not a class itself, and should not be used with 
 isinstance() or issubclass(). 
 
-``ClassVar`` does not change Python runtime behavior, but 
-it can be used by third-party type checkers. For example, a type checker 
+- It does not change Python runtime behavior, but it can 
+be used by third-party type checkers. For example, a type checker 
 might flag the following code as an error:
 
 .. code-block:: python
@@ -107,22 +112,14 @@ might flag the following code as an error:
   a.y = {}                # Error, setting class variable on instance
   a.z = {}                # This is OK
 
+
+Also `` y: ClassVar = 0 `` is valid (without square brackets). The type of 
+the variable will be implicitly ``Any``. This behavior will change in the future.
+
 .. note::
-   Note that a ClassVar parameter cannot include any type variables, 
+   A ``ClassVar`` parameter cannot include any type variables, 
    regardless of the level of nesting: ``ClassVar[T]`` and ``ClassVar[List[Set[T]]]``
    are both invalid if ``T`` is a type variable.
-
-For convention, you can annotate instance variables in __init__ or other methods, 
-rather than in the class:
-
-.. code-block:: python
-
-  from typing import Generic, TypeVar
-  T = TypeVar('T')
-
-  class A(Generic[T]):
-      def __init__(self, y):
-          self.y: T = y
 
 Overriding statically typed methods
 ***********************************
