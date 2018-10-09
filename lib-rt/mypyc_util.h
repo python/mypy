@@ -21,4 +21,20 @@
 // Here just for consistency
 #define CPy_XDECREF(p) Py_XDECREF(p)
 
+typedef unsigned long long CPyTagged;
+typedef long long CPySignedInt;
+typedef PyObject CPyModule;
+
+#define CPY_INT_TAG 1
+
+typedef void (*CPyVTableItem)(void);
+
+static inline CPyTagged CPyTagged_ShortFromInt(int x) {
+    return x << 1;
+}
+
+static inline CPyTagged CPyTagged_ShortFromLongLong(long long x) {
+    return x << 1;
+}
+
 #endif

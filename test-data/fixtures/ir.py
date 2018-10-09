@@ -90,7 +90,8 @@ class list(Generic[T], Sequence[T], Iterable[T], Sized):
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
     def append(self, x: T) -> None: pass
-    def pop(self) -> T: pass
+    def pop(self, i: int = -1) -> T: pass
+    def count(self, T) -> int: pass
     def extend(self, l: Iterable[T]) -> None: pass
     def insert(self, i: int, x: T) -> None: pass
     def sort(self) -> None: pass
@@ -115,6 +116,7 @@ class set(Generic[T]):
     def discard(self, x: T) -> None: pass
     def clear(self) -> None: pass
     def pop(self) -> T: pass
+    def update(self, x: Iterable[S]) -> None: pass
     def __or__(self, s: Set[S]) -> Set[Union[T, S]]: ...
 
 class slice: pass

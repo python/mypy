@@ -15,7 +15,7 @@ def f():
     r8 :: object
     r9 :: bool
 L0:
-    r0 = set 
+    r0 = set
     r1 = 1
     r2 = box(short_int, r1)
     r3 = r0.add(r2) :: set
@@ -35,7 +35,7 @@ def f() -> Set[int]:
 def f():
     r0 :: set
 L0:
-    r0 = set 
+    r0 = set
     return r0
 
 [case testNewSetFromIterable]
@@ -68,7 +68,7 @@ def f():
     r9 :: bool
     r10 :: int
 L0:
-    r0 = set 
+    r0 = set
     r1 = 1
     r2 = box(short_int, r1)
     r3 = r0.add(r2) :: set
@@ -100,7 +100,7 @@ def f():
     r8 :: object
     r9 :: bool
 L0:
-    r0 = set 
+    r0 = set
     r1 = 3
     r2 = box(short_int, r1)
     r3 = r0.add(r2) :: set
@@ -127,7 +127,7 @@ def f():
     r3 :: bool
     r4 :: None
 L0:
-    r0 = set 
+    r0 = set
     x = r0
     r1 = 1
     r2 = box(short_int, r1)
@@ -149,7 +149,7 @@ def f():
     r3 :: bool
     r4 :: None
 L0:
-    r0 = set 
+    r0 = set
     x = r0
     r1 = 1
     r2 = box(short_int, r1)
@@ -171,7 +171,7 @@ def f():
     r3 :: bool
     r4 :: None
 L0:
-    r0 = set 
+    r0 = set
     x = r0
     r1 = 1
     r2 = box(short_int, r1)
@@ -191,7 +191,7 @@ def f():
     r1 :: bool
     r2 :: None
 L0:
-    r0 = set 
+    r0 = set
     x = r0
     r1 = x.clear() :: set
     r2 = None
@@ -210,3 +210,19 @@ L0:
     r0 = s.pop() :: set
     r1 = unbox(int, r0)
     return r1
+
+[case testSetUpdate]
+from typing import Set, List
+def update(s: Set[int], x: List[int]) -> None:
+    s.update(x)
+[out]
+def update(s, x):
+    s :: set
+    x :: list
+    r0 :: bool
+    r1, r2 :: None
+L0:
+    r0 = s.update(x) :: set
+    r1 = None
+    r2 = None
+    return r2

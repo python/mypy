@@ -205,6 +205,105 @@ CPyLong_AsLongLongAndOverflow(PyObject *vv, int *overflow)
     return res;
 }
 
+// Adapted from listobject.c in Python 3.7.0
+static int
+list_resize(PyListObject *self, Py_ssize_t newsize)
+{
+    PyObject **items;
+    size_t new_allocated, num_allocated_bytes;
+    Py_ssize_t allocated = self->allocated;
+
+    /* Bypass realloc() when a previous overallocation is large enough
+       to accommodate the newsize.  If the newsize falls lower than half
+       the allocated size, then proceed with the realloc() to shrink the list.
+    */
+    if (allocated >= newsize && newsize >= (allocated >> 1)) {
+        assert(self->ob_item != NULL || newsize == 0);
+        Py_SIZE(self) = newsize;
+        return 0;
+    }
+
+    /* This over-allocates proportional to the list size, making room
+     * for additional growth.  The over-allocation is mild, but is
+     * enough to give linear-time amortized behavior over a long
+     * sequence of appends() in the presence of a poorly-performing
+     * system realloc().
+     * The growth pattern is:  0, 4, 8, 16, 25, 35, 46, 58, 72, 88, ...
+     * Note: new_allocated won't overflow because the largest possible value
+     *       is PY_SSIZE_T_MAX * (9 / 8) + 6 which always fits in a size_t.
+     */
+    new_allocated = (size_t)newsize + (newsize >> 3) + (newsize < 9 ? 3 : 6);
+    if (new_allocated > (size_t)PY_SSIZE_T_MAX / sizeof(PyObject *)) {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    if (newsize == 0)
+        new_allocated = 0;
+    num_allocated_bytes = new_allocated * sizeof(PyObject *);
+    items = (PyObject **)PyMem_Realloc(self->ob_item, num_allocated_bytes);
+    if (items == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    self->ob_item = items;
+    Py_SIZE(self) = newsize;
+    self->allocated = new_allocated;
+    return 0;
+}
+
+// Changed to use PyList_SetSlice instead of the internal list_ass_slice
+static PyObject *
+list_pop_impl(PyListObject *self, Py_ssize_t index)
+{
+    PyObject *v;
+    int status;
+
+    if (Py_SIZE(self) == 0) {
+        /* Special-case most common failure cause */
+        PyErr_SetString(PyExc_IndexError, "pop from empty list");
+        return NULL;
+    }
+    if (index < 0)
+        index += Py_SIZE(self);
+    if (index < 0 || index >= Py_SIZE(self)) {
+        PyErr_SetString(PyExc_IndexError, "pop index out of range");
+        return NULL;
+    }
+    v = self->ob_item[index];
+    if (index == Py_SIZE(self) - 1) {
+        status = list_resize(self, Py_SIZE(self) - 1);
+        if (status >= 0)
+            return v; /* and v now owns the reference the list had */
+        else
+            return NULL;
+    }
+    Py_INCREF(v);
+    status = PyList_SetSlice((PyObject *)self, index, index+1, (PyObject *)NULL);
+    if (status < 0) {
+        Py_DECREF(v);
+        return NULL;
+    }
+    return v;
+}
+
+// Tweaked to directly use CPyTagged
+static CPyTagged
+list_count(PyListObject *self, PyObject *value)
+{
+    Py_ssize_t count = 0;
+    Py_ssize_t i;
+
+    for (i = 0; i < Py_SIZE(self); i++) {
+        int cmp = PyObject_RichCompareBool(self->ob_item[i], value, Py_EQ);
+        if (cmp > 0)
+            count++;
+        else if (cmp < 0)
+            return CPY_INT_TAG;
+    }
+    return CPyTagged_ShortFromLongLong(count);
+}
+
 #ifdef __cplusplus
 }
 #endif

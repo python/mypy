@@ -89,6 +89,27 @@ list_extend_op = method_op(
     error_kind=ERR_MAGIC,
     emit=simple_emit('{dest} = _PyList_Extend((PyListObject *) {args[0]}, {args[1]});'))
 
+method_op(
+    name='pop',
+    arg_types=[list_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyList_PopLast'))
+
+method_op(
+    name='pop',
+    arg_types=[list_rprimitive, int_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyList_Pop'))
+
+method_op(
+    name='count',
+    arg_types=[list_rprimitive, object_rprimitive],
+    result_type=short_int_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyList_Count'))
+
 
 def emit_multiply_helper(emitter: EmitterInterface, dest: str, lst: str, num: str) -> None:
     temp = emitter.temp_name()

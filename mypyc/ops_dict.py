@@ -58,6 +58,20 @@ method_op(
     error_kind=ERR_FALSE,
     emit=simple_emit('{dest} = CPyDict_UpdateFromSeq({args[0]}, {args[1]}) != -1;'))
 
+method_op(
+    name='get',
+    arg_types=[dict_rprimitive, object_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_Get'))
+
+method_op(
+    name='get',
+    arg_types=[dict_rprimitive, object_rprimitive],
+    result_type=object_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=simple_emit('{dest} = CPyDict_Get({args[0]}, {args[1]}, Py_None);'))
+
 new_dict_op = func_op(
     name='builtins.dict',
     arg_types=[],

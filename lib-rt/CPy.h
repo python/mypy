@@ -24,14 +24,6 @@ extern "C" {
 // Int: C int
 // Object: CPython object (PyObject *)
 
-typedef unsigned long long CPyTagged;
-typedef long long CPySignedInt;
-typedef PyObject CPyModule;
-
-#define CPY_INT_TAG 1
-
-typedef void (*CPyVTableItem)(void);
-
 static void CPyDebug_Print(const char *msg) {
     printf("%s\n", msg);
     fflush(stdout);
@@ -242,14 +234,6 @@ static inline int CPyTagged_CheckLong(CPyTagged x) {
 
 static inline int CPyTagged_CheckShort(CPyTagged x) {
     return !CPyTagged_CheckLong(x);
-}
-
-static inline CPyTagged CPyTagged_ShortFromInt(int x) {
-    return x << 1;
-}
-
-static inline CPyTagged CPyTagged_ShortFromLongLong(long long x) {
-    return x << 1;
 }
 
 static inline long long CPyTagged_ShortAsLongLong(CPyTagged x) {
@@ -661,6 +645,30 @@ static bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
     }
 }
 
+static PyObject *CPyList_PopLast(PyObject *obj)
+{
+    // I tried a specalized version of pop_impl for just removing the
+    // last element and it wasn't any faster in microbenchmarks than
+    // the generic one so I ditched it.
+    return list_pop_impl((PyListObject *)obj, -1);
+}
+
+static PyObject *CPyList_Pop(PyObject *obj, CPyTagged index)
+{
+    if (CPyTagged_CheckShort(index)) {
+        long long n = CPyTagged_ShortAsLongLong(index);
+        return list_pop_impl((PyListObject *)obj, n);
+    } else {
+        PyErr_SetString(PyExc_IndexError, "pop index out of range");
+        return NULL;
+    }
+}
+
+static CPyTagged CPyList_Count(PyObject *obj, PyObject *value)
+{
+    return list_count((PyListObject *)obj, value);
+}
+
 static bool CPySet_Remove(PyObject *set, PyObject *key) {
     int success = PySet_Discard(set, key);
     if (success == 1) {
@@ -752,6 +760,20 @@ static PyObject *CPyDict_GetItem(PyObject *dict, PyObject *key) {
     } else {
         return PyObject_GetItem(dict, key);
     }
+}
+
+static PyObject *CPyDict_Get(PyObject *dict, PyObject *key, PyObject *fallback) {
+    // We are dodgily assuming that get on a subclass doesn't have
+    // different behavior.
+    PyObject *res = PyDict_GetItemWithError(dict, key);
+    if (!res) {
+        if (PyErr_Occurred()) {
+            return NULL;
+        }
+        res = fallback;
+    }
+    Py_INCREF(res);
+    return res;
 }
 
 static int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {

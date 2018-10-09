@@ -334,19 +334,34 @@ print(primes(13))
 -- argh ]]
 
 
-[case testListAppend]
+[case testListPrims]
 from typing import List
-def f(x: List[int], n: int) -> None:
+def append(x: List[int], n: int) -> None:
     x.append(n)
+def pop_last(x: List[int]) -> int:
+    return x.pop()
+def pop(x: List[int], i: int) -> int:
+    return x.pop(i)
+def count(x: List[int], i: int) -> int:
+    return x.count(i)
 [file driver.py]
-from native import f
+from native import append, pop_last, pop, count
 l = [1, 2]
-f(l, 10)
+append(l, 10)
 assert l == [1, 2, 10]
-f(l, 3)
-f(l, 4)
-f(l, 5)
+append(l, 3)
+append(l, 4)
+append(l, 5)
 assert l == [1, 2, 10, 3, 4, 5]
+pop_last(l)
+pop_last(l)
+assert l == [1, 2, 10, 3]
+pop(l, 2)
+assert l == [1, 2, 3]
+pop(l, -2)
+assert l == [1, 3]
+assert count(l, 1) == 1
+assert count(l, 2) == 0
 
 [case testTrue]
 def f() -> bool:
@@ -715,6 +730,9 @@ def discard1(s: Set[int]) -> None:
 def pop(s : Set[int]) -> int:
     return s.pop()
 
+def update(s: Set[int], x: List[int]) -> None:
+    s.update(x)
+
 [file driver.py]
 from native import instantiateLiteral
 val = instantiateLiteral()
@@ -784,6 +802,11 @@ try:
     w = pop(s)
 except KeyError as e:
     print(e)
+
+from native import update
+s = {1, 2, 3}
+update(s, [5, 4, 3])
+assert s == {1, 2, 3, 4, 5}
 
 [out]
 1

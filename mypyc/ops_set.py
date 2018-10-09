@@ -88,6 +88,16 @@ set_add_op = method_op(
 )
 
 
+# This is not a public API but looks like it should be fine.
+method_op(
+    name='update',
+    arg_types=[set_rprimitive, object_rprimitive],
+    result_type=bool_rprimitive,
+    error_kind=ERR_FALSE,
+    emit=call_negative_bool_emit('_PySet_Update')
+)
+
+
 method_op(
     name='clear',
     arg_types=[set_rprimitive],
