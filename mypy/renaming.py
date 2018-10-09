@@ -85,7 +85,8 @@ class VariableRenameVisitor(TraverserVisitor):
 
         for arg in fdef.arguments:
             name = arg.variable.name()
-            self.record_assignment(arg.variable.name(), can_be_redefined=True)
+            can_be_redefined = name != 'self'  # TODO: Proper check
+            self.record_assignment(arg.variable.name(), can_be_redefined)
             self.handle_arg(name)
 
         for stmt in fdef.body.body:

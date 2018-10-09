@@ -305,6 +305,19 @@ def f() -> None:
         # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 
+[case testCannotRedefineSelf]
+class A:
+    x = 0
+
+    def f(self) -> None:
+        reveal_type(self.x) # E: Revealed type is 'builtins.int'
+        self = f()
+        self.y: str = ''
+        reveal_type(self.y) # E: Revealed type is 'builtins.str'
+
+def f() -> A: return A()
+
+
 -- Redefine global variable
 -- ------------------------
 
