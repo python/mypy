@@ -2433,7 +2433,7 @@ _ = '' # E: Incompatible types in assignment (expression has type "str", variabl
 
 [case testUnusedTargetNotClass]
 class C:
-    _ = 0
+    _, _ = 0, 0
     _ = ''
 reveal_type(C._) # E: Revealed type is 'builtins.str'
 
@@ -2494,7 +2494,7 @@ def foo() -> None:
     _ = 0  # E: Incompatible types in assignment (expression has type "int", variable has type "Callable[[], Any]")
 [builtins fixtures/module.pyi]
 
-[case testUnusedTargetNotClass]
+[case testUnusedTargetNotClass2]
 def foo() -> None:
     class _:
         pass

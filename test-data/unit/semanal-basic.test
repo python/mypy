@@ -345,13 +345,13 @@ MypyFile:1(
       NameExpr(object [builtins.object]))
     Then(
       AssignmentStmt:2(
-        NameExpr(x* [__main__.x])
+        NameExpr(x'* [__main__.x'])
         CallExpr:2(
           NameExpr(object [builtins.object])
           Args()))
       AssignmentStmt:3(
-        NameExpr(x [__main__.x])
-        NameExpr(x [__main__.x]))))
+        NameExpr(x* [__main__.x])
+        NameExpr(x' [__main__.x']))))
   ExpressionStmt:4(
     NameExpr(x [__main__.x])))
 

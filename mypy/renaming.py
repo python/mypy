@@ -165,7 +165,7 @@ class VariableRenameVisitor(TraverserVisitor):
             lvalue.base.accept(self)
             lvalue.index.accept(self)
         elif isinstance(lvalue, StarExpr):
-            self.analyze_lvalue(lvalue.expr)
+            self.analyze_lvalue(lvalue.expr, is_nested=is_nested)
 
     def visit_name_expr(self, expr: NameExpr) -> None:
         self.handle_ref(expr)
@@ -176,6 +176,7 @@ class VariableRenameVisitor(TraverserVisitor):
         """Store function argument."""
         if name not in self.refs[-1]:
             self.refs[-1][name] = [[]]
+            self.num_reads[-1][name] = 0
 
     def handle_def(self, expr: NameExpr) -> None:
         """Store new name definition."""

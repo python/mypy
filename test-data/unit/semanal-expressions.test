@@ -219,14 +219,14 @@ MypyFile:1(
 
 [case testListComprehensionWithCondition]
 a = 0
-a = [x for x in a if x]
+b = [x for x in a if x]
 [out]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   AssignmentStmt:2(
-    NameExpr(a [__main__.a])
+    NameExpr(b* [__main__.b])
     ListComprehension:2(
       GeneratorExpr:2(
         NameExpr(x [l])
@@ -254,14 +254,14 @@ MypyFile:1(
 
 [case testSetComprehensionWithCondition]
 a = 0
-a = {x for x in a if x}
+b = {x for x in a if x}
 [out]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   AssignmentStmt:2(
-    NameExpr(a [__main__.a])
+    NameExpr(b* [__main__.b])
     SetComprehension:2(
       GeneratorExpr:2(
         NameExpr(x [l])
@@ -289,14 +289,14 @@ MypyFile:1(
 
 [case testDictionaryComprehensionWithCondition]
 a = 0
-a = {x: x + 1 for x in a if x}
+b = {x: x + 1 for x in a if x}
 [out]
 MypyFile:1(
   AssignmentStmt:1(
     NameExpr(a* [__main__.a])
     IntExpr(0))
   AssignmentStmt:2(
-    NameExpr(a [__main__.a])
+    NameExpr(b* [__main__.b])
     DictionaryComprehension:2(
       NameExpr(x [l])
       OpExpr:2(

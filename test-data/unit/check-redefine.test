@@ -24,6 +24,7 @@ def f() -> None:
 
 [case testRedefineFunctionArg]
 def f(x: int) -> None:
+    g(x)
     x = ''
     reveal_type(x) # E: Revealed type is 'builtins.str'
 def g(x: int) -> None:
@@ -286,7 +287,9 @@ def h() -> None:
     x: object
     x: object = '' # E: Name 'x' already defined on line 15
 def farg(x: int) -> None:
-    x: str = ''
+    x: str = '' # E: Name 'x' already defined on line 17
+def farg2(x: int) -> None:
+    x: str = x # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testRedefineLocalWithTypeAnnotationSpecialCases]
 def f() -> None:

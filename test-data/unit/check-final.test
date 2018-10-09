@@ -352,15 +352,15 @@ def f2() -> None:
     global x2
     x2 = 1  # E: Cannot assign to final name "x2"
 
-y = 1 # E: Cannot asign to final name "y"
+y = 1
 y
 y: Final = 2  # E: Cannot redefine an existing name as final
-y = 3  # No error here, first definition wins
+y = 3  # E: Cannot assign to final name "y"
 
 z: Final = 1
-z: Final = 2  # E: Cannot redefine an existing name as final
+z: Final = 2  # E: Name 'z' already defined on line 22 \
+              # E: Cannot redefine an existing name as final
 z = 3  # E: Cannot assign to final name "z"
-[out]
 
 [case testFinalReassignModuleReexport]
 from typing import Final
