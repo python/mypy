@@ -329,8 +329,7 @@ def default_lib_path(data_dir: str,
 
 
 @functools.lru_cache(maxsize=None)
-def get_site_packages_dirs(python_executable: Optional[str],
-                           fscache: FileSystemCache) -> Tuple[List[str], List[str]]:
+def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
     This runs a subprocess call, which generates a list of the egg directories, and the site
@@ -357,7 +356,7 @@ def get_site_packages_dirs(python_executable: Optional[str],
     egg_dirs = []
     for dir in site_packages:
         pth = os.path.join(dir, 'easy-install.pth')
-        if fscache.isfile(pth):
+        if os.path.isfile(pth):
             with open(pth) as f:
                 egg_dirs.extend([make_abspath(d.rstrip(), dir) for d in f.readlines()])
     return egg_dirs, site_packages
@@ -366,7 +365,6 @@ def get_site_packages_dirs(python_executable: Optional[str],
 def compute_search_paths(sources: List[BuildSource],
                          options: Options,
                          data_dir: str,
-                         fscache: FileSystemCache,
                          alt_lib_path: Optional[str] = None) -> SearchPaths:
     """Compute the search paths as specified in PEP 561.
 
@@ -423,7 +421,7 @@ def compute_search_paths(sources: List[BuildSource],
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
-    egg_dirs, site_packages = get_site_packages_dirs(options.python_executable, fscache)
+    egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
     for site_dir in site_packages:
         assert site_dir not in lib_path
         if site_dir in mypypath:

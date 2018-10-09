@@ -2693,11 +2693,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(t, DeletedType):
                     self.msg.deleted_as_rvalue(t, s)
 
-                if self.options.strict_boolean:
-                    is_bool = isinstance(t, Instance) and t.type.fullname() == 'builtins.bool'
-                    if not (is_bool or isinstance(t, AnyType)):
-                        self.fail(messages.NON_BOOLEAN_IN_CONDITIONAL, e)
-
                 if_map, else_map = self.find_isinstance_check(e)
 
                 # XXX Issue a warning if condition is always False?

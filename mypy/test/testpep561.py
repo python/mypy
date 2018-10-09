@@ -6,7 +6,6 @@ from typing import Tuple, List, Generator, Optional
 from unittest import TestCase, main
 
 import mypy.api
-from mypy.build import FileSystemCache
 from mypy.modulefinder import get_site_packages_dirs
 from mypy.test.config import package_path
 from mypy.test.helpers import run_command
@@ -130,7 +129,7 @@ class TestPEP561(TestCase):
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
-        dirs = get_site_packages_dirs(sys.executable, FileSystemCache())
+        dirs = get_site_packages_dirs(sys.executable)
         assert dirs
 
     def test_typedpkg_stub_package(self) -> None:

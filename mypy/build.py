@@ -173,12 +173,12 @@ def _build(sources: List[BuildSource],
            fscache: Optional[FileSystemCache],
            ) -> BuildResult:
     # This seems the most reasonable place to tune garbage collection.
-    gc.set_threshold(50000)
+    gc.set_threshold(150 * 1000)
 
     data_dir = default_data_dir()
     fscache = fscache or FileSystemCache()
 
-    search_paths = compute_search_paths(sources, options, data_dir, fscache, alt_lib_path)
+    search_paths = compute_search_paths(sources, options, data_dir, alt_lib_path)
 
     reports = Reports(data_dir, options.report_dirs)
     source_set = BuildSourceSet(sources)
@@ -2145,6 +2145,8 @@ def dispatch(sources: List[BuildSource], manager: BuildManager) -> Graph:
         if proto_deps is not None:
             TypeState.proto_deps = proto_deps
         elif manager.stats.get('fresh_metas', 0) > 0:
+            # Clear the stats so we don't infinite loop because of positive fresh_metas
+            manager.stats.clear()
             # There were some cache files read, but no protocol dependencies loaded.
             manager.log("Error reading protocol dependencies cache -- aborting cache load")
             manager.cache_enabled = False
