@@ -572,6 +572,14 @@ class BuildManager(BuildManagerBase):
                     pri = import_priority(imp, PRI_MED)
                     ancestor_pri = import_priority(imp, PRI_LOW)
                     for id, _ in imp.ids:
+                        # We append the target (e.g. foo.bar.baz)
+                        # before the ancestors (e.g. foo and foo.bar)
+                        # so that, if FindModuleCache finds the target
+                        # module in a package marked with py.typed
+                        # underneath a namespace package installed in
+                        # site-packages, (gasp), that cache's
+                        # knowledge of the ancestors can be primed
+                        # when it is asked to find the target.
                         res.append((pri, id, imp.line))
                         ancestor_parts = id.split(".")[:-1]
                         ancestors = []
