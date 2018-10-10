@@ -117,7 +117,7 @@ class FindModuleCache:
                 return os.path.join(pkg_dir, *components[:-1]), index == 0
         return None
 
-    def _update_ns_ancestors(self, components: List[str], match: Tuple[str, str]) -> None:
+    def _update_ns_ancestors(self, components: List[str], match: Tuple[str, bool]) -> None:
         path, verify = match
         for i in range(1, len(components)):
             pkg_id = '.'.join(components[:-i])
