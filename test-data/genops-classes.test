@@ -860,3 +860,21 @@ L0:
     __mypyc_self__.x = r10; r11 = is_error
     r12 = True
     return r12
+
+[case testSubclassDictSpecalized]
+from typing import Dict
+class WelpDict(Dict[str, int]):
+    pass
+def foo(x: WelpDict) -> None:
+    # we care that the specalized op gets used
+    x.update(x)
+[out]
+def foo(x):
+    x :: dict
+    r0 :: bool
+    r1, r2 :: None
+L0:
+    r0 = x.update(x) :: dict
+    r1 = None
+    r2 = None
+    return r2
