@@ -18,7 +18,7 @@ from mypy.nodes import IndexExpr, MemberExpr, NameExpr
 BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
 
 
-class Frame(Dict[Key, Type]):
+class Frame:
     """A Frame represents a specific point in the execution of a program.
     It carries information about the current types of expressions at
     that point, arising either from assignments to those expressions
@@ -31,13 +31,7 @@ class Frame(Dict[Key, Type]):
     """
 
     def __init__(self) -> None:
-        self.unreachable = False
-
-
-class DeclarationsFrame(Dict[Key, Optional[Type]]):
-    """Same as above, but allowed to have None values."""
-
-    def __init__(self) -> None:
+        self.types = {}  # type: Dict[Key, Type]
         self.unreachable = False
 
 
@@ -89,7 +83,7 @@ class ConditionalTypeBinder:
 
         # Maps literal_hash(expr) to get_declaration(expr)
         # for every expr stored in the binder
-        self.declarations = DeclarationsFrame()
+        self.declarations = {}  # type: Dict[Key, Optional[Type]]
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
         self.dependencies = {}  # type: Dict[Key, Set[Key]]
@@ -117,14 +111,14 @@ class ConditionalTypeBinder:
         return f
 
     def _put(self, key: Key, type: Type, index: int=-1) -> None:
-        self.frames[index][key] = type
+        self.frames[index].types[key] = type
 
     def _get(self, key: Key, index: int=-1) -> Optional[Type]:
         if index < 0:
             index += len(self.frames)
         for i in range(index, -1, -1):
-            if key in self.frames[i]:
-                return self.frames[i][key]
+            if key in self.frames[i].types:
+                return self.frames[i].types[key]
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
@@ -161,8 +155,8 @@ class ConditionalTypeBinder:
     def _cleanse_key(self, key: Key) -> None:
         """Remove all references to a key from the binder."""
         for frame in self.frames:
-            if key in frame:
-                del frame[key]
+            if key in frame.types:
+                del frame.types[key]
 
     def update_from_options(self, frames: List[Frame]) -> bool:
         """Update the frame to reflect that each key will be updated
@@ -174,11 +168,11 @@ class ConditionalTypeBinder:
 
         frames = [f for f in frames if not f.unreachable]
         changed = False
-        keys = set(key for f in frames for key in f)
+        keys = set(key for f in frames for key in f.types)
 
         for key in keys:
             current_value = self._get(key)
-            resulting_values = [f.get(key, current_value) for f in frames]
+            resulting_values = [f.types.get(key, current_value) for f in frames]
             if any(x is None for x in resulting_values):
                 # We didn't know anything about key before
                 # (current_value must be None), and we still don't
@@ -321,8 +315,8 @@ class ConditionalTypeBinder:
         key = literal_hash(expr)
         assert key is not None
         enclosers = ([get_declaration(expr)] +
-                     [f[key] for f in self.frames
-                      if key in f and is_subtype(type, f[key])])
+                     [f.types[key] for f in self.frames
+                      if key in f.types and is_subtype(type, f.types[key])])
         return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
@@ -332,7 +326,7 @@ class ConditionalTypeBinder:
             index += len(self.options_on_return)
         frame = Frame()
         for f in self.frames[index + 1:]:
-            frame.update(f)
+            frame.types.update(f.types)
             if f.unreachable:
                 frame.unreachable = True
         self.options_on_return[index].append(frame)
