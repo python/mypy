@@ -1133,7 +1133,6 @@ C = Callable[[], T]
 
 def f(c: C):
     pass
-[builtins fixtures/list.pyi]
 [out]
 
 [case testCheckAllowAnyGenericAnyGeneric]
@@ -1145,7 +1144,6 @@ C = Callable[[], T]
 
 def f(c: C):
     pass
-[builtins fixtures/list.pyi]
 [out]
 
 [case testCheckDisallowAnyGenericsAnyGeneric]
@@ -1157,5 +1155,17 @@ C = Callable[[], T]
 
 def f(c: C):  # E: Missing type parameters for generic type
     pass
-[builtins fixtures/list.pyi]
+[out]
+
+[case testStrictAnyGeneric]
+# flags: --strict
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:  # E: Missing type parameters for generic type
+    pass
 [out]
