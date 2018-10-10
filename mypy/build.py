@@ -572,12 +572,12 @@ class BuildManager(BuildManagerBase):
                     pri = import_priority(imp, PRI_MED)
                     ancestor_pri = import_priority(imp, PRI_LOW)
                     for id, _ in imp.ids:
+                        res.append((pri, id, imp.line))
                         ancestor_parts = id.split(".")[:-1]
                         ancestors = []
                         for part in ancestor_parts:
                             ancestors.append(part)
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
-                        res.append((pri, id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
                     pos = len(res)
@@ -1400,8 +1400,7 @@ class State:
                 self.ignore_all = True
         self.path = path
         self.xpath = path or '<string>'
-        if (path and source is None and self.options.namespace_packages
-                and self.manager.fscache.isdir(path)):
+        if path and source is None and self.manager.fscache.isdir(path):
             source = ''
         self.source = source
         if path and source is None and self.manager.cache_enabled:
