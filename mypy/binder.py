@@ -34,9 +34,6 @@ class Frame:
         self.types = {}  # type: Dict[Key, Type]
         self.unreachable = False
 
-    def __getitem__(self, k: Key) -> Type:
-        return self.types[k]
-
 
 if MYPY:
     # This is the type of stored assignments for union type rvalues.
@@ -121,7 +118,7 @@ class ConditionalTypeBinder:
             index += len(self.frames)
         for i in range(index, -1, -1):
             if key in self.frames[i].types:
-                return self.frames[i][key]
+                return self.frames[i].types[key]
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
@@ -318,8 +315,8 @@ class ConditionalTypeBinder:
         key = literal_hash(expr)
         assert key is not None
         enclosers = ([get_declaration(expr)] +
-                     [f[key] for f in self.frames
-                      if key in f.types and is_subtype(type, f[key])])
+                     [f.types[key] for f in self.frames
+                      if key in f.types and is_subtype(type, f.types[key])])
         return enclosers[-1]
 
     def allow_jump(self, index: int) -> None:
