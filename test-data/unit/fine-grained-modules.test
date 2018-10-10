@@ -189,9 +189,9 @@ p.a.f(1)
 [file p/a.py.2]
 def f(x: str) -> None: pass
 [out]
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -215,9 +215,9 @@ p.a.f(1)
 [file p/a.py.3]
 def f(x: str) -> None: pass
 [out]
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 ==
 main:1: error: Cannot find module named 'p.a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
@@ -232,13 +232,13 @@ p.a.f(1)
 def f(x: str) -> None: pass
 [file p/__init__.py.3]
 [out]
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 ==
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -266,13 +266,13 @@ p.a.f(1)
 def f(x: str) -> None: pass
 [file p/__init__.py.3]
 [out]
-main:4: error: Cannot find module named 'p'
-main:4: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:4: error: Cannot find module named 'p.a'
+main:4: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:4: error: Cannot find module named 'p'
 ==
-main:4: error: Cannot find module named 'p'
-main:4: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:4: error: Cannot find module named 'p.a'
+main:4: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:4: error: Cannot find module named 'p'
 ==
 main:5: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
@@ -839,9 +839,9 @@ def f(x: str) -> None: pass
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 
 [case testDeletePackage2]
 import p
@@ -873,9 +873,9 @@ main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 main:1: error: Cannot find module named 'p.a'
 main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 ==
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 
 [case testDeletePackage4]
 import p.a
@@ -888,13 +888,13 @@ def f(x: str) -> None: pass
 [out]
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 ==
-main:1: error: Cannot find module named 'p'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'p.a'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'p'
 
 [case testDeletePackage5]
 # cmd1: mypy main p/a.py p/__init__.py
@@ -911,13 +911,13 @@ def f(x: str) -> None: pass
 [out]
 main:6: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 ==
-main:5: error: Cannot find module named 'p'
-main:5: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:5: error: Cannot find module named 'p.a'
+main:5: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:5: error: Cannot find module named 'p'
 ==
-main:5: error: Cannot find module named 'p'
-main:5: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:5: error: Cannot find module named 'p.a'
+main:5: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:5: error: Cannot find module named 'p'
 
 
 [case testDeletePackage6]
