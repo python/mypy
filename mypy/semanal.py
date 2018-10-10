@@ -1695,11 +1695,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
 
         s.rvalue.accept(self)
 
-        has_initializer = not isinstance(s.rvalue, TempNode)
         for lval in s.lvalues:
             self.analyze_lvalue(lval, explicit_type=s.type is not None,
-                                is_final=s.is_final_def,
-                                has_initializer=has_initializer)
+                                is_final=s.is_final_def)
         self.check_final_implicit_def(s)
         self.check_classvar(s)
         if s.type:
@@ -1972,8 +1970,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def analyze_lvalue(self, lval: Lvalue, nested: bool = False,
                        add_global: bool = False,
                        explicit_type: bool = False,
-                       is_final: bool = False,
-                       has_initializer: bool = True) -> None:
+                       is_final: bool = False) -> None:
         """Analyze an lvalue or assignment target.
 
         Note that this is used in both pass 1 and 2.
@@ -1983,10 +1980,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             nested: If true, the lvalue is within a tuple or list lvalue expression
             add_global: Add name to globals table only if this is true (used in first pass)
             explicit_type: Assignment has type annotation
-            has_initializer: Is there a rvalue (i.e. not just "x: t")?
         """
         if isinstance(lval, NameExpr):
-            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final, has_initializer)
+            self.analyze_name_lvalue(lval, add_global, explicit_type, is_final)
         elif isinstance(lval, MemberExpr):
             if not add_global:
                 self.analyze_member_lvalue(lval, explicit_type, is_final)
@@ -2015,8 +2011,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                             lval: NameExpr,
                             add_global: bool,
                             explicit_type: bool,
-                            is_final: bool,
-                            has_initializer: bool) -> None:
+                            is_final: bool) -> None:
         """Analyze an lvalue that targets a name expression.
 
         Arguments are similar to "analyze_lvalue".
@@ -2046,8 +2041,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         and unmangle(lval.name) + "'" != lval.name):
                     self.fail("Cannot redefine an existing name as final", lval)
                 assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
-        elif (self.locals[-1] is not None
-              and lval.name not in self.locals[-1]
+        elif (self.locals[-1] is not None and lval.name not in self.locals[-1]
               and lval.name not in self.global_decls[-1]
               and lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
@@ -3565,17 +3559,11 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                     return
             self.globals[name] = node
 
-    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context,
-                  allow_redefine: bool = False) -> None:
-        """Add local variable or function.
-
-        Args:
-            allow_redefine: If true, override any existing local symbol with the same name
-        """
+    def add_local(self, node: Union[Var, FuncDef, OverloadedFuncDef], ctx: Context) -> None:
+        """Add local variable or function."""
         assert self.locals[-1] is not None, "Should not add locals outside a function"
         name = node.name()
-        if name in self.locals[-1] and (not allow_redefine or
-                                        not isinstance(self.locals[-1][name].node, Var)):
+        if name in self.locals[-1]:
             self.name_already_defined(name, ctx, self.locals[-1][name])
             return
         node._fullname = name
