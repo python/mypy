@@ -374,8 +374,8 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
     def _visit_func_def(self, defn: FuncDef) -> None:
         phase_info = self.postpone_nested_functions_stack[-1]
         if phase_info != FUNCTION_SECOND_PHASE:
-            # First phase of analysis for function.
             self.function_stack.append(defn)
+            # First phase of analysis for function.
             if not defn._fullname:
                 defn._fullname = self.qualified_name(defn.name())
             if defn.type:
@@ -719,7 +719,7 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
             # First analyze body of the function but ignore nested functions.
             self.postpone_nested_functions_stack.append(FUNCTION_FIRST_PHASE_POSTPONE_SECOND)
             self.postponed_functions_stack.append([])
-            self.visit_block(defn.body)
+            defn.body.accept(self)
 
             # Analyze nested functions (if any) as a second phase.
             self.postpone_nested_functions_stack[-1] = FUNCTION_SECOND_PHASE
@@ -2041,9 +2041,9 @@ class SemanticAnalyzerPass2(NodeVisitor[None],
                         and unmangle(lval.name) + "'" != lval.name):
                     self.fail("Cannot redefine an existing name as final", lval)
                 assert lval.node.name() in self.globals or self.cur_mod_id == 'typing'
-        elif (self.locals[-1] is not None and lval.name not in self.locals[-1]
-              and lval.name not in self.global_decls[-1]
-              and lval.name not in self.nonlocal_decls[-1]):
+        elif (self.locals[-1] is not None and lval.name not in self.locals[-1] and
+              lval.name not in self.global_decls[-1] and
+              lval.name not in self.nonlocal_decls[-1]):
             # Define new local name.
             v = self.make_name_lvalue_var(lval, LDEF, not explicit_type)
             self.add_local(v, lval)
