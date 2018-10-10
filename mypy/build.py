@@ -1400,7 +1400,8 @@ class State:
                 self.ignore_all = True
         self.path = path
         self.xpath = path or '<string>'
-        if path and source is None and self.options.namespace_packages and self.manager.fscache.isdir(path):
+        if (path and source is None and self.options.namespace_packages
+                and self.manager.fscache.isdir(path)):
             source = ''
         self.source = source
         if path and source is None and self.manager.cache_enabled:
