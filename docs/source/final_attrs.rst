@@ -14,8 +14,6 @@ Mypy will prevent further assignments to final names in type-checked code:
    class Base:
        DEFAULT_ID: Final = 0
 
-   # 1000 lines later
-
    RATE = 300  # Error: can't assign to final attribute
    Base.DEFAULT_ID = 1  # Error: can't override a final attribute
 
@@ -31,8 +29,6 @@ instance attributes from overriding in a subclass:
        """An absolutely unique object in the database"""
        def __init__(self) -> None:
            self.id: Final = uuid.uuid4()
-
-   # 1000 lines later
 
    class User(Snowflake):
        id = uuid.uuid4()  # Error: can't override a final attribute
@@ -53,7 +49,6 @@ The ``typing_extensions.Final`` qualifier indicates that a given name or
 attribute should never be re-assigned, re-defined, nor overridden. It can be
 used in one of these forms:
 
-
 * You can provide an explicit type using the syntax ``Final[<type>]``. Example:
 
   .. code-block:: python
@@ -68,7 +63,8 @@ used in one of these forms:
   ``ID: Final[float]``.
 
 * Finally, you can define ``self.id: Final = 1`` (also with a type argument),
-  but this is allowed *only* in ``__init__`` methods.
+  but this is allowed *only* in ``__init__`` methods (so that the final
+  instance attribute is assigned only once when an instance is created).
 
 Definition rules
 ****************
@@ -82,25 +78,25 @@ The are two rules that should be always followed when defining a final name:
 
      from typing_extensions import Final
 
-     ID: Final = 1
-     ID: Final = 2  # Error: "ID" already declared as final
+     RATE: Final = 1000
+     RATE: Final = 2000  # Error: "RATE" already declared as final
 
-     class SomeCls:
+     class DbModel:
          id: Final = 1
          def __init__(self, x: int) -> None:
              self.id: Final = x  # Error: "id" already declared in class body
 
-  Note that mypy has a single namespace for a class. So there can't be two
+  Note that mypy has a single namespace for a class. So there can't be
   class-level and instance-level constants with the same name.
 
 * There must be *exactly one* assignment to a final attribute:
 
   .. code-block:: python
 
-     ID = 1
-     ID: Final = 2  # Error!
+     RATE = 1000
+     RATE: Final = 2000  # Error!
 
-     class SomeCls:
+     class DbModel:
          ID = 1
          ID: Final = 2  # Error!
 
@@ -110,7 +106,7 @@ The are two rules that should be always followed when defining a final name:
 
   .. code-block:: python
 
-     class SomeCls:
+     class ImmutablePoint:
          x: Final[int]
          y: Final[int]  # Error: final attribute without an initializer
          def __init__(self) -> None:
@@ -144,9 +140,9 @@ two following guarantees:
      # file mod.py
      from typing_extensions import Final
 
-     ID: Final = 1
+     RATE: Final = 1000
 
-     class SomeCls:
+     class DbModel:
          ID: Final = 1
 
          def meth(self) -> None:
@@ -154,16 +150,16 @@ two following guarantees:
 
      # file main.py
      import mod
-     mod.ID = 2  # Error: can't assign to constant.
+     mod.RATE = 2000  # Error: can't assign to constant.
 
-     from mod import ID
-     ID = 2  # Also an error, see note below.
+     from mod import RATE
+     RATE = 2000  # Also an error, see note below.
 
-     class DerivedCls(mod.SomeCls):
+     class DerivedModel(mod.DbModel):
          ...
 
-     DerivedCls.ID = 2  # Error!
-     obj: DerivedCls
+     DerivedModel.ID = 2  # Error!
+     obj: DerivedModel
      obj.ID = 2  # Error!
 
 * A final attribute can't be overridden by a subclass (even with another
@@ -186,7 +182,7 @@ two following guarantees:
          pass
 
 * Declaring a name as final only guarantees that the name wll not be re-bound
-  to other value, it doesn't make the value immutable. One can use immutable ABCs
+  to another value, it doesn't make the value immutable. One can use immutable ABCs
   and containers to prevent mutating such values:
 
   .. code-block:: python
@@ -194,8 +190,8 @@ two following guarantees:
      x: Final = ['a', 'b']
      x.append('c')  # OK
 
-     y: Final[Sequance[str]] = ['a', 'b']
-     y.append('x')  # Error: Sequance is immutable
+     y: Final[Sequence[str]] = ['a', 'b']
+     y.append('x')  # Error: Sequence is immutable
      z: Final = ('a', 'b')  # Also an option
 
 Final methods
@@ -213,8 +209,6 @@ decorator:
        @final
        def common_name(self) -> None:
            ...
-
-   # 1000 lines later
 
    class Derived(Base):
        def common_name(self) -> None:  # Error: cannot override a final method
