@@ -1136,13 +1136,13 @@ def f(c: C):
 [out]
 
 [case testCheckAllowAnyGenericAnyGeneric]
-# flags: --allow-any-generics
+# flags: --strict --allow-any-generics
 from typing import TypeVar, Callable
 
 T = TypeVar('T')
 C = Callable[[], T]
 
-def f(c: C):
+def f(c: C) -> None:
     pass
 [out]
 
