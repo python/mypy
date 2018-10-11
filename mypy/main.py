@@ -474,10 +474,9 @@ def process_options(args: List[str],
     disallow_any_group.add_argument(
         '--disallow-any-explicit', default=False, action='store_true',
         help='Disallow explicit Any in type positions')
-    disallow_any_group.add_argument(
-        '--disallow-any-generics', default=False, action='store_true',
-        help='Disallow usage of generic types that do not specify explicit '
-             'type parameters')
+    add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
+                        help='Disallow usage of generic types that do not specify explicit type '
+                        'parameters', group=disallow_any_group)
 
     untyped_group = parser.add_argument_group(
         title='Untyped definitions and calls',

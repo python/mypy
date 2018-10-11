@@ -1060,3 +1060,48 @@ GroupDataDict = TypedDict(  # type: ignore
 GroupsDict = Dict[str, GroupDataDict]  # type: ignore
 [builtins fixtures/dict.pyi]
 [out]
+
+[case testCheckDefaultAllowAnyGeneric]
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+C = Callable[[], T]
+
+def f(c: C):
+    pass
+[out]
+
+[case testCheckAllowAnyGenericAnyGeneric]
+# flags: --strict --allow-any-generics
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+C = Callable[[], T]
+
+def f(c: C) -> None:
+    pass
+[out]
+
+[case testCheckDisallowAnyGenericsAnyGeneric]
+# flags: --disallow-any-generics
+from typing import TypeVar, Callable
+
+T = TypeVar('T')
+C = Callable[[], T]
+
+def f(c: C):  # E: Missing type parameters for generic type
+    pass
+[out]
+
+[case testStrictAnyGeneric]
+# flags: --strict
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    pass
+
+def f(c: A) -> None:  # E: Missing type parameters for generic type
+    pass
+[out]
