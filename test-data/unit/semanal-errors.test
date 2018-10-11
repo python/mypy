@@ -279,11 +279,11 @@ main:4: error: Name 'n' is not defined
 import typing
 import m.n
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Cannot find module named 'm.n'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Cannot find module named 'm'
 
-[case testMissingPackage]
+[case testMissingPackage2]
 import typing
 from m.n import x
 from a.b import *
@@ -318,9 +318,9 @@ m.n.x
 [file m/n.py]
 x = 1
 [out]
-main:2: error: Cannot find module named 'm'
-main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:2: error: Cannot find module named 'm.n'
+main:2: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:2: error: Cannot find module named 'm'
 
 [case testBreakOutsideLoop]
 break

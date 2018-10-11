@@ -486,9 +486,9 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find module named 'a'
-main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main.py:1: error: Cannot find module named 'a.b'
+main.py:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main.py:1: error: Cannot find module named 'a'
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass

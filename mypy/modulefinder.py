@@ -74,11 +74,13 @@ class FindModuleCache:
         self.dirs = {}  # type: Dict[Tuple[str, Tuple[str, ...]], PackageDirs]
         # Cache find_module: id -> result
         self.results = {}  # type: Dict[str, Optional[str]]
+        self.ns_ancestors = {}  # type: Dict[str, str]
         self.options = options
 
     def clear(self) -> None:
         self.results.clear()
         self.dirs.clear()
+        self.ns_ancestors.clear()
 
     def find_lib_path_dirs(self, dir_chain: str, lib_path: Tuple[str, ...]) -> PackageDirs:
         # Cache some repeated work within distinct find_module calls: finding which
@@ -114,6 +116,14 @@ class FindModuleCache:
             if self.fscache.isfile(os.path.join(dir_path, 'py.typed')):
                 return os.path.join(pkg_dir, *components[:-1]), index == 0
         return None
+
+    def _update_ns_ancestors(self, components: List[str], match: Tuple[str, bool]) -> None:
+        path, verify = match
+        for i in range(1, len(components)):
+            pkg_id = '.'.join(components[:-i])
+            if pkg_id not in self.ns_ancestors:
+                self.ns_ancestors[pkg_id] = path
+            path = os.path.dirname(path)
 
     def _find_module(self, id: str) -> Optional[str]:
         fscache = self.fscache
@@ -155,6 +165,7 @@ class FindModuleCache:
             non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
             if non_stub_match:
                 third_party_inline_dirs.append(non_stub_match)
+                self._update_ns_ancestors(components, non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
@@ -187,6 +198,8 @@ class FindModuleCache:
                         near_misses.append(path_stubs)
                         continue
                     return path_stubs
+                elif self.options and self.options.namespace_packages and fscache.isdir(base_path):
+                    near_misses.append(base_path)
             # No package, look for module.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + extension
@@ -222,7 +235,11 @@ class FindModuleCache:
             index = levels.index(max(levels))
             return near_misses[index]
 
-        return None
+        # Finally, we may be asked to produce an ancestor for an
+        # installed package with a py.typed marker that is a
+        # subpackage of a namespace package.  We only fess up to these
+        # if we would otherwise return "not found".
+        return self.ns_ancestors.get(id)
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         module_path = self.find_module(module)
