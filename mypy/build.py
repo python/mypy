@@ -572,12 +572,20 @@ class BuildManager(BuildManagerBase):
                     pri = import_priority(imp, PRI_MED)
                     ancestor_pri = import_priority(imp, PRI_LOW)
                     for id, _ in imp.ids:
+                        # We append the target (e.g. foo.bar.baz)
+                        # before the ancestors (e.g. foo and foo.bar)
+                        # so that, if FindModuleCache finds the target
+                        # module in a package marked with py.typed
+                        # underneath a namespace package installed in
+                        # site-packages, (gasp), that cache's
+                        # knowledge of the ancestors can be primed
+                        # when it is asked to find the target.
+                        res.append((pri, id, imp.line))
                         ancestor_parts = id.split(".")[:-1]
                         ancestors = []
                         for part in ancestor_parts:
                             ancestors.append(part)
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
-                        res.append((pri, id, imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
                     pos = len(res)
@@ -1400,6 +1408,8 @@ class State:
                 self.ignore_all = True
         self.path = path
         self.xpath = path or '<string>'
+        if path and source is None and self.manager.fscache.isdir(path):
+            source = ''
         self.source = source
         if path and source is None and self.manager.cache_enabled:
             self.meta = find_cache_meta(self.id, path, manager)

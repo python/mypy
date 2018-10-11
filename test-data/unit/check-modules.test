@@ -2280,9 +2280,9 @@ def __getattr__(attr: str) -> Any: ...
 # empty (i.e. complete subpackage)
 [builtins fixtures/module.pyi]
 [out]
-main:1: error: Cannot find module named 'a.b.c'
-main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
 main:1: error: Cannot find module named 'a.b.c.d'
+main:1: note: (Perhaps setting MYPYPATH or using the "--ignore-missing-imports" flag would help)
+main:1: error: Cannot find module named 'a.b.c'
 
 [case testModuleGetattrInit8a]
 import a.b.c  # Error
@@ -2620,3 +2620,10 @@ x = 0
 [file mypy.ini]
 [[mypy]
 mypy_path = tmp/xx, tmp/yy
+
+[case testNamespacePackagePlainImport]
+# flags: --namespace-packages
+import foo.bar.baz
+reveal_type(foo.bar.baz.x)  # E: Revealed type is 'builtins.int'
+[file foo/bar/baz.py]
+x = 0
