@@ -265,15 +265,8 @@ def infer_python_version_and_executable(options: Options,
     # TODO: (ethanhs) Look at folding these checks and the site packages subprocess calls into
     # one subprocess call for speed.
     if special_opts.python_executable is not None and special_opts.python_version is not None:
-        py_exe_ver = _python_version_from_executable(special_opts.python_executable)
-        if py_exe_ver != special_opts.python_version:
-            raise PythonExecutableInferenceError(
-                'Python version {} did not match executable {}, got version {}.'.format(
-                    special_opts.python_version, special_opts.python_executable, py_exe_ver
-                ))
-        else:
-            options.python_version = special_opts.python_version
-            options.python_executable = special_opts.python_executable
+        options.python_version = special_opts.python_version
+        options.python_executable = special_opts.python_executable
     elif special_opts.python_executable is None and special_opts.python_version is not None:
         options.python_version = special_opts.python_version
         py_exe = None
