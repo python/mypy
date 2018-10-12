@@ -3,7 +3,7 @@ from enum import Enum
 import os
 import sys
 import tempfile
-from typing import Tuple, List, Generator, Optional, Mapping, Any
+from typing import Tuple, List, Generator, Optional
 from unittest import TestCase, main
 
 import mypy.api
@@ -65,23 +65,27 @@ def create_namespace_program_source(import_style: NamespaceProgramImportStyle) -
 
 
 class ExampleProgram(object):
+    _fname = 'test_program.py'
+
     def __init__(self, source_code: str) -> None:
         self._source_code = source_code
 
-        self._temp_file = None  # type: Any
+        self._temp_dir = None  # type: Optional[tempfile.TemporaryDirectory]
+        self._full_fname = ''
 
     def init(self) -> None:
-        self._temp_file = tempfile.NamedTemporaryFile(mode='w+')
-        self._temp_file.write(self._source_code)
-        self._temp_file.flush()
+        self._temp_dir = tempfile.TemporaryDirectory()
+        self._full_fname = os.path.join(self._temp_dir.name, self._fname)
+        with open(self._full_fname, 'w+') as f:
+            f.write(self._source_code)
 
     def cleanup(self) -> None:
-        if self._temp_file:
-            self._temp_file.close()
+        if self._temp_dir:
+            self._temp_dir.cleanup()
 
     def build_msg(self, *msgs: Enum) -> str:
         return '\n'.join(
-            msg.value.format(tempfile=self._temp_file.name)
+            msg.value.format(tempfile=self._full_fname)
             for msg in msgs
         ) + '\n'
 
@@ -92,7 +96,7 @@ class ExampleProgram(object):
                        expected_returncode: int = 1,
                        venv_dir: Optional[str] = None) -> None:
         """Helper to run mypy and check the output."""
-        cmd_line = [self._temp_file.name]
+        cmd_line = [self._full_fname]
         if venv_dir is not None:
             old_dir = os.getcwd()
             os.chdir(venv_dir)
