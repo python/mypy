@@ -32,6 +32,10 @@ nested_func(False)
 alpha_func(2)
 """
 
+C_MODULE_PROGRAM = """
+import aiohttp
+"""
+
 
 class NamespaceProgramImportStyle(Enum):
     from_import = """\
@@ -166,10 +170,14 @@ class TestPEP561(TestCase):
             create_namespace_program_source(NamespaceProgramImportStyle.from_import))
         self.regular_import_namespace_example_program = ExampleProgram(
             create_namespace_program_source(NamespaceProgramImportStyle.from_import))
+        self.c_module_example_program = ExampleProgram(C_MODULE_PROGRAM)
 
     def tearDown(self) -> None:
         self.simple_example_program.cleanup()
         self.from_namespace_example_program.cleanup()
+        self.import_as_namespace_example_program.cleanup()
+        self.regular_import_namespace_example_program.cleanup()
+        self.c_module_example_program.cleanup()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
@@ -297,6 +305,17 @@ class TestPEP561(TestCase):
                 python_executable,
                 [NamespaceProgramMessage.bool_str,
                  NamespaceProgramMessage.int_bool],
+                venv_dir=venv_dir,
+            )
+
+    def test_c_module_extension(self) -> None:
+        # This test case addresses https://github.com/python/mypy/issues/5784
+        self.c_module_example_program.init()
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.c_module_example_program.check_mypy_run(
+                python_executable,
+                [],
                 venv_dir=venv_dir,
             )
 
