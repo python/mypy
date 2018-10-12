@@ -170,7 +170,7 @@ class FindModuleCache:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
             third_party_stubs_dirs.clear()
-        python_mypy_path = self.search_paths.python_path + self.search_paths.mypy_path
+        python_mypy_path = self.search_paths.mypy_path + self.search_paths.python_path
         candidate_base_dirs = self.find_lib_path_dirs(dir_chain, python_mypy_path) + \
             third_party_stubs_dirs + third_party_inline_dirs + \
             self.find_lib_path_dirs(dir_chain, self.search_paths.typeshed_path)
