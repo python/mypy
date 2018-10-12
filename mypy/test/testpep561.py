@@ -3,7 +3,7 @@ from enum import Enum
 import os
 import sys
 import tempfile
-from typing import Tuple, List, Generator, Optional
+from typing import Tuple, List, Generator, Optional, Any
 from unittest import TestCase, main
 
 import mypy.api
@@ -70,7 +70,7 @@ class ExampleProgram(object):
     def __init__(self, source_code: str) -> None:
         self._source_code = source_code
 
-        self._temp_dir = None  # type: Optional[tempfile.TemporaryDirectory]
+        self._temp_dir = None  # type: Optional[tempfile.TemporaryDirectory[Any]]
         self._full_fname = ''
 
     def init(self) -> None:
