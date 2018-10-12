@@ -165,7 +165,8 @@ class FindModuleCache:
             non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
             if non_stub_match:
                 third_party_inline_dirs.append(non_stub_match)
-                self._update_ns_ancestors(components, non_stub_match)
+                if self.options and self.options.namespace_packages:
+                    self._update_ns_ancestors(components, non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
