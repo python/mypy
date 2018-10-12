@@ -19,6 +19,13 @@ name_ref_op('builtins.list',
             emit=simple_emit('{dest} = (PyObject *)&PyList_Type;'),
             is_borrowed=True)
 
+func_op(
+    name='builtins.list',
+    arg_types=[object_rprimitive],
+    result_type=list_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('PySequence_List'))
+
 
 def emit_new(emitter: EmitterInterface, args: List[str], dest: str) -> None:
     # TODO: This would be better split into multiple smaller ops.

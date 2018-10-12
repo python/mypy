@@ -785,14 +785,8 @@ static int CPyDict_SetItem(PyObject *dict, PyObject *key, PyObject *value) {
 }
 
 static int CPyDict_UpdateGeneral(PyObject *dict, PyObject *stuff) {
-    static PyObject *update_str = NULL;
-    if (!update_str) {
-        update_str = PyUnicode_FromString("update");
-        if (!update_str) {
-            return -1;
-        }
-    }
-    PyObject *res = PyObject_CallMethodObjArgs(dict, update_str, stuff, NULL);
+    _Py_IDENTIFIER(update);
+    PyObject *res = _PyObject_CallMethodIdObjArgs(dict, &PyId_update, stuff, NULL);
     return CPy_ObjectToStatus(res);
 }
 
@@ -804,16 +798,40 @@ static int CPyDict_Update(PyObject *dict, PyObject *stuff) {
     }
 }
 
-static int CPyDict_UpdateFromSeq(PyObject *dict, PyObject *stuff) {
+static int CPyDict_UpdateFromAny(PyObject *dict, PyObject *stuff) {
     if (PyDict_CheckExact(dict)) {
         // Argh this sucks
-        if (PyDict_Check(stuff)) {
+        _Py_IDENTIFIER(keys);
+        if (PyDict_Check(stuff) || _PyObject_HasAttrId(stuff, &PyId_keys)) {
             return PyDict_Update(dict, stuff);
         } else {
             return PyDict_MergeFromSeq2(dict, stuff, 1);
         }
     } else {
         return CPyDict_UpdateGeneral(dict, stuff);
+    }
+}
+
+static PyObject *CPyDict_FromAny(PyObject *obj) {
+    if (PyDict_Check(obj)) {
+        return PyDict_Copy(obj);
+    } else {
+        int res;
+        PyObject *dict = PyDict_New();
+        if (!dict) {
+            return NULL;
+        }
+        _Py_IDENTIFIER(keys);
+        if (_PyObject_HasAttrId(obj, &PyId_keys)) {
+            res = PyDict_Update(dict, obj);
+        } else {
+            res = PyDict_MergeFromSeq2(dict, obj, 1);
+        }
+        if (res < 0) {
+            Py_DECREF(dict);
+            return NULL;
+        }
+        return dict;
     }
 }
 

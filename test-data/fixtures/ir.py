@@ -97,6 +97,12 @@ class list(Generic[T], Sequence[T], Iterable[T], Sized):
     def sort(self) -> None: pass
 
 class dict(Mapping[K, V]):
+    @overload
+    def __init__(self, **kwargs: K) -> None: ...
+    @overload
+    def __init__(self, map: Mapping[K, V], **kwargs: V) -> None: ...
+    @overload
+    def __init__(self, iterable: Iterable[Tuple[K, V]], **kwargs: V) -> None: ...
     def __getitem__(self, key: K) -> V: pass
     def __setitem__(self, k: K, v: V) -> None: pass
     def __delitem__(self, k: K) -> None: pass

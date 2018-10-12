@@ -845,6 +845,16 @@ def h() -> None:
     d = {}  # type: Dict[Any, Any]
     d[{}]
 
+def update_dict(x: Dict[Any, Any], y: Any):
+    x.update(y)
+
+def make_dict1(x: Any) -> Dict[Any, Any]:
+    return dict(x)
+
+def make_dict2(x: Dict[Any, Any]) -> Dict[Any, Any]:
+    return dict(x)
+
+
 [file defaultdictwrap.py]
 from typing import Dict
 from collections import defaultdict  # type: ignore
@@ -852,7 +862,7 @@ def make_dict() -> Dict[str, int]:
     return defaultdict(int)
 
 [file driver.py]
-from native import f, g, h
+from native import f, g, h, make_dict1, make_dict2, update_dict
 assert f(1) == 2
 assert f(2) == 1
 assert g() == 30
@@ -863,6 +873,15 @@ except TypeError:
     pass
 else:
     assert False
+d = {'a': 1, 'b': 2}
+assert make_dict1(d) == d
+assert make_dict1(d.items()) == d
+assert make_dict2(d) == d
+# object.__dict__ is a "mappingproxy" and not a dict
+assert make_dict1(object.__dict__) == dict(object.__dict__)
+d = {}
+update_dict(d, object.__dict__)
+assert d == dict(object.__dict__)
 
 [case testPyMethodCall]
 from typing import List

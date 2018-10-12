@@ -43,4 +43,12 @@ list_tuple_op = func_op(
     arg_types=[list_rprimitive],
     result_type=tuple_rprimitive,
     error_kind=ERR_MAGIC,
-    emit=call_emit('PyList_AsTuple'))
+    emit=call_emit('PyList_AsTuple'),
+    priority=2)
+
+func_op(
+    name='builtins.tuple',
+    arg_types=[object_rprimitive],
+    result_type=tuple_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('PySequence_Tuple'))

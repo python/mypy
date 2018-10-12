@@ -56,7 +56,7 @@ method_op(
     arg_types=[dict_rprimitive, object_rprimitive],
     result_type=bool_rprimitive,
     error_kind=ERR_FALSE,
-    emit=simple_emit('{dest} = CPyDict_UpdateFromSeq({args[0]}, {args[1]}) != -1;'))
+    emit=simple_emit('{dest} = CPyDict_UpdateFromAny({args[0]}, {args[1]}) != -1;'))
 
 method_op(
     name='get',
@@ -79,6 +79,21 @@ new_dict_op = func_op(
     error_kind=ERR_MAGIC,
     format_str='{dest} = {{}}',
     emit=call_emit('PyDict_New'))
+
+func_op(
+    name='builtins.dict',
+    arg_types=[dict_rprimitive],
+    result_type=dict_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('PyDict_Copy'),
+    priority=2)
+
+func_op(
+    name='builtins.dict',
+    arg_types=[object_rprimitive],
+    result_type=dict_rprimitive,
+    error_kind=ERR_MAGIC,
+    emit=call_emit('CPyDict_FromAny'))
 
 
 def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
