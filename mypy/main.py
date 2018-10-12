@@ -264,19 +264,25 @@ def infer_python_version_and_executable(options: Options,
 
     # TODO: (ethanhs) Look at folding these checks and the site packages subprocess calls into
     # one subprocess call for speed.
-    if special_opts.python_executable is not None and special_opts.python_version is not None:
-        options.python_version = special_opts.python_version
-        options.python_executable = special_opts.python_executable
-    elif special_opts.python_executable is None and special_opts.python_version is not None:
-        options.python_version = special_opts.python_version
+
+    # Use the command line specified python_version/executable, or fall back to one set in the
+    # config file
+    python_version = special_opts.python_version or options.python_version
+    python_executable = special_opts.python_executable or options.python_executable
+
+    if python_executable is not None and python_version is not None:
+        options.python_version = python_version
+        options.python_executable = python_executable
+    elif python_executable is None and python_version is not None:
+        options.python_version = python_version
         py_exe = None
         if not special_opts.no_executable:
-            py_exe = _python_executable_from_version(special_opts.python_version)
+            py_exe = _python_executable_from_version(python_version)
         options.python_executable = py_exe
-    elif special_opts.python_version is None and special_opts.python_executable is not None:
+    elif python_version is None and python_executable is not None:
         options.python_version = _python_version_from_executable(
-            special_opts.python_executable)
-        options.python_executable = special_opts.python_executable
+            python_executable)
+        options.python_executable = python_executable
 
 
 HEADER = """%(prog)s [-h] [-v] [-V] [more options; see below]
