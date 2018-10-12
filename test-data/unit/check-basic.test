@@ -373,3 +373,10 @@ def foo(
 ):
     # type: (...) -> None
     pass
+
+[case testNoneHasBool]
+none = None
+b = none.__bool__()
+s = 'hi'
+s = b  # E: Incompatible types in assignment (expression has type "bool", variable has type "str")
+[builtins fixtures/bool.pyi]
