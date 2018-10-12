@@ -586,6 +586,9 @@ def process_options(args: List[str],
         '--show-traceback', '--tb', action='store_true',
         help="Show traceback on fatal error")
     internals_group.add_argument(
+        '--raise-exceptions', action='store_true', help="Raise exception on fatal error"
+    )
+    internals_group.add_argument(
         '--custom-typing', metavar='MODULE', dest='custom_typing_module',
         help="Use a custom typing module")
     internals_group.add_argument(

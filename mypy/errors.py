@@ -593,6 +593,8 @@ def report_internal_error(err: Exception, file: Optional[str], line: int,
         pdb.post_mortem(sys.exc_info()[2])
 
     # If requested, print traceback, else print note explaining how to get one.
+    if options.raise_exceptions:
+        raise err
     if not options.show_traceback:
         if not options.pdb:
             print('{}: note: please use --show-traceback to print a traceback '
