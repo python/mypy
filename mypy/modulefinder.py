@@ -239,7 +239,10 @@ class FindModuleCache:
         # installed package with a py.typed marker that is a
         # subpackage of a namespace package.  We only fess up to these
         # if we would otherwise return "not found".
-        return self.ns_ancestors.get(id)
+        if self.options and self.options.namespace_packages:
+            return self.ns_ancestors.get(id)
+
+        return None
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         module_path = self.find_module(module)
