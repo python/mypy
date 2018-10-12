@@ -14,7 +14,7 @@ They is no runtime enforcement by the Python runtime.
 .. note::
 
    These are experimental features. They might change in later
-   versions of mypy. The final qualifiers are available through the
+   versions of mypy. The *final* qualifiers are available through the
    ``typing_extensions`` package on PyPI.
 
 Final names
@@ -76,7 +76,7 @@ You can use ``Final`` in one of these forms:
   Here mypy will infer type ``int`` for ``ID``. Note that unlike for
   generic classes this is *not* the same as ``Final[Any]``.
 
-* In class bodies stub files you can omit the right hand side and just write
+* In class bodies and stub files you can omit the right hand side and just write
   ``ID: Final[float]``.
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
