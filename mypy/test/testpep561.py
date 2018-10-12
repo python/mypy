@@ -1,8 +1,9 @@
 from contextlib import contextmanager
+from enum import Enum
 import os
 import sys
 import tempfile
-from typing import Tuple, List, Generator, Optional
+from typing import Tuple, List, Generator, Optional, Mapping, Any
 from unittest import TestCase, main
 
 import mypy.api
@@ -21,9 +22,8 @@ a = ex([''])
 reveal_type(a)
 """
 
-NAMESPACE_PROGRAM = """
-from typedpkg_nested.nested_package.nested_module import nested_func
-from typedpkg_namespace.alpha.alpha_module import alpha_func
+_NAMESPACE_PROGRAM = """
+{import_style}
 
 nested_func("abc")
 alpha_func(False)
@@ -33,26 +33,79 @@ alpha_func(2)
 """
 
 
-def check_mypy_run(cmd_line: List[str],
-                   python_executable: str = sys.executable,
-                   expected_out: str = '',
-                   expected_err: str = '',
-                   expected_returncode: int = 1,
-                   venv_dir: Optional[str] = None) -> None:
-    """Helper to run mypy and check the output."""
-    if venv_dir is not None:
-        old_dir = os.getcwd()
-        os.chdir(venv_dir)
-    try:
-        if python_executable != sys.executable:
-            cmd_line.append('--python-executable={}'.format(python_executable))
-        out, err, returncode = mypy.api.run(cmd_line)
-        assert out == expected_out, err
-        assert err == expected_err, out
-        assert returncode == expected_returncode, returncode
-    finally:
+class NamespaceProgramImportStyle(Enum):
+    from_import = """\
+from typedpkg_nested.nested_package.nested_module import nested_func
+from typedpkg_namespace.alpha.alpha_module import alpha_func"""
+    import_as = """\
+import typedpkg_nested.nested_package.nested_module as nm; nested_func = nm.nested_func
+import typedpkg_namespace.alpha.alpha_module as am; alpha_func = am.alpha_func"""
+    regular_import = """\
+import typedpkg_nested.nested_package.nested_module; \
+nested_func = typedpkg_nested.nested_package.nested_module.nested_func
+import typedpkg_namespace.alpha.alpha_module; \
+alpha_func = typedpkg_namespace.alpha.alpha_module.alpha_func"""
+
+
+class SimpleProgramMessage(Enum):
+    msg_dne = "{tempfile}:3: error: Module 'typedpkg' has no attribute 'dne'"
+    msg_list = "{tempfile}:5: error: Revealed type is 'builtins.list[builtins.str]'"
+    msg_tuple = "{tempfile}:5: error: Revealed type is 'builtins.tuple[builtins.str]'"
+
+
+class NamespaceProgramMessage(Enum):
+    bool_str = ('{tempfile}:8: error: Argument 1 to "nested_func" has incompatible type '
+                '"bool"; expected "str"')
+    int_bool = ('{tempfile}:9: error: Argument 1 to "alpha_func" has incompatible type '
+                '"int"; expected "bool"')
+
+
+def create_namespace_program_source(import_style: NamespaceProgramImportStyle) -> str:
+    return _NAMESPACE_PROGRAM.format(import_style=import_style.value)
+
+
+class ExampleProgram(object):
+    def __init__(self, source_code: str) -> None:
+        self._source_code = source_code
+
+        self._temp_file = None  # type: Any
+
+    def init(self) -> None:
+        self._temp_file = tempfile.NamedTemporaryFile(mode='w+')
+        self._temp_file.write(self._source_code)
+        self._temp_file.flush()
+
+    def cleanup(self) -> None:
+        if self._temp_file:
+            self._temp_file.close()
+
+    def build_msg(self, *msgs: Enum) -> str:
+        return '\n'.join(
+            msg.value.format(tempfile=self._temp_file.name)
+            for msg in msgs
+        ) + '\n'
+
+    def check_mypy_run(self,
+                       python_executable: str,
+                       expected_out: List[Enum],
+                       expected_err: str = '',
+                       expected_returncode: int = 1,
+                       venv_dir: Optional[str] = None) -> None:
+        """Helper to run mypy and check the output."""
+        cmd_line = [self._temp_file.name]
         if venv_dir is not None:
-            os.chdir(old_dir)
+            old_dir = os.getcwd()
+            os.chdir(venv_dir)
+        try:
+            if python_executable != sys.executable:
+                cmd_line.append('--python-executable={}'.format(python_executable))
+            out, err, returncode = mypy.api.run(cmd_line)
+            assert out == self.build_msg(*expected_out), err
+            assert err == expected_err, out
+            assert returncode == expected_returncode, returncode
+        finally:
+            if venv_dir is not None:
+                os.chdir(old_dir)
 
 
 class TestPEP561(TestCase):
@@ -102,30 +155,17 @@ class TestPEP561(TestCase):
             self.fail('\n'.join(lines))
 
     def setUp(self) -> None:
-        self.temp_file_dir = tempfile.TemporaryDirectory()
-        self.tempfile = os.path.join(self.temp_file_dir.name, 'simple.py')
-        with open(self.tempfile, 'w+') as file:
-            file.write(SIMPLE_PROGRAM)
-        self.namespace_tempfile = os.path.join(self.temp_file_dir.name, 'namespace_program.py')
-        with open(self.namespace_tempfile, 'w+') as file:
-            file.write(NAMESPACE_PROGRAM)
-
-        self.msg_dne = \
-            "{}:3: error: Module 'typedpkg' has no attribute 'dne'\n".format(self.tempfile)
-        self.msg_list = \
-            "{}:5: error: Revealed type is 'builtins.list[builtins.str]'\n".format(self.tempfile)
-        self.msg_tuple = \
-            "{}:5: error: Revealed type is 'builtins.tuple[builtins.str]'\n".format(self.tempfile)
-
-        self.namespace_msg_bool_str = (
-            '{0}:8: error: Argument 1 to "nested_func" has incompatible type "bool"; '
-            'expected "str"\n'.format(self.namespace_tempfile))
-        self.namespace_msg_int_bool = (
-            '{0}:9: error: Argument 1 to "alpha_func" has incompatible type "int"; '
-            'expected "bool"\n'.format(self.namespace_tempfile))
+        self.simple_example_program = ExampleProgram(SIMPLE_PROGRAM)
+        self.from_namespace_example_program = ExampleProgram(
+            create_namespace_program_source(NamespaceProgramImportStyle.from_import))
+        self.import_as_namespace_example_program = ExampleProgram(
+            create_namespace_program_source(NamespaceProgramImportStyle.from_import))
+        self.regular_import_namespace_example_program = ExampleProgram(
+            create_namespace_program_source(NamespaceProgramImportStyle.from_import))
 
     def tearDown(self) -> None:
-        self.temp_file_dir.cleanup()
+        self.simple_example_program.cleanup()
+        self.from_namespace_example_program.cleanup()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
@@ -133,96 +173,126 @@ class TestPEP561(TestCase):
         assert dirs
 
     def test_typedpkg_stub_package(self) -> None:
+        self.simple_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg-stubs', python_executable)
-            check_mypy_run(
-                [self.tempfile],
+            self.simple_example_program.check_mypy_run(
                 python_executable,
-                expected_out=self.msg_dne + self.msg_list,
+                [SimpleProgramMessage.msg_dne,
+                 SimpleProgramMessage.msg_list],
                 venv_dir=venv_dir,
             )
 
     def test_typedpkg(self) -> None:
+        self.simple_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
-            check_mypy_run(
-                [self.tempfile],
+            self.simple_example_program.check_mypy_run(
                 python_executable,
-                expected_out=self.msg_tuple,
+                [SimpleProgramMessage.msg_tuple],
                 venv_dir=venv_dir,
             )
 
     def test_stub_and_typed_pkg(self) -> None:
+        self.simple_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable)
             self.install_package('typedpkg-stubs', python_executable)
-            check_mypy_run(
-                [self.tempfile],
+            self.simple_example_program.check_mypy_run(
                 python_executable,
-                expected_out=self.msg_list,
+                [SimpleProgramMessage.msg_list],
                 venv_dir=venv_dir,
             )
 
     def test_typedpkg_stubs_python2(self) -> None:
+        self.simple_example_program.init()
         python2 = try_find_python2_interpreter()
         if python2:
             with self.virtualenv(python2) as venv:
                 venv_dir, py2 = venv
                 self.install_package('typedpkg-stubs', py2)
-                check_mypy_run(
-                    [self.tempfile],
+                self.simple_example_program.check_mypy_run(
                     py2,
-                    expected_out=self.msg_dne + self.msg_list,
+                    [SimpleProgramMessage.msg_dne,
+                     SimpleProgramMessage.msg_list],
                     venv_dir=venv_dir,
                 )
 
     def test_typedpkg_python2(self) -> None:
+        self.simple_example_program.init()
         python2 = try_find_python2_interpreter()
         if python2:
             with self.virtualenv(python2) as venv:
                 venv_dir, py2 = venv
                 self.install_package('typedpkg', py2)
-                check_mypy_run(
-                    [self.tempfile],
+                self.simple_example_program.check_mypy_run(
                     py2,
-                    expected_out=self.msg_tuple,
+                    [SimpleProgramMessage.msg_tuple],
                     venv_dir=venv_dir,
                 )
 
     def test_typedpkg_egg(self) -> None:
+        self.simple_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable, use_pip=False)
-            check_mypy_run(
-                [self.tempfile],
+            self.simple_example_program.check_mypy_run(
                 python_executable,
-                expected_out=self.msg_tuple,
+                [SimpleProgramMessage.msg_tuple],
                 venv_dir=venv_dir,
             )
 
     def test_typedpkg_editable(self) -> None:
+        self.simple_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg', python_executable, editable=True)
-            check_mypy_run(
-                [self.tempfile],
+            self.simple_example_program.check_mypy_run(
                 python_executable,
-                expected_out=self.msg_tuple,
+                [SimpleProgramMessage.msg_tuple],
                 venv_dir=venv_dir,
             )
 
-    def test_nested_and_namespace(self) -> None:
+    def test_nested_and_namespace_from_import(self) -> None:
+        self.from_namespace_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg_nested', python_executable)
             self.install_package('typedpkg_namespace-alpha', python_executable)
-            check_mypy_run(
-                [self.namespace_tempfile],
+            self.from_namespace_example_program.check_mypy_run(
                 python_executable,
-                expected_out=self.namespace_msg_bool_str + self.namespace_msg_int_bool,
+                [NamespaceProgramMessage.bool_str,
+                 NamespaceProgramMessage.int_bool],
+                venv_dir=venv_dir,
+            )
+
+    def test_nested_and_namespace_import_as(self) -> None:
+        self.import_as_namespace_example_program.init()
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('typedpkg_nested', python_executable)
+            self.install_package('typedpkg_namespace-alpha', python_executable)
+            self.import_as_namespace_example_program.check_mypy_run(
+                python_executable,
+                [NamespaceProgramMessage.bool_str,
+                 NamespaceProgramMessage.int_bool],
+                venv_dir=venv_dir,
+            )
+
+    def test_nested_and_namespace_regular_import(self) -> None:
+        # This test case addresses https://github.com/python/mypy/issues/5767
+        self.regular_import_namespace_example_program.init()
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('typedpkg_nested', python_executable)
+            self.install_package('typedpkg_namespace-alpha', python_executable)
+            self.regular_import_namespace_example_program.check_mypy_run(
+                python_executable,
+                [NamespaceProgramMessage.bool_str,
+                 NamespaceProgramMessage.int_bool],
                 venv_dir=venv_dir,
             )
 
