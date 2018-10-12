@@ -1,6 +1,26 @@
 Final names, methods and classes
 ================================
 
+This section introduces these related features:
+
+1. *Final names* are variables or attributes that should not reassigned after
+   initialization. They are useful for declaring constants.
+2. *Final methods* should not be overridden in a subclass.
+3. *Final classes* should not be subclassed.
+
+All of these are declarations that are only enforced by mypy, and only
+in annotated code.  They is no runtime enforcement by the Python
+runtime.
+
+.. note::
+
+   These are experimental features. They might change in later
+   versions of mypy. The final qualifiers are available through the
+   ``typing_extensions`` package on PyPI.
+
+Final names
+-----------
+
 You can declare a variable or attribute as final, which means that the variable
 must not be assigned a new value after initialization. This is often useful for
 module and class level constants as a way to prevent unintended modification.
@@ -17,30 +37,24 @@ Mypy will prevent further assignments to final names in type-checked code:
    RATE = 300  # Error: can't assign to final attribute
    Base.DEFAULT_ID = 1  # Error: can't override a final attribute
 
-Another use case for final attributes is where a user wants to protect certain
-instance attributes from overriding in a subclass:
+Another use case for final attributes is to protect certain attributes
+from being overridden in a subclass:
 
 .. code-block:: python
 
    import uuid
    from typing_extensions import Final
 
-   class Snowflake:
-       """An absolutely unique object in the database"""
-       def __init__(self) -> None:
-           self.id: Final = uuid.uuid4()
+   class Window:
+       BORDER_WIDTH: Final = 2
+       ...
 
-   class User(Snowflake):
-       id = uuid.uuid4()  # Error: can't override a final attribute
+   class ListView(Window):
+       BORDER_WIDTH = 3  # Error: can't override a final attribute
 
-Some other use cases might be solved by using ``@property``, but note that
-neither of the above use cases can be solved with it.
-
-.. note::
-
-   This is an experimental feature. Some details might change in later
-   versions of mypy. The final qualifiers are available in the
-   ``typing_extensions`` package available on PyPI.
+You can use ``@property`` to make an attribute read-only, but unlike ``Final``,
+it doesn't work with module attributes, and it doesn't prevent overriding in
+subclasses.
 
 Syntax variants
 ***************
@@ -72,33 +86,10 @@ Definition rules
 The are two rules that should be always followed when defining a final name:
 
 * There can be *at most one* final declaration per module or class for
-  a given attribute:
+  a given attribute. There can't be separate class-level and instance-level
+  constants with the same name.
 
-  .. code-block:: python
-
-     from typing_extensions import Final
-
-     RATE: Final = 1000
-     RATE: Final = 2000  # Error: "RATE" already declared as final
-
-     class DbModel:
-         id: Final = 1
-         def __init__(self, x: int) -> None:
-             self.id: Final = x  # Error: "id" already declared in class body
-
-  Note that mypy has a single namespace for a class. So there can't be
-  class-level and instance-level constants with the same name.
-
-* There must be *exactly one* assignment to a final attribute:
-
-  .. code-block:: python
-
-     RATE = 1000
-     RATE: Final = 2000  # Error!
-
-     class DbModel:
-         ID = 1
-         ID: Final = 2  # Error!
+* There must be *exactly one* assignment to a final attribute.
 
 * A final attribute declared in class body without an initializer must
   be initialized in the ``__init__`` method (you can skip the initializer
@@ -109,6 +100,7 @@ The are two rules that should be always followed when defining a final name:
      class ImmutablePoint:
          x: Final[int]
          y: Final[int]  # Error: final attribute without an initializer
+
          def __init__(self) -> None:
              self.x = 1  # Good
 
@@ -119,6 +111,7 @@ The are two rules that should be always followed when defining a final name:
   .. code-block:: python
 
      x: List[Final[int]] = []  # Error!
+
      def fun(x: Final[List[int]]) ->  None:  # Error!
          ...
 
@@ -163,8 +156,8 @@ two following guarantees:
      obj.ID = 2  # Error!
 
 * A final attribute can't be overridden by a subclass (even with another
-  explicit final declaration). Note however, that final attributes can
-  override read-only properties. This also applies to multiple inheritance:
+  explicit final declaration). Note however, that a final attribute can
+  override a read-only property:
 
   .. code-block:: python
 
@@ -172,17 +165,11 @@ two following guarantees:
          @property
          def ID(self) -> int: ...
 
-     class One(Base):
+     class Derived(Base):
          ID: Final = 1  # OK
 
-     class Other(Base):
-         ID: Final = 2  # OK
-
-     class Combo(One, Other):  # Error: cannot override final attribute.
-         pass
-
 * Declaring a name as final only guarantees that the name wll not be re-bound
-  to another value, it doesn't make the value immutable. One can use immutable ABCs
+  to another value. It doesn't make the value immutable. You can use immutable ABCs
   and containers to prevent mutating such values:
 
   .. code-block:: python
@@ -195,7 +182,7 @@ two following guarantees:
      z: Final = ('a', 'b')  # Also an option
 
 Final methods
-*************
+-------------
 
 Like with attributes, sometimes it is useful to protect a method from
 overriding. In such situations one can use the ``typing_extensions.final``
@@ -215,29 +202,31 @@ decorator:
            ...
 
 This ``@final`` decorator can be used with instance methods, class methods,
-static methods, and properties (this includes overloaded methods). For
-overloaded methods one should add ``@final`` on the implementation to make
-it final (or on the first overload in stubs):
+static methods, and properties.
+
+For overloaded methods you should add ``@final`` on the implementation
+to make it final (or on the first overload in stubs):
 
 .. code-block:: python
+
    from typing import Any, overload
 
    class Base:
        @overload
-       def meth(self) -> None: ...
+       def method(self) -> None: ...
        @overload
-       def meth(self, arg: int) -> int: ...
+       def method(self, arg: int) -> int: ...
        @final
-       def meth(self, x=None):
+       def method(self, x=None):
            ...
 
 Final classes
-*************
+-------------
 
-You can apply a ``typing_extensions.final`` decorator to a class to indicate
-to mypy that it can't be subclassed. The decorator acts as a declaration
-for mypy (and as documentation for humans), but it doesn't prevent subclassing
-at runtime:
+You can apply the ``typing_extensions.final`` decorator to a class to indicate
+to mypy that it should not be subclassed. The decorator acts as a declaration
+for mypy (and as documentation for humans), but it doesn't actually prevent
+subclassing at runtime:
 
 .. code-block:: python
 
@@ -250,10 +239,11 @@ at runtime:
    class MyLeaf(Leaf):  # Error: Leaf can't be subclassed
        ...
 
-Here are some situations where using a final class may be useful:
+Using the ``@final`` decorator will give no performance benefit.
+Instead, here are some situations where using a final class may be useful:
 
-* A class wasn't designed to be subclassed. Perhaps subclassing does not
-  work as expected, or it's error-prone.
+* A class wasn't designed to be subclassed. Perhaps subclassing would not
+  work as expected, or subclassing would be error-prone.
 * You want to retain the freedom to arbitrarily change the class implementation
   in the future, and these changes might break subclasses.
 * You believe that subclassing would make code harder to understand or maintain.
