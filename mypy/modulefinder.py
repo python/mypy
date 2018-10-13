@@ -121,7 +121,7 @@ class FindModuleCache:
         path, verify = match
         for i in range(1, len(components)):
             pkg_id = '.'.join(components[:-i])
-            if pkg_id not in self.ns_ancestors:
+            if pkg_id not in self.ns_ancestors and self.fscache.isdir(path):
                 self.ns_ancestors[pkg_id] = path
             path = os.path.dirname(path)
 
