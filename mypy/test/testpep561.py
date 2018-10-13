@@ -73,7 +73,7 @@ class C_ExtProgramMessage(Enum):
     help_msg = ('{tempfile}:3: note: (Perhaps setting MYPYPATH or '
                 'using the "--ignore-missing-imports" flag would help)')
     int_str = ('{tempfile}:6: error: Argument 1 to "speak" has incompatible type '
-                '"int"; expected "str"')
+               '"int"; expected "str"')
 
 
 def create_namespace_program_source(import_style: NamespaceProgramImportStyle) -> str:
