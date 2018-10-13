@@ -35,6 +35,9 @@ alpha_func(2)
 C_EXT_PROGRAM = """
 from typedpkg_c_ext.foo import speak
 from typedpkg_c_ext.hello import helloworld
+
+speak("abc")
+speak(1)
 """
 
 
@@ -63,6 +66,14 @@ class NamespaceProgramMessage(Enum):
                 '"bool"; expected "str"')
     int_bool = ('{tempfile}:9: error: Argument 1 to "alpha_func" has incompatible type '
                 '"int"; expected "bool"')
+
+
+class C_ExtProgramMessage(Enum):
+    cannot_find = '{tempfile}:3: error: Cannot find module named \'typedpkg_c_ext.hello\''
+    help_msg = ('{tempfile}:3: note: (Perhaps setting MYPYPATH or '
+                'using the "--ignore-missing-imports" flag would help)')
+    int_str = ('{tempfile}:6: error: Argument 1 to "speak" has incompatible type '
+                '"int"; expected "str"')
 
 
 def create_namespace_program_source(import_style: NamespaceProgramImportStyle) -> str:
@@ -310,13 +321,16 @@ class TestPEP561(TestCase):
             )
 
     def test_c_ext_from_import(self) -> None:
+        # This test case addresses https://github.com/python/mypy/issues/5784
         self.c_ext_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
             self.install_package('typedpkg_c_ext', python_executable)
             self.c_ext_example_program.check_mypy_run(
                 python_executable,
-                [],
+                [C_ExtProgramMessage.cannot_find,
+                 C_ExtProgramMessage.help_msg,
+                 C_ExtProgramMessage.int_str],
                 venv_dir=venv_dir,
             )
 

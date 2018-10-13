@@ -1,5 +1,5 @@
 from . import hello
 
 
-def speak() -> None:
+def speak(a: str) -> None:
     hello.helloworld()
