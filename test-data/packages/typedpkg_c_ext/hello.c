@@ -1,6 +1,10 @@
+/*******************************************************************
+ * This code was copied from the article written by Elliot Forbes at
+ * https://tutorialedge.net/python/python-c-extensions-tutorial/
+ ******************************************************************/
 #include <Python.h>
 
-// Function 1: A simple 'hello world' function
+// ot ForbesFunction 1: A simple 'hello world' function
 static PyObject* helloworld(PyObject* self, PyObject* args)
 {
     printf("Hello World\n");
