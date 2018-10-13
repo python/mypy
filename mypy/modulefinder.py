@@ -121,7 +121,7 @@ class FindModuleCache:
         path, verify = match
         for i in range(1, len(components)):
             pkg_id = '.'.join(components[:-i])
-            if pkg_id not in self.ns_ancestors:
+            if pkg_id not in self.ns_ancestors and self.fscache.isdir(path):
                 self.ns_ancestors[pkg_id] = path
             path = os.path.dirname(path)
 
@@ -165,8 +165,7 @@ class FindModuleCache:
             non_stub_match = self._find_module_non_stub_helper(components, pkg_dir)
             if non_stub_match:
                 third_party_inline_dirs.append(non_stub_match)
-                if self.options and self.options.namespace_packages:
-                    self._update_ns_ancestors(components, non_stub_match)
+                self._update_ns_ancestors(components, non_stub_match)
         if self.options and self.options.use_builtins_fixtures:
             # Everything should be in fixtures.
             third_party_inline_dirs.clear()
@@ -240,10 +239,7 @@ class FindModuleCache:
         # installed package with a py.typed marker that is a
         # subpackage of a namespace package.  We only fess up to these
         # if we would otherwise return "not found".
-        if self.options and self.options.namespace_packages:
-            return self.ns_ancestors.get(id)
-
-        return None
+        return self.ns_ancestors.get(id)
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
         module_path = self.find_module(module)
