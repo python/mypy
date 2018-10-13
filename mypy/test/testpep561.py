@@ -32,6 +32,11 @@ nested_func(False)
 alpha_func(2)
 """
 
+C_EXT_PROGRAM = """
+from typedpkg_c_ext.foo import speak
+from typedpkg_c_ext.hello import helloworld
+"""
+
 
 class NamespaceProgramImportStyle(Enum):
     from_import = """\
@@ -166,12 +171,14 @@ class TestPEP561(TestCase):
             create_namespace_program_source(NamespaceProgramImportStyle.from_import))
         self.regular_import_namespace_example_program = ExampleProgram(
             create_namespace_program_source(NamespaceProgramImportStyle.from_import))
+        self.c_ext_example_program = ExampleProgram(C_EXT_PROGRAM)
 
     def tearDown(self) -> None:
         self.simple_example_program.cleanup()
         self.from_namespace_example_program.cleanup()
         self.import_as_namespace_example_program.cleanup()
         self.regular_import_namespace_example_program.cleanup()
+        self.c_ext_example_program.cleanup()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
@@ -299,6 +306,17 @@ class TestPEP561(TestCase):
                 python_executable,
                 [NamespaceProgramMessage.bool_str,
                  NamespaceProgramMessage.int_bool],
+                venv_dir=venv_dir,
+            )
+
+    def test_c_ext_from_import(self) -> None:
+        self.c_ext_example_program.init()
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('typedpkg_c_ext', python_executable)
+            self.c_ext_example_program.check_mypy_run(
+                python_executable,
+                [],
                 venv_dir=venv_dir,
             )
 
