@@ -61,9 +61,13 @@ class NamespaceMsg(Enum):
                 "'typedpkg_ns.ns.dne'")
     help_note = ('{tempfile}:4: note: (Perhaps setting MYPYPATH or using the '
                  '"--ignore-missing-imports" flag would help)')
-    bool_str = ('{tempfile}:10: error: Argument 1 to "af" has incompatible type '
+    bool_str = ('{tempfile}:10: error: Argument 1 has incompatible type '
                 '"bool"; expected "str"')
-    int_bool = ('{tempfile}:11: error: Argument 1 to "bf" has incompatible type '
+    int_bool = ('{tempfile}:11: error: Argument 1 has incompatible type '
+                '"int"; expected "bool"')
+    to_bool_str = ('{tempfile}:10: error: Argument 1 to "af" has incompatible type '
+                '"bool"; expected "str"')
+    to_int_bool = ('{tempfile}:11: error: Argument 1 to "bf" has incompatible type '
                 '"int"; expected "bool"')
 
 
@@ -276,8 +280,8 @@ class TestPEP561(TestCase):
                 python_executable,
                 [NamespaceMsg.cfm_beta,
                  NamespaceMsg.help_note,
-                 NamespaceMsg.bool_str,
-                 NamespaceMsg.int_bool],
+                 NamespaceMsg.to_bool_str,
+                 NamespaceMsg.to_int_bool],
                 venv_dir=venv_dir,
             )
 
