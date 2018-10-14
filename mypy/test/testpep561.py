@@ -3,7 +3,7 @@ from enum import Enum
 import os
 import sys
 import tempfile
-from typing import Tuple, List, Generator, Optional, Any
+from typing import Tuple, List, Generator, Optional
 from unittest import TestCase, main
 
 import mypy.api
@@ -24,20 +24,15 @@ reveal_type(a)
 
 _NAMESPACE_PROGRAM = """
 {import_style}
+from typedpkg_namespace.alpha.beta_module import beta_func
 
 nested_func("abc")
 alpha_func(False)
+beta_func(123)
 
 nested_func(False)
 alpha_func(2)
-"""
-
-C_EXT_PROGRAM = """
-from typedpkg_c_ext.foo import speak
-from typedpkg_c_ext.hello import helloworld
-
-speak("abc")
-speak(1)
+beta_func("abc")
 """
 
 
@@ -62,18 +57,14 @@ class SimpleProgramMessage(Enum):
 
 
 class NamespaceProgramMessage(Enum):
-    bool_str = ('{tempfile}:8: error: Argument 1 to "nested_func" has incompatible type '
+    cfm_beta = ("{tempfile}:4: error: Cannot find module named "
+                "'typedpkg_namespace.alpha.beta_module'")
+    help_note = ('{tempfile}:4: note: (Perhaps setting MYPYPATH or using the '
+                 '"--ignore-missing-imports" flag would help)')
+    bool_str = ('{tempfile}:10: error: Argument 1 to "nested_func" has incompatible type '
                 '"bool"; expected "str"')
-    int_bool = ('{tempfile}:9: error: Argument 1 to "alpha_func" has incompatible type '
+    int_bool = ('{tempfile}:11: error: Argument 1 to "alpha_func" has incompatible type '
                 '"int"; expected "bool"')
-
-
-class C_ExtProgramMessage(Enum):
-    cannot_find = '{tempfile}:3: error: Cannot find module named \'typedpkg_c_ext.hello\''
-    help_msg = ('{tempfile}:3: note: (Perhaps setting MYPYPATH or '
-                'using the "--ignore-missing-imports" flag would help)')
-    int_str = ('{tempfile}:6: error: Argument 1 to "speak" has incompatible type '
-               '"int"; expected "str"')
 
 
 def create_namespace_program_source(import_style: NamespaceProgramImportStyle) -> str:
@@ -86,7 +77,7 @@ class ExampleProgram(object):
     def __init__(self, source_code: str) -> None:
         self._source_code = source_code
 
-        self._temp_dir = None  # type: Optional[tempfile.TemporaryDirectory[Any]]
+        self._temp_dir = None  # type: Optional[tempfile.TemporaryDirectory[str]]
         self._full_fname = ''
 
     def init(self) -> None:
@@ -179,17 +170,15 @@ class TestPEP561(TestCase):
         self.from_namespace_example_program = ExampleProgram(
             create_namespace_program_source(NamespaceProgramImportStyle.from_import))
         self.import_as_namespace_example_program = ExampleProgram(
-            create_namespace_program_source(NamespaceProgramImportStyle.from_import))
+            create_namespace_program_source(NamespaceProgramImportStyle.import_as))
         self.regular_import_namespace_example_program = ExampleProgram(
-            create_namespace_program_source(NamespaceProgramImportStyle.from_import))
-        self.c_ext_example_program = ExampleProgram(C_EXT_PROGRAM)
+            create_namespace_program_source(NamespaceProgramImportStyle.regular_import))
 
     def tearDown(self) -> None:
         self.simple_example_program.cleanup()
         self.from_namespace_example_program.cleanup()
         self.import_as_namespace_example_program.cleanup()
         self.regular_import_namespace_example_program.cleanup()
-        self.c_ext_example_program.cleanup()
 
     def test_get_pkg_dirs(self) -> None:
         """Check that get_package_dirs works."""
@@ -288,7 +277,9 @@ class TestPEP561(TestCase):
             self.install_package('typedpkg_namespace-alpha', python_executable)
             self.from_namespace_example_program.check_mypy_run(
                 python_executable,
-                [NamespaceProgramMessage.bool_str,
+                [NamespaceProgramMessage.cfm_beta,
+                 NamespaceProgramMessage.help_note,
+                 NamespaceProgramMessage.bool_str,
                  NamespaceProgramMessage.int_bool],
                 venv_dir=venv_dir,
             )
@@ -301,13 +292,14 @@ class TestPEP561(TestCase):
             self.install_package('typedpkg_namespace-alpha', python_executable)
             self.import_as_namespace_example_program.check_mypy_run(
                 python_executable,
-                [NamespaceProgramMessage.bool_str,
+                [NamespaceProgramMessage.cfm_beta,
+                 NamespaceProgramMessage.help_note,
+                 NamespaceProgramMessage.bool_str,
                  NamespaceProgramMessage.int_bool],
                 venv_dir=venv_dir,
             )
 
     def test_nested_and_namespace_regular_import(self) -> None:
-        # This test case addresses https://github.com/python/mypy/issues/5767
         self.regular_import_namespace_example_program.init()
         with self.virtualenv() as venv:
             venv_dir, python_executable = venv
@@ -315,22 +307,10 @@ class TestPEP561(TestCase):
             self.install_package('typedpkg_namespace-alpha', python_executable)
             self.regular_import_namespace_example_program.check_mypy_run(
                 python_executable,
-                [NamespaceProgramMessage.bool_str,
+                [NamespaceProgramMessage.cfm_beta,
+                 NamespaceProgramMessage.help_note,
+                 NamespaceProgramMessage.bool_str,
                  NamespaceProgramMessage.int_bool],
-                venv_dir=venv_dir,
-            )
-
-    def test_c_ext_from_import(self) -> None:
-        # This test case addresses https://github.com/python/mypy/issues/5784
-        self.c_ext_example_program.init()
-        with self.virtualenv() as venv:
-            venv_dir, python_executable = venv
-            self.install_package('typedpkg_c_ext', python_executable)
-            self.c_ext_example_program.check_mypy_run(
-                python_executable,
-                [C_ExtProgramMessage.cannot_find,
-                 C_ExtProgramMessage.help_msg,
-                 C_ExtProgramMessage.int_str],
                 venv_dir=venv_dir,
             )
 
