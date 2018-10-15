@@ -109,8 +109,10 @@ def analyze_member_access(name: str,
     elif isinstance(typ, NoneTyp):
         if chk.should_suppress_optional_error([typ]):
             return AnyType(TypeOfAny.from_error)
-        if name == '__bool__':
-            # The only attribute of NoneType that is not inherited from object.
+        is_python_2 = chk.options.python_version[0] == 2
+        # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
+        # extra attribute, "__bool__".
+        if not is_python_2 and name == '__bool__':
             return CallableType(arg_types=[],
                                 arg_kinds=[],
                                 arg_names=[],

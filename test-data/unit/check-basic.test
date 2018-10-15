@@ -377,6 +377,5 @@ def foo(
 [case testNoneHasBool]
 none = None
 b = none.__bool__()
-s = 'hi'
-s = b  # E: Incompatible types in assignment (expression has type "bool", variable has type "str")
+reveal_type(b)  # E: Revealed type is 'builtins.bool'
 [builtins fixtures/bool.pyi]
