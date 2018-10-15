@@ -109,10 +109,19 @@ def analyze_member_access(name: str,
     elif isinstance(typ, NoneTyp):
         if chk.should_suppress_optional_error([typ]):
             return AnyType(TypeOfAny.from_error)
-        # The only attribute NoneType has are those it inherits from object
-        return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
-                                     is_super, is_operator, builtin_type, not_ready_callback, msg,
-                                     original_type=original_type, chk=chk)
+        is_python_3 = chk.options.python_version[0] >= 3
+        # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
+        # extra attribute, "__bool__".
+        if is_python_3 and name == '__bool__':
+            return CallableType(arg_types=[],
+                                arg_kinds=[],
+                                arg_names=[],
+                                ret_type=builtin_type('builtins.bool'),
+                                fallback=builtin_type('builtins.function'))
+        else:
+            return analyze_member_access(name, builtin_type('builtins.object'), node, is_lvalue,
+                                         is_super, is_operator, builtin_type, not_ready_callback,
+                                         msg, original_type=original_type, chk=chk)
     elif isinstance(typ, UnionType):
         # The base object has dynamic type.
         msg.disable_type_names += 1
