@@ -586,7 +586,11 @@ class DependencyVisitor(TraverserVisitor):
         self.process_global_ref_expr(o)
 
     def visit_member_expr(self, e: MemberExpr) -> None:
-        super().visit_member_expr(e)
+        if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, TypeInfo):
+            # Special case class attribute so that we don't depend on "__init__".
+            self.add_dependency(make_trigger(e.expr.node.fullname()))
+        else:
+            super().visit_member_expr(e)
         if e.kind is not None:
             # Reference to a module attribute
             self.process_global_ref_expr(e)
