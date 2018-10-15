@@ -914,7 +914,7 @@ class PrimitiveOp(RegisterOp):
         args = [env.format('%r', arg) for arg in self.args]
         params['args'] = args
         params['comma_args'] = ', '.join(args)
-        return self.desc.format_str.format(**params)
+        return self.desc.format_str.format(**params).strip()
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_primitive_op(self)
