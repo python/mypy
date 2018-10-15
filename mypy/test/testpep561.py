@@ -193,8 +193,7 @@ class TestPEP561(TestCase):
             self.install_package('typedpkg-stubs', python_executable)
             self.simple_ep.check_mypy_run(
                 python_executable,
-                [SimpleMsg.msg_dne,
-                 SimpleMsg.msg_list],
+                [SimpleMsg.msg_dne, SimpleMsg.msg_list],
                 venv_dir=venv_dir,
             )
 
@@ -230,8 +229,7 @@ class TestPEP561(TestCase):
                 self.install_package('typedpkg-stubs', py2)
                 self.simple_ep.check_mypy_run(
                     py2,
-                    [SimpleMsg.msg_dne,
-                     SimpleMsg.msg_list],
+                    [SimpleMsg.msg_dne, SimpleMsg.msg_list],
                     venv_dir=venv_dir,
                 )
 
