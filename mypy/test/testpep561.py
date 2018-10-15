@@ -270,6 +270,17 @@ class TestPEP561(TestCase):
                 venv_dir=venv_dir,
             )
 
+    def test_typedpkg_egg_editable(self) -> None:
+        self.simple_ep.init()
+        with self.virtualenv() as venv:
+            venv_dir, python_executable = venv
+            self.install_package('typedpkg', python_executable, use_pip=False, editable=True)
+            self.simple_ep.check_mypy_run(
+                python_executable,
+                [SimpleMsg.msg_tuple],
+                venv_dir=venv_dir,
+            )
+
     def test_nested_and_namespace_from_import(self) -> None:
         self.from_ns_ep.init()
         with self.virtualenv() as venv:
