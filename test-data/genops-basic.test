@@ -586,7 +586,7 @@ def g(x: int) -> int:
 [out]
 def f(x):
     x :: int
-    r0 :: object
+    r0 :: dict
     r1 :: str
     r2, r3, r4 :: object
     r5 :: int
@@ -1039,7 +1039,7 @@ L0:
     r0 = float_3 :: static  (5.0)
     return r0
 def return_callable_type():
-    r0 :: object
+    r0 :: dict
     r1 :: str
     r2 :: object
 L0:
@@ -1345,7 +1345,7 @@ def f() -> None:
     print(x)
 [out]
 def f():
-    r0 :: object
+    r0 :: dict
     r1 :: str
     r2 :: object
     r3 :: int
@@ -1372,11 +1372,11 @@ def __top_level__():
     r3 :: str
     r4 :: object
     r5 :: short_int
-    r6 :: object
+    r6 :: dict
     r7 :: str
     r8 :: object
     r9 :: bool
-    r10 :: object
+    r10 :: dict
     r11 :: str
     r12 :: object
     r13 :: int
@@ -1398,7 +1398,7 @@ L2:
     r6 = __main__.globals :: static
     r7 = unicode_1 :: static  ('x')
     r8 = box(short_int, r5)
-    r9 = r6.__setitem__(r7, r8) :: object
+    r9 = r6.__setitem__(r7, r8) :: dict
     r10 = __main__.globals :: static
     r11 = unicode_1 :: static  ('x')
     r12 = r10[r11] :: dict
@@ -1523,7 +1523,7 @@ L0:
 def g():
     r0, r1, r2 :: short_int
     r3 :: tuple[int, int, int]
-    r4 :: object
+    r4 :: dict
     r5 :: str
     r6 :: object
     r7 :: list
@@ -1551,7 +1551,7 @@ L0:
 def h():
     r0, r1, r2 :: short_int
     r3 :: tuple[int, int]
-    r4 :: object
+    r4 :: dict
     r5 :: str
     r6, r7 :: object
     r8 :: list
@@ -1607,7 +1607,7 @@ def g():
     r10 :: bool
     r11 :: object
     r12 :: bool
-    r13 :: object
+    r13 :: dict
     r14 :: str
     r15 :: object
     r16 :: tuple[]
@@ -1650,7 +1650,7 @@ def h():
     r7 :: bool
     r8 :: object
     r9 :: bool
-    r10 :: object
+    r10 :: dict
     r11 :: str
     r12 :: object
     r13 :: tuple[int]
@@ -2332,7 +2332,8 @@ def __top_level__():
     r4, r5, r6 :: object
     r7 :: bool
     r8 :: str
-    r9, r10, r11 :: object
+    r9, r10 :: object
+    r11 :: dict
     r12 :: str
     r13 :: object
     r14 :: str
@@ -2356,39 +2357,45 @@ def __top_level__():
     r33 :: tuple[str, object]
     r34 :: object
     r35 :: tuple[object, object]
-    r36, r37 :: object
+    r36 :: object
+    r37 :: dict
     r38 :: str
-    r39, r40, r41 :: object
+    r39, r40 :: object
+    r41 :: dict
     r42 :: str
     r43 :: bool
     r44 :: short_int
     r45 :: str
-    r46 :: object
+    r46 :: dict
     r47 :: str
     r48, r49, r50 :: object
     r51 :: tuple
-    r52 :: object
+    r52 :: dict
     r53 :: str
     r54 :: bool
-    r55 :: object
+    r55 :: dict
     r56 :: str
-    r57, r58, r59, r60 :: object
+    r57, r58, r59 :: object
+    r60 :: dict
     r61 :: str
     r62 :: bool
     r63 :: str
-    r64 :: object
+    r64 :: dict
     r65 :: str
-    r66, r67 :: object
+    r66 :: object
+    r67 :: dict
     r68 :: str
-    r69, r70, r71 :: object
+    r69, r70 :: object
+    r71 :: dict
     r72 :: str
     r73 :: bool
     r74, r75, r76 :: short_int
     r77, r78, r79 :: object
     r80 :: list
-    r81 :: object
+    r81 :: dict
     r82 :: str
-    r83, r84, r85 :: object
+    r83, r84 :: object
+    r85 :: dict
     r86 :: str
     r87 :: bool
     r88 :: None
@@ -2416,15 +2423,15 @@ L4:
     r12 = unicode_2 :: static  ('List')
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('List')
-    r15 = r11.__setitem__(r14, r13) :: object
+    r15 = r11.__setitem__(r14, r13) :: dict
     r16 = unicode_3 :: static  ('NewType')
     r17 = getattr r10, r16
     r18 = unicode_3 :: static  ('NewType')
-    r19 = r11.__setitem__(r18, r17) :: object
+    r19 = r11.__setitem__(r18, r17) :: dict
     r20 = unicode_4 :: static  ('NamedTuple')
     r21 = getattr r10, r20
     r22 = unicode_4 :: static  ('NamedTuple')
-    r23 = r11.__setitem__(r22, r21) :: object
+    r23 = r11.__setitem__(r22, r21) :: dict
     r24 = unicode_5 :: static  ('Lol')
     r25 = unicode_6 :: static  ('a')
     r26 = int
@@ -2444,7 +2451,7 @@ L4:
     r40 = py_call(r39, r24, r36)
     r41 = __main__.globals :: static
     r42 = unicode_5 :: static  ('Lol')
-    r43 = r41.__setitem__(r42, r40) :: object
+    r43 = r41.__setitem__(r42, r40) :: dict
     r44 = 1
     r45 = unicode_9 :: static
     r46 = __main__.globals :: static
@@ -2455,7 +2462,7 @@ L4:
     r51 = cast(tuple, r50)
     r52 = __main__.globals :: static
     r53 = unicode_10 :: static  ('x')
-    r54 = r52.__setitem__(r53, r51) :: object
+    r54 = r52.__setitem__(r53, r51) :: dict
     r55 = __main__.globals :: static
     r56 = unicode_2 :: static  ('List')
     r57 = r55[r56] :: dict
@@ -2463,7 +2470,7 @@ L4:
     r59 = r57[r58] :: object
     r60 = __main__.globals :: static
     r61 = unicode_11 :: static  ('Foo')
-    r62 = r60.__setitem__(r61, r59) :: object
+    r62 = r60.__setitem__(r61, r59) :: dict
     r63 = unicode_12 :: static  ('Bar')
     r64 = __main__.globals :: static
     r65 = unicode_11 :: static  ('Foo')
@@ -2474,7 +2481,7 @@ L4:
     r70 = py_call(r69, r63, r66)
     r71 = __main__.globals :: static
     r72 = unicode_12 :: static  ('Bar')
-    r73 = r71.__setitem__(r72, r70) :: object
+    r73 = r71.__setitem__(r72, r70) :: dict
     r74 = 1
     r75 = 2
     r76 = 3
@@ -2488,7 +2495,7 @@ L4:
     r84 = py_call(r83, r80)
     r85 = __main__.globals :: static
     r86 = unicode_13 :: static  ('y')
-    r87 = r85.__setitem__(r86, r84) :: object
+    r87 = r85.__setitem__(r86, r84) :: dict
     r88 = None
     return r88
 
@@ -2742,9 +2749,10 @@ def __mypyc_c_decorator_helper__():
     r0 :: __mypyc_c_decorator_helper____env
     r1 :: __mypyc_d_decorator_helper_____mypyc_c_decorator_helper___obj
     r2 :: bool
-    r3 :: object
+    r3 :: dict
     r4 :: str
-    r5, r6, r7 :: object
+    r5, r6 :: object
+    r7 :: dict
     r8 :: str
     r9, r10 :: object
     r11 :: bool
@@ -2786,22 +2794,25 @@ def __top_level__():
     r4, r5, r6 :: object
     r7 :: bool
     r8 :: str
-    r9, r10, r11 :: object
+    r9, r10 :: object
+    r11 :: dict
     r12 :: str
     r13 :: object
     r14 :: str
     r15 :: bool
     r16 :: object
     r17 :: str
-    r18, r19 :: object
+    r18 :: object
+    r19 :: dict
     r20 :: str
-    r21, r22, r23 :: object
+    r21, r22 :: object
+    r23 :: dict
     r24 :: str
-    r25, r26, r27 :: object
+    r25, r26 :: object
+    r27 :: dict
     r28 :: str
-    r29 :: dict
-    r30 :: bool
-    r31 :: None
+    r29 :: bool
+    r30 :: None
 L0:
     r0 = builtins.module :: static
     r1 = builtins.None :: object
@@ -2826,7 +2837,7 @@ L4:
     r12 = unicode_2 :: static  ('Callable')
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('Callable')
-    r15 = r11.__setitem__(r14, r13) :: object
+    r15 = r11.__setitem__(r14, r13) :: dict
     r16 = __main__.module :: static
     r17 = unicode_11 :: static  ('__mypyc_c_decorator_helper__')
     r18 = getattr r16, r17
@@ -2840,10 +2851,9 @@ L4:
     r26 = py_call(r25, r22)
     r27 = __main__.globals :: static
     r28 = unicode_10 :: static  ('c')
-    r29 = cast(dict, r27)
-    r30 = r29.__setitem__(r28, r26) :: dict
-    r31 = None
-    return r31
+    r29 = r27.__setitem__(r28, r26) :: dict
+    r30 = None
+    return r30
 
 [case testDecoratorsSimple_toplevel]
 from typing import Callable
@@ -2928,7 +2938,8 @@ def __top_level__():
     r4, r5, r6 :: object
     r7 :: bool
     r8 :: str
-    r9, r10, r11 :: object
+    r9, r10 :: object
+    r11 :: dict
     r12 :: str
     r13 :: object
     r14 :: str
@@ -2958,7 +2969,7 @@ L4:
     r12 = unicode_2 :: static  ('Callable')
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('Callable')
-    r15 = r11.__setitem__(r14, r13) :: object
+    r15 = r11.__setitem__(r14, r13) :: dict
     r16 = None
     return r16
 

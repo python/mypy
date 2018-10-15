@@ -4084,7 +4084,7 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
         return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
 
     def load_globals_dict(self) -> Value:
-        return self.add(LoadStatic(object_rprimitive, 'globals', self.module_name))
+        return self.add(LoadStatic(dict_rprimitive, 'globals', self.module_name))
 
     def load_static_int(self, value: int) -> Value:
         """Loads a static integer Python 'int' object into a register."""

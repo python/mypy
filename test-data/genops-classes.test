@@ -336,7 +336,8 @@ def __top_level__():
     r4, r5, r6 :: object
     r7 :: bool
     r8 :: str
-    r9, r10, r11 :: object
+    r9, r10 :: object
+    r11 :: dict
     r12 :: str
     r13 :: object
     r14 :: str
@@ -348,48 +349,49 @@ def __top_level__():
     r20, r21 :: object
     r22 :: bool
     r23 :: str
-    r24, r25, r26 :: object
+    r24, r25 :: object
+    r26 :: dict
     r27 :: str
     r28 :: object
     r29 :: str
     r30 :: bool
     r31 :: str
-    r32 :: object
+    r32 :: dict
     r33 :: str
-    r34, r35, r36 :: object
+    r34, r35 :: object
+    r36 :: dict
     r37 :: str
     r38 :: bool
     r39 :: object
     r40 :: str
     r41, r42 :: object
     r43 :: bool
-    r44 :: object
+    r44 :: dict
     r45 :: str
-    r46 :: dict
-    r47 :: bool
-    r48 :: object
-    r49 :: str
-    r50, r51 :: object
-    r52 :: bool
-    r53 :: object
-    r54 :: str
-    r55 :: dict
-    r56 :: bool
-    r57, r58, r59 :: object
-    r60 :: str
-    r61, r62 :: object
-    r63 :: str
-    r64, r65 :: object
-    r66 :: tuple[object, object, object]
-    r67 :: object
-    r68 :: str
-    r69, r70 :: object
-    r71 :: bool
-    r72 :: object
-    r73 :: str
-    r74 :: dict
-    r75 :: bool
-    r76 :: None
+    r46 :: bool
+    r47 :: object
+    r48 :: str
+    r49, r50 :: object
+    r51 :: bool
+    r52 :: dict
+    r53 :: str
+    r54 :: bool
+    r55, r56 :: object
+    r57 :: dict
+    r58 :: str
+    r59 :: object
+    r60 :: dict
+    r61 :: str
+    r62, r63 :: object
+    r64 :: tuple[object, object, object]
+    r65 :: object
+    r66 :: str
+    r67, r68 :: object
+    r69 :: bool
+    r70 :: dict
+    r71 :: str
+    r72 :: bool
+    r73 :: None
 L0:
     r0 = builtins.module :: static
     r1 = builtins.None :: object
@@ -414,11 +416,11 @@ L4:
     r12 = unicode_2 :: static  ('TypeVar')
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('TypeVar')
-    r15 = r11.__setitem__(r14, r13) :: object
+    r15 = r11.__setitem__(r14, r13) :: dict
     r16 = unicode_3 :: static  ('Generic')
     r17 = getattr r10, r16
     r18 = unicode_3 :: static  ('Generic')
-    r19 = r11.__setitem__(r18, r17) :: object
+    r19 = r11.__setitem__(r18, r17) :: dict
     r20 = mypy_extensions.module :: static
     r21 = builtins.None :: object
     r22 = r20 is not r21
@@ -433,7 +435,7 @@ L6:
     r27 = unicode_5 :: static  ('trait')
     r28 = getattr r25, r27
     r29 = unicode_5 :: static  ('trait')
-    r30 = r26.__setitem__(r29, r28) :: object
+    r30 = r26.__setitem__(r29, r28) :: dict
     r31 = unicode_6 :: static  ('T')
     r32 = __main__.globals :: static
     r33 = unicode_2 :: static  ('TypeVar')
@@ -441,7 +443,7 @@ L6:
     r35 = py_call(r34, r31)
     r36 = __main__.globals :: static
     r37 = unicode_6 :: static  ('T')
-    r38 = r36.__setitem__(r37, r35) :: object
+    r38 = r36.__setitem__(r37, r35) :: dict
     r39 = <error> :: object
     r40 = unicode_7 :: static  ('__main__')
     r41 = __main__.C_template :: type
@@ -450,40 +452,37 @@ L6:
     __main__.C = r42 :: type
     r44 = __main__.globals :: static
     r45 = unicode_8 :: static  ('C')
-    r46 = cast(dict, r44)
-    r47 = r46.__setitem__(r45, r42) :: dict
-    r48 = <error> :: object
-    r49 = unicode_7 :: static  ('__main__')
-    r50 = __main__.S_template :: type
-    r51 = pytype_from_template(r50, r48, r49)
-    r52 = S_trait_vtable_setup()
-    __main__.S = r51 :: type
-    r53 = __main__.globals :: static
-    r54 = unicode_9 :: static  ('S')
-    r55 = cast(dict, r53)
-    r56 = r55.__setitem__(r54, r51) :: dict
-    r57 = __main__.C :: type
-    r58 = __main__.S :: type
-    r59 = __main__.globals :: static
-    r60 = unicode_3 :: static  ('Generic')
-    r61 = r59[r60] :: dict
-    r62 = __main__.globals :: static
-    r63 = unicode_6 :: static  ('T')
-    r64 = r62[r63] :: dict
-    r65 = r61[r64] :: object
-    r66 = (r57, r58, r65)
-    r67 = box(tuple[object, object, object], r66)
-    r68 = unicode_7 :: static  ('__main__')
-    r69 = __main__.D_template :: type
-    r70 = pytype_from_template(r69, r67, r68)
-    r71 = D_trait_vtable_setup()
-    __main__.D = r70 :: type
-    r72 = __main__.globals :: static
-    r73 = unicode_10 :: static  ('D')
-    r74 = cast(dict, r72)
-    r75 = r74.__setitem__(r73, r70) :: dict
-    r76 = None
-    return r76
+    r46 = r44.__setitem__(r45, r42) :: dict
+    r47 = <error> :: object
+    r48 = unicode_7 :: static  ('__main__')
+    r49 = __main__.S_template :: type
+    r50 = pytype_from_template(r49, r47, r48)
+    r51 = S_trait_vtable_setup()
+    __main__.S = r50 :: type
+    r52 = __main__.globals :: static
+    r53 = unicode_9 :: static  ('S')
+    r54 = r52.__setitem__(r53, r50) :: dict
+    r55 = __main__.C :: type
+    r56 = __main__.S :: type
+    r57 = __main__.globals :: static
+    r58 = unicode_3 :: static  ('Generic')
+    r59 = r57[r58] :: dict
+    r60 = __main__.globals :: static
+    r61 = unicode_6 :: static  ('T')
+    r62 = r60[r61] :: dict
+    r63 = r59[r62] :: object
+    r64 = (r55, r56, r63)
+    r65 = box(tuple[object, object, object], r64)
+    r66 = unicode_7 :: static  ('__main__')
+    r67 = __main__.D_template :: type
+    r68 = pytype_from_template(r67, r65, r66)
+    r69 = D_trait_vtable_setup()
+    __main__.D = r68 :: type
+    r70 = __main__.globals :: static
+    r71 = unicode_10 :: static  ('D')
+    r72 = r70.__setitem__(r71, r68) :: dict
+    r73 = None
+    return r73
 
 [case testIsInstance]
 class A: pass
@@ -835,7 +834,7 @@ L0:
     return r2
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: B
-    r0 :: object
+    r0 :: dict
     r1 :: str
     r2 :: object
     r3 :: str
