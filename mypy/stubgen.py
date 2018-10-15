@@ -172,7 +172,10 @@ def find_module_path_and_all(module: str, pyversion: Tuple[int, int],
             raise SystemExit(
                 "Can't find module '{}' (consider using --search-path)".format(module))
         module_all = None
-    if not (isinstance(module_all, list) and all(isinstance(v, str) for v in module_all)):
+    if not (
+        module_all is None or
+        ((isinstance(module_all, list) and all(isinstance(v, str) for v in module_all))
+    ):
         raise CantImport(module)
     return module_path, module_all
 
