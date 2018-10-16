@@ -330,6 +330,9 @@ class DependencyVisitor(TraverserVisitor):
             self.add_dependency(make_trigger(id), self.scope.current_target())
 
     def visit_import_from(self, o: ImportFrom) -> None:
+        if self.use_logical_deps():
+            # Just importing a name doesn't create a logical dependency.
+            return
         module_id, _ = correct_relative_import(self.scope.current_module_id(),
                                                o.relative,
                                                o.id,

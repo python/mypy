@@ -1287,8 +1287,8 @@ def gg(x: C) -> None:
 [out]
 <foo.bar.C.ff> -> m.g
 <foo.bar.C.y> -> m.gg
-<foo.bar.C> -> <m.gg>, m, m.g, m.gg
-<foo.bar.f> -> m, m.g
+<foo.bar.C> -> <m.gg>, m.g, m.gg
+<foo.bar.f> -> m.g
 
 [case testLogical__init__]
 # flags: --logical-deps
