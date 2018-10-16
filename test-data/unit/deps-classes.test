@@ -228,3 +228,16 @@ def h() -> None: pass
 <m.C> -> <m.cc>, m, m.C, m.fclass, m.fstatic
 <m.cc> -> m, m.gclass, m.gstatic
 <m.h> -> m.C.bar, m.C.foo
+
+[case testClassAttributeWithMetaclass]
+class M(type):
+    x = 1
+class C(metaclass=M):
+    pass
+def f() -> None:
+    C.x
+[out]
+<m.C.x> -> m.f
+<m.C> -> m.C, m.f
+<m.M.x> -> m.f
+<m.M> -> <m.C>, m.M
