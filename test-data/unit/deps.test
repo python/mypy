@@ -1329,9 +1329,11 @@ class B(A):
 class C(B):
     pass
 class D(C):
-    def __init__(self): # type: () -> None
+    def __init__(self):
+        # type: () -> None
         super(B, self).__init__()
-    def mm(self): # type: () -> None
+    def mm(self):
+        # type: () -> None
         super(B, self).m()
 [out]
 <m.A.__init__> -> m.D.__init__
