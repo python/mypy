@@ -1315,3 +1315,37 @@ def h() -> None:
 <m.D.__init__> -> m.h
 <m.D.__new__> -> m.h
 <m.D> -> m.D, m.h
+
+[case testLogicalSuperPython2]
+# flags: --logical-deps --py2
+class A:
+    def __init__(self):
+        pass
+    def m(self):
+        pass
+class B(A):
+    def m(self):
+        pass
+class C(B):
+    pass
+class D(C):
+    def __init__(self):
+        # type: () -> None
+        super(B, self).__init__()
+    def mm(self):
+        # type: () -> None
+        super(B, self).m()
+[out]
+<m.A.__init__> -> m.D.__init__
+<m.A.m> -> <m.B.m>, m.B.m
+<m.A.mm> -> m.D.mm
+<m.A> -> m, m.A, m.B
+<m.B.__init__> -> m.D.__init__
+<m.B.m> -> m.D.mm
+<m.B.mm> -> m.D.mm
+<m.B> -> m, m.B, m.C
+<m.C.__init__> -> m.D.__init__
+<m.C.m> -> m.D.mm
+<m.C.mm> -> m.D.mm
+<m.C> -> m, m.C, m.D
+<m.D> -> m.D

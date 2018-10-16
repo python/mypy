@@ -644,9 +644,18 @@ class DependencyVisitor(TraverserVisitor):
         return None
 
     def visit_super_expr(self, e: SuperExpr) -> None:
-        super().visit_super_expr(e)
+        # Arguments in "super(C, self)" won't generate useful logical deps.
+        if not self.use_logical_deps():
+            super().visit_super_expr(e)
         if e.info is not None:
-            self.add_dependency(make_trigger(e.info.fullname() + '.' + e.name))
+            name = e.name
+            for base in non_trivial_bases(e.info):
+                self.add_dependency(make_trigger(base.fullname() + '.' + name))
+                if name in base.names:
+                    # No need to depend on further base classes, since we found
+                    # the target.  This is safe since if the target gets
+                    # deleted or modified, we'll trigger it.
+                    break
 
     def visit_call_expr(self, e: CallExpr) -> None:
         super().visit_call_expr(e)
