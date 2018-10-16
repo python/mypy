@@ -299,10 +299,14 @@ def do_check(args: argparse.Namespace) -> None:
 def do_recheck(args: argparse.Namespace) -> None:
     """Ask the daemon to recheck the previous list of files, with optional modifications.
 
-    If at least one of --add, --remove or --update is non-empty, the server will
+    If at least one of --add, --remove or --update is given, the server will
     update the list of files to check accordingly and assume that any other files
     are unchanged.  If none of these flags are given, the server will call stat()
     on each file last checked to determine its status.
+
+    Files given in --add ought to be new; files given in --update ought to exist.
+    Files given in --remove need not exist; if they don't they will be ignored.
+    The lists may be empty but oughtn't contain duplicates or overlap.
 
     NOTE: The list of files is lost when the daemon is restarted.
     """

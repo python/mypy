@@ -268,8 +268,8 @@ class Server:
                     update: Optional[List[str]] = None) -> Dict[str, object]:
         """Check the same list of files we checked most recently.
 
-
-        If add/remove/update is given, they modifies the previous list.
+        If add/remove/update is given, they modify the previous list;
+        if all are None, stat() is called for each file in the previous list.
         """
         t0 = time.time()
         if not self.fine_grained_manager:
@@ -277,7 +277,6 @@ class Server:
         sources = self.previous_sources
         if remove:
             removals = set(remove)
-            print
             sources = [s for s in sources if s.path and s.path not in removals]
         if add:
             try:
