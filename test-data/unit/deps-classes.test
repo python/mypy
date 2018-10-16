@@ -136,10 +136,8 @@ class D(C):
 <m.C.(abstract)> -> <m.D.__init__>, m
 <m.C.__init__> -> <m.D.__init__>, m.D.__init__
 <m.C.__new__> -> <m.D.__new__>
-<m.C.foo> -> <m.D.foo>
+<m.C.foo> -> <m.D.foo>, m.D.__init__
 <m.C> -> m, m.C, m.D
-<m.D.__init__> -> m.D.__init__
-<m.D.foo> -> m.D.__init__
 <m.D> -> m.D
 
 [case testClassMissingInit]
