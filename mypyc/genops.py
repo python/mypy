@@ -82,7 +82,8 @@ from mypyc.ops_misc import (
     py_getattr_op, py_setattr_op, py_delattr_op,
     py_call_op, py_call_with_kwargs_op, py_method_call_op,
     fast_isinstance_op, bool_op, new_slice_op,
-    type_op, pytype_from_template_op, import_op, ellipsis_op, method_new_op, type_is_op,
+    type_op, pytype_from_template_op, import_op, get_module_dict_op,
+    ellipsis_op, method_new_op, type_is_op,
 )
 from mypyc.ops_exc import (
     no_err_occurred_op, raise_exception_op, raise_exception_with_tb_op, reraise_exception_op,
@@ -970,8 +971,32 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
     def visit_import(self, node: Import) -> None:
         if node.is_mypy_only:
             return
-        for node_id, _ in node.ids:
+        globals = self.load_globals_dict()
+        for node_id, as_name in node.ids:
             self.gen_import(node_id, node.line)
+
+            # Update the globals dict with the appropriate module:
+            # * For 'import foo.bar as baz' we add 'foo.bar' with the name 'baz'
+            # * For 'import foo.bar' we add 'foo' with the name 'foo'
+            # Typically we then ignore these entries and access things directly
+            # via the module static, but we will use the globals version for modules
+            # that mypy couldn't find, since it doesn't analyze module references
+            # from those properly.
+
+            # Miscompiling imports inside of functions, like below in import from.
+            if as_name:
+                name = as_name
+                base = node_id
+            else:
+                base = name = node_id.split('.')[0]
+
+            # Python 3.7 has a nice 'PyImport_GetModule' function that we can't use :(
+            mod_dict = self.primitive_op(get_module_dict_op, [], node.line)
+            obj = self.primitive_op(dict_get_item_op,
+                                    [mod_dict, self.load_static_unicode(base)], node.line)
+            self.translate_special_method_call(
+                globals, '__setitem__', [self.load_static_unicode(name), obj],
+                result_type=None, line=node.line)
 
     def visit_import_from(self, node: ImportFrom) -> None:
         if node.is_mypy_only:
@@ -3278,13 +3303,11 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
             func_reg = decorated_func
         else:
             # Obtain the the function name in order to construct the name of the helper function.
-            # The module name is later used to load the callable object representing the function.
-            module, _, name = dec.func.fullname().rpartition('.')
+            name = dec.func.fullname().split('.')[-1]
             helper_name = decorator_helper_name(name)
-            fullname = '{}.{}'.format(module, helper_name)
 
             # Load the callable object representing the non-decorated function, and decorate it.
-            orig_func = self.load_module_attr_by_fullname(fullname, dec.func.line)
+            orig_func = self.load_global_str(helper_name, dec.line)
             decorated_func = self.load_decorated_func(dec.func, orig_func)
 
             # Set the callable object representing the decorated function as a global.
@@ -4079,9 +4102,12 @@ class IRBuilder(ExpressionVisitor[Value], StatementVisitor[None]):
                 and not self.is_synthetic_type(expr.node)):
             assert expr.fullname is not None
             return self.load_native_type_object(expr.fullname)
+        return self.load_global_str(expr.name, expr.line)
+
+    def load_global_str(self, name: str, line: int) -> Value:
         _globals = self.load_globals_dict()
-        reg = self.load_static_unicode(expr.name)
-        return self.add(PrimitiveOp([_globals, reg], dict_get_item_op, expr.line))
+        reg = self.load_static_unicode(name)
+        return self.primitive_op(dict_get_item_op, [_globals, reg], line)
 
     def load_globals_dict(self) -> Value:
         return self.add(LoadStatic(dict_rprimitive, 'globals', self.module_name))

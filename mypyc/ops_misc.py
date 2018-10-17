@@ -5,7 +5,7 @@ from typing import List
 from mypyc.ops import (
     EmitterInterface, PrimitiveOp,
     none_rprimitive, bool_rprimitive, object_rprimitive, tuple_rprimitive, str_rprimitive,
-    int_rprimitive,
+    int_rprimitive, dict_rprimitive,
     ERR_NEVER, ERR_MAGIC, ERR_FALSE
 )
 from mypyc.ops_primitive import (
@@ -266,6 +266,15 @@ import_op = custom_op(
     result_type=object_rprimitive,
     error_kind=ERR_MAGIC,
     emit=call_emit('PyImport_Import'))
+
+
+get_module_dict_op = custom_op(
+    name='get_module_dict',
+    arg_types=[],
+    result_type=dict_rprimitive,
+    error_kind=ERR_NEVER,
+    emit=call_emit('PyImport_GetModuleDict'),
+    is_borrowed=True)
 
 
 func_op('builtins.isinstance',

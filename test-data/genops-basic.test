@@ -2800,7 +2800,7 @@ def __top_level__():
     r13 :: object
     r14 :: str
     r15 :: bool
-    r16 :: object
+    r16 :: dict
     r17 :: str
     r18 :: object
     r19 :: dict
@@ -2838,9 +2838,9 @@ L4:
     r13 = getattr r10, r12
     r14 = unicode_2 :: static  ('Callable')
     r15 = r11.__setitem__(r14, r13) :: dict
-    r16 = __main__.module :: static
+    r16 = __main__.globals :: static
     r17 = unicode_11 :: static  ('__mypyc_c_decorator_helper__')
-    r18 = getattr r16, r17
+    r18 = r16[r17] :: dict
     r19 = __main__.globals :: static
     r20 = unicode_8 :: static  ('b')
     r21 = r19[r20] :: dict

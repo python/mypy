@@ -79,6 +79,10 @@ class TestRun(MypycDataSuite):
             options.python_version = (3, 6)
             options.export_types = True
 
+            # Avoid checking modules/packages named 'unchecked', to provide a way
+            # to test interacting with code we don't have types for.
+            options.per_module_options['unchecked.*'] = {'follow_imports': 'error'}
+
             workdir = 'build'
             os.mkdir(workdir)
 

@@ -8,8 +8,10 @@ def f(x: int) -> int:
 #include <Python.h>
 #include <CPy.h>
 
+static CPyModule *CPyStatic_module_internal = NULL;
 static CPyModule *CPyStatic_module = Py_None;
 static PyObject *CPyStatic_globals;
+static CPyModule *CPyStatic_builtins_module_internal = NULL;
 static CPyModule *CPyStatic_builtins_module = Py_None;
 static PyObject *CPyStatic_unicode_0;
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x);
@@ -43,15 +45,15 @@ static struct PyModuleDef module = {
 
 PyMODINIT_FUNC PyInit_prog(void)
 {
-    if (CPyStatic_module != Py_None) {
-        Py_INCREF(CPyStatic_module);
-        return CPyStatic_module;
+    if (CPyStatic_module_internal) {
+        Py_INCREF(CPyStatic_module_internal);
+        return CPyStatic_module_internal;
     }
-    CPyStatic_module = PyModule_Create(&module);
-    if (unlikely(CPyStatic_module == NULL))
+    CPyStatic_module_internal = PyModule_Create(&module);
+    if (unlikely(CPyStatic_module_internal == NULL))
         return NULL;
-    PyObject *modname = PyObject_GetAttrString((PyObject *)CPyStatic_module, "__name__");
-    CPyStatic_globals = PyModule_GetDict(CPyStatic_module);
+    PyObject *modname = PyObject_GetAttrString((PyObject *)CPyStatic_module_internal, "__name__");
+    CPyStatic_globals = PyModule_GetDict(CPyStatic_module_internal);
     if (unlikely(CPyStatic_globals == NULL))
         return NULL;
     if (CPyLiteralsInit() < 0)
@@ -60,7 +62,7 @@ PyMODINIT_FUNC PyInit_prog(void)
     if (result == 2)
         return NULL;
     Py_DECREF(modname);
-    return CPyStatic_module;
+    return CPyStatic_module_internal;
 }
 
 static CPyTagged CPyDef_f(CPyTagged cpy_r_x) {

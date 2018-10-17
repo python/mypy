@@ -636,6 +636,20 @@ f(5)
 [out]
 5
 
+[case testImportMissing]
+# The unchecked module is configured by the test harness to not be
+# picked up by mypy, so we can test that we do that right thing when
+# calling library modules without stubs.
+import unchecked  # type: ignore
+import unchecked as lol  # type: ignore
+assert unchecked.x == 10
+assert lol.x == 10
+[file unchecked.py]
+x = 10
+
+[file driver.py]
+import native
+
 [case testOptional]
 from typing import Optional
 
