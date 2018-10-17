@@ -333,3 +333,7 @@ def foo(
 ):
     # type: (...) -> None
     pass
+
+[case testNoneHasNoBoolInPython2]
+none = None
+b = none.__bool__() # E: "None" has no attribute "__bool__"
